@@ -396,6 +396,17 @@ namespace PurrNet.Modules
             return count;
         }
 
+        /// <summary>
+        /// Processes the next pending scene action in the internal queue, initiating the corresponding async load or unload.
+        /// </summary>
+        /// <remarks>
+        /// If the queue is empty this is a no-op. For a Load action this method starts a Unity async load and records a PendingSceneOperation
+        /// so completion can be matched later; in Single mode it also removes non-DontDestroyOnLoad scenes from internal tracking.
+        /// For an Unload action this method starts a Unity async unload and removes the scene from internal mappings. The method respects
+        /// host/client roles (may skip or only queue server-side work when running as host) and will defer actions when the scene is already
+        /// pending or when only a single loaded scene remains.
+        /// Errors during scene resolution or load initiation are logged and cause the action to be skipped without throwing.
+        /// </remarks>
         private void HandleNextSceneAction()
         {
             if (_actionsQueue.Count == 0) return;
@@ -404,81 +415,90 @@ namespace PurrNet.Modules
             switch (action.type)
             {
                 case SceneActionType.Load:
-                {
-                    if (_networkManager.isHost && !_asServer)
                     {
-                        _actionsQueue.Dequeue();
-                        break;
-                    }
-
-                    var loadAction = action.loadSceneAction;
-                    AsyncOperation operation;
-
-                    try
-                    {
-                        operation = SceneManager.LoadSceneAsync(loadAction.buildIndex, loadAction.GetLoadSceneParameters());
-                    }
-                    catch (System.Exception e)
-                    {
-                        PurrLogger.LogError($"Error loading scene: {e}");
-                        break;
-                    }
-
-                    if (loadAction.parameters.mode == LoadSceneMode.Single)
-                    {
-                        for (int i = 0; i < _rawScenes.Count; i++)
+                        if (_networkManager.isHost && !_asServer)
                         {
-                            if (!IsDontDestroyOnLoadScene(_scenes[_rawScenes[i]].scene))
-                                RemoveScene(_scenes[_rawScenes[i]].scene);
+                            _actionsQueue.Dequeue();
+                            break;
                         }
-                    }
 
-                    _pendingOperations.Add(new PendingSceneOperation
-                    {
-                        buildIndex = loadAction.buildIndex,
-                        settings = loadAction.parameters,
-                        idToAssign = loadAction.sceneID,
-                        operation = operation
-                    });
+                        var loadAction = action.loadSceneAction;
+                        AsyncOperation operation;
 
-                    _actionsQueue.Dequeue();
-                    break;
-                }
-                case SceneActionType.Unload:
-                {
-                    var currentlyLoadedCount = GetCurrentLoadedScenes();
-                    if (currentlyLoadedCount == 1)
-                    {
-                        // wait for the next load action
-                        break;
-                    }
+                        try
+                        {
+                            operation = SceneManager.LoadSceneAsync(loadAction.buildIndex, loadAction.GetLoadSceneParameters());
+                        }
+                        catch (System.Exception e)
+                        {
+                            PurrLogger.LogError($"Error loading scene: {e}");
+                            break;
+                        }
 
-                    var idx = action.unloadSceneAction.sceneID;
+                        if (loadAction.parameters.mode == LoadSceneMode.Single)
+                        {
+                            for (int i = 0; i < _rawScenes.Count; i++)
+                            {
+                                if (!IsDontDestroyOnLoadScene(_scenes[_rawScenes[i]].scene))
+                                    RemoveScene(_scenes[_rawScenes[i]].scene);
+                            }
+                        }
 
-                    if (_networkManager.isHost && !_asServer)
-                    {
-                        _scenesToTriggerUnloadEvent.Add(idx);
+                        _pendingOperations.Add(new PendingSceneOperation
+                        {
+                            buildIndex = loadAction.buildIndex,
+                            settings = loadAction.parameters,
+                            idToAssign = loadAction.sceneID,
+                            operation = operation
+                        });
+
                         _actionsQueue.Dequeue();
                         break;
                     }
-
-                    // if the scene is pending, don't do anything for now
-                    if (IsScenePending(idx)) break;
-
-                    if (!_scenes.TryGetValue(idx, out var sceneState))
+                case SceneActionType.Unload:
                     {
-                        PurrLogger.LogError($"Couldn't find scene with index {idx} to unload");
+                        var currentlyLoadedCount = GetCurrentLoadedScenes();
+                        if (currentlyLoadedCount == 1)
+                        {
+                            // wait for the next load action
+                            break;
+                        }
+
+                        var idx = action.unloadSceneAction.sceneID;
+
+                        if (_networkManager.isHost && !_asServer)
+                        {
+                            _scenesToTriggerUnloadEvent.Add(idx);
+                            _actionsQueue.Dequeue();
+                            break;
+                        }
+
+                        // if the scene is pending, don't do anything for now
+                        if (IsScenePending(idx)) break;
+
+                        if (!_scenes.TryGetValue(idx, out var sceneState))
+                        {
+                            PurrLogger.LogError($"Couldn't find scene with index {idx} to unload");
+                            break;
+                        }
+
+                        SceneManager.UnloadSceneAsync(sceneState.scene, action.unloadSceneAction.options);
+                        RemoveScene(sceneState.scene);
+                        _actionsQueue.Dequeue();
                         break;
                     }
-
-                    SceneManager.UnloadSceneAsync(sceneState.scene, action.unloadSceneAction.options);
-                    RemoveScene(sceneState.scene);
-                    _actionsQueue.Dequeue();
-                    break;
-                }
             }
         }
 
+        /// <summary>
+        /// Processes a batch of scene actions received from a player or the network.
+        /// </summary>
+        /// <param name="player">The player who sent the batch.</param>
+        /// <param name="data">The batch of scene actions to process.</param>
+        /// <param name="asServer">
+        /// If true (or running on the server), apply actions immediately using the server's scene state;
+        /// otherwise enqueue the actions for client-side processing and start handling the next queued action.
+        /// </param>
         private void OnSceneActionsBatch(PlayerID player, SceneActionsBatch data, bool asServer)
         {
             if (_networkManager.isServer || _asServer)
@@ -491,23 +511,23 @@ namespace PurrNet.Modules
                     switch (action.type)
                     {
                         case SceneActionType.Load:
-                        {
-                            if (_scenes.ContainsKey(action.loadSceneAction.sceneID))
-                                continue;
+                            {
+                                if (_scenes.ContainsKey(action.loadSceneAction.sceneID))
+                                    continue;
 
-                            if (serverModule.TryGetSceneState(action.loadSceneAction.sceneID, out var state))
-                                AddScene(state.scene, state.settings, action.loadSceneAction.sceneID);
-                            break;
-                        }
+                                if (serverModule.TryGetSceneState(action.loadSceneAction.sceneID, out var state))
+                                    AddScene(state.scene, state.settings, action.loadSceneAction.sceneID);
+                                break;
+                            }
                         case SceneActionType.Unload:
-                        {
-                            if (!_scenes.ContainsKey(action.unloadSceneAction.sceneID))
-                                continue;
+                            {
+                                if (!_scenes.ContainsKey(action.unloadSceneAction.sceneID))
+                                    continue;
 
-                            if (serverModule.TryGetSceneState(action.unloadSceneAction.sceneID, out var state))
-                                RemoveScene(state.scene);
-                            break;
-                        }
+                                if (serverModule.TryGetSceneState(action.unloadSceneAction.sceneID, out var state))
+                                    RemoveScene(state.scene);
+                                break;
+                            }
 
                         case SceneActionType.SetActive:
                         default:
@@ -857,6 +877,7 @@ namespace PurrNet.Modules
             UnloadScenes,
             UnloadScenesOnly,
             LoadOGScene,
+            LoadOGSceneOnly,
             UnloadEmptyScene,
             ResetScene,
             Done
@@ -865,6 +886,18 @@ namespace PurrNet.Modules
         private Scene? _emptyScene;
         private AsyncOperation _ogSceneLoad;
 
+        /// <summary>
+        /// Progresses the module's staged scene cleanup performed when disconnecting from the network.
+        /// </summary>
+        /// <returns>
+        /// True when cleanup is complete or not required; false while cleanup is in progress and this method should be called again.
+        /// </returns>
+        /// <remarks>
+        /// - No-op and returns true if the module was not set up, the application is quitting, the network is not offline, or cleanup is disabled by network rules.
+        /// - When active, this method advances an internal cleanup state machine that may create a temporary empty scene, unload tracked scenes, load the original scene (either additively or as the sole active scene depending on settings), reset the original scene, and unload the temporary empty scene.
+        /// - The method is non-blocking: it initiates async load/unload operations and returns false while waiting for those operations to complete; callers should invoke it repeatedly (e.g., during an update loop) until it returns true.
+        /// - Side effects include creating/unloading scenes and modifying the module's internal cleanup stage and scene tracking state.
+        /// </remarks>
         public bool Cleanup()
         {
             if (!_wasSetup)
@@ -887,93 +920,124 @@ namespace PurrNet.Modules
             switch (_cleanupStage)
             {
                 case CleanupStage.None:
-                {
-                    _cleanupStage = _networkManager.IsDontDestroyOnLoad()
-                        ? CleanupStage.LoadEmptyScene
-                        : CleanupStage.UnloadScenesOnly;
+                    {
+                        if (rules.SceneCleanupModeOnDisconnect() == SceneCleanupMode.AllScenes)
+                        {
+                            if (_networkManager.originalSceneBuildIndex == -1)
+                            {
+                                PurrLogger.LogError("Unable to load original scene on cleanup because its index is invalid");
+                                _cleanupStage = CleanupStage.Skip;
+                            }
+                            else
+                                _cleanupStage = CleanupStage.LoadOGSceneOnly;
+                        }
+                        else
+                        {
+                            _cleanupStage = _networkManager.IsDontDestroyOnLoad()
+                                ? CleanupStage.LoadEmptyScene
+                                : CleanupStage.UnloadScenesOnly;
+                        }
 
-                    if (_networkManager.TryGetModule(!_asServer, out ScenesModule module) && module._wasSetup)
-                        module._cleanupStage = CleanupStage.Skip;
+                        if (_networkManager.TryGetModule(!_asServer, out ScenesModule module) && module._wasSetup)
+                            module._cleanupStage = CleanupStage.Skip;
 
-                    return false;
-                }
+                        return false;
+                    }
                 case CleanupStage.Skip: return false;
                 case CleanupStage.Done: return true;
                 case CleanupStage.LoadEmptyScene:
-                {
-                    _cleanupStage = CleanupStage.WaitOneFrame;
-                    _emptyScene = SceneManager.CreateScene("EmptyScene");
-                    return false;
-                }
-                case CleanupStage.WaitOneFrame:
-                {
-                    _cleanupStage = CleanupStage.UnloadScenes;
-                    return false;
-                }
-                case CleanupStage.UnloadScenes:
-                {
-                    if (UnloadAllScenesCleanup(false))
-                        _cleanupStage = CleanupStage.LoadOGScene;
-                    return false;
-                }
-                case CleanupStage.UnloadScenesOnly:
-                {
-                    if (UnloadAllScenesCleanup(true))
                     {
-                        if (_networkManager.TryGetModule(!_asServer, out ScenesModule module))
-                            module._cleanupStage = CleanupStage.Done;
-                        _cleanupStage = CleanupStage.Done;
+                        _cleanupStage = CleanupStage.WaitOneFrame;
+                        _emptyScene = SceneManager.CreateScene("EmptyScene");
+                        return false;
                     }
-
-                    return false;
-                }
-                case CleanupStage.LoadOGScene:
-                {
-                    if (_ogSceneLoad == null)
+                case CleanupStage.WaitOneFrame:
                     {
-                        if (_networkManager.originalSceneBuildIndex != -1)
+                        _cleanupStage = CleanupStage.UnloadScenes;
+                        return false;
+                    }
+                case CleanupStage.UnloadScenes:
+                    {
+                        if (UnloadAllScenesCleanup(false))
+                            _cleanupStage = CleanupStage.LoadOGScene;
+                        return false;
+                    }
+                case CleanupStage.UnloadScenesOnly:
+                    {
+                        if (UnloadAllScenesCleanup(true))
                         {
-                            _ogSceneLoad = SceneManager.LoadSceneAsync(_networkManager.originalSceneBuildIndex,
-                                LoadSceneMode.Additive);
+                            if (_networkManager.TryGetModule(!_asServer, out ScenesModule module))
+                                module._cleanupStage = CleanupStage.Done;
+                            _cleanupStage = CleanupStage.Done;
+                        }
+
+                        return false;
+                    }
+                case CleanupStage.LoadOGScene:
+                    {
+                        if (_ogSceneLoad == null)
+                        {
+                            if (_networkManager.originalSceneBuildIndex != -1)
+                            {
+                                _ogSceneLoad = SceneManager.LoadSceneAsync(_networkManager.originalSceneBuildIndex,
+                                    LoadSceneMode.Additive);
+
+                                if (_ogSceneLoad != null)
+                                    _ogSceneLoad.allowSceneActivation = true;
+                            }
+                            else
+                            {
+                                _cleanupStage = CleanupStage.UnloadEmptyScene;
+                            }
+                        }
+
+                        if (_ogSceneLoad is { isDone: true })
+                        {
+                            _cleanupStage = CleanupStage.ResetScene;
+                        }
+
+                        return false;
+                    }
+                case CleanupStage.LoadOGSceneOnly:
+                    {
+                        if (_ogSceneLoad == null)
+                        {
+                            _ogSceneLoad = SceneManager.LoadSceneAsync(_networkManager.originalSceneBuildIndex);
 
                             if (_ogSceneLoad != null)
                                 _ogSceneLoad.allowSceneActivation = true;
                         }
-                        else
+
+                        if (_ogSceneLoad is { isDone: true })
                         {
-                            _cleanupStage = CleanupStage.UnloadEmptyScene;
+                            _scenes.Clear();
+                            _cleanupStage = CleanupStage.Done;
                         }
-                    }
 
-                    if (_ogSceneLoad is { isDone: true })
-                    {
-                        _cleanupStage = CleanupStage.ResetScene;
-                    }
-
-                    return false;
-                }
-                case CleanupStage.ResetScene:
-                {
-                    var activeScene = SceneManager.GetSceneByBuildIndex(_networkManager.originalSceneBuildIndex);
-                    _networkManager.ResetOriginalScene(activeScene);
-                    _cleanupStage = CleanupStage.UnloadEmptyScene;
-                    return false;
-                }
-                case CleanupStage.UnloadEmptyScene:
-                {
-                    if (_emptyScene != null)
-                    {
-                        if (_emptyScene.Value.IsValid())
-                            SceneManager.UnloadSceneAsync(_emptyScene.Value);
-                        _emptyScene = null;
                         return false;
                     }
+                case CleanupStage.ResetScene:
+                    {
+                        var activeScene = SceneManager.GetSceneByBuildIndex(_networkManager.originalSceneBuildIndex);
+                        _networkManager.ResetOriginalScene(activeScene);
+                        _cleanupStage = CleanupStage.UnloadEmptyScene;
+                        return false;
+                    }
+                case CleanupStage.UnloadEmptyScene:
+                    {
+                        if (_emptyScene != null)
+                        {
+                            if (_emptyScene.Value.IsValid())
+                                SceneManager.UnloadSceneAsync(_emptyScene.Value);
+                            _emptyScene = null;
+                            return false;
+                        }
 
-                    if (_networkManager.TryGetModule(!_asServer, out ScenesModule module))
-                        module._cleanupStage = CleanupStage.Done;
-                    _cleanupStage = CleanupStage.Done;
-                    return false;
-                }
+                        if (_networkManager.TryGetModule(!_asServer, out ScenesModule module))
+                            module._cleanupStage = CleanupStage.Done;
+                        _cleanupStage = CleanupStage.Done;
+                        return false;
+                    }
                 default: return true;
             }
         }

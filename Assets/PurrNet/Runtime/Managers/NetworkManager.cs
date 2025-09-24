@@ -1156,6 +1156,16 @@ namespace PurrNet
                 _clientModules.TriggerOnDrawGizmos();
         }
 
+        /// <summary>
+        /// Performs a single network tick: advances server and client modules, processes transport I/O, and completes any pending cleanup.
+        /// </summary>
+        /// <remarks>
+        /// - Uses tickModule.tickDelta when available, otherwise falls back to Unity's Time.fixedUnscaledDeltaTime.
+        /// - Invokes PreFixedUpdate, FixedUpdate and PostFixedUpdate on server and client module collections only when that side is connected.
+        /// - Calls transport.ReceiveMessages and transport.SendMessages only when a transport exists and at least one side (server or client) is connected.
+        /// - When cleanup flags are set (_isCleaningClient/_isCleaningServer) it finalizes module cleanup, unregisters modules and clears internal references.
+        /// - In the Unity Editor, marks the end of sampling for statistics collection.
+        /// </remarks>
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
@@ -1168,7 +1178,7 @@ namespace PurrNet
             if (clientConnected)
                 _clientModules.TriggerOnPreFixedUpdate();
 
-            if (_transport)
+            if (_transport && (serverConnected || clientConnected))
                 _transport.transport.ReceiveMessages(delta);
 
             if (serverConnected)
@@ -1183,7 +1193,7 @@ namespace PurrNet
             if (clientConnected)
                 _clientModules.TriggerOnPostFixedUpdate();
 
-            if (_transport)
+            if (_transport && (serverConnected || clientConnected))
                 _transport.transport.SendMessages(delta);
 
             if (_isCleaningClient && _clientModules.Cleanup())
