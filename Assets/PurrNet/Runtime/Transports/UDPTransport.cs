@@ -56,6 +56,8 @@ namespace PurrNet.Transports
 
         public IReadOnlyList<Connection> connections => _connections;
 
+        public IReadOnlyDictionary<Connection, PeerInfo> peers => _peers;
+
         private EventBasedNetListener _clientListener;
         private EventBasedNetListener _serverListener;
 
@@ -67,6 +69,8 @@ namespace PurrNet.Transports
         public ConnectionState listenerState { get; private set; } = ConnectionState.Disconnected;
 
         readonly List<Connection> _connections = new List<Connection>();
+
+        readonly Dictionary<Connection, PeerInfo> _peers = new Dictionary<Connection, PeerInfo>();
 
         public override bool isSupported => Application.platform != RuntimePlatform.WebGLPlayer;
 
@@ -169,6 +173,11 @@ namespace PurrNet.Transports
             onConnected?.Invoke(conn, false);
         }
 
+        /// <summary>
+        /// Handles cleanup and state updates when a server-side peer disconnects.
+        /// </summary>
+        /// <param name="peer">The LiteNetLib peer that disconnected.</param>
+        /// <param name="disconnectinfo">Disconnection details provided by LiteNetLib.</param>
         private void OnServerDisconnected(NetPeer peer, DisconnectInfo disconnectinfo)
         {
             var conn = new Connection(peer.Id);
@@ -177,6 +186,10 @@ namespace PurrNet.Transports
             {
                 if (_connections[i] == conn)
                 {
+                    if (_peers.ContainsKey(conn))
+                    {
+                        _peers.Remove(conn);
+                    }
                     _connections.RemoveAt(i);
                     break;
                 }
@@ -186,9 +199,16 @@ namespace PurrNet.Transports
             _clientToServerConn = null;
         }
 
+        /// <summary>
+        /// Handles a new server-side peer connection by recording the connection and its peer info, and raising the connected event.
+        /// </summary>
+        /// <param name="peer">The LiteNetLib peer that has just connected.</param>
         private void OnServerConnected(NetPeer peer)
         {
             var conn = new Connection(peer.Id);
+
+            _peers.Add(conn, PeerInfo.Generate(peer));
+	  
             _connections.Add(conn);
             onConnected?.Invoke(conn, true);
         }
@@ -286,6 +306,9 @@ namespace PurrNet.Transports
             }
         }
 
+        /// <summary>
+        /// Stops the server listener if it is currently connecting or connected, updates the listener connection state, triggers connection-state events, and clears tracked peers and connections.
+        /// </summary>
         public void StopListening()
         {
             if (listenerState is ConnectionState.Connected or ConnectionState.Connecting)
@@ -298,6 +321,7 @@ namespace PurrNet.Transports
                 listenerState = ConnectionState.Disconnected;
                 TriggerConnectionStateEvent(true);
 
+                _peers.Clear();
                 _connections.Clear();
             }
         }
@@ -353,6 +377,13 @@ namespace PurrNet.Transports
             Cleanup();
         }
 
+        /// <summary>
+        /// Release network resources and reset the transport to its disconnected initial state.
+        /// </summary>
+        /// <remarks>
+        /// Stops the client and server managers, sets both connection states to Disconnected,
+        /// invokes connection state events for server and client, and clears internal peer and connection records.
+        /// </remarks>
         private void Cleanup()
         {
             _client?.Stop();
@@ -364,6 +395,7 @@ namespace PurrNet.Transports
             TriggerConnectionStateEvent(true);
             TriggerConnectionStateEvent(false);
 
+            _peers.Clear();
             _connections.Clear();
         }
 
