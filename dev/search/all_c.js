@@ -31,7 +31,7 @@ var searchData=
   ['networktransformrules_28',['NetworkTransformRules',['../structPurrNet_1_1NetworkTransformRules.html',1,'PurrNet']]],
   ['networkvisibilityrule_29',['NetworkVisibilityRule',['../classPurrNet_1_1NetworkVisibilityRule.html',1,'PurrNet']]],
   ['networkvisibilityruleset_30',['NetworkVisibilityRuleSet',['../classPurrNet_1_1NetworkVisibilityRuleSet.html',1,'PurrNet']]],
-  ['next_31',['Next',['../classFossil_1_1RollingHash.html#a4aaca3f89a390cf44f1d849eac4a2d4f',1,'Fossil.RollingHash.Next()'],['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a255bac9ecb047fa94ff528f3da729850',1,'PurrNet.StateMachine.StateMachine.Next(bool force=false)']]],
+  ['next_31',['Next',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a255bac9ecb047fa94ff528f3da729850',1,'PurrNet::StateMachine::StateMachine']]],
   ['next_3c_20t_20_3e_32',['Next&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a19d42340b0694b38379338795c8409a9',1,'PurrNet::StateMachine::StateMachine']]],
   ['nextvalid_33',['NextValid',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a6cd8b4dffcce361cbc19d740368bd525',1,'PurrNet::StateMachine::StateMachine']]],
   ['nextvalid_3c_20t_20_3e_34',['NextValid&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#ab319ad487487aab366fb01bc4cb8a27a',1,'PurrNet::StateMachine::StateMachine']]],

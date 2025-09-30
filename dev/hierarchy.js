@@ -374,11 +374,9 @@ var hierarchy =
     [ "PurrNet.Collections.PurrHashSet< PurrNet.PlayerID >", "classPurrNet_1_1Collections_1_1PurrHashSet.html", null ],
     [ "PurrNet.Modules.PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "PurrNet.QuaternionWithParent", "structPurrNet_1_1QuaternionWithParent.html", null ],
-    [ "Fossil.Reader", "classFossil_1_1Reader.html", null ],
     [ "PurrNet.ReflectionData", "structPurrNet_1_1ReflectionData.html", null ],
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
     [ "PurrNet.Transports.RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
-    [ "Fossil.RollingHash", "classFossil_1_1RollingHash.html", null ],
     [ "PurrNet.RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
     [ "PurrNet.Modules.RpcRequest", "structPurrNet_1_1Modules_1_1RpcRequest.html", null ],
     [ "PurrNet.Modules.RpcResponse", "structPurrNet_1_1Modules_1_1RpcResponse.html", null ],
@@ -420,6 +418,5 @@ var hierarchy =
     ] ],
     [ "PurrNet.NetworkPrefabs.UserPrefabData", "structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html", null ],
     [ "PurrNet.Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", null ],
-    [ "PurrNet.VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ],
-    [ "Fossil.Writer", "classFossil_1_1Writer.html", null ]
+    [ "PurrNet.VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ]
 ];
