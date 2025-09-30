@@ -131,6 +131,7 @@ var hierarchy =
       [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ]
     ] ],
     [ "IList", null, [
+      [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ]
