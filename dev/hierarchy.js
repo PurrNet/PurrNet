@@ -26,6 +26,7 @@ var hierarchy =
     [ "PurrNet.Pooling.DisposableList< PurrNet.Modules.SpawnPacket >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< PurrNet.Modules.TransformIdentityPair >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< PurrNet.NetworkID >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
+    [ "PurrNet.Pooling.DisposableList< TKey >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< Transform >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "Exception", null, [
       [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ]

@@ -21,8 +21,9 @@ var searchData=
   ['disposablelist_3c_20purrnet_3a_3amodules_3a_3aspawnpacket_20_3e_18',['DisposableList&lt; PurrNet::Modules::SpawnPacket &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
   ['disposablelist_3c_20purrnet_3a_3amodules_3a_3atransformidentitypair_20_3e_19',['DisposableList&lt; PurrNet::Modules::TransformIdentityPair &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
   ['disposablelist_3c_20purrnet_3a_3anetworkid_20_3e_20',['DisposableList&lt; PurrNet::NetworkID &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
-  ['disposablelist_3c_20transform_20_3e_21',['DisposableList&lt; Transform &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
-  ['distancerule_22',['DistanceRule',['../classPurrNet_1_1DistanceRule.html',1,'PurrNet']]],
-  ['dontdeltacompressattribute_23',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
-  ['dontpackattribute_24',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]]
+  ['disposablelist_3c_20tkey_20_3e_21',['DisposableList&lt; TKey &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
+  ['disposablelist_3c_20transform_20_3e_22',['DisposableList&lt; Transform &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
+  ['distancerule_23',['DistanceRule',['../classPurrNet_1_1DistanceRule.html',1,'PurrNet']]],
+  ['dontdeltacompressattribute_24',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
+  ['dontpackattribute_25',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]]
 ];
