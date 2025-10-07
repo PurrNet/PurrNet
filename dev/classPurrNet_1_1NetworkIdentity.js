@@ -2,6 +2,7 @@ var classPurrNet_1_1NetworkIdentity =
 [
     [ "Duplicate", "classPurrNet_1_1NetworkIdentity.html#a93bedb9131c12bd6088700a306261df0", null ],
     [ "EvaluateVisibility", "classPurrNet_1_1NetworkIdentity.html#aa1dae575cde048991adc141041344a55", null ],
+    [ "EvaluateVisibility", "classPurrNet_1_1NetworkIdentity.html#ad29256abc524fb527cce1c241ebcd021", null ],
     [ "GetNearestParent", "classPurrNet_1_1NetworkIdentity.html#aacf2429591c4c7a1a12f7d110674c312", null ],
     [ "GetNextId", "classPurrNet_1_1NetworkIdentity.html#a6894228bb2810c322ee8dff28353e7ba", null ],
     [ "GetNextId< T >", "classPurrNet_1_1NetworkIdentity.html#aa9ca1d8499152c7c2a641b0b8783adf6", null ],
