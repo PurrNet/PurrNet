@@ -1,5 +1,6 @@
 var namespacePurrNet_1_1Transports =
 [
+    [ "AutomaticCloudSetups", "classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html", null ],
     [ "ByteData", "structPurrNet_1_1Transports_1_1ByteData.html", null ],
     [ "ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
     [ "CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", null ],

@@ -14,5 +14,6 @@ var searchData=
   ['authenticationrequest_11',['AuthenticationRequest',['../structPurrNet_1_1Authentication_1_1AuthenticationRequest.html',1,'PurrNet::Authentication']]],
   ['authenticationrequestdata_12',['AuthenticationRequestData',['../structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html',1,'PurrNet::Authentication']]],
   ['authenticationresponse_13',['AuthenticationResponse',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html',1,'PurrNet::Authentication']]],
-  ['authmodule_14',['AuthModule',['../classPurrNet_1_1Modules_1_1AuthModule.html',1,'PurrNet::Modules']]]
+  ['authmodule_14',['AuthModule',['../classPurrNet_1_1Modules_1_1AuthModule.html',1,'PurrNet::Modules']]],
+  ['automaticcloudsetups_15',['AutomaticCloudSetups',['../classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html',1,'PurrNet::Transports']]]
 ];
