@@ -4,6 +4,7 @@ var classPurrNet_1_1SyncDictionary =
     [ "Add", "classPurrNet_1_1SyncDictionary.html#a7d5f554a53932554be01d6caf124c9e6", null ],
     [ "Clear", "classPurrNet_1_1SyncDictionary.html#a62c5378b073c7ff719475aa70164a422", null ],
     [ "OnObserverAdded", "classPurrNet_1_1SyncDictionary.html#a10e63b11b9d0383a1e5bf9f0580d80aa", null ],
+    [ "OnPoolReset", "classPurrNet_1_1SyncDictionary.html#a03bff9c393c6ed0151ff77d66be88a1e", null ],
     [ "OnTick", "classPurrNet_1_1SyncDictionary.html#aeabbcd2cb9f99edd64ed2e22c8655bf3", null ],
     [ "Remove", "classPurrNet_1_1SyncDictionary.html#a9ee86cc0cbbee6517e92ac4f0ea5892a", null ],
     [ "SetDirty", "classPurrNet_1_1SyncDictionary.html#ae438a185fffcb8fc3712274c4b722363", null ],

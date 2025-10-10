@@ -161,6 +161,9 @@ IEnumerator&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Get
 <tr class="memitem:ab857a66295598aa08770383e79c9a305"><td class="memItemLeft" align="right" valign="top"><a id="ab857a66295598aa08770383e79c9a305" name="ab857a66295598aa08770383e79c9a305"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetDirty</b> (int index)</td></tr>
 <tr class="separator:ab857a66295598aa08770383e79c9a305"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa4471617b677a759934c908a86a247a8"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncArray.html#aa4471617b677a759934c908a86a247a8">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:aa4471617b677a759934c908a86a247a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1SyncArray.html#aa4471617b677a759934c908a86a247a8">More...</a><br /></td></tr>
+<tr class="separator:aa4471617b677a759934c908a86a247a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a572a2dab12219bf55526173a069c3ca3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncArray.html#a572a2dab12219bf55526173a069c3ca3">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:a572a2dab12219bf55526173a069c3ca3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1SyncArray.html#a572a2dab12219bf55526173a069c3ca3">More...</a><br /></td></tr>
 <tr class="separator:a572a2dab12219bf55526173a069c3ca3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -236,9 +239,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> (bool asServer)</td></tr>
 <tr class="memdesc:a636be26a31319563811dad379afc4848 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is called twice in host mode, once for the server and once for the client.  <br /></td></tr>
 <tr class="separator:a636be26a31319563811dad379afc4848 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a244b86c9d0cf97f1ff2eccca7dfb8834" name="a244b86c9d0cf97f1ff2eccca7dfb8834"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPoolReset</b> ()</td></tr>
-<tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.  <br /></td></tr>
+<tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">More...</a><br /></td></tr>
 <tr class="separator:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">More...</a><br /></td></tr>
@@ -411,6 +413,35 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 </dl>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#aa550885b27e3617c3c8cd392c23a5524">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="aa4471617b677a759934c908a86a247a8" name="aa4471617b677a759934c908a86a247a8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa4471617b677a759934c908a86a247a8">&#9670;&#160;</a></span>OnPoolReset()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncArray.html">PurrNet.SyncArray</a>&lt; T &gt;.OnPoolReset </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>

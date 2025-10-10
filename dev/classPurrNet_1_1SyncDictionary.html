@@ -114,6 +114,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:af118c5d4d7f389e7b5d8d250237db7c5"><td class="memItemLeft" align="right" valign="top"><a id="af118c5d4d7f389e7b5d8d250237db7c5" name="af118c5d4d7f389e7b5d8d250237db7c5"></a>
 delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>SyncDictionaryChanged&lt; Key, Value &gt;</b> (<a class="el" href="structPurrNet_1_1SyncDictionaryChange.html">SyncDictionaryChange</a>&lt; Key, Value &gt; change)</td></tr>
 <tr class="separator:af118c5d4d7f389e7b5d8d250237db7c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a03bff9c393c6ed0151ff77d66be88a1e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncDictionary.html#a03bff9c393c6ed0151ff77d66be88a1e">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:a03bff9c393c6ed0151ff77d66be88a1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1SyncDictionary.html#a03bff9c393c6ed0151ff77d66be88a1e">More...</a><br /></td></tr>
+<tr class="separator:a03bff9c393c6ed0151ff77d66be88a1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a384458472cafdf6d603eadc52cee6066"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncDictionary.html#a384458472cafdf6d603eadc52cee6066">SyncDictionary</a> (bool <a class="el" href="classPurrNet_1_1SyncDictionary.html#a7b32d24a06e99806e5a706d13683e20e">ownerAuth</a>=false, bool useForceSend=false)</td></tr>
 <tr class="memdesc:a384458472cafdf6d603eadc52cee6066"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a new Sync Dictionary   <a href="classPurrNet_1_1SyncDictionary.html#a384458472cafdf6d603eadc52cee6066">More...</a><br /></td></tr>
 <tr class="separator:a384458472cafdf6d603eadc52cee6066"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -242,9 +245,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> (bool asServer)</td></tr>
 <tr class="memdesc:a636be26a31319563811dad379afc4848 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is called twice in host mode, once for the server and once for the client.  <br /></td></tr>
 <tr class="separator:a636be26a31319563811dad379afc4848 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a244b86c9d0cf97f1ff2eccca7dfb8834" name="a244b86c9d0cf97f1ff2eccca7dfb8834"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPoolReset</b> ()</td></tr>
-<tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.  <br /></td></tr>
+<tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">More...</a><br /></td></tr>
 <tr class="separator:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">More...</a><br /></td></tr>
@@ -434,6 +436,35 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 </dl>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#aa550885b27e3617c3c8cd392c23a5524">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="a03bff9c393c6ed0151ff77d66be88a1e" name="a03bff9c393c6ed0151ff77d66be88a1e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a03bff9c393c6ed0151ff77d66be88a1e">&#9670;&#160;</a></span>OnPoolReset()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncDictionary.html">PurrNet.SyncDictionary</a>&lt; TKey, TValue &gt;.OnPoolReset </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>

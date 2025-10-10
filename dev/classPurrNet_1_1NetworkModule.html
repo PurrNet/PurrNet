@@ -193,9 +193,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> (bool asServer)</td></tr>
 <tr class="memdesc:a636be26a31319563811dad379afc4848"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is called twice in host mode, once for the server and once for the client.  <br /></td></tr>
 <tr class="separator:a636be26a31319563811dad379afc4848"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="memItemLeft" align="right" valign="top"><a id="a244b86c9d0cf97f1ff2eccca7dfb8834" name="a244b86c9d0cf97f1ff2eccca7dfb8834"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPoolReset</b> ()</td></tr>
-<tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.  <br /></td></tr>
+<tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">More...</a><br /></td></tr>
 <tr class="separator:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
@@ -458,6 +457,35 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
 </dl>
 
 <p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncVar.html#ad10cca80308ced66260efb549a902081">PurrNet.SyncVar&lt; T &gt;</a>.</p>
+
+</div>
+</div>
+<a id="a244b86c9d0cf97f1ff2eccca7dfb8834" name="a244b86c9d0cf97f1ff2eccca7dfb8834"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a244b86c9d0cf97f1ff2eccca7dfb8834">&#9670;&#160;</a></span>OnPoolReset()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkModule.OnPoolReset </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
+
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncArray.html#aa4471617b677a759934c908a86a247a8">PurrNet.SyncArray&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncDictionary.html#a03bff9c393c6ed0151ff77d66be88a1e">PurrNet.SyncDictionary&lt; TKey, TValue &gt;</a>, <a class="el" href="classPurrNet_1_1SyncHashSet.html#a22702942c14bbd8853621a20de48696c">PurrNet.SyncHashSet&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncList.html#a70c659495f425728fd25762a866d558d">PurrNet.SyncList&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncQueue.html#aa686f019fc0b404ad0051734f7f9be4c">PurrNet.SyncQueue&lt; T &gt;</a>, and <a class="el" href="classPurrNet_1_1SyncVar.html#a36e597796f56c71bb965d6dbe56123d0">PurrNet.SyncVar&lt; T &gt;</a>.</p>
 
 </div>
 </div>
