@@ -1,0 +1,17 @@
+var searchData=
+[
+  ['sceneid_0',['sceneId',['../classPurrNet_1_1NetworkIdentity.html#ade4408d8864bac675dd6cf63b13f86cb',1,'PurrNet::NetworkIdentity']]],
+  ['scenemodule_1',['sceneModule',['../classPurrNet_1_1NetworkManager.html#a36d904d8336f981fdae95d015c51989a',1,'PurrNet::NetworkManager']]],
+  ['sceneplayersmodule_2',['scenePlayersModule',['../classPurrNet_1_1NetworkManager.html#a51b4a49219c890a641afb68155dcb640',1,'PurrNet::NetworkManager']]],
+  ['serverstate_3',['serverState',['../classPurrNet_1_1NetworkManager.html#a29e178dbbfb98fbca42ad59daf57c2c3',1,'PurrNet.NetworkManager.serverState()'],['../classPurrNet_1_1RawNetManager.html#a64b020c811747a3312d8fccfdd9c72db',1,'PurrNet.RawNetManager.serverState()']]],
+  ['shouldautostartclient_4',['shouldAutoStartClient',['../classPurrNet_1_1NetworkManager.html#a486f3d2bb04554034748ef42e83e942f',1,'PurrNet.NetworkManager.shouldAutoStartClient()'],['../classPurrNet_1_1RawNetManager.html#a9328e1c9e9e07f9e9a2f2639b6ce6e9f',1,'PurrNet.RawNetManager.shouldAutoStartClient()']]],
+  ['shouldautostartserver_5',['shouldAutoStartServer',['../classPurrNet_1_1NetworkManager.html#a13eb686cab9722cff602dde0451d51fe',1,'PurrNet.NetworkManager.shouldAutoStartServer()'],['../classPurrNet_1_1RawNetManager.html#a3009aa855cd43034246f26a88d1dd4bc',1,'PurrNet.RawNetManager.shouldAutoStartServer()']]],
+  ['simulatedhostping_6',['simulatedHostPing',['../classPurrNet_1_1SyncInput.html#a2c00b2d37dcfb4455c7da392c97678da',1,'PurrNet::SyncInput']]],
+  ['startclientflags_7',['startClientFlags',['../classPurrNet_1_1NetworkManager.html#a1ade609f395b02e599eec909fee4e081',1,'PurrNet.NetworkManager.startClientFlags()'],['../classPurrNet_1_1RawNetManager.html#acba964e897bd483b352b1df395951b76',1,'PurrNet.RawNetManager.startClientFlags()']]],
+  ['startserverflags_8',['startServerFlags',['../classPurrNet_1_1NetworkManager.html#a76e0c18a472d5675aeeddda8d4dfae4f',1,'PurrNet.NetworkManager.startServerFlags()'],['../classPurrNet_1_1RawNetManager.html#afab81fd2037d3025ee695e01ede676cb',1,'PurrNet.RawNetManager.startServerFlags()']]],
+  ['syncedtick_9',['syncedTick',['../classPurrNet_1_1Modules_1_1TickManager.html#ab92243b9733c0b56fb5a2b2d7d04e249',1,'PurrNet::Modules::TickManager']]],
+  ['syncparent_10',['syncParent',['../classPurrNet_1_1NetworkTransform.html#a3990456c0f654fc3d68a36bdf41ca229',1,'PurrNet::NetworkTransform']]],
+  ['syncposition_11',['syncPosition',['../classPurrNet_1_1NetworkTransform.html#a10e35e3a2904f2c1623175f9cbcf5c62',1,'PurrNet::NetworkTransform']]],
+  ['syncrotation_12',['syncRotation',['../classPurrNet_1_1NetworkTransform.html#af57ea9e2f3fea7d488fc804f85c6387d',1,'PurrNet::NetworkTransform']]],
+  ['syncscale_13',['syncScale',['../classPurrNet_1_1NetworkTransform.html#a63b633d022618dae2499fb88a8e993ff',1,'PurrNet::NetworkTransform']]]
+];

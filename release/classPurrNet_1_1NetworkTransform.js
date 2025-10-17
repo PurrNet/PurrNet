@@ -1,0 +1,22 @@
+var classPurrNet_1_1NetworkTransform =
+[
+    [ "ClearInterpolation", "classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b", null ],
+    [ "ForceSync", "classPurrNet_1_1NetworkTransform.html#a39207ab962a55ede8548732de65d3adf", null ],
+    [ "ForceSync", "classPurrNet_1_1NetworkTransform.html#a4e5b386f968c2710f36a5d5db15376de", null ],
+    [ "OnDespawned", "classPurrNet_1_1NetworkTransform.html#a5bd3fed5e49b3ee58b56604f010780f5", null ],
+    [ "OnEarlySpawn", "classPurrNet_1_1NetworkTransform.html#af1afaf75f36fe5bb777f9e205d0d1c5e", null ],
+    [ "OnObserverAdded", "classPurrNet_1_1NetworkTransform.html#ab80b05c91be6ae800af6302be6ef3ab6", null ],
+    [ "OnOwnerChanged", "classPurrNet_1_1NetworkTransform.html#ace053bc3faab6bdca4cfb4efcea68e81", null ],
+    [ "OnOwnerDisconnected", "classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e", null ],
+    [ "OnOwnerReconnected", "classPurrNet_1_1NetworkTransform.html#aa8e99a9f22f420b8e7efe0a187562c53", null ],
+    [ "OnSpawned", "classPurrNet_1_1NetworkTransform.html#a4b3b472f61dfbab82d4c32b5e7e7c987", null ],
+    [ "OnSpawned", "classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27", null ],
+    [ "interpolatePosition", "classPurrNet_1_1NetworkTransform.html#a6eb2d20269fcccdbc3b01a29c502df79", null ],
+    [ "interpolateRotation", "classPurrNet_1_1NetworkTransform.html#ae47ea9711efb9cd7fdc3e2dfd84735e3", null ],
+    [ "interpolateScale", "classPurrNet_1_1NetworkTransform.html#ae093e71129839d8091d465f58698f25f", null ],
+    [ "ownerAuth", "classPurrNet_1_1NetworkTransform.html#afb5995fe2c5c98ce74cdeb4a75b12ae5", null ],
+    [ "syncParent", "classPurrNet_1_1NetworkTransform.html#a3990456c0f654fc3d68a36bdf41ca229", null ],
+    [ "syncPosition", "classPurrNet_1_1NetworkTransform.html#a10e35e3a2904f2c1623175f9cbcf5c62", null ],
+    [ "syncRotation", "classPurrNet_1_1NetworkTransform.html#af57ea9e2f3fea7d488fc804f85c6387d", null ],
+    [ "syncScale", "classPurrNet_1_1NetworkTransform.html#a63b633d022618dae2499fb88a8e993ff", null ]
+];
