@@ -249,5 +249,5 @@ var NAVTREEINDEX2 =
 "classPurrNet_1_1ServerAttribute.html":[0,0,0,99],
 "classPurrNet_1_1ServerOnlyAttribute.html":[1,0,0,100],
 "classPurrNet_1_1ServerOnlyAttribute.html":[0,0,0,100],
-"classPurrNet_1_1ServerRpcAttribute.html":[1,0,0,101]
+"classPurrNet_1_1ServerRpcAttribute.html":[0,0,0,101]
 };
