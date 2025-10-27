@@ -177,6 +177,7 @@ var annotated_dup =
       [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", null ],
       [ "INetworkVisibilityRule", "interfacePurrNet_1_1INetworkVisibilityRule.html", "interfacePurrNet_1_1INetworkVisibilityRule" ],
       [ "Interpolated", "classPurrNet_1_1Interpolated.html", null ],
+      [ "InterpolatedWithDispose", "classPurrNet_1_1InterpolatedWithDispose.html", null ],
       [ "IOwnerAuth", "interfacePurrNet_1_1IOwnerAuth.html", null ],
       [ "IPlayerAuthenticator", "interfacePurrNet_1_1IPlayerAuthenticator.html", null ],
       [ "IPlayerBroadcaster", "interfacePurrNet_1_1IPlayerBroadcaster.html", null ],
