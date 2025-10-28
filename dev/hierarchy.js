@@ -102,6 +102,7 @@ var hierarchy =
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
       [ "PurrNet.Profiler.TickSample", "classPurrNet_1_1Profiler_1_1TickSample.html", null ]
     ] ],
+    [ "PurrNet.Packing.IDuplicate< out T >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", null ],
     [ "IEquatable", null, [
       [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
       [ "PurrNet.Modules.DeltaValue", "structPurrNet_1_1Modules_1_1DeltaValue.html", null ],
