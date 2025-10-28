@@ -103,6 +103,18 @@ var hierarchy =
       [ "PurrNet.Profiler.TickSample", "classPurrNet_1_1Profiler_1_1TickSample.html", null ]
     ] ],
     [ "PurrNet.Packing.IDuplicate< out T >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", null ],
+    [ "PurrNet.Packing.IDuplicate< DisposableArray< T > >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
+      [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ]
+    ] ],
+    [ "PurrNet.Packing.IDuplicate< DisposableDictionary< TKey, TValue > >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
+      [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >", "structPurrNet_1_1Pooling_1_1DisposableDictionary.html", null ]
+    ] ],
+    [ "PurrNet.Packing.IDuplicate< DisposableHashSet< T > >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
+      [ "PurrNet.Pooling.DisposableHashSet< T >", "structPurrNet_1_1Pooling_1_1DisposableHashSet.html", null ]
+    ] ],
+    [ "PurrNet.Packing.IDuplicate< DisposableList< T > >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
+      [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ]
+    ] ],
     [ "IEquatable", null, [
       [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
       [ "PurrNet.Modules.DeltaValue", "structPurrNet_1_1Modules_1_1DeltaValue.html", null ],
