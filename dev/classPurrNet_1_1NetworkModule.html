@@ -117,6 +117,7 @@ Inheritance diagram for PurrNet.NetworkModule:</div>
 <area href="classPurrNet_1_1SyncQueue.html" alt="PurrNet.SyncQueue&lt; T &gt;" shape="rect" coords="259,504,508,528"/>
 <area href="classPurrNet_1_1SyncTimer.html" alt="PurrNet.SyncTimer" shape="rect" coords="259,560,508,584"/>
 <area href="classPurrNet_1_1SyncVar.html" alt="PurrNet.SyncVar&lt; T &gt;" shape="rect" coords="259,616,508,640"/>
+<area href="classPurrNet_1_1ValidatedSyncVar.html" alt="PurrNet.ValidatedSyncVar&lt; T &gt;" shape="rect" coords="259,672,508,696"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -185,9 +186,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterModuleInterna
 <tr class="memitem:a8b32128815cb5d5fb415ae27e54b3514"><td class="memItemLeft" align="right" valign="top"><a id="a8b32128815cb5d5fb415ae27e54b3514" name="a8b32128815cb5d5fb415ae27e54b3514"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeModules</b> ()</td></tr>
 <tr class="separator:a8b32128815cb5d5fb415ae27e54b3514"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f2a42582066a7fe12abdec08188bce6"><td class="memItemLeft" align="right" valign="top"><a id="a1f2a42582066a7fe12abdec08188bce6" name="a1f2a42582066a7fe12abdec08188bce6"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> ()</td></tr>
-<tr class="memdesc:a1f2a42582066a7fe12abdec08188bce6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.  <br /></td></tr>
+<tr class="memitem:a1f2a42582066a7fe12abdec08188bce6"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6">OnEarlySpawn</a> ()</td></tr>
+<tr class="memdesc:a1f2a42582066a7fe12abdec08188bce6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.   <a href="classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6">More...</a><br /></td></tr>
 <tr class="separator:a1f2a42582066a7fe12abdec08188bce6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a636be26a31319563811dad379afc4848"><td class="memItemLeft" align="right" valign="top"><a id="a636be26a31319563811dad379afc4848" name="a636be26a31319563811dad379afc4848"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> (bool asServer)</td></tr>
@@ -282,6 +282,35 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
 <tr class="separator:a800586ec7553c06f52bb03648203db54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a1f2a42582066a7fe12abdec08188bce6" name="a1f2a42582066a7fe12abdec08188bce6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1f2a42582066a7fe12abdec08188bce6">&#9670;&#160;</a></span>OnEarlySpawn()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkModule.OnEarlySpawn </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.  </p>
+
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1ValidatedSyncVar.html#a7164c38614f40d65e939fd69c71ef715">PurrNet.ValidatedSyncVar&lt; T &gt;</a>.</p>
+
+</div>
+</div>
 <a id="aa550885b27e3617c3c8cd392c23a5524" name="aa550885b27e3617c3c8cd392c23a5524"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa550885b27e3617c3c8cd392c23a5524">&#9670;&#160;</a></span>OnObserverAdded() <span class="overload">[1/2]</span></h2>
 
@@ -485,7 +514,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
 
 <p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncArray.html#aa4471617b677a759934c908a86a247a8">PurrNet.SyncArray&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncDictionary.html#a03bff9c393c6ed0151ff77d66be88a1e">PurrNet.SyncDictionary&lt; TKey, TValue &gt;</a>, <a class="el" href="classPurrNet_1_1SyncHashSet.html#a22702942c14bbd8853621a20de48696c">PurrNet.SyncHashSet&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncList.html#a70c659495f425728fd25762a866d558d">PurrNet.SyncList&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncQueue.html#aa686f019fc0b404ad0051734f7f9be4c">PurrNet.SyncQueue&lt; T &gt;</a>, and <a class="el" href="classPurrNet_1_1SyncVar.html#a36e597796f56c71bb965d6dbe56123d0">PurrNet.SyncVar&lt; T &gt;</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncArray.html#aa4471617b677a759934c908a86a247a8">PurrNet.SyncArray&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncDictionary.html#a03bff9c393c6ed0151ff77d66be88a1e">PurrNet.SyncDictionary&lt; TKey, TValue &gt;</a>, <a class="el" href="classPurrNet_1_1SyncHashSet.html#a22702942c14bbd8853621a20de48696c">PurrNet.SyncHashSet&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncList.html#a70c659495f425728fd25762a866d558d">PurrNet.SyncList&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncQueue.html#aa686f019fc0b404ad0051734f7f9be4c">PurrNet.SyncQueue&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncVar.html#a36e597796f56c71bb965d6dbe56123d0">PurrNet.SyncVar&lt; T &gt;</a>, and <a class="el" href="classPurrNet_1_1ValidatedSyncVar.html#a128e30ae7079bc32ff59fd2dd53fada8">PurrNet.ValidatedSyncVar&lt; T &gt;</a>.</p>
 
 </div>
 </div>

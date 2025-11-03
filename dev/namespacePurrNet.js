@@ -125,6 +125,7 @@ var namespacePurrNet =
     [ "SyncVar", "classPurrNet_1_1SyncVar.html", "classPurrNet_1_1SyncVar" ],
     [ "TargetRpcAttribute", "classPurrNet_1_1TargetRpcAttribute.html", null ],
     [ "UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
+    [ "ValidatedSyncVar", "classPurrNet_1_1ValidatedSyncVar.html", "classPurrNet_1_1ValidatedSyncVar" ],
     [ "Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", null ],
     [ "VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ],
     [ "SyncDictionaryOperation", "namespacePurrNet.html#a7aa16184a63314ebb157015a347b6ae0", null ],

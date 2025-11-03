@@ -356,7 +356,8 @@ var hierarchy =
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ],
       [ "PurrNet.SyncQueue< T >", "classPurrNet_1_1SyncQueue.html", null ],
       [ "PurrNet.SyncTimer", "classPurrNet_1_1SyncTimer.html", null ],
-      [ "PurrNet.SyncVar< T >", "classPurrNet_1_1SyncVar.html", null ]
+      [ "PurrNet.SyncVar< T >", "classPurrNet_1_1SyncVar.html", null ],
+      [ "PurrNet.ValidatedSyncVar< T >", "classPurrNet_1_1ValidatedSyncVar.html", null ]
     ] ],
     [ "PurrNet.Packing.NetworkRegister", "classPurrNet_1_1Packing_1_1NetworkRegister.html", null ],
     [ "PurrNet.NetworkTransformRules", "structPurrNet_1_1NetworkTransformRules.html", null ],
