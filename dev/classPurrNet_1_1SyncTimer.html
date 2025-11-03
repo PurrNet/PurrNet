@@ -111,12 +111,15 @@ Inheritance diagram for PurrNet.SyncTimer:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:af9fb4c7652cca4a207813740202bb928"><td class="memItemLeft" align="right" valign="top"><a id="af9fb4c7652cca4a207813740202bb928" name="af9fb4c7652cca4a207813740202bb928"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>SyncTimer</b> (bool ownerAuth=false, float reconcileInterval=3)</td></tr>
-<tr class="separator:af9fb4c7652cca4a207813740202bb928"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9458981ca3510cf1103a3a99abdcef4d"><td class="memItemLeft" align="right" valign="top"><a id="a9458981ca3510cf1103a3a99abdcef4d" name="a9458981ca3510cf1103a3a99abdcef4d"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>SyncTimer</b> (bool ownerAuth=false, float reconcileInterval=3, bool manualUpdate=false)</td></tr>
+<tr class="separator:a9458981ca3510cf1103a3a99abdcef4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa19e2c5ff8a6caeb2e56add31777e95f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncTimer.html#aa19e2c5ff8a6caeb2e56add31777e95f">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:aa19e2c5ff8a6caeb2e56add31777e95f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1SyncTimer.html#aa19e2c5ff8a6caeb2e56add31777e95f">More...</a><br /></td></tr>
 <tr class="separator:aa19e2c5ff8a6caeb2e56add31777e95f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d8159162053902ea3ab33913a8f94a6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncTimer.html#a7d8159162053902ea3ab33913a8f94a6">Advance</a> (float delta, bool useRunningCheck=true)</td></tr>
+<tr class="memdesc:a7d8159162053902ea3ab33913a8f94a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to manually advance the sync timer if the manual update has been set to true when initializing the timer   <a href="classPurrNet_1_1SyncTimer.html#a7d8159162053902ea3ab33913a8f94a6">More...</a><br /></td></tr>
+<tr class="separator:a7d8159162053902ea3ab33913a8f94a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a85650259108557117f9d51c9fd9902ce"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncTimer.html#a85650259108557117f9d51c9fd9902ce">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a85650259108557117f9d51c9fd9902ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncTimer.html#a85650259108557117f9d51c9fd9902ce">More...</a><br /></td></tr>
 <tr class="separator:a85650259108557117f9d51c9fd9902ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -324,6 +327,43 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <tr class="separator:a97aebd580ff022b5e5df0aad4f3a4bd2 inherit pro_static_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a7d8159162053902ea3ab33913a8f94a6" name="a7d8159162053902ea3ab33913a8f94a6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7d8159162053902ea3ab33913a8f94a6">&#9670;&#160;</a></span>Advance()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.SyncTimer.Advance </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>delta</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>useRunningCheck</em> = <code>true</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Used to manually advance the sync timer if the manual update has been set to true when initializing the timer  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">delta</td><td>The delta to advance the timer by</td></tr>
+    <tr><td class="paramname">useRunningCheck</td><td>Only for special use cases, where you'd want to skip the synchronized check to see whether the timer is running or not</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a85650259108557117f9d51c9fd9902ce" name="a85650259108557117f9d51c9fd9902ce"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a85650259108557117f9d51c9fd9902ce">&#9670;&#160;</a></span>OnObserverAdded()</h2>
 
