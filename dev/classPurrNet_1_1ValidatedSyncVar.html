@@ -134,6 +134,9 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>OnChangeWith
 <tr class="separator:a7164c38614f40d65e939fd69c71ef715"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae1534e21faf869f5f8605249df000eea"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1ValidatedSyncVar.html#ae1534e21faf869f5f8605249df000eea">OnDespawned</a> ()</td></tr>
 <tr class="separator:ae1534e21faf869f5f8605249df000eea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa85fe752a3aaa734c833eee41ba2d39c"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1ValidatedSyncVar.html#aa85fe752a3aaa734c833eee41ba2d39c">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool isSpawnEvent, bool asServer)</td></tr>
+<tr class="memdesc:aa85fe752a3aaa734c833eee41ba2d39c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1ValidatedSyncVar.html#aa85fe752a3aaa734c833eee41ba2d39c">More...</a><br /></td></tr>
+<tr class="separator:aa85fe752a3aaa734c833eee41ba2d39c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1NetworkModule"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1NetworkModule')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a></td></tr>
 <tr class="memitem:aaa8521efaebd88c667320956da998e5e inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="aaa8521efaebd88c667320956da998e5e" name="aaa8521efaebd88c667320956da998e5e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsController</b> (bool ownerHasAuthority)</td></tr>
@@ -369,6 +372,67 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <p>Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.  </p>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="aa85fe752a3aaa734c833eee41ba2d39c" name="aa85fe752a3aaa734c833eee41ba2d39c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa85fe752a3aaa734c833eee41ba2d39c">&#9670;&#160;</a></span>OnOwnerChanged()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1ValidatedSyncVar.html">PurrNet.ValidatedSyncVar</a>&lt; T &gt;.OnOwnerChanged </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>?&#160;</td>
+          <td class="paramname"><em>oldOwner</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>?&#160;</td>
+          <td class="paramname"><em>newOwner</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>isSpawnEvent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>asServer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when the owner of this object changes.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">oldOwner</td><td>The old owner of this object</td></tr>
+    <tr><td class="paramname">newOwner</td><td>The new owner of this object</td></tr>
+    <tr><td class="paramname">isSpawnEvent</td><td>If this object was just spawned and the newOwner is the spawner</td></tr>
+    <tr><td class="paramname">asServer</td><td>Is this on the server</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#aab72b00fb63643e5af5454439801401e">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>
