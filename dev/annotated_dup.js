@@ -78,6 +78,8 @@ var annotated_dup =
         [ "TickManager", "classPurrNet_1_1Modules_1_1TickManager.html", "classPurrNet_1_1Modules_1_1TickManager" ],
         [ "TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
         [ "TransformInfo", "structPurrNet_1_1Modules_1_1TransformInfo.html", null ],
+        [ "UnreliableAck", "structPurrNet_1_1Modules_1_1UnreliableAck.html", null ],
+        [ "UnreliableConnectionHistory", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
         [ "UsedByILAttribute", "classPurrNet_1_1Modules_1_1UsedByILAttribute.html", null ]
       ] ],
       [ "Packing", "namespacePurrNet_1_1Packing.html", [
