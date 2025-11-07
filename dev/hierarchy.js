@@ -448,7 +448,6 @@ var hierarchy =
     ] ],
     [ "PurrNet.Modules.UnreliableAck", "structPurrNet_1_1Modules_1_1UnreliableAck.html", null ],
     [ "PurrNet.Modules.UnreliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
-    [ "PurrNet.Modules.UnreliableConnectionHistory< PackedUInt >", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
     [ "PurrNet.Modules.UnreliableConnectionHistory< PurrNet.ChildRPCPacket >", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
     [ "PurrNet.Modules.UnreliableConnectionHistory< PurrNet.RPCPacket >", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
     [ "PurrNet.Modules.UnreliableConnectionHistory< PurrNet.StaticRPCPacket >", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
