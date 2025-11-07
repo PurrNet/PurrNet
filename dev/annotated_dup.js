@@ -59,6 +59,7 @@ var annotated_dup =
         [ "PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", null ],
         [ "PrefabPieceID", "structPurrNet_1_1Modules_1_1PrefabPieceID.html", null ],
         [ "PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
+        [ "ReliableConnectionHistory", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
         [ "RollbackModule", "classPurrNet_1_1Modules_1_1RollbackModule.html", null ],
         [ "RPCModule", "classPurrNet_1_1Modules_1_1RPCModule.html", null ],
         [ "RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],

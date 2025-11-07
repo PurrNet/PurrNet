@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"structPurrNet_1_1NetworkID.html":[1,0,0,49],
+"structPurrNet_1_1NetworkIdentityRules.html":[0,0,0,51],
 "structPurrNet_1_1NetworkIdentityRules.html":[1,0,0,51],
 "structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html":[0,0,0,56,0],
 "structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html":[1,0,0,56,0],

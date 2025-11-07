@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: PurrNet.Modules.RpcResponse Struct Reference</title>
+<title>PurrNet: PurrNet.Modules.ReliableConnectionHistory&lt; T &gt; Class Template Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -64,7 +64,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('structPurrNet_1_1Modules_1_1RpcResponse.html',''); initResizable(); });
+$(document).ready(function(){initNavTree('classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html',''); initResizable(); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -91,30 +91,39 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1Modules_1_1RpcRespons
 
 <div class="header">
   <div class="summary">
-<a href="#pub-attribs">Public Attributes</a> &#124;
-<a href="structPurrNet_1_1Modules_1_1RpcResponse-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">PurrNet.Modules.RpcResponse Struct Reference</div></div>
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="classPurrNet_1_1Modules_1_1ReliableConnectionHistory-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">PurrNet.Modules.ReliableConnectionHistory&lt; T &gt; Class Template Reference</div></div>
 </div><!--header-->
 <div class="contents">
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
-Public Attributes</h2></td></tr>
-<tr class="memitem:a2debc0fcf265918356a9ad0fa18af573"><td class="memItemLeft" align="right" valign="top"><a id="a2debc0fcf265918356a9ad0fa18af573" name="a2debc0fcf265918356a9ad0fa18af573"></a>
-<a class="el" href="structPurrNet_1_1Packing_1_1PackedUInt.html">PackedUInt</a>&#160;</td><td class="memItemRight" valign="bottom"><b>id</b></td></tr>
-<tr class="separator:a2debc0fcf265918356a9ad0fa18af573"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c10ce0bff8e5decb4368bc6d99079d6"><td class="memItemLeft" align="right" valign="top"><a id="a2c10ce0bff8e5decb4368bc6d99079d6" name="a2c10ce0bff8e5decb4368bc6d99079d6"></a>
-<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
-<tr class="separator:a2c10ce0bff8e5decb4368bc6d99079d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:acad249f129f11aeae62c07c8882cbcfc"><td class="memItemLeft" align="right" valign="top"><a id="acad249f129f11aeae62c07c8882cbcfc" name="acad249f129f11aeae62c07c8882cbcfc"></a>
+T&#160;</td><td class="memItemRight" valign="bottom"><b>GetLastWrittenReliableId</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn)</td></tr>
+<tr class="separator:acad249f129f11aeae62c07c8882cbcfc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac46e52a0fa5036cc1a24977ed41bb678"><td class="memItemLeft" align="right" valign="top"><a id="ac46e52a0fa5036cc1a24977ed41bb678" name="ac46e52a0fa5036cc1a24977ed41bb678"></a>
+T&#160;</td><td class="memItemRight" valign="bottom"><b>GetLastReadReliableId</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn)</td></tr>
+<tr class="separator:ac46e52a0fa5036cc1a24977ed41bb678"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0dda9f834ac75b185a921efddb2f5742"><td class="memItemLeft" align="right" valign="top"><a id="a0dda9f834ac75b185a921efddb2f5742" name="a0dda9f834ac75b185a921efddb2f5742"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>UpdateLastRead</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, T data)</td></tr>
+<tr class="separator:a0dda9f834ac75b185a921efddb2f5742"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aec3188c293ee96ea530a423d19350ae1"><td class="memItemLeft" align="right" valign="top"><a id="aec3188c293ee96ea530a423d19350ae1" name="aec3188c293ee96ea530a423d19350ae1"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>UpdateLastWritten</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, T data)</td></tr>
+<tr class="separator:aec3188c293ee96ea530a423d19350ae1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5c18d792c085a60f5aa2d6c0b869a9fe"><td class="memItemLeft" align="right" valign="top"><a id="a5c18d792c085a60f5aa2d6c0b869a9fe" name="a5c18d792c085a60f5aa2d6c0b869a9fe"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Clear</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn)</td></tr>
+<tr class="separator:a5c18d792c085a60f5aa2d6c0b869a9fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this struct was generated from the following file:<ul>
-<li>Assets/PurrNet/Runtime/CoreModules/RPCs/RpcRequestResponseModule.cs</li>
+<hr/>The documentation for this class was generated from the following file:<ul>
+<li>Assets/PurrNet/Runtime/CoreModules/Broadcast/ReliableConnectionHistory.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="namespacePurrNet_1_1Modules.html">Modules</a></li><li class="navelem"><a class="el" href="structPurrNet_1_1Modules_1_1RpcResponse.html">RpcResponse</a></li>
+    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="namespacePurrNet_1_1Modules.html">Modules</a></li><li class="navelem"><a class="el" href="classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html">ReliableConnectionHistory</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
   </ul>
 </div>

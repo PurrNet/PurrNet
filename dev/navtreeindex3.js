@@ -1,12 +1,14 @@
 var NAVTREEINDEX3 =
 {
+"classPurrNet_1_1SerializableSyncUnityEvent.html":[1,0,0,99],
 "classPurrNet_1_1ServerAttribute.html":[1,0,0,100],
+"classPurrNet_1_1ServerAttribute.html":[0,0,0,100],
 "classPurrNet_1_1ServerOnlyAttribute.html":[0,0,0,101],
 "classPurrNet_1_1ServerOnlyAttribute.html":[1,0,0,101],
 "classPurrNet_1_1ServerRpcAttribute.html":[0,0,0,102],
 "classPurrNet_1_1ServerRpcAttribute.html":[1,0,0,102],
-"classPurrNet_1_1StateMachine_1_1StateMachine.html":[1,0,0,8,1],
 "classPurrNet_1_1StateMachine_1_1StateMachine.html":[0,0,0,8,1],
+"classPurrNet_1_1StateMachine_1_1StateMachine.html":[1,0,0,8,1],
 "classPurrNet_1_1StateMachine_1_1StateMachine.html#a0c328cfbdde6138de0a6091d1231df58":[0,0,0,8,1,14],
 "classPurrNet_1_1StateMachine_1_1StateMachine.html#a0c328cfbdde6138de0a6091d1231df58":[1,0,0,8,1,14],
 "classPurrNet_1_1StateMachine_1_1StateMachine.html#a0e3443fbd1d5f02bd969a5fdf2f98897":[0,0,0,8,1,15],
@@ -247,7 +249,5 @@ var NAVTREEINDEX3 =
 "classPurrNet_1_1Transports_1_1UDPTransport.html":[0,0,0,9,15],
 "classPurrNet_1_1Transports_1_1UDPTransport.html#a3db40ff9e16c355fdac855a2b16ca830":[1,0,0,9,15,0],
 "classPurrNet_1_1Transports_1_1UDPTransport.html#a3db40ff9e16c355fdac855a2b16ca830":[0,0,0,9,15,0],
-"classPurrNet_1_1Transports_1_1WebTransport.html":[1,0,0,9,16],
-"classPurrNet_1_1Transports_1_1WebTransport.html":[0,0,0,9,16],
-"classPurrNet_1_1UnityLatestUpdate.html":[1,0,0,124]
+"classPurrNet_1_1Transports_1_1WebTransport.html":[1,0,0,9,16]
 };
