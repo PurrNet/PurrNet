@@ -111,12 +111,15 @@ Inheritance diagram for PurrNet.SyncTimer:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:af9fb4c7652cca4a207813740202bb928"><td class="memItemLeft" align="right" valign="top"><a id="af9fb4c7652cca4a207813740202bb928" name="af9fb4c7652cca4a207813740202bb928"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>SyncTimer</b> (bool ownerAuth=false, float reconcileInterval=3)</td></tr>
-<tr class="separator:af9fb4c7652cca4a207813740202bb928"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9458981ca3510cf1103a3a99abdcef4d"><td class="memItemLeft" align="right" valign="top"><a id="a9458981ca3510cf1103a3a99abdcef4d" name="a9458981ca3510cf1103a3a99abdcef4d"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>SyncTimer</b> (bool ownerAuth=false, float reconcileInterval=3, bool manualUpdate=false)</td></tr>
+<tr class="separator:a9458981ca3510cf1103a3a99abdcef4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa19e2c5ff8a6caeb2e56add31777e95f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncTimer.html#aa19e2c5ff8a6caeb2e56add31777e95f">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:aa19e2c5ff8a6caeb2e56add31777e95f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1SyncTimer.html#aa19e2c5ff8a6caeb2e56add31777e95f">More...</a><br /></td></tr>
 <tr class="separator:aa19e2c5ff8a6caeb2e56add31777e95f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d8159162053902ea3ab33913a8f94a6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncTimer.html#a7d8159162053902ea3ab33913a8f94a6">Advance</a> (float delta, bool useRunningCheck=true)</td></tr>
+<tr class="memdesc:a7d8159162053902ea3ab33913a8f94a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to manually advance the sync timer if the manual update has been set to true when initializing the timer   <a href="classPurrNet_1_1SyncTimer.html#a7d8159162053902ea3ab33913a8f94a6">More...</a><br /></td></tr>
+<tr class="separator:a7d8159162053902ea3ab33913a8f94a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a85650259108557117f9d51c9fd9902ce"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncTimer.html#a85650259108557117f9d51c9fd9902ce">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a85650259108557117f9d51c9fd9902ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncTimer.html#a85650259108557117f9d51c9fd9902ce">More...</a><br /></td></tr>
 <tr class="separator:a85650259108557117f9d51c9fd9902ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -193,12 +196,14 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetComponentParent</b
 <tr class="memitem:a0628a3408764f3e36ec77e6b1c436e70 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a0628a3408764f3e36ec77e6b1c436e70" name="a0628a3408764f3e36ec77e6b1c436e70"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterModuleInternal</b> (string moduleName, string type, <a class="el" href="classPurrNet_1_1NetworkModule.html">NetworkModule</a> module, bool isNetworkIdentity)</td></tr>
 <tr class="separator:a0628a3408764f3e36ec77e6b1c436e70 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26b067d4fc5fc4a5179a40d10b36fded inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a26b067d4fc5fc4a5179a40d10b36fded" name="a26b067d4fc5fc4a5179a40d10b36fded"></a>
+<a class="el" href="structPurrNet_1_1Pooling_1_1DisposableList.html">DisposableList</a>&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetObservers</b> (<a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
+<tr class="separator:a26b067d4fc5fc4a5179a40d10b36fded inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b32128815cb5d5fb415ae27e54b3514 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a8b32128815cb5d5fb415ae27e54b3514" name="a8b32128815cb5d5fb415ae27e54b3514"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeModules</b> ()</td></tr>
 <tr class="separator:a8b32128815cb5d5fb415ae27e54b3514 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f2a42582066a7fe12abdec08188bce6 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a1f2a42582066a7fe12abdec08188bce6" name="a1f2a42582066a7fe12abdec08188bce6"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> ()</td></tr>
-<tr class="memdesc:a1f2a42582066a7fe12abdec08188bce6 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.  <br /></td></tr>
+<tr class="memitem:a1f2a42582066a7fe12abdec08188bce6 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6">OnEarlySpawn</a> ()</td></tr>
+<tr class="memdesc:a1f2a42582066a7fe12abdec08188bce6 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.   <a href="classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6">More...</a><br /></td></tr>
 <tr class="separator:a1f2a42582066a7fe12abdec08188bce6 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a636be26a31319563811dad379afc4848 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a636be26a31319563811dad379afc4848" name="a636be26a31319563811dad379afc4848"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn</b> (bool asServer)</td></tr>
@@ -312,9 +317,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>ValidateReceivingRPC<
 <tr class="memitem:a3256ce7a0da3ceb674a31de08ef4cf69 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a3256ce7a0da3ceb674a31de08ef4cf69" name="a3256ce7a0da3ceb674a31de08ef4cf69"></a>
 object&#160;</td><td class="memItemRight" valign="bottom"><b>CallGeneric</b> (string methodName, <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
 <tr class="separator:a3256ce7a0da3ceb674a31de08ef4cf69 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c5b8e5278a757b4fde9f9ca67fbe438 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a6c5b8e5278a757b4fde9f9ca67fbe438" name="a6c5b8e5278a757b4fde9f9ca67fbe438"></a>
-<a class="el" href="structPurrNet_1_1ChildRPCPacket.html">ChildRPCPacket</a>&#160;</td><td class="memItemRight" valign="bottom"><b>BuildRPC</b> (byte rpcId, <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> data)</td></tr>
-<tr class="separator:a6c5b8e5278a757b4fde9f9ca67fbe438 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a672b7899707d0eb4e3975d1f44fccdf2 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a672b7899707d0eb4e3975d1f44fccdf2" name="a672b7899707d0eb4e3975d1f44fccdf2"></a>
+<a class="el" href="structPurrNet_1_1ChildRPCPacket.html">ChildRPCPacket</a>&#160;</td><td class="memItemRight" valign="bottom"><b>BuildRPC</b> (int rpcId, <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> data)</td></tr>
+<tr class="separator:a672b7899707d0eb4e3975d1f44fccdf2 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa30ed6b0a2e4c984f1b1ecf03cf9d1c1 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="aa30ed6b0a2e4c984f1b1ecf03cf9d1c1" name="aa30ed6b0a2e4c984f1b1ecf03cf9d1c1"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissionErrorDetails</b> (<a class="el" href="interfacePurrNet_1_1IOwnerAuth.html">IOwnerAuth</a> auth)</td></tr>
 <tr class="separator:aa30ed6b0a2e4c984f1b1ecf03cf9d1c1 inherit pro_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -324,6 +329,43 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <tr class="separator:a97aebd580ff022b5e5df0aad4f3a4bd2 inherit pro_static_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a7d8159162053902ea3ab33913a8f94a6" name="a7d8159162053902ea3ab33913a8f94a6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7d8159162053902ea3ab33913a8f94a6">&#9670;&#160;</a></span>Advance()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.SyncTimer.Advance </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>delta</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>useRunningCheck</em> = <code>true</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Used to manually advance the sync timer if the manual update has been set to true when initializing the timer  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">delta</td><td>The delta to advance the timer by</td></tr>
+    <tr><td class="paramname">useRunningCheck</td><td>Only for special use cases, where you'd want to skip the synchronized check to see whether the timer is running or not</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a85650259108557117f9d51c9fd9902ce" name="a85650259108557117f9d51c9fd9902ce"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a85650259108557117f9d51c9fd9902ce">&#9670;&#160;</a></span>OnObserverAdded()</h2>
 

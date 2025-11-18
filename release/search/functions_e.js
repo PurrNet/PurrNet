@@ -12,7 +12,8 @@ var searchData=
   ['removestate_9',['RemoveState',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a0c328cfbdde6138de0a6091d1231df58',1,'PurrNet::StateMachine::StateMachine']]],
   ['removestateat_10',['RemoveStateAt',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a0e3443fbd1d5f02bd969a5fdf2f98897',1,'PurrNet::StateMachine::StateMachine']]],
   ['removevisibilityrule_11',['RemoveVisibilityRule',['../classPurrNet_1_1NetworkManager.html#a69fac11485648ad779bde25eb3cd4548',1,'PurrNet::NetworkManager']]],
-  ['resetissetup_12',['ResetIsSetup',['../classPurrNet_1_1NetworkIdentity.html#af42ac01c6542efe7a2e8c29c3bcff710',1,'PurrNet::NetworkIdentity']]],
-  ['resetprefabinstantiatedprovider_13',['ResetPrefabInstantiatedProvider',['../classPurrNet_1_1PlayerSpawner.html#a2c0db4145c65e4c039b5904ea5967fac',1,'PurrNet::PlayerSpawner']]],
-  ['resetspawnpointprovider_14',['ResetSpawnPointProvider',['../classPurrNet_1_1PlayerSpawner.html#a433576f6b25a0766586064c61129f789',1,'PurrNet::PlayerSpawner']]]
+  ['resetinternalstate_12',['ResetInternalState',['../classPurrNet_1_1NetworkManager.html#a11d134561fa4f5c995dd621d5668ecb6',1,'PurrNet::NetworkManager']]],
+  ['resetissetup_13',['ResetIsSetup',['../classPurrNet_1_1NetworkIdentity.html#af42ac01c6542efe7a2e8c29c3bcff710',1,'PurrNet::NetworkIdentity']]],
+  ['resetprefabinstantiatedprovider_14',['ResetPrefabInstantiatedProvider',['../classPurrNet_1_1PlayerSpawner.html#a2c0db4145c65e4c039b5904ea5967fac',1,'PurrNet::PlayerSpawner']]],
+  ['resetspawnpointprovider_15',['ResetSpawnPointProvider',['../classPurrNet_1_1PlayerSpawner.html#a433576f6b25a0766586064c61129f789',1,'PurrNet::PlayerSpawner']]]
 ];

@@ -141,6 +141,14 @@ Task&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetNextIdU
 Task&#160;</td><td class="memItemRight" valign="bottom"><b>GetNextId</b> (RPCType rpcType, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? target, float timeout, out <a class="el" href="structPurrNet_1_1Modules_1_1RpcRequest.html">RpcRequest</a> request)</td></tr>
 <tr class="memdesc:a6894228bb2810c322ee8dff28353e7ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used internally to get next RPC id. Do not use this method directly.  <br /></td></tr>
 <tr class="separator:a6894228bb2810c322ee8dff28353e7ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a477055310986b6fcc0118aa78faf3dcd"><td class="memItemLeft" align="right" valign="top"><a id="a477055310986b6fcc0118aa78faf3dcd" name="a477055310986b6fcc0118aa78faf3dcd"></a>
+<a class="el" href="structPurrNet_1_1Pooling_1_1DisposableList.html">DisposableList</a>&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetObservers</b> (<a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
+<tr class="separator:a477055310986b6fcc0118aa78faf3dcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeb50abf104bf377d1e9a95c33ee29de3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#aeb50abf104bf377d1e9a95c33ee29de3">SendRPC&lt; T &gt;</a> (Type statisticsParent, T packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
+<tr class="separator:aeb50abf104bf377d1e9a95c33ee29de3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab41e5f944b443a71b53400a671322da6"><td class="memItemLeft" align="right" valign="top"><a id="ab41e5f944b443a71b53400a671322da6" name="ab41e5f944b443a71b53400a671322da6"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>ValidateSendingRPC</b> (<a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, out <a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a> module)</td></tr>
+<tr class="separator:ab41e5f944b443a71b53400a671322da6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a50a157e6278c7e29c250a2e89a8bf198"><td class="memItemLeft" align="right" valign="top"><a id="a50a157e6278c7e29c250a2e89a8bf198" name="a50a157e6278c7e29c250a2e89a8bf198"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>ValidateReceivingRPC</b> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, <a class="el" href="interfacePurrNet_1_1IRpc.html">IRpc</a> data, bool asServer)</td></tr>
 <tr class="separator:a50a157e6278c7e29c250a2e89a8bf198"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -250,9 +258,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetIsSpawned</b> (boo
 <tr class="memitem:a447c29c284006355058a84886b8eb8e2"><td class="memItemLeft" align="right" valign="top"><a id="a447c29c284006355058a84886b8eb8e2" name="a447c29c284006355058a84886b8eb8e2"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterModuleInternal</b> (string moduleName, string type, <a class="el" href="classPurrNet_1_1NetworkModule.html">NetworkModule</a> module, bool isNetworkIdentity)</td></tr>
 <tr class="separator:a447c29c284006355058a84886b8eb8e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0a8a3face0fc9e5ac43860e2bd13733e"><td class="memItemLeft" align="right" valign="top"><a id="a0a8a3face0fc9e5ac43860e2bd13733e" name="a0a8a3face0fc9e5ac43860e2bd13733e"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetModule</b> (byte moduleId, out <a class="el" href="classPurrNet_1_1NetworkModule.html">NetworkModule</a> module)</td></tr>
-<tr class="separator:a0a8a3face0fc9e5ac43860e2bd13733e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c47090a1421d66531bccdfecbb80c5d"><td class="memItemLeft" align="right" valign="top"><a id="a1c47090a1421d66531bccdfecbb80c5d" name="a1c47090a1421d66531bccdfecbb80c5d"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetModule</b> (int moduleId, out <a class="el" href="classPurrNet_1_1NetworkModule.html">NetworkModule</a> module)</td></tr>
+<tr class="separator:a1c47090a1421d66531bccdfecbb80c5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1109fa313ed53df210610950ff5d2191"><td class="memItemLeft" align="right" valign="top"><a id="a1109fa313ed53df210610950ff5d2191" name="a1109fa313ed53df210610950ff5d2191"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>WhitelistPlayer</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="separator:a1109fa313ed53df210610950ff5d2191"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -313,9 +321,6 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasRemoveOwnershipAut
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a69fc1972b39340a31bffb6986b97f305"><td class="memItemLeft" align="right" valign="top"><a id="a69fc1972b39340a31bffb6986b97f305" name="a69fc1972b39340a31bffb6986b97f305"></a>
-static void&#160;</td><td class="memItemRight" valign="bottom"><b>ReadGenericHeader</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> stream, <a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, int genericCount, int paramCount, out <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
-<tr class="separator:a69fc1972b39340a31bffb6986b97f305"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac2a7b322c09b52bd94e807d7175446e2"><td class="memItemLeft" align="right" valign="top"><a id="ac2a7b322c09b52bd94e807d7175446e2" name="ac2a7b322c09b52bd94e807d7175446e2"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>OnReceivedRpc</b> (int <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b">id</a>, <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> stream, <a class="el" href="structPurrNet_1_1StaticRPCPacket.html">StaticRPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, bool asServer)</td></tr>
 <tr class="separator:ac2a7b322c09b52bd94e807d7175446e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1114,7 +1119,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 
 <p>Called when this object is spawned This is only called once even if in host mode.  </p>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a4b3b472f61dfbab82d4c32b5e7e7c987">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a33a4bed8502eb8cc8439bc768ee79a19">PurrNet.NetworkBones</a>, <a class="el" href="classPurrNet_1_1NetworkOwnershipToggle.html#a5c70caa8bfff557fd891124fa8eb0972">PurrNet.NetworkOwnershipToggle</a>, <a class="el" href="classPurrNet_1_1NetworkServerToggle.html#a00057cf0d58404458520bbdee31f7ad9">PurrNet.NetworkServerToggle</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a69412d0ae11f99e41ac5c5117f86e515">PurrNet.StateMachine.StateMachine</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a4b3b472f61dfbab82d4c32b5e7e7c987">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a33a4bed8502eb8cc8439bc768ee79a19">PurrNet.NetworkBones</a>, <a class="el" href="classPurrNet_1_1PlayerIdentity.html#a69d8f1f438af1e8d66579449dbb51237">PurrNet.PlayerIdentity&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1NetworkOwnershipToggle.html#a5c70caa8bfff557fd891124fa8eb0972">PurrNet.NetworkOwnershipToggle</a>, and <a class="el" href="classPurrNet_1_1NetworkServerToggle.html#a00057cf0d58404458520bbdee31f7ad9">PurrNet.NetworkServerToggle</a>.</p>
 
 </div>
 </div>
@@ -1150,7 +1155,49 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27">PurrNet.NetworkTransform</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27">PurrNet.NetworkTransform</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#aa703b27b71d3dc97450f8f5c07f0034e">PurrNet.StateMachine.StateMachine</a>.</p>
+
+</div>
+</div>
+<a id="aeb50abf104bf377d1e9a95c33ee29de3" name="aeb50abf104bf377d1e9a95c33ee29de3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aeb50abf104bf377d1e9a95c33ee29de3">&#9670;&#160;</a></span>SendRPC&lt; T &gt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.NetworkIdentity.SendRPC&lt; T &gt; </td>
+          <td>(</td>
+          <td class="paramtype">Type&#160;</td>
+          <td class="paramname"><em>statisticsParent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">T&#160;</td>
+          <td class="paramname"><em>packet</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a>&#160;</td>
+          <td class="paramname"><em>signature</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="typeconstraint">
+<dl><dt><b>Type Constraints</b></dt><dd>
+<table border="0" cellspacing="2" cellpadding="0">
+<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>IRpc</em></td><td>&#160;</td></tr>
+</table>
+</dd>
+</dl>
+</div>
 
 </div>
 </div>
