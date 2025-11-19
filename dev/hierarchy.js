@@ -21,6 +21,7 @@ var hierarchy =
     [ "PurrNet.Modules.DeltaMessagesList", "structPurrNet_1_1Modules_1_1DeltaMessagesList.html", null ],
     [ "PurrNet.Packing.DeltaWritingScope", "structPurrNet_1_1Packing_1_1DeltaWritingScope.html", null ],
     [ "PurrNet.Pooling.DisposableList< DeltaAcknowledge >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
+    [ "PurrNet.Pooling.DisposableList< int >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< OwnershipInfo >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< PurrNet.Modules.DespawnPacket >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< PurrNet.Modules.GameObjectFrameworkPiece >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
@@ -301,6 +302,7 @@ var hierarchy =
       [ "PurrNet.NetworkReflection", "classPurrNet_1_1NetworkReflection.html", null ],
       [ "PurrNet.ReliableDeltaStream< T >", "classPurrNet_1_1ReliableDeltaStream.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
+      [ "PurrNet.SyncBigData", "classPurrNet_1_1SyncBigData.html", null ],
       [ "PurrNet.SyncDictionary< TKey, TValue >", "classPurrNet_1_1SyncDictionary.html", null ],
       [ "PurrNet.SyncInput< T >", "classPurrNet_1_1SyncInput.html", null ],
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ],
@@ -351,6 +353,7 @@ var hierarchy =
       [ "PurrNet.Reference< T >", "classPurrNet_1_1Reference.html", null ],
       [ "PurrNet.ReliableDeltaStream< T >", "classPurrNet_1_1ReliableDeltaStream.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
+      [ "PurrNet.SyncBigData", "classPurrNet_1_1SyncBigData.html", null ],
       [ "PurrNet.SyncDictionary< TKey, TValue >", "classPurrNet_1_1SyncDictionary.html", null ],
       [ "PurrNet.SyncEventBase", "classPurrNet_1_1SyncEventBase.html", [
         [ "PurrNet.SyncEvent< T1, T2 >", "classPurrNet_1_1SyncEvent.html", null ],
@@ -436,6 +439,7 @@ var hierarchy =
     [ "PurrNet.SyncList< PurrNet.StateMachine.StateNode >", "classPurrNet_1_1SyncList.html", null ],
     [ "PurrNet.SyncListChange< T >", "structPurrNet_1_1SyncListChange.html", null ],
     [ "PurrNet.SyncQueueChange< T >", "structPurrNet_1_1SyncQueueChange.html", null ],
+    [ "PurrNet.SyncStatus", "structPurrNet_1_1SyncStatus.html", null ],
     [ "PurrNet.Modules.TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
     [ "PurrNet.NetworkAssets.TypeToggle", "classPurrNet_1_1NetworkAssets_1_1TypeToggle.html", null ],
     [ "UnityEvent", null, [
