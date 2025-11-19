@@ -302,7 +302,10 @@ var hierarchy =
       [ "PurrNet.NetworkReflection", "classPurrNet_1_1NetworkReflection.html", null ],
       [ "PurrNet.ReliableDeltaStream< T >", "classPurrNet_1_1ReliableDeltaStream.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
-      [ "PurrNet.SyncBigData", "classPurrNet_1_1SyncBigData.html", null ],
+      [ "PurrNet.SyncBigData", "classPurrNet_1_1SyncBigData.html", [
+        [ "PurrNet.SyncAsset< T >", "classPurrNet_1_1SyncAsset.html", null ],
+        [ "PurrNet.SyncFile< T >", "classPurrNet_1_1SyncFile.html", null ]
+      ] ],
       [ "PurrNet.SyncDictionary< TKey, TValue >", "classPurrNet_1_1SyncDictionary.html", null ],
       [ "PurrNet.SyncInput< T >", "classPurrNet_1_1SyncInput.html", null ],
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ],
@@ -434,7 +437,13 @@ var hierarchy =
     ] ],
     [ "PurrNet.StringUTF8", "structPurrNet_1_1StringUTF8.html", null ],
     [ "PurrNet.SyncArrayChange< T >", "structPurrNet_1_1SyncArrayChange.html", null ],
+    [ "PurrNet.SyncAsset< Texture2D >", "classPurrNet_1_1SyncAsset.html", [
+      [ "PurrNet.SyncTextureAsset", "classPurrNet_1_1SyncTextureAsset.html", null ]
+    ] ],
     [ "PurrNet.SyncDictionaryChange< TKey, TValue >", "structPurrNet_1_1SyncDictionaryChange.html", null ],
+    [ "PurrNet.SyncFile< Texture2D >", "classPurrNet_1_1SyncFile.html", [
+      [ "PurrNet.SyncTextureFile", "classPurrNet_1_1SyncTextureFile.html", null ]
+    ] ],
     [ "PurrNet.SyncHashSetChange< T >", "structPurrNet_1_1SyncHashSetChange.html", null ],
     [ "PurrNet.SyncList< PurrNet.StateMachine.StateNode >", "classPurrNet_1_1SyncList.html", null ],
     [ "PurrNet.SyncListChange< T >", "structPurrNet_1_1SyncListChange.html", null ],

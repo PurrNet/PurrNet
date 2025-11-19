@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: PurrNet.SyncBigData Class Reference</title>
+<title>PurrNet: PurrNet.SyncAsset&lt; T &gt; Class Template Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -64,7 +64,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('classPurrNet_1_1SyncBigData.html',''); initResizable(); });
+$(document).ready(function(){initNavTree('classPurrNet_1_1SyncAsset.html',''); initResizable(); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -95,43 +95,49 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1SyncBigData.html','');
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
-<a href="classPurrNet_1_1SyncBigData-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">PurrNet.SyncBigData Class Reference</div></div>
+<a href="classPurrNet_1_1SyncAsset-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">PurrNet.SyncAsset&lt; T &gt; Class Template Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div></div>
 </div><!--header-->
 <div class="contents">
 <div class="dynheader">
-Inheritance diagram for PurrNet.SyncBigData:</div>
+Inheritance diagram for PurrNet.SyncAsset&lt; T &gt;:</div>
 <div class="dyncontent">
  <div class="center">
-  <img src="classPurrNet_1_1SyncBigData.png" usemap="#PurrNet.SyncBigData_map" alt=""/>
-  <map id="PurrNet.SyncBigData_map" name="PurrNet.SyncBigData_map">
+  <img src="classPurrNet_1_1SyncAsset.png" usemap="#PurrNet.SyncAsset_3C_20T_20_3E_map" alt=""/>
+  <map id="PurrNet.SyncAsset_3C_20T_20_3E_map" name="PurrNet.SyncAsset_3C_20T_20_3E_map">
+<area href="classPurrNet_1_1SyncBigData.html" alt="PurrNet.SyncBigData" shape="rect" coords="80,56,231,80"/>
 <area href="classPurrNet_1_1NetworkModule.html" alt="PurrNet.NetworkModule" shape="rect" coords="0,0,151,24"/>
 <area href="interfacePurrNet_1_1ITick.html" alt="PurrNet.ITick" shape="rect" coords="161,0,312,24"/>
-<area href="classPurrNet_1_1SyncAsset.html" alt="PurrNet.SyncAsset&lt; T &gt;" shape="rect" coords="0,112,151,136"/>
-<area href="classPurrNet_1_1SyncFile.html" alt="PurrNet.SyncFile&lt; T &gt;" shape="rect" coords="161,112,312,136"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:af5d8dd9a5dc9255617995d50b9bf9312"><td class="memItemLeft" align="right" valign="top"><a id="af5d8dd9a5dc9255617995d50b9bf9312" name="af5d8dd9a5dc9255617995d50b9bf9312"></a>
+<tr class="memitem:af4c36a4a18e82a4083cd8244e685a1df"><td class="memItemLeft" align="right" valign="top"><a id="af4c36a4a18e82a4083cd8244e685a1df" name="af4c36a4a18e82a4083cd8244e685a1df"></a>
+abstract void&#160;</td><td class="memItemRight" valign="bottom"><b>FromBytes</b> (ArraySegment&lt; byte &gt; bytes, ref T content)</td></tr>
+<tr class="separator:af4c36a4a18e82a4083cd8244e685a1df"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7ef064a7138929ed8f03611f81799a6"><td class="memItemLeft" align="right" valign="top"><a id="ae7ef064a7138929ed8f03611f81799a6" name="ae7ef064a7138929ed8f03611f81799a6"></a>
+abstract ArraySegment&lt; byte &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetBytes</b> (T content)</td></tr>
+<tr class="separator:ae7ef064a7138929ed8f03611f81799a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_methods_classPurrNet_1_1SyncBigData"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1SyncBigData')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1SyncBigData.html">PurrNet.SyncBigData</a></td></tr>
+<tr class="memitem:af5d8dd9a5dc9255617995d50b9bf9312 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="af5d8dd9a5dc9255617995d50b9bf9312" name="af5d8dd9a5dc9255617995d50b9bf9312"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>SyncBigData</b> (bool ownerAuth=false, int maxKBPerSec=15)</td></tr>
-<tr class="separator:af5d8dd9a5dc9255617995d50b9bf9312"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ab61c5dd8a5f96a243bc3a7ee6cd66f"><td class="memItemLeft" align="right" valign="top"><a id="a8ab61c5dd8a5f96a243bc3a7ee6cd66f" name="a8ab61c5dd8a5f96a243bc3a7ee6cd66f"></a>
+<tr class="separator:af5d8dd9a5dc9255617995d50b9bf9312 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8ab61c5dd8a5f96a243bc3a7ee6cd66f inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="a8ab61c5dd8a5f96a243bc3a7ee6cd66f" name="a8ab61c5dd8a5f96a243bc3a7ee6cd66f"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ClearData</b> ()</td></tr>
-<tr class="separator:a8ab61c5dd8a5f96a243bc3a7ee6cd66f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac0a7e95cab612dcd3268bea9f10b44a0"><td class="memItemLeft" align="right" valign="top"><a id="ac0a7e95cab612dcd3268bea9f10b44a0" name="ac0a7e95cab612dcd3268bea9f10b44a0"></a>
+<tr class="separator:a8ab61c5dd8a5f96a243bc3a7ee6cd66f inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac0a7e95cab612dcd3268bea9f10b44a0 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="ac0a7e95cab612dcd3268bea9f10b44a0" name="ac0a7e95cab612dcd3268bea9f10b44a0"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetData</b> (ReadOnlySpan&lt; byte &gt; data)</td></tr>
-<tr class="separator:ac0a7e95cab612dcd3268bea9f10b44a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a71b3f097616e9a97b6246074a10438a3"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncBigData.html#a71b3f097616e9a97b6246074a10438a3">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
-<tr class="memdesc:a71b3f097616e9a97b6246074a10438a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncBigData.html#a71b3f097616e9a97b6246074a10438a3">More...</a><br /></td></tr>
-<tr class="separator:a71b3f097616e9a97b6246074a10438a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a57cf3b6cd5ed192cf9e65cff334b068b"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncBigData.html#a57cf3b6cd5ed192cf9e65cff334b068b">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
-<tr class="memdesc:a57cf3b6cd5ed192cf9e65cff334b068b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1SyncBigData.html#a57cf3b6cd5ed192cf9e65cff334b068b">More...</a><br /></td></tr>
-<tr class="separator:a57cf3b6cd5ed192cf9e65cff334b068b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a00249c72c97dd6d805a39359852a4da8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8">OnTick</a> (float delta)</td></tr>
-<tr class="memdesc:a00249c72c97dd6d805a39359852a4da8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8">More...</a><br /></td></tr>
-<tr class="separator:a00249c72c97dd6d805a39359852a4da8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:ac0a7e95cab612dcd3268bea9f10b44a0 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a71b3f097616e9a97b6246074a10438a3 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncBigData.html#a71b3f097616e9a97b6246074a10438a3">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:a71b3f097616e9a97b6246074a10438a3 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncBigData.html#a71b3f097616e9a97b6246074a10438a3">More...</a><br /></td></tr>
+<tr class="separator:a71b3f097616e9a97b6246074a10438a3 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a57cf3b6cd5ed192cf9e65cff334b068b inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncBigData.html#a57cf3b6cd5ed192cf9e65cff334b068b">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:a57cf3b6cd5ed192cf9e65cff334b068b inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1SyncBigData.html#a57cf3b6cd5ed192cf9e65cff334b068b">More...</a><br /></td></tr>
+<tr class="separator:a57cf3b6cd5ed192cf9e65cff334b068b inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a00249c72c97dd6d805a39359852a4da8 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8">OnTick</a> (float delta)</td></tr>
+<tr class="memdesc:a00249c72c97dd6d805a39359852a4da8 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8">More...</a><br /></td></tr>
+<tr class="separator:a00249c72c97dd6d805a39359852a4da8 inherit pub_methods_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1NetworkModule"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1NetworkModule')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a></td></tr>
 <tr class="memitem:aaa8521efaebd88c667320956da998e5e inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="aaa8521efaebd88c667320956da998e5e" name="aaa8521efaebd88c667320956da998e5e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsController</b> (bool ownerHasAuthority)</td></tr>
@@ -215,6 +221,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
+<tr class="memitem:ad605dd2301edd295b64d3ce22a7e57e9"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncAsset.html#ad605dd2301edd295b64d3ce22a7e57e9">OnDataReady</a> ()</td></tr>
+<tr class="separator:ad605dd2301edd295b64d3ce22a7e57e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d740bcfdc2d0640e82aedbd6dc0c095"><td class="memItemLeft" align="right" valign="top"><a id="a1d740bcfdc2d0640e82aedbd6dc0c095" name="a1d740bcfdc2d0640e82aedbd6dc0c095"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDataReady</b> ()</td></tr>
 <tr class="separator:a1d740bcfdc2d0640e82aedbd6dc0c095"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -237,26 +245,33 @@ string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissionErrorD
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
-<tr class="memitem:a10a8548692607f3d8e91b20ef8de5ead"><td class="memItemLeft" align="right" valign="top"><a id="a10a8548692607f3d8e91b20ef8de5ead" name="a10a8548692607f3d8e91b20ef8de5ead"></a>
+<tr class="memitem:a755c27d3f28b687a8ebfde040f89c7d0"><td class="memItemLeft" align="right" valign="top"><a id="a755c27d3f28b687a8ebfde040f89c7d0" name="a755c27d3f28b687a8ebfde040f89c7d0"></a>
+T&#160;</td><td class="memItemRight" valign="bottom"><b>asset</b><code> [get]</code></td></tr>
+<tr class="separator:a755c27d3f28b687a8ebfde040f89c7d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2768c74a585b7a067b5ff851804eff01"><td class="memItemLeft" align="right" valign="top"><a id="a2768c74a585b7a067b5ff851804eff01" name="a2768c74a585b7a067b5ff851804eff01"></a>
+T&#160;</td><td class="memItemRight" valign="bottom"><b>assetToSync</b><code> [get, set]</code></td></tr>
+<tr class="separator:a2768c74a585b7a067b5ff851804eff01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header properties_classPurrNet_1_1SyncBigData"><td colspan="2" onclick="javascript:toggleInherit('properties_classPurrNet_1_1SyncBigData')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classPurrNet_1_1SyncBigData.html">PurrNet.SyncBigData</a></td></tr>
+<tr class="memitem:a10a8548692607f3d8e91b20ef8de5ead inherit properties_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="a10a8548692607f3d8e91b20ef8de5ead" name="a10a8548692607f3d8e91b20ef8de5ead"></a>
 <a class="el" href="structPurrNet_1_1SyncStatus.html">SyncStatus</a>&#160;</td><td class="memItemRight" valign="bottom"><b>syncStatus</b><code> [get]</code></td></tr>
-<tr class="separator:a10a8548692607f3d8e91b20ef8de5ead"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0eaa7e9f15b41a69274cc2fe5bc2c878"><td class="memItemLeft" align="right" valign="top"><a id="a0eaa7e9f15b41a69274cc2fe5bc2c878" name="a0eaa7e9f15b41a69274cc2fe5bc2c878"></a>
+<tr class="separator:a10a8548692607f3d8e91b20ef8de5ead inherit properties_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0eaa7e9f15b41a69274cc2fe5bc2c878 inherit properties_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="a0eaa7e9f15b41a69274cc2fe5bc2c878" name="a0eaa7e9f15b41a69274cc2fe5bc2c878"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isDataReady</b><code> [get]</code></td></tr>
-<tr class="memdesc:a0eaa7e9f15b41a69274cc2fe5bc2c878"><td class="mdescLeft">&#160;</td><td class="mdescRight">Is the data ready to be used? Aka, download finished and uncompressed data is available.  <br /></td></tr>
-<tr class="separator:a0eaa7e9f15b41a69274cc2fe5bc2c878"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a25d43321e68e2df834090dc1303ca2f5"><td class="memItemLeft" align="right" valign="top"><a id="a25d43321e68e2df834090dc1303ca2f5" name="a25d43321e68e2df834090dc1303ca2f5"></a>
+<tr class="memdesc:a0eaa7e9f15b41a69274cc2fe5bc2c878 inherit properties_classPurrNet_1_1SyncBigData"><td class="mdescLeft">&#160;</td><td class="mdescRight">Is the data ready to be used? Aka, download finished and uncompressed data is available.  <br /></td></tr>
+<tr class="separator:a0eaa7e9f15b41a69274cc2fe5bc2c878 inherit properties_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25d43321e68e2df834090dc1303ca2f5 inherit properties_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="a25d43321e68e2df834090dc1303ca2f5" name="a25d43321e68e2df834090dc1303ca2f5"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>progress</b><code> [get]</code></td></tr>
-<tr class="memdesc:a25d43321e68e2df834090dc1303ca2f5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Download progress, between 0 and 1.  <br /></td></tr>
-<tr class="separator:a25d43321e68e2df834090dc1303ca2f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afe3edb1382f32f349c504d74d25236a9"><td class="memItemLeft" align="right" valign="top"><a id="afe3edb1382f32f349c504d74d25236a9" name="afe3edb1382f32f349c504d74d25236a9"></a>
+<tr class="memdesc:a25d43321e68e2df834090dc1303ca2f5 inherit properties_classPurrNet_1_1SyncBigData"><td class="mdescLeft">&#160;</td><td class="mdescRight">Download progress, between 0 and 1.  <br /></td></tr>
+<tr class="separator:a25d43321e68e2df834090dc1303ca2f5 inherit properties_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe3edb1382f32f349c504d74d25236a9 inherit properties_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="afe3edb1382f32f349c504d74d25236a9" name="afe3edb1382f32f349c504d74d25236a9"></a>
 ArraySegment&lt; byte &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>compressedData</b><code> [get]</code></td></tr>
-<tr class="separator:afe3edb1382f32f349c504d74d25236a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6b1174762ba97beb14139fd03850f144"><td class="memItemLeft" align="right" valign="top"><a id="a6b1174762ba97beb14139fd03850f144" name="a6b1174762ba97beb14139fd03850f144"></a>
+<tr class="separator:afe3edb1382f32f349c504d74d25236a9 inherit properties_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b1174762ba97beb14139fd03850f144 inherit properties_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="a6b1174762ba97beb14139fd03850f144" name="a6b1174762ba97beb14139fd03850f144"></a>
 ArraySegment&lt; byte &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b><code> [get]</code></td></tr>
-<tr class="separator:a6b1174762ba97beb14139fd03850f144"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa6611ce3eef38a327b8c2d1f3a14c868"><td class="memItemLeft" align="right" valign="top"><a id="aa6611ce3eef38a327b8c2d1f3a14c868" name="aa6611ce3eef38a327b8c2d1f3a14c868"></a>
+<tr class="separator:a6b1174762ba97beb14139fd03850f144 inherit properties_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa6611ce3eef38a327b8c2d1f3a14c868 inherit properties_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="aa6611ce3eef38a327b8c2d1f3a14c868" name="aa6611ce3eef38a327b8c2d1f3a14c868"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>maxKBPerSec</b><code> [get, set]</code></td></tr>
-<tr class="separator:aa6611ce3eef38a327b8c2d1f3a14c868"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:aa6611ce3eef38a327b8c2d1f3a14c868 inherit properties_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_classPurrNet_1_1NetworkModule"><td colspan="2" onclick="javascript:toggleInherit('properties_classPurrNet_1_1NetworkModule')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a></td></tr>
 <tr class="memitem:a41edc6b530121f65f707d0f2a26412d7 inherit properties_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a41edc6b530121f65f707d0f2a26412d7" name="a41edc6b530121f65f707d0f2a26412d7"></a>
 <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td><td class="memItemRight" valign="bottom"><b>parent</b><code> [get]</code></td></tr>
@@ -312,9 +327,13 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
-<tr class="memitem:abc3cef1fad3243d1e57bcb920df774ec"><td class="memItemLeft" align="right" valign="top"><a id="abc3cef1fad3243d1e57bcb920df774ec" name="abc3cef1fad3243d1e57bcb920df774ec"></a>
+<tr class="memitem:a41a2d2d5963913e0c3381b22ee1d306e"><td class="memItemLeft" align="right" valign="top"><a id="a41a2d2d5963913e0c3381b22ee1d306e" name="a41a2d2d5963913e0c3381b22ee1d306e"></a>
+Action&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onDataChanged</b></td></tr>
+<tr class="separator:a41a2d2d5963913e0c3381b22ee1d306e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header events_classPurrNet_1_1SyncBigData"><td colspan="2" onclick="javascript:toggleInherit('events_classPurrNet_1_1SyncBigData')"><img src="closed.png" alt="-"/>&#160;Events inherited from <a class="el" href="classPurrNet_1_1SyncBigData.html">PurrNet.SyncBigData</a></td></tr>
+<tr class="memitem:abc3cef1fad3243d1e57bcb920df774ec inherit events_classPurrNet_1_1SyncBigData"><td class="memItemLeft" align="right" valign="top"><a id="abc3cef1fad3243d1e57bcb920df774ec" name="abc3cef1fad3243d1e57bcb920df774ec"></a>
 Action&lt; <a class="el" href="structPurrNet_1_1SyncStatus.html">SyncStatus</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onSyncStatusChanged</b></td></tr>
-<tr class="separator:abc3cef1fad3243d1e57bcb920df774ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:abc3cef1fad3243d1e57bcb920df774ec inherit events_classPurrNet_1_1SyncBigData"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
@@ -328,8 +347,8 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <tr class="separator:a97aebd580ff022b5e5df0aad4f3a4bd2 inherit pro_static_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a71b3f097616e9a97b6246074a10438a3" name="a71b3f097616e9a97b6246074a10438a3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a71b3f097616e9a97b6246074a10438a3">&#9670;&#160;</a></span>OnObserverAdded()</h2>
+<a id="ad605dd2301edd295b64d3ce22a7e57e9" name="ad605dd2301edd295b64d3ce22a7e57e9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad605dd2301edd295b64d3ce22a7e57e9">&#9670;&#160;</a></span>OnDataReady()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -338,105 +357,32 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">override void PurrNet.SyncBigData.OnObserverAdded </td>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncAsset.html">PurrNet.SyncAsset</a>&lt; T &gt;.OnDataReady </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
-          <td class="paramname"><em>player</em></td><td>)</td>
+          <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
 
-<p>Called when an observer is added. Server only.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">player</td><td>The observer player id</td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#aa550885b27e3617c3c8cd392c23a5524">PurrNet.NetworkModule</a>.</p>
-
-</div>
-</div>
-<a id="a57cf3b6cd5ed192cf9e65cff334b068b" name="a57cf3b6cd5ed192cf9e65cff334b068b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a57cf3b6cd5ed192cf9e65cff334b068b">&#9670;&#160;</a></span>OnObserverRemoved()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">override void PurrNet.SyncBigData.OnObserverRemoved </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
-          <td class="paramname"><em>player</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Called when an observer is removed. Server only.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">player</td><td></td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#ab76e77b984192522e5a9e686986d35c1">PurrNet.NetworkModule</a>.</p>
-
-</div>
-</div>
-<a id="a00249c72c97dd6d805a39359852a4da8" name="a00249c72c97dd6d805a39359852a4da8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a00249c72c97dd6d805a39359852a4da8">&#9670;&#160;</a></span>OnTick()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void PurrNet.SyncBigData.OnTick </td>
-          <td>(</td>
-          <td class="paramtype">float&#160;</td>
-          <td class="paramname"><em>delta</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Similar to FixedUpdate but tailored for networked objects and it's tick system.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">delta</td><td></td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p>Implements <a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">PurrNet.ITick</a>.</p>
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1SyncBigData.html">PurrNet.SyncBigData</a>.</p>
 
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>Assets/PurrNet/Runtime/Components/NetworkModule/SyncBigData.cs</li>
+<li>Assets/PurrNet/Runtime/Components/NetworkModule/SyncAsset.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="classPurrNet_1_1SyncBigData.html">SyncBigData</a></li>
+    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="classPurrNet_1_1SyncAsset.html">SyncAsset</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
   </ul>
 </div>
