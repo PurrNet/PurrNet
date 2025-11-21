@@ -40,6 +40,7 @@ var namespacePurrNet_1_1Modules =
     [ "PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "ReliableConnectionHistory", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
     [ "RollbackModule", "classPurrNet_1_1Modules_1_1RollbackModule.html", null ],
+    [ "RPCBatch", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
     [ "RPCModule", "classPurrNet_1_1Modules_1_1RPCModule.html", null ],
     [ "RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],
     [ "RpcRequest", "structPurrNet_1_1Modules_1_1RpcRequest.html", null ],

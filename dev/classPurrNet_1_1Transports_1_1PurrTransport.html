@@ -115,6 +115,10 @@ Inheritance diagram for PurrNet.Transports.PurrTransport:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:abf7ac230ca71787d2ceb59b89d4f165a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#abf7ac230ca71787d2ceb59b89d4f165a">SupportsChannel</a> (Channel channel)</td></tr>
+<tr class="separator:abf7ac230ca71787d2ceb59b89d4f165a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aec42f838e005770b2a25ba87674350ad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#aec42f838e005770b2a25ba87674350ad">GetMTU</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> target, Channel channel, bool asServer)</td></tr>
+<tr class="separator:aec42f838e005770b2a25ba87674350ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af02665fbf9f1ad67f286a26b2a5d82e6"><td class="memItemLeft" align="right" valign="top">async void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#af02665fbf9f1ad67f286a26b2a5d82e6">Listen</a> (ushort port)</td></tr>
 <tr class="separator:af02665fbf9f1ad67f286a26b2a5d82e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a91d464d84a2f3bec857c2fab94789e41"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a91d464d84a2f3bec857c2fab94789e41">StopListening</a> ()</td></tr>
@@ -158,6 +162,12 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>StartClient</b> ()</t
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StopClient</b> ()</td></tr>
 <tr class="memdesc:afcc3e6a38f346833675235496a200563 inherit pub_methods_classPurrNet_1_1Transports_1_1GenericTransport"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops the client. This will disconnect from the server. Optionally, you can pass a <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> to register client modules. If you do not pass a <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a>, it will try to find one in the hierarchy.  <br /></td></tr>
 <tr class="separator:afcc3e6a38f346833675235496a200563 inherit pub_methods_classPurrNet_1_1Transports_1_1GenericTransport"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afa464cc871a335cfcfa01ed80c67e63c"><td class="memItemLeft" align="right" valign="top"><a id="afa464cc871a335cfcfa01ed80c67e63c" name="afa464cc871a335cfcfa01ed80c67e63c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>SupportsChannel</b> (Channel channel)</td></tr>
+<tr class="separator:afa464cc871a335cfcfa01ed80c67e63c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ac3bb184fe2913de57666f3ff4b01f6"><td class="memItemLeft" align="right" valign="top"><a id="a0ac3bb184fe2913de57666f3ff4b01f6" name="a0ac3bb184fe2913de57666f3ff4b01f6"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMTU</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> target, Channel channel, bool asServer)</td></tr>
+<tr class="separator:a0ac3bb184fe2913de57666f3ff4b01f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af93c7e3cc31101e327f392839e24f9b1"><td class="memItemLeft" align="right" valign="top"><a id="af93c7e3cc31101e327f392839e24f9b1" name="af93c7e3cc31101e327f392839e24f9b1"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SendServerKeepAlive</b> ()</td></tr>
 <tr class="separator:af93c7e3cc31101e327f392839e24f9b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -376,6 +386,42 @@ OnConnectionState&#160;</td><td class="memItemRight" valign="bottom"><b>onConnec
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1Transports_1_1IConnectable.html">PurrNet.Transports.IConnectable</a>.</p>
+
+</div>
+</div>
+<a id="aec42f838e005770b2a25ba87674350ad" name="aec42f838e005770b2a25ba87674350ad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aec42f838e005770b2a25ba87674350ad">&#9670;&#160;</a></span>GetMTU()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int PurrNet.Transports.PurrTransport.GetMTU </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>&#160;</td>
+          <td class="paramname"><em>target</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Channel&#160;</td>
+          <td class="paramname"><em>channel</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>asServer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">PurrNet.Transports.ITransport</a>.</p>
 
 </div>
 </div>
@@ -666,6 +712,26 @@ OnConnectionState&#160;</td><td class="memItemRight" valign="bottom"><b>onConnec
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1Transports_1_1IListener.html">PurrNet.Transports.IListener</a>.</p>
+
+</div>
+</div>
+<a id="abf7ac230ca71787d2ceb59b89d4f165a" name="abf7ac230ca71787d2ceb59b89d4f165a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf7ac230ca71787d2ceb59b89d4f165a">&#9670;&#160;</a></span>SupportsChannel()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.Transports.PurrTransport.SupportsChannel </td>
+          <td>(</td>
+          <td class="paramtype">Channel&#160;</td>
+          <td class="paramname"><em>channel</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">PurrNet.Transports.ITransport</a>.</p>
 
 </div>
 </div>

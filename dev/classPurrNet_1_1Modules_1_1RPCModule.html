@@ -129,6 +129,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>AppendToBufferedRPCs<
 <tr class="memitem:aae8fc7678f9f0ba1b8409bd8f472e2c4"><td class="memItemLeft" align="right" valign="top"><a id="aae8fc7678f9f0ba1b8409bd8f472e2c4" name="aae8fc7678f9f0ba1b8409bd8f472e2c4"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>AppendToBufferedRPCs</b> (<a class="el" href="structPurrNet_1_1RPCPacket.html">RPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
 <tr class="separator:aae8fc7678f9f0ba1b8409bd8f472e2c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a46ec22b047eef7d5d0048278856aa155"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html#a46ec22b047eef7d5d0048278856aa155">BatchToServer&lt; T &gt;</a> (T packet, Channel signatureChannel)</td></tr>
+<tr class="separator:a46ec22b047eef7d5d0048278856aa155"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c169f233592901ec858270acdf1bd00"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html#a2c169f233592901ec858270acdf1bd00">BatchToTargets&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1Pooling_1_1DisposableList.html">DisposableList</a>&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, T packet, Channel signatureChannel)</td></tr>
+<tr class="separator:a2c169f233592901ec858270acdf1bd00"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69bc0dcc51d9bd68593c03e0760b1daa"><td class="memItemLeft" align="right" valign="top"><a id="a69bc0dcc51d9bd68593c03e0760b1daa" name="a69bc0dcc51d9bd68593c03e0760b1daa"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>BatchNetworkMessages</b> ()</td></tr>
+<tr class="separator:a69bc0dcc51d9bd68593c03e0760b1daa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aec2086a69b56b88c0f903ce038c36a5a"><td class="memItemLeft" align="right" valign="top"><a id="aec2086a69b56b88c0f903ce038c36a5a" name="aec2086a69b56b88c0f903ce038c36a5a"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Enable</b> (bool asServer)</td></tr>
 <tr class="separator:aec2086a69b56b88c0f903ce038c36a5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -191,6 +198,84 @@ static RPCPostProcessDelegate&#160;</td><td class="memItemRight" valign="bottom"
 <tr class="separator:a540fa33dff864bbacf9f0e781747593c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a46ec22b047eef7d5d0048278856aa155" name="a46ec22b047eef7d5d0048278856aa155"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a46ec22b047eef7d5d0048278856aa155">&#9670;&#160;</a></span>BatchToServer&lt; T &gt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.Modules.RPCModule.BatchToServer&lt; T &gt; </td>
+          <td>(</td>
+          <td class="paramtype">T&#160;</td>
+          <td class="paramname"><em>packet</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Channel&#160;</td>
+          <td class="paramname"><em>signatureChannel</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="typeconstraint">
+<dl><dt><b>Type Constraints</b></dt><dd>
+<table border="0" cellspacing="2" cellpadding="0">
+<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>IRpc</em></td><td>&#160;</td></tr>
+</table>
+</dd>
+</dl>
+</div>
+
+</div>
+</div>
+<a id="a2c169f233592901ec858270acdf1bd00" name="a2c169f233592901ec858270acdf1bd00"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2c169f233592901ec858270acdf1bd00">&#9670;&#160;</a></span>BatchToTargets&lt; T &gt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.Modules.RPCModule.BatchToTargets&lt; T &gt; </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Pooling_1_1DisposableList.html">DisposableList</a>&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td>
+          <td class="paramname"><em>players</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">T&#160;</td>
+          <td class="paramname"><em>packet</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Channel&#160;</td>
+          <td class="paramname"><em>signatureChannel</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="typeconstraint">
+<dl><dt><b>Type Constraints</b></dt><dd>
+<table border="0" cellspacing="2" cellpadding="0">
+<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>IRpc</em></td><td>&#160;</td></tr>
+</table>
+</dd>
+</dl>
+</div>
+
+</div>
+</div>
 <a id="aed25a038fb527f1166221023708965df" name="aed25a038fb527f1166221023708965df"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aed25a038fb527f1166221023708965df">&#9670;&#160;</a></span>Disable()</h2>
 
