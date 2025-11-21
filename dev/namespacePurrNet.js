@@ -124,6 +124,8 @@ var namespacePurrNet =
     [ "SyncListChange", "structPurrNet_1_1SyncListChange.html", null ],
     [ "SyncQueue", "classPurrNet_1_1SyncQueue.html", "classPurrNet_1_1SyncQueue" ],
     [ "SyncQueueChange", "structPurrNet_1_1SyncQueueChange.html", null ],
+    [ "SyncRawFile", "classPurrNet_1_1SyncRawFile.html", null ],
+    [ "SyncSpriteFile", "classPurrNet_1_1SyncSpriteFile.html", null ],
     [ "SyncStatus", "structPurrNet_1_1SyncStatus.html", null ],
     [ "SyncTextureAsset", "classPurrNet_1_1SyncTextureAsset.html", null ],
     [ "SyncTextureFile", "classPurrNet_1_1SyncTextureFile.html", null ],

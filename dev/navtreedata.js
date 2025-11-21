@@ -53,8 +53,8 @@ var NAVTREEINDEX =
 "classPurrNet_1_1Modules_1_1TickManager.html#a227da955ded5ed38b90fa6198666e5b2",
 "classPurrNet_1_1NetworkManager.html#acb61530123b279cdc3eae54c4d2e4494",
 "classPurrNet_1_1SerializableDictionary.html",
-"classPurrNet_1_1Transports_1_1GenericTransport.html",
-"structPurrNet_1_1Modules_1_1RpcResponse.html"
+"classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html",
+"structPurrNet_1_1Modules_1_1RPCPacketPacker.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

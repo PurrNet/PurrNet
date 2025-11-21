@@ -441,6 +441,12 @@ var hierarchy =
       [ "PurrNet.SyncTextureAsset", "classPurrNet_1_1SyncTextureAsset.html", null ]
     ] ],
     [ "PurrNet.SyncDictionaryChange< TKey, TValue >", "structPurrNet_1_1SyncDictionaryChange.html", null ],
+    [ "PurrNet.SyncFile< byte[]>", "classPurrNet_1_1SyncFile.html", [
+      [ "PurrNet.SyncRawFile", "classPurrNet_1_1SyncRawFile.html", null ]
+    ] ],
+    [ "PurrNet.SyncFile< Sprite >", "classPurrNet_1_1SyncFile.html", [
+      [ "PurrNet.SyncSpriteFile", "classPurrNet_1_1SyncSpriteFile.html", null ]
+    ] ],
     [ "PurrNet.SyncFile< Texture2D >", "classPurrNet_1_1SyncFile.html", [
       [ "PurrNet.SyncTextureFile", "classPurrNet_1_1SyncTextureFile.html", null ]
     ] ],
