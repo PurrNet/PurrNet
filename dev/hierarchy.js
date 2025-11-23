@@ -130,6 +130,7 @@ var hierarchy =
       [ "PurrNet.Modules.SpawnID", "structPurrNet_1_1Modules_1_1SpawnID.html", null ],
       [ "PurrNet.NetworkID", "structPurrNet_1_1NetworkID.html", null ],
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
+      [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
       [ "PurrNet.NetworkTransformData", "structPurrNet_1_1NetworkTransformData.html", null ],
       [ "PurrNet.Packing.CompressedFloat", "structPurrNet_1_1Packing_1_1CompressedFloat.html", null ],
       [ "PurrNet.Packing.CompressedVector2", "structPurrNet_1_1Packing_1_1CompressedVector2.html", null ],
@@ -148,6 +149,7 @@ var hierarchy =
       [ "PurrNet.Profiler.BroadcastSample", "structPurrNet_1_1Profiler_1_1BroadcastSample.html", null ],
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
       [ "PurrNet.SceneID", "structPurrNet_1_1SceneID.html", null ],
+      [ "PurrNet.StaticRPCHeader", "structPurrNet_1_1StaticRPCHeader.html", null ],
       [ "PurrNet.Transports.ByteData", "structPurrNet_1_1Transports_1_1ByteData.html", null ],
       [ "PurrNet.Transports.Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ]
     ] ],
