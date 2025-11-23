@@ -129,6 +129,7 @@ var hierarchy =
       [ "PurrNet.Modules.PrefabPieceID", "structPurrNet_1_1Modules_1_1PrefabPieceID.html", null ],
       [ "PurrNet.Modules.SpawnID", "structPurrNet_1_1Modules_1_1SpawnID.html", null ],
       [ "PurrNet.NetworkID", "structPurrNet_1_1NetworkID.html", null ],
+      [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkTransformData", "structPurrNet_1_1NetworkTransformData.html", null ],
       [ "PurrNet.Packing.CompressedFloat", "structPurrNet_1_1Packing_1_1CompressedFloat.html", null ],
       [ "PurrNet.Packing.CompressedVector2", "structPurrNet_1_1Packing_1_1CompressedVector2.html", null ],
