@@ -219,6 +219,7 @@ var hierarchy =
       [ "PurrNet.Authentication.AuthenticationRequestData", "structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html", null ],
       [ "PurrNet.Authentication.AuthenticationResponse", "structPurrNet_1_1Authentication_1_1AuthenticationResponse.html", null ],
       [ "PurrNet.ChildRPCPacket", "structPurrNet_1_1ChildRPCPacket.html", null ],
+      [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
       [ "PurrNet.Modules.ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
       [ "PurrNet.Modules.ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],
       [ "PurrNet.Modules.DespawnPacket", "structPurrNet_1_1Modules_1_1DespawnPacket.html", null ],
