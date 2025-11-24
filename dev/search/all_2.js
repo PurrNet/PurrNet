@@ -8,7 +8,7 @@ var searchData=
   ['childrpcpacket_5',['ChildRPCPacket',['../structPurrNet_1_1ChildRPCPacket.html',1,'PurrNet']]],
   ['clear_6',['Clear',['../classPurrNet_1_1SyncList.html#a83c1020260598e0e1ce83491ff971440',1,'PurrNet.SyncList.Clear()'],['../classPurrNet_1_1SyncHashSet.html#a0d75d35d5015317a5fb11e1e09ce8694',1,'PurrNet.SyncHashSet.Clear()'],['../classPurrNet_1_1SyncDictionary.html#a62c5378b073c7ff719475aa70164a422',1,'PurrNet.SyncDictionary.Clear()']]],
   ['clearfuture_7',['ClearFuture',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#af0c2621c953effefd6f4e08427a6f74b',1,'PurrNet::Modules::SimpleHistory']]],
-  ['clearinterpolation_8',['ClearInterpolation',['../classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b',1,'PurrNet::NetworkTransform']]],
+  ['clearinterpolation_8',['ClearInterpolation',['../classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b',1,'PurrNet.NetworkTransform.ClearInterpolation()'],['../interfacePurrNet_1_1INetworkTransform.html#a39cd6bbcf091951284317363b09ec235',1,'PurrNet.INetworkTransform.ClearInterpolation()']]],
   ['clearownerships_9',['ClearOwnerships',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html#a8c28e6e5c4d92ea4d447674bacb90d68',1,'PurrNet::Modules::GlobalOwnershipModule']]],
   ['clearpast_10',['ClearPast',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a6084cacf773a7fdf1b40fa522317eaff',1,'PurrNet::Modules::SimpleHistory']]],
   ['clientattribute_11',['ClientAttribute',['../classPurrNet_1_1ClientAttribute.html',1,'PurrNet']]],
@@ -32,5 +32,6 @@ var searchData=
   ['cookiesmodule_29',['CookiesModule',['../classPurrNet_1_1Modules_1_1CookiesModule.html',1,'PurrNet::Modules']]],
   ['count_30',['Count',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a454c38bc9b5f86ea7afddedba3f6cc77',1,'PurrNet.Modules.SimpleHistory.Count()'],['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a58bc1b3b876368825553970679eb8d3c',1,'PurrNet.Collections.PurrHashSet.Count()'],['../classPurrNet_1_1SyncDictionary.html#aa885b20b3d2d126b30de341bbf6c1dab',1,'PurrNet.SyncDictionary.Count()'],['../classPurrNet_1_1SyncHashSet.html#a45fc5b8532e26ef4cbd861d493db3e67',1,'PurrNet.SyncHashSet.Count()'],['../classPurrNet_1_1SyncList.html#a07ddff797ff9fdea2e57eff9432650f6',1,'PurrNet.SyncList.Count()']]],
   ['courtesyofattribute_31',['CourtesyOfAttribute',['../classPurrNet_1_1Contributors_1_1CourtesyOfAttribute.html',1,'PurrNet::Contributors']]],
-  ['createbot_32',['CreateBot',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afcc4d8439d05cb7ed9fca3be12d52429',1,'PurrNet::Modules::PlayersManager']]]
+  ['createbot_32',['CreateBot',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afcc4d8439d05cb7ed9fca3be12d52429',1,'PurrNet::Modules::PlayersManager']]],
+  ['createprototype_33',['CreatePrototype',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8',1,'PurrNet::Modules::HierarchyV2']]]
 ];

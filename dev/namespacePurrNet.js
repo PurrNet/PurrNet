@@ -26,6 +26,7 @@ var namespacePurrNet =
     [ "HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
     [ "IMath", "interfacePurrNet_1_1IMath.html", null ],
     [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", null ],
+    [ "INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", "interfacePurrNet_1_1INetworkTransform" ],
     [ "INetworkVisibilityRule", "interfacePurrNet_1_1INetworkVisibilityRule.html", "interfacePurrNet_1_1INetworkVisibilityRule" ],
     [ "Interpolated", "classPurrNet_1_1Interpolated.html", null ],
     [ "InterpolatedWithDispose", "classPurrNet_1_1InterpolatedWithDispose.html", null ],

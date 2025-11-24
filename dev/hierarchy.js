@@ -192,6 +192,9 @@ var hierarchy =
       [ "PurrNet.Modules.TickManager", "classPurrNet_1_1Modules_1_1TickManager.html", null ],
       [ "PurrNet.PlayersBroadcaster", "classPurrNet_1_1PlayersBroadcaster.html", null ]
     ] ],
+    [ "PurrNet.INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", [
+      [ "PurrNet.NetworkTransform", "classPurrNet_1_1NetworkTransform.html", null ]
+    ] ],
     [ "PurrNet.INetworkVisibilityRule", "interfacePurrNet_1_1INetworkVisibilityRule.html", [
       [ "PurrNet.NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", [
         [ "PurrNet.AlwaysVisibleRule", "classPurrNet_1_1AlwaysVisibleRule.html", null ],
