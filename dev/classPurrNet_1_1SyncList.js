@@ -9,6 +9,7 @@ var classPurrNet_1_1SyncList =
     [ "Remove", "classPurrNet_1_1SyncList.html#a620762d9aa349c0dd0316e2c55134dd5", null ],
     [ "RemoveAt", "classPurrNet_1_1SyncList.html#a2d4d5daed1bc6c261d940d12a0dda411", null ],
     [ "SetDirty", "classPurrNet_1_1SyncList.html#a2d66eec69e15202028625ea29ebaa61f", null ],
+    [ "Sort", "classPurrNet_1_1SyncList.html#a175b0599351ff27d4ee5660359aaca5a", null ],
     [ "Count", "classPurrNet_1_1SyncList.html#a07ddff797ff9fdea2e57eff9432650f6", null ],
     [ "ownerAuth", "classPurrNet_1_1SyncList.html#a9b0d65a3c572544c2c379d7226fe7748", null ],
     [ "onChanged", "classPurrNet_1_1SyncList.html#adba87c78ce8e6534415b097edc73aa1d", null ]
