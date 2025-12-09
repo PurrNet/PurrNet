@@ -173,14 +173,26 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsValidPlayer</b> (<a
 <tr class="memitem:a8849dbd4d4c9c2468a7601c33bd83289"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a8849dbd4d4c9c2468a7601c33bd83289">KickPlayer</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> playerId)</td></tr>
 <tr class="memdesc:a8849dbd4d4c9c2468a7601c33bd83289"><td class="mdescLeft">&#160;</td><td class="mdescRight">Kick a player from the server. If the user has a connection, it will be closed.   <a href="classPurrNet_1_1Modules_1_1PlayersManager.html#a8849dbd4d4c9c2468a7601c33bd83289">More...</a><br /></td></tr>
 <tr class="separator:a8849dbd4d4c9c2468a7601c33bd83289"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1e2c91986c82ab5cc4dfad0b47415f9"><td class="memItemLeft" align="right" valign="top"><a id="ae1e2c91986c82ab5cc4dfad0b47415f9" name="ae1e2c91986c82ab5cc4dfad0b47415f9"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServerModule</b> ()</td></tr>
+<tr class="separator:ae1e2c91986c82ab5cc4dfad0b47415f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a659011b89399ab248e90e62ae386f462"><td class="memItemLeft" align="right" valign="top"><a id="a659011b89399ab248e90e62ae386f462" name="a659011b89399ab248e90e62ae386f462"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>TransferToNewServer</b> ()</td></tr>
+<tr class="separator:a659011b89399ab248e90e62ae386f462"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a4cb8cad608f5761c65e276e3a6193a"><td class="memItemLeft" align="right" valign="top"><a id="a1a4cb8cad608f5761c65e276e3a6193a" name="a1a4cb8cad608f5761c65e276e3a6193a"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>PostTransferToNewServer</b> ()</td></tr>
+<tr class="separator:a1a4cb8cad608f5761c65e276e3a6193a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa1670416849d650ce610c0a465ac5ff0"><td class="memItemLeft" align="right" valign="top"><a id="aa1670416849d650ce610c0a465ac5ff0" name="aa1670416849d650ce610c0a465ac5ff0"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>PostPromoteToServerModule</b> ()</td></tr>
+<tr class="separator:aa1670416849d650ce610c0a465ac5ff0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a91b07d152b79aab9ec891023aa4dd145"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a91b07d152b79aab9ec891023aa4dd145">Enable</a> (bool asServer)</td></tr>
 <tr class="separator:a91b07d152b79aab9ec891023aa4dd145"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed5cf76124198444fdc22f902fbd51c1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#aed5cf76124198444fdc22f902fbd51c1">Disable</a> (bool asServer)</td></tr>
+<tr class="separator:aed5cf76124198444fdc22f902fbd51c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af40ee26e97de2ecacf28d57ccf39395f"><td class="memItemLeft" align="right" valign="top"><a id="af40ee26e97de2ecacf28d57ccf39395f" name="af40ee26e97de2ecacf28d57ccf39395f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetCookie</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> playerId, out string cookie)</td></tr>
 <tr class="memdesc:af40ee26e97de2ecacf28d57ccf39395f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Try to get the cookie of a playerId. Good for session management.  <br /></td></tr>
 <tr class="separator:af40ee26e97de2ecacf28d57ccf39395f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aed5cf76124198444fdc22f902fbd51c1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#aed5cf76124198444fdc22f902fbd51c1">Disable</a> (bool asServer)</td></tr>
-<tr class="separator:aed5cf76124198444fdc22f902fbd51c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1a21a41cc2195226c2b0f4dd74f2954c"><td class="memItemLeft" align="right" valign="top"><a id="a1a21a41cc2195226c2b0f4dd74f2954c" name="a1a21a41cc2195226c2b0f4dd74f2954c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>OnConnected</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
 <tr class="separator:a1a21a41cc2195226c2b0f4dd74f2954c"><td class="memSeparator" colspan="2">&#160;</td></tr>

@@ -25,6 +25,7 @@ var classPurrNet_1_1NetworkIdentity =
     [ "OnPreObserverAdded", "classPurrNet_1_1NetworkIdentity.html#a4923155dc84dc937707ebf19fa642690", null ],
     [ "OnSpawned", "classPurrNet_1_1NetworkIdentity.html#a932ab159855e93725ccf83e0a2797381", null ],
     [ "OnSpawned", "classPurrNet_1_1NetworkIdentity.html#a14086750126d4e89bea12bfa8cb9c742", null ],
+    [ "PromoteToServer", "classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e", null ],
     [ "ResetIsSetup", "classPurrNet_1_1NetworkIdentity.html#af42ac01c6542efe7a2e8c29c3bcff710", null ],
     [ "Spawn", "classPurrNet_1_1NetworkIdentity.html#a6cbd9682b4d1f0f9a18b4d6ecffc27e6", null ],
     [ "blacklist", "classPurrNet_1_1NetworkIdentity.html#a1fbc33d0cc20898ca64304db209f4106", null ],

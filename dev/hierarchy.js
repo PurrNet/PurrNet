@@ -60,6 +60,7 @@ var hierarchy =
     [ "PurrNet.Modules.HierarchyPool", "classPurrNet_1_1Modules_1_1HierarchyPool.html", null ],
     [ "PurrNet.Modules.HierarchyV2", "classPurrNet_1_1Modules_1_1HierarchyV2.html", null ],
     [ "PurrNet.Transports.HostJoinInfo", "structPurrNet_1_1Transports_1_1HostJoinInfo.html", null ],
+    [ "PurrNet.HostMigrationRules", "structPurrNet_1_1HostMigrationRules.html", null ],
     [ "PurrNet.Modules.IBroadcastCallback", "interfacePurrNet_1_1Modules_1_1IBroadcastCallback.html", null ],
     [ "IBufferWriter", null, [
       [ "PurrNet.Packing.BitPackerWrapper", "structPurrNet_1_1Packing_1_1BitPackerWrapper.html", null ]

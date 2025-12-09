@@ -24,6 +24,7 @@ var namespacePurrNet =
     [ "GenericRPCHeader", "structPurrNet_1_1GenericRPCHeader.html", null ],
     [ "GuardFailureActionAttribute", "classPurrNet_1_1GuardFailureActionAttribute.html", null ],
     [ "HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
+    [ "HostMigrationRules", "structPurrNet_1_1HostMigrationRules.html", null ],
     [ "IMath", "interfacePurrNet_1_1IMath.html", null ],
     [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", null ],
     [ "INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", "interfacePurrNet_1_1INetworkTransform" ],

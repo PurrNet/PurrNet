@@ -393,6 +393,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPoolReset</
 <tr class="memitem:afe9ac7ce0d242255b1a2e730a4851de4"><td class="memItemLeft" align="right" valign="top"><a id="afe9ac7ce0d242255b1a2e730a4851de4" name="afe9ac7ce0d242255b1a2e730a4851de4"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDestroy</b> ()</td></tr>
 <tr class="separator:afe9ac7ce0d242255b1a2e730a4851de4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab9706c0e2c02592b957e7cd2851d8e1e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e">PromoteToServer</a> ()</td></tr>
+<tr class="memdesc:ab9706c0e2c02592b957e7cd2851d8e1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.   <a href="classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e">More...</a><br /></td></tr>
+<tr class="separator:ab9706c0e2c02592b957e7cd2851d8e1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
@@ -516,6 +519,9 @@ IReadOnlyList&lt; <a class="el" href="classPurrNet_1_1NetworkModule.html">Networ
 <a class="el" href="interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html">IReadonlyHashSet</a>&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>blacklist</b><code> [get]</code></td></tr>
 <tr class="memdesc:a1fbc33d0cc20898ca64304db209f4106"><td class="mdescLeft">&#160;</td><td class="mdescRight">Blacklist of players that can't interact with this identity.  <br /></td></tr>
 <tr class="separator:a1fbc33d0cc20898ca64304db209f4106"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9745bad88e349d054de592905c674216"><td class="memItemLeft" align="right" valign="top"><a id="a9745bad88e349d054de592905c674216" name="a9745bad88e349d054de592905c674216"></a>
+<a class="el" href="classPurrNet_1_1NetworkRules.html">NetworkRules</a>&#160;</td><td class="memItemRight" valign="bottom"><b>networkRules</b><code> [get]</code></td></tr>
+<tr class="separator:a9745bad88e349d054de592905c674216"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2cfed1e82410e15c3d60dcb14899d4c8"><td class="memItemLeft" align="right" valign="top"><a id="a2cfed1e82410e15c3d60dcb14899d4c8" name="a2cfed1e82410e15c3d60dcb14899d4c8"></a>
 <a class="el" href="classPurrNet_1_1NetworkVisibilityRuleSet.html">NetworkVisibilityRuleSet</a>&#160;</td><td class="memItemRight" valign="bottom"><b>visibilityRules</b><code> [get]</code></td></tr>
 <tr class="separator:a2cfed1e82410e15c3d60dcb14899d4c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1008,7 +1014,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#aa8e99a9f22f420b8e7efe0a187562c53">PurrNet.NetworkTransform</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#aa8e99a9f22f420b8e7efe0a187562c53">PurrNet.NetworkTransform</a>, and <a class="el" href="classPurrNet_1_1NetworkOwnershipToggle.html#a50c4c40c20efa32fd6a1189e1848cb75">PurrNet.NetworkOwnershipToggle</a>.</p>
 
 </div>
 </div>
@@ -1152,7 +1158,36 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27">PurrNet.NetworkTransform</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#aa703b27b71d3dc97450f8f5c07f0034e">PurrNet.StateMachine.StateMachine</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a7e8e31f524129e43f8138b376a64edb3">PurrNet.NetworkBones</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#aa703b27b71d3dc97450f8f5c07f0034e">PurrNet.StateMachine.StateMachine</a>.</p>
+
+</div>
+</div>
+<a id="ab9706c0e2c02592b957e7cd2851d8e1e" name="ab9706c0e2c02592b957e7cd2851d8e1e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab9706c0e2c02592b957e7cd2851d8e1e">&#9670;&#160;</a></span>PromoteToServer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkIdentity.PromoteToServer </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.  </p>
+
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkBones.html#aafc635ff3b42490da93f937f1b57aa92">PurrNet.NetworkBones</a>.</p>
 
 </div>
 </div>

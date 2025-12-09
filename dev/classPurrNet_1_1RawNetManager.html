@@ -216,6 +216,22 @@ StartFlags&#160;</td><td class="memItemRight" valign="bottom"><b>startClientFlag
 <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a>&#160;</td><td class="memItemRight" valign="bottom"><b>broadcastModule</b><code> [get]</code></td></tr>
 <tr class="memdesc:af3b4d846154aad1a0a53bc54d9ced439"><td class="mdescLeft">&#160;</td><td class="mdescRight">The players broadcaster of the network manager. Defaults to the server players broadcaster if the server is active. Otherwise it defaults to the client players broadcaster.  <br /></td></tr>
 <tr class="separator:af3b4d846154aad1a0a53bc54d9ced439"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a193c141a4ecb1a9129dff423bc8e3c73"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#a193c141a4ecb1a9129dff423bc8e3c73">isPromotingToServer</a><code> [get]</code></td></tr>
+<tr class="separator:a193c141a4ecb1a9129dff423bc8e3c73"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a025fc22af457a493327505f9114b2ee8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#a025fc22af457a493327505f9114b2ee8">isTranferingToNewServer</a><code> [get]</code></td></tr>
+<tr class="separator:a025fc22af457a493327505f9114b2ee8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad954dfad917a12abd580cbc3ddd005db"><td class="memItemLeft" align="right" valign="top"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#ad954dfad917a12abd580cbc3ddd005db">currentTransport</a><code> [get]</code></td></tr>
+<tr class="separator:ad954dfad917a12abd580cbc3ddd005db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header properties_interfacePurrNet_1_1IRegisterModules"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1IRegisterModules')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a></td></tr>
+<tr class="memitem:a0120d2226dc90b416623d295fa2cd687 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a0120d2226dc90b416623d295fa2cd687" name="a0120d2226dc90b416623d295fa2cd687"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isPromotingToServer</b><code> [get]</code></td></tr>
+<tr class="separator:a0120d2226dc90b416623d295fa2cd687 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93c148cdef1c2618b62340918d31091c inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a93c148cdef1c2618b62340918d31091c" name="a93c148cdef1c2618b62340918d31091c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isTranferingToNewServer</b><code> [get]</code></td></tr>
+<tr class="separator:a93c148cdef1c2618b62340918d31091c inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a638e665d9b9b53ea94752e7b3f3856a9 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a638e665d9b9b53ea94752e7b3f3856a9" name="a638e665d9b9b53ea94752e7b3f3856a9"></a>
+<a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><b>currentTransport</b><code> [get]</code></td></tr>
+<tr class="separator:a638e665d9b9b53ea94752e7b3f3856a9 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_interfacePurrNet_1_1INetworkManager"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1INetworkManager')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1INetworkManager.html">PurrNet.INetworkManager</a></td></tr>
 <tr class="memitem:add18922ded1c240b6a56702081f68140 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#add18922ded1c240b6a56702081f68140">isOffline</a><code> [get]</code></td></tr>
 <tr class="separator:add18922ded1c240b6a56702081f68140 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -569,6 +585,30 @@ OnTickDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPostTick<
 
 </div>
 </div>
+<a id="ad954dfad917a12abd580cbc3ddd005db" name="ad954dfad917a12abd580cbc3ddd005db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad954dfad917a12abd580cbc3ddd005db">&#9670;&#160;</a></span>currentTransport</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a> PurrNet.RawNetManager.currentTransport</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
+
+</div>
+</div>
 <a id="a89d703520b2829cf0e58f8b0c6621469" name="a89d703520b2829cf0e58f8b0c6621469"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a89d703520b2829cf0e58f8b0c6621469">&#9670;&#160;</a></span>isClient</h2>
 
@@ -617,6 +657,30 @@ OnTickDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPostTick<
 
 </div>
 </div>
+<a id="a193c141a4ecb1a9129dff423bc8e3c73" name="a193c141a4ecb1a9129dff423bc8e3c73"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a193c141a4ecb1a9129dff423bc8e3c73">&#9670;&#160;</a></span>isPromotingToServer</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.RawNetManager.isPromotingToServer</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
+
+</div>
+</div>
 <a id="ad797d0d293e277494a7da5a0d8e4e8ed" name="ad797d0d293e277494a7da5a0d8e4e8ed"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad797d0d293e277494a7da5a0d8e4e8ed">&#9670;&#160;</a></span>isServer</h2>
 
@@ -638,6 +702,30 @@ OnTickDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPostTick<
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1INetworkManager.html">PurrNet.INetworkManager</a>.</p>
+
+</div>
+</div>
+<a id="a025fc22af457a493327505f9114b2ee8" name="a025fc22af457a493327505f9114b2ee8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a025fc22af457a493327505f9114b2ee8">&#9670;&#160;</a></span>isTranferingToNewServer</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.RawNetManager.isTranferingToNewServer</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
 
 </div>
 </div>

@@ -8,5 +8,6 @@ var classPurrNet_1_1NetworkModule =
     [ "OnOwnerChanged", "classPurrNet_1_1NetworkModule.html#aab72b00fb63643e5af5454439801401e", null ],
     [ "OnPoolReset", "classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834", null ],
     [ "OnPreObserverAdded", "classPurrNet_1_1NetworkModule.html#a5beef01bbbbba2c26290101e24b96ea3", null ],
-    [ "OnPreObserverAdded", "classPurrNet_1_1NetworkModule.html#a2eed2c99fe2b2550360e7fdf8a260f48", null ]
+    [ "OnPreObserverAdded", "classPurrNet_1_1NetworkModule.html#a2eed2c99fe2b2550360e7fdf8a260f48", null ],
+    [ "PromoteToServer", "classPurrNet_1_1NetworkModule.html#a1370d458228d460a3bc2ce33610555ed", null ]
 ];
