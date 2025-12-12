@@ -1,3 +1,10 @@
+# [1.18.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.18...v1.18.0-beta.19) (2025-12-12)
+
+
+### Bug Fixes
+
+* allow to override `propagateToChildren` when giving/removing ownership ([8fb5cf7](https://github.com/PurrNet/PurrNet/commit/8fb5cf73b2571e46e022bfd046f72a711f50bfb2))
+
 # [1.18.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.17...v1.18.0-beta.18) (2025-12-11)
 
 
