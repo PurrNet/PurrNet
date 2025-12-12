@@ -222,18 +222,18 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>EvaluateVisibility</b
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EvaluateVisibility</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:ad29256abc524fb527cce1c241ebcd021"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the visibility of this object for a specific player. This will recalculate the observers of this object. This is server specific. Re-evaulation includes all children.  <br /></td></tr>
 <tr class="separator:ad29256abc524fb527cce1c241ebcd021"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8f1badb52ce30c7f9e47925b6baf40ab"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a8f1badb52ce30c7f9e47925b6baf40ab">GiveOwnership</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool silent=false)</td></tr>
-<tr class="memdesc:a8f1badb52ce30c7f9e47925b6baf40ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gives ownership of this object to the player.   <a href="classPurrNet_1_1NetworkIdentity.html#a8f1badb52ce30c7f9e47925b6baf40ab">More...</a><br /></td></tr>
-<tr class="separator:a8f1badb52ce30c7f9e47925b6baf40ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9ea4ce263917261b1e18c822863cb9c3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3">GiveOwnership</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool silent=false, bool? propagateToChildren=null)</td></tr>
+<tr class="memdesc:a9ea4ce263917261b1e18c822863cb9c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gives ownership of this object to the player.   <a href="classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3">More...</a><br /></td></tr>
+<tr class="separator:a9ea4ce263917261b1e18c822863cb9c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6cbd9682b4d1f0f9a18b4d6ecffc27e6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a6cbd9682b4d1f0f9a18b4d6ecffc27e6">Spawn</a> (GameObject prefab, <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> manager=null)</td></tr>
 <tr class="memdesc:a6cbd9682b4d1f0f9a18b4d6ecffc27e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Spawns the object over the network. The gameobject must contain a <a class="el" href="classPurrNet_1_1PrefabLink.html">PrefabLink</a> component in order to spawn. Errors will be logged if something goes wrong.   <a href="classPurrNet_1_1NetworkIdentity.html#a6cbd9682b4d1f0f9a18b4d6ecffc27e6">More...</a><br /></td></tr>
 <tr class="separator:a6cbd9682b4d1f0f9a18b4d6ecffc27e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aafe7739f6dbde509b854cd47751642a4"><td class="memItemLeft" align="right" valign="top"><a id="aafe7739f6dbde509b854cd47751642a4" name="aafe7739f6dbde509b854cd47751642a4"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>GiveOwnership</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? player, bool silent=false)</td></tr>
-<tr class="separator:aafe7739f6dbde509b854cd47751642a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2faad5666a2121411544e8189a6fa741"><td class="memItemLeft" align="right" valign="top"><a id="a2faad5666a2121411544e8189a6fa741" name="a2faad5666a2121411544e8189a6fa741"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>RemoveOwnership</b> ()</td></tr>
-<tr class="separator:a2faad5666a2121411544e8189a6fa741"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85b0f28dd87847b1a702d464c9baecd7"><td class="memItemLeft" align="right" valign="top"><a id="a85b0f28dd87847b1a702d464c9baecd7" name="a85b0f28dd87847b1a702d464c9baecd7"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>GiveOwnership</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? player, bool silent=false, bool? propagateToChildren=null)</td></tr>
+<tr class="separator:a85b0f28dd87847b1a702d464c9baecd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82e5d94e936b958c7de68e7dd3affc2a"><td class="memItemLeft" align="right" valign="top"><a id="a82e5d94e936b958c7de68e7dd3affc2a" name="a82e5d94e936b958c7de68e7dd3affc2a"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>RemoveOwnership</b> (bool? propagateToChildren=null)</td></tr>
+<tr class="separator:a82e5d94e936b958c7de68e7dd3affc2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c9b35a5b13b1750ecd0071bf5772c4b"><td class="memItemLeft" align="right" valign="top"><a id="a9c9b35a5b13b1750ecd0071bf5772c4b" name="a9c9b35a5b13b1750ecd0071bf5772c4b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>TriggerOnPreObserverAdded</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> target, bool isSpawner)</td></tr>
 <tr class="separator:a9c9b35a5b13b1750ecd0071bf5772c4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -560,8 +560,8 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 
 </div>
 </div>
-<a id="a8f1badb52ce30c7f9e47925b6baf40ab" name="a8f1badb52ce30c7f9e47925b6baf40ab"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8f1badb52ce30c7f9e47925b6baf40ab">&#9670;&#160;</a></span>GiveOwnership()</h2>
+<a id="a9ea4ce263917261b1e18c822863cb9c3" name="a9ea4ce263917261b1e18c822863cb9c3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9ea4ce263917261b1e18c822863cb9c3">&#9670;&#160;</a></span>GiveOwnership()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -576,7 +576,13 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>silent</em> = <code>false</code>&#160;</td>
+          <td class="paramname"><em>silent</em> = <code>false</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool?&#160;</td>
+          <td class="paramname"><em>propagateToChildren</em> = <code>null</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -591,6 +597,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   <table class="params">
     <tr><td class="paramname">player</td><td><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> to give ownership to</td></tr>
     <tr><td class="paramname">silent</td><td>Dont log any errors if in silent mode</td></tr>
+    <tr><td class="paramname">propagateToChildren</td><td>If true, will give ownership to all children</td></tr>
   </table>
   </dd>
 </dl>

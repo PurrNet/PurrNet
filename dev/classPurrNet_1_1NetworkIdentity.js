@@ -6,7 +6,7 @@ var classPurrNet_1_1NetworkIdentity =
     [ "GetNearestParent", "classPurrNet_1_1NetworkIdentity.html#aacf2429591c4c7a1a12f7d110674c312", null ],
     [ "GetNextId", "classPurrNet_1_1NetworkIdentity.html#a6894228bb2810c322ee8dff28353e7ba", null ],
     [ "GetNextId< T >", "classPurrNet_1_1NetworkIdentity.html#aa9ca1d8499152c7c2a641b0b8783adf6", null ],
-    [ "GiveOwnership", "classPurrNet_1_1NetworkIdentity.html#a8f1badb52ce30c7f9e47925b6baf40ab", null ],
+    [ "GiveOwnership", "classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3", null ],
     [ "IsController", "classPurrNet_1_1NetworkIdentity.html#a1c5b0531c4c6e77e6c1fa69c08ad4122", null ],
     [ "OnDespawned", "classPurrNet_1_1NetworkIdentity.html#aab36179b19e9a1ca89b4b0a05da42f12", null ],
     [ "OnDespawned", "classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd", null ],
