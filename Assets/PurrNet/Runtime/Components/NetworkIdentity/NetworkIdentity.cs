@@ -971,11 +971,12 @@ namespace PurrNet
         /// </summary>
         /// <param name="player">PlayerID to give ownership to</param>
         /// <param name="silent">Dont log any errors if in silent mode</param>
-        public void GiveOwnership(PlayerID player, bool silent = false)
+        /// <param name="propagateToChildren">If true, will give ownership to all children</param>
+        public void GiveOwnership(PlayerID player, bool silent = false, bool? propagateToChildren = null)
         {
             if (!networkManager)
                 return;
-            GiveOwnershipInternal(player, silent, false);
+            GiveOwnershipInternal(player, silent, false, propagateToChildren);
         }
 
         /// <summary>
@@ -1081,7 +1082,7 @@ namespace PurrNet
         }
 
         [UsedImplicitly]
-        public void GiveOwnership(PlayerID? player, bool silent = false)
+        public void GiveOwnership(PlayerID? player, bool silent = false, bool? propagateToChildren = null)
         {
             if (!player.HasValue)
             {
@@ -1089,10 +1090,10 @@ namespace PurrNet
                 return;
             }
 
-            GiveOwnership(player.Value, silent);
+            GiveOwnership(player.Value, silent, propagateToChildren);
         }
 
-        internal void GiveOwnershipInternal(PlayerID player, bool silent, bool isSpawner)
+        internal void GiveOwnershipInternal(PlayerID player, bool silent, bool isSpawner, bool? propagateToChildren = null)
         {
             if (!networkManager)
             {
@@ -1103,19 +1104,19 @@ namespace PurrNet
 
             if (networkManager.TryGetModule(networkManager.isServer, out GlobalOwnershipModule module))
             {
-                module.GiveOwnership(this, player, silent: silent, isSpawner: isSpawner);
+                module.GiveOwnership(this, player, silent: silent, isSpawner: isSpawner, propagateToChildren: propagateToChildren);
             }
             else if (!silent) PurrLogger.LogError("Failed to get ownership module.", this);
         }
 
-        public void RemoveOwnership()
+        public void RemoveOwnership(bool? propagateToChildren = null)
         {
             if (!networkManager)
                 return;
 
             if (networkManager.TryGetModule(networkManager.isServer, out GlobalOwnershipModule module))
             {
-                module.RemoveOwnership(this);
+                module.RemoveOwnership(this, propagateToChildren);
             }
             else PurrLogger.LogError("Failed to get ownership module.");
         }
