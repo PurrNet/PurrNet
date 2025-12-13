@@ -1,3 +1,10 @@
+# [1.18.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.19...v1.18.0-beta.20) (2025-12-13)
+
+
+### Bug Fixes
+
+* SyncTimer fix from Valentins mistake ([afd5d42](https://github.com/PurrNet/PurrNet/commit/afd5d42ab9897e1fcb87e646e6d8057d198ea461))
+
 # [1.18.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.18...v1.18.0-beta.19) (2025-12-12)
 
 
