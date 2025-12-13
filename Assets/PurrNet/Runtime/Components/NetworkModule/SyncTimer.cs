@@ -48,12 +48,12 @@ namespace PurrNet
             _ownerAuth = ownerAuth;
             _reconcileInterval = reconcileInterval;
             _state = TimerState.Stopped;
-            
+            _manualUpdate = manualUpdate;
         }
 
         public void OnTick(float delta)
         {
-            if (!_manualUpdate) 
+            if (_manualUpdate) 
                 return;
 
             Advance(delta);
