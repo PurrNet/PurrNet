@@ -159,7 +159,7 @@ namespace PurrNet
 
             bool asServer = isServer;
 
-            _accumulateTime += Time.deltaTime;
+            _accumulateTime += Time.unscaledDeltaTime;
 
             // if we dont control it, update from incoming data
             if (!IsController(_ownerAuth))
@@ -293,7 +293,6 @@ namespace PurrNet
 
         const int MTU = 1100;
 
-
         delegate void Forward(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data);
         delegate bool Write(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey);
 
@@ -315,6 +314,8 @@ namespace PurrNet
                         var count = b - lastIndex + 1;
                         forward(observer, lastIndex, count, packer);
                     }
+
+                    cache = default;
                     lastIndex = b + 1;
                     packer.ResetPosition();
                     writtenAny = false;
