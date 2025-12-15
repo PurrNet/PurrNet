@@ -443,9 +443,6 @@ var hierarchy =
     ] ],
     [ "PurrNet.SerializableDictionary< TKey, TValue >", "classPurrNet_1_1SerializableDictionary.html", null ],
     [ "PurrNet.SerializableQueue< T >", "classPurrNet_1_1SerializableQueue.html", null ],
-    [ "PurrNet.SerializableSyncUnityEvent< T >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
-    [ "PurrNet.SerializableSyncUnityEvent< T1, T2 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
-    [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
     [ "PurrNet.Modules.SimpleHistory< T >", "classPurrNet_1_1Modules_1_1SimpleHistory.html", null ],
     [ "PurrNet.SpawnPoint", "structPurrNet_1_1SpawnPoint.html", null ],
     [ "PurrNet.SpawnRules", "structPurrNet_1_1SpawnRules.html", null ],
@@ -458,6 +455,9 @@ var hierarchy =
       [ "PurrNet.SyncTextureAsset", "classPurrNet_1_1SyncTextureAsset.html", null ]
     ] ],
     [ "PurrNet.SyncDictionaryChange< TKey, TValue >", "structPurrNet_1_1SyncDictionaryChange.html", null ],
+    [ "PurrNet.SyncEventLogic< byte >", "classPurrNet_1_1SyncEventLogic.html", [
+      [ "PurrNet.SyncEvent< T1, T2, T3, T4, T5 >", "classPurrNet_1_1SyncEvent.html", null ]
+    ] ],
     [ "PurrNet.SyncEventLogic<(T1, T2)>", "classPurrNet_1_1SyncEventLogic.html", [
       [ "PurrNet.SyncEvent< T1, T2, T3, T4, T5 >", "classPurrNet_1_1SyncEvent.html", null ]
     ] ],
@@ -487,6 +487,10 @@ var hierarchy =
     [ "PurrNet.Modules.TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
     [ "PurrNet.NetworkAssets.TypeToggle", "classPurrNet_1_1NetworkAssets_1_1TypeToggle.html", null ],
     [ "UnityEvent", null, [
+      [ "PurrNet.SerializableSyncUnityEvent< T >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
+      [ "PurrNet.SerializableSyncUnityEvent< T1, T2 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
+      [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
+      [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3, T4 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
       [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3, T4 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
       [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3, T4 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
       [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3, T4 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
