@@ -115,23 +115,67 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
         private void SendToOthers(SyncEventData data)
         {
-            if (isServer && !isHost) return;
-            _lastData = data;
-            InvokeLocal();
-        }
-
-        [ObserversRpc(Channel.ReliableOrdered)]
-        private void SendToAll(SyncEventData data)
-        {
-            if (!isHost)
+            using (data)
             {
+                if (isServer && !isHost) return;
                 _lastData = data;
                 InvokeLocal();
             }
         }
 
+        [ObserversRpc(Channel.ReliableOrdered)]
+        private void SendToAll(SyncEventData data)
+        {
+            using (data)
+            {
+                if (!isHost)
+                {
+                    _lastData = data;
+                    InvokeLocal();
+                }
+            }
+        }
+
         [ObserversRpc(runLocally: true)]
         private void RemoveAllListenersRpc() => ClearUnityEvent();
+    }
+    
+    [Serializable]
+    public class SerializableSyncUnityEvent : UnityEvent { }
+    
+    [Serializable]
+    public class SyncEvent : SyncEventLogic<byte>
+    {
+        [SerializeField] private SerializableSyncUnityEvent unityEvent = new SerializableSyncUnityEvent();
+
+        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+
+        public void AddListener(UnityAction listener) => unityEvent.AddListener(listener);
+        public void RemoveListener(UnityAction listener) => unityEvent.RemoveListener(listener);
+
+        public void Invoke() => InvokePacket(default);
+
+        protected override void InvokeLocal()
+        {
+            unityEvent.Invoke();
+        }
+
+        protected override void InvokeUnityEvent(byte data) => unityEvent?.Invoke();
+        protected override void ClearUnityEvent() => unityEvent.RemoveAllListeners();
+        
+        public static SyncEvent operator +(SyncEvent e, UnityAction listener)
+        {
+            if (e == null) throw new ArgumentNullException(nameof(e));
+            e.AddListener(listener);
+            return e;
+        }
+
+        public static SyncEvent operator -(SyncEvent e, UnityAction listener)
+        {
+            if (e == null) throw new ArgumentNullException(nameof(e));
+            e.RemoveListener(listener);
+            return e;
+        }
     }
     
     [Serializable]
