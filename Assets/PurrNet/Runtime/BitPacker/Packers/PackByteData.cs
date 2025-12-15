@@ -33,6 +33,12 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void Write(this BitPacker packer, BitPacker data)
         {
+            if (data == null)
+            {
+                Write(packer, new ByteData());
+                return;
+            }
+            
             Write(packer, data.ToByteData());
         }
 
