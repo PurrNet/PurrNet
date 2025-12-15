@@ -1,3 +1,10 @@
+# [1.18.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.21...v1.18.0-beta.22) (2025-12-14)
+
+
+### Bug Fixes
+
+* simplify float delta packing, old packer just added more overhead ([3d2b0f0](https://github.com/PurrNet/PurrNet/commit/3d2b0f0e773621ac2744190a0a898511f722679d))
+
 # [1.18.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.20...v1.18.0-beta.21) (2025-12-14)
 
 
