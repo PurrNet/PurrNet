@@ -1,3 +1,10 @@
+# [1.18.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.24...v1.18.0-beta.25) (2025-12-15)
+
+
+### Bug Fixes
+
+* Added sync event without data ([4674dfe](https://github.com/PurrNet/PurrNet/commit/4674dfea96fef1cfbf4b9e6618c76564415af52e))
+
 # [1.18.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.23...v1.18.0-beta.24) (2025-12-15)
 
 
