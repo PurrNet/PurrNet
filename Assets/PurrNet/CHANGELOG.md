@@ -1,3 +1,10 @@
+# [1.18.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.23...v1.18.0-beta.24) (2025-12-15)
+
+
+### Bug Fixes
+
+* if server is starting wait for it to fully spin up before starting client ([4bbf0d6](https://github.com/PurrNet/PurrNet/commit/4bbf0d6bc233d7029dec93607991a3ec3850712d))
+
 # [1.18.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.22...v1.18.0-beta.23) (2025-12-15)
 
 
