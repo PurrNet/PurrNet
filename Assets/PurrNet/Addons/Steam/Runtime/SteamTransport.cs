@@ -135,6 +135,7 @@ namespace PurrNet.Steam
             listenerState = ConnectionState.Connecting;
 
             _server = new SteamServer();
+            _connections.Clear();
 
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer);
