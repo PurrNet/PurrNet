@@ -1,3 +1,10 @@
+# [1.18.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.22...v1.18.0-beta.23) (2025-12-15)
+
+
+### Bug Fixes
+
+* clear connections when SteamTransport starts ([c77f166](https://github.com/PurrNet/PurrNet/commit/c77f16671bc0f488e10df8fca4db1bb96d438a6f))
+
 # [1.18.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.21...v1.18.0-beta.22) (2025-12-14)
 
 
