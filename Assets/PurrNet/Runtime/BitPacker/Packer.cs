@@ -381,8 +381,6 @@ namespace PurrNet.Packing
             _readExactMethods.TryAdd(type, exact);
         }
 
-        static readonly object[] _args = new object[2];
-
         public static void FallbackWriter<T>(BitPacker packer, T value)
         {
             try
@@ -485,9 +483,11 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
@@ -505,9 +505,11 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
@@ -527,9 +529,11 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
@@ -549,9 +553,11 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
@@ -569,10 +575,12 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
-                value = _args[1];
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                value = args[1];
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
@@ -592,10 +600,12 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
-                value = _args[1];
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                value = args[1];
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
@@ -615,10 +625,12 @@ namespace PurrNet.Packing
 
             try
             {
-                _args[0] = packer;
-                _args[1] = value;
-                method.Invoke(null, _args);
-                value = _args[1];
+                var args = PreciseArrayPool<object>.Rent(2);
+                args[0] = packer;
+                args[1] = value;
+                method.Invoke(null, args);
+                value = args[1];
+                PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
             {
