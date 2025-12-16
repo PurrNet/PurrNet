@@ -8,6 +8,13 @@ namespace PurrNet
         public readonly Vector3 position;
         readonly bool isLocalPos;
 
+        public Vector3WithParent(Transform parent, Vector3WithParent other)
+        {
+            this.parent = parent;
+            this.position = other.position;
+            this.isLocalPos = other.isLocalPos;
+        }
+
         public Vector3WithParent(Transform parent, bool isLocalPos, Vector3 position)
         {
             this.parent = parent;

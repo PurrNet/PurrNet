@@ -160,7 +160,6 @@ namespace PurrNet
         {
             _trs = transform;
 
-            var _trsParent = _trs.parent;
             float sendDelta = networkManager.tickModule.tickDelta;
             var p = _trs.parent;
 
@@ -439,12 +438,6 @@ namespace PurrNet
         {
             if (_interpolationTiming == InterpolationTiming.LateLateUpdate)
                 UpdateNT();
-
-            if (_parentChanged)
-            {
-                OnTransformParentChangedDelayed();
-                _parentChanged = false;
-            }
         }
 
         private void UpdateNT()
@@ -504,7 +497,6 @@ namespace PurrNet
 
             if (syncScale)
             {
-                var _trsParent = _trs.parent;
                 var worldScale = _scale.Advance(Time.unscaledDeltaTime).scale;
                 var parentTrs = _trs.parent;
                 var ls = parentTrs ? parentTrs.GetLocalScale(worldScale) : worldScale;
@@ -539,8 +531,6 @@ namespace PurrNet
             return new NetworkTransformData(pos, rot, ntScale);
         }
 
-        private bool _parentChanged;
-
         void OnTransformParentChanged()
         {
             if (!isSpawned)
@@ -552,25 +542,7 @@ namespace PurrNet
             if (!_syncParent)
                 return;
 
-            _parentChanged = true;
-        }
-
-        void OnTransformParentChangedDelayed()
-        {
-            if (_isIgnoringParentChanges)
-                return;
-
-            if (ApplicationContext.isQuitting)
-                return;
-
-            if (!isSpawned)
-                return;
-
-            if (!_trs)
-                return;
-
-            if (_syncParent)
-                HandleParentChanged(_trs.parent);
+            HandleParentChanged(_trs.parent);
         }
 
         private void HandleParentChanged(Transform parent)
