@@ -1,3 +1,10 @@
+# [1.18.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.25...v1.18.0-beta.26) (2025-12-16)
+
+
+### Bug Fixes
+
+* send parent change on event instead of delaying it further ([7e03bd6](https://github.com/PurrNet/PurrNet/commit/7e03bd6b03137d38533eb52a646efd0dbbcbb870))
+
 # [1.18.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.18.0-beta.24...v1.18.0-beta.25) (2025-12-15)
 
 
