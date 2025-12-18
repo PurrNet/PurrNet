@@ -3,6 +3,7 @@ var classPurrNet_1_1NetworkTransform =
     [ "ClearInterpolation", "classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b", null ],
     [ "ForceSync", "classPurrNet_1_1NetworkTransform.html#a39207ab962a55ede8548732de65d3adf", null ],
     [ "ForceSync", "classPurrNet_1_1NetworkTransform.html#a4e5b386f968c2710f36a5d5db15376de", null ],
+    [ "HasChanges", "classPurrNet_1_1NetworkTransform.html#a822877f09ea5532e7325c78a9deca7e1", null ],
     [ "OnDespawned", "classPurrNet_1_1NetworkTransform.html#a5bd3fed5e49b3ee58b56604f010780f5", null ],
     [ "OnEarlySpawn", "classPurrNet_1_1NetworkTransform.html#af1afaf75f36fe5bb777f9e205d0d1c5e", null ],
     [ "OnObserverAdded", "classPurrNet_1_1NetworkTransform.html#ab80b05c91be6ae800af6302be6ef3ab6", null ],

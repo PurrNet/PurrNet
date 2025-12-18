@@ -106,7 +106,6 @@ Inheritance diagram for PurrNet.SyncVar&lt; T &gt;:</div>
   <img src="classPurrNet_1_1SyncVar.png" usemap="#PurrNet.SyncVar_3C_20T_20_3E_map" alt=""/>
   <map id="PurrNet.SyncVar_3C_20T_20_3E_map" name="PurrNet.SyncVar_3C_20T_20_3E_map">
 <area href="classPurrNet_1_1NetworkModule.html" alt="PurrNet.NetworkModule" shape="rect" coords="0,0,148,24"/>
-<area href="interfacePurrNet_1_1ITick.html" alt="PurrNet.ITick" shape="rect" coords="158,0,306,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -118,12 +117,18 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>ActionWithOl
 <tr class="memitem:a36e597796f56c71bb965d6dbe56123d0"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a36e597796f56c71bb965d6dbe56123d0">OnPoolReset</a> ()</td></tr>
 <tr class="memdesc:a36e597796f56c71bb965d6dbe56123d0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1SyncVar.html#a36e597796f56c71bb965d6dbe56123d0">More...</a><br /></td></tr>
 <tr class="separator:a36e597796f56c71bb965d6dbe56123d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad86e8e6a90ec56106edd62c7fe6faaa4"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#ad86e8e6a90ec56106edd62c7fe6faaa4">OnOwnerDisconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
+<tr class="separator:ad86e8e6a90ec56106edd62c7fe6faaa4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1805a1351f77671599684e64078b3f03"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a1805a1351f77671599684e64078b3f03">OnOwnerReconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
+<tr class="separator:a1805a1351f77671599684e64078b3f03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad10cca80308ced66260efb549a902081"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#ad10cca80308ced66260efb549a902081">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool isSpawnEvent, bool asServer)</td></tr>
 <tr class="memdesc:ad10cca80308ced66260efb549a902081"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1SyncVar.html#ad10cca80308ced66260efb549a902081">More...</a><br /></td></tr>
 <tr class="separator:ad10cca80308ced66260efb549a902081"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a973d03543b86b48a915ffe0dbd3c9299"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool isSpawner)</td></tr>
 <tr class="memdesc:a973d03543b86b48a915ffe0dbd3c9299"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299">More...</a><br /></td></tr>
 <tr class="separator:a973d03543b86b48a915ffe0dbd3c9299"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4232d33db28e40ded702b4eab7210a8e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a4232d33db28e40ded702b4eab7210a8e">OnSpawn</a> ()</td></tr>
+<tr class="separator:a4232d33db28e40ded702b4eab7210a8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa339797f6bd178e3be6d2fc6e2051c37"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#aa339797f6bd178e3be6d2fc6e2051c37">OnDespawned</a> ()</td></tr>
 <tr class="separator:aa339797f6bd178e3be6d2fc6e2051c37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f5699108cd7796f905904f8abf4d673"><td class="memItemLeft" align="right" valign="top"><a id="a7f5699108cd7796f905904f8abf4d673" name="a7f5699108cd7796f905904f8abf4d673"></a>
@@ -132,9 +137,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetDirty</b> ()</td><
 <tr class="memitem:ae4bc5edce17f7612b4aef6a30241bb67"><td class="memItemLeft" align="right" valign="top"><a id="ae4bc5edce17f7612b4aef6a30241bb67" name="ae4bc5edce17f7612b4aef6a30241bb67"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushImmediately</b> ()</td></tr>
 <tr class="separator:ae4bc5edce17f7612b4aef6a30241bb67"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a940b52d2d0f1da0513f1bae1d9c68b1a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a940b52d2d0f1da0513f1bae1d9c68b1a">OnTick</a> (float delta)</td></tr>
-<tr class="memdesc:a940b52d2d0f1da0513f1bae1d9c68b1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1SyncVar.html#a940b52d2d0f1da0513f1bae1d9c68b1a">More...</a><br /></td></tr>
-<tr class="separator:a940b52d2d0f1da0513f1bae1d9c68b1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8aae448d44d16efadfaff3ad4f59038c"><td class="memItemLeft" align="right" valign="top"><a id="a8aae448d44d16efadfaff3ad4f59038c" name="a8aae448d44d16efadfaff3ad4f59038c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>OnTick</b> ()</td></tr>
+<tr class="separator:a8aae448d44d16efadfaff3ad4f59038c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad3e16faa5c8779edd63f82b2f24c54da"><td class="memItemLeft" align="right" valign="top"><a id="ad3e16faa5c8779edd63f82b2f24c54da" name="ad3e16faa5c8779edd63f82b2f24c54da"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>SyncVar</b> (T initialValue=default, float sendIntervalInSeconds=0f, bool ownerAuth=false)</td></tr>
 <tr class="separator:ad3e16faa5c8779edd63f82b2f24c54da"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -218,9 +223,10 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 <tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">OnPoolReset</a> ()</td></tr>
 <tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">More...</a><br /></td></tr>
 <tr class="separator:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">OnTick</a> (float delta)</td></tr>
-<tr class="memdesc:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">More...</a><br /></td></tr>
-<tr class="separator:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a1370d458228d460a3bc2ce33610555ed" name="a1370d458228d460a3bc2ce33610555ed"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServer</b> ()</td></tr>
+<tr class="memdesc:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.  <br /></td></tr>
+<tr class="separator:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -467,6 +473,62 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 
 </div>
 </div>
+<a id="ad86e8e6a90ec56106edd62c7fe6faaa4" name="ad86e8e6a90ec56106edd62c7fe6faaa4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad86e8e6a90ec56106edd62c7fe6faaa4">&#9670;&#160;</a></span>OnOwnerDisconnected()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnOwnerDisconnected </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>ownerId</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="a1805a1351f77671599684e64078b3f03" name="a1805a1351f77671599684e64078b3f03"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1805a1351f77671599684e64078b3f03">&#9670;&#160;</a></span>OnOwnerReconnected()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnOwnerReconnected </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>ownerId</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
 <a id="a36e597796f56c71bb965d6dbe56123d0" name="a36e597796f56c71bb965d6dbe56123d0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a36e597796f56c71bb965d6dbe56123d0">&#9670;&#160;</a></span>OnPoolReset()</h2>
 
@@ -496,31 +558,30 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 
 </div>
 </div>
-<a id="a940b52d2d0f1da0513f1bae1d9c68b1a" name="a940b52d2d0f1da0513f1bae1d9c68b1a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a940b52d2d0f1da0513f1bae1d9c68b1a">&#9670;&#160;</a></span>OnTick()</h2>
+<a id="a4232d33db28e40ded702b4eab7210a8e" name="a4232d33db28e40ded702b4eab7210a8e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4232d33db28e40ded702b4eab7210a8e">&#9670;&#160;</a></span>OnSpawn()</h2>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnTick </td>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnSpawn </td>
           <td>(</td>
-          <td class="paramtype">float&#160;</td>
-          <td class="paramname"><em>delta</em></td><td>)</td>
+          <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
-<p>Similar to FixedUpdate but tailored for networked objects and it's tick system.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">delta</td><td></td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p>Implements <a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">PurrNet.ITick</a>.</p>
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>

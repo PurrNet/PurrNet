@@ -147,6 +147,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Clear</b> ()</td></tr
 <tr class="memitem:a2d4d5daed1bc6c261d940d12a0dda411"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncList.html#a2d4d5daed1bc6c261d940d12a0dda411">RemoveAt</a> (int index)</td></tr>
 <tr class="memdesc:a2d4d5daed1bc6c261d940d12a0dda411"><td class="mdescLeft">&#160;</td><td class="mdescRight">Removes an item at a specific index and syncs the change   <a href="classPurrNet_1_1SyncList.html#a2d4d5daed1bc6c261d940d12a0dda411">More...</a><br /></td></tr>
 <tr class="separator:a2d4d5daed1bc6c261d940d12a0dda411"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a175b0599351ff27d4ee5660359aaca5a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncList.html#a175b0599351ff27d4ee5660359aaca5a">Sort</a> (Comparison&lt; T &gt; comparison)</td></tr>
+<tr class="memdesc:a175b0599351ff27d4ee5660359aaca5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sorts the list using the given comparison and syncs the changes.   <a href="classPurrNet_1_1SyncList.html#a175b0599351ff27d4ee5660359aaca5a">More...</a><br /></td></tr>
+<tr class="separator:a175b0599351ff27d4ee5660359aaca5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac2f17f94c711092442adc0ee29f90fd5"><td class="memItemLeft" align="right" valign="top"><a id="ac2f17f94c711092442adc0ee29f90fd5" name="ac2f17f94c711092442adc0ee29f90fd5"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Contains</b> (T item)</td></tr>
 <tr class="separator:ac2f17f94c711092442adc0ee29f90fd5"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -242,6 +245,10 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 <tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">OnPoolReset</a> ()</td></tr>
 <tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">More...</a><br /></td></tr>
 <tr class="separator:a244b86c9d0cf97f1ff2eccca7dfb8834 inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memItemLeft" align="right" valign="top"><a id="a1370d458228d460a3bc2ce33610555ed" name="a1370d458228d460a3bc2ce33610555ed"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServer</b> ()</td></tr>
+<tr class="memdesc:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.  <br /></td></tr>
+<tr class="separator:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">More...</a><br /></td></tr>
 <tr class="separator:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -612,6 +619,32 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">index</td><td>Index to set dirty</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a175b0599351ff27d4ee5660359aaca5a" name="a175b0599351ff27d4ee5660359aaca5a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a175b0599351ff27d4ee5660359aaca5a">&#9670;&#160;</a></span>Sort()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void <a class="el" href="classPurrNet_1_1SyncList.html">PurrNet.SyncList</a>&lt; T &gt;.Sort </td>
+          <td>(</td>
+          <td class="paramtype">Comparison&lt; T &gt;&#160;</td>
+          <td class="paramname"><em>comparison</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sorts the list using the given comparison and syncs the changes.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">comparison</td><td>Comparison to use for sorting the list</td></tr>
   </table>
   </dd>
 </dl>

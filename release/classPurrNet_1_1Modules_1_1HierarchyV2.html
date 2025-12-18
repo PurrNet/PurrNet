@@ -100,36 +100,45 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Modules_1_1HierarchyV2
   <div class="headertitle"><div class="title">PurrNet.Modules.HierarchyV2 Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Inherits PurrNet.Modules.IPromoteToServerModule, and PurrNet.Modules.ITransferToNewServer.</p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a92ecff6d2cbcfde96334301734a5f162"><td class="memItemLeft" align="right" valign="top"><a id="a92ecff6d2cbcfde96334301734a5f162" name="a92ecff6d2cbcfde96334301734a5f162"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>HierarchyV2</b> (<a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> manager, <a class="el" href="structPurrNet_1_1SceneID.html">SceneID</a> sceneId, Scene scene, <a class="el" href="classPurrNet_1_1Modules_1_1ScenePlayersModule.html">ScenePlayersModule</a> players, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> playersManager, bool asServer)</td></tr>
 <tr class="separator:a92ecff6d2cbcfde96334301734a5f162"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab82bc257d93151f353858026efe57d29"><td class="memItemLeft" align="right" valign="top"><a id="ab82bc257d93151f353858026efe57d29" name="ab82bc257d93151f353858026efe57d29"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServerModule</b> ()</td></tr>
+<tr class="separator:ab82bc257d93151f353858026efe57d29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeffa820db3c7585765d84cfc5042cf88"><td class="memItemLeft" align="right" valign="top"><a id="aeffa820db3c7585765d84cfc5042cf88" name="aeffa820db3c7585765d84cfc5042cf88"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>PostPromoteToServerModule</b> ()</td></tr>
+<tr class="separator:aeffa820db3c7585765d84cfc5042cf88"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af8e73dbf5eb888dfab43d48603dcc453"><td class="memItemLeft" align="right" valign="top"><a id="af8e73dbf5eb888dfab43d48603dcc453" name="af8e73dbf5eb888dfab43d48603dcc453"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Enable</b> ()</td></tr>
 <tr class="separator:af8e73dbf5eb888dfab43d48603dcc453"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af71d50977acee4caefa6ba54b04d029a"><td class="memItemLeft" align="right" valign="top"><a id="af71d50977acee4caefa6ba54b04d029a" name="af71d50977acee4caefa6ba54b04d029a"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Disable</b> ()</td></tr>
 <tr class="separator:af71d50977acee4caefa6ba54b04d029a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af82e36cb84bffb0681aa8d87d62d0cb5"><td class="memItemLeft" align="right" valign="top"><a id="af82e36cb84bffb0681aa8d87d62d0cb5" name="af82e36cb84bffb0681aa8d87d62d0cb5"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>TransferToNewServer</b> ()</td></tr>
+<tr class="separator:af82e36cb84bffb0681aa8d87d62d0cb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5b9c0cee4620229828f3130554330407"><td class="memItemLeft" align="right" valign="top"><a id="a5b9c0cee4620229828f3130554330407" name="a5b9c0cee4620229828f3130554330407"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Cleanup</b> ()</td></tr>
 <tr class="separator:a5b9c0cee4620229828f3130554330407"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaa8402318b604dd6bcdae13a6d3722ab"><td class="memItemLeft" align="right" valign="top"><a id="aaa8402318b604dd6bcdae13a6d3722ab" name="aaa8402318b604dd6bcdae13a6d3722ab"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EvaluateAllVisibilities</b> ()</td></tr>
+<tr class="memdesc:aaa8402318b604dd6bcdae13a6d3722ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the visibility of all spawned network identities for all players in the current scene. This operation gathers the list of players currently present in the scene and applies a visibility evaluation for each player based on the active set of spawned network identities. Intended to be called when visibility recalculations are required, such as after significant state changes.  <br /></td></tr>
 <tr class="separator:aaa8402318b604dd6bcdae13a6d3722ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adcb0e61a45c8caad94c0a23ec8976fc5"><td class="memItemLeft" align="right" valign="top"><a id="adcb0e61a45c8caad94c0a23ec8976fc5" name="adcb0e61a45c8caad94c0a23ec8976fc5"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>EvaluateVisibility</b> (Transform root)</td></tr>
+<tr class="memitem:adcb0e61a45c8caad94c0a23ec8976fc5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#adcb0e61a45c8caad94c0a23ec8976fc5">EvaluateVisibility</a> (Transform root)</td></tr>
+<tr class="memdesc:adcb0e61a45c8caad94c0a23ec8976fc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the visibility of a hierarchy of objects rooted at the specified transform for all players currently present in the associated scene. This operation is intended to be used on the server to ensure that visibility states are up-to-date for all relevant players.   <a href="classPurrNet_1_1Modules_1_1HierarchyV2.html#adcb0e61a45c8caad94c0a23ec8976fc5">More...</a><br /></td></tr>
 <tr class="separator:adcb0e61a45c8caad94c0a23ec8976fc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a85dc41b52cfe521085d77f0cf354cdb4"><td class="memItemLeft" align="right" valign="top"><a id="a85dc41b52cfe521085d77f0cf354cdb4" name="a85dc41b52cfe521085d77f0cf354cdb4"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>EvaluateVisibility</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, Transform root)</td></tr>
+<tr class="memitem:a85dc41b52cfe521085d77f0cf354cdb4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a85dc41b52cfe521085d77f0cf354cdb4">EvaluateVisibility</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, Transform root)</td></tr>
+<tr class="memdesc:a85dc41b52cfe521085d77f0cf354cdb4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the visibility of the specified root transform for a given player. This method checks if the player is loaded into the current scene and refreshes the visibility of the specified GameObject hierarchy. It is generally used to update client visibility when changes occur in the scene or the player's network state.   <a href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a85dc41b52cfe521085d77f0cf354cdb4">More...</a><br /></td></tr>
 <tr class="separator:a85dc41b52cfe521085d77f0cf354cdb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a73fdf4258321b0079c6f905bde619b89"><td class="memItemLeft" align="right" valign="top"><a id="a73fdf4258321b0079c6f905bde619b89" name="a73fdf4258321b0079c6f905bde619b89"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>OnGameObjectCreated</b> (GameObject obj, GameObject prefab)</td></tr>
 <tr class="separator:a73fdf4258321b0079c6f905bde619b89"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5226f2c17849de6252dce1586a64c080"><td class="memItemLeft" align="right" valign="top"><a id="a5226f2c17849de6252dce1586a64c080" name="a5226f2c17849de6252dce1586a64c080"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Spawn</b> (GameObject gameObject, GameObject prefab)</td></tr>
-<tr class="separator:a5226f2c17849de6252dce1586a64c080"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a920f6d10501bf37ecc200f5a3ca5dc21"><td class="memItemLeft" align="right" valign="top"><a id="a920f6d10501bf37ecc200f5a3ca5dc21" name="a920f6d10501bf37ecc200f5a3ca5dc21"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Despawn</b> (GameObject gameObject, bool bypassPermissions=false, bool bypassBroadcast=false)</td></tr>
 <tr class="separator:a920f6d10501bf37ecc200f5a3ca5dc21"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -142,8 +151,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>PreNetworkMessages</b
 <tr class="memitem:a4308e52e2d2a73faa919222e61a3ca0c"><td class="memItemLeft" align="right" valign="top"><a id="a4308e52e2d2a73faa919222e61a3ca0c" name="a4308e52e2d2a73faa919222e61a3ca0c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>PostNetworkMessages</b> ()</td></tr>
 <tr class="separator:a4308e52e2d2a73faa919222e61a3ca0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9b147ed32462002e028cb4b65b7d2ff8"><td class="memItemLeft" align="right" valign="top"><a id="a9b147ed32462002e028cb4b65b7d2ff8" name="a9b147ed32462002e028cb4b65b7d2ff8"></a>
-GameObject&#160;</td><td class="memItemRight" valign="bottom"><b>CreatePrototype</b> (<a class="el" href="structPurrNet_1_1Modules_1_1GameObjectPrototype.html">GameObjectPrototype</a> prototype, List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt; createdNids)</td></tr>
+<tr class="memitem:a9b147ed32462002e028cb4b65b7d2ff8"><td class="memItemLeft" align="right" valign="top">GameObject&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8">CreatePrototype</a> (<a class="el" href="structPurrNet_1_1Modules_1_1GameObjectPrototype.html">GameObjectPrototype</a> prototype, List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt; createdNids)</td></tr>
+<tr class="memdesc:a9b147ed32462002e028cb4b65b7d2ff8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a new GameObject instance based on the provided prototype and optionally associates it with a list of network identities. This method handles initializing the GameObject's position, rotation, scale, and parenting. If activation conditions are met, the created GameObject is activated before being returned.   <a href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8">More...</a><br /></td></tr>
 <tr class="separator:a9b147ed32462002e028cb4b65b7d2ff8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5340886582f3249661b41dde044b3029"><td class="memItemLeft" align="right" valign="top"><a id="a5340886582f3249661b41dde044b3029" name="a5340886582f3249661b41dde044b3029"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualEarlySpawn</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id)</td></tr>
@@ -165,8 +174,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualAddObserver</b>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualRemoveObserver</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a1b830c7831269515ba72eb25fd9613f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Manually remove an observer from the identity.  <br /></td></tr>
 <tr class="separator:a1b830c7831269515ba72eb25fd9613f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memItemLeft" align="right" valign="top"><a id="a97c5b0bfa1419d9278723876d1dc3e7a" name="a97c5b0bfa1419d9278723876d1dc3e7a"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetIdentity</b> (<a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
+<tr class="memitem:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a">TryGetIdentity</a> (<a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
+<tr class="memdesc:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attempts to retrieve the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>. This operation checks the local hierarchy for the identity and, if running in a server-client scenario, delegates the lookup to another hierarchy when necessary.   <a href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a">More...</a><br /></td></tr>
 <tr class="separator:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
@@ -174,44 +183,196 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a4255c4c5b0f7eb879d923b2398bc67fa"><td class="memItemLeft" align="right" valign="top"><a id="a4255c4c5b0f7eb879d923b2398bc67fa" name="a4255c4c5b0f7eb879d923b2398bc67fa"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>GetComponentsInChildren</b> (GameObject go, List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt; list)</td></tr>
 <tr class="separator:a4255c4c5b0f7eb879d923b2398bc67fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa783a069f81db344d4e1702b978a000"><td class="memItemLeft" align="right" valign="top"><a id="aaa783a069f81db344d4e1702b978a000" name="aaa783a069f81db344d4e1702b978a000"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetLocalPosAndRot</b> (Transform t, Vector3 pos, Quaternion rot, Vector3 scale)</td></tr>
+<tr class="separator:aaa783a069f81db344d4e1702b978a000"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
 <tr class="memitem:aeb8e18a11c7924834a30a3b0ab39053f"><td class="memItemLeft" align="right" valign="top"><a id="aeb8e18a11c7924834a30a3b0ab39053f" name="aeb8e18a11c7924834a30a3b0ab39053f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isReadyToSpawn</b><code> [get]</code></td></tr>
+<tr class="memdesc:aeb8e18a11c7924834a30a3b0ab39053f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates whether the system is ready to spawn networked objects. This flag is typically set when the necessary conditions for spawning objects, such as proper initialization and synchronization, have been met.  <br /></td></tr>
 <tr class="separator:aeb8e18a11c7924834a30a3b0ab39053f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
 <tr class="memitem:a0783729a0b49a2e30cadbc335a948f58"><td class="memItemLeft" align="right" valign="top"><a id="a0783729a0b49a2e30cadbc335a948f58" name="a0783729a0b49a2e30cadbc335a948f58"></a>
 ValidateSpawnAction&#160;</td><td class="memItemRight" valign="bottom"><b>onClientSpawnValidate</b></td></tr>
+<tr class="memdesc:a0783729a0b49a2e30cadbc335a948f58"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invoked to validate the spawning of a client-side object before it is instantiated. This event allows implementing custom rules to determine whether the object spawn should proceed or be rejected.  <br /></td></tr>
 <tr class="separator:a0783729a0b49a2e30cadbc335a948f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad2e7ac7352bbce58511f1c562dd8d013"><td class="memItemLeft" align="right" valign="top"><a id="ad2e7ac7352bbce58511f1c562dd8d013" name="ad2e7ac7352bbce58511f1c562dd8d013"></a>
 IdentityAction&#160;</td><td class="memItemRight" valign="bottom"><b>onEarlyIdentityAdded</b></td></tr>
+<tr class="memdesc:ad2e7ac7352bbce58511f1c562dd8d013"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fired when a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> is added to the hierarchy early in its lifecycle, before the standard identity initialization or observer assignment processes occur. This event is typically leveraged to perform custom logic or setup on new identities before they are fully managed by the hierarchy.  <br /></td></tr>
 <tr class="separator:ad2e7ac7352bbce58511f1c562dd8d013"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a18ee7405fd0d92929f0e3e8d5703d7af"><td class="memItemLeft" align="right" valign="top"><a id="a18ee7405fd0d92929f0e3e8d5703d7af" name="a18ee7405fd0d92929f0e3e8d5703d7af"></a>
 IdentityAction&#160;</td><td class="memItemRight" valign="bottom"><b>onIdentityAdded</b></td></tr>
+<tr class="memdesc:a18ee7405fd0d92929f0e3e8d5703d7af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered when a new identity is added to the network hierarchy. This event is invoked after the identity has been initialized and is ready to participate in the network lifecycle, such as spawning, synchronization, or visibility evaluation.  <br /></td></tr>
 <tr class="separator:a18ee7405fd0d92929f0e3e8d5703d7af"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c3e1c7094d6c8fcf6b85ae8bec4ac0b"><td class="memItemLeft" align="right" valign="top"><a id="a8c3e1c7094d6c8fcf6b85ae8bec4ac0b" name="a8c3e1c7094d6c8fcf6b85ae8bec4ac0b"></a>
 IdentityAction&#160;</td><td class="memItemRight" valign="bottom"><b>onIdentityRemoved</b></td></tr>
+<tr class="memdesc:a8c3e1c7094d6c8fcf6b85ae8bec4ac0b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered when a network identity is removed from the hierarchy. This event provides an opportunity to handle cleanup or additional logic associated with the removal of a network identity from the system.  <br /></td></tr>
 <tr class="separator:a8c3e1c7094d6c8fcf6b85ae8bec4ac0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a501d20841442416641350cdba53d8da7"><td class="memItemLeft" align="right" valign="top"><a id="a501d20841442416641350cdba53d8da7" name="a501d20841442416641350cdba53d8da7"></a>
 ObserverAction&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverAdded</b></td></tr>
+<tr class="memdesc:a501d20841442416641350cdba53d8da7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered whenever a new observer is added to a networked identity. This event allows for custom logic to be executed when an observer becomes associated with a specific networked object within the hierarchy.  <br /></td></tr>
 <tr class="separator:a501d20841442416641350cdba53d8da7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ade57d45cb6ad5af2fc5f4475c8799309"><td class="memItemLeft" align="right" valign="top"><a id="ade57d45cb6ad5af2fc5f4475c8799309" name="ade57d45cb6ad5af2fc5f4475c8799309"></a>
 ObserverAction&#160;</td><td class="memItemRight" valign="bottom"><b>onLateObserverAdded</b></td></tr>
+<tr class="memdesc:ade57d45cb6ad5af2fc5f4475c8799309"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered after an observer has been added to a networked entity during the late evaluation phase. This event allows for additional logic to be executed after the observer is linked to the entity, such as custom visibility or state synchronization actions.  <br /></td></tr>
 <tr class="separator:ade57d45cb6ad5af2fc5f4475c8799309"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3653d055e9f2990274d938043fef885e"><td class="memItemLeft" align="right" valign="top"><a id="a3653d055e9f2990274d938043fef885e" name="a3653d055e9f2990274d938043fef885e"></a>
 ObserverAction&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverRemoved</b></td></tr>
+<tr class="memdesc:a3653d055e9f2990274d938043fef885e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered when an observer is removed from the system or process. This event can be used to handle any necessary cleanup or updates associated with the removal of the observer.  <br /></td></tr>
 <tr class="separator:a3653d055e9f2990274d938043fef885e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5bda74504738830db639bbdd49719ad3"><td class="memItemLeft" align="right" valign="top"><a id="a5bda74504738830db639bbdd49719ad3" name="a5bda74504738830db639bbdd49719ad3"></a>
 SpawnedAction&#160;</td><td class="memItemRight" valign="bottom"><b>onSentSpawnPacket</b></td></tr>
+<tr class="memdesc:a5bda74504738830db639bbdd49719ad3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered when a spawn packet is sent to a client. This event provides details about the player, the scene, and the spawned object's identifier, enabling the implementation of custom behavior upon the transmission of spawn data.  <br /></td></tr>
 <tr class="separator:a5bda74504738830db639bbdd49719ad3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adf7f1c3b766c26685f89b806b13b4f5d"><td class="memItemLeft" align="right" valign="top"><a id="adf7f1c3b766c26685f89b806b13b4f5d" name="adf7f1c3b766c26685f89b806b13b4f5d"></a>
 static SpawnDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPreSpawn</b></td></tr>
 <tr class="memdesc:adf7f1c3b766c26685f89b806b13b4f5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before a gameobject is spawned. Both locally and for incoming remote spawns.  <br /></td></tr>
 <tr class="separator:adf7f1c3b766c26685f89b806b13b4f5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a9b147ed32462002e028cb4b65b7d2ff8" name="a9b147ed32462002e028cb4b65b7d2ff8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9b147ed32462002e028cb4b65b7d2ff8">&#9670;&#160;</a></span>CreatePrototype()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">GameObject PurrNet.Modules.HierarchyV2.CreatePrototype </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Modules_1_1GameObjectPrototype.html">GameObjectPrototype</a>&#160;</td>
+          <td class="paramname"><em>prototype</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt;&#160;</td>
+          <td class="paramname"><em>createdNids</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Creates a new GameObject instance based on the provided prototype and optionally associates it with a list of network identities. This method handles initializing the GameObject's position, rotation, scale, and parenting. If activation conditions are met, the created GameObject is activated before being returned.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">prototype</td><td>The prototype containing the configuration details for the GameObject to be created.</td></tr>
+    <tr><td class="paramname">createdNids</td><td>An optional list of <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> objects that will be associated with the created GameObject. Can be null.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The newly created GameObject configured according to the given prototype, or null if creation fails.</dd></dl>
+
+</div>
+</div>
+<a id="a85dc41b52cfe521085d77f0cf354cdb4" name="a85dc41b52cfe521085d77f0cf354cdb4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a85dc41b52cfe521085d77f0cf354cdb4">&#9670;&#160;</a></span>EvaluateVisibility() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.Modules.HierarchyV2.EvaluateVisibility </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Transform&#160;</td>
+          <td class="paramname"><em>root</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Evaluates the visibility of the specified root transform for a given player. This method checks if the player is loaded into the current scene and refreshes the visibility of the specified GameObject hierarchy. It is generally used to update client visibility when changes occur in the scene or the player's network state.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">player</td><td>The unique identifier of the player for whom the visibility is being evaluated.</td></tr>
+    <tr><td class="paramname">root</td><td>The root transform of the GameObject hierarchy whose visibility is being evaluated.</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="adcb0e61a45c8caad94c0a23ec8976fc5" name="adcb0e61a45c8caad94c0a23ec8976fc5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adcb0e61a45c8caad94c0a23ec8976fc5">&#9670;&#160;</a></span>EvaluateVisibility() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.Modules.HierarchyV2.EvaluateVisibility </td>
+          <td>(</td>
+          <td class="paramtype">Transform&#160;</td>
+          <td class="paramname"><em>root</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Evaluates the visibility of a hierarchy of objects rooted at the specified transform for all players currently present in the associated scene. This operation is intended to be used on the server to ensure that visibility states are up-to-date for all relevant players.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">root</td><td>The root transform of the hierarchy of objects to evaluate visibility for.</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a97c5b0bfa1419d9278723876d1dc3e7a" name="a97c5b0bfa1419d9278723876d1dc3e7a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a97c5b0bfa1419d9278723876d1dc3e7a">&#9670;&#160;</a></span>TryGetIdentity()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.Modules.HierarchyV2.TryGetIdentity </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td>
+          <td class="paramname"><em>identity</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Attempts to retrieve the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>. This operation checks the local hierarchy for the identity and, if running in a server-client scenario, delegates the lookup to another hierarchy when necessary.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">id</td><td>The unique identifier of the requested network identity.</td></tr>
+    <tr><td class="paramname">identity</td><td>When the method returns, contains the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> if the lookup was successful; otherwise, <code>null</code>. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> was successfully retrieved; otherwise, <code>false</code>. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/CoreModules/HierarchyV2/HierarchyV2.cs</li>
 </ul>

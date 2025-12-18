@@ -109,15 +109,16 @@ Inheritance diagram for PurrNet.NetworkModule:</div>
 <area href="classPurrNet_1_1Reference.html" alt="PurrNet.Reference&lt; T &gt;" shape="rect" coords="259,56,508,80"/>
 <area href="classPurrNet_1_1ReliableDeltaStream.html" alt="PurrNet.ReliableDeltaStream&lt; T &gt;" shape="rect" coords="259,112,508,136"/>
 <area href="classPurrNet_1_1SyncArray.html" alt="PurrNet.SyncArray&lt; T &gt;" shape="rect" coords="259,168,508,192"/>
-<area href="classPurrNet_1_1SyncDictionary.html" alt="PurrNet.SyncDictionary&lt; TKey, TValue &gt;" shape="rect" coords="259,224,508,248"/>
-<area href="classPurrNet_1_1SyncEventBase.html" alt="PurrNet.SyncEventBase" shape="rect" coords="259,280,508,304"/>
-<area href="classPurrNet_1_1SyncHashSet.html" alt="PurrNet.SyncHashSet&lt; T &gt;" shape="rect" coords="259,336,508,360"/>
-<area href="classPurrNet_1_1SyncInput.html" title="Will automatically sync a value from client to server, so the server can utilize it...." alt="PurrNet.SyncInput&lt; T &gt;" shape="rect" coords="259,392,508,416"/>
-<area href="classPurrNet_1_1SyncList.html" alt="PurrNet.SyncList&lt; T &gt;" shape="rect" coords="259,448,508,472"/>
-<area href="classPurrNet_1_1SyncQueue.html" alt="PurrNet.SyncQueue&lt; T &gt;" shape="rect" coords="259,504,508,528"/>
-<area href="classPurrNet_1_1SyncTimer.html" alt="PurrNet.SyncTimer" shape="rect" coords="259,560,508,584"/>
-<area href="classPurrNet_1_1SyncVar.html" alt="PurrNet.SyncVar&lt; T &gt;" shape="rect" coords="259,616,508,640"/>
-<area href="classPurrNet_1_1ValidatedSyncVar.html" alt="PurrNet.ValidatedSyncVar&lt; T &gt;" shape="rect" coords="259,672,508,696"/>
+<area href="classPurrNet_1_1SyncBigData.html" alt="PurrNet.SyncBigData" shape="rect" coords="259,224,508,248"/>
+<area href="classPurrNet_1_1SyncDictionary.html" alt="PurrNet.SyncDictionary&lt; TKey, TValue &gt;" shape="rect" coords="259,280,508,304"/>
+<area href="classPurrNet_1_1SyncEventBase.html" alt="PurrNet.SyncEventBase" shape="rect" coords="259,336,508,360"/>
+<area href="classPurrNet_1_1SyncHashSet.html" alt="PurrNet.SyncHashSet&lt; T &gt;" shape="rect" coords="259,392,508,416"/>
+<area href="classPurrNet_1_1SyncInput.html" title="Will automatically sync a value from client to server, so the server can utilize it...." alt="PurrNet.SyncInput&lt; T &gt;" shape="rect" coords="259,448,508,472"/>
+<area href="classPurrNet_1_1SyncList.html" alt="PurrNet.SyncList&lt; T &gt;" shape="rect" coords="259,504,508,528"/>
+<area href="classPurrNet_1_1SyncQueue.html" alt="PurrNet.SyncQueue&lt; T &gt;" shape="rect" coords="259,560,508,584"/>
+<area href="classPurrNet_1_1SyncTimer.html" alt="PurrNet.SyncTimer" shape="rect" coords="259,616,508,640"/>
+<area href="classPurrNet_1_1SyncVar.html" alt="PurrNet.SyncVar&lt; T &gt;" shape="rect" coords="259,672,508,696"/>
+<area href="classPurrNet_1_1ValidatedSyncVar.html" alt="PurrNet.ValidatedSyncVar&lt; T &gt;" shape="rect" coords="259,728,508,752"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -199,6 +200,10 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 <tr class="memitem:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">OnPoolReset</a> ()</td></tr>
 <tr class="memdesc:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">More...</a><br /></td></tr>
 <tr class="separator:a244b86c9d0cf97f1ff2eccca7dfb8834"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1370d458228d460a3bc2ce33610555ed"><td class="memItemLeft" align="right" valign="top"><a id="a1370d458228d460a3bc2ce33610555ed" name="a1370d458228d460a3bc2ce33610555ed"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServer</b> ()</td></tr>
+<tr class="memdesc:a1370d458228d460a3bc2ce33610555ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.  <br /></td></tr>
+<tr class="separator:a1370d458228d460a3bc2ce33610555ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -346,7 +351,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncArray.html#a473bc2179db0abc41bcc61363a3af1ad">PurrNet.SyncArray&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncDictionary.html#a10e63b11b9d0383a1e5bf9f0580d80aa">PurrNet.SyncDictionary&lt; TKey, TValue &gt;</a>, <a class="el" href="classPurrNet_1_1SyncHashSet.html#a119c09056510c3e5809052f6cf4627f3">PurrNet.SyncHashSet&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncList.html#a500dd20a8cb94af562900a515ba488b6">PurrNet.SyncList&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncQueue.html#a18e161911cf47ff97e2a8d7471718af7">PurrNet.SyncQueue&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncTimer.html#a85650259108557117f9d51c9fd9902ce">PurrNet.SyncTimer</a>, and <a class="el" href="classPurrNet_1_1Reference.html#a9bc2bf6a7265664cb9bbc20f2d765916">PurrNet.Reference&lt; T &gt;</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncArray.html#a473bc2179db0abc41bcc61363a3af1ad">PurrNet.SyncArray&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncBigData.html#a71b3f097616e9a97b6246074a10438a3">PurrNet.SyncBigData</a>, <a class="el" href="classPurrNet_1_1SyncDictionary.html#a10e63b11b9d0383a1e5bf9f0580d80aa">PurrNet.SyncDictionary&lt; TKey, TValue &gt;</a>, <a class="el" href="classPurrNet_1_1SyncHashSet.html#a119c09056510c3e5809052f6cf4627f3">PurrNet.SyncHashSet&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncList.html#a500dd20a8cb94af562900a515ba488b6">PurrNet.SyncList&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncQueue.html#a18e161911cf47ff97e2a8d7471718af7">PurrNet.SyncQueue&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1SyncTimer.html#a85650259108557117f9d51c9fd9902ce">PurrNet.SyncTimer</a>, and <a class="el" href="classPurrNet_1_1Reference.html#a9bc2bf6a7265664cb9bbc20f2d765916">PurrNet.Reference&lt; T &gt;</a>.</p>
 
 </div>
 </div>
@@ -428,6 +433,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
   </table>
   </dd>
 </dl>
+
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncBigData.html#a57cf3b6cd5ed192cf9e65cff334b068b">PurrNet.SyncBigData</a>.</p>
 
 </div>
 </div>

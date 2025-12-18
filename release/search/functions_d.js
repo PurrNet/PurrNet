@@ -8,5 +8,6 @@ var searchData=
   ['previous_3c_20t_20_3e_5',['Previous&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a24734a36fb7d85aaa5f8b8341a5634a2',1,'PurrNet::StateMachine::StateMachine']]],
   ['previousvalid_6',['PreviousValid',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#aeed0075eae21b8e6aca50f1be66cc26a',1,'PurrNet::StateMachine::StateMachine']]],
   ['previousvalid_3c_20t_20_3e_7',['PreviousValid&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#ac60303d96f58e2fb1f6ce1a21eea2414',1,'PurrNet::StateMachine::StateMachine']]],
-  ['purrhashset_8',['PurrHashSet',['../classPurrNet_1_1Collections_1_1PurrHashSet.html#aaa83b21a370bea6001303698076223e9',1,'PurrNet::Collections::PurrHashSet']]]
+  ['promotetoserver_8',['PromoteToServer',['../classPurrNet_1_1NetworkBones.html#aafc635ff3b42490da93f937f1b57aa92',1,'PurrNet.NetworkBones.PromoteToServer()'],['../classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e',1,'PurrNet.NetworkIdentity.PromoteToServer()'],['../classPurrNet_1_1NetworkModule.html#a1370d458228d460a3bc2ce33610555ed',1,'PurrNet.NetworkModule.PromoteToServer()'],['../classPurrNet_1_1NetworkManager.html#a483e37b314094bd8cd3e93b679a4d19d',1,'PurrNet.NetworkManager.PromoteToServer()']]],
+  ['purrhashset_9',['PurrHashSet',['../classPurrNet_1_1Collections_1_1PurrHashSet.html#aaa83b21a370bea6001303698076223e9',1,'PurrNet::Collections::PurrHashSet']]]
 ];

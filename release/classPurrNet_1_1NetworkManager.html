@@ -189,6 +189,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>GetAllPlayerOwnedIds<
 <tr class="separator:a49db790742361e72eab69a082943bfd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1eb39e76f6bf832a20b9f72f7343d465"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a1eb39e76f6bf832a20b9f72f7343d465">RegisterModules</a> (<a class="el" href="structPurrNet_1_1ModulesCollection.html">ModulesCollection</a> modules, bool asServer)</td></tr>
 <tr class="separator:a1eb39e76f6bf832a20b9f72f7343d465"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19356953402a12f76fe3284da8824a80"><td class="memItemLeft" align="right" valign="top"><a id="a19356953402a12f76fe3284da8824a80" name="a19356953402a12f76fe3284da8824a80"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushBatchedRPCs</b> ()</td></tr>
+<tr class="separator:a19356953402a12f76fe3284da8824a80"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acbb195c5a6938907bf6b2ed0db7e3452"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#acbb195c5a6938907bf6b2ed0db7e3452">MatchesSceneID</a> (Scene scene, <a class="el" href="structPurrNet_1_1SceneID.html">SceneID</a> sceneID)</td></tr>
 <tr class="memdesc:acbb195c5a6938907bf6b2ed0db7e3452"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compares the scene with the scene ID. Scene is a unity scene and <a class="el" href="structPurrNet_1_1SceneID.html">SceneID</a> is a network scene.   <a href="classPurrNet_1_1NetworkManager.html#acbb195c5a6938907bf6b2ed0db7e3452">More...</a><br /></td></tr>
 <tr class="separator:acbb195c5a6938907bf6b2ed0db7e3452"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -207,6 +210,14 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>GetAllPlayerOwnedIds<
 <tr class="memitem:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a4c7989fcb2cf8be4d07c0aecd0798ee3">StartServer</a> ()</td></tr>
 <tr class="memdesc:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts the server. This will start the transport server.   <a href="classPurrNet_1_1NetworkManager.html#a4c7989fcb2cf8be4d07c0aecd0798ee3">More...</a><br /></td></tr>
 <tr class="separator:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a483e37b314094bd8cd3e93b679a4d19d"><td class="memItemLeft" align="right" valign="top"><a id="a483e37b314094bd8cd3e93b679a4d19d" name="a483e37b314094bd8cd3e93b679a4d19d"></a>
+async void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServer</b> ()</td></tr>
+<tr class="memdesc:a483e37b314094bd8cd3e93b679a4d19d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transitions the current <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> instance into acting as a server. This method is used to promote the local instance from a client state into a server state, enabling server-specific functionalities. Great for host migration. It's your responsibility to prepare the transport for this transition.  <br /></td></tr>
+<tr class="separator:a483e37b314094bd8cd3e93b679a4d19d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9a8feabf3ab6efcde2989b11611bc26"><td class="memItemLeft" align="right" valign="top"><a id="aa9a8feabf3ab6efcde2989b11611bc26" name="aa9a8feabf3ab6efcde2989b11611bc26"></a>
+async void&#160;</td><td class="memItemRight" valign="bottom"><b>TransferToNewServer</b> ()</td></tr>
+<tr class="memdesc:aa9a8feabf3ab6efcde2989b11611bc26"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transfers the current connection to a new server. This operation is asynchronous and is typically used to migrate a client to a different server while maintaining the connection state and relevant session data. It's your responsiblity to prepare the transport for the new server.  <br /></td></tr>
+<tr class="separator:aa9a8feabf3ab6efcde2989b11611bc26"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0d9f46b12033650c50815172c0a06a25"><td class="memItemLeft" align="right" valign="top"><a id="a0d9f46b12033650c50815172c0a06a25" name="a0d9f46b12033650c50815172c0a06a25"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StartHost</b> ()</td></tr>
 <tr class="memdesc:a0d9f46b12033650c50815172c0a06a25"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts as both a server and a client. isServer and isClient will both be true after connection is established.  <br /></td></tr>
@@ -333,6 +344,8 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>originalSceneBuildInde
 <tr class="separator:a8b777e261e74efc8bd18cb727e14c2c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0524eab353e3a30aa1bc5f50d7cf9c57"><td class="memItemLeft" align="right" valign="top"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a0524eab353e3a30aa1bc5f50d7cf9c57">rawTransport</a><code> [get]</code></td></tr>
 <tr class="separator:a0524eab353e3a30aa1bc5f50d7cf9c57"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af759404a7ad68de1483bc36fea3edfa9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#af759404a7ad68de1483bc36fea3edfa9">currentTransport</a><code> [get]</code></td></tr>
+<tr class="separator:af759404a7ad68de1483bc36fea3edfa9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60c2991ee334fb4b434c4b49f5cc7908"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classPurrNet_1_1Transports_1_1GenericTransport.html">GenericTransport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908">transport</a><code> [get, set]</code></td></tr>
 <tr class="memdesc:a60c2991ee334fb4b434c4b49f5cc7908"><td class="mdescLeft">&#160;</td><td class="mdescRight">The transport of the network manager. This is the main transport used when starting the server or client.   <a href="classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908">More...</a><br /></td></tr>
 <tr class="separator:a60c2991ee334fb4b434c4b49f5cc7908"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -435,6 +448,20 @@ IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</
 <tr class="memitem:a8830f153c74e65a02291c5fe98cf89c9"><td class="memItemLeft" align="right" valign="top"><a id="a8830f153c74e65a02291c5fe98cf89c9" name="a8830f153c74e65a02291c5fe98cf89c9"></a>
 ValidateSpawnAction&#160;</td><td class="memItemRight" valign="bottom"><b>onClientSpawnValidate</b></td></tr>
 <tr class="separator:a8830f153c74e65a02291c5fe98cf89c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5fdbdb3aa9ff7b2c398c5dd761ecb456"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a5fdbdb3aa9ff7b2c398c5dd761ecb456">isPromotingToServer</a><code> [get]</code></td></tr>
+<tr class="separator:a5fdbdb3aa9ff7b2c398c5dd761ecb456"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a820a53874cce6b4b3bf3e07cd4cb24a7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a820a53874cce6b4b3bf3e07cd4cb24a7">isTranferingToNewServer</a><code> [get]</code></td></tr>
+<tr class="separator:a820a53874cce6b4b3bf3e07cd4cb24a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header properties_interfacePurrNet_1_1IRegisterModules"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1IRegisterModules')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a></td></tr>
+<tr class="memitem:a0120d2226dc90b416623d295fa2cd687 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a0120d2226dc90b416623d295fa2cd687" name="a0120d2226dc90b416623d295fa2cd687"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isPromotingToServer</b><code> [get]</code></td></tr>
+<tr class="separator:a0120d2226dc90b416623d295fa2cd687 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93c148cdef1c2618b62340918d31091c inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a93c148cdef1c2618b62340918d31091c" name="a93c148cdef1c2618b62340918d31091c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isTranferingToNewServer</b><code> [get]</code></td></tr>
+<tr class="separator:a93c148cdef1c2618b62340918d31091c inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a638e665d9b9b53ea94752e7b3f3856a9 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a638e665d9b9b53ea94752e7b3f3856a9" name="a638e665d9b9b53ea94752e7b3f3856a9"></a>
+<a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><b>currentTransport</b><code> [get]</code></td></tr>
+<tr class="separator:a638e665d9b9b53ea94752e7b3f3856a9 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_interfacePurrNet_1_1INetworkManager"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1INetworkManager')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1INetworkManager.html">PurrNet.INetworkManager</a></td></tr>
 <tr class="memitem:add18922ded1c240b6a56702081f68140 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#add18922ded1c240b6a56702081f68140">isOffline</a><code> [get]</code></td></tr>
 <tr class="separator:add18922ded1c240b6a56702081f68140 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1872,6 +1899,30 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 
 </div>
 </div>
+<a id="af759404a7ad68de1483bc36fea3edfa9" name="af759404a7ad68de1483bc36fea3edfa9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af759404a7ad68de1483bc36fea3edfa9">&#9670;&#160;</a></span>currentTransport</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a> PurrNet.NetworkManager.currentTransport</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
+
+</div>
+</div>
 <a id="a1e3fc40f350807cb829bc78913adcf7d" name="a1e3fc40f350807cb829bc78913adcf7d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1e3fc40f350807cb829bc78913adcf7d">&#9670;&#160;</a></span>isClient</h2>
 
@@ -1924,6 +1975,30 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 
 </div>
 </div>
+<a id="a5fdbdb3aa9ff7b2c398c5dd761ecb456" name="a5fdbdb3aa9ff7b2c398c5dd761ecb456"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5fdbdb3aa9ff7b2c398c5dd761ecb456">&#9670;&#160;</a></span>isPromotingToServer</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.NetworkManager.isPromotingToServer</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
+
+</div>
+</div>
 <a id="a7a4aefbd024941678ce982439eb38c72" name="a7a4aefbd024941678ce982439eb38c72"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7a4aefbd024941678ce982439eb38c72">&#9670;&#160;</a></span>isServer</h2>
 
@@ -1947,6 +2022,30 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 <p>Whether the network manager is a server.  </p>
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1INetworkManager.html">PurrNet.INetworkManager</a>.</p>
+
+</div>
+</div>
+<a id="a820a53874cce6b4b3bf3e07cd4cb24a7" name="a820a53874cce6b4b3bf3e07cd4cb24a7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a820a53874cce6b4b3bf3e07cd4cb24a7">&#9670;&#160;</a></span>isTranferingToNewServer</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.NetworkManager.isTranferingToNewServer</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
 
 </div>
 </div>
