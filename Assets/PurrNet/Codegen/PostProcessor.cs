@@ -48,11 +48,6 @@ namespace PurrNet.Codegen
         {
             var name = compiledAssembly.Name;
 
-#if UNITY_PLAYMODE
-            if (name.Contains("Unity.Multiplayer.Playmode.Workflow.Editor"))
-                return true;
-#endif
-
             if (name.Contains("NuGetForUnity"))
                 return false;
 
@@ -1161,7 +1156,7 @@ namespace PurrNet.Codegen
                     }
                     else
                     {
-                        code.Append(Instruction.Create(OpCodes.Call, responderUniTaskObject));
+                        //code.Append(Instruction.Create(OpCodes.Call, responderUniTaskObject));
 
                         if (isTaskTypeConcrete)
                         {
@@ -2671,10 +2666,6 @@ namespace PurrNet.Codegen
 
                         var type = types[t];
 
-#if UNITY_PLAYMODE
-                        if (type.Name == "TopView" && type.Namespace == "Unity.Multiplayer.Playmode.Workflow.Editor")
-                            UnityPlaymodePatch.Patch(type);
-#endif
                         if (!hasPurrNetAsReference)
                             continue;
 

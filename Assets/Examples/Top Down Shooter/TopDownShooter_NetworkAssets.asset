@@ -177,7 +177,6 @@ MonoBehaviour:
   - {fileID: 2800000, guid: eac745f42c750c24fb93ade3b6e40020, type: 3}
   - {fileID: 2100000, guid: 1a364b74476e8e745be0e98df89274cc, type: 2}
   - {fileID: 2100000, guid: bcda0e624e05bb3468c8d00bfdfcecb5, type: 2}
-  - {fileID: 2100000, guid: 6faca5c2b42f4c94b86de38880aafbad, type: 2}
   - {fileID: 2800000, guid: bd2287ef8ebbebb4ba5ccfc567a98222, type: 3}
   - {fileID: -48694323, guid: bd2287ef8ebbebb4ba5ccfc567a98222, type: 3}
   - {fileID: 1076262999, guid: bd2287ef8ebbebb4ba5ccfc567a98222, type: 3}
@@ -470,6 +469,7 @@ MonoBehaviour:
   - {fileID: 875758860462668846, guid: 20ec334e1da5edf44ac0079941c62c2b, type: 3}
   - {fileID: 7954578888659600866, guid: 20ec334e1da5edf44ac0079941c62c2b, type: 3}
   - {fileID: 2652095924681195117, guid: bffcac4e3732f334995c0baa8a5d04a0, type: 3}
+  - {fileID: 7842228935128372380, guid: 6f332b4b684075840b8e8ec2c0b4ee8a, type: 3}
   _availableTypeNames:
   - UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
@@ -890,7 +890,6 @@ MonoBehaviour:
   - {fileID: 2800000, guid: eac745f42c750c24fb93ade3b6e40020, type: 3}
   - {fileID: 2100000, guid: 1a364b74476e8e745be0e98df89274cc, type: 2}
   - {fileID: 2100000, guid: bcda0e624e05bb3468c8d00bfdfcecb5, type: 2}
-  - {fileID: 2100000, guid: 6faca5c2b42f4c94b86de38880aafbad, type: 2}
   - {fileID: 2800000, guid: bd2287ef8ebbebb4ba5ccfc567a98222, type: 3}
   - {fileID: -48694323, guid: bd2287ef8ebbebb4ba5ccfc567a98222, type: 3}
   - {fileID: 1076262999, guid: bd2287ef8ebbebb4ba5ccfc567a98222, type: 3}
@@ -1183,3 +1182,4 @@ MonoBehaviour:
   - {fileID: 875758860462668846, guid: 20ec334e1da5edf44ac0079941c62c2b, type: 3}
   - {fileID: 7954578888659600866, guid: 20ec334e1da5edf44ac0079941c62c2b, type: 3}
   - {fileID: 2652095924681195117, guid: bffcac4e3732f334995c0baa8a5d04a0, type: 3}
+  - {fileID: 7842228935128372380, guid: 6f332b4b684075840b8e8ec2c0b4ee8a, type: 3}

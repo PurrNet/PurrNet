@@ -105,7 +105,7 @@ namespace PurrNet
             return false;
         }
 
-        private NetworkRules networkRules =>
+        public NetworkRules networkRules =>
             _networkRules ? _networkRules : networkManager ? networkManager.networkRules : null;
 
         [UsedImplicitly]

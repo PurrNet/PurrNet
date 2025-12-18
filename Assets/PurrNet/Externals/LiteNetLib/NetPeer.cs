@@ -665,7 +665,7 @@ namespace LiteNetLib
                 //if cannot be fragmented
                 if (deliveryMethod != DeliveryMethod.ReliableOrdered &&
                     deliveryMethod != DeliveryMethod.ReliableUnordered)
-                    throw new TooBigPacketException("Unreliable or ReliableSequenced packet size exceeded maximum of " +
+                    throw new TooBigPacketException($"Unreliable or ReliableSequenced packet size ({length + headerSize}) exceeded maximum of " +
                                                     (mtu - headerSize) +
                                                     " bytes, Check allowed size by GetMaxSinglePacketSize()");
 

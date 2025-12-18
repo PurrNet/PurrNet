@@ -35,19 +35,26 @@ namespace PurrNet.Modules
         public List<CookiePair> cookies;
     }
 
-    public class CookiesModule : INetworkModule
+    public class CookiesModule : INetworkModule, IPromoteToServerModule
     {
         private const string SAVE_KEY = "rabsi_cookies";
 
         readonly List<CookiePair> _cookies = new List<CookiePair>();
         readonly CookieScope _scope;
-        readonly bool _asServer;
+        bool _asServer;
 
         public CookiesModule(CookieScope scope, bool asServer)
         {
             _scope = scope;
             _asServer = asServer;
         }
+
+        public void PromoteToServerModule()
+        {
+            _asServer = true;
+        }
+
+        public void PostPromoteToServerModule() { }
 
         public void Enable(bool asServer)
         {
@@ -192,7 +199,6 @@ namespace PurrNet.Modules
             {
                 CookieScope.LiveWithProcess => ProcessPrefs.Get(saveKey, null),
                 CookieScope.StorePersistently => PlayerPrefs.GetString(saveKey, null),
-                CookieScope.LiveWithConnection => null,
                 _ => null
             };
         }

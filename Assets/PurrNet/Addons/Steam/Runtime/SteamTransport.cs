@@ -6,6 +6,7 @@
 #define STEAMWORKS_NET_PACKAGE
 #endif
 
+using System;
 using System.Collections.Generic;
 using PurrNet.Transports;
 using UnityEngine;
@@ -13,7 +14,7 @@ using UnityEngine;
 namespace PurrNet.Steam
 {
     [DefaultExecutionOrder(-100)]
-    public class SteamTransport : GenericTransport, ITransport
+    public partial class SteamTransport : GenericTransport, ITransport
     {
         [Header("Server Settings")] [SerializeField]
         private ushort _serverPort = 5003;
@@ -46,6 +47,23 @@ namespace PurrNet.Steam
         {
             get => _address;
             set => _address = value;
+        }
+
+        public bool SupportsChannel(Channel channel)
+        {
+            if (channel is Channel.ReliableOrdered or Channel.Unreliable)
+                return true;
+            return false;
+        }
+
+        public int GetMTU(Connection target, Channel channel, bool asServer)
+        {
+            return channel switch
+            {
+                Channel.Unreliable => 1024,
+                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
+                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
+            };
         }
 
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
@@ -117,6 +135,7 @@ namespace PurrNet.Steam
             listenerState = ConnectionState.Connecting;
 
             _server = new SteamServer();
+            _connections.Clear();
 
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer);

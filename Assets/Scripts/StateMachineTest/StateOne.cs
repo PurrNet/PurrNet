@@ -43,6 +43,12 @@ public class StateOne : StateNode
         Debug.Log($"Exited state {this} | asServer: {asServer}");
     }
 
+    [ContextMenu("Next State custom data test")]
+    private void MyTest()
+    {
+        machine.NextValid(new MyData(5, 7));
+    }
+    
     [ContextMenu("Next state")]
     private void NextState()
     {

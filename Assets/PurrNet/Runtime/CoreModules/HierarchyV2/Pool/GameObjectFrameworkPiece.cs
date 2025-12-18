@@ -19,8 +19,7 @@ namespace PurrNet.Modules
 
         public void Apply(Transform trs)
         {
-            trs.SetLocalPositionAndRotation(localPosition, localRotation);
-            trs.localScale = localScale;
+            HierarchyV2.SetLocalPosAndRot(trs, localPosition, localRotation, localScale);
         }
     }
 

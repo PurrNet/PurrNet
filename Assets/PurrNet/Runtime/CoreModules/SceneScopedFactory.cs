@@ -46,11 +46,7 @@ namespace PurrNet.Modules
         private void OnPreSceneLoaded(SceneID scene, bool asServer)
         {
             if (_modules.ContainsKey(scene))
-            {
-                PurrLogger.LogError(
-                    $"Hierarchy module for scene {scene} already exists; trying to create another one?");
                 return;
-            }
 
             var module = CreateModule(scene, asServer);
 

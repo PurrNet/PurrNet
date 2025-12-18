@@ -3,6 +3,7 @@ using PurrNet.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet.Pooling;
 using PurrNet.Transports;
 using UnityEngine.Scripting;
 
@@ -198,7 +199,7 @@ namespace PurrNet
 
         private void HandleFullState(List<T> newList)
         {
-            if (isHost) return;
+            if (isHost || IsController(ownerAuth)) return;
 
             bool listChanged = false;
 
@@ -343,6 +344,34 @@ namespace PurrNet
             var change = SyncListChange<T>.Removed(item, oldValue, index);
             QueueChange(change);
             InvokeChange(change);
+        }
+
+        /// <summary>
+        /// Sorts the list using the given comparison and syncs the changes.
+        /// </summary>
+        /// <param name="comparison">Comparison to use for sorting the list</param>
+        public void Sort(Comparison<T> comparison)
+        {
+            if (!ValidateAuthority())
+                return;
+            
+            using var sorted = DisposableList<T>.Create(_list);
+            sorted.list.Sort(comparison);
+
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                T newItem = sorted[i];
+                T oldItem = _list[i];
+
+                if (!EqualityComparer<T>.Default.Equals(oldItem, newItem))
+                {
+                    _list[i] = newItem;
+                    
+                    var change = SyncListChange<T>.Set(newItem, oldItem, i);
+                    QueueChange(change);
+                    InvokeChange(change);
+                }
+            }
         }
 
         public bool Contains(T item) => _list.Contains(item);

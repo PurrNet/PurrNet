@@ -1,14 +1,41 @@
 using System;
-using System.Collections.Generic;
-using System.Reflection;
+using JetBrains.Annotations;
+
+#if UNITY_6000_3_OR_NEWER
+using UnityEditor;
+using UnityEditor.Toolbars;
+using UnityEngine.UIElements;
+#else
 using UnityEditor;
 using UnityEngine;
+using System.Collections.Generic;
+using System.Reflection;
+#endif
 
 namespace UnityToolbarExtender
 {
+#if !UNITY_6000_3_OR_NEWER
 	[InitializeOnLoad]
+#endif
 	public static class ToolbarExtender
 	{
+#if UNITY_6000_3_OR_NEWER
+		public static event Action toolbarGUI;
+
+		public static void RequestToolbarRepaint()
+		{
+			EditorApplication.delayCall += () => MainToolbar.Refresh("Multiplayer/PurrNet HUD");
+		}
+
+		[MainToolbarElement("Multiplayer/PurrNet HUD", defaultDockPosition = MainToolbarDockPosition.Right), UsedImplicitly]
+		public static MainToolbarElement ProjectSettingsButton()
+		{
+			return ToolbarGUI.Create(() => new IMGUIContainer(() =>
+			{
+				toolbarGUI?.Invoke();
+			}));
+		}
+#else
 		static int m_toolCount;
 		static GUIStyle m_commandStyle = null;
 
@@ -194,5 +221,6 @@ namespace UnityToolbarExtender
 				Debug.LogException(e);
 			}
 		}
+#endif
 	}
 }

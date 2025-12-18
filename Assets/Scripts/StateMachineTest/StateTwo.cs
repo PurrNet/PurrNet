@@ -1,7 +1,8 @@
+using PurrNet.Packing;
 using PurrNet.StateMachine;
 using UnityEngine;
 
-public class StateTwo : StateNode<int>
+public class StateTwo : StateNode<MyData>
 {
     [SerializeField] private bool canEnter;
     
@@ -10,10 +11,17 @@ public class StateTwo : StateNode<int>
         base.Enter();
         //Debug.Log($"Entered state {this}");
     }
+
+    public override void Enter(MyData data)
+    {
+        base.Enter(data);
+        Debug.Log($"Entered stateTwo with data: {data}");
+    }
+
     public override void Enter(bool asServer)
     {
         base.Enter(asServer);
-        Debug.Log($"Entered state {this} | asServer: {asServer}");
+        //Debug.Log($"Entered state {this} | asServer: {asServer}");
     }
 
     public override void Exit()
@@ -25,7 +33,7 @@ public class StateTwo : StateNode<int>
     public override void Exit(bool asServer)
     {
         base.Exit(asServer);
-        Debug.Log($"Exited state {this} | asServer: {asServer}");
+        //Debug.Log($"Exited state {this} | asServer: {asServer}");
     }
 
     public override bool CanEnter()
@@ -38,5 +46,22 @@ public class StateTwo : StateNode<int>
     {
         var goesNext = machine.Next();
         Debug.Log($"{goesNext}");
+    }
+}
+
+public struct MyData : IPackedAuto
+{
+    public int Fails;
+    public float Time;
+
+    public MyData(int fails, float time)
+    {
+        Fails = fails;
+        Time = time;
+    }
+
+    public override string ToString()
+    {
+        return $"MyData: Fails: {Fails} | Time: {Time}";
     }
 }

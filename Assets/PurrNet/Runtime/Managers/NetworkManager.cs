@@ -197,6 +197,8 @@ namespace PurrNet
             _clientPendingSubscriptions.Clear();
         }
 
+        public ITransport currentTransport => _transport ? _transport.transport : null;
+
         /// <summary>
         /// The transport of the network manager.
         /// This is the main transport used when starting the server or client.
@@ -262,9 +264,10 @@ namespace PurrNet
             get
             {
                 var state = !_transport ? ConnectionState.Disconnected : _transport.transport.listenerState;
-                return state == ConnectionState.Disconnected && _isCleaningServer
+                var result = state == ConnectionState.Disconnected && _isCleaningServer
                     ? ConnectionState.Disconnecting
                     : state;
+                return result;
             }
         }
 
@@ -286,7 +289,7 @@ namespace PurrNet
         /// <summary>
         /// Whether the network manager is a server.
         /// </summary>
-        public bool isServer => _transport && _transport.transport.listenerState == ConnectionState.Connected;
+        public bool isServer { get; private set; }
 
         [UsedByIL]
         public static bool isServerStatic => main && main.isServer;
@@ -297,7 +300,7 @@ namespace PurrNet
         /// <summary>
         /// Whether the network manager is a client.
         /// </summary>
-        public bool isClient => _transport && _transport.transport.clientState == ConnectionState.Connected;
+        public bool isClient { get; private set; }
 
         /// <summary>
         /// Whether the network manager is offline.
@@ -982,6 +985,16 @@ namespace PurrNet
 
         public void RegisterModules(ModulesCollection modules, bool asServer)
         {
+            switch (asServer)
+            {
+                case true when isPromotingToServer:
+                    modules.MigrateFrom(_clientModules);
+                    return;
+                case false when isTranferingToNewServer:
+                    modules.TransferToNewServer();
+                    return;
+            }
+
             var tickManager = new TickManager(_tickRate, this);
 
             if (asServer)
@@ -1124,7 +1137,7 @@ namespace PurrNet
             modules.AddModule(scenePlayers);
 
             var hierarchyV2 = new HierarchyFactory(this, scenesModule, scenePlayers, playersManager);
-            var ownershipModule = new GlobalOwnershipModule(hierarchyV2, playersManager, scenePlayers, scenesModule);
+            var ownershipModule = new GlobalOwnershipModule(this, hierarchyV2, playersManager, scenePlayers, scenesModule);
             var rpcModule = new RPCModule(this, playersManager, hierarchyV2, ownershipModule, scenesModule);
             var networkTransform = new NetworkTransformFactory(scenesModule, scenePlayers, playersBroadcast, this, hierarchyV2);
             var colliderRollback = new ColliderRollbackFactory(tickManager, scenesModule);
@@ -1252,14 +1265,33 @@ namespace PurrNet
             if (clientConnected)
                 _clientModules.TriggerOnPostFixedUpdate();
 
+            if (serverConnected)
+                _serverModules.TriggerOnBatch();
+
+            if (clientConnected)
+                _clientModules.TriggerOnBatch();
+
+            if (serverConnected)
+                _serverModules.TriggerOnPostBatch();
+
+            if (clientConnected)
+                _clientModules.TriggerOnPostBatch();
+
             if (_transport)
                 _transport.transport.SendMessages(delta);
 
-            if (_isCleaningClient && _clientModules.Cleanup())
+            if (_isCleaningClient)
             {
-                _clientModules.UnregisterModules();
-                CleanupClientModules();
-                _isCleaningClient = false;
+                if (isPromotingToServer || isTranferingToNewServer)
+                {
+                    _isCleaningClient = false;
+                }
+                else if (_clientModules.Cleanup())
+                {
+                    _clientModules.UnregisterModules();
+                    CleanupClientModules();
+                    _isCleaningClient = false;
+                }
             }
 
             if (_isCleaningServer && _serverModules.Cleanup())
@@ -1273,6 +1305,18 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             Statistics.MarkEndOfSampling();
 #endif
+        }
+
+        public void FlushBatchedRPCs()
+        {
+            bool serverConnected = serverState == ConnectionState.Connected;
+            bool clientConnected = clientState == ConnectionState.Connected;
+
+            if (serverConnected)
+                _serverModules.FlushBatchRPCs();
+
+            if (clientConnected)
+                _clientModules.FlushBatchRPCs();
         }
 
         private void OnDestroy()
@@ -1377,6 +1421,102 @@ namespace PurrNet
             _transport.StartServer(this);
         }
 
+        public bool isPromotingToServer { get; private set; }
+
+        /// <summary>
+        /// Transitions the current NetworkManager instance into acting as a server.
+        /// This method is used to promote the local instance from a client state
+        /// into a server state, enabling server-specific functionalities.
+        /// Great for host migration.
+        /// It's your responsibility to prepare the transport for this transition.
+        /// </summary>
+        [ContextMenu("Promote To Server"), PurrContextButton]
+        public async void PromoteToServer()
+        {
+            try
+            {
+                if (isPromotingToServer)
+                    return;
+
+                if (serverState != ConnectionState.Disconnected)
+                {
+                    PurrLogger.LogError("Cannot promote to server, you already are a server.");
+                    return;
+                }
+
+                isPromotingToServer = true;
+
+                StopServer();
+                StopClient();
+
+                while (clientState != ConnectionState.Disconnected ||
+                       serverState != ConnectionState.Disconnected)
+                    await UnityLatestUpdate.Yield();
+
+                StartServer();
+                _serverModules.PostPromoteToServer();
+
+                if (_networkRules && _networkRules.ShouldMigrateAsHost())
+                    StartClient();
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogException(e);
+                isPromotingToServer = false;
+                StopClient();
+                StopServer();
+            }
+            finally
+            {
+                isPromotingToServer = false;
+            }
+        }
+
+        public bool isTranferingToNewServer { get; private set; }
+
+        /// <summary>
+        /// Transfers the current connection to a new server. This operation is asynchronous
+        /// and is typically used to migrate a client to a different server while maintaining
+        /// the connection state and relevant session data.
+        /// It's your responsiblity to prepare the transport for the new server.
+        /// </summary>
+        [ContextMenu("TransferToNewServer"), PurrContextButton]
+        public async void TransferToNewServer()
+        {
+            try
+            {
+                if (isTranferingToNewServer)
+                    return;
+
+                isTranferingToNewServer = true;
+
+                StopClient();
+                StopServer();
+
+                while (clientState != ConnectionState.Disconnected ||
+                       serverState != ConnectionState.Disconnected)
+                    await UnityLatestUpdate.Yield();
+
+                StartClient();
+
+                while (clientState != ConnectionState.Connected)
+                    await UnityLatestUpdate.Yield();
+
+                _clientModules.PostTransferToNewServer();
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogException(e);
+                isTranferingToNewServer = false;
+                StopClient();
+                StopServer();
+            }
+            finally
+            {
+                isTranferingToNewServer = false;
+            }
+        }
+
         /// <summary>
         /// Starts as both a server and a client.
         /// isServer and isClient will both be true after connection is established.
@@ -1408,6 +1548,13 @@ namespace PurrNet
             _clientModules.RegisterModules();
             _isSubscribedClient = true;
             TriggerSubscribeEvents(false);
+        }
+
+        internal void TriggerConnectionLeft(Connection connection, bool asServer)
+        {
+            if (asServer)
+                _serverModules.OnLostConnection(connection, true);
+            else _clientModules.OnLostConnection(connection, false);
         }
 
         bool _isSubscribedClient;
@@ -1535,12 +1682,14 @@ namespace PurrNet
         {
             if (asServer)
             {
+                isServer = state == ConnectionState.Connected;
                 _serverModules.OnConnectionState(state, true);
                 onServerConnectionState?.Invoke(state);
                 onAnyServerConnectionState?.Invoke(state);
             }
             else
             {
+                isClient = state == ConnectionState.Connected;
                 _clientModules.OnConnectionState(state, false);
                 onClientConnectionState?.Invoke(state);
                 onAnyClientConnectionState?.Invoke(state);

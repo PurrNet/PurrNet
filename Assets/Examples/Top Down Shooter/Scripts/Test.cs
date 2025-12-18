@@ -5,136 +5,52 @@ using UnityEngine;
 
 public class Test : NetworkIdentity
 {
-    [SerializeField, PurrScene] private string _sceneOne, _sceneTwo; 
+    private SyncTimer _syncTimer = new();
+
+    private SyncEvent _syncEvent = new();
     
-    private Queue<PlayerID> _bots = new();
-
-    private bool _networkManagerLogs = false;
-
-    private SyncEvent<int> _syncEvent = new();
-
-    private void Awake()
-    {
-        DontDestroyOnLoad(gameObject);
-    }
-
+    [SerializeField] private Transform _parentTarget;
+    
     private void OnEnable()
     {
-        _syncEvent += MyTestEvent;
+        _syncTimer.onTimerStart += () => Debug.Log($"Timer started");
+        _syncTimer.onTimerEnd += () => Debug.Log($"Timer ended");
+        _syncTimer.onTimerSecondTick += () => Debug.Log($"Timer: {_syncTimer.remainingInt}");
+        _syncEvent += SyncEventTest;
     }
 
     private void OnDisable()
     {
-        _syncEvent -= MyTestEvent;
+        _syncEvent -= SyncEventTest;
     }
 
-    private void MyTestEvent(int myInt)
+    private void SyncEventTest()
     {
-        Debug.Log($"Event triggered! {myInt}");
+        Debug.Log($"SyncEvent: Invoked");
     }
 
-    private void Update()
+    [ContextMenu("Start Timer")]
+    private void StartTimer() 
     {
-        if(Input.GetKeyDown(KeyCode.Q))
-            _syncEvent.Invoke(53);
-        
-        if (Input.GetKeyDown(KeyCode.X))
-            _bots.Enqueue(networkManager.playerModule.CreateBot());
-        if (Input.GetKeyDown(KeyCode.C)) 
-            networkManager.playerModule.KickPlayer(_bots.Dequeue());
-
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-            networkManager.sceneModule.LoadSceneAsync(_sceneOne);
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-            networkManager.sceneModule.LoadSceneAsync(_sceneTwo);
+        _syncTimer.StartTimer(20);
     }
 
-    protected override void OnSpawned(bool asServer)
+    [ContextMenu("End Timer")]
+    private void EndTimer() 
     {
-        if (!asServer)
-            return;
-        
-        networkManager.onPlayerJoinedScene += OnPlayerJoinedScene;
-        networkManager.onPlayerLoadedScene += OnPlayerLoadedScene;
-        networkManager.onPlayerJoined += OnPlayerJoined;
-        networkManager.onPlayerLeft += OnPlayerLeft;
-        networkManager.onPlayerLeftScene += OnPlayerLeftScene;
-        networkManager.onPlayerUnloadedScene += OnPlayerUnloadedScene;
+        _syncTimer.StopTimer();
     }
 
-    protected override void OnDespawned()
+    [ContextMenu("Invoke")]
+    private void InvokeTest() 
     {
-        networkManager.onPlayerJoinedScene -= OnPlayerJoinedScene;
-        networkManager.onPlayerLoadedScene -= OnPlayerLoadedScene;
-        networkManager.onPlayerJoined -= OnPlayerJoined;
-        networkManager.onPlayerLeft -= OnPlayerLeft;
-        networkManager.onPlayerLeftScene -= OnPlayerLeftScene;
-        networkManager.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
+        _syncEvent?.Invoke();
     }
 
-    private void OnPlayerJoinedScene(PlayerID player, SceneID scene, bool asServer)
+    [ContextMenu("Parent test")]
+    private void ParentTest()
     {
-        if (!_networkManagerLogs)
-            return;
-        
-        if (player.id == 1)
-            return;
-
-        Debug.Log($"Joined scene: {player} | {scene} | {asServer}");
-    }
-
-    private void OnPlayerLoadedScene(PlayerID player, SceneID scene, bool asServer)
-    {
-        if (!_networkManagerLogs)
-            return;
-
-        if (player.id == 1)
-            return;
-
-        Debug.Log($"Loaded scene: {player} | {scene} | {asServer}");
-    }
-
-    private void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer)
-    {
-        if (!_networkManagerLogs)
-            return;
-
-        if (player.id == 1)
-            return;
-
-        Debug.Log($"Joined: {player} | {asServer}");
-    }
-
-    private void OnPlayerUnloadedScene(PlayerID player, SceneID scene, bool asServer)
-    {
-        if (!_networkManagerLogs)
-            return;
-
-        if (player.id == 1)
-            return;
-        
-        Debug.Log($"Unloaded scene: {player} | {scene} | {asServer}");
-    }
-
-    private void OnPlayerLeftScene(PlayerID player, SceneID scene, bool asServer)
-    {
-        if (!_networkManagerLogs)
-            return;
-
-        if (player.id == 1)
-            return;
-
-        Debug.Log($"Left scene: {player} | {scene} | {asServer}");
-    }
-
-    private void OnPlayerLeft(PlayerID player, bool asServer)
-    {
-        if (!_networkManagerLogs)
-            return;
-
-        if (player.id == 1)
-            return;
-
-        Debug.Log($"Left: {player} | {asServer}");
+        transform.SetParent(_parentTarget);
+        transform.localPosition = Vector3.zero;
     }
 }

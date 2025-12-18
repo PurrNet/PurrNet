@@ -14,7 +14,7 @@ using UnityEngine;
 
 namespace PurrNet.Transports
 {
-    public class PurrTransport : GenericTransport, ITransport
+    public partial class PurrTransport : GenericTransport, ITransport
     {
         enum SERVER_PACKET_TYPE : byte
         {
@@ -28,7 +28,8 @@ namespace PurrNet.Transports
         enum HOST_PACKET_TYPE : byte
         {
             SEND_KEEPALIVE = 0,
-            SEND_ONE = 1
+            SEND_ONE = 1,
+            KICK_PLAYER = 2
         }
 
         [Serializable, UsedImplicitly]
@@ -111,6 +112,22 @@ namespace PurrNet.Transports
                 onConnectionState?.Invoke(value, false);
             }
         }
+
+        public bool SupportsChannel(Channel channel)
+        {
+            return true;
+        }
+
+        public int GetMTU(Connection target, Channel channel, bool asServer)
+        {
+            return channel switch
+            {
+                Channel.Unreliable => 1024,
+                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
+                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
+            };
+        }
+
 
         public IReadOnlyList<Connection> connections => _connections;
         private readonly List<Connection> _connections = new List<Connection>();
@@ -665,7 +682,17 @@ namespace PurrNet.Transports
 
         public void CloseConnection(Connection conn)
         {
-            throw new NotImplementedException();
+            _packer.ResetPositionAndMode(false);
+
+            Packer<byte>.Write(_packer, (byte)HOST_PACKET_TYPE.KICK_PLAYER);
+            Packer<int>.Write(_packer, conn.connectionId);
+
+            var data = _packer.ToByteData();
+
+            if (_isUsingUDP)
+                _udpServer.SendToAll(data.data, data.offset, data.length, DeliveryMethod.ReliableSequenced);
+            else _server.Send(new ArraySegment<byte>(data.data, data.offset, data.length));
+            RaiseDataSent(conn, data, true);
         }
 
         public void ReceiveMessages(float delta)

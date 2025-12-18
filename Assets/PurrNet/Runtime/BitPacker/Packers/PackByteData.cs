@@ -9,7 +9,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void Write(this BitPacker packer, ByteData data)
         {
-            Packer<Size>.Write(packer, (uint)data.length);
+            Packer<Size>.Write(packer, data.length);
             packer.WriteBytes(data.span);
         }
 
@@ -33,6 +33,12 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void Write(this BitPacker packer, BitPacker data)
         {
+            if (data == null)
+            {
+                Write(packer, new ByteData());
+                return;
+            }
+            
             Write(packer, data.ToByteData());
         }
 

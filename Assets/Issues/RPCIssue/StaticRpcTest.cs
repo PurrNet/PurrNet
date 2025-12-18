@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -10,27 +9,6 @@ using UnityEngine;
 public class StaticRpcTest : PlayerIdentity<StaticRpcTest>
 {
     [SerializeField] List<ulong> _players;
-
-    private async void Update()
-    {
-        try
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                var res = await TestCaller<StaticRpcTest>();
-                Debug.Log(res);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogException(e);
-        }
-    }
-
-    private async Task<bool> TestCaller<T>()
-    {
-        return await Test<T>();
-    }
 
     [ServerRpc(requireOwnership: false)]
     private async Task<bool> Test<T>()

@@ -11,7 +11,7 @@ namespace PurrNet.Modules
 {
     public delegate void ValueModifier<T>(ref T oldValue);
 
-    public class DeltaModule : INetworkModule, IPostFixedUpdate
+    public class DeltaModule : INetworkModule, IPostFixedUpdate, IPromoteToServerModule
     {
         private readonly PlayersManager _players;
         private readonly PlayersBroadcaster _broadcaster;
@@ -30,6 +30,15 @@ namespace PurrNet.Modules
             _sendingTrackers = new Dictionary<PlayerID, Dictionary<uint, ClientDeltaTracker>>();
         }
 
+        public void PromoteToServerModule()
+        {
+            _asServer = true;
+            _acknowledgements.Clear();
+            ClearTrackers();
+        }
+
+        public void PostPromoteToServerModule() { }
+
         public void Enable(bool asServer)
         {
             _asServer = asServer;
@@ -46,6 +55,11 @@ namespace PurrNet.Modules
             _broadcaster.Unsubscribe<DeltaAcknowledge>(Acknowledge);
             _broadcaster.Unsubscribe<DeltaCleanup>(Cleanup);
 
+            ClearTrackers();
+        }
+
+        private void ClearTrackers()
+        {
             foreach (var player in _sendingTrackers.Keys)
             {
                 if (_sendingTrackers.TryGetValue(player, out var clientDict))

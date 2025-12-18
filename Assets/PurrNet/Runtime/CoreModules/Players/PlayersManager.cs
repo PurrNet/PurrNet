@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using PurrNet.Authentication;
 using PurrNet.Logging;
 using PurrNet.Packing;
+using PurrNet.Pooling;
 using PurrNet.Transports;
 
 namespace PurrNet.Modules
@@ -33,10 +34,18 @@ namespace PurrNet.Modules
         [JsonProperty]
         public Connection connection { get; }
 
-        public PlayerJoinedEvent(PlayerID playerId, Connection connection)
+        [JsonProperty]
+        public NetworkID? lastNidId { get; }
+
+        [JsonProperty]
+        public string cookie { get; }
+
+        public PlayerJoinedEvent(PlayerID playerId, Connection connection, NetworkID? lastNid, string cookie)
         {
             this.playerId = playerId;
             this.connection = connection;
+            this.lastNidId = lastNid;
+            this.cookie = cookie;
         }
     }
 
@@ -56,11 +65,11 @@ namespace PurrNet.Modules
     public struct PlayerSnapshotEvent : IPackedAuto
     {
         [JsonProperty]
-        public Dictionary<Connection, PlayerID> connectionToPlayerId { get; }
+        public DisposableList<PlayerJoinedEvent> events { get; }
 
-        public PlayerSnapshotEvent(Dictionary<Connection, PlayerID> connectionToPlayerId)
+        public PlayerSnapshotEvent(DisposableList<PlayerJoinedEvent> snapshot)
         {
-            this.connectionToPlayerId = connectionToPlayerId;
+            this.events = snapshot;
         }
     }
 
@@ -70,7 +79,7 @@ namespace PurrNet.Modules
 
     public delegate void OnPlayerEvent(PlayerID player);
 
-    public class PlayersManager : INetworkModule, IConnectionListener, IPlayerBroadcaster
+    public class PlayersManager : INetworkModule, IConnectionListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
     {
         private readonly AuthModule _authModule;
         private readonly BroadcastModule _broadcastModule;
@@ -94,6 +103,13 @@ namespace PurrNet.Modules
         public PlayerID? localPlayerId { get; private set; }
 
         public NetworkID? lastNid { get; private set; }
+
+        public int GetMTU(PlayerID player, Channel channel, bool asServer)
+        {
+            if (_playerToConnection.TryGetValue(player, out var p))
+                return _networkManager.transport.transport.GetMTU(p, channel, asServer);
+            return 1024;
+        }
 
         /// <summary>
         /// First callback for whne a new player has joined
@@ -282,6 +298,38 @@ namespace PurrNet.Modules
             SendUserLeftToAllClients(playerId);
         }
 
+        public void PromoteToServerModule()
+        {
+            Disable(false);
+            _asServer = true;
+            Enable(true);
+
+            lastNid = null;
+            localPlayerId = null;
+        }
+
+        public void TransferToNewServer()
+        {
+            lastNid = null;
+            localPlayerId = null;
+            for (var i = _players.Count - 1; i >= 0; i--)
+                UnregisterPlayer(_players[i]);
+        }
+
+        public void PostTransferToNewServer()
+        {
+            /*for (var i = _players.Count - 1; i >= 0; i--)
+                UnregisterPlayer(_players[i]);*/
+        }
+
+        public void PostPromoteToServerModule()
+        {
+            using var keys = DisposableList<Connection>.Create(_connectionToPlayerId.Keys);
+            for (var i = 0; i < keys.Count; i++)
+                _networkManager.TriggerConnectionLeft(keys[i], true);
+            _connectionToPlayerId.Clear();
+        }
+
         public void Enable(bool asServer)
         {
             _asServer = asServer;
@@ -296,6 +344,21 @@ namespace PurrNet.Modules
                 _broadcastModule.Subscribe<PlayerSnapshotEvent>(OnPlayerSnapshotEvent);
                 _broadcastModule.Subscribe<PlayerJoinedEvent>(OnPlayerJoinedEvent);
                 _broadcastModule.Subscribe<PlayerLeftEvent>(OnPlayerLeftEvent);
+            }
+        }
+
+        public void Disable(bool asServer)
+        {
+            if (asServer)
+            {
+                _authModule.onConnection -= OnClientAuthed;
+            }
+            else
+            {
+                _broadcastModule.Unsubscribe<ServerLoginResponse>(OnClientLoginResponse);
+                _broadcastModule.Unsubscribe<PlayerSnapshotEvent>(OnPlayerSnapshotEvent);
+                _broadcastModule.Unsubscribe<PlayerJoinedEvent>(OnPlayerJoinedEvent);
+                _broadcastModule.Unsubscribe<PlayerLeftEvent>(OnPlayerLeftEvent);
             }
         }
 
@@ -347,7 +410,20 @@ namespace PurrNet.Modules
         private void OnPlayerJoinedEvent(Connection conn, PlayerJoinedEvent data, bool asServer)
         {
             if (RegisterPlayer(data.connection, data.playerId, out var isReconnect))
+            {
+                if (data.cookie != null)
+                {
+                    _playerIdToCookie[data.playerId] = data.cookie;
+                    _cookieToPlayerId[data.cookie] = data.playerId;
+                }
+
+                if (data.lastNidId.HasValue)
+                    _lastNidId[data.playerId] = data.lastNidId.Value;
+
+                _playerIdCounter = Math.Max(_playerIdCounter, data.playerId.id.value);
+
                 TriggerOnJoinedEvent(data.playerId, isReconnect);
+            }
         }
 
         private void OnPlayerLeftEvent(Connection conn, PlayerLeftEvent data, bool asServer)
@@ -357,10 +433,13 @@ namespace PurrNet.Modules
 
         private void OnPlayerSnapshotEvent(Connection conn, PlayerSnapshotEvent data, bool asServer)
         {
-            foreach (var (key, pid) in data.connectionToPlayerId)
+            using (data.events)
             {
-                if (RegisterPlayer(key, pid, out var isReconnect))
-                    TriggerOnJoinedEvent(pid, isReconnect);
+                for (var i = 0; i < data.events.Count; i++)
+                {
+                    var evt = data.events[i];
+                    OnPlayerJoinedEvent(conn, evt, asServer);
+                }
             }
         }
 
@@ -374,7 +453,24 @@ namespace PurrNet.Modules
 
         private void SendNewUserToAllClients(Connection conn, PlayerID playerId)
         {
-            _broadcastModule.SendToAll(new PlayerJoinedEvent(playerId, conn));
+            _broadcastModule.SendToAll(GetPlayerJoinEvent(playerId, conn));
+        }
+
+        private PlayerJoinedEvent GetPlayerJoinEvent(PlayerID playerId, Connection conn)
+        {
+            string cookie = null;
+            NetworkID? playerLastNid = null;
+
+            if (_networkManager.networkRules.IsHostMigrationEnabled())
+            {
+                if (_playerIdToCookie.TryGetValue(playerId, out var playerCookie))
+                    cookie = playerCookie;
+
+                if (_lastNidId.TryGetValue(playerId, out var lastNidId))
+                    playerLastNid = lastNidId;
+            }
+
+            return new PlayerJoinedEvent(playerId, conn, playerLastNid, cookie);
         }
 
         private void SendUserLeftToAllClients(PlayerID playerId)
@@ -384,7 +480,10 @@ namespace PurrNet.Modules
 
         private void SendSnapshotToClient(Connection conn)
         {
-            _broadcastModule.Send(conn, new PlayerSnapshotEvent(_connectionToPlayerId));
+            using var batch = DisposableList<PlayerJoinedEvent>.Create(_players.Count);
+            foreach (var (playerId, playerConn) in _playerToConnection)
+                batch.Add(GetPlayerJoinEvent(playerId, playerConn));
+            _broadcastModule.Send(conn, new PlayerSnapshotEvent(batch));
         }
 
         private bool RegisterPlayer(Connection conn, PlayerID player, out bool isReconnect)
@@ -440,21 +539,6 @@ namespace PurrNet.Modules
 
             onPlayerLeft?.Invoke(playerId, _asServer);
             onPostPlayerLeft?.Invoke(playerId, _asServer);
-        }
-
-        public void Disable(bool asServer)
-        {
-            if (asServer)
-            {
-                _authModule.onConnection -= OnClientAuthed;
-            }
-            else
-            {
-                _broadcastModule.Unsubscribe<ServerLoginResponse>(OnClientLoginResponse);
-                _broadcastModule.Unsubscribe<PlayerSnapshotEvent>(OnPlayerSnapshotEvent);
-                _broadcastModule.Unsubscribe<PlayerJoinedEvent>(OnPlayerJoinedEvent);
-                _broadcastModule.Unsubscribe<PlayerLeftEvent>(OnPlayerLeftEvent);
-            }
         }
 
         public void OnConnected(Connection conn, bool asServer)

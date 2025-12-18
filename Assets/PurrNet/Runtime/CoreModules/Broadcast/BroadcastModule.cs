@@ -8,14 +8,14 @@ using PurrNet.Utils;
 
 namespace PurrNet.Modules
 {
-    public class BroadcastModule : INetworkModule, IDataListener
+    public class BroadcastModule : INetworkModule, IDataListener, IPromoteToServerModule
     {
         private readonly ITransport _transport;
 
-        private readonly bool _asServer;
-
         private readonly Dictionary<uint, List<IBroadcastCallback>> _actions =
             new Dictionary<uint, List<IBroadcastCallback>>();
+
+        private bool _asServer;
 
         internal event Action<Connection, uint, object> onRawDataReceived;
 
@@ -47,7 +47,7 @@ namespace PurrNet.Modules
             return stream.ToByteData();
         }
 
-        private static ByteData GetData<T>(T data)
+        public static ByteData GetData<T>(T data)
         {
             using var stream = BitPackerPool.Get();
             var typeId = Hasher.GetStableHashU32<T>();
@@ -56,6 +56,14 @@ namespace PurrNet.Modules
             Packer<T>.Write(stream, data);
 
             return stream.ToByteData();
+        }
+
+        public static void GetData<T>(BitPacker stream, T data)
+        {
+            var typeId = Hasher.GetStableHashU32<T>();
+
+            Packer<PackedUInt>.Write(stream, typeId);
+            Packer<T>.Write(stream, data);
         }
 
         static bool ShouldTrackType(Type type)
@@ -223,5 +231,12 @@ namespace PurrNet.Modules
 
             onRawDataReceived?.Invoke(conn, hash, instance);
         }
+
+        public void PromoteToServerModule()
+        {
+            _asServer = true;
+        }
+
+        public void PostPromoteToServerModule() { }
     }
 }

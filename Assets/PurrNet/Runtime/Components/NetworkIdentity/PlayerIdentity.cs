@@ -10,7 +10,6 @@ namespace PurrNet
 
         private PlayerID? _oldRegisteredOwner;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Init() => _allPlayers = new FirstElementMap<PlayerID, T>();
 
         protected override void OnSpawned()

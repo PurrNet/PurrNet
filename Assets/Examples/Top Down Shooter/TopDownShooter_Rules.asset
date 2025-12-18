@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28e93bf2b6064364aa5fd430134916ac, type: 3}
   m_Name: TopDownShooter_Rules
   m_EditorClassIdentifier: 
+  _hostMigrationRules:
+    enabled: 1
+    migrateAsHost: 1
   _defaultSpawnRules:
     spawnAuth: 1
     despawnAuth: -1
@@ -20,8 +23,9 @@ MonoBehaviour:
     despawnIfOwnerDisconnects: 0
     cleanupSpawnedObjects: 1
   _defaultRpcRules:
-    ignoreRequireServerAttribute: 0
-    ignoreRequireOwnerAttribute: 0
+    ignoreRequireServerAttribute: 1
+    ignoreRequireOwnerAttribute: 1
+    targetRpcsCanTargetServer: 0
   _defaultVisibilityRules:
     visibilityMode: 0
   _defaultOwnershipRules:

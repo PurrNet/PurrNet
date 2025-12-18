@@ -1,3 +1,5 @@
+#if !UNITY_6000_3_OR_NEWER
+
 using System;
 using UnityEngine;
 using UnityEditor;
@@ -35,7 +37,7 @@ namespace UnityToolbarExtender
 		public static Action OnToolbarGUI;
 		public static Action OnToolbarGUILeft;
 		public static Action OnToolbarGUIRight;
-		
+
 		static ToolbarCallback()
 		{
 			EditorApplication.update -= OnUpdate;
@@ -51,7 +53,7 @@ namespace UnityToolbarExtender
 				var toolbars = Resources.FindObjectsOfTypeAll(m_toolbarType);
 				m_currentToolbar = toolbars.Length > 0 ? (ScriptableObject) toolbars[0] : null;
 				if (m_currentToolbar != null)
-				{ 
+				{
 #if UNITY_2021_1_OR_NEWER
 					var root = m_currentToolbar.GetType().GetField("m_Root", BindingFlags.NonPublic | BindingFlags.Instance);
 					var rawRoot = root.GetValue(m_currentToolbar);
@@ -71,9 +73,9 @@ namespace UnityToolbarExtender
 						};
 						var container = new IMGUIContainer();
 						container.style.flexGrow = 1;
-						container.onGUIHandler += () => { 
+						container.onGUIHandler += () => {
 							cb?.Invoke();
-						}; 
+						};
 						parent.Add(container);
 						toolbarZone.Add(parent);
 					}
@@ -96,7 +98,7 @@ namespace UnityToolbarExtender
 					handler -= OnGUI;
 					handler += OnGUI;
 					m_imguiContainerOnGui.SetValue(container, handler);
-					
+
 #endif
 				}
 			}
@@ -109,3 +111,5 @@ namespace UnityToolbarExtender
 		}
 	}
 }
+
+#endif

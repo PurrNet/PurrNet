@@ -119,16 +119,16 @@ namespace PurrNet
                         if (_intValues.TryGetValue(param.nameHash, out var v) && v == _animator.GetInteger(param.name))
                             continue;
 
-                        var setInt = new SetInt
+                        var setInteger = new SetInteger
                         {
                             value = _animator.GetInteger(param.name),
                             nameHash = param.nameHash
                         };
 
-                        _intValues[param.nameHash] = setInt.value;
+                        _intValues[param.nameHash] = setInteger.value;
 
-                        IfSameReplace(new NetAnimatorRPC(setInt),
-                            (a, b) => a._int.nameHash == b._int.nameHash);
+                        IfSameReplace(new NetAnimatorRPC(setInteger),
+                            (a, b) => a._integer.nameHash == b._integer.nameHash);
                         break;
                     }
                 }

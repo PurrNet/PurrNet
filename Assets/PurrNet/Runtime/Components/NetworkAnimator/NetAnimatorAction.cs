@@ -8,7 +8,7 @@ namespace PurrNet
     {
         SetBool,
         SetFloat,
-        SetInt,
+        SetInteger,
         SetTrigger,
         SetSpeed,
         SetAnimatePhysics,
@@ -188,7 +188,7 @@ namespace PurrNet
         }
     }
 
-    internal struct SetInt : IPackedAuto
+    internal struct SetInteger : IPackedAuto
     {
         public int nameHash;
         public int value;
@@ -562,7 +562,7 @@ namespace PurrNet
 
         internal SetBool _bool;
         internal SetFloat _float;
-        internal SetInt _int;
+        internal SetInteger _integer;
         internal SetTrigger _trigger;
         private SetSpeed _speed;
         private SetAnimatePhysics _animatePhysics;
@@ -668,10 +668,10 @@ namespace PurrNet
             _float = action;
         }
 
-        public NetAnimatorRPC(SetInt action) : this()
+        public NetAnimatorRPC(SetInteger action) : this()
         {
-            type = NetAnimatorAction.SetInt;
-            _int = action;
+            type = NetAnimatorAction.SetInteger;
+            _integer = action;
         }
 
         public NetAnimatorRPC(SetTrigger action) : this()
@@ -896,7 +896,7 @@ namespace PurrNet
             {
                 case NetAnimatorAction.SetBool: _bool.Apply(anim); break;
                 case NetAnimatorAction.SetFloat: _float.Apply(anim); break;
-                case NetAnimatorAction.SetInt: _int.Apply(anim); break;
+                case NetAnimatorAction.SetInteger: _integer.Apply(anim); break;
                 case NetAnimatorAction.SetTrigger: _trigger.Apply(anim); break;
                 case NetAnimatorAction.SetSpeed: _speed.Apply(anim); break;
                 case NetAnimatorAction.SetAnimatePhysics: _animatePhysics.Apply(anim); break;
@@ -955,7 +955,7 @@ namespace PurrNet
             {
                 case NetAnimatorAction.SetBool: Packer<SetBool>.Serialize(packer, ref _bool); break;
                 case NetAnimatorAction.SetFloat: Packer<SetFloat>.Serialize(packer, ref _float); break;
-                case NetAnimatorAction.SetInt: Packer<SetInt>.Serialize(packer, ref _int); break;
+                case NetAnimatorAction.SetInteger: Packer<SetInteger>.Serialize(packer, ref _integer); break;
                 case NetAnimatorAction.SetTrigger: Packer<SetTrigger>.Serialize(packer, ref _trigger); break;
                 case NetAnimatorAction.SetSpeed: Packer<SetSpeed>.Serialize(packer, ref _speed); break;
                 case NetAnimatorAction.SetAnimatePhysics:

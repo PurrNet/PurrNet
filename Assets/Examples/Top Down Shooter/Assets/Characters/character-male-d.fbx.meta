@@ -84,23 +84,23 @@ ModelImporter:
     serializedVersion: 3
     human: []
     skeleton:
-    - name: character-male-d(Clone)
+    - name: character-male-a(Clone)
       parentName: 
       position: {x: -0, y: 0, z: 0}
       rotation: {x: 0, y: -0, z: -0, w: 1}
       scale: {x: 1, y: 1, z: 1}
     - name: body-mesh
-      parentName: character-male-d(Clone)
+      parentName: character-male-a(Clone)
       position: {x: -0, y: 0, z: 0}
       rotation: {x: 0, y: -0, z: -0, w: 1}
       scale: {x: 1, y: 1, z: 1}
     - name: head-mesh
-      parentName: character-male-d(Clone)
+      parentName: character-male-a(Clone)
       position: {x: -0, y: 0, z: 0}
       rotation: {x: 0, y: -0, z: -0, w: 1}
       scale: {x: 1, y: 1, z: 1}
     - name: root
-      parentName: character-male-d(Clone)
+      parentName: character-male-a(Clone)
       position: {x: -0, y: 0, z: 0}
       rotation: {x: 0, y: -0, z: -0, w: 1}
       scale: {x: 1, y: 1, z: 1}
@@ -111,7 +111,7 @@ ModelImporter:
       scale: {x: 1, y: 1, z: 1}
     - name: leg-right
       parentName: root
-      position: {x: 0.08229596, y: 0.17625, z: -0.028749999}
+      position: {x: 0.083570965, y: 0.17625, z: -0.028749999}
       rotation: {x: 0, y: -0, z: -0, w: 1}
       scale: {x: 1, y: 1, z: 1}
     - name: torso
@@ -146,11 +146,11 @@ ModelImporter:
     hasTranslationDoF: 0
     hasExtraRoot: 0
     skeletonHasParents: 1
-  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  lastHumanDescriptionAvatarSource: {fileID: 9000000, guid: 7f83227e5100f204a9a3bd0589b57301, type: 3}
   autoGenerateAvatarMappingIfUnspecified: 1
   animationType: 2
   humanoidOversampling: 1
-  avatarSetup: 0
+  avatarSetup: 2
   addHumanoidExtraRootOnlyWhenUsingAvatar: 1
   importBlendShapeDeformPercent: 1
   remapMaterialsIfMaterialImportModeIsNone: 0

@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28e93bf2b6064364aa5fd430134916ac, type: 3}
+  m_Name: Unsafe-HostMigration
+  m_EditorClassIdentifier: 
+  _hostMigrationRules:
+    enabled: 1
+    migrateAsHost: 1
+    identitiesAlwaysVisible: 1
+    scenesAlwaysPublic: 1
+  _defaultSpawnRules:
+    spawnAuth: 1
+    despawnAuth: -1
+    defaultOwner: 1
+    propagateOwnershipByDefault: 1
+    despawnIfOwnerDisconnects: 0
+    cleanupSpawnedObjects: 1
+  _defaultRpcRules:
+    ignoreRequireServerAttribute: 1
+    ignoreRequireOwnerAttribute: 1
+    targetRpcsCanTargetServer: 1
+  _defaultVisibilityRules:
+    visibilityMode: 0
+  _defaultOwnershipRules:
+    assignAuth: 1
+    transferAuth: -1
+    removeAuth: -1
+    overrideWhenPropagating: 1
+  _defaultSceneRules:
+    _cleanupScenesOnDisconnect: 0
+    removePlayerFromSceneOnDisconnect: 0
+    sceneCleanupModeOnDisconnect: 0
+    alwaysIncludeDontDestroyOnLoadScene: 0
+  _defaultIdentityRules:
+    receiveRpcsWhenDisabled: 1
+  _defaultTransformRules:
+    changeParentAuth: -1
+  _defaultMiscRules:
+    syncedTickUpdateInterval: 1

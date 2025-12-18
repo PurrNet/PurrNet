@@ -47,9 +47,19 @@ namespace PurrNet
 
             GatherBones();
             GatherBonesInfo(ref _bonesInfo);
+        }
 
-            networkManager.TryGetModule<DeltaModule>(out _clientDeltaModule, false);
+        protected override void OnSpawned(bool asServer)
+        {
+            if (asServer)
+                 networkManager.TryGetModule<DeltaModule>(out _serverDeltaModule, true);
+            else networkManager.TryGetModule<DeltaModule>(out _clientDeltaModule, false);
+        }
+
+        protected override void PromoteToServer()
+        {
             networkManager.TryGetModule<DeltaModule>(out _serverDeltaModule, true);
+            networkManager.TryGetModule<DeltaModule>(out _clientDeltaModule, false);
         }
 
         private void OnEnable()
@@ -149,7 +159,7 @@ namespace PurrNet
 
             bool asServer = isServer;
 
-            _accumulateTime += Time.deltaTime;
+            _accumulateTime += Time.unscaledDeltaTime;
 
             // if we dont control it, update from incoming data
             if (!IsController(_ownerAuth))
@@ -157,7 +167,7 @@ namespace PurrNet
                 UpdateVisuals();
 
                 // if we are server we still need to propagate it to the rest
-                if (asServer && ConsumeTick())
+                if (asServer && ConsumeTick() && _serverDeltaModule != null)
                     SendTransforms(_serverDeltaModule, true);
                 return;
             }
@@ -167,8 +177,11 @@ namespace PurrNet
 
             var module = asServer ? _serverDeltaModule : _clientDeltaModule;
 
-            GatherBonesInfo(ref _bonesInfo);
-            SendTransforms(module, asServer);
+            if (module != null)
+            {
+                GatherBonesInfo(ref _bonesInfo);
+                SendTransforms(module, asServer);
+            }
         }
 
         private bool ConsumeTick()
@@ -280,7 +293,6 @@ namespace PurrNet
 
         const int MTU = 1100;
 
-
         delegate void Forward(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data);
         delegate bool Write(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey);
 
@@ -302,7 +314,9 @@ namespace PurrNet
                         var count = b - lastIndex + 1;
                         forward(observer, lastIndex, count, packer);
                     }
-                    lastIndex = b;
+
+                    cache = default;
+                    lastIndex = b + 1;
                     packer.ResetPosition();
                     writtenAny = false;
                 }

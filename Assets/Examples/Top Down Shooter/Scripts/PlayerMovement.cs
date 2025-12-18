@@ -34,9 +34,9 @@ namespace PurrNet.Examples.TopDownShooter
                 enabled = isOwner;
         }
 
-        protected override void OnDespawned()
+        protected override void OnDestroy()
         {
-            base.OnDespawned();
+            base.OnDestroy();
             if (_visuals.value && isSpawned)
                 Destroy(_visuals.value.gameObject);
         }
@@ -63,7 +63,7 @@ namespace PurrNet.Examples.TopDownShooter
         {
             if (!_controller)
                 return;
-            
+
             Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             Vector3 targetMove = new Vector3(input.x, 0, input.y).normalized;
 

@@ -13,7 +13,7 @@ namespace PurrNet.Modules
         public float addedTimeStamp;
     }
 
-    public class AuthModule : INetworkModule, IConnectionListener, IFixedUpdate
+    public class AuthModule : INetworkModule, IConnectionListener, IFixedUpdate, IPromoteToServerModule
     {
         private readonly NetworkManager _manager;
         private readonly BroadcastModule _broadcastModule;
@@ -35,6 +35,15 @@ namespace PurrNet.Modules
         public void SetPlayerModule(PlayersManager players)
         {
             _playersManager = players;
+        }
+
+        public void PromoteToServerModule()
+        {
+            Enable(true);
+        }
+
+        public void PostPromoteToServerModule()
+        {
         }
 
         public void Enable(bool asServer)

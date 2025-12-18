@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using PurrNet.Logging;
-using UnityEngine;
 
 namespace PurrNet.Modules
 {
@@ -11,7 +10,7 @@ namespace PurrNet.Modules
 
     public delegate void OnPlayerSceneEvent(PlayerID player, SceneID scene, bool asServer);
 
-    public class ScenePlayersModule : INetworkModule
+    public class ScenePlayersModule : INetworkModule, IPromoteToServerModule
     {
         private readonly Dictionary<SceneID, List<PlayerID>> _scenePlayers = new ();
         private readonly Dictionary<SceneID, List<PlayerID>> _sceneLoadedPlayers = new ();
@@ -51,6 +50,17 @@ namespace PurrNet.Modules
             _manager = manager;
             _scenes = scenes;
             _players = players;
+        }
+
+        public void PromoteToServerModule()
+        {
+            Disable(false);
+            _asServer = true;
+            Enable(true);
+        }
+
+        public void PostPromoteToServerModule()
+        {
         }
 
         public void Enable(bool asServer)
@@ -173,7 +183,7 @@ namespace PurrNet.Modules
             onPlayerLoadedScene?.Invoke(player, data.scene, asServer);
             onPostPlayerLoadedScene?.Invoke(player, data.scene, asServer);
         }
-        
+
         /// <summary>
         /// Notify bot has loaded in a scene (matches RemoteClientLoadedScene behavior)
         /// </summary>
@@ -184,9 +194,6 @@ namespace PurrNet.Modules
                 PurrLogger.LogError("NotifyBotSceneLoaded can only be called on server");
                 return;
             }
-
-            if (!_scenePlayers.TryGetValue(scene, out var playersInScene))
-                return;
 
             if (_sceneLoadedPlayers.TryGetValue(scene, out var loadedPlayers))
             {
@@ -252,7 +259,7 @@ namespace PurrNet.Modules
                     playersInScene.Add(player);
 
                 onPlayerJoinedScene?.Invoke(player, scene, asServer);
-                
+
                 if(player.isBot)
                     NotifyBotSceneLoaded(player, scene);
             }

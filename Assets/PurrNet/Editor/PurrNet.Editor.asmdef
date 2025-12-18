@@ -42,6 +42,11 @@
             "name": "com.edgegap.unity-servers-plugin",
             "expression": "",
             "define": "EDGEGAP_PURRNET_SUPPORT"
+        },
+        {
+            "name": "com.unity.multiplayer.playmode",
+            "expression": "",
+            "define": "UNITY_PLAYMODE"
         }
     ],
     "noEngineReferences": false

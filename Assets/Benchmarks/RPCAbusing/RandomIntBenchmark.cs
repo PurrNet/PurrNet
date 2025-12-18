@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using PurrNet;
-using PurrNet.Transports;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -49,7 +48,7 @@ public class TestModule : NetworkModule
         ++received;
     }
 
-    [ServerRpc(deltaPacked: true, channel: Channel.Unreliable)]
+    [ServerRpc(deltaPacked: true)]
     public void NormalDeltaServer(IntContainer someRandomValue)
     {
         Debug.Log("NormalDeltaServer " + someRandomValue.value);
@@ -81,7 +80,7 @@ public class RandomIntBenchmark : Benchmark
     static int _received;
     static int _sent;
 
-    private TestModule _testModule = new ();
+    private readonly TestModule _testModule = new ();
 
     public override bool hasFinished
     {
@@ -215,13 +214,13 @@ public class RandomIntBenchmark : Benchmark
         return Task.FromResult(value);
     }
 
-    [ObserversRpc(deltaPacked: false, channel: Channel.Unreliable)]
+    [ObserversRpc(deltaPacked: false)]
     void Normal(IntContainer someRandomValue)
     {
         ++_received;
     }
 
-    [ObserversRpc(deltaPacked: true, channel: Channel.Unreliable)]
+    [ObserversRpc(deltaPacked: true)]
     void NormalDelta(IntContainer someRandomValue)
     {
         ++_received;

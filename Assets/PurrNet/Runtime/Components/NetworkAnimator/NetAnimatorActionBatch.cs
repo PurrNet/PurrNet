@@ -191,13 +191,13 @@ namespace PurrNet
                     }
                     case AnimatorControllerParameterType.Int:
                     {
-                        var setInt = new SetInt
+                        var setInteger = new SetInteger
                         {
                             value = animator.GetInteger(param.name),
                             nameHash = param.nameHash
                         };
 
-                        actions.Add(new NetAnimatorRPC(setInt));
+                        actions.Add(new NetAnimatorRPC(setInteger));
                         break;
                     }
                 }

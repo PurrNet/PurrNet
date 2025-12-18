@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    public struct HalfQuaternion : IEquatable<HalfQuaternion>
+    public struct HalfQuaternion : IEquatable<HalfQuaternion>, IPackedAuto
     {
         public Half x;
         public Half y;

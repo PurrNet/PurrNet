@@ -117,10 +117,10 @@ namespace PurrNet
                             => a._float.nameHash == b._float.nameHash);
                         break;
                     }
-                    case NetAnimatorAction.SetInt:
+                    case NetAnimatorAction.SetInteger:
                     {
                         RemovePast(i, action, (a, b)
-                            => a._int.nameHash == b._int.nameHash);
+                            => a._integer.nameHash == b._integer.nameHash);
                         break;
                     }
                     case NetAnimatorAction.SetTrigger:

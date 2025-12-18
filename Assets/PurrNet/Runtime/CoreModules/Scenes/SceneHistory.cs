@@ -39,9 +39,25 @@ namespace PurrNet.Modules
                     throw new ArgumentOutOfRangeException();
             }
         }
+
+        public override string ToString()
+        {
+            return type switch
+            {
+                SceneActionType.Load => $"SceneAction: {{ type: {type}, data: {loadSceneAction} }}",
+                SceneActionType.SetActive => $"SceneAction: {{ type: {type}, data: {setActiveSceneAction} }}",
+                SceneActionType.Unload => $"SceneAction: {{ type: {type}, data: {unloadSceneAction} }}",
+                _ => $"SceneAction: {{ type: {type} }}"
+            };
+        }
     }
 
     internal struct SceneActionsBatch
+    {
+        public List<SceneAction> actions;
+    }
+
+    internal struct FirstSceneActionsBatch
     {
         public List<SceneAction> actions;
     }
@@ -60,17 +76,32 @@ namespace PurrNet.Modules
                 localPhysicsMode = parameters.physicsMode
             };
         }
+
+        public override string ToString()
+        {
+            return $"LoadSceneAction: {{ buildIndex: {buildIndex}, sceneID: {sceneID}, parameters: {parameters} }}";
+        }
     }
 
     internal struct UnloadSceneAction
     {
         public SceneID sceneID;
         public UnloadSceneOptions options;
+
+        public override string ToString()
+        {
+            return $"UnloadSceneAction: {{ sceneID: {sceneID}, options: {options} }}";
+        }
     }
 
     internal struct SetActiveSceneAction
     {
         public SceneID sceneID;
+
+        public override string ToString()
+        {
+            return $"SetActiveSceneAction: {{ sceneID: {sceneID} }}";
+        }
     }
 
     internal class SceneHistory

@@ -156,6 +156,21 @@ namespace PurrNet.Transports
 
         public IReadOnlyList<Connection> connections { get; }
 
+        bool SupportsChannel(Channel channel)
+        {
+            return true;
+        }
+
+        int GetMTU(Connection target, Channel channel, bool asServer)
+        {
+            return channel switch
+            {
+                Channel.Unreliable or Channel.UnreliableSequenced or Channel.ReliableUnordered => 1024,
+                Channel.ReliableOrdered => 8192,
+                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
+            };
+        }
+
         bool shouldServerSendKeepAlive => false;
 
         bool shouldClientSendKeepAlive => false;

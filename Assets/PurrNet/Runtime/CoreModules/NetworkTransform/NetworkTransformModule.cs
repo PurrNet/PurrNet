@@ -17,7 +17,7 @@ namespace PurrNet.Modules
         }
     }
 
-    public class NetworkTransformModule : INetworkModule
+    public class NetworkTransformModule : INetworkModule, IPromoteToServerModule
     {
         private readonly List<NetworkTransform> _networkTransforms = new();
         private readonly ScenePlayersModule _scenePlayers;
@@ -37,10 +37,18 @@ namespace PurrNet.Modules
             _factory = factory;
         }
 
+        public void PromoteToServerModule()
+        {
+            _asServer = true;
+        }
+
+        public void PostPromoteToServerModule()
+        {
+        }
+
         public void Enable(bool asServer)
         {
             _asServer = asServer;
-
             _broadcaster.Subscribe<NetworkTransformDelta>(OnNetworkTransformDelta);
         }
 
@@ -94,7 +102,6 @@ namespace PurrNet.Modules
             bool anyWritten = false;
 
             var controlled = ListPool<NetworkTransform>.Instantiate();
-            using var dummy = BitPackerPool.Get();
 
             GatherCandidates(player, ntCount, localPlayer, controlled);
 

@@ -14,21 +14,21 @@ namespace PurrNet.Modules
 
         public NetworkIdentityRpcHash(RPCPacket context, ulong offset)
         {
-            id = context.networkId;
-            scene = context.sceneId;
+            id = context.header.networkId;
+            scene = context.header.sceneId;
             this.typeId = default;
             this.childId = default;
-            this.rpcId = context.rpcId;
+            this.rpcId = context.header.rpcId;
             this.offset = offset;
         }
 
         public NetworkIdentityRpcHash(ChildRPCPacket context, ulong offset)
         {
-            id = context.networkId;
-            scene = context.sceneId;
+            id = context.header.networkId;
+            scene = context.header.sceneId;
             this.typeId = default;
-            this.childId = context.childId;
-            this.rpcId = context.rpcId;
+            this.childId = context.header.childId;
+            this.rpcId = context.header.rpcId;
             this.offset = offset;
         }
 
@@ -36,9 +36,9 @@ namespace PurrNet.Modules
         {
             id = default;
             scene = default;
-            this.typeId = context.typeHash;
+            this.typeId = context.header.typeHash;
             this.childId = default;
-            this.rpcId = context.rpcId;
+            this.rpcId = context.header.rpcId;
             this.offset = offset;
         }
 

@@ -6,6 +6,17 @@ using UnityEngine.Serialization;
 
 namespace PurrNet
 {
+
+    [Serializable]
+    public struct HostMigrationRules
+    {
+        [UsedImplicitly] public bool enabled;
+        [Tooltip("If enabled, new server will also start as client (server+client)")]
+        [UsedImplicitly] public bool migrateAsHost;
+        [UsedImplicitly] public bool identitiesAlwaysVisible;
+        [UsedImplicitly] public bool scenesAlwaysPublic;
+    }
+
     public enum SceneCleanupMode
     {
         /// <summary>
@@ -41,6 +52,10 @@ namespace PurrNet
         [UsedImplicitly]
         [Tooltip("This allows client to call any OwnerRpc without the need to set requireOwner to false")]
         public bool ignoreRequireOwnerAttribute;
+
+        [UsedImplicitly]
+        [Tooltip("This allows client to use a TargetRpc as a ServerRpc")]
+        public bool targetRpcsCanTargetServer;
     }
 
     [Serializable]
@@ -99,10 +114,7 @@ namespace PurrNet
             set => sceneCleanupModeOnDisconnect = value ? SceneCleanupMode.OnlineOnly : SceneCleanupMode.Off;
         }
 
-        public readonly void OnBeforeSerialize()
-        {
-            return;
-        }
+        public readonly void OnBeforeSerialize() { }
 
         public void OnAfterDeserialize()
         {
@@ -136,6 +148,15 @@ namespace PurrNet
     public class NetworkRules : ScriptableObject
     {
         [SerializeField]
+        private HostMigrationRules _hostMigrationRules = new HostMigrationRules
+        {
+            enabled = false,
+            migrateAsHost = true,
+            identitiesAlwaysVisible = true,
+            scenesAlwaysPublic = true
+        };
+
+        [SerializeField]
         private SpawnRules _defaultSpawnRules = new SpawnRules
         {
             despawnAuth = ActionAuth.Server | ActionAuth.Owner,
@@ -150,7 +171,8 @@ namespace PurrNet
         private RpcRules _defaultRpcRules = new RpcRules
         {
             ignoreRequireServerAttribute = false,
-            ignoreRequireOwnerAttribute = false
+            ignoreRequireOwnerAttribute = false,
+            targetRpcsCanTargetServer = false
         };
 
         [PurrReadOnly, UsedImplicitly]
@@ -310,6 +332,31 @@ namespace PurrNet
         public bool ShouldAlwaysIncludeDontDestroyOnLoadScene()
         {
             return _defaultSceneRules.alwaysIncludeDontDestroyOnLoadScene;
+        }
+
+        public bool CanTargetServerWithTargetRpc()
+        {
+            return _defaultRpcRules.targetRpcsCanTargetServer;
+        }
+
+        public bool IsHostMigrationEnabled()
+        {
+            return _hostMigrationRules.enabled;
+        }
+
+        public bool ShouldForceVisibilityToAlwaysVisible()
+        {
+            return _hostMigrationRules.identitiesAlwaysVisible;
+        }
+
+        public bool ShouldForceSceneToAlwaysPublic()
+        {
+            return _hostMigrationRules.scenesAlwaysPublic;
+        }
+
+        public bool ShouldMigrateAsHost()
+        {
+            return _hostMigrationRules.migrateAsHost;
         }
     }
 }

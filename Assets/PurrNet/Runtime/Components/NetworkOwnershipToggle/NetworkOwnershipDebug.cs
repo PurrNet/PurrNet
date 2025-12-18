@@ -3,7 +3,7 @@ namespace PurrNet
     public class NetworkOwnershipDebug : NetworkIdentity
     {
         [PurrButton]
-        public void TakeOwnership()
+        public void TakeOwnershipTest()
         {
             GiveOwnership(localPlayer);
         }

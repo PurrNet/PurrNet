@@ -18,6 +18,7 @@ namespace PurrNet
                 if (_queue[i].Length == size)
                 {
                     var array = _queue[i];
+                    Array.Clear(array, 0, size);
                     _queue.RemoveAt(i);
                     return array;
                 }

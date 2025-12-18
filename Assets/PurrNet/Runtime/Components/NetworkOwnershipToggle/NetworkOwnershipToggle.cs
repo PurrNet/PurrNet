@@ -137,6 +137,13 @@ namespace PurrNet
             }
         }
 
+        protected override void OnOwnerReconnected(PlayerID ownerId)
+        {
+            bool controller = isController;
+            if (controller != _lastIsController)
+                Setup(controller);
+        }
+
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
         {
             bool controller = isController;

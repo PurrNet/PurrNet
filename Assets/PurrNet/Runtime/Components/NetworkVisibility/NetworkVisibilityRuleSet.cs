@@ -57,6 +57,10 @@ namespace PurrNet
 
         public bool CanSee(PlayerID player, NetworkIdentity target)
         {
+            var rules = target.networkRules;
+            if (rules && rules.ShouldForceVisibilityToAlwaysVisible())
+                return true;
+
             for (int i = 0; i < _raw_rules.Count; i++)
             {
                 if (_raw_rules[i].CanSee(player, target))

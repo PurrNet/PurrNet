@@ -98,7 +98,7 @@ namespace PurrNet.Transports
     }
 
     [DefaultExecutionOrder(-100)]
-    public class CompositeTransport : GenericTransport, ITransport
+    public partial class CompositeTransport : GenericTransport, ITransport
     {
         [SerializeField, HideInInspector] private bool _ensureAllServersStart;
         [SerializeField, HideInInspector] private GenericTransport[] _transports = { };
@@ -194,6 +194,21 @@ namespace PurrNet.Transports
         }
 
         private bool _wasAwakeCalled;
+
+        public bool SupportsChannel(Channel channel)
+        {
+            return true;
+        }
+
+        public int GetMTU(Connection target, Channel channel, bool asServer)
+        {
+            return channel switch
+            {
+                Channel.Unreliable => 1024,
+                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
+                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
+            };
+        }
 
         private void Awake()
         {

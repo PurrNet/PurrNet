@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
-    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup
+    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer
     {
         readonly ScenesModule _scenes;
 
@@ -83,11 +83,7 @@ namespace PurrNet.Modules
         private void OnPreSceneLoaded(SceneID scene, bool asServer)
         {
             if (_hierarchies.ContainsKey(scene))
-            {
-                PurrLogger.LogError(
-                    $"Hierarchy module for scene {scene} already exists; trying to create another one?");
                 return;
-            }
 
             if (!_scenes.TryGetSceneState(scene, out var sceneState))
             {
@@ -204,6 +200,24 @@ namespace PurrNet.Modules
             }
 
             return true;
+        }
+
+        public void PromoteToServerModule()
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].PromoteToServerModule();
+        }
+
+        public void PostPromoteToServerModule()
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].PostPromoteToServerModule();
+        }
+
+        public void TransferToNewServer()
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].TransferToNewServer();
         }
     }
 }

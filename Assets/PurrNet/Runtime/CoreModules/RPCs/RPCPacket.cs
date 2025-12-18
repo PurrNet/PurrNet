@@ -1,17 +1,13 @@
 ﻿using System;
 using PurrNet.Packing;
 using PurrNet.Transports;
+using PurrNet.Utils;
 
 namespace PurrNet
 {
     public struct RPCPacket : IPackedAuto, IRpc
     {
-        public NetworkID networkId;
-        public SceneID sceneId;
-        public PlayerID senderId;
-        public PlayerID? targetId;
-        public Size rpcId;
-
+        public NetworkIdentityRPCHeader header;
         [DontDeltaCompress] public ByteData data;
 
         public ByteData rpcData
@@ -20,12 +16,40 @@ namespace PurrNet
             set { data = value; }
         }
 
-        public PlayerID senderPlayerId => senderId;
+        public PlayerID senderPlayerId => header.senderId;
 
         public PlayerID targetPlayerId
         {
-            get => targetId ?? default;
-            set => targetId = value;
+            get => header.targetId ?? default;
+            set => header.targetId = value;
+        }
+
+        public uint GetStableHeaderHash()
+        {
+            ulong nid = header.networkId.id.value;
+            ulong nscope = header.networkId.scope.id.value;
+            ulong sceneScope = header.sceneId.id.value;
+            ulong rpc = header.rpcId.value;
+
+            ulong hash = 1469598103934665603UL;
+            const ulong prime = 1099511628211UL;
+
+            hash ^= Hasher<RPCPacket>.stableHash;
+            hash *= prime;
+
+            hash ^= nid;
+            hash *= prime;
+
+            hash ^= nscope;
+            hash *= prime;
+
+            hash ^= sceneScope;
+            hash *= prime;
+
+            hash ^= rpc;
+            hash *= prime;
+
+            return (uint)(hash ^ (hash >> 32));
         }
     }
 
@@ -39,9 +63,9 @@ namespace PurrNet
 
         public RPC_ID(RPCPacket packet)
         {
-            sceneId = packet.sceneId;
-            networkId = packet.networkId;
-            rpcId = packet.rpcId;
+            sceneId = packet.header.sceneId;
+            networkId = packet.header.networkId;
+            rpcId = packet.header.rpcId;
             typeHash = default;
             childId = default;
         }
@@ -50,18 +74,18 @@ namespace PurrNet
         {
             sceneId = default;
             networkId = default;
-            rpcId = packet.rpcId;
-            typeHash = packet.typeHash;
+            rpcId = packet.header.rpcId;
+            typeHash = packet.header.typeHash;
             childId = default;
         }
 
         public RPC_ID(ChildRPCPacket packet)
         {
-            sceneId = packet.sceneId;
-            networkId = packet.networkId;
-            rpcId = packet.rpcId;
+            sceneId = packet.header.sceneId;
+            networkId = packet.header.networkId;
+            rpcId = packet.header.rpcId;
             typeHash = default;
-            childId = packet.childId;
+            childId = packet.header.childId;
         }
 
         public override int GetHashCode()

@@ -146,7 +146,7 @@ So for this next example we could have used a `SyncVar<int>` (another `NetworkMo
 
 ```csharp
 [Serializable]
-public class PlayerHealthMopdule : NetworkModule
+public class PlayerHealthModule : NetworkModule
 {
     [SerializeField] int _health;
     

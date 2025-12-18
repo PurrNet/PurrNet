@@ -1,4 +1,3 @@
-using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Utils;
@@ -7,7 +6,7 @@ using UnityEngine.Serialization;
 
 namespace PurrNet
 {
-    public sealed class NetworkTransform : NetworkIdentity
+    public sealed class NetworkTransform : NetworkIdentity, INetworkTransform
     {
         [Header("What to Sync")]
         [Tooltip("Whether to sync the position of the transform. And if so, in what space.")]
@@ -243,10 +242,7 @@ namespace PurrNet
             _wasOnSpawnedCalled = true;
 
             if (!networkManager.TryGetModule<NetworkTransformFactory>(asServer, out var factory))
-            {
-                PurrLogger.LogError("NetworkTransformFactory not found");
                 return;
-            }
 
             if (!factory.TryGetModule(sceneId, out var ntModule))
                 return;
@@ -267,7 +263,10 @@ namespace PurrNet
             _wasOnSpawnedCalled = false;
 
             if (!networkManager.TryGetModule<NetworkTransformFactory>(asServer, out var factory))
-                return;
+            {
+                if (!networkManager.TryGetModule<NetworkTransformFactory>(true, out factory))
+                    return;
+            }
 
             if (!factory.TryGetModule(sceneId, out var ntModule))
                 return;
@@ -439,12 +438,6 @@ namespace PurrNet
         {
             if (_interpolationTiming == InterpolationTiming.LateLateUpdate)
                 UpdateNT();
-
-            if (_parentChanged)
-            {
-                OnTransformParentChangedDelayed();
-                _parentChanged = false;
-            }
         }
 
         private void UpdateNT()
@@ -538,8 +531,6 @@ namespace PurrNet
             return new NetworkTransformData(pos, rot, ntScale);
         }
 
-        private bool _parentChanged;
-
         void OnTransformParentChanged()
         {
             if (!isSpawned)
@@ -551,25 +542,7 @@ namespace PurrNet
             if (!_syncParent)
                 return;
 
-            _parentChanged = true;
-        }
-
-        void OnTransformParentChangedDelayed()
-        {
-            if (_isIgnoringParentChanges)
-                return;
-
-            if (ApplicationContext.isQuitting)
-                return;
-
-            if (!isSpawned)
-                return;
-
-            if (!_trs)
-                return;
-
-            if (_syncParent)
-                HandleParentChanged(_trs.parent);
+            HandleParentChanged(_trs.parent);
         }
 
         private void HandleParentChanged(Transform parent)

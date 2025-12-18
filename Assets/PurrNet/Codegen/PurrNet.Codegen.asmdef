@@ -27,11 +27,6 @@
             "name": "com.cysharp.unitask",
             "expression": "",
             "define": "UNITASK_PURRNET_SUPPORT"
-        },
-        {
-            "name": "com.unity.multiplayer.playmode",
-            "expression": "",
-            "define": "UNITY_PLAYMODE"
         }
     ],
     "noEngineReferences": false

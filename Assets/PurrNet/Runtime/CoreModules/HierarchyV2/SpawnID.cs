@@ -3,20 +3,22 @@ using PurrNet.Packing;
 
 namespace PurrNet.Modules
 {
-    public readonly struct SpawnID : IEquatable<SpawnID>, IPackedAuto
+    public struct SpawnID : IEquatable<SpawnID>, IPackedAuto
     {
         readonly PackedULong packetIdx;
-        public readonly PlayerID player;
+        public readonly PlayerID target;
+        public PlayerID scope;
 
-        public SpawnID(PackedULong packetIdx, PlayerID player)
+        public SpawnID(PackedULong packetIdx, PlayerID target, PlayerID? scope)
         {
             this.packetIdx = packetIdx;
-            this.player = player;
+            this.target = target;
+            this.scope = scope.GetValueOrDefault();
         }
 
         public bool Equals(SpawnID other)
         {
-            return packetIdx == other.packetIdx && player.Equals(other.player);
+            return packetIdx == other.packetIdx && target.Equals(other.target) && scope.Equals(other.scope);
         }
 
         public override bool Equals(object obj)
@@ -26,12 +28,12 @@ namespace PurrNet.Modules
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(packetIdx, player);
+            return HashCode.Combine(packetIdx, target, scope);
         }
 
         public override string ToString()
         {
-            return $"SpawnID: {{ packetIdx: {packetIdx}, player: {player} }}";
+            return $"SpawnID: {{ packetIdx: {packetIdx}, player: {target}, scope: {scope} }}";
         }
     }
 }

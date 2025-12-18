@@ -500,7 +500,10 @@ namespace PurrNet
 
         public bool GetBool(int nameHash) => _animator.GetBool(nameHash);
 
-        public void SetInt(string propName, int value) => SetInt(Animator.StringToHash(propName), value);
+        [Obsolete("Use SetInteger instead")]
+        public void SetInt(int nameHash, int value) => SetInteger(nameHash, value);
+        
+        public void SetInteger(string propName, int value) => SetInteger(Animator.StringToHash(propName), value);
 
         public int GetInteger(string propName) => _animator.GetInteger(propName);
 
@@ -556,17 +559,17 @@ namespace PurrNet
                 (a, b) => a._bool.nameHash == b._bool.nameHash);
         }
 
-        public void SetInt(int nameHash, int value)
+        public void SetInteger(int nameHash, int value)
         {
             if (!IsController(_ownerAuth))
                 return;
 
-            var setInt = new SetInt { nameHash = nameHash, value = value };
-            setInt.Apply(_animator);
+            var setInteger = new SetInteger { nameHash = nameHash, value = value };
+            setInteger.Apply(_animator);
             _intValues[nameHash] = value;
 
-            IfSameReplace(new NetAnimatorRPC(setInt),
-                (a, b) => a._int.nameHash == b._int.nameHash);
+            IfSameReplace(new NetAnimatorRPC(setInteger),
+                (a, b) => a._integer.nameHash == b._integer.nameHash);
         }
 
         public void Play(string stateName, int layer)

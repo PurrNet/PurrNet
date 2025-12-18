@@ -3,7 +3,7 @@ using PurrNet.Logging;
 
 namespace PurrNet.Modules
 {
-    public class NetworkTransformFactory : INetworkModule, IPostFixedUpdate
+    public class NetworkTransformFactory : INetworkModule, IPostBatch, IPromoteToServerModule
     {
         readonly ScenesModule _scenes;
         readonly ScenePlayersModule _scenePlayers;
@@ -22,6 +22,18 @@ namespace PurrNet.Modules
             _broadcaster = broadcaster;
             _manager = manager;
             _factory = factory;
+        }
+
+        public void PromoteToServerModule()
+        {
+            for (var i = 0; i < _rawModules.Count; i++)
+                _rawModules[i].PromoteToServerModule();
+        }
+
+        public void PostPromoteToServerModule()
+        {
+            for (var i = 0; i < _rawModules.Count; i++)
+                _rawModules[i].PostPromoteToServerModule();
         }
 
         public void Enable(bool asServer)
@@ -50,11 +62,7 @@ namespace PurrNet.Modules
         private void OnPreSceneLoaded(SceneID scene, bool asServer)
         {
             if (_modules.ContainsKey(scene))
-            {
-                PurrLogger.LogError(
-                    $"Hierarchy module for scene {scene} already exists; trying to create another one?");
                 return;
-            }
 
             var hierarchy = new NetworkTransformModule(_manager, _broadcaster, _scenePlayers, scene, _factory);
 
@@ -78,7 +86,7 @@ namespace PurrNet.Modules
             _modules.Remove(scene);
         }
 
-        public void PostFixedUpdate()
+        public void PostBatchNetworkMessages()
         {
             for (var i = 0; i < _rawModules.Count; i++)
                 _rawModules[i].PostFixedUpdate();

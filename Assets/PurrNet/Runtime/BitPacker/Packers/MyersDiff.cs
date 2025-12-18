@@ -185,12 +185,11 @@ namespace PurrNet.Packing
 
                         while (i + 1 < ops.Count &&
                                ops[i + 1].type == op.type &&
-                               (isAdd || ops[i + 1].index == idx + vals.Count))
+                               (isAdd || ops[i + 1].index == idx))
                         {
                             vals.AddRange(ops[i + 1].values!);
                             i++;
                         }
-
                         result.Add(new DiffOp<T>(op.type, idx, 0, vals));
                         continue;
                     }

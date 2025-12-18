@@ -120,7 +120,11 @@ namespace PurrNet.Editor
                 int idx = 0;
                 foreach (var id in _newObjects)
                 {
+#if UNITY_6000_3_OR_NEWER
+                    var go = EditorUtility.EntityIdToObject(id) as GameObject;
+#else
                     var go = EditorUtility.InstanceIDToObject(id) as GameObject;
+#endif
                     if (go)
                     {
                         bool isAnyParentInNewObjects = false;
