@@ -954,6 +954,15 @@ namespace PurrNet.Modules
         private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
 
+        private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
+        {
+            for (var i = 0; i < _triggerLateObserverAdded.Count; i++)
+            {
+                if (_triggerLateObserverAdded[i].player == player && _triggerLateObserverAdded[i].nid == id)
+                    _triggerLateObserverAdded.RemoveAt(i--);
+            }
+        }
+
         private void OnVisibilityChanged(PlayerID player, Transform scope, bool isVisible)
         {
             if (isVisible)
@@ -986,6 +995,8 @@ namespace PurrNet.Modules
                 for (var i = 0; i < children.Count; i++)
                 {
                     var child = children[i];
+
+                    ClearPendingLateObserverAdded(player, child);
                     child.TriggerOnObserverRemoved(player);
                     onObserverRemoved?.Invoke(player, child);
                 }
@@ -1703,6 +1714,7 @@ namespace PurrNet.Modules
 
             if (identity.TryRemoveObserver(player))
             {
+                ClearPendingLateObserverAdded(player, identity);
                 identity.TriggerOnObserverRemoved(player);
                 onObserverRemoved?.Invoke(player, identity);
             }
