@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Pooling;
 using PurrNet.Utils;
@@ -1569,7 +1570,16 @@ namespace PurrNet.Modules
 
             var resultTrs = result.transform;
             result.transform.SetParent(null, false);
-            SceneManager.MoveGameObjectToScene(result, _scene);
+
+            try
+            {
+                SceneManager.MoveGameObjectToScene(result, _scene);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
 
             if (prototype.parentID.HasValue)
             {
