@@ -1,11 +1,15 @@
-﻿using PurrNet.Pooling;
+﻿using System;
+using PurrNet.Pooling;
 using PurrNet.Transports;
 
 namespace PurrNet.Packing
 {
     public class BitPackerPool : GenericPool<BitPacker>
     {
+        [ThreadStatic]
         private static readonly BitPackerPool _instance;
+
+        [ThreadStatic]
         private static readonly BitPackerPool _instanceTmp;
 
         static BitPackerPool()
