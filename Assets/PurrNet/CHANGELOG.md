@@ -1,3 +1,10 @@
+## [1.18.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.1...v1.18.1-beta.2) (2025-12-19)
+
+
+### Bug Fixes
+
+* dont use static constructor ([0ad1ced](https://github.com/PurrNet/PurrNet/commit/0ad1ced6c34502bcfe91c298b7fe08fb250422ee))
+
 ## [1.18.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.18.0...v1.18.1-beta.1) (2025-12-19)
 
 
