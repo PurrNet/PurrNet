@@ -1,3 +1,10 @@
+## [1.18.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.18.0...v1.18.1-beta.1) (2025-12-19)
+
+
+### Bug Fixes
+
+* give each thread it's own bit packet pool ([0d5dd6c](https://github.com/PurrNet/PurrNet/commit/0d5dd6c40209cccf593cb880592a2c75a7ae4fb5))
+
 # [1.18.0](https://github.com/PurrNet/PurrNet/compare/v1.17.0...v1.18.0) (2025-12-18)
 
 
