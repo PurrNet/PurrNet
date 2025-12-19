@@ -7,16 +7,10 @@ namespace PurrNet.Packing
     public class BitPackerPool : GenericPool<BitPacker>
     {
         [ThreadStatic]
-        private static readonly BitPackerPool _instance;
+        private static readonly BitPackerPool _instance = new BitPackerPool();
 
         [ThreadStatic]
-        private static readonly BitPackerPool _instanceTmp;
-
-        static BitPackerPool()
-        {
-            _instance = new BitPackerPool();
-            _instanceTmp = new BitPackerPool();
-        }
+        private static readonly BitPackerPool _instanceTmp = new BitPackerPool();
 
         static BitPacker Factory() => new BitPacker();
 
