@@ -120,12 +120,23 @@ namespace PurrNet.Transports
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
-            return channel switch
+            if (_isUsingUDP)
             {
-                Channel.Unreliable => 1024,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
-            };
+                try
+                {
+                    var method = UDPTransport.ToDeliveryMethod(channel);
+                    var result = asServer ?
+                        _udpServer.FirstPeer.GetMaxSinglePacketSize(method) :
+                        _udpClient.FirstPeer.GetMaxSinglePacketSize(method);
+                    return result - 16; // give the relay some space for metadata
+                }
+                catch
+                {
+                    return 1024;
+                }
+            }
+
+            return 8192 * 2;
         }
 
 
