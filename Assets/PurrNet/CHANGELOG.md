@@ -1,3 +1,10 @@
+## [1.18.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.2...v1.18.1-beta.3) (2025-12-19)
+
+
+### Bug Fixes
+
+* fuck you c# ([d1986df](https://github.com/PurrNet/PurrNet/commit/d1986df12b414c59e1f81861677a7dfffa90b996))
+
 ## [1.18.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.1...v1.18.1-beta.2) (2025-12-19)
 
 
