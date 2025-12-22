@@ -1642,6 +1642,8 @@ namespace PurrNet
             yield return null;
             while (clientState is ConnectionState.Disconnecting or ConnectionState.Connecting)
                 yield return null;
+            while (_isCleaningClient)
+                yield return null;
             _transport.StartClient(this);
         }
 
