@@ -311,7 +311,9 @@ namespace PurrNet.Transports
                         true);
                     break;
                 }
-                default: throw new ArgumentOutOfRangeException(type.ToString());
+                default:
+                    PurrLogger.LogError($"Unexpected packet type {type} from server");
+                    break;
             }
         }
 
@@ -344,7 +346,9 @@ namespace PurrNet.Transports
                     case SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED:
                         Disconnect();
                         break;
-                    default: throw new ArgumentOutOfRangeException(type.ToString());
+                    default:
+                        PurrLogger.LogError($"Unexpected packet type {type} from server");
+                        break;
                 }
             }
         }
