@@ -1,3 +1,10 @@
+## [1.18.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.4...v1.18.1-beta.5) (2025-12-26)
+
+
+### Bug Fixes
+
+* ActualGetRelayServersAsync sometimes would come with an empty string and throw and exception ([c186213](https://github.com/PurrNet/PurrNet/commit/c1862139fb17591e678acfc40a9ded9886b5ee83))
+
 ## [1.18.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.3...v1.18.1-beta.4) (2025-12-22)
 
 
