@@ -1,3 +1,11 @@
+## [1.18.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.3...v1.18.1-beta.4) (2025-12-22)
+
+
+### Bug Fixes
+
+* instead of throwing an exception lets just log what happened ([4a1c0b8](https://github.com/PurrNet/PurrNet/commit/4a1c0b8047d9ca08016a6f028a35cdf639a16483))
+* some safety when cleaning client state ([f7011af](https://github.com/PurrNet/PurrNet/commit/f7011afaba24e90fdf80eb90a0509a274c68d1f4))
+
 ## [1.18.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.2...v1.18.1-beta.3) (2025-12-19)
 
 
