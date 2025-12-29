@@ -17,7 +17,7 @@ namespace PurrNet.Modules
 
         private bool _asServer;
 
-        internal event Action<Connection, uint, object> onRawDataReceived;
+        internal event Action<Connection, uint, BitPacker> onRawDataReceived;
 
         public BroadcastModule(INetworkManager manager, bool asServer)
         {
@@ -177,9 +177,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            object instance = null;
-            Packer.Read(stream, typeInfo, ref instance);
-            TriggerCallback(conn, typeId, instance);
+            TriggerCallback(conn, typeId, stream);
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             if (ShouldTrackType(typeInfo))
@@ -221,15 +219,20 @@ namespace PurrNet.Modules
             }
         }
 
-        private void TriggerCallback(Connection conn, uint hash, object instance)
+        private void TriggerCallback(Connection conn, uint hash, BitPacker packer)
         {
+            var startPos = packer.positionInBits;
+
             if (_actions.TryGetValue(hash, out var actions))
             {
                 for (int i = 0; i < actions.Count; i++)
-                    actions[i].TriggerCallback(conn, instance, _asServer);
+                {
+                    actions[i].TriggerCallback(conn, packer, _asServer);
+                    packer.SetBitPosition(startPos);
+                }
             }
 
-            onRawDataReceived?.Invoke(conn, hash, instance);
+            onRawDataReceived?.Invoke(conn, hash, packer);
         }
 
         public void PromoteToServerModule()

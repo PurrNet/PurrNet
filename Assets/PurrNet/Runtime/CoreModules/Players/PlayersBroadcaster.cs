@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using PurrNet.Modules;
+using PurrNet.Packing;
 using PurrNet.Transports;
 using PurrNet.Utils;
 
@@ -11,7 +12,7 @@ namespace PurrNet
     {
         bool IsSame(object callback);
 
-        void TriggerCallback(PlayerID playerId, object data, bool asServer);
+        void TriggerCallback(PlayerID playerId, BitPacker data, bool asServer);
     }
 
     internal readonly struct PlayerBroadcastCallback<T> : IPlayerBroadcastCallback
@@ -28,10 +29,11 @@ namespace PurrNet
             return callbackToCmp is PlayerBroadcastDelegate<T> action && action == callback;
         }
 
-        public void TriggerCallback(PlayerID playerId, object data, bool asServer)
+        public void TriggerCallback(PlayerID playerId, BitPacker data, bool asServer)
         {
-            if (data is T value)
-                callback?.Invoke(playerId, value, asServer);
+            var result = default(T);
+            Packer<T>.Read(data, ref result);
+            callback?.Invoke(playerId, result, asServer);
         }
     }
 
@@ -69,15 +71,19 @@ namespace PurrNet
             _broadcastModule.onRawDataReceived += OnRawDataReceived;
         }
 
-        private void OnRawDataReceived(Connection conn, uint hash, object data)
+        private void OnRawDataReceived(Connection conn, uint hash, BitPacker data)
         {
             if (!_playersManager.TryGetPlayer(conn, out var player))
                 player = default;
 
+            var bitpos = data.positionInBits;
             if (_actions.TryGetValue(hash, out var actions))
             {
                 for (int i = 0; i < actions.Count; i++)
+                {
                     actions[i].TriggerCallback(player, data, _asServer);
+                    data.SetBitPosition(bitpos);
+                }
             }
         }
 

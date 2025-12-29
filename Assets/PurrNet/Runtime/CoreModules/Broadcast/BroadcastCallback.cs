@@ -1,4 +1,5 @@
-﻿using PurrNet.Transports;
+﻿using PurrNet.Packing;
+using PurrNet.Transports;
 
 namespace PurrNet.Modules
 {
@@ -18,10 +19,11 @@ namespace PurrNet.Modules
             return callbackToCmp is BroadcastDelegate<T> action && action == callback;
         }
 
-        public void TriggerCallback(Connection conn, object data, bool asServer)
+        public void TriggerCallback(Connection conn, BitPacker data, bool asServer)
         {
-            if (data is T value)
-                callback?.Invoke(conn, value, asServer);
+            var result = default(T);
+            Packer<T>.Read(data, ref result);
+            callback?.Invoke(conn, result, asServer);
         }
 
         public void Subscribe(BroadcastModule module)

@@ -50,7 +50,7 @@ namespace PurrNet
             {
                 if (_cmp.Equals(value, _value)) return;
 
-                if (isSpawned && !parent.IsController(_ownerAuth))
+                if (isSpawned && !isControllingSyncVar)
                 {
                     PurrLogger.LogError(
                         $"Invalid permissions when setting `<b>SyncVar<{typeof(T).Name}> {name}</b>` on `{parent.name}`." +

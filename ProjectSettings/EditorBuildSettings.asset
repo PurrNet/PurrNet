@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Benchmarks/PositionWithSyncVar/PositionWithSyncVar.unity
+    guid: 3db87385b4cc1074f870c9893f59fc57
+  - enabled: 1
     path: Assets/Examples/SceneLoading/SceneLoading0.unity
     guid: 55117c3c2cd0e81448e829f0e5bff20f
   - enabled: 1
