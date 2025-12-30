@@ -272,18 +272,18 @@ namespace PurrNet.Packing
         {
             if (value == null)
             {
-                WriteBits(1, 1);
+                WriteBit(true);
                 return false;
             }
 
-            WriteBits(0, 1);
+            WriteBit(false);
             return true;
         }
 
         [UsedByIL]
         public bool ReadIsNull<T>(ref T value)
         {
-            if (ReadBits(1) == 1)
+            if (ReadBit())
             {
                 value = default;
                 return false;

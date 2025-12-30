@@ -84,12 +84,6 @@ namespace PurrNet.Codegen
                 return;
             }
 
-            // Packer<bool>.Read(stream, ref isEqualVar);
-            /*il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloca_S, isEqualVar);
-            il.Emit(OpCodes.Call, packerTypeBoolean);*/
-
-            // isEqualVar = stream.ReadBit();
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Call, packerTypeBoolean);
 
