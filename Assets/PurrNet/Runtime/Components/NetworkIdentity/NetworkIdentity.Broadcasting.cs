@@ -261,7 +261,7 @@ namespace PurrNet
             return players;
         }
 
-        public void SendRPC(Type statisticsParent, RPCModule rpcModule, ChildRPCPacket packet, RPCSignature signature)
+        public void SendRPCChild(Type statisticsParent, RPCModule rpcModule, ChildRPCPacket packet, RPCSignature signature)
         {
             switch (signature.type)
             {
@@ -344,7 +344,7 @@ namespace PurrNet
             }
         }
 
-        public void SendRPC(Type statisticsParent, RPCModule rpcModule, RPCPacket packet, RPCSignature signature)
+        public void SendRPCNormal(Type statisticsParent, RPCModule rpcModule, RPCPacket packet, RPCSignature signature)
         {
             switch (signature.type)
             {
@@ -443,9 +443,9 @@ namespace PurrNet
                 module.AppendToBufferedRPCs(packet, signature);
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                SendRPC(_myType, module, packet, signature);
+                SendRPCNormal(_myType, module, packet, signature);
 #else
-            SendRPC(null, module, packet, signature);
+                SendRPCNormal(null, module, packet, signature);
 #endif
             }
         }
