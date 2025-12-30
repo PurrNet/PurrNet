@@ -10,7 +10,7 @@ namespace PurrNet.Packing
         public static void Write(this BitPacker packer, ByteData data)
         {
             Packer<Size>.Write(packer, data.length);
-            packer.WriteBytes(data.span);
+            packer.WriteAlignedBytes(data.span);
         }
 
         [UsedByIL]
@@ -26,8 +26,7 @@ namespace PurrNet.Packing
             }
 
             byte[] buffer = new byte[length];
-
-            packer.ReadBytes(buffer);
+            packer.ReadBytesAligned(buffer);
             data = new ByteData(buffer, 0, (int)length.value);
         }
 
@@ -50,7 +49,8 @@ namespace PurrNet.Packing
             Packer<Size>.Read(packer, ref length);
 
             data = BitPackerPool.Get();
-            packer.ReadBytes(data, length);
+            var dest = data.GetSpan(length);
+            packer.ReadBytesAligned(dest);
             data.ResetPositionAndMode(true);
         }
 
@@ -67,7 +67,8 @@ namespace PurrNet.Packing
             Packer<Size>.Read(packer, ref length);
 
             var dataPacker = BitPackerPool.Get();
-            packer.ReadBytes(dataPacker, length);
+            var span = dataPacker.GetSpan(length);
+            packer.ReadBytesAligned(span);
             dataPacker.ResetPosition();
 
             data = new BitPackerWithLength(length, dataPacker);
