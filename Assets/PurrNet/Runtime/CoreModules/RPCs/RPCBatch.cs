@@ -130,7 +130,7 @@ namespace PurrNet.Modules
             for (var i = 0; i < data.count.value; ++i)
             {
                 DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
-                DeltaPacker<Size>.Read(data.data, lastLen, ref lastLen);
+                DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
                 int pos = data.data.positionInBits;
 
                 tmp.WriteBytes(data.data, lastLen);
@@ -156,7 +156,7 @@ namespace PurrNet.Modules
                 Size contentLen = content.length;
 
                 DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
-                DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
+                DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
 
                 int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
 
@@ -176,7 +176,7 @@ namespace PurrNet.Modules
                         batch = _batches[batchIdx];
                         // redo the last write
                         DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
-                        DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
+                        DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
                     }
                 }
 

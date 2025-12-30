@@ -192,6 +192,7 @@ namespace PurrNet.Codegen
                 var write = writeMethod.Body.GetILProcessor();
                 GenerateMethod(true, writeMethod, writeMethodP, writeDirectP, type, write, mainmodule, valueArg);
                 serializerClass.Methods.Add(writeMethod);
+                CacheWrite(type, writeMethod);
 
                 // create static read method
                 var readMethod = new MethodDefinition("Read", MethodAttributes.Public | MethodAttributes.Static,
@@ -208,6 +209,7 @@ namespace PurrNet.Codegen
                 var read = readMethod.Body.GetILProcessor();
                 GenerateMethod(false, readMethod, readMethodP, readDirectP, type, read, mainmodule, valueArg);
                 serializerClass.Methods.Add(readMethod);
+                CacheRead(type, readMethod);
             }
 
             if (ignoreDelta?.Contains(type) == false)
@@ -604,8 +606,8 @@ namespace PurrNet.Codegen
             return DoesTypeHaveAttribute(type, typeof(DontPackAttribute));
         }
 
-        [ThreadStatic] static Dictionary<TypeReference, MethodReference> inlinedReadMethods;
-        [ThreadStatic] static Dictionary<TypeReference, MethodReference> inlinedWriteMethods;
+        [ThreadStatic] public static Dictionary<TypeReference, MethodReference> inlinedReadMethods;
+        [ThreadStatic] public static Dictionary<TypeReference, MethodReference> inlinedWriteMethods;
 
         static bool TryGetInlinedRead(TypeReference type, out MethodReference method)
         {
@@ -619,19 +621,19 @@ namespace PurrNet.Codegen
             return inlinedWriteMethods.TryGetValue(type, out method);
         }
 
-        static bool TryGetInlinedMethod(bool writing, TypeReference type, out MethodReference method)
+        public static bool TryGetInlinedMethod(bool writing, TypeReference type, out MethodReference method)
         {
             if (writing)
                 return TryGetInlinedWrite(type, out method);
             return TryGetInlinedRead(type, out method);
         }
 
-        public static void CacheRead(TypeReference deltaWriteType, MethodDefinition method)
+        public static void CacheRead(TypeReference type, MethodDefinition method)
         {
-            if (!GenerateDeltaSerializersProcessor.IsSafeForInline(deltaWriteType))
+            if (!GenerateDeltaSerializersProcessor.IsSafeForInline(type))
                 return;
             inlinedReadMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
-            inlinedReadMethods[deltaWriteType] = method;
+            inlinedReadMethods[type] = method;
         }
 
         public static void CacheWrite(TypeReference type, MethodReference reference)

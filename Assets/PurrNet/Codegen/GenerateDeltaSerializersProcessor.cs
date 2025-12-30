@@ -23,11 +23,14 @@ namespace PurrNet.Codegen
             CreateReadMethod(assembly.MainModule, readMethod, type, bitStreamType);
 
             generatedClass.Methods.Add(writeMethod);
+            CacheDeltaWrite(type, writeMethod);
+
             generatedClass.Methods.Add(readMethod);
+            CacheDeltaRead(type, readMethod);
         }
 
-        [ThreadStatic] static Dictionary<TypeReference, MethodReference> inlinedDeltaReadMethods;
-        [ThreadStatic] static Dictionary<TypeReference, MethodReference> inlinedDeltaWriteMethods;
+        [ThreadStatic] public static Dictionary<TypeReference, MethodReference> inlinedDeltaReadMethods;
+        [ThreadStatic] public static Dictionary<TypeReference, MethodReference> inlinedDeltaWriteMethods;
 
         static bool TryGetInlinedDeltaRead(TypeReference type, out MethodReference method)
         {
@@ -41,9 +44,19 @@ namespace PurrNet.Codegen
             return inlinedDeltaWriteMethods.TryGetValue(type, out method);
         }
 
+        public static bool TryGetInlinedMethod(bool isWritting, TypeReference serializedType, out MethodReference o)
+        {
+            if (isWritting)
+                return TryGetInlinedDeltaWrite(serializedType, out o);
+            return TryGetInlinedDeltaRead(serializedType, out o);
+        }
+
         public static bool IsSafeForInline(TypeReference type)
         {
             if (type.IsValueType)
+                return true;
+
+            if (type.IsPrimitive)
                 return true;
 
             var resolved = type.Resolve();

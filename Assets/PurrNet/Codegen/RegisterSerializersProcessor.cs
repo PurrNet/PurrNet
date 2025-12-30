@@ -11,7 +11,7 @@ namespace PurrNet.Codegen
 {
     public static class RegisterSerializersProcessor
     {
-        static bool IsDeltaWriteMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsDeltaWriteMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -34,7 +34,7 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        static bool IsDeltaReadMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsDeltaReadMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -55,7 +55,7 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        static bool IsWriteMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsWriteMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -72,7 +72,7 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        static bool IsReadMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsReadMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -86,6 +86,9 @@ namespace PurrNet.Codegen
                 return false;
 
             type = method.Parameters[1].ParameterType;
+
+            if (type is ByReferenceType byRefType)
+                type = byRefType.ElementType;
 
             return true;
         }
