@@ -351,6 +351,7 @@ namespace PurrNet.Packing
             return data;
         }
 
+        [UsedImplicitly]
         public bool ReadBit()
         {
             var byteIdx = _positionInBits >> 3;

@@ -322,10 +322,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadIndex(BitPacker packer, Size oldvalue, ref Size value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
-
-            if (hasChanged)
+            if (packer.ReadBit())
             {
                 PackedLong packed = default;
                 Packer<PackedLong>.Read(packer, ref packed);

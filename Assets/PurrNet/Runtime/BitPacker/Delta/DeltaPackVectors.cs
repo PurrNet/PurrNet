@@ -25,10 +25,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadVector2(BitPacker packer, Vector2 oldvalue, ref Vector2 value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
-
-            if (hasChanged)
+            if (packer.ReadBit())
             {
                 DeltaPacker<float>.Read(packer, oldvalue.x, ref value.x);
                 DeltaPacker<float>.Read(packer, oldvalue.y, ref value.y);

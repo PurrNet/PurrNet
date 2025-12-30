@@ -6,8 +6,7 @@ namespace PurrNet.Packing
     {
         public static bool Continue<T>(BitPacker packer, T old, ref T newVal)
         {
-            bool hasChanged = Packer<bool>.Read(packer);
-            if (!hasChanged)
+            if (!packer.ReadBit())
             {
                 if (newVal is IDisposable disposable)
                     disposable.Dispose();

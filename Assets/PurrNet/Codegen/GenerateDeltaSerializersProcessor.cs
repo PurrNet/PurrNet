@@ -29,22 +29,17 @@ namespace PurrNet.Codegen
             TypeReference bitStreamType)
         {
             var packerType = module.GetTypeDefinition(typeof(Packer)).Import(module);
-            var packerGenType = module.GetTypeDefinition(typeof(Packer<>)).Import(module);
             var deltaPackerGenType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
 
-            var serializer = packerGenType.GetMethod("Read").Import(module);
             var deltaSerializer = deltaPackerGenType.GetMethod("Read").Import(module);
             var deltaBypassSerializer = deltaPackerGenType.GetMethod("ReadUnpacked").Import(module);
-            var packerTypeBoolean =
-                GenerateSerializersProcessor.CreateGenericMethod(packerGenType, module.TypeSystem.Boolean, serializer,
-                    module);
+            var packerTypeBoolean = bitStreamType.GetMethod("ReadBit").Import(module);
 
             var streamArg = new ParameterDefinition("stream", ParameterAttributes.None, bitStreamType);
             var oldValueArg = new ParameterDefinition("oldValue", ParameterAttributes.None, typeRef);
             var valueArg = new ParameterDefinition("value", ParameterAttributes.None, new ByReferenceType(typeRef));
 
             var type = typeRef.Resolve();
-            var isEqualVar = new VariableDefinition(module.TypeSystem.Boolean);
             bool isClass = !type.IsValueType;
 
             method.Parameters.Add(streamArg);
@@ -54,8 +49,6 @@ namespace PurrNet.Codegen
             {
                 InitLocals = true
             };
-
-            method.Body.Variables.Add(isEqualVar);
 
             var il = method.Body.GetILProcessor();
             var endOfFunction = il.Create(OpCodes.Ret);
@@ -91,10 +84,14 @@ namespace PurrNet.Codegen
                 return;
             }
 
-            il.Emit(OpCodes.Ldarg_0);
+            // Packer<bool>.Read(stream, ref isEqualVar);
+            /*il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldloca_S, isEqualVar);
+            il.Emit(OpCodes.Call, packerTypeBoolean);*/
+
+            // isEqualVar = stream.ReadBit();
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Call, packerTypeBoolean);
-            il.Emit(OpCodes.Ldloc_0);
 
             // if true, return
             il.Emit(OpCodes.Brfalse, elseBlock);
