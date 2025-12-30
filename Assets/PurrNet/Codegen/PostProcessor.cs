@@ -2860,11 +2860,11 @@ namespace PurrNet.Codegen
                 typesToPrepareHasher.ExceptWith(typesToGenerateSerializer);
 
                 foreach (var typeRef in typesToGenerateSerializer)
-                    GenerateSerializersProcessor.HandleType(false, assemblyDefinition, typeRef, visitedTypes, isEditor,
+                    GenerateSerializersProcessor.HandleType(false, assemblyDefinition, typeRef, visitedTypes,
                         typesToIgnoreForSerialization, typesToIgnoreForDelta);
 
                 foreach (var typeRef in typesToPrepareHasher)
-                    GenerateSerializersProcessor.HandleType(true, assemblyDefinition, typeRef, visitedTypes, isEditor,
+                    GenerateSerializersProcessor.HandleType(true, assemblyDefinition, typeRef, visitedTypes,
                         typesToIgnoreForSerialization, typesToIgnoreForDelta);
 
                 var pe = new MemoryStream();

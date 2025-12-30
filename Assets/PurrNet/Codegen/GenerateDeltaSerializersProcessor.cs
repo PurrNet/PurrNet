@@ -1,5 +1,6 @@
 #if UNITY_MONO_CECIL
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -23,6 +24,56 @@ namespace PurrNet.Codegen
 
             generatedClass.Methods.Add(writeMethod);
             generatedClass.Methods.Add(readMethod);
+        }
+
+        [ThreadStatic] static Dictionary<TypeReference, MethodReference> inlinedDeltaReadMethods;
+        [ThreadStatic] static Dictionary<TypeReference, MethodReference> inlinedDeltaWriteMethods;
+
+        static bool TryGetInlinedDeltaRead(TypeReference type, out MethodReference method)
+        {
+            inlinedDeltaReadMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
+            return inlinedDeltaReadMethods.TryGetValue(type, out method);
+        }
+
+        static bool TryGetInlinedDeltaWrite(TypeReference type, out MethodReference method)
+        {
+            inlinedDeltaWriteMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
+            return inlinedDeltaWriteMethods.TryGetValue(type, out method);
+        }
+
+        public static bool IsSafeForInline(TypeReference type)
+        {
+            if (type.IsValueType)
+                return true;
+
+            var resolved = type.Resolve();
+
+            if (resolved == null)
+                return false;
+
+            if (!resolved.IsClass || resolved.IsEnum)
+                return true;
+
+            if (resolved.IsSealed)
+                return true;
+
+            return false;
+        }
+
+        public static void CacheDeltaRead(TypeReference deltaWriteType, MethodDefinition method)
+        {
+            if (!IsSafeForInline(deltaWriteType))
+                return;
+            inlinedDeltaReadMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
+            inlinedDeltaReadMethods[deltaWriteType] = method;
+        }
+
+        public static void CacheDeltaWrite(TypeReference type, MethodReference reference)
+        {
+            if (!IsSafeForInline(type))
+                return;
+            inlinedDeltaWriteMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
+            inlinedDeltaWriteMethods[type] = reference;
         }
 
         private static void CreateReadMethod(ModuleDefinition module, MethodDefinition method, TypeReference typeRef,
@@ -58,8 +109,8 @@ namespace PurrNet.Codegen
 
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
-                var genericM =
-                    GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
+                if (!TryGetInlinedDeltaRead(standaloneType, out var genericM))
+                    genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
                         module);
 
                 var variable = new VariableDefinition(standaloneType);
@@ -107,8 +158,8 @@ namespace PurrNet.Codegen
             if (type.IsEnum)
             {
                 var underlyingType = type.GetField("value__").FieldType;
-                var enumReadMethod =
-                    GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
+                if (!TryGetInlinedDeltaRead(underlyingType, out var enumReadMethod))
+                    enumReadMethod = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
                         module);
 
                 var tmpVar = new VariableDefinition(underlyingType);
@@ -135,9 +186,9 @@ namespace PurrNet.Codegen
 
                     if (baseType is { IsValueType: false })
                     {
-                        var genericM =
-                            GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
-                                module);
+                        if (!TryGetInlinedDeltaRead(baseType, out var genericM))
+                            genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
+                                    module);
 
                         var variable = new VariableDefinition(baseType);
                         method.Body.Variables.Add(variable);
@@ -181,7 +232,8 @@ namespace PurrNet.Codegen
 
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
-                    var packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
+                    if (!TryGetInlinedDeltaRead(fieldType, out var packer))
+                        packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
                         shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
                         module);
 
@@ -301,7 +353,8 @@ namespace PurrNet.Codegen
 
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
-                var genericM =
+                if (!TryGetInlinedDeltaWrite(standaloneType, out var genericM))
+                    genericM =
                     GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
                         module);
 
@@ -339,8 +392,8 @@ namespace PurrNet.Codegen
             if (type.IsEnum)
             {
                 var underlyingType = type.GetField("value__").FieldType;
-                var enumWriteMethod =
-                    GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
+                if (!TryGetInlinedDeltaWrite(underlyingType, out var enumWriteMethod))
+                    enumWriteMethod = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
                         module);
 
                 il.Emit(OpCodes.Ldarg_0);
@@ -362,8 +415,8 @@ namespace PurrNet.Codegen
 
                     if (baseType is { IsValueType: false })
                     {
-                        var genericM =
-                            GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
+                        if (!TryGetInlinedDeltaWrite(baseType, out var genericM))
+                            genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
                                 module);
 
                         il.Emit(OpCodes.Ldarg_0);
@@ -401,8 +454,8 @@ namespace PurrNet.Codegen
 
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
-                    var packer =
-                        GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
+                    if (!TryGetInlinedDeltaWrite(fieldType, out var packer))
+                        packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
                             shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
                             module);
 

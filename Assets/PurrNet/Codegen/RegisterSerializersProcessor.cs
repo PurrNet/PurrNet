@@ -139,6 +139,7 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForSerialization?.Add(writeType);
+                    GenerateSerializersProcessor.CacheWrite(writeType, method);
                 }
                 else if (IsReadMethod(method, out var readType))
                 {
@@ -152,6 +153,7 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForSerialization?.Add(readType);
+                    GenerateSerializersProcessor.CacheRead(readType, method);
                 }
                 else if (IsDeltaWriteMethod(method, out var deltaWriteType))
                 {
@@ -166,6 +168,7 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForDelta?.Add(deltaWriteType);
+                    GenerateDeltaSerializersProcessor.CacheDeltaWrite(deltaWriteType, method);
                 }
                 else if (IsDeltaReadMethod(method, out var deltaReadType))
                 {
@@ -180,6 +183,7 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForDelta?.Add(deltaReadType);
+                    GenerateDeltaSerializersProcessor.CacheDeltaRead(deltaReadType, method);
                 }
             }
 
