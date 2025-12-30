@@ -238,10 +238,13 @@ namespace PurrNet
                 return players;
             }
 
+            var cachedOwner = owner;
+            var cachedLocalPlayer = networkManager.localPlayer;
+
             for (var i = 0; i < observers.Count; i++)
             {
                 var player = observers[i];
-                bool isLocalPlayer = player == networkManager.localPlayer;
+                bool isLocalPlayer = player == cachedLocalPlayer;
 
                 if (signature.runLocally && isLocalPlayer)
                     continue;
@@ -249,7 +252,7 @@ namespace PurrNet
                 if (signature.excludeSender && isLocalPlayer)
                     continue;
 
-                if (signature.excludeOwner && !IsNotOwnerPredicate(player))
+                if (signature.excludeOwner && player == cachedOwner)
                     continue;
 
                 players.Add(player);
