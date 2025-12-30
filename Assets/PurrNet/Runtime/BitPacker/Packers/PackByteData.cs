@@ -26,6 +26,7 @@ namespace PurrNet.Packing
             }
 
             byte[] buffer = new byte[length];
+
             packer.ReadBytes(buffer);
             data = new ByteData(buffer, 0, (int)length.value);
         }
@@ -38,7 +39,7 @@ namespace PurrNet.Packing
                 Write(packer, new ByteData());
                 return;
             }
-            
+
             Write(packer, data.ToByteData());
         }
 

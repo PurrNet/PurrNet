@@ -27,6 +27,7 @@ namespace PurrNet.Modules
             public bool completed;
 
             public HEADER lastHeader;
+            public Size lastDataLen;
             public int batchCount;
             public BitPacker batchedData;
         }
@@ -111,22 +112,24 @@ namespace PurrNet.Modules
         private void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
         {
             HEADER lastHeader = default;
+            Size lastLen = default;
+
+            using var tmp = BitPackerPool.Get();
 
             for (var i = 0; i < data.count.value; ++i)
             {
                 DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
-                var rpcData = Packer<ByteData>.Read(data.data);
-                _onRPCReceived.Invoke(player, lastHeader, rpcData, asServer);
+                DeltaPacker<Size>.Read(data.data, lastLen, ref lastLen);
+                int pos = data.data.positionInBits;
+
+                tmp.WriteBytes(data.data, lastLen);
+                _onRPCReceived.Invoke(player, lastHeader, tmp.ToByteData(), asServer);
+                tmp.ResetPositionAndMode(false);
+
+                data.data.SetBitPosition(pos + lastLen * 8);
             }
 
             data.data.Dispose();
-        }
-
-        private static int GetHeaderSize(HEADER old, HEADER header)
-        {
-            using var tmp = BitPackerPool.Get();
-            DeltaPacker<HEADER>.Write(tmp, old, header);
-            return tmp.length + 10;
         }
 
         public void Queue(PlayerID target, HEADER header, ByteData content, Channel channel)
@@ -134,28 +137,40 @@ namespace PurrNet.Modules
             var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
             var batch = _batches[batchIdx];
 
+            int before = batch.batchedData.positionInBits;
+            Size contentLen = content.length;
+
+            DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
+            DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
+
+            int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
+
+            // do some MTU checks past 1 batch
             if (batch.batchCount > 0)
             {
-                int headerSize = GetHeaderSize(batch.lastHeader, header);
-                int packetSize = headerSize + content.length;
                 int mtu = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
 
-                if (batch.batchedData.length + packetSize >= mtu)
+                if (bytesAfterHeaderLen + 10 >= mtu) // 10 here is just a safety margin
                 {
+                    // undo the last write
+                    batch.batchedData.SetBitPosition(before);
                     batch.completed = true;
                     _batches[batchIdx] = batch;
                     // create new batch
                     batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
                     batch = _batches[batchIdx];
+                    // redo the last write
+                    DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
+                    DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
                 }
             }
 
             ++batch.batchCount;
-
-            DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
             batch.lastHeader = header;
+            batch.lastDataLen = contentLen;
 
-            Packer<ByteData>.Write(batch.batchedData, content);
+            if (content.length > 0)
+                batch.batchedData.WriteBytes(content);
 
             _batches[batchIdx] = batch;
         }

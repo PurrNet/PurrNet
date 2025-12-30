@@ -257,7 +257,85 @@ namespace PurrNet
             return players;
         }
 
-        public void SendRPC<T>(Type statisticsParent, RPCModule rpcModule, T packet, RPCSignature signature) where T : IRpc
+        public void SendRPC(Type statisticsParent, RPCModule rpcModule, ChildRPCPacket packet, RPCSignature signature)
+        {
+            switch (signature.type)
+            {
+                case RPCType.ServerRPC:
+                    if (networkManager.isServerOnly)
+                        break;
+
+                    if (signature.runLocally && isServer)
+                        break;
+
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment, this);
+#endif
+                    rpcModule.BatchToServer(packet, signature.channel);
+                    break;
+                case RPCType.ObserversRPC:
+                {
+                    if (isServer)
+                    {
+                        using var players = GetObservers(signature);
+
+                        if (players.Count == 0)
+                            break;
+
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                        for (var i = players.Count - 1; i >= 0; --i)
+                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment, this);
+#endif
+                        rpcModule.BatchToTargets(players, packet, signature.channel);
+                    }
+                    else
+                    {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                        Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment, this);
+#endif
+                        rpcModule.BatchToServer(packet, signature.channel);
+                    }
+
+                    break;
+                }
+                case RPCType.TargetRPC:
+                    if (isServer)
+                    {
+                        using var players = signature.GetTargets();
+
+                        if (players.Count == 0)
+                            break;
+
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                        for (var i = players.Count - 1; i >= 0; --i)
+                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment, this);
+#endif
+                        rpcModule.BatchToTargets(players, packet, signature.channel);
+                    }
+                    else
+                    {
+                        using var targets = signature.GetTargets();
+
+                        if (targets.Count == 0)
+                            break;
+
+                        // TODO: we should batch this into one packet to the server instead of N
+                        for (int i = 0; i < targets.Count; i++)
+                        {
+                            packet.targetPlayerId = targets[i];
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment, this);
+#endif
+                            rpcModule.BatchToServer(packet, signature.channel);
+                        }
+                    }
+
+                    break;
+                default: throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        public void SendRPC(Type statisticsParent, RPCModule rpcModule, RPCPacket packet, RPCSignature signature)
         {
             switch (signature.type)
             {

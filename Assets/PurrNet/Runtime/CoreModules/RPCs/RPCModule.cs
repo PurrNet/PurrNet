@@ -942,19 +942,19 @@ namespace PurrNet.Modules
         }
 
 
-        private void BatchToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
+        private void QueueToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
         {
             for (int i = 0; i < players.Count; i++)
                 _normalRpcBatch.Queue(players[i], packet.header, packet.data, signatureChannel);
         }
 
-        private void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
+        private void QueueToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
         {
             for (int i = 0; i < players.Count; i++)
                 _childRpcBatch.Queue(players[i], packet.header, packet.data, signatureChannel);
         }
 
-        private void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
+        private void QueueToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
         {
             for (int i = 0; i < players.Count; i++)
                 _staticRpcBatch.Queue(players[i], packet.header, packet.data, signatureChannel);
@@ -995,46 +995,40 @@ namespace PurrNet.Modules
             }
         }
 
-        public void BatchToServer<T>(T packet, Channel signatureChannel) where T : IRpc
+        public void BatchToServer(RPCPacket normalRpc, Channel signatureChannel)
         {
-            switch (packet)
-            {
-                case RPCPacket normalRpc:
-                    FlushIfDifferent(RPCMethod.NetworkIdentity);
-                    _normalRpcBatch.Queue(PlayerID.Server, normalRpc.header, normalRpc.data, signatureChannel);
-                    break;
-                case ChildRPCPacket childRpc:
-                    FlushIfDifferent(RPCMethod.NetworkModule);
-                    _childRpcBatch.Queue(PlayerID.Server, childRpc.header, childRpc.data, signatureChannel);
-                    break;
-                case StaticRPCPacket staticRpc:
-                    FlushIfDifferent(RPCMethod.Static);
-                    _staticRpcBatch.Queue(PlayerID.Server, staticRpc.header, staticRpc.data, signatureChannel);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            FlushIfDifferent(RPCMethod.NetworkIdentity);
+            _normalRpcBatch.Queue(PlayerID.Server, normalRpc.header, normalRpc.data, signatureChannel);
         }
 
-        public void BatchToTargets<T>(DisposableList<PlayerID> players, T packet, Channel signatureChannel) where T : IRpc
+        public void BatchToServer(ChildRPCPacket childRpc, Channel signatureChannel)
         {
-            switch (packet)
-            {
-                case RPCPacket normalRpc:
-                    FlushIfDifferent(RPCMethod.NetworkIdentity);
-                    BatchToTargets(players, normalRpc, signatureChannel);
-                    break;
-                case ChildRPCPacket childRpc:
-                    FlushIfDifferent(RPCMethod.NetworkModule);
-                    BatchToTargets(players, childRpc, signatureChannel);
-                    break;
-                case StaticRPCPacket staticRpc:
-                    FlushIfDifferent(RPCMethod.Static);
-                    BatchToTargets(players, staticRpc, signatureChannel);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            FlushIfDifferent(RPCMethod.NetworkModule);
+            _childRpcBatch.Queue(PlayerID.Server, childRpc.header, childRpc.data, signatureChannel);
+        }
+
+        public void BatchToServer(StaticRPCPacket staticRpc, Channel signatureChannel)
+        {
+            FlushIfDifferent(RPCMethod.Static);
+            _staticRpcBatch.Queue(PlayerID.Server, staticRpc.header, staticRpc.data, signatureChannel);
+        }
+
+        public void BatchToTargets(DisposableList<PlayerID> players, RPCPacket normalRpc, Channel signatureChannel)
+        {
+            FlushIfDifferent(RPCMethod.NetworkIdentity);
+            QueueToTargets(players, normalRpc, signatureChannel);
+        }
+
+        public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket normalRpc, Channel signatureChannel)
+        {
+            FlushIfDifferent(RPCMethod.NetworkModule);
+            QueueToTargets(players, normalRpc, signatureChannel);
+        }
+
+        public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket normalRpc, Channel signatureChannel)
+        {
+            FlushIfDifferent(RPCMethod.Static);
+            QueueToTargets(players, normalRpc, signatureChannel);
         }
 
         public void BatchNetworkMessages()
