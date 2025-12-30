@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Utils;
+using Unity.Profiling;
 using Object = UnityEngine.Object;
 
 namespace PurrNet.Packing
@@ -24,6 +25,10 @@ namespace PurrNet.Packing
         static ReadFunc<T> _read;
         static ReadFunc<T> _readWrapper;
 
+        static readonly ProfilerMarker _writeAsExactTypeMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.WriteAsExactType");
+        static readonly ProfilerMarker _readAsExactTypeMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.ReadAsExactType");
+        static readonly ProfilerMarker _writeMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.Write");
+        static readonly ProfilerMarker _readMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.Read");
 
         public static void RegisterWriter(WriteFunc<T> a)
         {
@@ -67,76 +72,88 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void WriteAsExactType(BitPacker packer, T value)
         {
-            try
+            using (_writeAsExactTypeMarker.Auto())
             {
-                if (_write == null)
+                try
                 {
-                    Packer.FallbackWriter(packer, value);
-                    return;
-                }
+                    if (_write == null)
+                    {
+                        Packer.FallbackWriter(packer, value);
+                        return;
+                    }
 
-                _write(packer, value);
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"Failed to write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                    _write(packer, value);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"Failed to write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                }
             }
         }
 
         [UsedByIL]
         public static void ReadAsExactType(BitPacker packer, ref T value)
         {
-            try
+            using (_readAsExactTypeMarker.Auto())
             {
-                if (_read == null)
+                try
                 {
-                    Packer.FallbackReader(packer, ref value);
-                    return;
-                }
+                    if (_read == null)
+                    {
+                        Packer.FallbackReader(packer, ref value);
+                        return;
+                    }
 
-                _read(packer, ref value);
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"Failed to read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                    _read(packer, ref value);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"Failed to read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                }
             }
         }
 
         [UsedByIL]
         public static void Write(BitPacker packer, T value)
         {
-            try
+            using (_writeMarker.Auto())
             {
-                if (_writeWrapper == null)
+                try
                 {
-                    Packer.FallbackWriter(packer, value);
-                    return;
-                }
+                    if (_writeWrapper == null)
+                    {
+                        Packer.FallbackWriter(packer, value);
+                        return;
+                    }
 
-                _writeWrapper(packer, value);
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"Failed to write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                    _writeWrapper(packer, value);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"Failed to write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                }
             }
         }
 
         [UsedByIL]
         public static void Read(BitPacker packer, ref T value)
         {
-            try
+            using (_readMarker.Auto())
             {
-                if (_readWrapper == null)
+                try
                 {
-                    Packer.FallbackReader(packer, ref value);
-                    return;
-                }
+                    if (_readWrapper == null)
+                    {
+                        Packer.FallbackReader(packer, ref value);
+                        return;
+                    }
 
-                _readWrapper(packer, ref value);
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"Failed to read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                    _readWrapper(packer, ref value);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"Failed to read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                }
             }
         }
 
@@ -212,26 +229,36 @@ namespace PurrNet.Packing
         {
             if (packer.isWriting)
                 Write(packer, value);
-            else Read(packer, ref value);
+            else
+            {
+                Read(packer, ref value);
+            }
         }
     }
 
     public static class Packer
     {
+        static readonly ProfilerMarker _copyMarker = new ProfilerMarker($"Packer.Copy");
+        static readonly ProfilerMarker _transformMarker = new ProfilerMarker($"Packer.Transform");
+        static readonly ProfilerMarker _areEqual = new ProfilerMarker($"Packer.AreEqual");
+
         public static T Copy<T>(T value)
         {
-            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                return value;
+            using (_copyMarker.Auto())
+            {
+                if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                    return value;
 
-            if (value is IDuplicate<T> duplicate)
-                return duplicate.Duplicate();
+                if (value is IDuplicate<T> duplicate)
+                    return duplicate.Duplicate();
 
-            using var tmpPacker = BitPackerPool.Get();
-            Packer<T>.Write(tmpPacker, value);
-            tmpPacker.ResetPositionAndMode(true);
-            var copy = default(T);
-            Packer<T>.Read(tmpPacker, ref copy);
-            return copy;
+                using var tmpPacker = BitPackerPool.Get();
+                Packer<T>.Write(tmpPacker, value);
+                tmpPacker.ResetPositionAndMode(true);
+                var copy = default(T);
+                Packer<T>.Read(tmpPacker, ref copy);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -242,30 +269,33 @@ namespace PurrNet.Packing
         /// </returns>
         public static bool Transform<T>(ref T target, T whatToCopy)
         {
-            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            using (_transformMarker.Auto())
             {
-                bool equal = EqualityComparer<T>.Default.Equals(target, whatToCopy);
-                if (equal)
+                if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                {
+                    bool equal = EqualityComparer<T>.Default.Equals(target, whatToCopy);
+                    if (equal)
+                        return false;
+                    target = whatToCopy;
+                    return true;
+                }
+
+                if (target is IEquatable<T> comparable && comparable.Equals(whatToCopy))
                     return false;
-                target = whatToCopy;
+
+                using var packerA = BitPackerPool.Get();
+                using var packerB = BitPackerPool.Get();
+
+                Packer<T>.Write(packerA, target);
+                Packer<T>.Write(packerB, whatToCopy);
+
+                if (ArePackersEqual(packerA, packerB))
+                    return false;
+
+                packerB.ResetPositionAndMode(true);
+                Packer<T>.Read(packerB, ref target);
                 return true;
             }
-
-            if (target is IEquatable<T> comparable && comparable.Equals(whatToCopy))
-                return false;
-
-            using var packerA = BitPackerPool.Get();
-            using var packerB = BitPackerPool.Get();
-
-            Packer<T>.Write(packerA, target);
-            Packer<T>.Write(packerB, whatToCopy);
-
-            if (ArePackersEqual(packerA, packerB))
-                return false;
-
-            packerB.ResetPositionAndMode(true);
-            Packer<T>.Read(packerB, ref target);
-            return true;
         }
 
         [UsedByIL]
@@ -315,47 +345,50 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static bool AreEqual<T>(T a, T b)
         {
-            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                return EqualityComparer<T>.Default.Equals(a, b);
-
-            if (a is IEquatable<T> comparable)
-                return comparable.Equals(b);
-
-            using var packerA = BitPackerPool.Get();
-            using var packerB = BitPackerPool.Get();
-
-            Packer<T>.Write(packerA, a);
-            Packer<T>.Write(packerB, b);
-
-            if (packerA.positionInBits != packerB.positionInBits)
-                return false;
-
-            int bits = packerA.positionInBits;
-
-            packerA.ResetPositionAndMode(true);
-            packerB.ResetPositionAndMode(true);
-
-            while (bits >= 64)
+            using (_areEqual.Auto())
             {
-                ulong aBits = packerA.ReadBits(64);
-                ulong bBits = packerB.ReadBits(64);
+                if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                    return EqualityComparer<T>.Default.Equals(a, b);
 
-                if (aBits != bBits)
+                if (a is IEquatable<T> comparable)
+                    return comparable.Equals(b);
+
+                using var packerA = BitPackerPool.Get();
+                using var packerB = BitPackerPool.Get();
+
+                Packer<T>.Write(packerA, a);
+                Packer<T>.Write(packerB, b);
+
+                if (packerA.positionInBits != packerB.positionInBits)
                     return false;
 
-                bits -= 64;
-            }
+                int bits = packerA.positionInBits;
 
-            if (bits > 0)
-            {
-                var remainingBits = (byte)bits;
-                ulong aBits = packerA.ReadBits(remainingBits);
-                ulong bBits = packerB.ReadBits(remainingBits);
-                if (aBits != bBits)
-                    return false;
-            }
+                packerA.ResetPositionAndMode(true);
+                packerB.ResetPositionAndMode(true);
 
-            return true;
+                while (bits >= 64)
+                {
+                    ulong aBits = packerA.ReadBits(64);
+                    ulong bBits = packerB.ReadBits(64);
+
+                    if (aBits != bBits)
+                        return false;
+
+                    bits -= 64;
+                }
+
+                if (bits > 0)
+                {
+                    var remainingBits = (byte)bits;
+                    ulong aBits = packerA.ReadBits(remainingBits);
+                    ulong bBits = packerB.ReadBits(remainingBits);
+                    if (aBits != bBits)
+                        return false;
+                }
+
+                return true;
+            }
         }
 
         [UsedByIL]

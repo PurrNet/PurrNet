@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using PurrNet.Packing;
 using PurrNet.Transports;
+using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
@@ -56,43 +57,53 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
         }
 
+        static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Flush");
+
         public void Flush()
         {
-            for (int i = 0; i < _batches.Count; i++)
+            using (_flushMarker.Auto())
             {
-                var batch = _batches[i];
-                var data = new RPCBatchPacket
+                for (int i = 0; i < _batches.Count; i++)
                 {
-                    count = batch.batchCount,
-                    data = batch.batchedData
-                };
+                    var batch = _batches[i];
+                    var data = new RPCBatchPacket
+                    {
+                        count = batch.batchCount,
+                        data = batch.batchedData
+                    };
 
-                _playersManager.Send(batch.key.playerId, data, batch.key.channel);
-                batch.batchedData.Dispose();
+                    _playersManager.Send(batch.key.playerId, data, batch.key.channel);
+                    batch.batchedData.Dispose();
+                }
+
+                _batches.Clear();
             }
-
-            _batches.Clear();
         }
+
+        static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.FlushChannel");
 
         public void FlushChannel(Channel channel)
         {
-            for (int i = 0; i < _batches.Count; i++)
+            using (_flushChannelMarker.Auto())
             {
-                var batch = _batches[i];
-
-                if (batch.key.channel != channel)
-                    continue;
-
-                var data = new RPCBatchPacket
+                for (int i = 0; i < _batches.Count; i++)
                 {
-                    count = batch.batchCount,
-                    data = batch.batchedData
-                };
+                    var batch = _batches[i];
 
-                _playersManager.Send(batch.key.playerId, data, batch.key.channel);
-                batch.batchedData.Dispose();
+                    if (batch.key.channel != channel)
+                        continue;
 
-                _batches.RemoveAt(i--);
+                    var data = new RPCBatchPacket
+                    {
+                        count = batch.batchCount,
+                        data = batch.batchedData
+                    };
+
+                    _playersManager.Send(batch.key.playerId, data, batch.key.channel);
+                    batch.batchedData.Dispose();
+
+                    _batches.RemoveAt(i--);
+                }
             }
         }
 
@@ -132,47 +143,52 @@ namespace PurrNet.Modules
             data.data.Dispose();
         }
 
+        static readonly ProfilerMarker _queueMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue");
+
         public void Queue(PlayerID target, HEADER header, ByteData content, Channel channel)
         {
-            var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
-            var batch = _batches[batchIdx];
-
-            int before = batch.batchedData.positionInBits;
-            Size contentLen = content.length;
-
-            DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
-            DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
-
-            int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
-
-            // do some MTU checks past 1 batch
-            if (batch.batchCount > 0)
+            using (_queueMarker.Auto())
             {
-                int mtu = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
+                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                var batch = _batches[batchIdx];
 
-                if (bytesAfterHeaderLen + 10 >= mtu) // 10 here is just a safety margin
+                int before = batch.batchedData.positionInBits;
+                Size contentLen = content.length;
+
+                DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
+                DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
+
+                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
+
+                // do some MTU checks past 1 batch
+                if (batch.batchCount > 0)
                 {
-                    // undo the last write
-                    batch.batchedData.SetBitPosition(before);
-                    batch.completed = true;
-                    _batches[batchIdx] = batch;
-                    // create new batch
-                    batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
-                    batch = _batches[batchIdx];
-                    // redo the last write
-                    DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
-                    DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
+                    int mtu = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
+
+                    if (bytesAfterHeaderLen + 10 >= mtu) // 10 here is just a safety margin
+                    {
+                        // undo the last write
+                        batch.batchedData.SetBitPosition(before);
+                        batch.completed = true;
+                        _batches[batchIdx] = batch;
+                        // create new batch
+                        batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                        batch = _batches[batchIdx];
+                        // redo the last write
+                        DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
+                        DeltaPacker<Size>.Write(batch.batchedData, batch.lastDataLen, contentLen);
+                    }
                 }
+
+                ++batch.batchCount;
+                batch.lastHeader = header;
+                batch.lastDataLen = contentLen;
+
+                if (content.length > 0)
+                    batch.batchedData.WriteBytes(content);
+
+                _batches[batchIdx] = batch;
             }
-
-            ++batch.batchCount;
-            batch.lastHeader = header;
-            batch.lastDataLen = contentLen;
-
-            if (content.length > 0)
-                batch.batchedData.WriteBytes(content);
-
-            _batches[batchIdx] = batch;
         }
 
         public void Clear()
