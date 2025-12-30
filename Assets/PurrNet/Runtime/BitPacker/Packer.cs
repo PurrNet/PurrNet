@@ -181,7 +181,7 @@ namespace PurrNet.Packing
                 return;
             }
 
-            Packer<PackedUInt>.WriteAsExactType(packer, Hasher.GetStableHashU32(type));
+            PackingIntegers.Write(packer, (PackedUInt)Hasher.GetStableHashU32(type));
             Packer.WriteAsExactType(packer, type, value);
         }
 

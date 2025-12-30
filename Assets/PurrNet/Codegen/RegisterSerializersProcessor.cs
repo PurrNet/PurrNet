@@ -229,8 +229,9 @@ namespace PurrNet.Codegen
             {
                 var writeType = writeTypes[i];
                 var writeMethod = writeType.method.Import(module);
-
-                writeMethod.Resolve().AggressiveInlining = true;
+                var resolved = writeMethod.Resolve();
+                resolved.IsPublic = true;
+                resolved.AggressiveInlining = true;
 
                 var nonDeltaPackerType = module.GetTypeDefinition(typeof(Packer<>)).Import(module);
                 var deltaPackerType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
@@ -281,8 +282,10 @@ namespace PurrNet.Codegen
             {
                 var readType = readTypes[i];
                 var readMethod = readType.method.Import(module);
+                var resolved = readMethod.Resolve();
 
-                readMethod.Resolve().AggressiveInlining = true;
+                resolved.IsPublic = true;
+                resolved.AggressiveInlining = true;
 
                 // Create a GenericInstanceMethod for Packer.RegisterReader<T>
 
