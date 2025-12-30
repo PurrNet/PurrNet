@@ -56,13 +56,13 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void Write(this BitPacker packer, bool value)
         {
-            packer.WriteBits(value ? (ulong)1 : 0, 1);
+            packer.WriteBit(value);
         }
 
         [UsedByIL]
         public static void Read(this BitPacker packer, ref bool value)
         {
-            value = packer.ReadBits(1) == 1;
+            value = packer.ReadBit();
         }
 
         [UsedByIL]
