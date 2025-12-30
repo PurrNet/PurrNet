@@ -6,7 +6,7 @@
         {
             int flagPos = packer.AdvanceBits(1);
 
-            bool hasChanged = DeltaPacker<bool>.Write(packer, oldvalue.HasValue, newvalue.HasValue);
+            bool hasChanged = DeltaPackInteger.WriteBool(packer, oldvalue.HasValue, newvalue.HasValue);
 
             if (newvalue.HasValue)
                 hasChanged = DeltaPacker<T>.Write(packer, oldvalue.GetValueOrDefault(), newvalue.GetValueOrDefault()) || hasChanged;
@@ -21,8 +21,7 @@
 
         public static void ReadDeltaNullable<T>(BitPacker packer, T? oldvalue, ref T? value) where T : struct
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (!hasChanged)
             {
@@ -33,7 +32,7 @@
             bool hasValue = default;
             T readValue = default;
 
-            DeltaPacker<bool>.Read(packer, oldvalue.HasValue, ref hasValue);
+            DeltaPackInteger.ReadBool(packer, oldvalue.HasValue, ref hasValue);
 
             if (hasValue)
             {
@@ -50,20 +49,17 @@
         {
             if (!value.HasValue)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             Packer<T>.Write(packer, value.Value);
         }
 
         public static void ReadNullable<T>(BitPacker packer, ref T? value) where T : struct
         {
-            bool hasValue = default;
-            packer.Read(ref hasValue);
-
-            if (!hasValue)
+            if (!packer.ReadBit())
             {
                 value = null;
                 return;

@@ -1,5 +1,4 @@
 using PurrNet.Modules;
-using UnityEngine;
 
 namespace PurrNet.Packing
 {
@@ -9,15 +8,14 @@ namespace PurrNet.Packing
         public static bool WriteBool(BitPacker packer, bool oldvalue, bool newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
             return hasChanged;
         }
 
         [UsedByIL]
         public static void ReadBool(BitPacker packer, bool oldvalue, ref bool value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
             value = hasChanged ? !oldvalue : oldvalue;
         }
 
@@ -25,7 +23,7 @@ namespace PurrNet.Packing
         public static bool WriteInt8(BitPacker packer, sbyte oldvalue, sbyte newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -39,8 +37,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadInt8(BitPacker packer, sbyte oldvalue, ref sbyte value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -55,7 +52,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt8(BitPacker packer, byte oldvalue, byte newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -69,8 +66,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt8(BitPacker packer, byte oldvalue, ref byte value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -85,7 +81,7 @@ namespace PurrNet.Packing
         public static bool WriteInt16(BitPacker packer, short oldvalue, short newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -99,8 +95,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadInt16(BitPacker packer, short oldvalue, ref short value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -115,7 +110,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt16(BitPacker packer, ushort oldvalue, ushort newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -129,8 +124,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt16(BitPacker packer, ushort oldvalue, ref ushort value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -145,7 +139,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt32(BitPacker packer, uint oldvalue, uint newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -159,8 +153,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt32(BitPacker packer, uint oldvalue, ref uint value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -175,7 +168,7 @@ namespace PurrNet.Packing
         public static bool WriteInt32(BitPacker packer, int oldvalue, int newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -189,8 +182,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadInt32(BitPacker packer, int oldvalue, ref int value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -205,7 +197,7 @@ namespace PurrNet.Packing
         public static bool WriteInt64(BitPacker packer, long oldvalue, long newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -219,8 +211,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadInt64(BitPacker packer, long oldvalue, ref long value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -235,7 +226,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt64(BitPacker packer, ulong oldvalue, ulong newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -249,8 +240,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt64(BitPacker packer, ulong oldvalue, ref ulong value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -266,7 +256,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt32(BitPacker packer, PackedUInt oldvalue, PackedUInt newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -280,8 +270,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt32(BitPacker packer, PackedUInt oldvalue, ref PackedUInt value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -308,7 +297,7 @@ namespace PurrNet.Packing
         public static bool WriteIndex(BitPacker packer, Size oldvalue, Size newvalue)
         {
             bool hasChanged = oldvalue.value != newvalue.value;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -335,7 +324,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt64(BitPacker packer, PackedULong oldvalue, PackedULong newvalue)
         {
             bool hasChanged = oldvalue.value != newvalue.value;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -349,8 +338,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt64(BitPacker packer, PackedULong oldvalue, ref PackedULong value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -365,7 +353,7 @@ namespace PurrNet.Packing
         public static bool WriteUInt16(BitPacker packer, PackedUShort oldvalue, PackedUShort newvalue)
         {
             bool hasChanged = oldvalue != newvalue;
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -379,8 +367,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadUInt16(BitPacker packer, PackedUShort oldvalue, ref PackedUShort value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {

@@ -87,11 +87,11 @@ namespace PurrNet.Packing
         {
             if (value.isDisposed)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             Packer<Size>.Write(packer, value.Count);
 
             for (int i = 0; i < value.Count; i++)
@@ -127,7 +127,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadDArray<T>(this BitPacker packer, ref DisposableArray<T> value)
         {
-            bool hasValue = Packer<bool>.Read(packer);
+            bool hasValue = packer.ReadBit();
             value.Dispose();
 
             if (!hasValue)
@@ -149,11 +149,11 @@ namespace PurrNet.Packing
         {
             if (value.isDisposed || value.set == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);
@@ -190,11 +190,11 @@ namespace PurrNet.Packing
         {
             if (value == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);
@@ -234,11 +234,11 @@ namespace PurrNet.Packing
         {
             if (value == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);
@@ -278,11 +278,11 @@ namespace PurrNet.Packing
         {
             if (value == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);
@@ -395,11 +395,11 @@ namespace PurrNet.Packing
         {
             if (value == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);
@@ -448,11 +448,11 @@ namespace PurrNet.Packing
         {
             if (value == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);

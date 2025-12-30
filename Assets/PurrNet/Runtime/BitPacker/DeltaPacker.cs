@@ -31,18 +31,18 @@ namespace PurrNet.Packing
         {
             if (Packer.AreEqual(oldValue, newValue))
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return false;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             Packer.Write(packer, type, newValue);
             return true;
         }
 
         static void ReadUnpacked(BitPacker packer, Type type, object oldValue, ref object value)
         {
-            if (!Packer<bool>.Read(packer))
+            if (!packer.ReadBit())
             {
                 value = Packer.Copy(oldValue);
                 return;

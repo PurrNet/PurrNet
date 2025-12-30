@@ -65,11 +65,11 @@ namespace PurrNet.Packing
             {
                 if (Packer.AreEqual(oldValue, newValue))
                 {
-                    Packer<bool>.Write(packer, false);
+                    packer.WriteBit(false);
                     return false;
                 }
 
-                Packer<bool>.Write(packer, true);
+                packer.WriteBit(true);
                 Packer<T>.Write(packer, newValue);
                 return true;
             }
@@ -80,7 +80,7 @@ namespace PurrNet.Packing
         {
             using (_ReadUnpackedMarker.Auto())
             {
-                if (!Packer<bool>.Read(packer))
+                if (!packer.ReadBit())
                 {
                     value = oldValue;
                     return;

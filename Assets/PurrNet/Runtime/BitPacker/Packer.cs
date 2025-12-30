@@ -173,7 +173,7 @@ namespace PurrNet.Packing
 
             bool isTypeSameAsGeneric = type == typeof(T);
 
-            Packer<bool>.WriteAsExactType(packer, isTypeSameAsGeneric);
+            packer.WriteBit(isTypeSameAsGeneric);
 
             if (isTypeSameAsGeneric)
             {
@@ -430,7 +430,7 @@ namespace PurrNet.Packing
                     if (WriteAsNetworkAsset(packer, unityObj))
                         return;
                 }
-                else Packer<bool>.Write(packer, false);
+                else packer.WriteBit(false);
 
                 PackedUInt typeHash = Hasher.GetStableHashU32(obj.GetType());
                 Packer<PackedUInt>.Write(packer, typeHash);
