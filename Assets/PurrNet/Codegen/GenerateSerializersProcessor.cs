@@ -621,11 +621,24 @@ namespace PurrNet.Codegen
             return inlinedWriteMethods.TryGetValue(type, out method);
         }
 
-        public static bool TryGetInlinedMethod(bool writing, TypeReference type, out MethodReference method)
+        public static bool TryGetInlinedMethod(bool writing, TypeReference type, ModuleDefinition module, out MethodReference method)
         {
             if (writing)
-                return TryGetInlinedWrite(type, out method);
-            return TryGetInlinedRead(type, out method);
+            {
+                if (TryGetInlinedWrite(type, out method))
+                {
+                    method = method.Import(module);
+                    return true;
+                }
+                return false;
+            }
+
+            if (TryGetInlinedRead(type, out method))
+            {
+                method = method.Import(module);
+                return true;
+            }
+            return false;
         }
 
         public static void CacheRead(TypeReference type, MethodDefinition method)
@@ -723,7 +736,7 @@ namespace PurrNet.Codegen
 
                 if (baseType is { IsValueType: false })
                 {
-                    if (!TryGetInlinedMethod(isWriting, baseType, out var genericM))
+                    if (!TryGetInlinedMethod(isWriting, baseType, mainmodule, out var genericM))
                         genericM = CreateGenericMethod(packerType, baseType, serializeDirect, mainmodule);
 
                     var variable = new VariableDefinition(baseType);
@@ -775,7 +788,7 @@ namespace PurrNet.Codegen
 
                 var fieldType = ResolveGenericFieldType(field, typeRef);
 
-                if (!TryGetInlinedMethod(isWriting, fieldType, out var genericM))
+                if (!TryGetInlinedMethod(isWriting, fieldType, mainmodule, out var genericM))
                     genericM = CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
 
                 // make field public
@@ -910,7 +923,7 @@ namespace PurrNet.Codegen
             ILProcessor il, ModuleDefinition mainmodule, TypeReference packerType, TypeDefinition standaloneType,
             TypeDefinition type)
         {
-            if (!TryGetInlinedMethod(isWriting, standaloneType, out var genericM))
+            if (!TryGetInlinedMethod(isWriting, standaloneType, mainmodule, out var genericM))
                 genericM = CreateGenericMethod(packerType, standaloneType, serializeDirect, mainmodule);
 
             var variable = new VariableDefinition(standaloneType);
@@ -1050,7 +1063,7 @@ namespace PurrNet.Codegen
         {
             var underlyingType = type.GetField("value__").FieldType;
 
-            if (!TryGetInlinedMethod(isWriting, underlyingType, out var enumWriteMethod))
+            if (!TryGetInlinedMethod(isWriting, underlyingType, mainmodule, out var enumWriteMethod))
                 enumWriteMethod = CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
 
             var tmpVar = new VariableDefinition(underlyingType);
