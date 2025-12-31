@@ -1,3 +1,12 @@
+## [1.18.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.5...v1.18.1-beta.6) (2025-12-31)
+
+
+### Bug Fixes
+
+* cleanup server/client modules, this caused some issues when next playthrough starting mode was changed ([65b2d0c](https://github.com/PurrNet/PurrNet/commit/65b2d0c6a330514edfb40d28c37cb75716b9a00d))
+* syncvar invalidate is controller earlier ([2444436](https://github.com/PurrNet/PurrNet/commit/2444436aded533525be1e33930dab28a367e8cc2))
+* wrong local variable index ([612cbfd](https://github.com/PurrNet/PurrNet/commit/612cbfd0aa2f96f6dec7a8814062bc50e4652bf9))
+
 ## [1.18.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.4...v1.18.1-beta.5) (2025-12-26)
 
 
