@@ -16,9 +16,9 @@ namespace PurrNet.Modules
             public PlayerID playerId;
             public Channel channel;
 
-            public bool Equals(BatchKey other)
+            public static bool AreEquals(BatchKey a, BatchKey b)
             {
-                return playerId == other.playerId && channel == other.channel;
+                return a.playerId.id.value == b.playerId.id.value && a.channel == b.channel;
             }
         }
 
@@ -107,16 +107,18 @@ namespace PurrNet.Modules
             }
         }
 
-        private int GetBatchIndex(BatchKey key)
+        private static int GetBatchIndex(BatchKey key, List<PlayerRpcBatchedData> batches)
         {
-            for (var i = 0; i < _batches.Count; i++)
+            int c = batches.Count;
+
+            for (var i = c - 1; i >= 0; i--)
             {
-                if (_batches[i].key.Equals(key) && !_batches[i].completed)
+                var b = batches[i];
+                if (!b.completed && BatchKey.AreEquals(key, b.key))
                     return i;
             }
 
-            int c = _batches.Count;
-            _batches.Add(new PlayerRpcBatchedData { key = key, batchedData = BitPackerPool.Get() });
+            batches.Add(new PlayerRpcBatchedData { key = key, batchedData = BitPackerPool.Get() });
             return c;
         }
 
@@ -149,7 +151,7 @@ namespace PurrNet.Modules
         {
             using (_queueMarker.Auto())
             {
-                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
                 var batch = _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
@@ -172,7 +174,7 @@ namespace PurrNet.Modules
                         batch.completed = true;
                         _batches[batchIdx] = batch;
                         // create new batch
-                        batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                        batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
                         batch = _batches[batchIdx];
                         // redo the last write
                         DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);

@@ -46,10 +46,10 @@ namespace PurrNet.Codegen
                     continue;
 
                 var serializedType = genericArgument.GenericArguments[0];
-
+                var module = methodDefinition.Module;
                 if (isPacker)
                 {
-                    if (GenerateSerializersProcessor.TryGetInlinedMethod(isWritting, serializedType,
+                    if (GenerateSerializersProcessor.TryGetInlinedMethod(isWritting, serializedType, module,
                             out var inlineMethod))
                     {
                         il.Replace(instruction, Instruction.Create(OpCodes.Call, inlineMethod));
@@ -57,7 +57,7 @@ namespace PurrNet.Codegen
                 }
                 else
                 {
-                    if (GenerateDeltaSerializersProcessor.TryGetInlinedMethod(isWritting, serializedType,
+                    if (GenerateDeltaSerializersProcessor.TryGetInlinedMethod(isWritting, serializedType, module,
                             out var inlineMethod))
                     {
                         il.Replace(instruction, Instruction.Create(OpCodes.Call, inlineMethod));
