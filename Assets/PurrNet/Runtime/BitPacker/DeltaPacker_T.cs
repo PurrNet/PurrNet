@@ -177,13 +177,6 @@ namespace PurrNet.Packing
             }
         }
 
-        public static T Read(BitPacker packer, T oldValue)
-        {
-            T newValue = default;
-            Read(packer, oldValue, ref newValue);
-            return newValue;
-        }
-
         public static void Serialize(BitPacker packer, T oldValue, ref T value)
         {
             if (packer.isWriting)
