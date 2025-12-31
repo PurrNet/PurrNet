@@ -125,6 +125,16 @@ namespace PurrNet
             SendLatestState(player, _id, _value);
         }
 
+        public override void OnInitializeModules()
+        {
+            InvalidateIsController();
+        }
+
+        public override void OnEarlySpawn()
+        {
+            InvalidateIsController();
+        }
+
         public override void OnSpawn()
         {
             InvalidateIsController();
