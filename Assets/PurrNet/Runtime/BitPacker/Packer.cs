@@ -6,6 +6,7 @@ using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Utils;
 using Unity.Profiling;
+using UnityEngine.PlayerLoop;
 using Object = UnityEngine.Object;
 
 namespace PurrNet.Packing
@@ -20,142 +21,83 @@ namespace PurrNet.Packing
 
     public static class Packer<T>
     {
-        static WriteFunc<T> _write;
-        static WriteFunc<T> _writeWrapper;
-        static ReadFunc<T> _read;
-        static ReadFunc<T> _readWrapper;
+        /// <summary>
+        /// The function that writes type T.
+        /// It's direct because it doesn't care for inheritance.
+        /// </summary>
+        public static WriteFunc<T> DirectWrite;
 
-        static readonly ProfilerMarker _writeAsExactTypeMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.WriteAsExactType");
-        static readonly ProfilerMarker _readAsExactTypeMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.ReadAsExactType");
-        static readonly ProfilerMarker _writeMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.Write");
-        static readonly ProfilerMarker _readMarker = new ProfilerMarker($"Packer<{typeof(T).Name}>.Read");
+        /// <summary>
+        /// The function that reads type T.
+        /// It's direct because it doesn't care for inheritance.
+        /// </summary>
+        public static ReadFunc<T> DirectRead;
+
+        /// <summary>
+        /// The function that writes type T.
+        /// It cares for inheritance, if T isn't the top level type it will use the top level type's writer.
+        /// </summary>
+        public static WriteFunc<T> WriteFunc;
+
+        /// <summary>
+        /// The function that reads type T.
+        /// It cares for inheritance, if T isn't the top level type it will use the top level type's reader.
+        /// </summary>
+        public static ReadFunc<T> ReadFunc;
+
+        static bool _hasWriter, _hasReader;
+
+        static Packer()
+        {
+            WriteFunc = Packer.FallbackWriter;
+            ReadFunc = Packer.FallbackReader;
+            DirectWrite = Packer.FallbackWriter;
+            DirectRead = Packer.FallbackReader;
+        }
 
         public static void RegisterWriter(WriteFunc<T> a)
         {
-            if (_write != null)
+            if (_hasWriter)
                 return;
 
-            _write = a;
+            _hasWriter = true;
+            DirectWrite = a;
 
             bool isStructOrSealed = typeof(T).IsValueType || typeof(T).IsSealed;
+            WriteFunc = !isStructOrSealed ? WriteClass : DirectWrite;
 
-            if (!isStructOrSealed)
-                _writeWrapper = WriteClass;
-            else _writeWrapper = WriteAsExactType;
-
-            Packer.RegisterWriter(typeof(T), _write.Method, _writeWrapper.Method);
+            Packer.RegisterWriter(typeof(T), DirectWrite.Method, WriteFunc.Method);
         }
 
-        public static bool HasPacker()
-        {
-            return _write != null;
-        }
+        public static bool HasPacker() => _hasWriter && _hasReader;
 
         public static void RegisterReader(ReadFunc<T> b)
         {
             Hasher.PrepareType(typeof(T));
 
-            if (_read != null)
+            if (_hasReader)
                 return;
 
-            _read = b;
+            _hasReader = true;
+            DirectRead = b;
 
             bool isStructOrSealed = typeof(T).IsValueType || typeof(T).IsSealed;
+            ReadFunc = !isStructOrSealed ? ReadClass : DirectRead;
 
-            if (!isStructOrSealed)
-                _readWrapper = ReadClass;
-            else _readWrapper = ReadAsExactType;
-
-            Packer.RegisterReader(typeof(T), _read.Method, _readWrapper.Method);
+            Packer.RegisterReader(typeof(T), DirectRead.Method, ReadFunc.Method);
         }
 
-        [UsedByIL]
-        public static void WriteAsExactType(BitPacker packer, T value)
-        {
-            using (_writeAsExactTypeMarker.Auto())
-            {
-                try
-                {
-                    if (_write == null)
-                    {
-                        Packer.FallbackWriter(packer, value);
-                        return;
-                    }
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteAsExactType(BitPacker packer, T value) => DirectWrite(packer, value);
 
-                    _write(packer, value);
-                }
-                catch (Exception e)
-                {
-                    PurrLogger.LogError($"Failed to write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
-                }
-            }
-        }
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ReadAsExactType(BitPacker packer, ref T value) => DirectRead(packer, ref value);
 
-        [UsedByIL]
-        public static void ReadAsExactType(BitPacker packer, ref T value)
-        {
-            using (_readAsExactTypeMarker.Auto())
-            {
-                try
-                {
-                    if (_read == null)
-                    {
-                        Packer.FallbackReader(packer, ref value);
-                        return;
-                    }
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Write(BitPacker packer, T value) => WriteFunc(packer, value);
 
-                    _read(packer, ref value);
-                }
-                catch (Exception e)
-                {
-                    PurrLogger.LogError($"Failed to read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
-                }
-            }
-        }
-
-        [UsedByIL]
-        public static void Write(BitPacker packer, T value)
-        {
-            using (_writeMarker.Auto())
-            {
-                try
-                {
-                    if (_writeWrapper == null)
-                    {
-                        Packer.FallbackWriter(packer, value);
-                        return;
-                    }
-
-                    _writeWrapper(packer, value);
-                }
-                catch (Exception e)
-                {
-                    PurrLogger.LogError($"Failed to write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
-                }
-            }
-        }
-
-        [UsedByIL]
-        public static void Read(BitPacker packer, ref T value)
-        {
-            using (_readMarker.Auto())
-            {
-                try
-                {
-                    if (_readWrapper == null)
-                    {
-                        Packer.FallbackReader(packer, ref value);
-                        return;
-                    }
-
-                    _readWrapper(packer, ref value);
-                }
-                catch (Exception e)
-                {
-                    PurrLogger.LogError($"Failed to read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
-                }
-            }
-        }
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Read(BitPacker packer, ref T value) => ReadFunc(packer, ref value);
 
         static void WriteClass(BitPacker packer, T value)
         {
@@ -177,7 +119,7 @@ namespace PurrNet.Packing
 
             if (isTypeSameAsGeneric)
             {
-                WriteAsExactType(packer, value);
+                DirectWrite(packer, value);
                 return;
             }
 
@@ -191,14 +133,18 @@ namespace PurrNet.Packing
 
             if (isTypeSameAsGeneric)
             {
-                ReadAsExactType(packer, ref value);
+                DirectRead(packer, ref value);
                 return;
             }
 
             var hash = Packer<PackedUInt>.Read(packer);
 
             if (!Hasher.TryGetType(hash, out var type))
-                throw new Exception($"Type with hash '{hash}' not found.");
+            {
+                PurrLogger.LogError($"Type with hash '{hash}' not found.");
+                value = default;
+                return;
+            }
 
             object result = value;
             Packer.ReadAsExactType(packer, type, ref result);
@@ -218,20 +164,24 @@ namespace PurrNet.Packing
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T Read(BitPacker packer)
         {
             var value = default(T);
-            Read(packer, ref value);
+            ReadFunc(packer, ref value);
             return value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Serialize(BitPacker packer, ref T value)
         {
             if (packer.isWriting)
-                Write(packer, value);
+            {
+                WriteFunc(packer, value);
+            }
             else
             {
-                Read(packer, ref value);
+                ReadFunc(packer, ref value);
             }
         }
     }
