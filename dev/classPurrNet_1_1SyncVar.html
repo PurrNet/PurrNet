@@ -127,6 +127,11 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>ActionWithOl
 <tr class="memitem:a973d03543b86b48a915ffe0dbd3c9299"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool isSpawner)</td></tr>
 <tr class="memdesc:a973d03543b86b48a915ffe0dbd3c9299"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299">More...</a><br /></td></tr>
 <tr class="separator:a973d03543b86b48a915ffe0dbd3c9299"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1eea70edd6babb6ae71ba1bdf61e19e1"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a1eea70edd6babb6ae71ba1bdf61e19e1">OnInitializeModules</a> ()</td></tr>
+<tr class="separator:a1eea70edd6babb6ae71ba1bdf61e19e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a554329ae401393710c94d605876f48f7"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a554329ae401393710c94d605876f48f7">OnEarlySpawn</a> ()</td></tr>
+<tr class="memdesc:a554329ae401393710c94d605876f48f7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.   <a href="classPurrNet_1_1SyncVar.html#a554329ae401393710c94d605876f48f7">More...</a><br /></td></tr>
+<tr class="separator:a554329ae401393710c94d605876f48f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4232d33db28e40ded702b4eab7210a8e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a4232d33db28e40ded702b4eab7210a8e">OnSpawn</a> ()</td></tr>
 <tr class="separator:a4232d33db28e40ded702b4eab7210a8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa339797f6bd178e3be6d2fc6e2051c37"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#aa339797f6bd178e3be6d2fc6e2051c37">OnDespawned</a> ()</td></tr>
@@ -349,6 +354,62 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
       <table class="memname">
         <tr>
           <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnDespawned </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="a554329ae401393710c94d605876f48f7" name="a554329ae401393710c94d605876f48f7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a554329ae401393710c94d605876f48f7">&#9670;&#160;</a></span>OnEarlySpawn()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnEarlySpawn </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="a1eea70edd6babb6ae71ba1bdf61e19e1" name="a1eea70edd6babb6ae71ba1bdf61e19e1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1eea70edd6babb6ae71ba1bdf61e19e1">&#9670;&#160;</a></span>OnInitializeModules()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnInitializeModules </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>

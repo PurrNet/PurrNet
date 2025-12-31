@@ -496,8 +496,6 @@ var hierarchy =
       [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3, T4 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],
       [ "PurrNet.SerializableSyncUnityEvent< T1, T2, T3, T4 >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ]
     ] ],
-    [ "PurrNet.Modules.UnreliableAck", "structPurrNet_1_1Modules_1_1UnreliableAck.html", null ],
-    [ "PurrNet.Modules.UnreliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1UnreliableConnectionHistory.html", null ],
     [ "PurrNet.NetworkPrefabs.UserPrefabData", "structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html", null ],
     [ "PurrNet.Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", null ],
     [ "PurrNet.VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ]
