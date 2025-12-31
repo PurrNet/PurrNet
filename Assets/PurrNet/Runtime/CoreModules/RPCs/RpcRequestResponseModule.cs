@@ -6,6 +6,7 @@ using PurrNet.Logging;
 using PurrNet.Packing;
 using PurrNet.Transports;
 using UnityEngine;
+using Channel = PurrNet.Transports.Channel;
 
 #if !UNITASK_PURRNET_SUPPORT
 using RawTask = System.Threading.Tasks.Task;
@@ -30,20 +31,24 @@ namespace PurrNet.Modules
 
     public struct RpcResponse
     {
+        public PlayerID? forward;
+        public Channel? channel;
         public PackedUInt id;
         public ByteData data;
     }
 
     public class RpcRequestResponseModule : INetworkModule, IFixedUpdate
     {
+        private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
         private readonly List<RpcRequest> _requests = new List<RpcRequest>();
 
         private uint _nextId;
 
-        public RpcRequestResponseModule(PlayersManager playersManager)
+        public RpcRequestResponseModule(NetworkManager manager, PlayersManager playersManager)
         {
             _playersManager = playersManager;
+            _manager = manager;
         }
 
         public void Enable(bool asServer)
@@ -58,6 +63,25 @@ namespace PurrNet.Modules
 
         private void OnRpcResponse(PlayerID conn, RpcResponse data, bool asServer)
         {
+            if (asServer && data.forward.HasValue)
+            {
+                var rules = _manager.networkRules;
+                if (!rules)
+                {
+                    PurrLogger.LogError("Failed to get network rules.");
+                    return;
+                }
+
+                if (!rules.ShouldIgnoreRequireServer())
+                {
+                    PurrLogger.LogError("Received async response from a client, but server is required (network rules).");
+                    return;
+                }
+
+                _playersManager.Send(data.forward.Value, data, data.channel ?? Channel.ReliableOrdered);
+                return;
+            }
+
             for (int i = 0; i < _requests.Count; i++)
             {
                 var request = _requests[i];
@@ -356,11 +380,15 @@ namespace PurrNet.Modules
                 {
                     if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                     {
+                        var isForwarded = info is { asServer: false, sender: { isServer: false } };
+
                         // rpcModule
                         var responsePacket = new RpcResponse
                         {
                             id = reqId,
-                            data = ByteData.empty
+                            data = ByteData.empty,
+                            forward = isForwarded ? null : info.sender,
+                            channel = isForwarded ? null : info.compileTimeSignature.channel
                         };
 
                         var channel = info.compileTimeSignature.channel;
@@ -391,11 +419,15 @@ namespace PurrNet.Modules
 
                 if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                 {
+                    var isForwarded = info is { asServer: false, sender: { isServer: false } };
+
                     // rpcModule
                     var responsePacket = new RpcResponse
                     {
                         id = reqId,
-                        data = ByteData.empty
+                        data = ByteData.empty,
+                        forward = isForwarded ? null : info.sender,
+                        channel = isForwarded ? null : info.compileTimeSignature.channel
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -487,6 +519,8 @@ namespace PurrNet.Modules
 
                 if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                 {
+                    var isForwarded = info is { asServer: false, sender: { isServer: false } };
+
                     using var tmpStream = RPCModule.AllocStream(false);
 
                     Packer.Write(tmpStream, taskResultType, result);
@@ -495,7 +529,9 @@ namespace PurrNet.Modules
                     var responsePacket = new RpcResponse
                     {
                         id = reqId,
-                        data = tmpStream.ToByteData()
+                        data = tmpStream.ToByteData(),
+                        forward = isForwarded ? null : info.sender,
+                        channel = isForwarded ? null : info.compileTimeSignature.channel
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -531,6 +567,7 @@ namespace PurrNet.Modules
 
                 if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                 {
+                    var isForwarded = info is { asServer: false, sender: { isServer: false } };
                     using var tmpStream = RPCModule.AllocStream(false);
 
                     Packer.Write(tmpStream, taskResultType, result);
@@ -539,7 +576,9 @@ namespace PurrNet.Modules
                     var responsePacket = new RpcResponse
                     {
                         id = reqId,
-                        data = tmpStream.ToByteData()
+                        data = tmpStream.ToByteData(),
+                        forward = isForwarded ? null : info.sender,
+                        channel = isForwarded ? null : info.compileTimeSignature.channel
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -582,6 +621,7 @@ namespace PurrNet.Modules
 
                 if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                 {
+                    var isForwarded = info is { asServer: false, sender: { isServer: false } };
                     using var tmpStream = RPCModule.AllocStream(false);
 
                     Packer<T>.Write(tmpStream, result);
@@ -590,7 +630,9 @@ namespace PurrNet.Modules
                     var responsePacket = new RpcResponse
                     {
                         id = reqId,
-                        data = tmpStream.ToByteData()
+                        data = tmpStream.ToByteData(),
+                        forward = isForwarded ? null : info.sender,
+                        channel = isForwarded ? null : info.compileTimeSignature.channel
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -620,11 +662,15 @@ namespace PurrNet.Modules
 
                 if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                 {
+                    var isForwarded = info is { asServer: false, sender: { isServer: false } };
+
                     // rpcModule
                     var responsePacket = new RpcResponse
                     {
                         id = reqId,
-                        data = ByteData.empty
+                        data = ByteData.empty,
+                        forward = isForwarded ? null : info.sender,
+                            channel = isForwarded ? null : info.compileTimeSignature.channel
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -677,6 +723,7 @@ namespace PurrNet.Modules
 
                 if (manager.TryGetModule<RpcRequestResponseModule>(info.asServer, out var rpcModule))
                 {
+                    var isForwarded = info is { asServer: false, sender: { isServer: false } };
                     using var tmpStream = RPCModule.AllocStream(false);
 
                     Packer<T>.Write(tmpStream, result);
@@ -685,7 +732,9 @@ namespace PurrNet.Modules
                     var responsePacket = new RpcResponse
                     {
                         id = reqId,
-                        data = tmpStream.ToByteData()
+                        data = tmpStream.ToByteData(),
+                        forward = isForwarded ? null : info.sender,
+                        channel = isForwarded ? null : info.compileTimeSignature.channel
                     };
 
                     var channel = info.compileTimeSignature.channel;
