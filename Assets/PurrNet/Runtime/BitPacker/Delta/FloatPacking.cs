@@ -26,11 +26,11 @@ namespace PurrNet.Packing
 
             if (newbits == oldbits)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return false;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             Packer<float>.Write(packer, newvalue);
             return true;
         }
@@ -38,8 +38,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadSingle(BitPacker packer, float oldvalue, ref float value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (!hasChanged)
             {

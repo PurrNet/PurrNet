@@ -41,9 +41,7 @@ namespace PurrNet.Packing
         [UsedImplicitly]
         public static void ReadDeltaObject(BitPacker packer, object oldvalue, ref object value)
         {
-            bool hasChanged = Packer<bool>.Read(packer);
-
-            if (!hasChanged)
+            if (!packer.ReadBit())
             {
                 if (value is IDisposable disposable)
                     disposable.Dispose();

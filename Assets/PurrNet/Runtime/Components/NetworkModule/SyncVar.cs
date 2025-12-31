@@ -125,6 +125,16 @@ namespace PurrNet
             SendLatestState(player, _id, _value);
         }
 
+        public override void OnInitializeModules()
+        {
+            InvalidateIsController();
+        }
+
+        public override void OnEarlySpawn()
+        {
+            InvalidateIsController();
+        }
+
         public override void OnSpawn()
         {
             InvalidateIsController();
@@ -217,108 +227,73 @@ namespace PurrNet
         private void SendLatestState(PlayerID player, PackedULong packetId, T newValue)
         {
             if (isServer)
-            {
-                DisposeOf(newValue);
                 return;
-            }
 
             _id = packetId;
 
             var oldValue = _value;
 
             if (!Packer.Transform(ref _value, newValue))
-            {
-                DisposeOf(newValue);
                 return;
-            }
 
             TriggerEvents(oldValue);
-            DisposeOf(newValue);
-        }
-
-        private static void DisposeOf(T newValue)
-        {
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
         }
 
         [ServerRpc(Channel.Unreliable, requireOwnership: true)]
         private void SendToServer(PackedULong packetId, T newValue)
         {
             if (!_ownerAuth)
-            {
-                if (newValue is IDisposable disposable)
-                    disposable.Dispose();
                 return;
-            }
 
             OnReceivedValue(packetId, newValue);
             SendToOthers(packetId, newValue);
-
-            if (newValue is IDisposable newValDisp)
-                newValDisp.Dispose();
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
         private void SendToServerReliably(PackedULong packetId, T newValue)
         {
             if (!_ownerAuth)
-            {
-                if (newValue is IDisposable disposable)
-                    disposable.Dispose();
                 return;
-            }
 
             OnReceivedValue(packetId, newValue);
             SendToOthersReliably(packetId, newValue);
-
-            if (newValue is IDisposable newValDisp)
-                newValDisp.Dispose();
         }
 
         [ObserversRpc(Channel.Unreliable, excludeOwner: true)]
         private void SendToOthers(PackedULong packetId, T newValue)
         {
-            if (!isServer) OnReceivedValue(packetId, newValue);
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
+            if (!isServer)
+                OnReceivedValue(packetId, newValue);
         }
 
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
         private void SendToOthersReliably(PackedULong packetId, T newValue)
         {
-            if (!isHost) OnReceivedValue(packetId, newValue);
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
+            if (!isHost)
+                OnReceivedValue(packetId, newValue);
         }
 
         [ObserversRpc(Channel.Unreliable)]
         private void SendToAll(PackedULong packetId, T newValue)
         {
-            if (!isHost) OnReceivedValue(packetId, newValue);
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
+            if (!isHost)
+                OnReceivedValue(packetId, newValue);
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
         private void SendToAllReliably(PackedULong packetId, T newValue)
         {
-            if (!isHost) OnReceivedValue(packetId, newValue);
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
+            if (!isHost)
+                OnReceivedValue(packetId, newValue);
         }
 
         private void OnReceivedValue(PackedULong packetId, T newValue)
         {
             if (isControllingSyncVar)
-            {
                 return;
-            }
 
             if (packetId <= _id)
-            {
                 return;
-            }
 
             _id = packetId;
             var oldValue = _value;

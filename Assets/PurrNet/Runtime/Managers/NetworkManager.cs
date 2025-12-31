@@ -1586,6 +1586,10 @@ namespace PurrNet
                 _serverPlayersManager.onLocalPlayerReceivedID -= OnLocalPlayerReceivedID;
                 _serverPlayersManager = null;
             }
+
+            _serverSceneModule = null;
+            _serverScenePlayersModule = null;
+            _serverDeltaModule = null;
         }
 
         public void InternalUnregisterClientModules()
@@ -1614,6 +1618,10 @@ namespace PurrNet
                 _clientPlayersManager.onLocalPlayerReceivedID -= OnLocalPlayerReceivedID;
                 _clientPlayersManager = null;
             }
+
+            _clientSceneModule = null;
+            _clientScenePlayersModule = null;
+            _clientDeltaModule = null;
         }
 
         private Coroutine _clientCoroutine;

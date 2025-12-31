@@ -2860,12 +2860,37 @@ namespace PurrNet.Codegen
                 typesToPrepareHasher.ExceptWith(typesToGenerateSerializer);
 
                 foreach (var typeRef in typesToGenerateSerializer)
-                    GenerateSerializersProcessor.HandleType(false, assemblyDefinition, typeRef, visitedTypes, isEditor,
+                    GenerateSerializersProcessor.HandleType(false, assemblyDefinition, typeRef, visitedTypes,
                         typesToIgnoreForSerialization, typesToIgnoreForDelta);
 
                 foreach (var typeRef in typesToPrepareHasher)
-                    GenerateSerializersProcessor.HandleType(true, assemblyDefinition, typeRef, visitedTypes, isEditor,
+                    GenerateSerializersProcessor.HandleType(true, assemblyDefinition, typeRef, visitedTypes,
                         typesToIgnoreForSerialization, typesToIgnoreForDelta);
+
+                // Final pass to optimize packers
+                if (GenerateSerializersProcessor.inlinedWriteMethods != null)
+                {
+                    foreach (var type in GenerateSerializersProcessor.inlinedWriteMethods)
+                        OptimizePackers.HandleType(true, type.Value, messages);
+                }
+
+                if (GenerateSerializersProcessor.inlinedReadMethods != null)
+                {
+                    foreach (var type in GenerateSerializersProcessor.inlinedReadMethods)
+                        OptimizePackers.HandleType(false, type.Value, messages);
+                }
+
+                if (GenerateDeltaSerializersProcessor.inlinedDeltaReadMethods != null)
+                {
+                    foreach (var type in GenerateDeltaSerializersProcessor.inlinedDeltaReadMethods)
+                        OptimizePackers.HandleType(false, type.Value, messages);
+                }
+
+                if (GenerateDeltaSerializersProcessor.inlinedDeltaWriteMethods != null)
+                {
+                    foreach (var type in GenerateDeltaSerializersProcessor.inlinedDeltaWriteMethods)
+                        OptimizePackers.HandleType(true, type.Value, messages);
+                }
 
                 var pe = new MemoryStream();
                 var pdb = new MemoryStream();

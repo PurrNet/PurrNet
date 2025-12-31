@@ -25,10 +25,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadVector2(BitPacker packer, Vector2 oldvalue, ref Vector2 value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
-
-            if (hasChanged)
+            if (packer.ReadBit())
             {
                 DeltaPacker<float>.Read(packer, oldvalue.x, ref value.x);
                 DeltaPacker<float>.Read(packer, oldvalue.y, ref value.y);
@@ -56,8 +53,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadVector3(BitPacker packer, Vector3 oldvalue, ref Vector3 value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -88,8 +84,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadVector3(BitPacker packer, Vector3Int oldvalue, ref Vector3Int value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -120,8 +115,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadVector4(BitPacker packer, Vector4 oldvalue, ref Vector4 value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {
@@ -153,8 +147,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadQuaternion(BitPacker packer, Quaternion oldvalue, ref Quaternion value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
             {

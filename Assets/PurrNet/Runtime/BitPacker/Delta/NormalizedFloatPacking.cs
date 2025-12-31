@@ -23,11 +23,11 @@ namespace PurrNet.Packing
 
             if (delta == 0)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return false;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             //Packer<PackedLong>.Write(packer, delta);
             PackingIntegers.WritePrefixed(packer, delta, NormalizedFloat.BIT_RESOLUTION);
             return true;
@@ -36,8 +36,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadAngle(BitPacker packer, NormalizedFloat oldvalue, ref NormalizedFloat value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
+            bool hasChanged = packer.ReadBit();
 
             if (!hasChanged)
             {

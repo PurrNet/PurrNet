@@ -761,12 +761,6 @@ namespace PurrNet
         {
         }
 
-        public bool IsNotOwnerPredicate(PlayerID player)
-        {
-            return player != owner;
-        }
-
-
         static readonly Dictionary<Type, List<MethodInfo>> _methodCache = new();
 
         private void CallInitMethods()

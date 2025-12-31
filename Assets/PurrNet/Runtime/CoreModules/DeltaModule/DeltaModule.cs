@@ -160,7 +160,7 @@ namespace PurrNet.Modules
             }
 
             var pos = packer.positionInBits;
-            Packer<bool>.Write(packer, false);
+            packer.WriteBit(false);
             modifier(ref oldValue);
             bool changed = DeltaPacker<T>.Write(packer, oldValue, newValue);
 
@@ -202,7 +202,7 @@ namespace PurrNet.Modules
             }
 
             var pos = packer.positionInBits;
-            Packer<bool>.Write(packer, false);
+            packer.WriteBit(false);
             bool changed = DeltaPacker<T>.Write(packer, oldValue, newValue);
 
             packer.WriteAt(pos, changed);
@@ -243,7 +243,7 @@ namespace PurrNet.Modules
             cachedKey = bestKey;
 
             var pos = packer.positionInBits;
-            Packer<bool>.Write(packer, false);
+            packer.WriteBit(false);
             bool changed = DeltaPacker<T>.Write(packer, oldValue, newValue);
 
             packer.WriteAt(pos, changed);

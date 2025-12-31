@@ -1,6 +1,7 @@
 ﻿using System;
 using PurrNet.Logging;
 using PurrNet.Modules;
+using Unity.Profiling;
 
 namespace PurrNet.Packing
 {
@@ -52,68 +53,85 @@ namespace PurrNet.Packing
             _read = b;
         }
 
+        static readonly ProfilerMarker _WriteUnpackedMarker = new ProfilerMarker($"DeltaPacker<{typeof(T).Name}>.WriteUnpacked");
+        static readonly ProfilerMarker _ReadUnpackedMarker = new ProfilerMarker($"DeltaPacker<{typeof(T).Name}>.ReadUnpacked");
+        static readonly ProfilerMarker _writeMarker = new ProfilerMarker($"DeltaPacker<{typeof(T).Name}>.Write");
+        static readonly ProfilerMarker _readMarker = new ProfilerMarker($"DeltaPacker<{typeof(T).Name}>.Read");
+
         [UsedByIL]
         public static bool WriteUnpacked(BitPacker packer, T oldValue, T newValue)
         {
-            if (Packer.AreEqual(oldValue, newValue))
+            using (_WriteUnpackedMarker.Auto())
             {
-                Packer<bool>.Write(packer, false);
-                return false;
-            }
+                if (Packer.AreEqual(oldValue, newValue))
+                {
+                    packer.WriteBit(false);
+                    return false;
+                }
 
-            Packer<bool>.Write(packer, true);
-            Packer<T>.Write(packer, newValue);
-            return true;
+                packer.WriteBit(true);
+                Packer<T>.Write(packer, newValue);
+                return true;
+            }
         }
 
         [UsedByIL]
         public static void ReadUnpacked(BitPacker packer, T oldValue, ref T value)
         {
-            if (!Packer<bool>.Read(packer))
+            using (_ReadUnpackedMarker.Auto())
             {
-                value = oldValue;
-                return;
-            }
+                if (!packer.ReadBit())
+                {
+                    value = oldValue;
+                    return;
+                }
 
-            Packer<T>.Read(packer, ref value);
+                Packer<T>.Read(packer, ref value);
+            }
         }
 
         public static bool Write(BitPacker packer, T oldValue, T newValue)
         {
-            try
+            using (_writeMarker.Auto())
             {
+                try
+                {
 #if PURR_DELTA_CHECK
-                Packer<T>.Write(packer, oldValue);
-                Packer<T>.Write(packer, newValue);
-                int sizePos = packer.AdvanceBits(32);
+                    Packer<T>.Write(packer, oldValue);
+                    Packer<T>.Write(packer, newValue);
+                    int sizePos = packer.AdvanceBits(32);
 
-                int bits = packer.positionInBits;
-                var changed = _write?.Invoke(packer, oldValue, newValue) ??
-                              DeltaPacker.FallbackWriter(packer, oldValue, newValue);
+                    int bits = packer.positionInBits;
+                    var changed = _write?.Invoke(packer, oldValue, newValue) ??
+                                  DeltaPacker.FallbackWriter(packer, oldValue, newValue);
 
-                int endPos = packer.positionInBits;
+                    int endPos = packer.positionInBits;
 
-                packer.SetBitPosition(sizePos);
-                Packer<int>.Write(packer, endPos - bits);
-                packer.SetBitPosition(endPos);
-                return changed;
+                    packer.SetBitPosition(sizePos);
+                    Packer<int>.Write(packer, endPos - bits);
+                    packer.SetBitPosition(endPos);
+                    return changed;
 #else
-                if (_write == null)
-                    return DeltaPacker.FallbackWriter(packer, oldValue, newValue);
-                return _write(packer, oldValue, newValue);
+                    if (_write == null)
+                        return DeltaPacker.FallbackWriter(packer, oldValue, newValue);
+                    return _write(packer, oldValue, newValue);
 #endif
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"Failed to delta write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
-                return false;
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError(
+                        $"Failed to delta write value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                    return false;
+                }
             }
         }
 
         public static void Read(BitPacker packer, T oldValue, ref T value)
         {
-            try
+            using (_readMarker.Auto())
             {
+                try
+                {
 #if PURR_DELTA_CHECK
                 var shouldBeOld = Packer<T>.Read(packer);
                 var shouldBeNew = Packer<T>.Read(packer);
@@ -142,18 +160,20 @@ namespace PurrNet.Packing
                     packer.SetBitPosition(startPos + shouldReadCount);
                 }
 #else
-                if (_read == null)
-                {
-                    DeltaPacker.FallbackReader(packer, oldValue, ref value);
-                    return;
-                }
+                    if (_read == null)
+                    {
+                        DeltaPacker.FallbackReader(packer, oldValue, ref value);
+                        return;
+                    }
 
-                _read(packer, oldValue, ref value);
+                    _read(packer, oldValue, ref value);
 #endif
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"Failed to delta read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError(
+                        $"Failed to delta read value of type '{typeof(T)}'.\n{e.Message}\n{e.StackTrace}");
+                }
             }
         }
 

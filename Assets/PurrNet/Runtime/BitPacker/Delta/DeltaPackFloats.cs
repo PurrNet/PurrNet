@@ -1,6 +1,4 @@
-using System;
 using PurrNet.Modules;
-using UnityEngine;
 
 namespace PurrNet.Packing
 {
@@ -54,7 +52,7 @@ namespace PurrNet.Packing
             // ReSharper disable once CompareOfFloatsByEqualityOperator
             bool hasChanged = oldvalue != newvalue;
 
-            Packer<bool>.Write(packer, hasChanged);
+            packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
@@ -70,10 +68,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static unsafe void ReadDouble(BitPacker packer, double oldvalue, ref double value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
-
-            if (hasChanged)
+            if (packer.ReadBit())
             {
                 PackedLong packed = default;
                 Packer<PackedLong>.Read(packer, ref packed);
@@ -91,11 +86,11 @@ namespace PurrNet.Packing
 
             if (delta == 0)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return false;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             PackingIntegers.Write(packer, (PackedInt)delta);
             return true;
         }
@@ -103,10 +98,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static void ReadSingle(BitPacker packer, CompressedFloat oldvalue, ref CompressedFloat value)
         {
-            bool hasChanged = default;
-            Packer<bool>.Read(packer, ref hasChanged);
-
-            if (hasChanged)
+            if (packer.ReadBit())
             {
                 PackedInt packed = default;
                 PackingIntegers.Read(packer, ref packed);

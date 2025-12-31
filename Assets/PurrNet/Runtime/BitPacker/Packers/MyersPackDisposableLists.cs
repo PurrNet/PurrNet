@@ -47,9 +47,7 @@ namespace PurrNet.Packing
             if (!DeltaReadingScope.Continue(packer, old, ref value))
                 return;
 
-            bool hasValue = Packer<bool>.Read(packer);
-
-            if (!hasValue)
+            if (!packer.ReadBit())
             {
                 value.Dispose();
                 return;

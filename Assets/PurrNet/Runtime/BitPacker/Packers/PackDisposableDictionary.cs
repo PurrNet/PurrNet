@@ -10,11 +10,11 @@ namespace PurrNet.Packing
         {
             if (value.isDisposed || value.dictionary == null)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
 
             int length = value.Count;
             packer.WriteInteger(length, 31);
