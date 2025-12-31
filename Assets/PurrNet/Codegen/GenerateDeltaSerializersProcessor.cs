@@ -179,7 +179,7 @@ namespace PurrNet.Codegen
 
                 method.Body.Variables.Add(tmpVar);
                 il.Emit(OpCodes.Ldc_I4_0);
-                il.Emit(OpCodes.Stloc_1);
+                il.Emit(OpCodes.Stloc, tmpVar);
 
                 il.Emit(OpCodes.Ldarg_0);
 
@@ -188,7 +188,7 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldloca, tmpVar);
                 il.Emit(OpCodes.Call, enumReadMethod);
                 il.Emit(OpCodes.Ldarg_2);
-                il.Emit(OpCodes.Ldloc_1);
+                il.Emit(OpCodes.Ldloc, tmpVar);
                 GenerateSerializersProcessor.EmitStindForEnum(il, type);
             }
             else
