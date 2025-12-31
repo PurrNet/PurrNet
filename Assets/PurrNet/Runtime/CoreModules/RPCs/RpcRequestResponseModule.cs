@@ -387,8 +387,8 @@ namespace PurrNet.Modules
                         {
                             id = reqId,
                             data = ByteData.empty,
-                            forward = isForwarded ? null : info.sender,
-                            channel = isForwarded ? null : info.compileTimeSignature.channel
+                            forward = isForwarded ? info.sender : null,
+                            channel = isForwarded ? info.compileTimeSignature.channel : null
                         };
 
                         var channel = info.compileTimeSignature.channel;
@@ -426,8 +426,8 @@ namespace PurrNet.Modules
                     {
                         id = reqId,
                         data = ByteData.empty,
-                        forward = isForwarded ? null : info.sender,
-                        channel = isForwarded ? null : info.compileTimeSignature.channel
+                        forward = isForwarded ? info.sender : null,
+                        channel = isForwarded ? info.compileTimeSignature.channel : null
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -530,8 +530,8 @@ namespace PurrNet.Modules
                     {
                         id = reqId,
                         data = tmpStream.ToByteData(),
-                        forward = isForwarded ? null : info.sender,
-                        channel = isForwarded ? null : info.compileTimeSignature.channel
+                        forward = isForwarded ? info.sender : null,
+                        channel = isForwarded ? info.compileTimeSignature.channel : null
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -577,8 +577,8 @@ namespace PurrNet.Modules
                     {
                         id = reqId,
                         data = tmpStream.ToByteData(),
-                        forward = isForwarded ? null : info.sender,
-                        channel = isForwarded ? null : info.compileTimeSignature.channel
+                        forward = isForwarded ? info.sender : null,
+                        channel = isForwarded ? info.compileTimeSignature.channel : null
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -631,8 +631,8 @@ namespace PurrNet.Modules
                     {
                         id = reqId,
                         data = tmpStream.ToByteData(),
-                        forward = isForwarded ? null : info.sender,
-                        channel = isForwarded ? null : info.compileTimeSignature.channel
+                        forward = isForwarded ? info.sender : null,
+                        channel = isForwarded ? info.compileTimeSignature.channel : null
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -669,8 +669,8 @@ namespace PurrNet.Modules
                     {
                         id = reqId,
                         data = ByteData.empty,
-                        forward = isForwarded ? null : info.sender,
-                            channel = isForwarded ? null : info.compileTimeSignature.channel
+                        forward = isForwarded ? info.sender : null,
+                        channel = isForwarded ? info.compileTimeSignature.channel : null
                     };
 
                     var channel = info.compileTimeSignature.channel;
@@ -733,8 +733,8 @@ namespace PurrNet.Modules
                     {
                         id = reqId,
                         data = tmpStream.ToByteData(),
-                        forward = isForwarded ? null : info.sender,
-                        channel = isForwarded ? null : info.compileTimeSignature.channel
+                        forward = isForwarded ? info.sender : null,
+                        channel = isForwarded ? info.compileTimeSignature.channel : null
                     };
 
                     var channel = info.compileTimeSignature.channel;
