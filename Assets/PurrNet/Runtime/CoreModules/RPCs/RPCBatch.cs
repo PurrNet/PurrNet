@@ -109,13 +109,15 @@ namespace PurrNet.Modules
 
         private int GetBatchIndex(BatchKey key)
         {
-            for (var i = 0; i < _batches.Count; i++)
+            int c = _batches.Count;
+
+            for (var i = c - 1; i >= 0; i--)
             {
-                if (_batches[i].key.Equals(key) && !_batches[i].completed)
+                var b = _batches[i];
+                if (!b.completed && b.key.Equals(key))
                     return i;
             }
 
-            int c = _batches.Count;
             _batches.Add(new PlayerRpcBatchedData { key = key, batchedData = BitPackerPool.Get() });
             return c;
         }
