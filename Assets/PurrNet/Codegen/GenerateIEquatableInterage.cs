@@ -212,7 +212,7 @@ namespace PurrNet.Codegen
                     il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
-                else if (TryGetEqualsFunction(resolvedFieldType, out var equals))
+                else if (!field.FieldType.IsArray && TryGetEqualsFunction(resolvedFieldType, out var equals))
                 {
                     PushAB_A(type, il, fieldRef, otherArgument);
 
@@ -243,7 +243,9 @@ namespace PurrNet.Codegen
         private static void PushAB(TypeDefinition type, ILProcessor il, FieldReference field,
             ParameterDefinition otherArgument)
         {
-            il.Append(Instruction.Create(!type.IsValueType ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            bool isClass = !type.IsValueType || type.IsArray;
+
+            il.Append(Instruction.Create(isClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
@@ -252,8 +254,11 @@ namespace PurrNet.Codegen
         private static void PushAB_A(TypeDefinition type, ILProcessor il, FieldReference field,
             ParameterDefinition otherArgument)
         {
-            il.Append(Instruction.Create(!type.IsValueType ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
-            il.Append(Instruction.Create(field.FieldType.IsValueType ? OpCodes.Ldflda : OpCodes.Ldfld, field));
+            bool isClass = !type.IsValueType || type.IsArray;
+            bool isFieldClass = !field.FieldType.IsValueType || field.FieldType.IsArray;
+
+            il.Append(Instruction.Create(isClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(!isFieldClass ? OpCodes.Ldflda : OpCodes.Ldfld, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
