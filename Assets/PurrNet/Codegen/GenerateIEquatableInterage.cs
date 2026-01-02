@@ -1,12 +1,14 @@
 ﻿#if UNITY_MONO_CECIL
+using System;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using PurrNet.Packing;
 
 namespace PurrNet.Codegen
 {
     public static class GenerateIEquatableInterface
     {
-        static bool SameType(TypeReference a, TypeReference b)
+        private static bool SameType(TypeReference a, TypeReference b)
         {
             if (a == null || b == null) return false;
             var ad = a.Resolve();
@@ -16,7 +18,7 @@ namespace PurrNet.Codegen
             return a.FullName == b.FullName;
         }
 
-        static TypeReference MakeSelfRef(TypeDefinition type)
+        private static TypeReference MakeSelfRef(TypeDefinition type)
         {
             if (!type.HasGenericParameters) return type;
             var gi = new GenericInstanceType(type);
@@ -41,15 +43,26 @@ namespace PurrNet.Codegen
                         ifaceDef.Name == "IEquatable`1" &&
                         ifaceType is GenericInstanceType git &&
                         git.GenericArguments.Count == 1)
-                    {
                         if (SameType(git.GenericArguments[0], self))
                             return true;
-                    }
                 }
 
                 cur = cur.BaseType?.Resolve();
             }
 
+            return false;
+        }
+
+        static bool AlreadyHasEqualFunction(TypeDefinition type)
+        {
+            foreach (var method in type.Methods)
+            {
+                if (method.Name != "Equals") continue;
+                if (method.Parameters.Count != 1) continue;
+                if (method.Parameters[0].ParameterType.FullName != type.FullName) continue;
+                if (method.ReturnType != type.Module.TypeSystem.Boolean) continue;
+                return true;
+            }
             return false;
         }
 
@@ -61,6 +74,7 @@ namespace PurrNet.Codegen
             if (type.Module?.Assembly == null) return;
             if (type.Module.Assembly.MainModule != type.Module) return;
             if (HasIEquatableT(type)) return;
+            if (AlreadyHasEqualFunction(type)) return;
 
             var module = type.Module;
             var iEquatableOpen = new TypeReference("System", "IEquatable`1", module, module.TypeSystem.CoreLibrary);
@@ -82,10 +96,171 @@ namespace PurrNet.Codegen
             equals.Parameters.Add(new ParameterDefinition("other", ParameterAttributes.None, importedSelfRef));
 
             var il = equals.Body.GetILProcessor();
-            il.Append(Instruction.Create(OpCodes.Ldc_I4_1));
+            ImplementBody(type, equals, il);
+            type.Methods.Add(equals);
+        }
+
+        private static bool IsPrimitiveNumeric(TypeReference type)
+        {
+            var mt = type?.MetadataType;
+            return mt is MetadataType.SByte or MetadataType.Byte or MetadataType.Int16 or MetadataType.UInt16
+                or MetadataType.Int32 or MetadataType.UInt32 or MetadataType.Int64 or MetadataType.UInt64
+                or MetadataType.Char or MetadataType.Single or MetadataType.Double or MetadataType.Boolean;
+        }
+
+        static bool TryGetEqualityOperator(TypeDefinition type, out MethodReference method)
+        {
+            if (type == null || !type.TryGetMethod("op_Equality", false, out var r) || !r.IsStatic ||
+                r.ReturnType != type.Module.TypeSystem.Boolean || !r.IsPublic)
+            {
+                method = null;
+                return false;
+            }
+
+            method = r;
+            return method != null;
+        }
+
+        private static bool TryGetEqualsFunction(TypeDefinition type, out MethodReference method)
+        {
+            if (type == null || !type.TryGetMethod("Equals", false, out var r) || r.IsStatic ||
+                r.ReturnType != type.Module.TypeSystem.Boolean || !r.IsPublic || r.Parameters[0].ParameterType.FullName != type.FullName)
+            {
+                method = null;
+                return false;
+            }
+
+            method = r;
+            return method != null;
+        }
+
+        private static void ImplementBody(TypeDefinition type, MethodDefinition method, ILProcessor il)
+        {
+            GenerateSerializersProcessor.CreateGettersAndSetters(false, type);
+            var returnTrue = Instruction.Create(OpCodes.Ldc_I4_1);
+            var returnFalse = Instruction.Create(OpCodes.Ldc_I4_0);
+
+            var purrEqualityType = type.Module.ImportReference(typeof(PurrEquality<>));
+            var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
+
+            var otherArgument = method.Parameters[0];
+
+            foreach (var field in type.Fields)
+            {
+                if (field.IsStatic)
+                    continue;
+
+                var isDelegate = PostProcessor.InheritsFrom(field.FieldType.Resolve(), typeof(Delegate).FullName);
+
+                if (isDelegate)
+                    continue;
+
+                var ignore = GenerateSerializersProcessor.ShouldIgnoreField(field);
+
+                if (ignore)
+                    continue;
+
+                var fieldType = GenerateSerializersProcessor.ResolveGenericFieldType(field, type);
+                var resolvedFieldType = fieldType?.Resolve();
+
+                if (IsPrimitiveNumeric(field.FieldType))
+                {
+                    PushAB(type, il, field, fieldType, otherArgument);
+
+                    // check if these integer fields are equal, if not return false
+                    il.Append(Instruction.Create(OpCodes.Ceq));
+                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                }
+                else if (TryGetEqualityOperator(resolvedFieldType, out var opEquality))
+                {
+                    PushAB(type, il, field, fieldType, otherArgument);
+
+                    il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
+                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                }
+                else if (TryGetEqualsFunction(resolvedFieldType, out var equals))
+                {
+                    PushAB_A(type, method, il, field, fieldType, otherArgument);
+
+                    il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
+                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                }
+                else
+                {
+                    // Fallback is PurrEquality<T>.Equals(a, b)
+                    var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
+                        purrEqualityType, fieldType, purrEqualityCheck, type.Module);
+
+                    PushAB(type, il, field, fieldType, otherArgument);
+                    il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
+                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                }
+            }
+
+            il.Append(Instruction.Create(OpCodes.Br, returnTrue));
+
+            il.Append(returnFalse);
             il.Append(Instruction.Create(OpCodes.Ret));
 
-            type.Methods.Add(equals);
+            il.Append(returnTrue);
+            il.Append(Instruction.Create(OpCodes.Ret));
+        }
+
+        private static void PushAB(TypeDefinition type, ILProcessor il, FieldDefinition field, TypeReference fieldType,
+            ParameterDefinition otherArgument)
+        {
+            if (!field.IsPublic)
+            {
+                var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
+                var getterReference = new MethodReference(getter, fieldType, type)
+                {
+                    HasThis = true
+                };
+
+                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
+                il.Append(Instruction.Create(OpCodes.Call, getterReference));
+                il.Append(Instruction.Create(OpCodes.Ldarg_0));
+                il.Append(Instruction.Create(OpCodes.Call, getterReference));
+            }
+            else
+            {
+                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
+                il.Append(Instruction.Create(OpCodes.Ldfld, field));
+                il.Append(Instruction.Create(OpCodes.Ldarg_0));
+                il.Append(Instruction.Create(OpCodes.Ldfld, field));
+            }
+        }
+
+        private static void PushAB_A(TypeDefinition type, MethodDefinition method, ILProcessor il, FieldDefinition field, TypeReference fieldType,
+            ParameterDefinition otherArgument)
+        {
+            if (!field.IsPublic)
+            {
+                var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
+                var getterReference = new MethodReference(getter, fieldType, type)
+                {
+                    HasThis = true
+                };
+
+                var tempLocal = new VariableDefinition(field.FieldType);
+                method.Body.Variables.Add(tempLocal);
+
+                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
+                il.Append(Instruction.Create(OpCodes.Call, getterReference));
+
+                il.Append(Instruction.Create(OpCodes.Stloc, tempLocal));
+                il.Append(Instruction.Create(OpCodes.Ldloca, tempLocal));
+
+                il.Append(Instruction.Create(OpCodes.Ldarg_0));
+                il.Append(Instruction.Create(OpCodes.Call, getterReference));
+            }
+            else
+            {
+                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
+                il.Append(Instruction.Create(OpCodes.Ldflda, field));
+                il.Append(Instruction.Create(OpCodes.Ldarg_0));
+                il.Append(Instruction.Create(OpCodes.Ldfld, field));
+            }
         }
     }
 }

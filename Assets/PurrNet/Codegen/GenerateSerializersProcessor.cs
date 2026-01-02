@@ -958,13 +958,10 @@ namespace PurrNet.Codegen
             }
         }
 
-        private static bool ShouldIgnoreField(FieldDefinition field)
+        public static bool ShouldIgnoreField(FieldDefinition field)
         {
             bool ignore = field.CustomAttributes.Any(a =>
-                a.AttributeType.FullName == typeof(DontPackAttribute).FullName);
-
-            if (DoesTypeHaveDontPackAttribute(field.FieldType.Resolve()))
-                ignore = true;
+                a.AttributeType.FullName == typeof(DontPackAttribute).FullName) || DoesTypeHaveDontPackAttribute(field.FieldType.Resolve());
             return ignore;
         }
 
