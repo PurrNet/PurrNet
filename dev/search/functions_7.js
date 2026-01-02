@@ -6,7 +6,7 @@ var searchData=
   ['internalregisterservermodules_3',['InternalRegisterServerModules',['../classPurrNet_1_1NetworkManager.html#a490ecf8d2dde7f9679f7c6259fc87bca',1,'PurrNet::NetworkManager']]],
   ['iscontroller_4',['IsController',['../classPurrNet_1_1NetworkIdentity.html#a1c5b0531c4c6e77e6c1fa69c08ad4122',1,'PurrNet::NetworkIdentity']]],
   ['iscurrentstate_5',['IsCurrentState',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#abac2079b9b1f736538a96850059b4292',1,'PurrNet::StateMachine::StateMachine']]],
-  ['iscurrentstate_3c_20t_20_3e_6',['IsCurrentState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a',1,'PurrNet::StateMachine::StateMachine']]],
+  ['iscurrentstate_3c_20t_20_3e_6',['IsCurrentState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a',1,'PurrNet.StateMachine.StateMachine.IsCurrentState&lt; T &gt;()'],['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a8bf5b7be2c600925d9deb94b6c293f96',1,'PurrNet.StateMachine.StateMachine.IsCurrentState&lt; T &gt;(out T stateInstance)']]],
   ['isinfinity_7',['IsInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a28cb3567de30fed8793a9b022eabbd7c',1,'PurrNet::Packing::Half']]],
   ['islocalplayer_8',['IsLocalPlayer',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afe101ad40f446b3ca844682ee7baaac7',1,'PurrNet.Modules.PlayersManager.IsLocalPlayer(PlayerID playerId)'],['../classPurrNet_1_1Modules_1_1PlayersManager.html#a08f16fae644beb8d10c32de627a03483',1,'PurrNet.Modules.PlayersManager.IsLocalPlayer(PlayerID? playerId)']]],
   ['isnan_9',['IsNaN',['../structPurrNet_1_1Packing_1_1Half.html#ae222339b7a414b6d90016cd86ab51795',1,'PurrNet::Packing::Half']]],

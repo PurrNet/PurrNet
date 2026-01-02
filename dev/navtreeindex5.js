@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a530d346f1249cf9d55a855a23ceda6be":[0,0,0,0,4,1],
+"structPurrNet_1_1BoneInfo.html":[0,0,0,13],
 "structPurrNet_1_1BoneInfo.html":[1,0,0,13],
 "structPurrNet_1_1ChildRPCPacket.html":[0,0,0,15],
 "structPurrNet_1_1ChildRPCPacket.html":[1,0,0,15],
@@ -247,7 +249,5 @@ var NAVTREEINDEX5 =
 "structPurrNet_1_1SyncQueueChange.html":[0,0,0,130],
 "structPurrNet_1_1SyncStatus.html":[1,0,0,133],
 "structPurrNet_1_1SyncStatus.html":[0,0,0,133],
-"structPurrNet_1_1Transports_1_1ByteData.html":[0,0,0,9,1],
-"structPurrNet_1_1Transports_1_1ByteData.html":[1,0,0,9,1],
-"structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[1,0,0,9,2]
+"structPurrNet_1_1Transports_1_1ByteData.html":[0,0,0,9,1]
 };

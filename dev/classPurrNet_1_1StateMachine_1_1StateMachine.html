@@ -121,6 +121,9 @@ Type&#160;</td><td class="memItemRight" valign="bottom"><b>GetDataType</b> (int 
 <tr class="memitem:a371f1e2e294d99b87429b6c78d0aa73a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a">IsCurrentState&lt; T &gt;</a> ()</td></tr>
 <tr class="memdesc:a371f1e2e294d99b87429b6c78d0aa73a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks whether the given type T is the state we are currently in   <a href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a">More...</a><br /></td></tr>
 <tr class="separator:a371f1e2e294d99b87429b6c78d0aa73a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bf5b7be2c600925d9deb94b6c293f96"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a8bf5b7be2c600925d9deb94b6c293f96">IsCurrentState&lt; T &gt;</a> (out T stateInstance)</td></tr>
+<tr class="memdesc:a8bf5b7be2c600925d9deb94b6c293f96"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks whether the given type T is the state we are currently in. Also outputs the instance of the state with the type   <a href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a8bf5b7be2c600925d9deb94b6c293f96">More...</a><br /></td></tr>
+<tr class="separator:a8bf5b7be2c600925d9deb94b6c293f96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abac2079b9b1f736538a96850059b4292"><td class="memItemLeft" align="right" valign="top"><a id="abac2079b9b1f736538a96850059b4292" name="abac2079b9b1f736538a96850059b4292"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsCurrentState</b> (<a class="el" href="classPurrNet_1_1StateMachine_1_1StateNode.html">StateNode</a> stateToCheck)</td></tr>
 <tr class="memdesc:abac2079b9b1f736538a96850059b4292"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks whether the given stateToCheck is the state instance we are currently in  <br /></td></tr>
@@ -695,7 +698,7 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal<
 </div>
 </div>
 <a id="a371f1e2e294d99b87429b6c78d0aa73a" name="a371f1e2e294d99b87429b6c78d0aa73a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a371f1e2e294d99b87429b6c78d0aa73a">&#9670;&#160;</a></span>IsCurrentState&lt; T &gt;()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a371f1e2e294d99b87429b6c78d0aa73a">&#9670;&#160;</a></span>IsCurrentState&lt; T &gt;() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -710,6 +713,34 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal<
 </div><div class="memdoc">
 
 <p>Checks whether the given type T is the state we are currently in  </p>
+<div class="typeconstraint">
+<dl><dt><b>Type Constraints</b></dt><dd>
+<table border="0" cellspacing="2" cellpadding="0">
+<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>StateNode</em></td><td>&#160;</td></tr>
+</table>
+</dd>
+</dl>
+</div>
+
+</div>
+</div>
+<a id="a8bf5b7be2c600925d9deb94b6c293f96" name="a8bf5b7be2c600925d9deb94b6c293f96"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8bf5b7be2c600925d9deb94b6c293f96">&#9670;&#160;</a></span>IsCurrentState&lt; T &gt;() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#abac2079b9b1f736538a96850059b4292">PurrNet.StateMachine.StateMachine.IsCurrentState</a>&lt; T &gt; </td>
+          <td>(</td>
+          <td class="paramtype">out T&#160;</td>
+          <td class="paramname"><em>stateInstance</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Checks whether the given type T is the state we are currently in. Also outputs the instance of the state with the type  </p>
 <div class="typeconstraint">
 <dl><dt><b>Type Constraints</b></dt><dd>
 <table border="0" cellspacing="2" cellpadding="0">

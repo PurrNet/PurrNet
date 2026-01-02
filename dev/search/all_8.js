@@ -49,7 +49,7 @@ var searchData=
   ['iscontroller_46',['IsController',['../classPurrNet_1_1NetworkIdentity.html#a1c5b0531c4c6e77e6c1fa69c08ad4122',1,'PurrNet::NetworkIdentity']]],
   ['iscontroller_47',['isController',['../classPurrNet_1_1NetworkIdentity.html#a41a14548ab0d7a6f460751237b6af048',1,'PurrNet::NetworkIdentity']]],
   ['iscurrentstate_48',['IsCurrentState',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#abac2079b9b1f736538a96850059b4292',1,'PurrNet::StateMachine::StateMachine']]],
-  ['iscurrentstate_3c_20t_20_3e_49',['IsCurrentState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a',1,'PurrNet::StateMachine::StateMachine']]],
+  ['iscurrentstate_3c_20t_20_3e_49',['IsCurrentState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a',1,'PurrNet.StateMachine.StateMachine.IsCurrentState&lt; T &gt;()'],['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a8bf5b7be2c600925d9deb94b6c293f96',1,'PurrNet.StateMachine.StateMachine.IsCurrentState&lt; T &gt;(out T stateInstance)']]],
   ['isdataready_50',['isDataReady',['../classPurrNet_1_1SyncBigData.html#a0eaa7e9f15b41a69274cc2fe5bc2c878',1,'PurrNet::SyncBigData']]],
   ['iserversceneevents_51',['IServerSceneEvents',['../interfacePurrNet_1_1IServerSceneEvents.html',1,'PurrNet']]],
   ['ishost_52',['isHost',['../classPurrNet_1_1NetworkManager.html#a016732b943d777e1468854b90508b7ac',1,'PurrNet::NetworkManager']]],
