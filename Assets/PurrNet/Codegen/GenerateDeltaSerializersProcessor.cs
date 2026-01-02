@@ -396,6 +396,19 @@ namespace PurrNet.Codegen
             il.Emit(OpCodes.Call, advanceBits);
             il.Emit(OpCodes.Stloc_0);
 
+            // Check for equality at the top
+            var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
+            var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
+            var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
+                purrEqualityType, type, purrEqualityCheck, type.Module);
+
+            il.Append(Instruction.Create(OpCodes.Ldarg_1));
+            il.Append(Instruction.Create(OpCodes.Ldarg_2));
+            il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
+            il.Append(Instruction.Create(OpCodes.Dup));
+            il.Append(Instruction.Create(OpCodes.Stloc, isEqualVar));
+            il.Append(Instruction.Create(OpCodes.Brfalse, endOfFunction));
+
             if (isClass)
             {
                 var writeIsNull = bitStreamType.GetMethod("HandleNullScenarios", true).Import(module);
@@ -431,18 +444,6 @@ namespace PurrNet.Codegen
             }
             else
             {
-                // TODO: VALENTIN PLEASE
-                var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
-                var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
-                var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
-                    purrEqualityType, type, purrEqualityCheck, type.Module);
-
-                il.Append(Instruction.Create(OpCodes.Ldarg_1));
-                il.Append(Instruction.Create(OpCodes.Ldarg_2));
-                il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
-                il.Append(Instruction.Create(OpCodes.Pop));
-
-
                 bool isInheritedClass = isClass && type.BaseType != null &&
                                     type.BaseType.FullName != typeof(object).FullName;
 

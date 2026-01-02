@@ -763,7 +763,16 @@ namespace PurrNet.Packing
 
         public void WriteAt(int positionInBits, bool data)
         {
-            WriteBitsAtWithoutChecks(positionInBits, data ? 1UL : 0UL, 1);
+            var byteIdx = positionInBits >> 3;
+            int bitOffset = positionInBits & 7;
+
+            var currentByte = _buffer[byteIdx];
+
+            if (data)
+                currentByte |= (byte)(1 << bitOffset);
+            else currentByte &= (byte)~(1 << bitOffset);
+
+            _buffer[byteIdx] = currentByte;
         }
 
         public void WriteBitsAt(int positionInBits, ulong data, byte bits)
