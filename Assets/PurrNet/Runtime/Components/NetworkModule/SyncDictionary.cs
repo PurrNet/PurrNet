@@ -612,10 +612,8 @@ namespace PurrNet
 
         public SerializableDictionary()
         {
-            isKeySerializable =
-                typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
-            isValueSerializable = typeof(TValue).IsSerializable ||
-                                  typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
+            isKeySerializable = typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
+            isValueSerializable = typeof(TValue).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
         }
 
         public Dictionary<TKey, TValue> ToDictionary()
