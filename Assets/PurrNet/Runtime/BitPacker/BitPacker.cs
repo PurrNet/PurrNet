@@ -61,7 +61,7 @@ namespace PurrNet.Packing
     }
 
     [UsedImplicitly]
-    public sealed partial class BitPacker : IDisposable, IDuplicate<BitPacker>
+    public sealed partial class BitPacker : IDisposable, IDuplicate<BitPacker>, IEquatable<BitPacker>
     {
         private byte[] _buffer;
         private bool _isReading;
@@ -803,6 +803,55 @@ namespace PurrNet.Packing
             newPacker.EnsureBitsExist(len * 8);
             Array.Copy(_buffer, newPacker.buffer, len);
             return newPacker;
+        }
+
+        public bool Equals(BitPacker packerB)
+        {
+            if (ReferenceEquals(this, packerB))
+                return true;
+
+            if (packerB == null)
+                return false;
+
+            if (this.positionInBits != packerB.positionInBits)
+                return false;
+
+            int bits = this.positionInBits;
+
+            this.ResetPositionAndMode(true);
+            packerB.ResetPositionAndMode(true);
+
+            while (bits >= 64)
+            {
+                ulong aBits = this.ReadBits(64);
+                ulong bBits = packerB.ReadBits(64);
+
+                if (aBits != bBits)
+                {
+                    this.SetBitPosition(bits);
+                    packerB.SetBitPosition(bits);
+                    return false;
+                }
+
+                bits -= 64;
+            }
+
+            if (bits > 0)
+            {
+                var remainingBits = (byte)bits;
+                ulong aBits = this.ReadBits(remainingBits);
+                ulong bBits = packerB.ReadBits(remainingBits);
+                if (aBits != bBits)
+                {
+                    this.SetBitPosition(bits);
+                    packerB.SetBitPosition(bits);
+                    return false;
+                }
+            }
+
+            this.SetBitPosition(bits);
+            packerB.SetBitPosition(bits);
+            return true;
         }
     }
 }

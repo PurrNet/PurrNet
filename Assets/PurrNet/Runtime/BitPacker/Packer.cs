@@ -226,50 +226,6 @@ namespace PurrNet.Packing
             return true;
         }
 
-        [UsedByIL]
-        public static bool ArePackersEqual(BitPacker packerA, BitPacker packerB)
-        {
-            if (packerA.positionInBits != packerB.positionInBits)
-                return false;
-
-            int bits = packerA.positionInBits;
-
-            packerA.ResetPositionAndMode(true);
-            packerB.ResetPositionAndMode(true);
-
-            while (bits >= 64)
-            {
-                ulong aBits = packerA.ReadBits(64);
-                ulong bBits = packerB.ReadBits(64);
-
-                if (aBits != bBits)
-                {
-                    packerA.SetBitPosition(bits);
-                    packerB.SetBitPosition(bits);
-                    return false;
-                }
-
-                bits -= 64;
-            }
-
-            if (bits > 0)
-            {
-                var remainingBits = (byte)bits;
-                ulong aBits = packerA.ReadBits(remainingBits);
-                ulong bBits = packerB.ReadBits(remainingBits);
-                if (aBits != bBits)
-                {
-                    packerA.SetBitPosition(bits);
-                    packerB.SetBitPosition(bits);
-                    return false;
-                }
-            }
-
-            packerA.SetBitPosition(bits);
-            packerB.SetBitPosition(bits);
-            return true;
-        }
-
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool AreEqual<T>(T a, T b) => PurrEquality<T>.Default.Equals(a, b);
 
