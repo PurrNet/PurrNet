@@ -1,5 +1,9 @@
 var NAVTREEINDEX5 =
 {
+"structPurrNet_1_1BoneInfo.html":[1,0,0,13],
+"structPurrNet_1_1ChildRPCPacket.html":[0,0,0,15],
+"structPurrNet_1_1ChildRPCPacket.html":[1,0,0,15],
+"structPurrNet_1_1GenericRPCHeader.html":[0,0,0,21],
 "structPurrNet_1_1GenericRPCHeader.html":[1,0,0,21],
 "structPurrNet_1_1HalfQuaternion.html":[0,0,0,23],
 "structPurrNet_1_1HalfQuaternion.html":[1,0,0,23],
@@ -245,9 +249,5 @@ var NAVTREEINDEX5 =
 "structPurrNet_1_1SyncStatus.html":[0,0,0,133],
 "structPurrNet_1_1Transports_1_1ByteData.html":[0,0,0,9,1],
 "structPurrNet_1_1Transports_1_1ByteData.html":[1,0,0,9,1],
-"structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[1,0,0,9,2],
-"structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[0,0,0,9,2],
-"structPurrNet_1_1Transports_1_1Connection.html":[1,0,0,9,4],
-"structPurrNet_1_1Transports_1_1Connection.html":[0,0,0,9,4],
-"structPurrNet_1_1Transports_1_1HostJoinInfo.html":[0,0,0,9,6]
+"structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[1,0,0,9,2]
 };
