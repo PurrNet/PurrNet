@@ -634,8 +634,8 @@ namespace PurrNet
                 var count = Mathf.Min(stringKeys.Count, stringValues.Count);
                 for (int i = 0; i < count; i++)
                 {
-                    if (stringKeys[i] != null && !dict.ContainsKey(default(TKey)))
-                        dict.Add(default(TKey), default(TValue));
+                    if (stringKeys[i] != null && !dict.ContainsKey(default(TKey)!))
+                        dict.Add(default(TKey)!, default(TValue));
                 }
             }
 
