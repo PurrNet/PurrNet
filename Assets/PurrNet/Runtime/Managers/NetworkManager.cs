@@ -15,6 +15,7 @@ using PurrNet.Pooling;
 using PurrNet.Profiler;
 using PurrNet.Transports;
 using PurrNet.Utils;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -1238,47 +1239,76 @@ namespace PurrNet
                 _clientModules.TriggerOnDrawGizmos();
         }
 
+        static readonly ProfilerMarker _preFixedUpdateMarker = new ProfilerMarker($"NetworkManager.OnPreFixedUpdate");
+        static readonly ProfilerMarker _receiveMessagesMarker = new ProfilerMarker($"NetworkManager.ReceiveMessages");
+        static readonly ProfilerMarker _receiveFixedUpdateMarker = new ProfilerMarker($"NetworkManager.OnFixedUpdate");
+        static readonly ProfilerMarker _receivePostFixedUpdateMarker = new ProfilerMarker($"NetworkManager.OnPostFixedUpdate");
+        static readonly ProfilerMarker _onBatchMarker = new ProfilerMarker($"NetworkManager.OnBatch");
+        static readonly ProfilerMarker _onPostBatchMarker = new ProfilerMarker($"NetworkManager.OnPostBatch");
+        static readonly ProfilerMarker _onSendMessagesMarker = new ProfilerMarker($"NetworkManager.SendMessages");
+
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
             bool serverConnected = serverState == ConnectionState.Connected;
             bool clientConnected = clientState == ConnectionState.Connected;
 
-            if (serverConnected)
-                _serverModules.TriggerOnPreFixedUpdate();
+            using (_preFixedUpdateMarker.Auto())
+            {
+                if (serverConnected)
+                    _serverModules.TriggerOnPreFixedUpdate();
 
-            if (clientConnected)
-                _clientModules.TriggerOnPreFixedUpdate();
+                if (clientConnected)
+                    _clientModules.TriggerOnPreFixedUpdate();
+            }
 
-            if (_transport)
-                _transport.transport.ReceiveMessages(delta);
+            using (_receiveMessagesMarker.Auto())
+            {
+                if (_transport)
+                    _transport.transport.ReceiveMessages(delta);
+            }
 
-            if (serverConnected)
-                _serverModules.TriggerOnFixedUpdate();
+            using (_receiveFixedUpdateMarker.Auto())
+            {
+                if (serverConnected)
+                    _serverModules.TriggerOnFixedUpdate();
 
-            if (clientConnected)
-                _clientModules.TriggerOnFixedUpdate();
+                if (clientConnected)
+                    _clientModules.TriggerOnFixedUpdate();
+            }
 
-            if (serverConnected)
-                _serverModules.TriggerOnPostFixedUpdate();
+            using (_receivePostFixedUpdateMarker.Auto())
+            {
+                if (serverConnected)
+                    _serverModules.TriggerOnPostFixedUpdate();
 
-            if (clientConnected)
-                _clientModules.TriggerOnPostFixedUpdate();
+                if (clientConnected)
+                    _clientModules.TriggerOnPostFixedUpdate();
+            }
 
-            if (serverConnected)
-                _serverModules.TriggerOnBatch();
+            using (_onBatchMarker.Auto())
+            {
+                if (serverConnected)
+                    _serverModules.TriggerOnBatch();
 
-            if (clientConnected)
-                _clientModules.TriggerOnBatch();
+                if (clientConnected)
+                    _clientModules.TriggerOnBatch();
+            }
 
-            if (serverConnected)
-                _serverModules.TriggerOnPostBatch();
+            using (_onPostBatchMarker.Auto())
+            {
+                if (serverConnected)
+                    _serverModules.TriggerOnPostBatch();
 
-            if (clientConnected)
-                _clientModules.TriggerOnPostBatch();
+                if (clientConnected)
+                    _clientModules.TriggerOnPostBatch();
+            }
 
-            if (_transport)
-                _transport.transport.SendMessages(delta);
+            using (_onSendMessagesMarker.Auto())
+            {
+                if (_transport)
+                    _transport.transport.SendMessages(delta);
+            }
 
             if (_isCleaningClient)
             {
