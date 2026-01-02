@@ -1,15 +1,13 @@
-﻿using System.Collections.Generic;
-using Mono.Cecil;
+﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
 using PurrNet.Packing;
-using Unity.CompilationPipeline.Common.Diagnostics;
 
 #if UNITY_MONO_CECIL
 namespace PurrNet.Codegen
 {
     public static class OptimizePackers
     {
-        public static void HandleType(bool isWritting, MethodReference method, List<DiagnosticMessage> messages)
+        public static void HandleType(bool isWriter, MethodReference method)
         {
             var methodDefinition = method.Resolve();
 
@@ -49,7 +47,7 @@ namespace PurrNet.Codegen
                 var module = methodDefinition.Module;
                 if (isPacker)
                 {
-                    if (GenerateSerializersProcessor.TryGetInlinedMethod(isWritting, serializedType, module,
+                    if (GenerateSerializersProcessor.TryGetInlinedMethod(isWriter, serializedType, module,
                             out var inlineMethod))
                     {
                         il.Replace(instruction, Instruction.Create(OpCodes.Call, inlineMethod));
@@ -57,7 +55,7 @@ namespace PurrNet.Codegen
                 }
                 else
                 {
-                    if (GenerateDeltaSerializersProcessor.TryGetInlinedMethod(isWritting, serializedType, module,
+                    if (GenerateDeltaSerializersProcessor.TryGetInlinedMethod(isWriter, serializedType, module,
                             out var inlineMethod))
                     {
                         il.Replace(instruction, Instruction.Create(OpCodes.Call, inlineMethod));

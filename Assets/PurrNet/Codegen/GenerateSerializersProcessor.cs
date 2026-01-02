@@ -215,6 +215,7 @@ namespace PurrNet.Codegen
             if (ignoreDelta?.Contains(type) == false)
                 GenerateDeltaSerializersProcessor.HandleType(assembly, type, serializerClass);
 
+            GenerateIEquatableInterface.HandleType(resolvedType);
             RegisterSerializersProcessor.HandleType(type.Module, serializerClass, null, null);
         }
 

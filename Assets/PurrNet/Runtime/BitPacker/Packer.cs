@@ -286,9 +286,6 @@ namespace PurrNet.Packing
             if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 return EqualityComparer<T>.Default.Equals(a, b);
 
-            if (a is IEquatable<T> comparable)
-                return comparable.Equals(b);
-
             using var packerA = BitPackerPool.Get();
             using var packerB = BitPackerPool.Get();
 
