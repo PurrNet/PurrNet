@@ -80,7 +80,7 @@ namespace PurrNet.Codegen
             var iEquatableOpen = new TypeReference("System", "IEquatable`1", module, module.TypeSystem.CoreLibrary);
             var selfRef = MakeSelfRef(type);
 
-            var importedSelfRef = module.ImportReference(selfRef);
+            var importedSelfRef = selfRef.Import(module);
             var iEquatableClosed = new GenericInstanceType(iEquatableOpen);
             iEquatableClosed.GenericArguments.Add(importedSelfRef);
 
@@ -139,7 +139,7 @@ namespace PurrNet.Codegen
             var returnTrue = Instruction.Create(OpCodes.Ldc_I4_1);
             var returnFalse = Instruction.Create(OpCodes.Ldc_I4_0);
 
-            var purrEqualityType = type.Module.ImportReference(typeof(PurrEquality<>));
+            var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
             var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
 
             var otherArgument = method.Parameters[0];
