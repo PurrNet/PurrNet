@@ -71,6 +71,7 @@ namespace PurrNet.Codegen
             if (type == null) return;
             if (!(type.IsValueType || type.IsClass)) return;
             if (type.IsInterface) return;
+            if (type.IsEnum) return;
             if (type.Module?.Assembly == null) return;
             if (type.Module.Assembly.MainModule != type.Module) return;
             if (HasIEquatableT(type)) return;
