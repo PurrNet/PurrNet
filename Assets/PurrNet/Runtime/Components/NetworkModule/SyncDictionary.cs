@@ -133,12 +133,12 @@ namespace PurrNet
 
         public void OnBeforeSerialize()
         {
-            _serializedDict.FromDictionary(_dict);
+            _serializedDict?.FromDictionary(_dict);
         }
 
         public void OnAfterDeserialize()
         {
-            _dict = _serializedDict.ToDictionary();
+            _dict = _serializedDict?.ToDictionary();
         }
 
         public override void OnSpawn()
