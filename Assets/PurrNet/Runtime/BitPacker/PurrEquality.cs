@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using PurrNet.Modules;
 
 namespace PurrNet.Packing
 {
@@ -16,6 +18,7 @@ namespace PurrNet.Packing
             Default = comparer;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining), UsedByIL]
         public static bool Equals(T a, T b) => Default.Equals(a, b);
     }
 }

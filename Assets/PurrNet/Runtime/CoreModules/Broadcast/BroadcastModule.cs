@@ -164,25 +164,32 @@ namespace PurrNet.Modules
 
         public void OnDataReceived(Connection conn, ByteData data, bool asServer)
         {
-            if (_asServer != asServer)
-                return;
-
-            using var stream = BitPackerPool.Get(data);
-            var typeId = Packer<PackedUInt>.Read(stream);
-
-            if (!Hasher.TryGetType(typeId, out var typeInfo))
+            try
             {
-                PurrLogger.LogError(
-                    $"Cannot find type with id {typeId}; type must not have been registered properly.\nData: {data.ToString()}");
-                return;
-            }
+                if (_asServer != asServer)
+                    return;
 
-            TriggerCallback(conn, typeId, stream);
+                using var stream = BitPackerPool.Get(data);
+                var typeId = Packer<PackedUInt>.Read(stream);
+
+                if (!Hasher.TryGetType(typeId, out var typeInfo))
+                {
+                    PurrLogger.LogError(
+                        $"Cannot find type with id {typeId}; type must not have been registered properly.\nData: {data.ToString()}");
+                    return;
+                }
+
+                TriggerCallback(conn, typeId, stream);
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-            if (ShouldTrackType(typeInfo))
-                Statistics.ReceivedBroadcast(typeInfo, data.segment);
+                if (ShouldTrackType(typeInfo))
+                    Statistics.ReceivedBroadcast(typeInfo, data.segment);
 #endif
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogException(e);
+            }
         }
 
         public void Subscribe<T>(BroadcastDelegate<T> callback)

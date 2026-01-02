@@ -1,5 +1,4 @@
 ﻿#if UNITY_MONO_CECIL
-using System;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
