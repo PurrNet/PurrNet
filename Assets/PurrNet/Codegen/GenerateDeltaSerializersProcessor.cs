@@ -374,6 +374,9 @@ namespace PurrNet.Codegen
             var il = method.Body.GetILProcessor();
             var endOfFunction = il.Create(OpCodes.Nop);
 
+            il.Append(Instruction.Create(OpCodes.Ldc_I4_0));
+            il.Append(Instruction.Create(OpCodes.Stloc, isEqualVar));
+
             var standaloneType = GenerateSerializersProcessor.HasInterfaceExtra(type, typeof(IStandaloneSerializable));
 
             if (standaloneType != null && standaloneType.FullName != type.FullName)
@@ -396,7 +399,6 @@ namespace PurrNet.Codegen
             il.Emit(OpCodes.Call, advanceBits);
             il.Emit(OpCodes.Stloc_0);
 
-            // Check for equality at the top
             var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
             var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
             var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
@@ -405,9 +407,7 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ldarg_1));
             il.Append(Instruction.Create(OpCodes.Ldarg_2));
             il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
-            il.Append(Instruction.Create(OpCodes.Dup));
-            il.Append(Instruction.Create(OpCodes.Stloc, isEqualVar));
-            il.Append(Instruction.Create(OpCodes.Brfalse, endOfFunction));
+            il.Append(Instruction.Create(OpCodes.Brtrue, endOfFunction));
 
             if (isClass)
             {
