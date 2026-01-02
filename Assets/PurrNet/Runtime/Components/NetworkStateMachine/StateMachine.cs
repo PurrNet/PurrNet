@@ -181,7 +181,8 @@ namespace PurrNet.StateMachine
         }
 
         /// <summary>
-        /// Checks whether the given type T is the state we are currently in
+        /// Checks whether the given type T is the state we are currently in.
+        /// Also outputs the instance of the state with the type
         /// </summary>
         public bool IsCurrentState<T>(out T stateInstance) where T : StateNode
         {
@@ -191,7 +192,7 @@ namespace PurrNet.StateMachine
                 return true;
             }
 
-            stateInstance = null,
+            stateInstance = null;
             return false;
         }
         
