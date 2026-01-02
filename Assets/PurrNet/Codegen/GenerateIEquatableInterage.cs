@@ -136,7 +136,6 @@ namespace PurrNet.Codegen
 
         private static void ImplementBody(TypeDefinition type, MethodDefinition method, ILProcessor il)
         {
-            GenerateSerializersProcessor.CreateGettersAndSetters(false, type);
             var returnTrue = Instruction.Create(OpCodes.Ldc_I4_1);
             var returnFalse = Instruction.Create(OpCodes.Ldc_I4_0);
 
@@ -144,6 +143,18 @@ namespace PurrNet.Codegen
             var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
 
             var otherArgument = method.Parameters[0];
+
+            if (!type.IsValueType && type.IsClass && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
+            {
+                var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
+                    purrEqualityType, type.BaseType, purrEqualityCheck, type.Module);
+
+                il.Append(Instruction.Create(OpCodes.Ldarg_0));
+                il.Append(Instruction.Create(OpCodes.Ldarg_1));
+
+                il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
+                il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+            }
 
             foreach (var field in type.Fields)
             {
@@ -163,9 +174,31 @@ namespace PurrNet.Codegen
                 var fieldType = GenerateSerializersProcessor.ResolveGenericFieldType(field, type);
                 var resolvedFieldType = fieldType?.Resolve();
 
+                FieldReference fieldRef;
+
+                if (type.HasGenericParameters)
+                {
+                    // Link the field to the open generic instance
+                    var resolvedParent = new GenericInstanceType(type);
+
+                    // Populate the generic arguments
+                    foreach (var genericArg in type.GenericParameters)
+                    {
+                        resolvedParent.GenericArguments.Add(genericArg);
+                    }
+
+                    // Create the FieldReference with the resolved generic parent
+                    fieldRef = new FieldReference(field.Name, field.FieldType, resolvedParent);
+                }
+                else
+                {
+                    // Use the field directly if no generics are involved
+                    fieldRef = field;
+                }
+
                 if (IsPrimitiveNumeric(field.FieldType))
                 {
-                    PushAB(type, il, field, fieldType, otherArgument);
+                    PushAB(type, il, fieldRef, otherArgument);
 
                     // check if these integer fields are equal, if not return false
                     il.Append(Instruction.Create(OpCodes.Ceq));
@@ -173,14 +206,14 @@ namespace PurrNet.Codegen
                 }
                 else if (TryGetEqualityOperator(resolvedFieldType, out var opEquality))
                 {
-                    PushAB(type, il, field, fieldType, otherArgument);
+                    PushAB(type, il, field, otherArgument);
 
                     il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
                 else if (TryGetEqualsFunction(resolvedFieldType, out var equals))
                 {
-                    PushAB_A(type, method, il, field, fieldType, otherArgument);
+                    PushAB_A(type, il, fieldRef, otherArgument);
 
                     il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
@@ -191,7 +224,7 @@ namespace PurrNet.Codegen
                     var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
                         purrEqualityType, fieldType, purrEqualityCheck, type.Module);
 
-                    PushAB(type, il, field, fieldType, otherArgument);
+                    PushAB(type, il, fieldRef, otherArgument);
                     il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
@@ -206,61 +239,22 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ret));
         }
 
-        private static void PushAB(TypeDefinition type, ILProcessor il, FieldDefinition field, TypeReference fieldType,
+        private static void PushAB(TypeDefinition type, ILProcessor il, FieldReference field,
             ParameterDefinition otherArgument)
         {
-            if (!field.IsPublic)
-            {
-                var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
-                var getterReference = new MethodReference(getter, fieldType, type)
-                {
-                    HasThis = true
-                };
-
-                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
-                il.Append(Instruction.Create(OpCodes.Call, getterReference));
-                il.Append(Instruction.Create(OpCodes.Ldarg_0));
-                il.Append(Instruction.Create(OpCodes.Call, getterReference));
-            }
-            else
-            {
-                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
-                il.Append(Instruction.Create(OpCodes.Ldfld, field));
-                il.Append(Instruction.Create(OpCodes.Ldarg_0));
-                il.Append(Instruction.Create(OpCodes.Ldfld, field));
-            }
+            il.Append(Instruction.Create(type.IsClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(OpCodes.Ldfld, field));
+            il.Append(Instruction.Create(OpCodes.Ldarg_0));
+            il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
 
-        private static void PushAB_A(TypeDefinition type, MethodDefinition method, ILProcessor il, FieldDefinition field, TypeReference fieldType,
+        private static void PushAB_A(TypeDefinition type, ILProcessor il, FieldReference field,
             ParameterDefinition otherArgument)
         {
-            if (!field.IsPublic)
-            {
-                var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
-                var getterReference = new MethodReference(getter, fieldType, type)
-                {
-                    HasThis = true
-                };
-
-                var tempLocal = new VariableDefinition(field.FieldType);
-                method.Body.Variables.Add(tempLocal);
-
-                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
-                il.Append(Instruction.Create(OpCodes.Call, getterReference));
-
-                il.Append(Instruction.Create(OpCodes.Stloc, tempLocal));
-                il.Append(Instruction.Create(OpCodes.Ldloca, tempLocal));
-
-                il.Append(Instruction.Create(OpCodes.Ldarg_0));
-                il.Append(Instruction.Create(OpCodes.Call, getterReference));
-            }
-            else
-            {
-                il.Append(Instruction.Create(OpCodes.Ldarga_S, otherArgument));
-                il.Append(Instruction.Create(OpCodes.Ldflda, field));
-                il.Append(Instruction.Create(OpCodes.Ldarg_0));
-                il.Append(Instruction.Create(OpCodes.Ldfld, field));
-            }
+            il.Append(Instruction.Create(type.IsClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(field.FieldType.IsValueType ? OpCodes.Ldflda : OpCodes.Ldfld, field));
+            il.Append(Instruction.Create(OpCodes.Ldarg_0));
+            il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
     }
 }

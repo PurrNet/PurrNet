@@ -5,7 +5,7 @@ using UnityEngine;
 public class StateTwo : StateNode<MyData>
 {
     [SerializeField] private bool canEnter;
-    
+
     public override void Enter()
     {
         base.Enter();
@@ -49,15 +49,62 @@ public class StateTwo : StateNode<MyData>
     }
 }
 
+public class HMMM : MyDataWtf<int>
+{
+    public HMMM(int fails, float time) : base(fails, time)
+    {
+    }
+}
+
+public class MyDataWtf<T> : IPackedAuto
+{
+    private readonly int Fails;
+    public float Time;
+    public MyDataWtf test;
+    public T test2;
+
+    public MyDataWtf(int fails, float time)
+    {
+        Fails = fails;
+        Time = time;
+    }
+
+    public override string ToString()
+    {
+        return $"MyData: Fails: {Fails} | Time: {Time}";
+    }
+}
+
+public class MyDataWtf : IPackedAuto
+{
+    private readonly int Fails;
+    public float Time;
+    public MyDataWtf test;
+    private MyDataWtf<int> fefe;
+
+    public MyDataWtf(int fails, float time)
+    {
+        Fails = fails;
+        Time = time;
+    }
+
+    public override string ToString()
+    {
+        return $"MyData: Fails: {Fails} | Time: {Time}";
+    }
+}
+
 public struct MyData : IPackedAuto
 {
     public int Fails;
     public float Time;
+    public MyDataWtf test;
 
     public MyData(int fails, float time)
     {
         Fails = fails;
         Time = time;
+        test = null;
     }
 
     public override string ToString()
