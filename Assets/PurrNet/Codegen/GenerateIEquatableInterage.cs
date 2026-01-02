@@ -145,7 +145,7 @@ namespace PurrNet.Codegen
 
             var otherArgument = method.Parameters[0];
 
-            if (!type.IsValueType && type.IsClass && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
+            if (!type.IsValueType && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
             {
                 var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
                     purrEqualityType, type.BaseType, purrEqualityCheck, type.Module);
@@ -243,7 +243,7 @@ namespace PurrNet.Codegen
         private static void PushAB(TypeDefinition type, ILProcessor il, FieldReference field,
             ParameterDefinition otherArgument)
         {
-            il.Append(Instruction.Create(type.IsClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(!type.IsValueType ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
@@ -252,7 +252,7 @@ namespace PurrNet.Codegen
         private static void PushAB_A(TypeDefinition type, ILProcessor il, FieldReference field,
             ParameterDefinition otherArgument)
         {
-            il.Append(Instruction.Create(type.IsClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(!type.IsValueType ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
             il.Append(Instruction.Create(field.FieldType.IsValueType ? OpCodes.Ldflda : OpCodes.Ldfld, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
