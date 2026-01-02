@@ -1,3 +1,10 @@
+## [1.18.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.8...v1.18.1-beta.9) (2026-01-02)
+
+
+### Bug Fixes
+
+* expose latest read data properties for network transform ([65e6a23](https://github.com/PurrNet/PurrNet/commit/65e6a236b5819fec9e74002c886b245014713bbe))
+
 ## [1.18.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.7...v1.18.1-beta.8) (2026-01-02)
 
 
