@@ -10,7 +10,19 @@ public class Test : NetworkIdentity
     private SyncEvent _syncEvent = new();
     
     [SerializeField] private Transform _parentTarget;
-    
+    [SerializeField] private SyncDictionary<int, TestClass> _myTestDictionary = new();
+
+    protected override void OnSpawned()
+    {
+        base.OnSpawned();
+        if (isServer)
+        {
+            _myTestDictionary.Add(1, new TestClass() { myStats = 20 });
+            _myTestDictionary.Add(3, new TestClass() { myStats = 30 });
+            _myTestDictionary.Add(69, new TestClass() { myStats = 420 });
+        }
+    }
+
     private void OnEnable()
     {
         _syncTimer.onTimerStart += () => Debug.Log($"Timer started");
@@ -52,5 +64,13 @@ public class Test : NetworkIdentity
     {
         transform.SetParent(_parentTarget);
         transform.localPosition = Vector3.zero;
+    }
+
+    [Serializable]
+    public class TestClass
+    {
+        public int myStats;
+        public string moreInfo = "This is just some default";
+        public bool isBobsiTheGreatest = true;
     }
 }

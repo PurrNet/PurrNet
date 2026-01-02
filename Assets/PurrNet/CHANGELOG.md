@@ -1,3 +1,17 @@
+## [1.18.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.7...v1.18.1-beta.8) (2026-01-02)
+
+
+### Bug Fixes
+
+* Sync dictionary serialization upgrade ([5934acb](https://github.com/PurrNet/PurrNet/commit/5934acbf9a52511353941040a1643728d658a75f))
+
+## [1.18.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.6...v1.18.1-beta.7) (2026-01-02)
+
+
+### Bug Fixes
+
+* Added state machine current state helpers ([6ebfff9](https://github.com/PurrNet/PurrNet/commit/6ebfff9a934aadbf3e0c3010fff2632751e3538d))
+
 ## [1.18.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.5...v1.18.1-beta.6) (2025-12-31)
 
 
