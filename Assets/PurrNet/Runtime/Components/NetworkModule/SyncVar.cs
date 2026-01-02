@@ -41,14 +41,13 @@ namespace PurrNet
 
         private bool _isSubscribedToTickManager;
 
-        static readonly IEqualityComparer<T> _cmp = EqualityComparer<T>.Default;
-
         public T value
         {
             get => _value;
             set
             {
-                if (_cmp.Equals(value, _value)) return;
+                if (PurrEquality<T>.Default.Equals(value, _value))
+                    return;
 
                 if (isSpawned && !isControllingSyncVar)
                 {

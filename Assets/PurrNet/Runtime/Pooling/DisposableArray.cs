@@ -7,7 +7,7 @@ using PurrNet.Packing;
 
 namespace PurrNet.Pooling
 {
-    public struct DisposableArray<T> : IDisposable, IReadOnlyList<T>, IList<T>, IDuplicate<DisposableArray<T>>
+    public struct DisposableArray<T> : IDisposable, IReadOnlyList<T>, IList<T>, IDuplicate<DisposableArray<T>>, IEquatable<DisposableArray<T>>
     {
         private bool _shouldDispose;
 
@@ -206,5 +206,7 @@ namespace PurrNet.Pooling
 
             return Create(this);
         }
+
+        public bool Equals(DisposableArray<T> other) => new ArrayComparator<T>().Equals(array, other.array);
     }
 }

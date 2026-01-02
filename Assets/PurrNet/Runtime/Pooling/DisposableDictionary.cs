@@ -6,7 +6,8 @@ using PurrNet.Packing;
 
 namespace PurrNet.Pooling
 {
-    public struct DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDisposable, IDuplicate<DisposableDictionary<TKey, TValue>>
+    public struct DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDisposable, IDuplicate<DisposableDictionary<TKey, TValue>>,
+        IEquatable<DisposableDictionary<TKey, TValue>>
         where TKey : notnull
     {
         private bool _isAllocated;
@@ -270,5 +271,8 @@ namespace PurrNet.Pooling
             }
             return Create(this);
         }
+
+        public bool Equals(DisposableDictionary<TKey, TValue> other)
+            => new DictionaryComparator<TKey, TValue>().Equals(dictionary, other.dictionary);
     }
 }

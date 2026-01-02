@@ -212,25 +212,15 @@ namespace PurrNet.Packing
         {
             if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
-                bool equal = EqualityComparer<T>.Default.Equals(target, whatToCopy);
+                bool equal = PurrEquality<T>.Default.Equals(target, whatToCopy);
                 if (equal)
                     return false;
                 target = whatToCopy;
                 return true;
             }
 
-            if (target is IEquatable<T> comparable && comparable.Equals(whatToCopy))
-                return false;
-
-            using var packerA = BitPackerPool.Get();
             using var packerB = BitPackerPool.Get();
-
-            Packer<T>.Write(packerA, target);
             Packer<T>.Write(packerB, whatToCopy);
-
-            if (ArePackersEqual(packerA, packerB))
-                return false;
-
             packerB.ResetPositionAndMode(true);
             Packer<T>.Read(packerB, ref target);
             return true;
@@ -281,47 +271,7 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
-        public static bool AreEqual<T>(T a, T b)
-        {
-            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                return EqualityComparer<T>.Default.Equals(a, b);
-
-            using var packerA = BitPackerPool.Get();
-            using var packerB = BitPackerPool.Get();
-
-            Packer<T>.Write(packerA, a);
-            Packer<T>.Write(packerB, b);
-
-            if (packerA.positionInBits != packerB.positionInBits)
-                return false;
-
-            int bits = packerA.positionInBits;
-
-            packerA.ResetPositionAndMode(true);
-            packerB.ResetPositionAndMode(true);
-
-            while (bits >= 64)
-            {
-                ulong aBits = packerA.ReadBits(64);
-                ulong bBits = packerB.ReadBits(64);
-
-                if (aBits != bBits)
-                    return false;
-
-                bits -= 64;
-            }
-
-            if (bits > 0)
-            {
-                var remainingBits = (byte)bits;
-                ulong aBits = packerA.ReadBits(remainingBits);
-                ulong bBits = packerB.ReadBits(remainingBits);
-                if (aBits != bBits)
-                    return false;
-            }
-
-            return true;
-        }
+        public static bool AreEqual<T>(T a, T b) => PurrEquality<T>.Default.Equals(a, b);
 
         [UsedByIL]
         public static bool AreEqualRef<T>(ref T a, ref T b)
