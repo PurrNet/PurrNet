@@ -1,3 +1,10 @@
+## [1.18.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.9...v1.18.1-beta.10) (2026-01-03)
+
+
+### Bug Fixes
+
+* Whoopsie ([d2ec215](https://github.com/PurrNet/PurrNet/commit/d2ec2152b1da82740e6d7042b197f14f800cd151))
+
 ## [1.18.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.8...v1.18.1-beta.9) (2026-01-02)
 
 
