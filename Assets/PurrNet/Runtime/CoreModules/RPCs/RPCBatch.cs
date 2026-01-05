@@ -35,6 +35,7 @@ namespace PurrNet.Modules
 
         private readonly PlayersManager _playersManager;
         private readonly List<PendingBatchedData> _batches = new ();
+        private readonly Dictionary<BatchKey, int> _batchIndexMap = new();
 
         public delegate void RPCReceivedDelegate(PlayerID sender, HEADER header, ByteData content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
@@ -69,6 +70,7 @@ namespace PurrNet.Modules
                 }
 
                 _batches.Clear();
+                _batchIndexMap.Clear();
             }
         }
 
@@ -76,6 +78,7 @@ namespace PurrNet.Modules
         {
             using (_flushChannelMarker.Auto())
             {
+                bool sentOne = false;
                 for (int i = _batches.Count - 1; i >= 0; i--)
                 {
                     var batch = _batches[i];
@@ -84,8 +87,13 @@ namespace PurrNet.Modules
                         continue;
 
                     SendBatch(batch);
+                    sentOne = true;
+                    batch.batchedData.Dispose();
                     _batches.RemoveAt(i--);
                 }
+
+                if (sentOne)
+                    _batchIndexMap.Clear();
             }
         }
 
@@ -98,22 +106,28 @@ namespace PurrNet.Modules
             };
 
             _playersManager.Send(batch.key.playerId, data, batch.key.channel);
-            batch.batchedData.Dispose();
         }
 
-        private static int GetBatchIndex(BatchKey key, List<PendingBatchedData> batches)
+        private int GetBatchIndex(BatchKey key)
         {
             using (_getSingleBatchMarker.Auto())
             {
-                int c = batches.Count;
+                int c = _batches.Count;
+
+                if (_batchIndexMap.TryGetValue(key, out int idx))
+                    return idx;
 
                 for (var i = c - 1; i >= 0; i--)
                 {
-                    if (BatchKey.AreEquals(key, batches[i].key))
+                    if (BatchKey.AreEquals(key, _batches[i].key))
+                    {
+                        _batchIndexMap[key] = i;
                         return i;
+                    }
                 }
 
-                batches.Add(new PendingBatchedData { key = key, batchedData = BitPackerPool.Get() });
+                _batches.Add(new PendingBatchedData { key = key, batchedData = BitPackerPool.Get() });
+                _batchIndexMap[key] = c;
                 return c;
             }
         }
@@ -156,7 +170,7 @@ namespace PurrNet.Modules
         {
             using (_queueSingleMarker.Auto())
             {
-                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
+                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
                 var batch = _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
@@ -183,9 +197,6 @@ namespace PurrNet.Modules
                         batch.lastDataLen = default;
                         batch.batchedData.ResetPositionAndMode(false);
 
-                        // create new batch
-                        batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
-                        batch = _batches[batchIdx];
                         // redo the last write
                         DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
                         DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
@@ -209,6 +220,7 @@ namespace PurrNet.Modules
                 _batches[i].batchedData.Dispose();
 
             _batches.Clear();
+            _batchIndexMap.Clear();
         }
     }
 }
