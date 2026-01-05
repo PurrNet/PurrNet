@@ -283,5 +283,13 @@ namespace PurrNet.Pooling
             NotifyUsage();
             list.InsertRange(index, values);
         }
+
+        public override int GetHashCode()
+        {
+            int result = 17;
+            for (var i = 0; i < list.Count; i++)
+                result = result * 31 + list[i].GetHashCode();
+            return result;
+        }
     }
 }
