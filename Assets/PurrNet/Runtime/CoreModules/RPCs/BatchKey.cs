@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using PurrNet.Pooling;
 using PurrNet.Transports;
 
 namespace PurrNet.Modules
