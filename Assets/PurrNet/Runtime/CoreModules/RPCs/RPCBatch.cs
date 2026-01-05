@@ -162,7 +162,7 @@ namespace PurrNet.Modules
                 int before = batch.batchedData.positionInBits;
                 Size contentLen = content.length;
 
-                DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
+                DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
                 DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
 
                 int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
@@ -187,7 +187,7 @@ namespace PurrNet.Modules
                         batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
                         batch = _batches[batchIdx];
                         // redo the last write
-                        DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
+                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
                         DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
                     }
                 }
