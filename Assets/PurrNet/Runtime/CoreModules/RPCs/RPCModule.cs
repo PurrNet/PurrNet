@@ -944,20 +944,17 @@ namespace PurrNet.Modules
 
         private void QueueToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
         {
-            for (int i = 0; i < players.Count; i++)
-                _normalRpcBatch.Queue(players[i], packet.header, packet.data, signatureChannel);
+            _normalRpcBatch.Queue(players, packet.header, packet.data, signatureChannel);
         }
 
         private void QueueToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
         {
-            for (int i = 0; i < players.Count; i++)
-                _childRpcBatch.Queue(players[i], packet.header, packet.data, signatureChannel);
+            _childRpcBatch.Queue(players, packet.header, packet.data, signatureChannel);
         }
 
         private void QueueToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
         {
-            for (int i = 0; i < players.Count; i++)
-                _staticRpcBatch.Queue(players[i], packet.header, packet.data, signatureChannel);
+            _staticRpcBatch.Queue(players, packet.header, packet.data, signatureChannel);
         }
 
         enum RPCMethod
