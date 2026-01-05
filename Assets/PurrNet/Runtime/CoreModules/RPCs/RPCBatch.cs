@@ -10,7 +10,7 @@ namespace PurrNet.Modules
     [RegisterNetworkType(typeof(RPCBatch<NetworkIdentityRPCHeader>.RPCBatchPacket))]
     [RegisterNetworkType(typeof(RPCBatch<NetworkModuleRPCHeader>.RPCBatchPacket))]
     [RegisterNetworkType(typeof(RPCBatch<StaticRPCHeader>.RPCBatchPacket))]
-    public sealed class RPCBatch<HEADER> : IDisposable where HEADER : unmanaged
+    public sealed class RPCBatch<HEADER> : IDisposable where HEADER : unmanaged, IEquatable<HEADER>
     {
         static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Flush");
         static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.FlushChannel");
@@ -24,6 +24,7 @@ namespace PurrNet.Modules
             public HEADER lastHeader;
             public Size lastDataLen;
             public int batchCount;
+            public int? cachedMTU;
             public BitPacker batchedData;
         }
 
@@ -184,9 +185,8 @@ namespace PurrNet.Modules
                 // do some MTU checks past 1 batch
                 if (batch.batchCount > 0)
                 {
-                    int mtu = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
-
-                    if (bytesAfterHeaderLen + 10 >= mtu) // 10 here is just a safety margin
+                    batch.cachedMTU ??= _playersManager.GetMTU(target, channel, target != PlayerID.Server);
+                    if (bytesAfterHeaderLen + 10 >= batch.cachedMTU.Value) // 10 here is just a safety margin
                     {
                         // undo the last write
                         batch.batchedData.SetBitPosition(before);
