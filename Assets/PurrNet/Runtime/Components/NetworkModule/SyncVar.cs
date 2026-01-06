@@ -2,7 +2,6 @@ using UnityEngine;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using System;
-using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Packing;
 using PurrNet.Transports;
@@ -291,7 +290,7 @@ namespace PurrNet
             if (isControllingSyncVar)
                 return;
 
-            if (packetId <= _id)
+            if (packetId.value <= _id)
                 return;
 
             _id = packetId;
