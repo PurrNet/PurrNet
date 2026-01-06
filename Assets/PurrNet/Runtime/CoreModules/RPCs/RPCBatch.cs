@@ -155,46 +155,6 @@ namespace PurrNet.Modules
                 Queue(targets[i], header, content, channel);
         }
 
-        public void Queue(PlayerID target, BitPacker header, BitPacker defaultHeader, HEADER headerVal, ByteData content, Channel channel)
-        {
-            using (_queueSingleMarker.Auto())
-            {
-                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
-                var batch = _batches[batchIdx];
-                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length + header.positionInBytes;
-
-                // do some MTU checks past 1 batch
-                if (batch.batchCount > 0)
-                {
-                    batch.cachedMTU ??= _playersManager.GetMTU(target, channel, target != PlayerID.Server);
-                    if (bytesAfterHeaderLen + 10 >= batch.cachedMTU.Value) // 10 here is just a safety margin
-                    {
-                        SendBatch(batch);
-                        batch.batchCount = 0;
-                        batch.cachedMTU = null;
-                        batch.batchedData.ResetPositionAndMode(false);
-                        batch.batchedData.WriteBits(defaultHeader);
-                    }
-                    else
-                    {
-                        batch.batchedData.WriteBits(header);
-                    }
-                }
-                else
-                {
-                    batch.batchedData.WriteBits(header);
-                }
-
-                ++batch.batchCount;
-                batch.lastHeader = headerVal;
-                batch.lastDataLen = content.length;
-                if (content.length > 0)
-                    batch.batchedData.WriteBytes(content);
-
-                _batches[batchIdx] = batch;
-            }
-        }
-
         public void Queue(PlayerID target, HEADER header, ByteData content, Channel channel)
         {
             using (_queueSingleMarker.Auto())
@@ -219,15 +179,13 @@ namespace PurrNet.Modules
                         // undo the last write
                         batch.batchedData.SetBitPosition(before);
                         SendBatch(batch);
-
                         batch.batchCount = 0;
-                        batch.lastHeader = default;
-                        batch.lastDataLen = default;
+                        batch.cachedMTU = null;
                         batch.batchedData.ResetPositionAndMode(false);
 
                         // redo the last write
-                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
-                        DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, default, header);
+                        DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                     }
                 }
 
