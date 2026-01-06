@@ -996,7 +996,8 @@ namespace PurrNet
                     return;
             }
 
-            var tickManager = new TickManager(_tickRate, this);
+            var connBroadcaster = new BroadcastModule(this, asServer);
+            var tickManager = new TickManager(_tickRate, this, connBroadcaster);
 
             if (asServer)
             {
@@ -1028,7 +1029,6 @@ namespace PurrNet
                 _clientTickManager.onPostTick += OnClientPostTick;
             }
 
-            var connBroadcaster = new BroadcastModule(this, asServer);
 
             if (asServer)
                 _serverBroadcast = connBroadcaster;
