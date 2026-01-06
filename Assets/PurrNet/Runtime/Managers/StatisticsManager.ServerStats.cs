@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -9,20 +8,20 @@ namespace PurrNet
     {
         private const float SEND_INTERVAL = 1f; //1 second
         private const float STATS_HISTORY_TIME = 2.5f; //2.5 seconds
-        
+
         private string _cachedServerAvgFpsText = "Avg FPS: 0";
         private string _cachedServerMaxFpsText = "Max FPS: 0";
         private string _cachedServerMinFpsText = "Min FPS: 0";
-        
+
         private readonly Queue<(float t, float fps)> _fpsHistory = new();
         private float _lastStatsSendTime;
-        
+
         private (int min, int avg, int max) _lastServerStats;
         private bool _dirtyServerStats;
-        
+
         private void ServerSubscribe_ServerStats()
         {
-            
+
         }
 
         private void ClientSubscribe_ServerStats()
@@ -32,7 +31,7 @@ namespace PurrNet
 
         private void ServerUnsubscribe_ServerStats()
         {
-            
+
         }
 
         private void ServerStatsUpdate()
@@ -52,9 +51,21 @@ namespace PurrNet
 
             _lastStatsSendTime = now;
 
-            int avg = Mathf.RoundToInt(_fpsHistory.Average(p => p.fps));
-            int max = Mathf.RoundToInt(_fpsHistory.Max(p => p.fps));
-            int min = Mathf.RoundToInt(_fpsHistory.Min(p => p.fps));
+            float sum = 0;
+            float maxValue = float.MinValue;
+            float minValue = float.MaxValue;
+
+            foreach (var entry in _fpsHistory)
+            {
+                float entryFps = entry.fps;
+                sum += entryFps;
+                if (entryFps > maxValue) maxValue = entryFps;
+                if (entryFps < minValue) minValue = entryFps;
+            }
+
+            int avg = Mathf.RoundToInt(sum / _fpsHistory.Count);
+            int max = Mathf.RoundToInt(maxValue);
+            int min = Mathf.RoundToInt(minValue);
 
             _playersServerBroadcaster?.SendToAll(new ServerStatsPacket { avgFps = avg, maxFps = max, minFpx = min }, Channel.Unreliable);
         }
@@ -89,7 +100,7 @@ namespace PurrNet
 
         private void ResetStatistics_ServerStats()
         {
-            
+
         }
 
         private struct ServerStatsPacket
