@@ -161,6 +161,13 @@ namespace PurrNet.Packing
             return new ArraySegment<byte>(_buffer, 0, length);
         }
 
+        public ArraySegment<byte> AsSegment(int bitLength)
+        {
+            int pos = bitLength / 8;
+            int len = pos + (bitLength % 8 == 0 ? 0 : 1);
+            return new ArraySegment<byte>(_buffer, 0, len);
+        }
+
         public Span<byte> GetSpan(int sizeHint = 0)
         {
             EnsureBitsExist(sizeHint * 8);
@@ -322,6 +329,23 @@ namespace PurrNet.Packing
             WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
 
             packer._positionInBits = bits;
+        }
+
+        public void WriteBitsWithoutConsumingIt(BitPacker packer, int bits)
+        {
+            EnsureBitsExist(bits);
+
+            var beforeBitPosition = packer._positionInBits;
+            packer.SetBitPosition(0);
+
+            int chunks = bits / 64;
+            byte excess = (byte)(bits % 64);
+
+            for (int i = 0; i < chunks; i++)
+                WriteBitsWithoutChecks(packer.ReadBits(64), 64);
+            WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+
+            packer.SetBitPosition(beforeBitPosition);
         }
 
         public void WriteBits(BitPacker packer, int bits)

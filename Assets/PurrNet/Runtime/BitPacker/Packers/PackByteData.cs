@@ -1,4 +1,5 @@
 using System;
+using LiteNetLib;
 using PurrNet.Modules;
 using PurrNet.Transports;
 
@@ -72,6 +73,25 @@ namespace PurrNet.Packing
             dataPacker.ResetPosition();
 
             data = new BitPackerWithLength(length, dataPacker);
+        }
+
+        [UsedByIL]
+        public static void Write(this BitPacker packer, BitData data)
+        {
+            Packer<Size>.WriteFunc(packer, data.bitLength);
+            packer.WriteBitsWithoutConsumingIt(data.packer, data.bitLength);
+        }
+
+        [UsedByIL]
+        public static void Read(this BitPacker packer, ref BitData data)
+        {
+            Size length = default;
+            Packer<Size>.Read(packer, ref length);
+
+            data.packer ??= BitPackerPool.Get();
+            data.bitLength = length;
+
+            data.packer.WriteBits(packer, length);
         }
     }
 }
