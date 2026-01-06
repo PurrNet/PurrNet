@@ -39,11 +39,11 @@ namespace PurrNet.Modules
                 throw new InvalidOperationException(PurrLogger.FormatMessage(message));
         }
 
-        public static ByteData GetImmediateData(object data)
+        public static ByteData GetImmediateData<T>(T data)
         {
             using var stream = BitPackerPool.Get();
-            Packer<PackedUInt>.WriteFunc(stream, Hasher.GetStableHashU32(data.GetType()));
-            Packer.Write(stream, data);
+            Packer<PackedUInt>.WriteFunc(stream, Hasher.GetStableHashU32<T>());
+            Packer<T>.Write(stream, data);
             return stream.ToByteData();
         }
 
