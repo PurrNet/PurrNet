@@ -28,6 +28,11 @@ namespace PurrNet
                    rpcId.Equals(other.rpcId) &&
                    childId.Equals(other.childId);
         }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(networkId, sceneId, senderId, targetId, rpcId, childId);
+        }
     }
 
     public struct ChildRPCPacket : IPackedAuto, IRpc
