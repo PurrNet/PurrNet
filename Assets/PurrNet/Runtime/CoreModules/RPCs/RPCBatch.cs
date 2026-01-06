@@ -34,7 +34,8 @@ namespace PurrNet.Modules
         }
 
         private readonly PlayersManager _playersManager;
-        private readonly List<PendingBatchedData> _batches = new ();
+        private PendingBatchedData[] _batches = new PendingBatchedData[128];
+        private int _batchCount = 0;
         private readonly Dictionary<BatchKey, int> _batchIndexMap = new();
 
         public delegate void RPCReceivedDelegate(PlayerID sender, HEADER header, ByteData content, bool asServer);
@@ -56,9 +57,9 @@ namespace PurrNet.Modules
         {
             using (_flushMarker.Auto())
             {
-                for (int i = 0; i < _batches.Count; i++)
+                for (int i = 0; i < _batchCount; i++)
                 {
-                    var batch = _batches[i];
+                    ref var batch = ref _batches[i];
                     var data = new RPCBatchPacket
                     {
                         count = batch.batchCount,
@@ -69,7 +70,7 @@ namespace PurrNet.Modules
                     batch.batchedData.Dispose();
                 }
 
-                _batches.Clear();
+                _batchCount = 0;
                 _batchIndexMap.Clear();
             }
         }
@@ -79,23 +80,33 @@ namespace PurrNet.Modules
             using (_flushChannelMarker.Auto())
             {
                 bool removed = false;
-                for (int i = _batches.Count - 1; i >= 0; i--)
+                int writeIdx = 0;
+
+                for (int i = 0; i < _batchCount; i++)
                 {
-                    var batch = _batches[i];
+                    ref var batch = ref _batches[i];
 
-                    if (batch.key.channel != channel)
-                        continue;
-
-                    SendBatch(ref batch);
-                    batch.batchedData.Dispose();
-                    _batches.RemoveAt(i);
-                    removed = true;
+                    if (batch.key.channel == channel)
+                    {
+                        SendBatch(ref batch);
+                        batch.batchedData.Dispose();
+                        removed = true;
+                    }
+                    else
+                    {
+                        // Keep this batch, shift it down if needed
+                        if (writeIdx != i)
+                            _batches[writeIdx] = _batches[i];
+                        writeIdx++;
+                    }
                 }
+
+                _batchCount = writeIdx;
 
                 if (removed)
                 {
                     _batchIndexMap.Clear();
-                    for (int i = 0; i < _batches.Count; i++)
+                    for (int i = 0; i < _batchCount; i++)
                         _batchIndexMap[_batches[i].key] = i;
                 }
             }
@@ -119,14 +130,19 @@ namespace PurrNet.Modules
                 if (_batchIndexMap.TryGetValue(key, out int idx))
                     return idx;
 
-                int c = _batches.Count;
-                _batches.Add(new PendingBatchedData
+                // Resize if needed
+                if (_batchCount >= _batches.Length)
+                    Array.Resize(ref _batches, _batches.Length * 2);
+
+                int c = _batchCount;
+                _batches[c] = new PendingBatchedData
                 {
                     key = key,
                     batchedData = BitPackerPool.Get(),
                     cachedMTU = _playersManager.GetMTU(key.playerId, key.channel, key.playerId != PlayerID.Server)
-                });
+                };
                 _batchIndexMap[key] = c;
+                _batchCount++;
                 return c;
             }
         }
@@ -165,7 +181,7 @@ namespace PurrNet.Modules
             using (_queueSingleMarker.Auto())
             {
                 var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
-                var batch = _batches[batchIdx];
+                ref var batch = ref _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
                 Size contentLen = content.length;
@@ -196,17 +212,15 @@ namespace PurrNet.Modules
 
                 if (content.length > 0)
                     batch.batchedData.WriteBytes(content);
-
-                _batches[batchIdx] = batch;
             }
         }
 
         public void Clear()
         {
-            for (int i = 0; i < _batches.Count; i++)
+            for (int i = 0; i < _batchCount; i++)
                 _batches[i].batchedData.Dispose();
 
-            _batches.Clear();
+            _batchCount = 0;
             _batchIndexMap.Clear();
         }
     }
