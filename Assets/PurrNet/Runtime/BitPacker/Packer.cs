@@ -210,11 +210,11 @@ namespace PurrNet.Packing
         /// </returns>
         public static bool Transform<T>(ref T target, T whatToCopy)
         {
+            if (PurrEquality<T>.Equals(target, whatToCopy))
+                return false;
+
             if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
-                bool equal = PurrEquality<T>.Default.Equals(target, whatToCopy);
-                if (equal)
-                    return false;
                 target = whatToCopy;
                 return true;
             }

@@ -227,7 +227,7 @@ namespace PurrNet
             if (isServer)
                 return;
 
-            _id = packetId;
+            _id = packetId.value;
 
             var oldValue = _value;
 
@@ -293,7 +293,7 @@ namespace PurrNet
             if (packetId.value <= _id)
                 return;
 
-            _id = packetId;
+            _id = packetId.value;
             var oldValue = _value;
 
             if (!Packer.Transform(ref _value, newValue))

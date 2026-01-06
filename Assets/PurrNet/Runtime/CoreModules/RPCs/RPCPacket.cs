@@ -1,6 +1,5 @@
 ﻿using System;
 using PurrNet.Packing;
-using PurrNet.Transports;
 using PurrNet.Utils;
 
 namespace PurrNet
@@ -8,9 +7,9 @@ namespace PurrNet
     public struct RPCPacket : IPackedAuto, IRpc
     {
         public NetworkIdentityRPCHeader header;
-        [DontDeltaCompress] public ByteData data;
+        [DontDeltaCompress] public BitPacker data;
 
-        public ByteData rpcData
+        public BitPacker rpcData
         {
             get { return data; }
             set { data = value; }

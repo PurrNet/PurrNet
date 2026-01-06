@@ -13,9 +13,9 @@ namespace PurrNet.Modules
 {
     public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IPromoteToServerModule
     {
-        public delegate void RPCPreProcessDelegate(ref ByteData rpcData, RPCSignature signature, ref BitPacker packer);
+        public delegate void RPCPreProcessDelegate(RPCSignature signature, ref BitPacker packer);
 
-        public delegate void RPCPostProcessDelegate(ByteData rpcData, RPCInfo info, ref BitPacker packer);
+        public delegate void RPCPostProcessDelegate(RPCInfo info, ref BitPacker packer);
 
         public static event RPCPreProcessDelegate onPreProcessRpc;
 
@@ -54,7 +54,7 @@ namespace PurrNet.Modules
 
         public void PostPromoteToServerModule() { }
 
-        private void ReiceStaticBatchedRPC(PlayerID sender, StaticRPCHeader header, ByteData content, bool asServer)
+        private void ReiceStaticBatchedRPC(PlayerID sender, StaticRPCHeader header, BitPacker content, bool asServer)
         {
             ReceiveStaticRPC(sender, new StaticRPCPacket
             {
@@ -63,7 +63,7 @@ namespace PurrNet.Modules
             }, asServer);
         }
 
-        private void ReceivedChildBatchedRPC(PlayerID sender, NetworkModuleRPCHeader header, ByteData content, bool asServer)
+        private void ReceivedChildBatchedRPC(PlayerID sender, NetworkModuleRPCHeader header, BitPacker content, bool asServer)
         {
             ReceiveChildRPC(sender, new ChildRPCPacket
             {
@@ -72,7 +72,7 @@ namespace PurrNet.Modules
             }, asServer);
         }
 
-        private void ReceivedNormalBatchedRPC(PlayerID sender, NetworkIdentityRPCHeader header, ByteData content, bool asServer)
+        private void ReceivedNormalBatchedRPC(PlayerID sender, NetworkIdentityRPCHeader header, BitPacker content, bool asServer)
         {
             ReceiveRPC(sender, new RPCPacket
             {
@@ -251,7 +251,7 @@ namespace PurrNet.Modules
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                     if (Hasher.TryGetType(packet.header.typeHash, out var type))
-                        Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.segment, null);
+                        Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.AsSegment(), null);
 #endif
                     module.BatchToServer(packet, signature.channel);
                     break;
@@ -269,7 +269,7 @@ namespace PurrNet.Modules
                         for (var i = players.Count - 1; i >= 0; --i)
                         {
                             if (Hasher.TryGetType(packet.header.typeHash, out var type))
-                                Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.segment, null);
+                                Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.AsSegment(), null);
                         }
 #endif
 
@@ -279,7 +279,7 @@ namespace PurrNet.Modules
                     {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         if (Hasher.TryGetType(packet.header.typeHash, out var type))
-                            Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.segment, null);
+                            Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.AsSegment(), null);
 #endif
                         module.BatchToServer(packet, signature.channel);
                     }
@@ -289,7 +289,7 @@ namespace PurrNet.Modules
                 {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                     if (Hasher.TryGetType(packet.header.typeHash, out var type))
-                        Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.segment, null);
+                        Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data.AsSegment(), null);
 #endif
                     if (nm.isServer)
                     {
@@ -461,7 +461,7 @@ namespace PurrNet.Modules
                     case RPCType.ObserversRPC:
                     {
                         var packet = data.packet;
-                        packet.data = data.stream.ToByteData();
+                        packet.data = data.stream;
                         _playersManager.Send(player, packet);
 
                         break;
@@ -472,7 +472,7 @@ namespace PurrNet.Modules
                         if (data.sig.targetPlayer == player)
                         {
                             var packet = data.packet;
-                            packet.data = data.stream.ToByteData();
+                            packet.data = data.stream;
                             _playersManager.Send(player, packet);
                         }
 
@@ -506,7 +506,7 @@ namespace PurrNet.Modules
                     case RPCType.ObserversRPC:
                     {
                         var packet = data.packet;
-                        packet.data = data.stream.ToByteData();
+                        packet.data = data.stream;
                         _playersManager.Send(player, packet);
 
                         break;
@@ -517,7 +517,7 @@ namespace PurrNet.Modules
                         if (data.sig.targetPlayer == player)
                         {
                             var packet = data.packet;
-                            packet.data = data.stream.ToByteData();
+                            packet.data = data.stream;
                             _playersManager.Send(player, packet);
                         }
 
@@ -538,7 +538,7 @@ namespace PurrNet.Modules
                     case RPCType.ObserversRPC:
                     {
                         var packet = data.packet;
-                        packet.data = data.stream.ToByteData();
+                        packet.data = data.stream;
                         _playersManager.Send(player, packet);
 
                         break;
@@ -549,7 +549,7 @@ namespace PurrNet.Modules
                         if (data.sig.targetPlayer == player)
                         {
                             var packet = data.packet;
-                            packet.data = data.stream.ToByteData();
+                            packet.data = data.stream;
                             _playersManager.Send(player, packet);
                         }
 
@@ -591,12 +591,12 @@ namespace PurrNet.Modules
             if (_bufferedStaticRpcsKeys.TryGetValue(rpcid, out var data))
             {
                 data.stream.ResetPosition();
-                data.stream.WriteBytes(packet.data);
+                data.stream.WriteBits(packet.data);
             }
             else
             {
                 var newStream = AllocStream(false);
-                newStream.WriteBytes(packet.data);
+                newStream.WriteBits(packet.data);
 
                 var newdata = new STATIC_RPC_DATA
                 {
@@ -620,12 +620,12 @@ namespace PurrNet.Modules
             if (_bufferedChildRpcsKeys.TryGetValue(rpcid, out var data))
             {
                 data.stream.ResetPosition();
-                data.stream.WriteBytes(packet.data);
+                data.stream.WriteBits(packet.data);
             }
             else
             {
                 var newStream = AllocStream(false);
-                newStream.WriteBytes(packet.data);
+                newStream.WriteBits(packet.data);
 
                 var newdata = new CHILD_RPC_DATA
                 {
@@ -649,12 +649,12 @@ namespace PurrNet.Modules
             if (_bufferedRpcsKeys.TryGetValue(rpcid, out var data))
             {
                 data.stream.ResetPosition();
-                data.stream.WriteBytes(packet.data);
+                data.stream.WriteBits(packet.data);
             }
             else
             {
                 var newStream = AllocStream(false);
-                newStream.WriteBytes(packet.data);
+                newStream.WriteBits(packet.data);
 
                 var newdata = new RPC_DATA
                 {
@@ -681,7 +681,7 @@ namespace PurrNet.Modules
                     sceneId = id,
                     senderId = GetLocalPlayer()
                 },
-                data = data.ToByteData(),
+                data = data
             };
 
             return rpc;
@@ -699,7 +699,7 @@ namespace PurrNet.Modules
                     typeHash = hash,
                     senderId = GetLocalPlayer()
                 },
-                data = data.ToByteData(),
+                data = data
             };
 
             return rpc;
@@ -743,7 +743,9 @@ namespace PurrNet.Modules
                 return;
             }
 
-            using var stream = BitPackerPool.Get(data.data);
+            using var stream = BitPackerPool.Get();
+            stream.WriteBits(data.data);
+            stream.ResetPositionAndMode(true);
 
             var rpcHandlerPtr = GetStaticRPCHandler(type, data.header.rpcId);
             var info = new RPCInfo
@@ -773,7 +775,9 @@ namespace PurrNet.Modules
 
         void ReceiveChildRPC(PlayerID player, ChildRPCPacket packet, bool asServer)
         {
-            using var stream = BitPackerPool.Get(packet.data);
+            using var stream = BitPackerPool.Get();
+            stream.WriteBits(packet.data);
+            stream.ResetPositionAndMode(true);
 
             var info = new RPCInfo
             {
@@ -870,7 +874,9 @@ namespace PurrNet.Modules
 
         void ReceiveRPC(PlayerID player, RPCPacket packet, bool asServer)
         {
-            using var stream = BitPackerPool.Get(packet.data);
+            using var stream = BitPackerPool.Get();
+            stream.WriteBits(packet.data);
+            stream.ResetPositionAndMode(true);
 
             var info = new RPCInfo
             {
@@ -902,10 +908,9 @@ namespace PurrNet.Modules
         }
 
         [UsedByIL]
-        public static void PreProcessRpc(ref ByteData rpcData, RPCSignature signature, ref BitPacker packer)
+        public static void PreProcessRpc(RPCSignature signature, ref BitPacker packer)
         {
-            rpcData = packer.ToByteData();
-            onPreProcessRpc?.Invoke(ref rpcData, signature, ref packer);
+            onPreProcessRpc?.Invoke(signature, ref packer);
 
             if (signature.compressionLevel == CompressionLevel.None)
                 return;
@@ -920,21 +925,20 @@ namespace PurrNet.Modules
             };
 
             var newPacker = packer.Pickle(level);
-            rpcData = newPacker.ToByteData();
             packer.Dispose();
             packer = newPacker;
         }
 
         [UsedByIL]
-        public static void PostProcessRpc(ByteData rpcData, RPCInfo info, ref BitPacker packer)
+        public static void PostProcessRpc(RPCInfo info, ref BitPacker packer)
         {
-            onPostProcessRpc?.Invoke(rpcData, info, ref packer);
+            onPostProcessRpc?.Invoke(info, ref packer);
 
             if (info.compileTimeSignature.compressionLevel == CompressionLevel.None)
                 return;
 
             var newPacker = BitPackerPool.Get();
-            newPacker.UnpickleFrom(rpcData);
+            newPacker.UnpickleFrom(packer);
             newPacker.ResetPositionAndMode(true);
 
             packer.Dispose();

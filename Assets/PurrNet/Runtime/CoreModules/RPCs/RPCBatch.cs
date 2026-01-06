@@ -38,7 +38,7 @@ namespace PurrNet.Modules
         private int _batchCount = 0;
         private readonly Dictionary<BatchKey, int> _batchIndexMap = new();
 
-        public delegate void RPCReceivedDelegate(PlayerID sender, HEADER header, ByteData content, bool asServer);
+        public delegate void RPCReceivedDelegate(PlayerID sender, HEADER header, BitPacker content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
 
         public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback)
@@ -159,24 +159,24 @@ namespace PurrNet.Modules
                 DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
                 DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
                 int pos = data.data.positionInBits;
+                int len = (int)lastLen.value;
 
-                tmp.WriteBytes(data.data, lastLen);
-                _onRPCReceived.Invoke(player, lastHeader, tmp.ToByteData(), asServer);
+                tmp.WriteBits(data.data, len);
+                _onRPCReceived.Invoke(player, lastHeader, tmp, asServer);
                 tmp.ResetPositionAndMode(false);
-
-                data.data.SetBitPosition(pos + lastLen * 8);
+                data.data.SetBitPosition(pos + len);
             }
 
             data.data.Dispose();
         }
 
-        public void Queue(DisposableList<PlayerID> targets, HEADER header, ByteData content, Channel channel)
+        public void Queue(DisposableList<PlayerID> targets, HEADER header, BitPacker content, Channel channel)
         {
             for (var i = targets.Count - 1; i >= 0; i--)
                 Queue(targets[i], header, content, channel);
         }
 
-        public void Queue(PlayerID target, HEADER header, ByteData content, Channel channel)
+        public void Queue(PlayerID target, HEADER header, BitPacker content, Channel channel)
         {
             using (_queueSingleMarker.Auto())
             {
@@ -184,7 +184,7 @@ namespace PurrNet.Modules
                 ref var batch = ref _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
-                Size contentLen = content.length;
+                Size contentLen = content.positionInBits;
 
                 DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
                 DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
@@ -211,7 +211,7 @@ namespace PurrNet.Modules
                 batch.lastDataLen = contentLen;
 
                 if (content.length > 0)
-                    batch.batchedData.WriteBytes(content.span);
+                    batch.batchedData.WriteBits(content);
             }
         }
 

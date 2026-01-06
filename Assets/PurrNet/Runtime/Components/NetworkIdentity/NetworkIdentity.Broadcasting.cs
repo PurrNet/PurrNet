@@ -273,7 +273,7 @@ namespace PurrNet
                         break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment,
+                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.AsSegment(),
                         this);
 #endif
                     rpcModule.BatchToServer(packet, signature.channel);
@@ -290,7 +290,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         for (var i = players.Count - 1; i >= 0; --i)
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData.segment, this);
+                                packet.rpcData.AsSegment(), this);
 #endif
                         rpcModule.BatchToTargets(players, packet, signature.channel);
                     }
@@ -298,7 +298,7 @@ namespace PurrNet
                     {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                            packet.rpcData.segment, this);
+                            packet.rpcData.AsSegment(), this);
 #endif
                         rpcModule.BatchToServer(packet, signature.channel);
                     }
@@ -316,7 +316,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         for (var i = players.Count - 1; i >= 0; --i)
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData.segment, this);
+                                packet.rpcData.AsSegment(), this);
 #endif
                         rpcModule.BatchToTargets(players, packet, signature.channel);
                     }
@@ -333,7 +333,7 @@ namespace PurrNet
                             packet.targetPlayerId = targets[i];
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData.segment, this);
+                                packet.rpcData.AsSegment(), this);
 #endif
                             rpcModule.BatchToServer(packet, signature.channel);
                         }
@@ -356,7 +356,7 @@ namespace PurrNet
                         break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.segment,
+                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData.AsSegment(),
                         this);
 #endif
                     rpcModule.BatchToServer(packet, signature.channel);
@@ -373,7 +373,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         for (var i = players.Count - 1; i >= 0; --i)
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData.segment, this);
+                                packet.rpcData.AsSegment(), this);
 #endif
                         rpcModule.BatchToTargets(players, packet, signature.channel);
                     }
@@ -381,7 +381,7 @@ namespace PurrNet
                     {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                            packet.rpcData.segment, this);
+                            packet.rpcData.AsSegment(), this);
 #endif
                         rpcModule.BatchToServer(packet, signature.channel);
                     }
@@ -399,7 +399,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         for (var i = players.Count - 1; i >= 0; --i)
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData.segment, this);
+                                packet.rpcData.AsSegment(), this);
 #endif
                         rpcModule.BatchToTargets(players, packet, signature.channel);
                     }
@@ -416,7 +416,7 @@ namespace PurrNet
                             packet.targetPlayerId = targets[i];
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData.segment, this);
+                                packet.rpcData.AsSegment(), this);
 #endif
                             rpcModule.BatchToServer(packet, signature.channel);
                         }
@@ -500,7 +500,7 @@ namespace PurrNet
             {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                 _myType ??= GetType();
-                Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData.segment, this);
+                Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData.AsSegment(), this);
 #endif
                 return ValidateIncomingRPC(info, signature, data, asServer);
             }

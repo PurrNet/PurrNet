@@ -6,7 +6,6 @@ using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Profiler;
-using PurrNet.Transports;
 
 namespace PurrNet
 {
@@ -198,7 +197,7 @@ namespace PurrNet
         {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
-            Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData.segment, parent);
+            Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData.AsSegment(), parent);
 #endif
             return parent && parent.ValidateIncomingRPC(info, signature, data, asServer);
         }
@@ -267,7 +266,7 @@ namespace PurrNet
                     rpcId = rpcId,
                     senderId = RPCModule.GetLocalPlayer(networkManager)
                 },
-                data = data.ToByteData(),
+                data = data
             };
 
             return rpc;

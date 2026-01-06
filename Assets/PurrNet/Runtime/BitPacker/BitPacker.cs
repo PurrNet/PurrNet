@@ -156,6 +156,11 @@ namespace PurrNet.Packing
             return new Memory<byte>(_buffer, positionInBytes, sizeHint);
         }
 
+        public ArraySegment<byte> AsSegment()
+        {
+            return new ArraySegment<byte>(_buffer, 0, length);
+        }
+
         public Span<byte> GetSpan(int sizeHint = 0)
         {
             EnsureBitsExist(sizeHint * 8);

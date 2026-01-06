@@ -367,9 +367,6 @@ namespace PurrNet.Codegen
                 var postProcessRPC = rpcModule.GetMethod("PostProcessRpc").Import(module);
 
                 // get packet.data field
-                var dataField = packetType.GetField("data").Import(module);
-                code.Append(Instruction.Create(OpCodes.Ldarga, packet));
-                code.Append(Instruction.Create(OpCodes.Ldfld, dataField));
                 code.Append(Instruction.Create(OpCodes.Ldarg, info));
                 code.Append(Instruction.Create(OpCodes.Ldarga, stream));
                 code.Append(Instruction.Create(OpCodes.Call, postProcessRPC));
@@ -1953,9 +1950,6 @@ namespace PurrNet.Codegen
             var preProcessRpc = rpcType.GetMethod("PreProcessRpc").Import(module);
 
             // get rpcDataVariable.data field
-            code.Append(Instruction.Create(OpCodes.Ldloca, rpcDataVariable));
-            code.Append(Instruction.Create(OpCodes.Ldflda, packetType.GetField("data").Import(module)));
-
             code.Append(Instruction.Create(OpCodes.Ldloc, rpcSignature)); // stream
             code.Append(Instruction.Create(OpCodes.Ldloca, streamVariable));
             code.Append(Instruction.Create(OpCodes.Call, preProcessRpc));

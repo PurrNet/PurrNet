@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: 999871916}
   - component: {fileID: 999871917}
   - component: {fileID: 999871918}
+  - component: {fileID: 999871919}
   m_Layer: 0
   m_Name: PurrNet
   m_TagString: Untagged
@@ -301,7 +302,7 @@ MonoBehaviour:
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 0}
   _tickRate: 20
-  _patchLingeringProcessBug: 0
+  _patchLingeringProcessBug: 1
 --- !u!4 &999871914
 Transform:
   m_ObjectHideFlags: 0
@@ -395,6 +396,24 @@ MonoBehaviour:
   _certPath: 
   _certPassword: 
   _sslProtocols: 0
+--- !u!114 &999871919
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 999871911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef882a0e84c58df4885b0e1e59320b49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.StatisticsManager
+  checkInterval: 0.33
+  placement: 1
+  _displayType: 3
+  _displayTarget: 6
+  fontSize: 13
+  textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &1266563117
 GameObject:
   m_ObjectHideFlags: 0
