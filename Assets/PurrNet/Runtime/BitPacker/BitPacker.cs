@@ -305,6 +305,7 @@ namespace PurrNet.Packing
         public void WriteBits(BitPacker packer)
         {
             var bits = packer._positionInBits;
+            packer._positionInBits = 0;
 
             EnsureBitsExist(bits);
 
@@ -314,6 +315,8 @@ namespace PurrNet.Packing
             for (int i = 0; i < chunks; i++)
                 WriteBitsWithoutChecks(packer.ReadBits(64), 64);
             WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+
+            packer._positionInBits = bits;
         }
 
         public void WriteBits(BitPacker packer, int bits)
