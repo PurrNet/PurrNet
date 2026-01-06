@@ -211,7 +211,7 @@ namespace PurrNet.Modules
                 batch.lastDataLen = contentLen;
 
                 if (content.length > 0)
-                    batch.batchedData.WriteBytes(content);
+                    batch.batchedData.WriteBytes(content.span);
             }
         }
 
