@@ -312,7 +312,7 @@ namespace PurrNet.Modules
         }
 
         [UsedByIL]
-        public static bool ValidateReceivingStaticRPC(RPCInfo info, RPCSignature signature, IRpc data, bool asServer)
+        public static bool ValidateReceivingStaticRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
         {
             var networkManager = NetworkManager.main;
 

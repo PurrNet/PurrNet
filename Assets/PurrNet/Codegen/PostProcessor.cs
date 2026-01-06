@@ -518,16 +518,16 @@ namespace PurrNet.Codegen
             PushRPCSignature(module, code, originalRpc, true, isNetworkClass);
             code.Append(Instruction.Create(OpCodes.Stfld, compileTimeSignatureField));
 
-            MethodReference validateReceivingRPC;
+            MethodReference validateReceivingRPCGeneric;
             if (originalRpc.Signature.isStatic)
             {
                 var rpcModule = module.GetTypeDefinition<RPCModule>();
-                validateReceivingRPC = rpcModule.GetMethod("ValidateReceivingStaticRPC").Import(module);
+                validateReceivingRPCGeneric = rpcModule.GetMethod("ValidateReceivingStaticRPC", true).Import(module);
             }
             else if (isNetworkClass)
             {
                 var nclass = module.GetTypeDefinition<NetworkModule>();
-                validateReceivingRPC = nclass.GetMethod("ValidateReceivingRPC").Import(module);
+                validateReceivingRPCGeneric = nclass.GetMethod("ValidateReceivingRPC", true).Import(module);
 
                 // Call validateReceivingRPC(this, RPCInfo, RPCSignature, asServer)
                 code.Append(Instruction.Create(OpCodes.Ldarg_0)); // this
@@ -535,20 +535,22 @@ namespace PurrNet.Codegen
             else
             {
                 var identityType = module.GetTypeDefinition<NetworkIdentity>();
-                validateReceivingRPC = identityType.GetMethod("ValidateReceivingRPC").Import(module);
+                validateReceivingRPCGeneric = identityType.GetMethod("ValidateReceivingRPC", true).Import(module);
 
                 // Call validateReceivingRPC(this, RPCInfo, RPCSignature, asServer)
                 code.Append(Instruction.Create(OpCodes.Ldarg_0)); // this
             }
+
+            // make generic of validateReceivingRPC of rpc
+            var validateReceivingRPC = new GenericInstanceMethod(validateReceivingRPCGeneric);
+            validateReceivingRPC.GenericArguments.Add(data.ParameterType);
 
             // RPCInfo info, RPCSignature signature, INetworkedData data, bool asServer
             code.Append(Instruction.Create(OpCodes.Ldarg, info)); // info
 
             code.Append(Instruction.Create(OpCodes.Ldarga, info));
             code.Append(Instruction.Create(OpCodes.Ldfld, compileTimeSignatureField));
-
             code.Append(Instruction.Create(OpCodes.Ldarg, data)); // data
-            code.Append(Instruction.Create(OpCodes.Box, data.ParameterType));
             code.Append(Instruction.Create(OpCodes.Ldarg, asServer)); // asServer
             code.Append(Instruction.Create(OpCodes.Call, validateReceivingRPC));
 

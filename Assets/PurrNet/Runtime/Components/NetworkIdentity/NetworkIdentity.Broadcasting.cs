@@ -494,7 +494,7 @@ namespace PurrNet
         static readonly ProfilerMarker _validateReceivingRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.ValidateReceivingRPC");
 
         [UsedByIL]
-        public bool ValidateReceivingRPC(RPCInfo info, RPCSignature signature, IRpc data, bool asServer)
+        public bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
         {
             using (_validateReceivingRPCMarker.Auto())
             {
@@ -506,7 +506,7 @@ namespace PurrNet
             }
         }
 
-        internal bool ValidateIncomingRPC(RPCInfo info, RPCSignature signature, IRpc data, bool asServer)
+        internal bool ValidateIncomingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
         {
             var rules = networkManager.networkRules;
             bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
