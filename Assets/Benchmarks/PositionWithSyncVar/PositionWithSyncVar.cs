@@ -8,8 +8,19 @@ public class PositionWithSyncVar : NetworkIdentity
     float timer = 3;
     Vector3 moveDir = Vector3.zero;
 
+    [ObserversRpc]
+    void Test(int v)
+    {
+        Debug.Log(v);
+    }
+
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            Test(69);
+            Test(70);
+        }
         if (isOwner)
         {
             transform.position += moveDir * Time.deltaTime;
