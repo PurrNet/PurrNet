@@ -257,18 +257,26 @@ namespace PurrNet.Modules
                     if (bytesAfterHeaderLen + 10 >= batch.cachedMTU.Value) // 10 here is just a safety margin
                     {
                         SendBatch(batch);
-
                         batch.batchCount = 0;
                         batch.lastHeader = default;
                         batch.lastDataLen = default;
                         batch.batchedData.ResetPositionAndMode(false);
+                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, headerVal);
+                        DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, content.length);
                     }
+                    else
+                    {
+                        batch.batchedData.WriteBits(header);
+                    }
+                }
+                else
+                {
+                    batch.batchedData.WriteBits(header);
                 }
 
                 ++batch.batchCount;
                 batch.lastHeader = headerVal;
                 batch.lastDataLen = content.length;
-                batch.batchedData.WriteBits(header);
                 if (content.length > 0)
                     batch.batchedData.WriteBytes(content);
 
