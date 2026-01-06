@@ -147,28 +147,41 @@ namespace PurrNet.Modules
             }
         }
 
+        static readonly ProfilerMarker _batchReceivedMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.OnBatchReceived");
+        static readonly ProfilerMarker _batchReceivedDeltasMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.OnBatchReceived.ReadDeltas");
+
         private void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
         {
-            HEADER lastHeader = default;
-            Size lastLen = default;
-
-            using var tmp = BitPackerPool.Get();
-
-            for (var i = 0; i < data.count.value; ++i)
+            using (_batchReceivedMarker.Auto())
             {
-                DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
-                DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
-                int pos = data.data.positionInBits;
-                int len = (int)lastLen.value;
+                HEADER lastHeader = default;
+                Size lastLen = default;
 
-                tmp.WriteBits(data.data, len);
-                _onRPCReceived.Invoke(player, lastHeader, tmp, asServer);
-                tmp.ResetPositionAndMode(false);
-                data.data.SetBitPosition(pos + len);
+                using var tmp = BitPackerPool.Get();
+
+                for (var i = 0; i < data.count.value; ++i)
+                {
+                    using (_batchReceivedDeltasMarker.Auto())
+                    {
+                        DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
+                        DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
+                    }
+
+                    int pos = data.data.positionInBits;
+                    int len = (int)lastLen.value;
+
+                    tmp.WriteBits(data.data, len);
+                    _onRPCReceived.Invoke(player, lastHeader, tmp, asServer);
+                    tmp.ResetPositionAndMode(false);
+                    data.data.SetBitPosition(pos + len);
+                }
+
+                data.data.Dispose();
             }
-
-            data.data.Dispose();
         }
+
+        static readonly ProfilerMarker _batchWriteDeltasMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue.WriteDeltas");
+
 
         public void Queue(DisposableList<PlayerID> targets, HEADER header, BitPacker content, Channel channel)
         {
@@ -186,8 +199,11 @@ namespace PurrNet.Modules
                 int before = batch.batchedData.positionInBits;
                 Size contentLen = content.positionInBits;
 
-                DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
-                DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+                using (_batchWriteDeltasMarker.Auto())
+                {
+                    DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
+                    DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+                }
 
                 int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
 
@@ -198,12 +214,14 @@ namespace PurrNet.Modules
                     batch.batchedData.SetBitPosition(before);
                     SendBatch(ref batch);
                     batch.batchCount = 0;
-                    batch.cachedMTU = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
                     batch.batchedData.ResetPositionAndMode(false);
 
                     // redo the last write
-                    DeltaPacker<HEADER>.WriteFunc(batch.batchedData, default, header);
-                    DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
+                    using (_batchWriteDeltasMarker.Auto())
+                    {
+                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, default, header);
+                        DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
+                    }
                 }
 
                 ++batch.batchCount;
