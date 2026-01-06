@@ -16,6 +16,8 @@ namespace PurrNet.Modules
         static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.FlushChannel");
         static readonly ProfilerMarker _getSingleBatchMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.GetBatchIndex");
         static readonly ProfilerMarker _queueMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue");
+        static readonly ProfilerMarker _queueSimilarSearchMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue(Gathering Similar Batches)");
+        static readonly ProfilerMarker _queueSimilarSendMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue(Sending Similar Batches)");
         static readonly ProfilerMarker _queueSingleMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue(Single)");
 
         struct PendingBatchedData
@@ -32,6 +34,28 @@ namespace PurrNet.Modules
         {
             public Size count;
             public BitPacker data;
+        }
+
+        struct UsersBatchKey : IEquatable<UsersBatchKey>
+        {
+            public HEADER lastHeader;
+            public Size lastDataLen;
+
+            public bool Equals(UsersBatchKey other)
+            {
+                return lastHeader.Equals(other.lastHeader) &&
+                       lastDataLen.Equals(other.lastDataLen);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is UsersBatchKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(lastHeader, lastDataLen);
+            }
         }
 
         private readonly PlayersManager _playersManager;
@@ -160,10 +184,95 @@ namespace PurrNet.Modules
         {
             using (_queueMarker.Auto())
             {
-                for (var i = targets.Count - 1; i >= 0; i--)
+                Size len = content.length;
+                var similarBatches = DisposableDictionary<UsersBatchKey, DisposableList<PlayerID>>.Create();
+                similarBatches.dictionary.EnsureCapacity(targets.Count);
+
+                using (_queueSimilarSearchMarker.Auto())
                 {
-                    Queue(targets[i], header, content, channel);
+                    for (var i = targets.Count - 1; i >= 0; i--)
+                    {
+                        var target = targets[i];
+
+                        UsersBatchKey key;
+
+                        if (_batchIndexMap.TryGetValue(new BatchKey { playerId = target, channel = channel },
+                                out int idx))
+                        {
+                            var batch = _batches[idx];
+                            key = new UsersBatchKey { lastHeader = batch.lastHeader, lastDataLen = batch.lastDataLen };
+                        }
+                        else key = new UsersBatchKey { lastHeader = default, lastDataLen = default };
+
+                        if (similarBatches.TryGetValue(key, out var list))
+                        {
+                            list.Add(target);
+                        }
+                        else
+                        {
+                            var newList = DisposableList<PlayerID>.Create();
+                            newList.Add(target);
+                            similarBatches[key] = newList;
+                        }
+                    }
                 }
+
+                using (_queueSimilarSendMarker.Auto())
+                {
+                    using (var enumerator = similarBatches.dictionary.GetEnumerator())
+                    {
+                        while (enumerator.MoveNext())
+                        {
+                            var key = enumerator.Current.Key;
+                            var value = enumerator.Current.Value;
+
+                            using var packer = BitPackerPool.Get();
+                            DeltaPacker<HEADER>.WriteFunc(packer, key.lastHeader, header);
+                            DeltaPackInteger.WriteIndex(packer, key.lastDataLen, len);
+
+                            for (var i = value.Count - 1; i >= 0; i--)
+                                Queue(value[i], packer, header, content, channel);
+
+                            value.Dispose();
+                        }
+                    }
+                }
+
+                similarBatches.Dispose();
+            }
+        }
+
+        public void Queue(PlayerID target, BitPacker header, HEADER headerVal, ByteData content, Channel channel)
+        {
+            using (_queueSingleMarker.Auto())
+            {
+                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                var batch = _batches[batchIdx];
+                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length + header.positionInBytes;
+
+                // do some MTU checks past 1 batch
+                if (batch.batchCount > 0)
+                {
+                    batch.cachedMTU ??= _playersManager.GetMTU(target, channel, target != PlayerID.Server);
+                    if (bytesAfterHeaderLen + 10 >= batch.cachedMTU.Value) // 10 here is just a safety margin
+                    {
+                        SendBatch(batch);
+
+                        batch.batchCount = 0;
+                        batch.lastHeader = default;
+                        batch.lastDataLen = default;
+                        batch.batchedData.ResetPositionAndMode(false);
+                    }
+                }
+
+                ++batch.batchCount;
+                batch.lastHeader = headerVal;
+                batch.lastDataLen = content.length;
+                batch.batchedData.WriteBits(header);
+                if (content.length > 0)
+                    batch.batchedData.WriteBytes(content);
+
+                _batches[batchIdx] = batch;
             }
         }
 
