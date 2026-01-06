@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -42,8 +41,6 @@ namespace PurrNet
 
 
         private int[] _pingStats;
-        private readonly uint[] _sentPacketSequences = new uint[MAX_PACKET_HISTORY];
-        private readonly uint[] _receivedPacketSequences = new uint[MAX_PACKET_HISTORY];
         private readonly float[] _sentPacketTimes = new float[MAX_PACKET_HISTORY];
         private readonly float[] _receivedPacketTimes = new float[MAX_PACKET_HISTORY];
         private readonly Queue<(float time, int value)> _pingVisibleHistory = new();
@@ -357,8 +354,6 @@ namespace PurrNet
             {
                 _sentPacketTimes[i] = 0;
                 _receivedPacketTimes[i] = 0;
-                _sentPacketSequences[i] = 0;
-                _receivedPacketSequences[i] = 0;
             }
 
             ResetStatistics_ServerStats();
@@ -437,14 +432,25 @@ namespace PurrNet
 
             float now = Time.time;
             _pingVisibleHistory.Enqueue((now, ping));
-;
+
             while (_pingVisibleHistory.Count > 0 && now - _pingVisibleHistory.Peek().time > JITTER_SAMPLE_TIME)
                 _pingVisibleHistory.Dequeue();
 
             if (_pingVisibleHistory.Count > 1)
             {
-                int min = _pingVisibleHistory.Min(x => x.value);
-                int max = _pingVisibleHistory.Max(x => x.value);
+                int min = int.MaxValue;
+                int max = int.MinValue;
+
+                using (var enumerator = _pingVisibleHistory.GetEnumerator())
+                {
+                    while (enumerator.MoveNext())
+                    {
+                        var item = enumerator.Current;
+                        if (item.value < min) min = item.value;
+                        if (item.value > max) max = item.value;
+                    }
+                }
+
                 jitter = max - min;
             }
             else
@@ -460,7 +466,6 @@ namespace PurrNet
 
             _lastPacketSendTick = _tickManager.localTick;
 
-            _sentPacketSequences[_sentPacketIndex] = _packetSequence;
             _sentPacketTimes[_sentPacketIndex] = Time.time;
             _sentPacketIndex = (_sentPacketIndex + 1) % MAX_PACKET_HISTORY;
             if (_sentPacketCount < MAX_PACKET_HISTORY)
@@ -514,13 +519,11 @@ namespace PurrNet
                 if (_sentPacketTimes[i] > 0 && _sentPacketTimes[i] < cutoffTime)
                 {
                     _sentPacketTimes[i] = 0;
-                    _sentPacketSequences[i] = 0;
                 }
 
                 if (_receivedPacketTimes[i] > 0 && _receivedPacketTimes[i] < cutoffTime)
                 {
                     _receivedPacketTimes[i] = 0;
-                    _receivedPacketSequences[i] = 0;
                 }
             }
         }
@@ -533,7 +536,6 @@ namespace PurrNet
                 return;
             }
 
-            _receivedPacketSequences[_receivedPacketIndex] = msg.sequenceId;
             _receivedPacketTimes[_receivedPacketIndex] = Time.time;
             _receivedPacketIndex = (_receivedPacketIndex + 1) % MAX_PACKET_HISTORY;
             if (_receivedPacketCount < MAX_PACKET_HISTORY)
