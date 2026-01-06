@@ -23,7 +23,7 @@ namespace PurrNet.Modules
             public HEADER lastHeader;
             public Size lastDataLen;
             public int batchCount;
-            public int? cachedMTU;
+            public int cachedMTU;
             public BitPacker batchedData;
         }
 
@@ -86,7 +86,7 @@ namespace PurrNet.Modules
                     if (batch.key.channel != channel)
                         continue;
 
-                    SendBatch(batch);
+                    SendBatch(ref batch);
                     batch.batchedData.Dispose();
                     _batches.RemoveAt(i);
                     removed = true;
@@ -101,7 +101,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private void SendBatch(PendingBatchedData batch)
+        private void SendBatch(ref PendingBatchedData batch)
         {
             var data = new RPCBatchPacket
             {
@@ -120,7 +120,12 @@ namespace PurrNet.Modules
                     return idx;
 
                 int c = _batches.Count;
-                _batches.Add(new PendingBatchedData { key = key, batchedData = BitPackerPool.Get() });
+                _batches.Add(new PendingBatchedData
+                {
+                    key = key,
+                    batchedData = BitPackerPool.Get(),
+                    cachedMTU = _playersManager.GetMTU(key.playerId, key.channel, key.playerId != PlayerID.Server)
+                });
                 _batchIndexMap[key] = c;
                 return c;
             }
@@ -171,22 +176,18 @@ namespace PurrNet.Modules
                 int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
 
                 // do some MTU checks past 1 batch
-                if (batch.batchCount > 0)
+                if (batch.batchCount > 0 && bytesAfterHeaderLen + 10 >= batch.cachedMTU)
                 {
-                    batch.cachedMTU ??= _playersManager.GetMTU(target, channel, target != PlayerID.Server);
-                    if (bytesAfterHeaderLen + 10 >= batch.cachedMTU.Value) // 10 here is just a safety margin
-                    {
-                        // undo the last write
-                        batch.batchedData.SetBitPosition(before);
-                        SendBatch(batch);
-                        batch.batchCount = 0;
-                        batch.cachedMTU = null;
-                        batch.batchedData.ResetPositionAndMode(false);
+                    // undo the last write
+                    batch.batchedData.SetBitPosition(before);
+                    SendBatch(ref batch);
+                    batch.batchCount = 0;
+                    batch.cachedMTU = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
+                    batch.batchedData.ResetPositionAndMode(false);
 
-                        // redo the last write
-                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, default, header);
-                        DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
-                    }
+                    // redo the last write
+                    DeltaPacker<HEADER>.WriteFunc(batch.batchedData, default, header);
+                    DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                 }
 
                 ++batch.batchCount;
