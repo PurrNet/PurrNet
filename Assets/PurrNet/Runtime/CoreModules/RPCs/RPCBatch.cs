@@ -1,44 +1,46 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
+using Unity.Collections;
 using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
-    [RegisterNetworkType(typeof(RPCBatch<NetworkIdentityRPCHeader>.RPCBatchPacket))]
-    [RegisterNetworkType(typeof(RPCBatch<NetworkModuleRPCHeader>.RPCBatchPacket))]
-    [RegisterNetworkType(typeof(RPCBatch<StaticRPCHeader>.RPCBatchPacket))]
-    public sealed class RPCBatch<HEADER> : IDisposable where HEADER : unmanaged, IEquatable<HEADER>
+    internal struct RPCBatchPacket : IPackedAuto
     {
-        static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Flush");
-        static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.FlushChannel");
-        static readonly ProfilerMarker _getSingleBatchMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.GetBatchIndex");
-        static readonly ProfilerMarker _queueSingleMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue");
+        public Size count;
+        public BitPacker data;
+    }
 
-        struct PendingBatchedData
-        {
-            public BatchKey key;
-            public HEADER lastHeader;
-            public Size lastDataLen;
-            public int batchCount;
-            public int cachedMTU;
-            public BitPacker batchedData;
-        }
+    internal struct PendingBatchedData
+    {
+        public BatchKey key;
+        public UnionRPCHeader lastHeader;
+        public Size lastDataLen;
+        public int batchCount;
+        public int cachedMTU;
+        public BitPacker batchedData;
+    }
 
-        struct RPCBatchPacket : IPackedAuto
-        {
-            public Size count;
-            public BitPacker data;
-        }
+    public sealed class RPCBatch : IDisposable
+    {
+        static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Flush");
+        static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.FlushChannel");
+        static readonly ProfilerMarker _getSingleBatchMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.GetBatchIndex");
+        static readonly ProfilerMarker _queueSingleMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Queue");
+        static readonly ProfilerMarker _batchWriteDeltasMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Queue.WriteDeltas");
+        static readonly ProfilerMarker _batchReceivedMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived");
+        static readonly ProfilerMarker _batchReceivedDeltasMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived.ReadDeltas");
+        static readonly ProfilerMarker _batchWriteBitsMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived.WriteBits");
 
         private readonly PlayersManager _playersManager;
         private PendingBatchedData[] _batches = new PendingBatchedData[128];
+        private NativeHashMap<BatchKey, int> _batchIndexMap;
         private int _batchCount = 0;
-        private readonly Dictionary<BatchKey, int> _batchIndexMap = new();
 
-        public delegate void RPCReceivedDelegate(PlayerID sender, HEADER header, BitPacker content, bool asServer);
+        public delegate void RPCReceivedDelegate(PlayerID sender, UnionRPCHeader header, BitPacker content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
 
         public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback)
@@ -46,11 +48,13 @@ namespace PurrNet.Modules
             _playersManager = playersManager;
             _onRPCReceived = callback;
             _playersManager.Subscribe<RPCBatchPacket>(OnBatchReceived);
+            _batchIndexMap = new NativeHashMap<BatchKey, int>(128, Allocator.Persistent);
         }
 
         public void Dispose()
         {
             _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
+            _batchIndexMap.Dispose();
         }
 
         public void Flush()
@@ -147,14 +151,11 @@ namespace PurrNet.Modules
             }
         }
 
-        static readonly ProfilerMarker _batchReceivedMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.OnBatchReceived");
-        static readonly ProfilerMarker _batchReceivedDeltasMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.OnBatchReceived.ReadDeltas");
-
         private void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
         {
             using (_batchReceivedMarker.Auto())
             {
-                HEADER lastHeader = default;
+                UnionRPCHeader lastHeader = default;
                 Size lastLen = default;
 
                 using var tmp = BitPackerPool.Get();
@@ -163,7 +164,7 @@ namespace PurrNet.Modules
                 {
                     using (_batchReceivedDeltasMarker.Auto())
                     {
-                        DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
+                        DeltaPacker<UnionRPCHeader>.ReadFunc(data.data, lastHeader, ref lastHeader);
                         DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
                     }
 
@@ -180,16 +181,14 @@ namespace PurrNet.Modules
             }
         }
 
-        static readonly ProfilerMarker _batchWriteDeltasMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue.WriteDeltas");
-
-
-        public void Queue(DisposableList<PlayerID> targets, HEADER header, BitPacker content, Channel channel)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitPacker content, Channel channel)
         {
             for (var i = targets.Count - 1; i >= 0; i--)
                 Queue(targets[i], header, content, channel);
         }
 
-        public void Queue(PlayerID target, HEADER header, BitPacker content, Channel channel)
+        public void Queue(PlayerID target, UnionRPCHeader header, BitPacker content, Channel channel)
         {
             using (_queueSingleMarker.Auto())
             {
@@ -201,7 +200,7 @@ namespace PurrNet.Modules
 
                 using (_batchWriteDeltasMarker.Auto())
                 {
-                    DeltaPacker<HEADER>.WriteFunc(batch.batchedData, batch.lastHeader, header);
+                    DeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
                     DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
                 }
 
@@ -219,7 +218,7 @@ namespace PurrNet.Modules
                     // redo the last write
                     using (_batchWriteDeltasMarker.Auto())
                     {
-                        DeltaPacker<HEADER>.WriteFunc(batch.batchedData, default, header);
+                        DeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);
                         DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                     }
                 }
@@ -228,8 +227,11 @@ namespace PurrNet.Modules
                 batch.lastHeader = header;
                 batch.lastDataLen = contentLen;
 
-                if (content.length > 0)
-                    batch.batchedData.WriteBits(content);
+                using (_batchWriteBitsMarker.Auto())
+                {
+                    if (content.length > 0)
+                        batch.batchedData.WriteBits(content);
+                }
             }
         }
 

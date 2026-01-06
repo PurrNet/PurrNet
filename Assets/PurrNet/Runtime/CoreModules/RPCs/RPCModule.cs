@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using K4os.Compression.LZ4;
 using PurrNet.Logging;
 using PurrNet.Packing;
@@ -27,9 +28,7 @@ namespace PurrNet.Modules
         readonly GlobalOwnershipModule _ownership;
         readonly NetworkManager _manager;
 
-        private readonly RPCBatch<NetworkIdentityRPCHeader> _normalRpcBatch;
-        private readonly RPCBatch<NetworkModuleRPCHeader> _childRpcBatch;
-        private readonly RPCBatch<StaticRPCHeader> _staticRpcBatch;
+        private readonly RPCBatch _unionBatch;
 
         public RPCModule(NetworkManager manager, PlayersManager playersManager, HierarchyFactory hierarchyModule,
             GlobalOwnershipModule ownerships, ScenesModule scenes)
@@ -40,16 +39,30 @@ namespace PurrNet.Modules
             _scenes = scenes;
             _ownership = ownerships;
 
-            _normalRpcBatch = new RPCBatch<NetworkIdentityRPCHeader>(_playersManager, ReceivedNormalBatchedRPC);
-            _childRpcBatch = new RPCBatch<NetworkModuleRPCHeader>(_playersManager, ReceivedChildBatchedRPC);
-            _staticRpcBatch = new RPCBatch<StaticRPCHeader>(_playersManager, ReiceStaticBatchedRPC);
+            _unionBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC);
+        }
+
+        private void ReceivedUnionBatchedRPC(PlayerID sender, UnionRPCHeader header, BitPacker content, bool asServer)
+        {
+            if (header.moduleRpc.HasValue)
+            {
+                ReceivedChildBatchedRPC(sender, header.ToModuleHeader(), content, asServer);
+                return;
+            }
+
+            if (header.identityRpc.HasValue)
+            {
+                ReceivedNormalBatchedRPC(sender, header.ToIdentityHeader(), content, asServer);
+                return;
+            }
+
+            if (header.staticRpc.HasValue)
+                ReiceStaticBatchedRPC(sender, header.ToStaticHeader(), content, asServer);
         }
 
         public void PromoteToServerModule()
         {
-            _normalRpcBatch.Clear();
-            _childRpcBatch.Clear();
-            _staticRpcBatch.Clear();
+            _unionBatch.Clear();
         }
 
         public void PostPromoteToServerModule() { }
@@ -945,100 +958,49 @@ namespace PurrNet.Modules
             packer = newPacker;
         }
 
-
-        private void QueueToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
-        {
-            _normalRpcBatch.Queue(players, packet.header, packet.data, signatureChannel);
-        }
-
-        private void QueueToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
-        {
-            _childRpcBatch.Queue(players, packet.header, packet.data, signatureChannel);
-        }
-
-        private void QueueToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
-        {
-            _staticRpcBatch.Queue(players, packet.header, packet.data, signatureChannel);
-        }
-
-        enum RPCMethod
-        {
-            NetworkIdentity,
-            NetworkModule,
-            Static
-        }
-
-        private RPCMethod lastUsedMethod;
-
-        private void FlushByMethod(RPCMethod method)
-        {
-            switch (method)
-            {
-                case RPCMethod.NetworkIdentity:
-                    _normalRpcBatch.FlushChannel(Channel.ReliableOrdered);
-                    break;
-                case RPCMethod.NetworkModule:
-                    _childRpcBatch.FlushChannel(Channel.ReliableOrdered);
-                    break;
-                case RPCMethod.Static:
-                    _staticRpcBatch.FlushChannel(Channel.ReliableOrdered);
-                    break;
-                default: throw new ArgumentOutOfRangeException(nameof(method), method, null);
-            }
-        }
-
-        private void FlushIfDifferent(RPCMethod method)
-        {
-            if (lastUsedMethod != method)
-            {
-                FlushByMethod(lastUsedMethod);
-                lastUsedMethod = method;
-            }
-        }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToServer(RPCPacket normalRpc, Channel signatureChannel)
         {
-            FlushIfDifferent(RPCMethod.NetworkIdentity);
-            _normalRpcBatch.Queue(PlayerID.Server, normalRpc.header, normalRpc.data, signatureChannel);
+            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(normalRpc.header), normalRpc.data, signatureChannel);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToServer(ChildRPCPacket childRpc, Channel signatureChannel)
         {
-            FlushIfDifferent(RPCMethod.NetworkModule);
-            _childRpcBatch.Queue(PlayerID.Server, childRpc.header, childRpc.data, signatureChannel);
+            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(childRpc.header), childRpc.data, signatureChannel);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToServer(StaticRPCPacket staticRpc, Channel signatureChannel)
         {
-            FlushIfDifferent(RPCMethod.Static);
-            _staticRpcBatch.Queue(PlayerID.Server, staticRpc.header, staticRpc.data, signatureChannel);
+            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(staticRpc.header), staticRpc.data, signatureChannel);
         }
 
-        public void BatchToTargets(DisposableList<PlayerID> players, RPCPacket normalRpc, Channel signatureChannel)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
         {
-            FlushIfDifferent(RPCMethod.NetworkIdentity);
-            QueueToTargets(players, normalRpc, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
         }
 
-        public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket normalRpc, Channel signatureChannel)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
         {
-            FlushIfDifferent(RPCMethod.NetworkModule);
-            QueueToTargets(players, normalRpc, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
         }
 
-        public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket normalRpc, Channel signatureChannel)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
         {
-            FlushIfDifferent(RPCMethod.Static);
-            QueueToTargets(players, normalRpc, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchNetworkMessages()
         {
-            _staticRpcBatch.Flush();
-            _normalRpcBatch.Flush();
-            _childRpcBatch.Flush();
+            _unionBatch.Flush();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void FlushBatchedRPCs()
         {
             BatchNetworkMessages();
