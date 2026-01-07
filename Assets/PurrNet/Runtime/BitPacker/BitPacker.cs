@@ -310,11 +310,13 @@ namespace PurrNet.Packing
 
         public void WriteBitDataWithoutConsumingIt(BitData data)
         {
+            int toRead = (int)data.bitLength.value;
+            if (toRead == 0) return;
+
             var other = data.packer;
             var beforeBitPosition = other._positionInBits;
 
             other._positionInBits = data.bitOrigin;
-            int toRead = (int)data.bitLength.value;
             EnsureBitsExist(toRead);
 
             int chunks = toRead / 64;
@@ -322,7 +324,9 @@ namespace PurrNet.Packing
 
             for (int i = 0; i < chunks; i++)
                 WriteBitsWithoutChecks(other.ReadBits(64), 64);
-            WriteBitsWithoutChecks(other.ReadBits(excess), excess);
+
+            if (excess != 0)
+                WriteBitsWithoutChecks(other.ReadBits(excess), excess);
 
             other.SetBitPosition(beforeBitPosition);
         }
