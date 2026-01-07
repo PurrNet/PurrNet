@@ -1126,7 +1126,7 @@ namespace PurrNet
             _ticker = null;
         }
 
-        internal int _spawnedCount;
+        private int _spawnedCount;
         private bool _wasEarlySpawned;
 
         public bool isFullySpawned => _spawnedCount > 0;
