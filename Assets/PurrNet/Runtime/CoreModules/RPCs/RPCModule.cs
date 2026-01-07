@@ -878,7 +878,7 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static void PreProcessRpc(RPCSignature signature, ref BitPacker packer, ref BitData rpcData)
         {
-            bool hasCompression = signature.compressionLevel == CompressionLevel.None;
+            bool hasCompression = signature.compressionLevel != CompressionLevel.None;
             bool hasCustomPostProcessor = onPreProcessRpc != null;
 
             if (hasCompression || hasCustomPostProcessor)
@@ -909,7 +909,7 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static void PostProcessRpc(RPCInfo info, ref BitData data)
         {
-            bool hasCompression = info.compileTimeSignature.compressionLevel == CompressionLevel.None;
+            bool hasCompression = info.compileTimeSignature.compressionLevel != CompressionLevel.None;
             bool hasCustomPostProcessor = onPostProcessRpc != null;
 
             if (hasCustomPostProcessor || hasCompression)
