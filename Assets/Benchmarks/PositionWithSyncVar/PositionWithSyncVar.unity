@@ -302,7 +302,7 @@ MonoBehaviour:
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 999871920}
-  _tickRate: 128
+  _tickRate: 30
   _patchLingeringProcessBug: 1
 --- !u!4 &999871914
 Transform:
