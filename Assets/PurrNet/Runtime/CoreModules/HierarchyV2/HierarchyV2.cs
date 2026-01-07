@@ -1743,7 +1743,13 @@ namespace PurrNet.Modules
 
         private void TriggerDespawnEvent(NetworkIdentity identity)
         {
-            if (_asServer && IsServerHost())
+            bool isHost = _asServer && IsServerHost();
+            bool isFullySpawned = !identity.isFullySpawned;
+
+            if (!isFullySpawned)
+                identity._spawnedCount = isHost ? 2 : 1;
+
+            if (isHost)
                 identity.TriggerDespawnEvent(false);
             identity.TriggerDespawnEvent(_asServer);
         }
