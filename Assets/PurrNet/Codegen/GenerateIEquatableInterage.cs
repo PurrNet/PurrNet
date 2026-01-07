@@ -155,6 +155,8 @@ namespace PurrNet.Codegen
                 il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
             }
 
+            var otherParam = method.Parameters[0];
+
             foreach (var field in type.Fields)
             {
                 if (field.IsStatic)
@@ -212,7 +214,7 @@ namespace PurrNet.Codegen
                 }
                 else if (!field.FieldType.IsArray && TryGetEqualsFunction(resolvedFieldType, out var equals))
                 {
-                    PushAB_A(il, fieldRef);
+                    PushAB_A(il, fieldRef, otherParam);
 
                     il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
@@ -246,12 +248,10 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
 
-        private static void PushAB_A(ILProcessor il, FieldReference field)
+        private static void PushAB_A(ILProcessor il, FieldReference field, ParameterDefinition otherParam)
         {
-            bool isFieldClass = !field.FieldType.IsValueType || field.FieldType.IsArray;
-
-            il.Append(Instruction.Create(OpCodes.Ldarg_1));
-            il.Append(Instruction.Create(!isFieldClass ? OpCodes.Ldflda : OpCodes.Ldfld, field));
+            il.Append(Instruction.Create(OpCodes.Ldarga_S, otherParam));
+            il.Append(Instruction.Create(OpCodes.Ldflda, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
