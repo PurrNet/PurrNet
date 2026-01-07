@@ -1265,9 +1265,11 @@ namespace PurrNet.Modules
                 return;
             }
 
+            bool isHost = IsServerHost();
+
             // Try to despawn the object properly if despawn was on the same tick (by first calling OnSpawned)
             for (var i = 0; i < c; i++)
-                CompletePendingSpawnsFor(children[i]);
+                CompletePendingSpawnsFor(children[i], isHost);
 
             if (_asServer)
             {
@@ -1425,10 +1427,8 @@ namespace PurrNet.Modules
             SpawnDelayedIdentities();
         }
 
-        private void CompletePendingSpawnsFor(NetworkIdentity toSpawn)
+        private void CompletePendingSpawnsFor(NetworkIdentity toSpawn, bool isHost)
         {
-            bool isHost = IsServerHost();
-
             if (_toSpawnNextFrame.Remove(toSpawn))
             {
                 if (!toSpawn || !toSpawn.isSpawned)
