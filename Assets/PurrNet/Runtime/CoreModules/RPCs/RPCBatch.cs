@@ -171,7 +171,8 @@ namespace PurrNet.Modules
 
                     var bitData = new BitData(data.data, pos, len);
                     _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
-                    data.data.AdvanceBits(len);
+
+                    data.data.SetBitPosition(pos + len);
                 }
 
                 data.data.Dispose();

@@ -632,24 +632,6 @@ namespace PurrNet.Packing
             return result;
         }
 
-        public void ReadBytes(BitPacker target, int count)
-        {
-            EnsureBitsExist(count * 8);
-
-            int excess = count % 8;
-            int fullChunks = count / 8;
-
-            // Process excess bytes (remaining bytes before full 64-bit chunks)
-            for (int i = 0; i < excess; i++)
-            {
-                target.WriteBits(ReadBits(8), 8);
-            }
-
-            // Process full 64-bit chunks
-            for (int i = 0; i < fullChunks; i++)
-                target.WriteBits(ReadBits(64), 64);
-        }
-
         public void ReadBytes(Span<byte> destination)
         {
             int count = destination.Length;
@@ -677,47 +659,6 @@ namespace PurrNet.Packing
         public void WriteBytes(ByteData byteData)
         {
             WriteBytes(byteData.span);
-        }
-
-        public void WriteBytes(BitPacker other, int count)
-        {
-            EnsureBitsExist(count * 8);
-
-            int fullChunks = count / 8;
-            int excess = count % 8;
-
-            // Process full 64-bit chunks
-            for (int i = 0; i < fullChunks; i++)
-                WriteBitsWithoutChecks(other.ReadBits(64), 64);
-
-            // Process excess bytes (remaining bytes before full 64-bit chunks)
-            for (int i = 0; i < excess; i++)
-                WriteBitsWithoutChecks(other.ReadBits(8), 8);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void PadToByte()
-        {
-            int padding = 8 - positionInBits % 8;
-            if (padding != 8)
-            {
-                AdvanceBits(padding);
-                _positionInBits += padding;
-            }
-        }
-
-        public void WriteAlignedBytes(ReadOnlySpan<byte> bytes)
-        {
-            PadToByte();
-            bytes.CopyTo(GetSpan(bytes.Length));
-            _positionInBits += bytes.Length * 8;
-        }
-
-        public void ReadBytesAligned(Span<byte> destination)
-        {
-            PadToByte();
-            GetSpan(destination.Length).CopyTo(destination);
-            _positionInBits += destination.Length * 8;
         }
 
         public void WriteBytes(ReadOnlySpan<byte> bytes)

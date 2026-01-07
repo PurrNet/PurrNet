@@ -28,7 +28,7 @@ namespace PurrNet.Modules
         readonly GlobalOwnershipModule _ownership;
         readonly NetworkManager _manager;
 
-        private readonly RPCBatch _unionBatch;
+        private RPCBatch _unionBatch;
 
         public RPCModule(NetworkManager manager, PlayersManager playersManager, HierarchyFactory hierarchyModule,
             GlobalOwnershipModule ownerships, ScenesModule scenes)
@@ -38,8 +38,6 @@ namespace PurrNet.Modules
             _hierarchyModule = hierarchyModule;
             _scenes = scenes;
             _ownership = ownerships;
-
-            _unionBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC);
         }
 
         private void ReceivedUnionBatchedRPC(PlayerID sender, UnionRPCHeader header, BitData content, bool asServer)
@@ -105,6 +103,8 @@ namespace PurrNet.Modules
 
             _hierarchyModule.onSentSpawnPacket += OnObserverAdded;
             _hierarchyModule.onIdentityRemoved += OnIdentityRemoved;
+
+            _unionBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC);
         }
 
         public void Disable(bool asServer)
@@ -118,6 +118,8 @@ namespace PurrNet.Modules
 
             _hierarchyModule.onSentSpawnPacket -= OnObserverAdded;
             _hierarchyModule.onIdentityRemoved -= OnIdentityRemoved;
+
+            _unionBatch.Dispose();
         }
 
         private void OnObserverAdded(PlayerID player, SceneID scene, NetworkID id)

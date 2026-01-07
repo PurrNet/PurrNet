@@ -78,4 +78,23 @@ public class TestBitData
             Assert.That(result, Is.EqualTo("actual"));
         }
     }
+
+    [Test]
+    public void TestPackingBitPacker()
+    {
+        packer.ResetPositionAndMode(false);
+
+        Packer<string>.Write(packer, "test");
+        Packer<string>.Write(packer, "actual");
+
+        using var copy = BitPackerPool.Get();
+        Packer<BitPacker>.Write(copy, packer);
+        copy.ResetPositionAndMode(true);
+        var readPacker = Packer<BitPacker>.Read(copy);
+
+        var resultTest = Packer<string>.Read(readPacker);
+        var resultActual = Packer<string>.Read(readPacker);
+        Assert.That(resultTest, Is.EqualTo("test"));
+        Assert.That(resultActual, Is.EqualTo("actual"));
+    }
 }
