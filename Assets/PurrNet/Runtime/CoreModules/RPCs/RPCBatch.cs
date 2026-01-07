@@ -40,7 +40,7 @@ namespace PurrNet.Modules
         private NativeHashMap<BatchKey, int> _batchIndexMap;
         private int _batchCount = 0;
 
-        public delegate void RPCReceivedDelegate(PlayerID sender, UnionRPCHeader header, BitPacker content, bool asServer);
+        public delegate void RPCReceivedDelegate(PlayerID sender, UnionRPCHeader header, BitData content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
 
         public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback)
@@ -158,8 +158,6 @@ namespace PurrNet.Modules
                 UnionRPCHeader lastHeader = default;
                 Size lastLen = default;
 
-                using var tmp = BitPackerPool.Get();
-
                 for (var i = 0; i < data.count.value; ++i)
                 {
                     using (_batchReceivedDeltasMarker.Auto())
@@ -171,10 +169,9 @@ namespace PurrNet.Modules
                     int pos = data.data.positionInBits;
                     int len = (int)lastLen.value;
 
-                    tmp.WriteBits(data.data, len);
-                    _onRPCReceived.Invoke(player, lastHeader, tmp, asServer);
-                    tmp.ResetPositionAndMode(false);
-                    data.data.SetBitPosition(pos + len);
+                    var bitData = new BitData(data.data, pos, len);
+                    _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
+                    data.data.AdvanceBits(len);
                 }
 
                 data.data.Dispose();
@@ -182,13 +179,13 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitPacker content, Channel channel)
+        public void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel)
         {
             for (var i = targets.Count - 1; i >= 0; i--)
                 Queue(targets[i], header, content, channel);
         }
 
-        public void Queue(PlayerID target, UnionRPCHeader header, BitPacker content, Channel channel)
+        public void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
         {
             using (_queueSingleMarker.Auto())
             {
@@ -196,7 +193,7 @@ namespace PurrNet.Modules
                 ref var batch = ref _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
-                Size contentLen = content.positionInBits;
+                var contentLen = content.bitLength;
 
                 using (_batchWriteDeltasMarker.Auto())
                 {
@@ -204,7 +201,7 @@ namespace PurrNet.Modules
                     DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
                 }
 
-                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
+                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.byteLength;
 
                 // do some MTU checks past 1 batch
                 if (batch.batchCount > 0 && bytesAfterHeaderLen + 10 >= batch.cachedMTU)
@@ -229,8 +226,8 @@ namespace PurrNet.Modules
 
                 using (_batchWriteBitsMarker.Auto())
                 {
-                    if (content.length > 0)
-                        batch.batchedData.WriteBits(content);
+                    if (content.bitLength > 0)
+                        batch.batchedData.WriteBitDataWithoutConsumingIt(content);
                 }
             }
         }

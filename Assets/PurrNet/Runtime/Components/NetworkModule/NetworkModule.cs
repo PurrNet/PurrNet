@@ -62,9 +62,11 @@ namespace PurrNet
                                   $"You can initialize it on Awake or override OnInitializeModules.", parent);
         }
 
-        public virtual void OnReceivedRpc(int id, BitPacker stream, ChildRPCPacket packet, RPCInfo info, bool asServer) { }
+        [UsedByIL]
+        public virtual void OnReceivedRpc(int id, ChildRPCPacket packet, RPCInfo info, bool asServer) { }
 
-        public static void OnReceivedRpc(int id, BitPacker stream, StaticRPCPacket packet, RPCInfo info, bool asServer) { }
+        [UsedByIL]
+        public static void OnReceivedRpc(int id, StaticRPCPacket packet, RPCInfo info, bool asServer) { }
 
         public virtual void OnSpawn()
         {
@@ -197,7 +199,7 @@ namespace PurrNet
         {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
-            Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData.AsSegment(), parent);
+            Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, parent);
 #endif
             return parent && parent.ValidateIncomingRPC(info, signature, data, asServer);
         }
@@ -266,7 +268,7 @@ namespace PurrNet
                     rpcId = rpcId,
                     senderId = RPCModule.GetLocalPlayer(networkManager)
                 },
-                data = data
+                data = new BitData(data) // TODO: this size here is wrong, it needs to be updated or just set later..
             };
 
             return rpc;

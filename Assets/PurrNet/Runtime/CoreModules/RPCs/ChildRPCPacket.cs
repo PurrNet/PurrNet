@@ -1,4 +1,5 @@
 ﻿using System;
+using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Utils;
 
@@ -37,9 +38,9 @@ namespace PurrNet
     public struct ChildRPCPacket : IPackedAuto, IRpc
     {
         public NetworkModuleRPCHeader header;
-        [DontDeltaCompress] public BitPacker data;
+        [DontDeltaCompress, UsedByIL] public BitData data;
 
-        public BitPacker rpcData
+        public BitData rpcData
         {
             get { return data; }
             set { data = value; }

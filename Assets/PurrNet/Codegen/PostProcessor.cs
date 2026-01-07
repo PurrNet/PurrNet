@@ -312,19 +312,18 @@ namespace PurrNet.Codegen
                     .Import(module);
                 newMethod.CustomAttributes.Add(new CustomAttribute(constructor));
 
-                var streamType = module.GetTypeDefinition<BitPacker>();
+                var streamType = module.GetTypeDefinition<BitPacker>().Import(module);
+                var bitDataType = module.GetTypeDefinition<BitData>().Import(module);
 
                 var packetType = originalRpcs[i].Signature.isStatic ? module.GetTypeDefinition<StaticRPCPacket>() :
                     isNetworkClass ? module.GetTypeDefinition<ChildRPCPacket>() : module.GetTypeDefinition<RPCPacket>();
 
                 var rpcInfo = module.GetTypeDefinition<RPCInfo>();
 
-                var stream = new ParameterDefinition("stream", ParameterAttributes.None, streamType.Import(module));
                 var packet = new ParameterDefinition("packet", ParameterAttributes.None, packetType.Import(module));
                 var info = new ParameterDefinition("info", ParameterAttributes.None, rpcInfo.Import(module));
                 var asServer = new ParameterDefinition("asServer", ParameterAttributes.None, module.TypeSystem.Boolean);
 
-                newMethod.Parameters.Add(stream);
                 newMethod.Parameters.Add(packet);
                 newMethod.Parameters.Add(info);
                 newMethod.Parameters.Add(asServer);
@@ -366,10 +365,28 @@ namespace PurrNet.Codegen
                 var rpcModule = module.GetTypeDefinition<RPCModule>();
                 var postProcessRPC = rpcModule.GetMethod("PostProcessRpc").Import(module);
 
+                var bitDataVariable = new VariableDefinition(bitDataType);
+                var streamVariable = new VariableDefinition(streamType);
+
+                newMethod.Body.Variables.Add(bitDataVariable);
+                newMethod.Body.Variables.Add(streamVariable);
+
+                // store packet.data into bitData
+                var dataProperty = packetType.GetField("data").Import(module);
+                code.Append(Instruction.Create(OpCodes.Ldarga, packet));
+                code.Append(Instruction.Create(OpCodes.Ldfld, dataProperty));
+                code.Append(Instruction.Create(OpCodes.Stloc, bitDataVariable));
+
                 // get packet.data field
                 code.Append(Instruction.Create(OpCodes.Ldarg, info));
-                code.Append(Instruction.Create(OpCodes.Ldarga, stream));
+                code.Append(Instruction.Create(OpCodes.Ldloca_S, bitDataVariable));
                 code.Append(Instruction.Create(OpCodes.Call, postProcessRPC));
+
+                // stream = bitData.packer
+                var packerField = bitDataType.GetField("packer").Import(module);
+                code.Append(Instruction.Create(OpCodes.Ldloca_S, bitDataVariable));
+                code.Append(Instruction.Create(OpCodes.Ldfld, packerField));
+                code.Append(Instruction.Create(OpCodes.Stloc, streamVariable));
 
                 try
                 {
@@ -377,10 +394,10 @@ namespace PurrNet.Codegen
                     {
                         if (originalRpcs[i].originalMethod.HasGenericParameters)
                         {
-                            HandleGenericRPCReceiver(module, originalRpcs[i], newMethod, stream, info, isNetworkClass);
+                            HandleGenericRPCReceiver(module, originalRpcs[i], newMethod, streamVariable, info, isNetworkClass);
                         }
                         else
-                            HandleNonGenericRPCReceiver(module, originalRpcs[i], newMethod, stream, info, returnMode,
+                            HandleNonGenericRPCReceiver(module, originalRpcs[i], newMethod, streamVariable, info, returnMode,
                                 isNetworkClass);
                     }
                 }
@@ -397,9 +414,7 @@ namespace PurrNet.Codegen
         private static void HandleRPCReceiverHandler(ModuleDefinition module, TypeDefinition type,
             DisposableList<RPCMethod> originalRpcs, bool isNetworkModule, int offset, bool isStaticPass)
         {
-            var streamType = module.GetTypeDefinition<BitPacker>().Import(module);
             var rpcInfoType = module.GetTypeDefinition<RPCInfo>().Import(module);
-
             var packetType = isStaticPass
                 ? module.GetTypeDefinition<StaticRPCPacket>().Import(module)
                 : isNetworkModule
@@ -418,14 +433,12 @@ namespace PurrNet.Codegen
             };
 
             var id = new ParameterDefinition("id", ParameterAttributes.None, module.TypeSystem.Int32);
-            var stream = new ParameterDefinition("stream", ParameterAttributes.None, streamType);
             var packet = new ParameterDefinition("packet", ParameterAttributes.None, packetType);
             var info = new ParameterDefinition("info", ParameterAttributes.None, rpcInfoType);
             var asServer = new ParameterDefinition("asServer", ParameterAttributes.None, module.TypeSystem.Boolean);
 
             // int id, BitPacker stream, StaticRPCPacket packet, RPCInfo info, bool asServer
             newMethod.Parameters.Add(id);
-            newMethod.Parameters.Add(stream);
             newMethod.Parameters.Add(packet);
             newMethod.Parameters.Add(info);
             newMethod.Parameters.Add(asServer);
@@ -453,7 +466,6 @@ namespace PurrNet.Codegen
 
                 var methodReference = new MethodReference(methodName, module.TypeSystem.Void, type);
 
-                methodReference.Parameters.Add(new ParameterDefinition(streamType));
                 methodReference.Parameters.Add(new ParameterDefinition(packetType));
                 methodReference.Parameters.Add(new ParameterDefinition(rpcInfoType));
                 methodReference.Parameters.Add(new ParameterDefinition(module.TypeSystem.Boolean));
@@ -464,7 +476,6 @@ namespace PurrNet.Codegen
                 if (!isStaticPass)
                     body.Append(Instruction.Create(OpCodes.Ldarg_0)); // this
 
-                body.Append(Instruction.Create(OpCodes.Ldarg_S, stream));
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, packet));
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, info));
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, asServer));
@@ -481,7 +492,6 @@ namespace PurrNet.Codegen
                 var reference = new MethodReference(methodName, module.TypeSystem.Void, parent);
 
                 reference.Parameters.Add(new ParameterDefinition(module.TypeSystem.Int32));
-                reference.Parameters.Add(new ParameterDefinition(streamType));
                 reference.Parameters.Add(new ParameterDefinition(packetType));
                 reference.Parameters.Add(new ParameterDefinition(rpcInfoType));
                 reference.Parameters.Add(new ParameterDefinition(module.TypeSystem.Boolean));
@@ -491,9 +501,7 @@ namespace PurrNet.Codegen
                 if (!isStaticPass)
                     body.Append(Instruction.Create(OpCodes.Ldarg_0)); // this
 
-
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, id));
-                body.Append(Instruction.Create(OpCodes.Ldarg_S, stream));
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, packet));
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, info));
                 body.Append(Instruction.Create(OpCodes.Ldarg_S, asServer));
@@ -562,7 +570,7 @@ namespace PurrNet.Codegen
             ModuleDefinition module,
             RPCMethod rpcMethod,
             MethodDefinition newMethod,
-            ParameterDefinition stream,
+            VariableDefinition streamVariable,
             ParameterDefinition info,
             ReturnMode returnMode,
             bool isNetworkClass)
@@ -647,7 +655,7 @@ namespace PurrNet.Codegen
                 }
                 else serializer = CreateSerializer(module, module.TypeSystem.UInt32, false);
 
-                code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                 code.Append(Instruction.Create(OpCodes.Ldloca, reqId));
                 code.Append(Instruction.Create(OpCodes.Call, serializer));
             }
@@ -699,7 +707,7 @@ namespace PurrNet.Codegen
                 }
                 else serialize = CreateSerializer(module, param.ParameterType, false);
 
-                code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                 code.Append(Instruction.Create(OpCodes.Ldloca, variable));
                 code.Append(Instruction.Create(OpCodes.Call, serialize));
             }
@@ -713,7 +721,7 @@ namespace PurrNet.Codegen
                 startIdx = (reqId == null ? 1 : 2);
             else startIdx = (reqId == null ? 0 : 1);
 
-            for (var j = startIdx; j < vars.Count; j++)
+            for (var j = startIdx + 2; j < vars.Count; j++)
             {
                 code.Append(Instruction.Create(OpCodes.Ldloc, vars[j]));
             }
@@ -868,7 +876,7 @@ namespace PurrNet.Codegen
 
         private static void HandleGenericRPCReceiver(ModuleDefinition module, RPCMethod rpcMethod,
             MethodDefinition newMethod,
-            ParameterDefinition stream, ParameterDefinition info, bool isNetworkClass)
+            VariableDefinition streamVariable, ParameterDefinition info, bool isNetworkClass)
         {
             var genericRpcHeaderType = module.GetTypeDefinition<GenericRPCHeader>();
             var identityType = module.GetTypeDefinition<NetworkIdentity>();
@@ -982,13 +990,13 @@ namespace PurrNet.Codegen
 
                 if (useDeltaPacking)
                     code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                 code.Append(Instruction.Create(OpCodes.Ldloca, requestId));
                 code.Append(Instruction.Create(OpCodes.Call, serializeUint));
             }
 
             // read header value
-            code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+            code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
             code.Append(Instruction.Create(OpCodes.Ldarg, info));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, genericParamCount));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, paramCount));
@@ -1000,7 +1008,7 @@ namespace PurrNet.Codegen
                 // read uint hash
                 if (useDeltaPacking)
                     code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                 code.Append(Instruction.Create(OpCodes.Ldloca, genericParamCountValue));
                 code.Append(Instruction.Create(OpCodes.Call, serializeUint));
 
@@ -1062,7 +1070,7 @@ namespace PurrNet.Codegen
                         // OBJ in stack
                         {
                             code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                            code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+                            code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
 
                             // GetTypeAt(genericIdx)
                             code.Append(Instruction.Create(OpCodes.Ldloca, headerValue));
@@ -1094,7 +1102,7 @@ namespace PurrNet.Codegen
                             readAny.GenericArguments.Add(param.ParameterType);
 
                             code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                            code.Append(Instruction.Create(OpCodes.Ldarg, stream));
+                            code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                             code.Append(Instruction.Create(OpCodes.Call, readAny));
                         }
 
@@ -1954,6 +1962,11 @@ namespace PurrNet.Codegen
             // get rpcDataVariable.data field
             code.Append(Instruction.Create(OpCodes.Ldloc, rpcSignature)); // stream
             code.Append(Instruction.Create(OpCodes.Ldloca, streamVariable));
+
+            var dataField = packetType.GetField("data").Import(module);
+            code.Append(Instruction.Create(OpCodes.Ldloca, rpcDataVariable));
+            code.Append(Instruction.Create(OpCodes.Ldflda, dataField));
+
             code.Append(Instruction.Create(OpCodes.Call, preProcessRpc));
 
             if (!methodRpc.Signature.isStatic)

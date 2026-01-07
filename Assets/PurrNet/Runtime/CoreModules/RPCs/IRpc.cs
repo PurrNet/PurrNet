@@ -4,7 +4,7 @@ namespace PurrNet
 {
     public interface IRpc
     {
-        public BitPacker rpcData { get; set; }
+        public BitData rpcData { get; set; }
 
         PlayerID senderPlayerId { get; }
 

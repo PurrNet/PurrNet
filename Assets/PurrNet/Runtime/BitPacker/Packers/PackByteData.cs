@@ -78,8 +78,8 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void Write(this BitPacker packer, BitData data)
         {
-            Packer<Size>.WriteFunc(packer, data.bitLength);
-            packer.WriteBitsWithoutConsumingIt(data.packer, data.bitLength);
+            Packer<Size>.Write(packer, data.bitLength);
+            packer.WriteBitDataWithoutConsumingIt(data);
         }
 
         [UsedByIL]
@@ -87,11 +87,9 @@ namespace PurrNet.Packing
         {
             Size length = default;
             Packer<Size>.Read(packer, ref length);
-
-            data.packer ??= BitPackerPool.Get();
-            data.bitLength = length;
-
-            data.packer.WriteBits(packer, length);
+            int lengthInt = (int)length.value;
+            int origin = packer.AdvanceBits(lengthInt);
+            data = new BitData(packer, origin, lengthInt);
         }
     }
 }

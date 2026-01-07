@@ -142,9 +142,8 @@ namespace PurrNet
                 var rpcType = Packer<RPCType>.Read(packer);
                 var method = Packer<string>.Read(packer);
                 var length = Packer<int>.Read(packer);
-                var dataArray = new byte[length];
-                packer.ReadBytes(dataArray);
-                sample.receivedRpcs.Add(new RpcsSample(Type.GetType(type), rpcType, method, dataArray, null));
+                var bitData = new BitData(packer, packer.positionInBits, length * 8);
+                sample.receivedRpcs.Add(new RpcsSample(Type.GetType(type), rpcType, method, bitData, null));
             }
 
             int sentRpcsCount = Packer<int>.Read(packer);
@@ -155,9 +154,8 @@ namespace PurrNet
                 var rpcType = Packer<RPCType>.Read(packer);
                 var method = Packer<string>.Read(packer);
                 var length = Packer<int>.Read(packer);
-                var dataArray = new byte[length];
-                packer.ReadBytes(dataArray);
-                sample.sentRpcs.Add(new RpcsSample(Type.GetType(type), rpcType, method, dataArray, null));
+                var bitData = new BitData(packer, packer.positionInBits, length * 8);
+                sample.sentRpcs.Add(new RpcsSample(Type.GetType(type), rpcType, method, bitData, null));
             }
 
             int receivedBroadcastsCount = Packer<int>.Read(packer);

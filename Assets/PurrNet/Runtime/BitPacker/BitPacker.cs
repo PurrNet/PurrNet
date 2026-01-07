@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using K4os.Compression.LZ4;
 using PurrNet.Modules;
 using PurrNet.Transports;
+using UnityEngine;
 
 namespace PurrNet.Packing
 {
@@ -136,7 +137,7 @@ namespace PurrNet.Packing
             return packer;
         }
 
-        public void Advance(int count)
+        public void AdvanceBytes(int count)
         {
             EnsureBitsExist(count * 8);
             _positionInBits += count * 8;
@@ -159,13 +160,6 @@ namespace PurrNet.Packing
         public ArraySegment<byte> AsSegment()
         {
             return new ArraySegment<byte>(_buffer, 0, length);
-        }
-
-        public ArraySegment<byte> AsSegment(int bitLength)
-        {
-            int pos = bitLength / 8;
-            int len = pos + (bitLength % 8 == 0 ? 0 : 1);
-            return new ArraySegment<byte>(_buffer, 0, len);
         }
 
         public Span<byte> GetSpan(int sizeHint = 0)
@@ -314,21 +308,23 @@ namespace PurrNet.Packing
             return true;
         }
 
-        public void WriteBits(BitPacker packer)
+        public void WriteBitDataWithoutConsumingIt(BitData data)
         {
-            var bits = packer._positionInBits;
-            packer._positionInBits = 0;
+            var other = data.packer;
+            var beforeBitPosition = other._positionInBits;
 
-            EnsureBitsExist(bits);
+            other._positionInBits = data.bitOrigin;
+            int toRead = (int)data.bitLength.value;
+            EnsureBitsExist(toRead);
 
-            int chunks = bits / 64;
-            byte excess = (byte)(bits % 64);
+            int chunks = toRead / 64;
+            byte excess = (byte)(toRead % 64);
 
             for (int i = 0; i < chunks; i++)
-                WriteBitsWithoutChecks(packer.ReadBits(64), 64);
-            WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+                WriteBitsWithoutChecks(other.ReadBits(64), 64);
+            WriteBitsWithoutChecks(other.ReadBits(excess), excess);
 
-            packer._positionInBits = bits;
+            other.SetBitPosition(beforeBitPosition);
         }
 
         public void WriteBitsWithoutConsumingIt(BitPacker packer, int bits)

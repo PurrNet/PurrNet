@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PurrNet.Packing;
 
 namespace PurrNet.Profiler
 {
@@ -58,13 +59,13 @@ namespace PurrNet.Profiler
             _currentSample.forwardedBytes.Add(bytesSent);
         }
 
-        public static void ReceivedRPC(Type type, RPCType rpcType, string method, ArraySegment<byte> data, UnityEngine.Object context)
+        public static void ReceivedRPC(Type type, RPCType rpcType, string method, BitData data, UnityEngine.Object context)
         {
             if (!shouldTrack) return;
             _currentSample.receivedRpcs.Add(new RpcsSample(type, rpcType, method, data, context));
         }
 
-        public static void SentRPC(Type type, RPCType rpcType, string method, ArraySegment<byte> data, UnityEngine.Object context)
+        public static void SentRPC(Type type, RPCType rpcType, string method, BitData data, UnityEngine.Object context)
         {
             if (!shouldTrack) return;
             _currentSample.sentRpcs.Add(new RpcsSample(type, rpcType, method, data, context));

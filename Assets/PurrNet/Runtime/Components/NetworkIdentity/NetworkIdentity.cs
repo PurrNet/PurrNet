@@ -359,9 +359,11 @@ namespace PurrNet
 
         public bool IsObserver(PlayerID player) => _observers.Contains(player);
 
-        public virtual void OnReceivedRpc(int id, BitPacker stream, RPCPacket packet, RPCInfo info, bool asServer) { }
+        [UsedByIL]
+        public virtual void OnReceivedRpc(int id, RPCPacket packet, RPCInfo info, bool asServer) { }
 
-        public static void OnReceivedRpc(int id, BitPacker stream, StaticRPCPacket packet, RPCInfo info, bool asServer) { }
+        [UsedByIL]
+        public static void OnReceivedRpc(int id, StaticRPCPacket packet, RPCInfo info, bool asServer) { }
 
         [UsedImplicitly]
         public void QueueOnSpawned(Action action)
