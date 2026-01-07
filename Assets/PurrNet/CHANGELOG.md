@@ -1,3 +1,10 @@
+## [1.18.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.10...v1.18.1-beta.11) (2026-01-07)
+
+
+### Bug Fixes
+
+* Host migration should be enabled to check if it must force scene public or not. ([576e263](https://github.com/PurrNet/PurrNet/commit/576e263412f790af8c161fe1993d2fddbac39ebc))
+
 ## [1.18.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.9...v1.18.1-beta.10) (2026-01-03)
 
 
