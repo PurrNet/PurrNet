@@ -143,8 +143,6 @@ namespace PurrNet.Codegen
             var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
             var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
 
-            var otherArgument = method.Parameters[0];
-
             if (!type.IsValueType && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
             {
                 var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
@@ -199,7 +197,7 @@ namespace PurrNet.Codegen
 
                 if (IsPrimitiveNumeric(field.FieldType))
                 {
-                    PushAB(type, il, fieldRef, otherArgument);
+                    PushAB(il, fieldRef);
 
                     // check if these integer fields are equal, if not return false
                     il.Append(Instruction.Create(OpCodes.Ceq));
@@ -207,14 +205,14 @@ namespace PurrNet.Codegen
                 }
                 else if (TryGetEqualityOperator(resolvedFieldType, out var opEquality))
                 {
-                    PushAB(type, il, field, otherArgument);
+                    PushAB(il, field);
 
                     il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
                 else if (!field.FieldType.IsArray && TryGetEqualsFunction(resolvedFieldType, out var equals))
                 {
-                    PushAB_A(type, il, fieldRef, otherArgument);
+                    PushAB_A(il, fieldRef);
 
                     il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
@@ -225,7 +223,7 @@ namespace PurrNet.Codegen
                     var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
                         purrEqualityType, fieldType, purrEqualityCheck, type.Module);
 
-                    PushAB(type, il, fieldRef, otherArgument);
+                    PushAB(il, fieldRef);
                     il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
@@ -240,24 +238,19 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ret));
         }
 
-        private static void PushAB(TypeDefinition type, ILProcessor il, FieldReference field,
-            ParameterDefinition otherArgument)
+        private static void PushAB(ILProcessor il, FieldReference field)
         {
-            bool isClass = !type.IsValueType || type.IsArray;
-
-            il.Append(Instruction.Create(isClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(OpCodes.Ldarg_1));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
 
-        private static void PushAB_A(TypeDefinition type, ILProcessor il, FieldReference field,
-            ParameterDefinition otherArgument)
+        private static void PushAB_A(ILProcessor il, FieldReference field)
         {
-            bool isClass = !type.IsValueType || type.IsArray;
             bool isFieldClass = !field.FieldType.IsValueType || field.FieldType.IsArray;
 
-            il.Append(Instruction.Create(isClass ? OpCodes.Ldarg_S : OpCodes.Ldarga_S, otherArgument));
+            il.Append(Instruction.Create(OpCodes.Ldarg_1));
             il.Append(Instruction.Create(!isFieldClass ? OpCodes.Ldflda : OpCodes.Ldfld, field));
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
