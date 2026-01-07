@@ -1,3 +1,10 @@
+## [1.18.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.11...v1.18.1-beta.12) (2026-01-07)
+
+
+### Bug Fixes
+
+* properly call despawn() even if not fully spawned ([0b1739f](https://github.com/PurrNet/PurrNet/commit/0b1739feb6aba7e3eccef27d410898c4a435aeaf))
+
 ## [1.18.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.10...v1.18.1-beta.11) (2026-01-07)
 
 
