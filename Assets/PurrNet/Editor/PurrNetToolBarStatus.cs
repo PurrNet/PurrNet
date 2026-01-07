@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Newtonsoft.Json.Linq;
 using PurrNet.Transports;
 using UnityEditor;
@@ -51,15 +52,16 @@ namespace PurrNet.Editor
             var packagePath = AssetDatabase.GUIDToAssetPath("0ec978dbed50a6f4b9a57580867f1fae");
 
             if (string.IsNullOrEmpty(packagePath))
-                return "v?";
+                return "?";
 
             var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(packagePath);
 
             if (textAsset == null)
-                return "v?";
+                return "?";
 
             var json = JObject.Parse(textAsset.text);
-            return 'v' + (json["version"]?.ToString() ?? "?");
+            var final = json["version"]?.ToString() ?? "?";
+            return final.Replace("-beta.", "b");
         }
 
         static string _version;
@@ -105,6 +107,7 @@ namespace PurrNet.Editor
 
             GUILayout.BeginHorizontal();
 
+#if !UNITY_6000_3_OR_NEWER
             if (settings.toolbarMode == ToolbarMode.Compact)
             {
                 GUILayout.Label(_pebblesIcon, GUILayout.Width(22), GUILayout.Height(22));
@@ -115,6 +118,10 @@ namespace PurrNet.Editor
                 GUILayout.Label(_pebblesIcon, GUILayout.Width(22), GUILayout.Height(22));
                 GUILayout.Label("PurrNet " + _version, GUILayout.ExpandWidth(false));
             }
+#else
+            GUILayout.Label(_pebblesIcon, GUILayout.Width(22), GUILayout.Height(22));
+            GUILayout.Label(_version, GUILayout.ExpandWidth(false));
+#endif
 
             DrawConnectionButton(settings, manager, true);  // Server
             DrawConnectionButton(settings, manager, false); // Client
@@ -171,7 +178,7 @@ namespace PurrNet.Editor
             }
         }
 
-        private static void DrawConnectionButton(PurrNetSettings settings, NetworkManager manager, bool isServer)
+        private static void DrawConnectionButton([UsedImplicitly] PurrNetSettings settings, NetworkManager manager, bool isServer)
         {
             ConnectionState? state = manager != null ? (isServer ? manager.serverState : manager.clientState) : null;
             var isActive = manager != null && (isServer ? manager.isServer : manager.isClient);
@@ -185,12 +192,9 @@ namespace PurrNet.Editor
                 _ => Color.white
             };
 
-            if (settings.toolbarMode == ToolbarMode.Compact)
-            {
-            }
-
             string buttonText;
 
+#if !UNITY_6000_3_OR_NEWER
             if (settings.toolbarMode == ToolbarMode.Compact)
             {
                 buttonText = isServer ? "S" : "C";
@@ -201,10 +205,19 @@ namespace PurrNet.Editor
                                isActive ? $"Stop {(isServer ? "Server" : "Client")}" :
                                $"Start {(isServer ? "Server" : "Client")}";
             }
+#else
+            buttonText = isServer ? "S" : "C";
+#endif
 
             GUI.enabled = manager != null && !isTransitioning;
             GUI.color = color;
+
+#if !UNITY_6000_3_OR_NEWER
             if (GUILayout.Button(buttonText, settings.toolbarMode == ToolbarMode.Compact ? GUILayout.Width(25) : GUILayout.Width(100)))
+#else
+            if (GUILayout.Button(buttonText, GUILayout.Width(17)))
+#endif
+
             {
                 if (isServer)
                 {
