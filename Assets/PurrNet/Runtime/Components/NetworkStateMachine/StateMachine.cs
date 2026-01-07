@@ -173,6 +173,38 @@ namespace PurrNet.StateMachine
         }
 
         /// <summary>
+        /// Checks whether the given type T is the state we are currently in
+        /// </summary>
+        public bool IsCurrentState<T>() where T : StateNode
+        {
+            return currentStateNode is T;
+        }
+
+        /// <summary>
+        /// Checks whether the given type T is the state we are currently in.
+        /// Also outputs the instance of the state with the type
+        /// </summary>
+        public bool IsCurrentState<T>(out T stateInstance) where T : StateNode
+        {
+            if (currentStateNode is T state)
+            {
+                stateInstance = state;
+                return true;
+            }
+
+            stateInstance = null;
+            return false;
+        }
+        
+        /// <summary>
+        /// Checks whether the given stateToCheck is the state instance we are currently in
+        /// </summary>
+        public bool IsCurrentState(StateNode stateToCheck)
+        {
+            return currentStateNode == stateToCheck;
+        }
+
+        /// <summary>
         /// Adds a state to the StateMachine
         /// </summary>
         /// <param name="state">The state to add</param>

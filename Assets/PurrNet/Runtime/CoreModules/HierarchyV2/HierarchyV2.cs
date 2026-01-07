@@ -1265,6 +1265,12 @@ namespace PurrNet.Modules
                 return;
             }
 
+            bool isHost = IsServerHost();
+
+            // Try to despawn the object properly if despawn was on the same tick (by first calling OnSpawned)
+            for (var i = 0; i < c; i++)
+                CompletePendingSpawnsFor(children[i], isHost);
+
             if (_asServer)
             {
                 _visibility.ClearVisibilityForGameObject(gameObject.transform);
@@ -1419,6 +1425,25 @@ namespace PurrNet.Modules
             FlushSpawnPackets();
             _manager.FlushBatchedRPCs();
             SpawnDelayedIdentities();
+        }
+
+        private void CompletePendingSpawnsFor(NetworkIdentity toSpawn, bool isHost)
+        {
+            if (_toSpawnNextFrame.Remove(toSpawn))
+            {
+                if (!toSpawn || !toSpawn.isSpawned)
+                    return;
+
+                toSpawn.TriggerSpawnEvent(_asServer);
+
+                if (_asServer && isHost)
+                {
+                    toSpawn.SetIsSpawned(true, false);
+                    toSpawn.TriggerSpawnEvent(false);
+                }
+
+                onIdentityAdded?.Invoke(toSpawn);
+            }
         }
 
         private void SendDelayedObserverEvents()

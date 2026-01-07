@@ -150,6 +150,8 @@ namespace PurrNet
                 _id += 1;
                 FlushImmediately();
             }
+
+            UnsubscribeFromTickManager();
         }
 
         public void SetDirty()
@@ -189,7 +191,10 @@ namespace PurrNet
         public void OnTick()
         {
             if (!isControllingSyncVar)
+            {
+                UnsubscribeFromTickManager();
                 return;
+            }
 
             if (_isDirty)
             {

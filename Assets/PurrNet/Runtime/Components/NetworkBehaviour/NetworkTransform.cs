@@ -103,6 +103,12 @@ namespace PurrNet
         Interpolated<QuaternionWithParent> _rotation;
         Interpolated<ScaleWithParent> _scale;
 
+        public Vector3 latestReadPosition => _lastReadData.position;
+
+        public Quaternion latestReadRotation => _lastReadData.rotation;
+
+        public Vector3 latestReadScale => _lastReadData.scale;
+
         private Transform _trs;
 #if UNITY_PHYSICS_3D
         private Rigidbody _rb;

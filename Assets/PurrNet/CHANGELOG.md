@@ -1,3 +1,54 @@
+## [1.18.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.11...v1.18.1-beta.12) (2026-01-07)
+
+
+### Bug Fixes
+
+* properly call despawn() even if not fully spawned ([0b1739f](https://github.com/PurrNet/PurrNet/commit/0b1739feb6aba7e3eccef27d410898c4a435aeaf))
+
+## [1.18.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.10...v1.18.1-beta.11) (2026-01-07)
+
+
+### Bug Fixes
+
+* Host migration should be enabled to check if it must force scene public or not. ([576e263](https://github.com/PurrNet/PurrNet/commit/576e263412f790af8c161fe1993d2fddbac39ebc))
+
+## [1.18.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.9...v1.18.1-beta.10) (2026-01-03)
+
+
+### Bug Fixes
+
+* Whoopsie ([d2ec215](https://github.com/PurrNet/PurrNet/commit/d2ec2152b1da82740e6d7042b197f14f800cd151))
+
+## [1.18.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.8...v1.18.1-beta.9) (2026-01-02)
+
+
+### Bug Fixes
+
+* expose latest read data properties for network transform ([65e6a23](https://github.com/PurrNet/PurrNet/commit/65e6a236b5819fec9e74002c886b245014713bbe))
+
+## [1.18.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.7...v1.18.1-beta.8) (2026-01-02)
+
+
+### Bug Fixes
+
+* Sync dictionary serialization upgrade ([5934acb](https://github.com/PurrNet/PurrNet/commit/5934acbf9a52511353941040a1643728d658a75f))
+
+## [1.18.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.6...v1.18.1-beta.7) (2026-01-02)
+
+
+### Bug Fixes
+
+* Added state machine current state helpers ([6ebfff9](https://github.com/PurrNet/PurrNet/commit/6ebfff9a934aadbf3e0c3010fff2632751e3538d))
+
+## [1.18.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.5...v1.18.1-beta.6) (2025-12-31)
+
+
+### Bug Fixes
+
+* cleanup server/client modules, this caused some issues when next playthrough starting mode was changed ([65b2d0c](https://github.com/PurrNet/PurrNet/commit/65b2d0c6a330514edfb40d28c37cb75716b9a00d))
+* syncvar invalidate is controller earlier ([2444436](https://github.com/PurrNet/PurrNet/commit/2444436aded533525be1e33930dab28a367e8cc2))
+* wrong local variable index ([612cbfd](https://github.com/PurrNet/PurrNet/commit/612cbfd0aa2f96f6dec7a8814062bc50e4652bf9))
+
 ## [1.18.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.4...v1.18.1-beta.5) (2025-12-26)
 
 
