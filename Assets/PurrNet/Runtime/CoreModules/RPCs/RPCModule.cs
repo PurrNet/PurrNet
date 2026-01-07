@@ -652,7 +652,7 @@ namespace PurrNet.Modules
                     sceneId = id,
                     senderId = GetLocalPlayer()
                 },
-                data = new BitData(data) // TODO: this size here is wrong, it needs to be updated or just set later..
+                data = new BitData(data)
             };
 
             return rpc;
@@ -670,7 +670,7 @@ namespace PurrNet.Modules
                     typeHash = hash,
                     senderId = GetLocalPlayer()
                 },
-                data = new BitData(data) // TODO: this size here is wrong, it needs to be updated or just set later..
+                data = new BitData(data)
             };
 
             return rpc;
