@@ -65,3 +65,4 @@ QualitySettings:
   m_PerPlatformDefaultQuality:
     Nintendo Switch 2: 0
     Standalone: 0
+    WebGL: 0
