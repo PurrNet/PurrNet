@@ -1658,7 +1658,7 @@ namespace PurrNet.Codegen
             code.Append(Instruction.Create(OpCodes.Stloc, rpcSignature));
 
             var playerType = module.GetTypeDefinition<PlayerID>().Import(module);
-            var disposableListType = module.GetTypeDefinition(typeof(DisposableList<>));
+            var disposableListType = module.GetTypeDefinition(typeof(DisposableList<>)).Import(module);
 
             var playersListType = new GenericInstanceType(disposableListType);
             playersListType.GenericArguments.Add(playerType);
