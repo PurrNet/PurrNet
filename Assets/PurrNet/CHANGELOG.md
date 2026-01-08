@@ -1,3 +1,10 @@
+## [1.18.1-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.12...v1.18.1-beta.13) (2026-01-08)
+
+
+### Bug Fixes
+
+* Host migration should be enabled to check if it must force CanSee or not ([5814337](https://github.com/PurrNet/PurrNet/commit/58143374834ae94d908a8d552a6150d45bd45c00))
+
 ## [1.18.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.11...v1.18.1-beta.12) (2026-01-07)
 
 
