@@ -399,7 +399,7 @@ namespace PurrNet.Codegen
             il.Emit(OpCodes.Call, advanceBits);
             il.Emit(OpCodes.Stloc_0);
 
-            var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
+            /*var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
             var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
             var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
                 purrEqualityType, type, purrEqualityCheck, type.Module);
@@ -407,7 +407,7 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ldarg_1));
             il.Append(Instruction.Create(OpCodes.Ldarg_2));
             il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
-            il.Append(Instruction.Create(OpCodes.Brtrue, endOfFunction));
+            il.Append(Instruction.Create(OpCodes.Brtrue, endOfFunction));*/
 
             if (isClass)
             {
