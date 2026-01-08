@@ -110,6 +110,7 @@ namespace PurrNet.Codegen
             var deltaSerializer = deltaPackerGenType.GetMethod("Read").Import(module);
             var deltaBypassSerializer = deltaPackerGenType.GetMethod("ReadUnpacked").Import(module);
             var packerTypeBoolean = bitStreamType.GetMethod("ReadBit").Import(module);
+            var advanceBit = bitStreamType.GetMethod("AdvanceBit", false).Import(module);
 
             var streamArg = new ParameterDefinition("stream", ParameterAttributes.None, bitStreamType);
             var oldValueArg = new ParameterDefinition("oldValue", ParameterAttributes.None, typeRef);
@@ -128,7 +129,7 @@ namespace PurrNet.Codegen
 
             var il = method.Body.GetILProcessor();
             var endOfFunction = il.Create(OpCodes.Ret);
-            var elseBlock = il.Create(OpCodes.Nop);
+            var elseBlock = il.Create(OpCodes.Ldarg_2);
 
             var standaloneType = GenerateSerializersProcessor.HasInterfaceExtra(type, typeof(IStandaloneSerializable));
 
@@ -160,6 +161,8 @@ namespace PurrNet.Codegen
                 return;
             }
 
+            int readFields = 0;
+
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Call, packerTypeBoolean);
 
@@ -176,6 +179,7 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Call, genericIsNull);
                 il.Emit(OpCodes.Brfalse, endOfFunction);
+                ++readFields;
             }
 
             GenerateSerializersProcessor.CreateGettersAndSetters(false, type);
@@ -202,6 +206,7 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Ldloc, tmpVar);
                 GenerateSerializersProcessor.EmitStindForEnum(il, type);
+                ++readFields;
             }
             else
             {
@@ -232,6 +237,7 @@ namespace PurrNet.Codegen
                         il.Emit(OpCodes.Ldloc, variable);
                         il.Emit(OpCodes.Castclass, type);
                         il.Emit(OpCodes.Stind_Ref);
+                        ++readFields;
                     }
                 }
 
@@ -298,7 +304,7 @@ namespace PurrNet.Codegen
                         if (isClass) il.Emit(OpCodes.Ldind_Ref);
                         il.Emit(OpCodes.Ldloc, variable);
                         il.Emit(OpCodes.Call, setterReference);
-
+                        ++readFields;
                         continue;
                     }
 
@@ -313,19 +319,23 @@ namespace PurrNet.Codegen
                     il.Emit(OpCodes.Ldflda, fieldRef);
 
                     il.Emit(OpCodes.Call, packer);
+                    ++readFields;
                 }
             }
 
-            il.Emit(OpCodes.Br, endOfFunction);
+            il.Emit(OpCodes.Ret);
             il.Append(elseBlock);
 
             // value = oldValue
 
             // Ldarg_2 = Packer.Copy
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Ldarg_1);
+            bool isUnmanaged = typeRef.Resolve()?.IsUnmanaged() == true;
 
-            if (typeRef.Resolve()?.IsUnmanaged() != true)
+            if (isUnmanaged)
+                il.Emit(OpCodes.Ldarg_1);
+            else il.Emit(OpCodes.Ldarga_S, oldValueArg);
+
+            if (!isUnmanaged)
             {
                 var copy = packerType.GetMethod("Copy", true).Import(module);
                 var copyGeneric = new GenericInstanceMethod(copy);
@@ -334,8 +344,15 @@ namespace PurrNet.Codegen
             }
 
             il.Emit(OpCodes.Stobj, typeRef);
-
             il.Append(endOfFunction);
+
+            if (readFields == 0)
+            {
+                il.Clear();
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Call, advanceBit);
+                il.Emit(OpCodes.Ret);
+            }
         }
 
         private static void CreateWriteMethod(ModuleDefinition module, MethodDefinition method, TypeReference typeRef,
@@ -347,6 +364,7 @@ namespace PurrNet.Codegen
             var deltaSerializer = deltaPackerGenType.GetMethod("Write").Import(module);
             var deltaBypassSerializer = deltaPackerGenType.GetMethod("WriteUnpacked").Import(module);
             var advanceOneBitAndSet = bitPackerType.GetMethod("AdvanceOneBitAndSet", false).Import(module);
+            var writeBit = bitPackerType.GetMethod("WriteBit", false).Import(module);
             var resetFlagAtAndMovePosition = bitPackerType.GetMethod("ResetFlagAtAndMovePosition", false).Import(module);
 
             var streamArg = new ParameterDefinition("stream", ParameterAttributes.None, bitStreamType);
@@ -371,7 +389,9 @@ namespace PurrNet.Codegen
             method.Body.Variables.Add(isEqualVar);
 
             var il = method.Body.GetILProcessor();
-            var endOfFunction = il.Create(OpCodes.Nop);
+            var endOfFunction = il.Create(OpCodes.Ldarg_0);
+            var returnFalse = il.Create(OpCodes.Ldc_I4_0);
+            var startOfNormalDelta = il.Create(OpCodes.Nop);
 
             var standaloneType = GenerateSerializersProcessor.HasInterfaceExtra(type, typeof(IStandaloneSerializable));
 
@@ -394,16 +414,6 @@ namespace PurrNet.Codegen
             il.Emit(OpCodes.Call, advanceOneBitAndSet);
             il.Emit(OpCodes.Stloc_0);
 
-            /*var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
-            var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
-            var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
-                purrEqualityType, type, purrEqualityCheck, type.Module);
-
-            il.Append(Instruction.Create(OpCodes.Ldarg_1));
-            il.Append(Instruction.Create(OpCodes.Ldarg_2));
-            il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
-            il.Append(Instruction.Create(OpCodes.Brtrue, endOfFunction));*/
-
             if (isClass)
             {
                 var writeIsNull = bitStreamType.GetMethod("HandleNullScenarios", true).Import(module);
@@ -416,11 +426,17 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldloca_S, isEqualVar);
                 il.Emit(OpCodes.Call, genericIsNull);
 
-                // if null return
-                il.Emit(OpCodes.Brfalse, endOfFunction);
+                il.Emit(OpCodes.Brtrue, startOfNormalDelta);
+
+                il.Emit(OpCodes.Ldc_I4_1);
+                il.Emit(OpCodes.Ret);
+
             }
 
+            il.Append(startOfNormalDelta);
+
             GenerateSerializersProcessor.CreateGettersAndSetters(true, type);
+            int writtenFields = 0;
 
             if (type.IsEnum)
             {
@@ -436,6 +452,7 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Call, enumWriteMethod);
 
                 il.Emit(OpCodes.Stloc_1);
+                ++writtenFields;
             }
             else
             {
@@ -461,6 +478,7 @@ namespace PurrNet.Codegen
                         il.Emit(OpCodes.Or);
 
                         il.Emit(OpCodes.Stloc_1);
+                        ++writtenFields;
                     }
                 }
 
@@ -484,6 +502,8 @@ namespace PurrNet.Codegen
 
                     if (ignore)
                         continue;
+
+                    ++writtenFields;
 
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
@@ -552,14 +572,25 @@ namespace PurrNet.Codegen
 
             // resetFlagAtAndMovePosition
             il.Append(endOfFunction);
-            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldloc_0);
             il.Emit(OpCodes.Call, resetFlagAtAndMovePosition);
-            il.Emit(OpCodes.Ldc_I4_0);
+            il.Append(returnFalse);
             il.Emit(OpCodes.Ret);
 
             il.Append(endOfIf);
             il.Emit(OpCodes.Ret);
+
+            if (writtenFields == 0)
+            {
+                method.Body.Instructions.Clear();
+                method.Body.Variables.Clear();
+                method.Body.InitLocals = false;
+
+                method.Body.Instructions.Add(Instruction.Create(OpCodes.Ldarg_0));
+                method.Body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));
+                method.Body.Instructions.Add(Instruction.Create(OpCodes.Call, writeBit));
+                method.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+            }
 
             method.DebugInformation.Scope =
                 new ScopeDebugInformation(method.Body.Instructions[0], method.Body.Instructions[^1]);

@@ -628,13 +628,13 @@ namespace PurrNet.Codegen
 
                 if (rpcMethod.Signature.isStatic)
                 {
+                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
                     code.Append(Instruction.Create(OpCodes.Ldarg_1));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_2));
                 }
                 else
                 {
+                    code.Append(Instruction.Create(OpCodes.Ldarg_1));
                     code.Append(Instruction.Create(OpCodes.Ldarg_2));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_3));
                 }
 
                 code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
@@ -958,13 +958,13 @@ namespace PurrNet.Codegen
 
                 if (rpcMethod.Signature.isStatic)
                 {
+                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
                     code.Append(Instruction.Create(OpCodes.Ldarg_1));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_2));
                 }
                 else
                 {
+                    code.Append(Instruction.Create(OpCodes.Ldarg_1));
                     code.Append(Instruction.Create(OpCodes.Ldarg_2));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_3));
                 }
 
                 code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
@@ -2084,20 +2084,22 @@ namespace PurrNet.Codegen
             for (int i = 0; i < paramCount; ++i)
             {
                 var param = newMethod.Parameters[i];
-                code.Append(Instruction.Create(OpCodes.Ldarg, param)); // param
 
                 bool shouldIgnore = ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _);
                 var resolved = param.ParameterType.Resolve();
 
                 if (shouldIgnore || resolved != null && resolved.IsUnmanaged())
+                {
+                    code.Append(Instruction.Create(OpCodes.Ldarg, param));
                     continue;
+                }
+
+                code.Append(Instruction.Create(OpCodes.Ldarga, param)); // param
 
                 var copyMethodGeneric = new GenericInstanceMethod(copyMethod);
                 copyMethodGeneric.GenericArguments.Add(param.ParameterType);
-
                 code.Append(Instruction.Create(OpCodes.Call, copyMethodGeneric)); // Packer.Copy<T>(param)
             }
-
 
             code.Append(Instruction.Create(OpCodes.Call, callMethod)); // Call original method
 
@@ -2670,7 +2672,7 @@ namespace PurrNet.Codegen
                         }
 
                         UnityProxyProcessor.Process(types[t], messages);
-                        RegisterSerializersProcessor.HandleType(module, types[t], typesToIgnoreForDelta,
+                        RegisterSerializersProcessor.HandleType(types[t], module, types[t], typesToIgnoreForDelta,
                             typesToIgnoreForSerialization);
 
                         var type = types[t];

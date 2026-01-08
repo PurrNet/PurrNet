@@ -8,7 +8,6 @@ using JetBrains.Annotations;
 using K4os.Compression.LZ4;
 using PurrNet.Modules;
 using PurrNet.Transports;
-using UnityEngine;
 
 namespace PurrNet.Packing
 {
@@ -101,6 +100,13 @@ namespace PurrNet.Packing
 
         public bool isWriting => !_isReading;
 
+        [UsedImplicitly, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AdvanceBit()
+        {
+            EnsureBitsExist(1);
+            ++_positionInBits;
+        }
+
         /// <summary>
         /// Pickles the current buffer into the provided BitPacker.
         /// </summary>
@@ -143,7 +149,7 @@ namespace PurrNet.Packing
             _positionInBits += count * 8;
         }
 
-        [UsedByIL]
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int AdvanceBits(int bitCount)
         {
             EnsureBitsExist(bitCount);
@@ -152,7 +158,7 @@ namespace PurrNet.Packing
             return old;
         }
 
-        [UsedByIL]
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int AdvanceOneBitAndClear()
         {
             var old = _positionInBits;
@@ -160,7 +166,7 @@ namespace PurrNet.Packing
             return old;
         }
 
-        [UsedByIL]
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int AdvanceOneBitAndSet()
         {
             var old = _positionInBits;
@@ -245,6 +251,7 @@ namespace PurrNet.Packing
             _isReading = readMode;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureBitsExist(int bits)
         {
             int targetPos = _positionInBits + bits;

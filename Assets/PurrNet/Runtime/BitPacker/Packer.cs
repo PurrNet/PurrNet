@@ -186,20 +186,10 @@ namespace PurrNet.Packing
 
     public static class Packer
     {
-        public static T Copy<T>(T value)
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T Copy<T>(in T value)
         {
-            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                return value;
-
-            if (value is IDuplicate<T> duplicate)
-                return duplicate.Duplicate();
-
-            using var tmpPacker = BitPackerPool.Get();
-            Packer<T>.Write(tmpPacker, value);
-            tmpPacker.ResetPositionAndMode(true);
-            var copy = default(T);
-            Packer<T>.Read(tmpPacker, ref copy);
-            return copy;
+            return PurrCopy<T>.Copy(value);
         }
 
         /// <summary>

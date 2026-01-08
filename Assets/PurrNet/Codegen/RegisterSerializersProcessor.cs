@@ -100,7 +100,7 @@ namespace PurrNet.Codegen
             public MethodDefinition method;
         }
 
-        public static void HandleType(ModuleDefinition module, TypeDefinition type,
+        public static void HandleType(TypeReference actualType, ModuleDefinition module, TypeDefinition type,
             HashSet<TypeReference> toIgnoreForDelta, HashSet<TypeReference> toIgnoreForSerialization)
         {
             if (type.FullName == typeof(Packer).FullName)
@@ -190,7 +190,8 @@ namespace PurrNet.Codegen
                 }
             }
 
-            if (writeTypes.Count == 0 && readTypes.Count == 0)
+            bool hasIDuplicate = DuplicateHelpers.HasDuplicateInterface(actualType);
+            if (writeTypes.Count == 0 && readTypes.Count == 0 && !hasIDuplicate)
                 return;
 
             var writeFuncDelegate = module.GetTypeDefinition(typeof(WriteFunc<>)).Import(module);
@@ -348,6 +349,9 @@ namespace PurrNet.Codegen
 
                 il.Emit(OpCodes.Call, genericread);
             }
+
+            if (hasIDuplicate)
+                DuplicateHelpers.InjectRegistration(type, actualType, il);
 
             il.Emit(OpCodes.Ret);
         }

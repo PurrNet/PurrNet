@@ -216,7 +216,7 @@ namespace PurrNet.Codegen
                 GenerateDeltaSerializersProcessor.HandleType(assembly, type, serializerClass);
 
             GenerateIEquatableInterface.HandleType(resolvedType);
-            RegisterSerializersProcessor.HandleType(type.Module, serializerClass, null, null);
+            RegisterSerializersProcessor.HandleType(type, type.Module, serializerClass, null, null);
         }
 
         private static void HandleHashOnly(AssemblyDefinition assembly, TypeReference type,
@@ -238,6 +238,9 @@ namespace PurrNet.Codegen
             var networkRegister = assembly.MainModule.GetTypeDefinition(typeof(NetworkRegister))
                 .Import(assembly.MainModule);
             var hashMethod = networkRegister.GetMethod("Hash").Import(assembly.MainModule);
+
+            if (DuplicateHelpers.HasDuplicateInterface(type))
+                DuplicateHelpers.InjectRegistration(serializerClass, type, il);
 
             // NetworkRegister.Hash(RuntimeTypeHandle handle);
             il.Emit(OpCodes.Ldtoken, type);
@@ -311,6 +314,10 @@ namespace PurrNet.Codegen
             };
 
             var register = registerMethod.Body.GetILProcessor();
+
+            if (DuplicateHelpers.HasDuplicateInterface(type))
+                DuplicateHelpers.InjectRegistration(serializerClass, type, register);
+
             GenerateRegisterMethod(assembly.MainModule, type, register, genericT);
             serializerClass.Methods.Add(registerMethod);
         }

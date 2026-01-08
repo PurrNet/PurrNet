@@ -214,7 +214,7 @@ namespace PurrNet.Codegen
                 }
                 else if (!field.FieldType.IsArray && TryGetEqualsFunction(resolvedFieldType, out var equals))
                 {
-                    PushAB_A(il, fieldRef, otherParam);
+                    PushAB_A(type, il, fieldRef, otherParam);
 
                     il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
@@ -248,10 +248,19 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
 
-        private static void PushAB_A(ILProcessor il, FieldReference field, ParameterDefinition otherParam)
+        private static void PushAB_A(TypeDefinition type, ILProcessor il, FieldReference field, ParameterDefinition otherParam)
         {
-            il.Append(Instruction.Create(OpCodes.Ldarga_S, otherParam));
-            il.Append(Instruction.Create(OpCodes.Ldflda, field));
+            bool isOtherParamAClass = !type.IsValueType && type.IsClass;
+            il.Append(isOtherParamAClass
+                ? Instruction.Create(OpCodes.Ldarg_1)
+                : Instruction.Create(OpCodes.Ldarga_S, otherParam));
+
+            bool isFieldARefType = !field.FieldType.IsValueType && field.FieldType.Resolve()?.IsClass == true;
+
+            il.Append(isFieldARefType
+                ? Instruction.Create(OpCodes.Ldfld, field)
+                : Instruction.Create(OpCodes.Ldflda, field));
+
             il.Append(Instruction.Create(OpCodes.Ldarg_0));
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
