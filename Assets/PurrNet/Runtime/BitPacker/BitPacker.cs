@@ -143,11 +143,28 @@ namespace PurrNet.Packing
             _positionInBits += count * 8;
         }
 
+        [UsedByIL]
         public int AdvanceBits(int bitCount)
         {
             EnsureBitsExist(bitCount);
             var old = _positionInBits;
             _positionInBits += bitCount;
+            return old;
+        }
+
+        [UsedByIL]
+        public int AdvanceOneBitAndClear()
+        {
+            var old = _positionInBits;
+            WriteBit(false);
+            return old;
+        }
+
+        [UsedByIL]
+        public int AdvanceOneBitAndSet()
+        {
+            var old = _positionInBits;
+            WriteBit(true);
             return old;
         }
 
@@ -180,6 +197,7 @@ namespace PurrNet.Packing
             isWrapper = true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Dispose()
         {
             BitPackerPool.Free(this);
@@ -190,31 +208,37 @@ namespace PurrNet.Packing
             return new ByteData(_buffer, 0, length);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPosition()
         {
             _positionInBits = 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetMode(bool readMode)
         {
             _isReading = readMode;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBitPosition(int bitPosition)
         {
             _positionInBits = bitPosition;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SkipBytes(int skip)
         {
             _positionInBits += skip * 8;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SkipBytes(uint skip)
         {
             _positionInBits += (int)skip * 8;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPositionAndMode(bool readMode)
         {
             _positionInBits = 0;
@@ -734,18 +758,29 @@ namespace PurrNet.Packing
             return (char)ReadBits(8);
         }
 
+        [UsedByIL]
+        public void ResetFlagAtAndMovePosition(int positionInBits)
+        {
+            var byteIdx = positionInBits >> 3;
+            int bitOffset = positionInBits & 7;
+
+            ref var currentByte = ref _buffer[byteIdx];
+            currentByte &= (byte)~(1 << bitOffset);
+
+            _positionInBits = positionInBits + 1;
+        }
+
+        [UsedByIL]
         public void WriteAt(int positionInBits, bool data)
         {
             var byteIdx = positionInBits >> 3;
             int bitOffset = positionInBits & 7;
 
-            var currentByte = _buffer[byteIdx];
+            ref var currentByte = ref _buffer[byteIdx];
 
             if (data)
                 currentByte |= (byte)(1 << bitOffset);
             else currentByte &= (byte)~(1 << bitOffset);
-
-            _buffer[byteIdx] = currentByte;
         }
 
         public void WriteBitsAt(int positionInBits, ulong data, byte bits)

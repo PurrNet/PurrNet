@@ -346,9 +346,8 @@ namespace PurrNet.Codegen
 
             var deltaSerializer = deltaPackerGenType.GetMethod("Write").Import(module);
             var deltaBypassSerializer = deltaPackerGenType.GetMethod("WriteUnpacked").Import(module);
-            var advanceBits = bitPackerType.GetMethod("AdvanceBits", false).Import(module);
-            var writeAt = bitPackerType.GetMethod("WriteAt", false).Import(module);
-            var setBitPosition = bitPackerType.GetMethod("SetBitPosition", false).Import(module);
+            var advanceOneBitAndSet = bitPackerType.GetMethod("AdvanceOneBitAndSet", false).Import(module);
+            var resetFlagAtAndMovePosition = bitPackerType.GetMethod("ResetFlagAtAndMovePosition", false).Import(module);
 
             var streamArg = new ParameterDefinition("stream", ParameterAttributes.None, bitStreamType);
             var oldValueArg = new ParameterDefinition("oldValue", ParameterAttributes.None, typeRef);
@@ -374,9 +373,6 @@ namespace PurrNet.Codegen
             var il = method.Body.GetILProcessor();
             var endOfFunction = il.Create(OpCodes.Nop);
 
-            il.Append(Instruction.Create(OpCodes.Ldc_I4_0));
-            il.Append(Instruction.Create(OpCodes.Stloc, isEqualVar));
-
             var standaloneType = GenerateSerializersProcessor.HasInterfaceExtra(type, typeof(IStandaloneSerializable));
 
             if (standaloneType != null && standaloneType.FullName != type.FullName)
@@ -395,8 +391,7 @@ namespace PurrNet.Codegen
             }
 
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldc_I4_1);
-            il.Emit(OpCodes.Call, advanceBits);
+            il.Emit(OpCodes.Call, advanceOneBitAndSet);
             il.Emit(OpCodes.Stloc_0);
 
             /*var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
@@ -497,6 +492,11 @@ namespace PurrNet.Codegen
                             shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
                             module);
 
+                    if (i > 0 || isInheritedClass)
+                    {
+                        il.Emit(OpCodes.Ldloc_1);
+                    }
+
                     if (!field.IsPublic)
                     {
                         var variable = new VariableDefinition(fieldType);
@@ -538,37 +538,27 @@ namespace PurrNet.Codegen
                     il.Emit(OpCodes.Call, packer);
 
                     if (i > 0 || isInheritedClass)
-                    {
-                        il.Emit(OpCodes.Ldloc_1);
                         il.Emit(OpCodes.Or);
-                    }
 
                     il.Emit(OpCodes.Stloc_1);
                 }
             }
 
-            // WriteAt
-            il.Append(endOfFunction);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc_0);
-            il.Emit(OpCodes.Ldloc_1);
-            il.Emit(OpCodes.Call, writeAt);
-
             // if (isEqual)
-            var endOfIf = il.Create(OpCodes.Nop);
+            var endOfIf = il.Create(OpCodes.Ldc_I4_1);
 
             il.Emit(OpCodes.Ldloc_1);
             il.Emit(OpCodes.Brtrue, endOfIf);
 
+            // resetFlagAtAndMovePosition
+            il.Append(endOfFunction);
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldloc_0);
-            il.Emit(OpCodes.Ldc_I4_1);
-            il.Emit(OpCodes.Add);
-            il.Emit(OpCodes.Call, setBitPosition);
+            il.Emit(OpCodes.Call, resetFlagAtAndMovePosition);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Ret);
 
             il.Append(endOfIf);
-
-            il.Emit(OpCodes.Ldloc_1);
             il.Emit(OpCodes.Ret);
 
             method.DebugInformation.Scope =
@@ -588,10 +578,7 @@ namespace PurrNet.Codegen
         private static bool ShouldNotDeltaPackField(FieldDefinition field)
         {
             bool ignore = field.CustomAttributes.Any(a =>
-                a.AttributeType.FullName == typeof(DontDeltaCompressAttribute).FullName);
-
-            if (GenerateSerializersProcessor.DoesTypeHaveAttribute(field.FieldType.Resolve(), typeof(DontDeltaCompressAttribute)))
-                ignore = true;
+                a.AttributeType.FullName == typeof(DontDeltaCompressAttribute).FullName) || GenerateSerializersProcessor.DoesTypeHaveAttribute(field.FieldType.Resolve(), typeof(DontDeltaCompressAttribute));
             return ignore;
         }
 
