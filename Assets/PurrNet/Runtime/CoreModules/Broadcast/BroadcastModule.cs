@@ -60,7 +60,8 @@ namespace PurrNet.Modules
 
         static bool ShouldTrackType(Type type)
         {
-            return type != typeof(RPCPacket) && type != typeof(ChildRPCPacket) && type != typeof(StaticRPCPacket);
+            return type != typeof(RPCPacket) && type != typeof(ChildRPCPacket) && type != typeof(StaticRPCPacket)
+                   && type != typeof(RPCBatchPacket);
         }
 
         public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
