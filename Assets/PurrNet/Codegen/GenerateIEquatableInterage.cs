@@ -141,7 +141,7 @@ namespace PurrNet.Codegen
             var returnFalse = Instruction.Create(OpCodes.Ldc_I4_0);
 
             var purrEqualityType = type.Module.GetTypeDefinition(typeof(PurrEquality<>)).Import(type.Module);
-            var purrEqualityCheck = purrEqualityType.GetMethod("Equals");
+            var purrEqualityCheck = purrEqualityType.GetMethod("Equals").Import(type.Module);
 
             if (!type.IsValueType && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
             {

@@ -324,7 +324,7 @@ namespace PurrNet.Codegen
 
         private static void GenerateRegisterMethodForIdentity(TypeReference type, ILProcessor il)
         {
-            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkIdentity));
+            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkIdentity)).Import(type.Module);
             var registerMethod = packType.GetMethod("RegisterIdentity", true).Import(type.Module);
 
             var genericRegisterMethod = new GenericInstanceMethod(registerMethod);
@@ -336,7 +336,7 @@ namespace PurrNet.Codegen
 
         private static void GenerateRegisterMethodForModule(TypeReference type, ILProcessor il)
         {
-            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkModule));
+            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkModule)).Import(type.Module);
             var registerMethod = packType.GetMethod("RegisterNetworkModule", true).Import(type.Module);
 
             var genericRegisterMethod = new GenericInstanceMethod(registerMethod);

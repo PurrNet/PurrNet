@@ -1,4 +1,5 @@
 using PurrNet.Packing;
+using PurrNet.Pooling;
 using PurrNet.StateMachine;
 using UnityEngine;
 
@@ -121,12 +122,14 @@ public struct MyData : IPackedAuto
     public int Fails;
     public float Time;
     public MyDataWtf test;
+    public DisposableList<int> list;
 
     public MyData(int fails, float time)
     {
         Fails = fails;
         Time = time;
         test = null;
+        list = default;
     }
 
     public bool Equalsfefe(MyData other)
