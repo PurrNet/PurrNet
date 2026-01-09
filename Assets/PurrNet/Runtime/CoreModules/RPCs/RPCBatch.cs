@@ -11,7 +11,7 @@ namespace PurrNet.Modules
     internal struct RPCBatchPacket : IPackedAuto
     {
         public Size count;
-        public BitPacker data;
+        public BitData data;
     }
 
     internal struct PendingBatchedData
@@ -67,7 +67,7 @@ namespace PurrNet.Modules
                     var data = new RPCBatchPacket
                     {
                         count = batch.batchCount,
-                        data = batch.batchedData
+                        data = new BitData(batch.batchedData)
                     };
 
                     _playersManager.Send(batch.key.playerId, data, batch.key.channel);
@@ -121,7 +121,7 @@ namespace PurrNet.Modules
             var data = new RPCBatchPacket
             {
                 count = batch.batchCount,
-                data = batch.batchedData
+                data = new BitData(batch.batchedData)
             };
 
             _playersManager.Send(batch.key.playerId, data, batch.key.channel);
@@ -158,24 +158,26 @@ namespace PurrNet.Modules
                 UnionRPCHeader lastHeader = default;
                 Size lastLen = default;
 
-                for (var i = 0; i < data.count.value; ++i)
+                var packer = data.data.packer;
+                using (data.data.AutoScope())
                 {
-                    using (_batchReceivedDeltasMarker.Auto())
+                    for (var i = 0; i < data.count.value; ++i)
                     {
-                        DeltaPacker<UnionRPCHeader>.ReadFunc(data.data, lastHeader, ref lastHeader);
-                        DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
+                        using (_batchReceivedDeltasMarker.Auto())
+                        {
+                            DeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
+                            DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
+                        }
+
+                        int pos = packer.positionInBits;
+                        int len = (int)lastLen.value;
+
+                        var bitData = new BitData(packer, pos, len);
+                        _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
+
+                        packer.SetBitPosition(pos + len);
                     }
-
-                    int pos = data.data.positionInBits;
-                    int len = (int)lastLen.value;
-
-                    var bitData = new BitData(data.data, pos, len);
-                    _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
-
-                    data.data.SetBitPosition(pos + len);
                 }
-
-                data.data.Dispose();
             }
         }
 
