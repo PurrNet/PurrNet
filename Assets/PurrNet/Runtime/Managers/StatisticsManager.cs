@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Transports;
@@ -35,18 +32,22 @@ namespace PurrNet
         public bool connectedServer { get; private set; }
         public bool connectedClient { get; private set; }
 
-        private const float PING_HISTORY_TIME = 2.5f; // Seconds
+        private const float PING_HISTORY_TIME = 2.5f;
         private const int PACKET_HISTORY_SECONDS = 5;
         private const int MAX_PACKET_HISTORY = 200;
         private const float JITTER_SAMPLE_TIME = 2.5f;
-
+        private const int MAX_JITTER_SAMPLES = 128;
 
         private int[] _pingStats;
         private readonly uint[] _sentPacketSequences = new uint[MAX_PACKET_HISTORY];
         private readonly uint[] _receivedPacketSequences = new uint[MAX_PACKET_HISTORY];
         private readonly float[] _sentPacketTimes = new float[MAX_PACKET_HISTORY];
         private readonly float[] _receivedPacketTimes = new float[MAX_PACKET_HISTORY];
-        private readonly Queue<(float time, int value)> _pingVisibleHistory = new();
+        
+        private readonly float[] _jitterTimes = new float[MAX_JITTER_SAMPLES];
+        private readonly int[] _jitterValues = new int[MAX_JITTER_SAMPLES];
+        private int _jitterHead;
+        private int _jitterCount;
 
         private int _pingHistorySize;
         private int _pingIndex;
@@ -65,15 +66,20 @@ namespace PurrNet
         private float _totalDataSent;
         private float _lastDataCheckTime;
 
+        private int _cachedPing = -1;
+        private int _cachedJitter = -1;
+        private int _cachedPacketLoss = -1;
+        private float _cachedUpload = -1f;
+        private float _cachedDownload = -1f;
+
+        private readonly char[] _charBuffer = new char[64];
         private string _cachedPingText = "Ping: 0ms";
         private string _cachedJitterText = "Jitter: 0ms";
         private string _cachedPacketLossText = "Packet Loss: 0%";
         private string _cachedUploadText = "Upload: 0.000KB/s";
         private string _cachedDownloadText = "Download: 0.000KB/s";
-        private float _lastGuiUpdateTime;
-        private const float GUI_UPDATE_INTERVAL = 0.1f;
-
-        private readonly StringBuilder _stringBuilder = new();
+        
+        private bool _labelStyleInitialized;
 
         private void Awake()
         {
@@ -91,19 +97,32 @@ namespace PurrNet
                 return;
             }
 
-            UpdateLabelStyle();
+            EnsureLabelStyle();
         }
 
         private void OnValidate()
         {
 #if UNITY_EDITOR
             if (!Application.isPlaying)
-                UpdateLabelStyle();
+            {
+                _labelStyleInitialized = false;
+                EnsureLabelStyle();
+            }
 #endif
         }
 
-        private void UpdateLabelStyle()
+        private void EnsureLabelStyle()
         {
+            if (_labelStyleInitialized && _labelStyle != null)
+            {
+                _labelStyle.fontSize = Mathf.RoundToInt(fontSize);
+                _labelStyle.normal.textColor = textColor;
+                _labelStyle.alignment = (placement == StatisticsPlacement.TopRight || placement == StatisticsPlacement.BottomRight)
+                    ? TextAnchor.UpperRight
+                    : TextAnchor.UpperLeft;
+                return;
+            }
+
             _labelStyle = new GUIStyle
             {
                 fontSize = Mathf.RoundToInt(fontSize),
@@ -112,6 +131,7 @@ namespace PurrNet
                     ? TextAnchor.UpperRight
                     : TextAnchor.UpperLeft
             };
+            _labelStyleInitialized = true;
         }
 
         private void OnDestroy()
@@ -154,12 +174,13 @@ namespace PurrNet
             if (placement == StatisticsPlacement.None || !connectedClient)
                 return;
 
+            EnsureLabelStyle();
             UpdateCachedStrings();
 
             var position = GetPosition();
-            float currentY = position.y;
             const float labelWidth = 200;
-            Rect rect = new(position.x, currentY, labelWidth, LineHeight);
+            Rect rect = new(position.x, position.y, labelWidth, LineHeight);
+            
             if (_displayType.HasFlag(StatisticsDisplayType.Ping))
             {
                 GUI.Label(rect, _cachedPingText, _labelStyle);
@@ -198,27 +219,102 @@ namespace PurrNet
 
         private void UpdateCachedStrings()
         {
-            var currentTime = Time.time;
-            if (currentTime - _lastGuiUpdateTime < GUI_UPDATE_INTERVAL)
-                return;
+            if (ping != _cachedPing)
+            {
+                _cachedPing = ping;
+                _cachedPingText = FormatStat("Ping: ", ping, "ms");
+            }
 
-            _lastGuiUpdateTime = currentTime;
+            if (jitter != _cachedJitter)
+            {
+                _cachedJitter = jitter;
+                _cachedJitterText = FormatStat("Jitter: ", jitter, "ms");
+            }
 
-            _stringBuilder.Clear().Append("Ping: ").Append(ping).Append("ms");
-            _cachedPingText = _stringBuilder.ToString();
+            if (packetLoss != _cachedPacketLoss)
+            {
+                _cachedPacketLoss = packetLoss;
+                _cachedPacketLossText = FormatStat("Packet Loss: ", packetLoss, "%");
+            }
 
-            _stringBuilder.Clear().Append("Jitter: ").Append(jitter).Append("ms");
-            _cachedJitterText = _stringBuilder.ToString();
+            if (!Mathf.Approximately(upload, _cachedUpload))
+            {
+                _cachedUpload = upload;
+                _cachedUploadText = FormatStatFloat("Upload: ", upload, "KB/s");
+            }
 
-            _stringBuilder.Clear().Append("Packet Loss: ").Append(packetLoss).Append('%');
-            _cachedPacketLossText = _stringBuilder.ToString();
+            if (!Mathf.Approximately(download, _cachedDownload))
+            {
+                _cachedDownload = download;
+                _cachedDownloadText = FormatStatFloat("Download: ", download, "KB/s");
+            }
 
-            _stringBuilder.Clear().Append("Upload: ").Append(upload.ToString("F3")).Append("KB/s");
-            _cachedUploadText = _stringBuilder.ToString();
-
-            _stringBuilder.Clear().Append("Download: ").Append(download.ToString("F3")).Append("KB/s");
-            _cachedDownloadText = _stringBuilder.ToString();
             UpdateCachedStrings_ServerStats();
+        }
+
+        private string FormatStat(string prefix, int value, string suffix)
+        {
+            int pos = 0;
+            
+            for (int i = 0; i < prefix.Length; i++)
+                _charBuffer[pos++] = prefix[i];
+            
+            pos = WriteInt(_charBuffer, pos, value);
+            
+            for (int i = 0; i < suffix.Length; i++)
+                _charBuffer[pos++] = suffix[i];
+
+            return new string(_charBuffer, 0, pos);
+        }
+
+        private string FormatStatFloat(string prefix, float value, string suffix)
+        {
+            int pos = 0;
+            
+            for (int i = 0; i < prefix.Length; i++)
+                _charBuffer[pos++] = prefix[i];
+            
+            int intPart = (int)value;
+            int fracPart = Mathf.Abs((int)((value - intPart) * 1000));
+            
+            pos = WriteInt(_charBuffer, pos, intPart);
+            _charBuffer[pos++] = '.';
+            
+            if (fracPart < 100) _charBuffer[pos++] = '0';
+            if (fracPart < 10) _charBuffer[pos++] = '0';
+            pos = WriteInt(_charBuffer, pos, fracPart);
+            
+            for (int i = 0; i < suffix.Length; i++)
+                _charBuffer[pos++] = suffix[i];
+
+            return new string(_charBuffer, 0, pos);
+        }
+
+        private static int WriteInt(char[] buffer, int pos, int value)
+        {
+            if (value < 0)
+            {
+                buffer[pos++] = '-';
+                value = -value;
+            }
+
+            if (value == 0)
+            {
+                buffer[pos++] = '0';
+                return pos;
+            }
+
+            int start = pos;
+            while (value > 0)
+            {
+                buffer[pos++] = (char)('0' + value % 10);
+                value /= 10;
+            }
+
+            for (int i = start, j = pos - 1; i < j; i++, j--)
+                (buffer[i], buffer[j]) = (buffer[j], buffer[i]);
+
+            return pos;
         }
 
         private Vector2 GetPosition()
@@ -352,6 +448,8 @@ namespace PurrNet
             _sentPacketCount = 0;
             _receivedPacketCount = 0;
             _packetSequence = 0;
+            _jitterHead = 0;
+            _jitterCount = 0;
 
             for (int i = 0; i < MAX_PACKET_HISTORY; i++)
             {
@@ -360,6 +458,18 @@ namespace PurrNet
                 _sentPacketSequences[i] = 0;
                 _receivedPacketSequences[i] = 0;
             }
+
+            for (int i = 0; i < MAX_JITTER_SAMPLES; i++)
+            {
+                _jitterTimes[i] = 0;
+                _jitterValues[i] = 0;
+            }
+
+            _cachedPing = -1;
+            _cachedJitter = -1;
+            _cachedPacketLoss = -1;
+            _cachedUpload = -1f;
+            _cachedDownload = -1f;
 
             ResetStatistics_ServerStats();
         }
@@ -436,21 +546,30 @@ namespace PurrNet
             ping = sum / _pingCount;
 
             float now = Time.time;
-            _pingVisibleHistory.Enqueue((now, ping));
-;
-            while (_pingVisibleHistory.Count > 0 && now - _pingVisibleHistory.Peek().time > JITTER_SAMPLE_TIME)
-                _pingVisibleHistory.Dequeue();
+            
+            _jitterTimes[_jitterHead] = now;
+            _jitterValues[_jitterHead] = ping;
+            _jitterHead = (_jitterHead + 1) % MAX_JITTER_SAMPLES;
+            if (_jitterCount < MAX_JITTER_SAMPLES)
+                _jitterCount++;
 
-            if (_pingVisibleHistory.Count > 1)
+            float cutoff = now - JITTER_SAMPLE_TIME;
+            int min = int.MaxValue;
+            int max = int.MinValue;
+            int validCount = 0;
+
+            for (int i = 0; i < _jitterCount; i++)
             {
-                int min = _pingVisibleHistory.Min(x => x.value);
-                int max = _pingVisibleHistory.Max(x => x.value);
-                jitter = max - min;
+                if (_jitterTimes[i] >= cutoff)
+                {
+                    int val = _jitterValues[i];
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                    validCount++;
+                }
             }
-            else
-            {
-                jitter = 0;
-            }
+
+            jitter = validCount > 1 ? max - min : 0;
         }
 
         private void HandlePacketCheck()

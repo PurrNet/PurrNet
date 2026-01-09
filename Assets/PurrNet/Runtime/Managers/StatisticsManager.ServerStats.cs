@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -7,15 +5,24 @@ namespace PurrNet
 {
     public partial class StatisticsManager
     {
-        private const float SEND_INTERVAL = 1f; //1 second
-        private const float STATS_HISTORY_TIME = 2.5f; //2.5 seconds
+        private const float SEND_INTERVAL = 1f;
+        private const float STATS_HISTORY_TIME = 2.5f;
+        private const int MAX_FPS_SAMPLES = 256;
         
         private string _cachedServerAvgFpsText = "Avg FPS: 0";
         private string _cachedServerMaxFpsText = "Max FPS: 0";
         private string _cachedServerMinFpsText = "Min FPS: 0";
         
-        private readonly Queue<(float t, float fps)> _fpsHistory = new();
+        private readonly float[] _fpsTimes = new float[MAX_FPS_SAMPLES];
+        private readonly float[] _fpsValues = new float[MAX_FPS_SAMPLES];
+        private int _fpsHead;
+        private int _fpsCount;
+        
         private float _lastStatsSendTime;
+        
+        private int _cachedServerAvg = -1;
+        private int _cachedServerMax = -1;
+        private int _cachedServerMin = -1;
         
         private (int min, int avg, int max) _lastServerStats;
         private bool _dirtyServerStats;
@@ -42,21 +49,44 @@ namespace PurrNet
 
             float now = Time.unscaledTime;
             float fps = 1f / Time.unscaledDeltaTime;
-            _fpsHistory.Enqueue((now, fps));
+            
+            _fpsTimes[_fpsHead] = now;
+            _fpsValues[_fpsHead] = fps;
+            _fpsHead = (_fpsHead + 1) % MAX_FPS_SAMPLES;
+            if (_fpsCount < MAX_FPS_SAMPLES)
+                _fpsCount++;
 
-            while (_fpsHistory.Count > 0 && now - _fpsHistory.Peek().t > STATS_HISTORY_TIME)
-                _fpsHistory.Dequeue();
-
-            if (now - _lastStatsSendTime < SEND_INTERVAL || _fpsHistory.Count == 0)
+            if (now - _lastStatsSendTime < SEND_INTERVAL || _fpsCount == 0)
                 return;
 
             _lastStatsSendTime = now;
 
-            int avg = Mathf.RoundToInt(_fpsHistory.Average(p => p.fps));
-            int max = Mathf.RoundToInt(_fpsHistory.Max(p => p.fps));
-            int min = Mathf.RoundToInt(_fpsHistory.Min(p => p.fps));
+            float cutoff = now - STATS_HISTORY_TIME;
+            float sum = 0f;
+            float min = float.MaxValue;
+            float max = float.MinValue;
+            int validCount = 0;
 
-            _playersServerBroadcaster?.SendToAll(new ServerStatsPacket { avgFps = avg, maxFps = max, minFpx = min }, Channel.Unreliable);
+            for (int i = 0; i < _fpsCount; i++)
+            {
+                if (_fpsTimes[i] >= cutoff)
+                {
+                    float val = _fpsValues[i];
+                    sum += val;
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                    validCount++;
+                }
+            }
+
+            if (validCount == 0)
+                return;
+
+            int avg = Mathf.RoundToInt(sum / validCount);
+            int maxInt = Mathf.RoundToInt(max);
+            int minInt = Mathf.RoundToInt(min);
+
+            _playersServerBroadcaster?.SendToAll(new ServerStatsPacket { avgFps = avg, maxFps = maxInt, minFpx = minInt }, Channel.Unreliable);
         }
 
         private void ClientUnsubscribe_ServerStats()
@@ -77,22 +107,42 @@ namespace PurrNet
             if (!_dirtyServerStats) return;
             _dirtyServerStats = false;
 
-            _stringBuilder.Clear().Append("Max FPS: ").Append(_lastServerStats.max);
-            _cachedServerMaxFpsText = _stringBuilder.ToString();
+            if (_lastServerStats.max != _cachedServerMax)
+            {
+                _cachedServerMax = _lastServerStats.max;
+                _cachedServerMaxFpsText = FormatStat("Max FPS: ", _lastServerStats.max, "");
+            }
 
-            _stringBuilder.Clear().Append("Avg FPS: ").Append(_lastServerStats.avg);
-            _cachedServerAvgFpsText = _stringBuilder.ToString();
+            if (_lastServerStats.avg != _cachedServerAvg)
+            {
+                _cachedServerAvg = _lastServerStats.avg;
+                _cachedServerAvgFpsText = FormatStat("Avg FPS: ", _lastServerStats.avg, "");
+            }
 
-            _stringBuilder.Clear().Append("Min FPS: ").Append(_lastServerStats.min);
-            _cachedServerMinFpsText = _stringBuilder.ToString();
+            if (_lastServerStats.min != _cachedServerMin)
+            {
+                _cachedServerMin = _lastServerStats.min;
+                _cachedServerMinFpsText = FormatStat("Min FPS: ", _lastServerStats.min, "");
+            }
         }
 
         private void ResetStatistics_ServerStats()
         {
+            _fpsHead = 0;
+            _fpsCount = 0;
             
+            for (int i = 0; i < MAX_FPS_SAMPLES; i++)
+            {
+                _fpsTimes[i] = 0;
+                _fpsValues[i] = 0;
+            }
+            
+            _cachedServerAvg = -1;
+            _cachedServerMax = -1;
+            _cachedServerMin = -1;
         }
 
-        private struct ServerStatsPacket
+        private struct ServerStatsPacket : Packing.IPackedAuto
         {
             public int avgFps;
             public int maxFps;
