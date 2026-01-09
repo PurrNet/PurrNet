@@ -1,3 +1,10 @@
+## [1.18.1-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.14...v1.18.1-beta.15) (2026-01-09)
+
+
+### Bug Fixes
+
+* still cull rpcs when player isnt observer for other channels ([69c2677](https://github.com/PurrNet/PurrNet/commit/69c26771081843302480415c118fe556351b8cf7))
+
 ## [1.18.1-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.13...v1.18.1-beta.14) (2026-01-09)
 
 
