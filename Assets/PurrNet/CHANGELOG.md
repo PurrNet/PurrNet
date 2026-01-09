@@ -1,3 +1,10 @@
+## [1.18.1-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.15...v1.18.1-beta.16) (2026-01-09)
+
+
+### Bug Fixes
+
+* if transform from A to B but types mismatch create it from scratch ([2e1799c](https://github.com/PurrNet/PurrNet/commit/2e1799c7bb5a3e4f78459093207f60601db21fa1))
+
 ## [1.18.1-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.14...v1.18.1-beta.15) (2026-01-09)
 
 
