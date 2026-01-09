@@ -212,6 +212,10 @@ namespace PurrNet.Packing
             using var packerB = BitPackerPool.Get();
             Packer<T>.Write(packerB, whatToCopy);
             packerB.ResetPositionAndMode(true);
+
+            if (target?.GetType() != whatToCopy?.GetType())
+                target = default;
+
             Packer<T>.Read(packerB, ref target);
             return true;
         }
