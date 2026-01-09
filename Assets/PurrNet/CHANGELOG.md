@@ -1,3 +1,10 @@
+## [1.18.1-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.13...v1.18.1-beta.14) (2026-01-09)
+
+
+### Bug Fixes
+
+* Improved GC of statistics manager ([1d563a8](https://github.com/PurrNet/PurrNet/commit/1d563a8234393851ac2bdfdac9df6a80250a821a))
+
 ## [1.18.1-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.12...v1.18.1-beta.13) (2026-01-08)
 
 
