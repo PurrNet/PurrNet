@@ -540,11 +540,15 @@ namespace PurrNet
                     return false;
                 }
 
-                if (!IsObserver(info.sender) && signature.channel == Channel.ReliableOrdered)
+                if (!IsObserver(info.sender))
                 {
-                    PurrLogger.LogError(
-                        $"Trying to receive server RPC '{signature.rpcName}' from '{name}' by player '{info.sender}' which is not an observer. Aborting RPC call.",
-                        this);
+                    if (signature.channel == Channel.ReliableOrdered)
+                    {
+                        PurrLogger.LogError(
+                            $"Trying to receive server RPC '{signature.rpcName}' from '{name}' by player '{info.sender}' which is not an observer. Aborting RPC call.",
+                            this);
+                    }
+
                     return false;
                 }
 
