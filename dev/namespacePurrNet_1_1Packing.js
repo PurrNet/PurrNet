@@ -1,5 +1,7 @@
 var namespacePurrNet_1_1Packing =
 [
+    [ "BitData", "structPurrNet_1_1Packing_1_1BitData.html", null ],
+    [ "BitDataScope", "structPurrNet_1_1Packing_1_1BitDataScope.html", null ],
     [ "BitPacker", "classPurrNet_1_1Packing_1_1BitPacker.html", "classPurrNet_1_1Packing_1_1BitPacker" ],
     [ "BitPackerPool", "classPurrNet_1_1Packing_1_1BitPackerPool.html", null ],
     [ "BitPackerWithLength", "structPurrNet_1_1Packing_1_1BitPackerWithLength.html", null ],

@@ -90,9 +90,11 @@ var hierarchy =
       [ "PurrNet.Modules.DeltaValue", "structPurrNet_1_1Modules_1_1DeltaValue.html", null ],
       [ "PurrNet.Modules.GameObjectPrototype", "structPurrNet_1_1Modules_1_1GameObjectPrototype.html", null ],
       [ "PurrNet.Modules.GameObjectRuntimePair", "structPurrNet_1_1Modules_1_1GameObjectRuntimePair.html", null ],
-      [ "PurrNet.Modules.RPCBatch< HEADER >", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
+      [ "PurrNet.Modules.RPCBatch", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
       [ "PurrNet.Modules.SpawnPacket", "structPurrNet_1_1Modules_1_1SpawnPacket.html", null ],
       [ "PurrNet.Modules.SpawnPacketBatch", "structPurrNet_1_1Modules_1_1SpawnPacketBatch.html", null ],
+      [ "PurrNet.Packing.BitData", "structPurrNet_1_1Packing_1_1BitData.html", null ],
+      [ "PurrNet.Packing.BitDataScope", "structPurrNet_1_1Packing_1_1BitDataScope.html", null ],
       [ "PurrNet.Packing.BitPacker", "classPurrNet_1_1Packing_1_1BitPacker.html", null ],
       [ "PurrNet.Packing.BitPackerWithLength", "structPurrNet_1_1Packing_1_1BitPackerWithLength.html", null ],
       [ "PurrNet.Packing.BitPackerWrapper", "structPurrNet_1_1Packing_1_1BitPackerWrapper.html", null ],
@@ -125,8 +127,14 @@ var hierarchy =
     [ "PurrNet.Packing.IDuplicate< DisposableList< T > >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ]
     ] ],
+    [ "PurrNet.Packing.IDuplicate< Half >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
+      [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ]
+    ] ],
     [ "IEquatable", null, [
       [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
+      [ "PurrNet.MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
+      [ "PurrNet.MinimalModuleHeader", "structPurrNet_1_1MinimalModuleHeader.html", null ],
+      [ "PurrNet.MinimalStaticHeader", "structPurrNet_1_1MinimalStaticHeader.html", null ],
       [ "PurrNet.Modules.DeltaValue", "structPurrNet_1_1Modules_1_1DeltaValue.html", null ],
       [ "PurrNet.Modules.PrefabPieceID", "structPurrNet_1_1Modules_1_1PrefabPieceID.html", null ],
       [ "PurrNet.Modules.SpawnID", "structPurrNet_1_1Modules_1_1SpawnID.html", null ],
@@ -134,6 +142,7 @@ var hierarchy =
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
       [ "PurrNet.NetworkTransformData", "structPurrNet_1_1NetworkTransformData.html", null ],
+      [ "PurrNet.Packing.BitPacker", "classPurrNet_1_1Packing_1_1BitPacker.html", null ],
       [ "PurrNet.Packing.CompressedFloat", "structPurrNet_1_1Packing_1_1CompressedFloat.html", null ],
       [ "PurrNet.Packing.CompressedVector2", "structPurrNet_1_1Packing_1_1CompressedVector2.html", null ],
       [ "PurrNet.Packing.CompressedVector3", "structPurrNet_1_1Packing_1_1CompressedVector3.html", null ],
@@ -148,12 +157,17 @@ var hierarchy =
       [ "PurrNet.Packing.PackedUShort", "structPurrNet_1_1Packing_1_1PackedUShort.html", null ],
       [ "PurrNet.Packing.Size", "structPurrNet_1_1Packing_1_1Size.html", null ],
       [ "PurrNet.PlayerID", "structPurrNet_1_1PlayerID.html", null ],
+      [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
+      [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >", "structPurrNet_1_1Pooling_1_1DisposableDictionary.html", null ],
+      [ "PurrNet.Pooling.DisposableHashSet< T >", "structPurrNet_1_1Pooling_1_1DisposableHashSet.html", null ],
+      [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
       [ "PurrNet.Profiler.BroadcastSample", "structPurrNet_1_1Profiler_1_1BroadcastSample.html", null ],
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
       [ "PurrNet.SceneID", "structPurrNet_1_1SceneID.html", null ],
       [ "PurrNet.StaticRPCHeader", "structPurrNet_1_1StaticRPCHeader.html", null ],
       [ "PurrNet.Transports.ByteData", "structPurrNet_1_1Transports_1_1ByteData.html", null ],
-      [ "PurrNet.Transports.Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ]
+      [ "PurrNet.Transports.Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ],
+      [ "PurrNet.UnionRPCHeader", "structPurrNet_1_1UnionRPCHeader.html", null ]
     ] ],
     [ "IFormattable", null, [
       [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ]
@@ -222,6 +236,9 @@ var hierarchy =
       [ "PurrNet.Authentication.AuthenticationResponse", "structPurrNet_1_1Authentication_1_1AuthenticationResponse.html", null ],
       [ "PurrNet.ChildRPCPacket", "structPurrNet_1_1ChildRPCPacket.html", null ],
       [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
+      [ "PurrNet.MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
+      [ "PurrNet.MinimalModuleHeader", "structPurrNet_1_1MinimalModuleHeader.html", null ],
+      [ "PurrNet.MinimalStaticHeader", "structPurrNet_1_1MinimalStaticHeader.html", null ],
       [ "PurrNet.Modules.ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
       [ "PurrNet.Modules.ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],
       [ "PurrNet.Modules.DespawnPacket", "structPurrNet_1_1Modules_1_1DespawnPacket.html", null ],
@@ -233,6 +250,8 @@ var hierarchy =
       [ "PurrNet.Modules.ServerLoginResponse", "structPurrNet_1_1Modules_1_1ServerLoginResponse.html", null ],
       [ "PurrNet.Modules.SpawnID", "structPurrNet_1_1Modules_1_1SpawnID.html", null ],
       [ "PurrNet.Modules.SpawnPacketBatch", "structPurrNet_1_1Modules_1_1SpawnPacketBatch.html", null ],
+      [ "PurrNet.Modules.TickManagerRequestLocalTick", "structPurrNet_1_1Modules_1_1TickManagerRequestLocalTick.html", null ],
+      [ "PurrNet.Modules.TickManagerResponseLocalTick", "structPurrNet_1_1Modules_1_1TickManagerResponseLocalTick.html", null ],
       [ "PurrNet.Modules.TransformInfo", "structPurrNet_1_1Modules_1_1TransformInfo.html", null ],
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
@@ -254,7 +273,9 @@ var hierarchy =
       [ "PurrNet.StaticRPCHeader", "structPurrNet_1_1StaticRPCHeader.html", null ],
       [ "PurrNet.StaticRPCPacket", "structPurrNet_1_1StaticRPCPacket.html", null ],
       [ "PurrNet.StatisticsManager.PacketMessage", "structPurrNet_1_1StatisticsManager_1_1PacketMessage.html", null ],
-      [ "PurrNet.StatisticsManager.PingMessage", "structPurrNet_1_1StatisticsManager_1_1PingMessage.html", null ]
+      [ "PurrNet.StatisticsManager.PingMessage", "structPurrNet_1_1StatisticsManager_1_1PingMessage.html", null ],
+      [ "PurrNet.StringUTF8", "structPurrNet_1_1StringUTF8.html", null ],
+      [ "PurrNet.UnionRPCHeader", "structPurrNet_1_1UnionRPCHeader.html", null ]
     ] ],
     [ "PurrNet.Packing.IPackedSimple", "interfacePurrNet_1_1Packing_1_1IPackedSimple.html", null ],
     [ "PurrNet.IPlayerAuthenticator", "interfacePurrNet_1_1IPlayerAuthenticator.html", null ],
@@ -420,9 +441,6 @@ var hierarchy =
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
     [ "PurrNet.Transports.RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "PurrNet.Modules.ReliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
-    [ "PurrNet.Modules.RPCBatch< PurrNet.NetworkIdentityRPCHeader >", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
-    [ "PurrNet.Modules.RPCBatch< PurrNet.NetworkModuleRPCHeader >", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
-    [ "PurrNet.Modules.RPCBatch< PurrNet.StaticRPCHeader >", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
     [ "PurrNet.RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
     [ "PurrNet.Modules.RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],
     [ "PurrNet.Modules.RpcRequest", "structPurrNet_1_1Modules_1_1RpcRequest.html", null ],
@@ -449,7 +467,6 @@ var hierarchy =
     [ "StateNode", null, [
       [ "PurrNet.StateMachine.StateNode< T >", "classPurrNet_1_1StateMachine_1_1StateNode.html", null ]
     ] ],
-    [ "PurrNet.StringUTF8", "structPurrNet_1_1StringUTF8.html", null ],
     [ "PurrNet.SyncArrayChange< T >", "structPurrNet_1_1SyncArrayChange.html", null ],
     [ "PurrNet.SyncAsset< Texture2D >", "classPurrNet_1_1SyncAsset.html", [
       [ "PurrNet.SyncTextureAsset", "classPurrNet_1_1SyncTextureAsset.html", null ]

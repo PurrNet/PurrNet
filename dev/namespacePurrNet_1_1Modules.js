@@ -56,6 +56,8 @@ var namespacePurrNet_1_1Modules =
     [ "SpawnPacket", "structPurrNet_1_1Modules_1_1SpawnPacket.html", "structPurrNet_1_1Modules_1_1SpawnPacket" ],
     [ "SpawnPacketBatch", "structPurrNet_1_1Modules_1_1SpawnPacketBatch.html", null ],
     [ "TickManager", "classPurrNet_1_1Modules_1_1TickManager.html", "classPurrNet_1_1Modules_1_1TickManager" ],
+    [ "TickManagerRequestLocalTick", "structPurrNet_1_1Modules_1_1TickManagerRequestLocalTick.html", null ],
+    [ "TickManagerResponseLocalTick", "structPurrNet_1_1Modules_1_1TickManagerResponseLocalTick.html", null ],
     [ "TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
     [ "TransformInfo", "structPurrNet_1_1Modules_1_1TransformInfo.html", null ],
     [ "UsedByILAttribute", "classPurrNet_1_1Modules_1_1UsedByILAttribute.html", null ]
