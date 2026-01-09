@@ -42,20 +42,37 @@ namespace PurrNet.Modules
 
         private void ReceivedUnionBatchedRPC(PlayerID sender, UnionRPCHeader header, BitData content, bool asServer)
         {
-            if (header.moduleRpc.HasValue)
+            try
             {
-                ReceivedChildBatchedRPC(sender, header.ToModuleHeader(), content, asServer);
-                return;
+                if (header.moduleRpc.HasValue)
+                {
+                    ReceiveChildRPC(sender, new ChildRPCPacket
+                    {
+                        header = header.ToModuleHeader(),
+                        data = content
+                    }, asServer);
+                }
+                else if (header.identityRpc.HasValue)
+                {
+                    ReceiveRPC(sender, new RPCPacket
+                    {
+                        header = header.ToIdentityHeader(),
+                        data = content
+                    }, asServer);
+                }
+                else
+                {
+                    ReceiveStaticRPC(sender, new StaticRPCPacket
+                    {
+                        header = header.ToStaticHeader(),
+                        data = content
+                    }, asServer);
+                }
             }
-
-            if (header.identityRpc.HasValue)
+            catch (Exception e)
             {
-                ReceivedNormalBatchedRPC(sender, header.ToIdentityHeader(), content, asServer);
-                return;
+                PurrLogger.LogException(e);
             }
-
-            if (header.staticRpc.HasValue)
-                ReiceStaticBatchedRPC(sender, header.ToStaticHeader(), content, asServer);
         }
 
         public void PromoteToServerModule()
@@ -64,33 +81,6 @@ namespace PurrNet.Modules
         }
 
         public void PostPromoteToServerModule() { }
-
-        private void ReiceStaticBatchedRPC(PlayerID sender, StaticRPCHeader header, BitData content, bool asServer)
-        {
-            ReceiveStaticRPC(sender, new StaticRPCPacket
-            {
-                header = header,
-                data = content
-            }, asServer);
-        }
-
-        private void ReceivedChildBatchedRPC(PlayerID sender, NetworkModuleRPCHeader header, BitData content, bool asServer)
-        {
-            ReceiveChildRPC(sender, new ChildRPCPacket
-            {
-                header = header,
-                data = content
-            }, asServer);
-        }
-
-        private void ReceivedNormalBatchedRPC(PlayerID sender, NetworkIdentityRPCHeader header, BitData content, bool asServer)
-        {
-            ReceiveRPC(sender, new RPCPacket
-            {
-                header = header,
-                data = content
-            }, asServer);
-        }
 
         public void Enable(bool asServer)
         {
