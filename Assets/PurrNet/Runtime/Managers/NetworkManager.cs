@@ -69,14 +69,13 @@ namespace PurrNet
         [PurrDocs("systems-and-modules/network-manager/network-visibility")] [SerializeField]
         private NetworkVisibilityRuleSet _visibilityRules;
 
-        [PurrDocs("systems-and-modules/network-manager/authentication")]
-        [SerializeField] private AuthenticationLayer _authenticator;
+        [PurrDocs("systems-and-modules/network-manager/authentication")] [SerializeField]
+        private AuthenticationLayer _authenticator;
 
         [Tooltip("Number of target ticks per second.")] [SerializeField]
         private int _tickRate = 20;
 
-        [SerializeField, UsedImplicitly]
-        private bool _patchLingeringProcessBug;
+        [SerializeField, UsedImplicitly] private bool _patchLingeringProcessBug;
 
         /// <summary>
         /// The local client connection.
@@ -162,7 +161,7 @@ namespace PurrNet
         /// <summary>
         /// Occurs when the client connection state changes.
         /// </summary>
-        public static event  Action<ConnectionState> onAnyClientConnectionState;
+        public static event Action<ConnectionState> onAnyClientConnectionState;
 
         public ITransport rawTransport => _transport ? _transport.transport : null;
 
@@ -292,11 +291,9 @@ namespace PurrNet
         /// </summary>
         public bool isServer { get; private set; }
 
-        [UsedByIL]
-        public static bool isServerStatic => main && main.isServer;
+        [UsedByIL] public static bool isServerStatic => main && main.isServer;
 
-        [UsedByIL]
-        public static bool isClientStatic => main && main.isClient;
+        [UsedByIL] public static bool isClientStatic => main && main.isClient;
 
         /// <summary>
         /// Whether the network manager is a client.
@@ -1138,10 +1135,16 @@ namespace PurrNet
             modules.AddModule(scenePlayers);
 
             var hierarchyV2 = new HierarchyFactory(this, scenesModule, scenePlayers, playersManager);
-            var ownershipModule = new GlobalOwnershipModule(this, hierarchyV2, playersManager, scenePlayers, scenesModule);
+            var ownershipModule =
+                new GlobalOwnershipModule(this, hierarchyV2, playersManager, scenePlayers, scenesModule);
             var rpcModule = new RPCModule(this, playersManager, hierarchyV2, ownershipModule, scenesModule);
-            var networkTransform = new NetworkTransformFactory(scenesModule, scenePlayers, playersBroadcast, this, hierarchyV2);
+            var networkTransform =
+                new NetworkTransformFactory(scenesModule, scenePlayers, playersBroadcast, this, hierarchyV2);
             var colliderRollback = new ColliderRollbackFactory(tickManager, scenesModule);
+
+            if (asServer)
+                _serverRpcModule = rpcModule;
+            else _clientRpcModule = rpcModule;
 
             if (asServer)
             {
@@ -1206,6 +1209,7 @@ namespace PurrNet
                     QualitySettings.vSyncCount = 0;
                     Application.targetFrameRate = _tickRate;
                 }
+
                 StartServer();
             }
 
@@ -1242,7 +1246,10 @@ namespace PurrNet
         static readonly ProfilerMarker _preFixedUpdateMarker = new ProfilerMarker($"NetworkManager.OnPreFixedUpdate");
         static readonly ProfilerMarker _receiveMessagesMarker = new ProfilerMarker($"NetworkManager.ReceiveMessages");
         static readonly ProfilerMarker _receiveFixedUpdateMarker = new ProfilerMarker($"NetworkManager.OnFixedUpdate");
-        static readonly ProfilerMarker _receivePostFixedUpdateMarker = new ProfilerMarker($"NetworkManager.OnPostFixedUpdate");
+
+        static readonly ProfilerMarker _receivePostFixedUpdateMarker =
+            new ProfilerMarker($"NetworkManager.OnPostFixedUpdate");
+
         static readonly ProfilerMarker _onBatchMarker = new ProfilerMarker($"NetworkManager.OnBatch");
         static readonly ProfilerMarker _onPostBatchMarker = new ProfilerMarker($"NetworkManager.OnPostBatch");
         static readonly ProfilerMarker _onSendMessagesMarker = new ProfilerMarker($"NetworkManager.SendMessages");
@@ -1620,6 +1627,7 @@ namespace PurrNet
             _serverSceneModule = null;
             _serverScenePlayersModule = null;
             _serverDeltaModule = null;
+            _serverRpcModule = null;
         }
 
         public void InternalUnregisterClientModules()
@@ -1652,6 +1660,7 @@ namespace PurrNet
             _clientSceneModule = null;
             _clientScenePlayersModule = null;
             _clientDeltaModule = null;
+            _clientRpcModule = null;
         }
 
         private Coroutine _clientCoroutine;
@@ -1816,6 +1825,15 @@ namespace PurrNet
         {
             if (isServer && _transport)
                 _transport.transport.CloseConnection(conn);
+        }
+
+        private RPCModule _clientRpcModule;
+        private RPCModule _serverRpcModule;
+
+        public bool TryGetRpcModule(bool asServer, out RPCModule module)
+        {
+            module = asServer ? _serverRpcModule : _clientRpcModule;
+            return module != null;
         }
     }
 }

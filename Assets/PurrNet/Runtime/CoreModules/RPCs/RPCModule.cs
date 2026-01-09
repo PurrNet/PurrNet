@@ -9,6 +9,7 @@ using PurrNet.Pooling;
 using PurrNet.Profiler;
 using PurrNet.Transports;
 using PurrNet.Utils;
+using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
@@ -565,38 +566,49 @@ namespace PurrNet.Modules
         readonly List<RPC_DATA_BASE<StaticRPCHeader>> _bufferedStaticRpcsDatas = new ();
         readonly List<RPC_DATA_BASE<NetworkModuleRPCHeader>> _bufferedChildRpcsDatas = new ();
 
+        static readonly ProfilerMarker _bufferRPCMarker = new ProfilerMarker($"RPCModule.AppendToBufferedRPCs");
+
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
         {
-            AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
-                _bufferedStaticRpcsDatas,
-                packet.header,
-                new RPC_ID(packet),
-                packet.data,
-                signature
-            );
+            using (_bufferRPCMarker.Auto())
+            {
+                AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
+                    _bufferedStaticRpcsDatas,
+                    packet.header,
+                    new RPC_ID(packet),
+                    packet.data,
+                    signature
+                );
+            }
         }
 
         public void AppendToBufferedRPCs(ChildRPCPacket packet, RPCSignature signature)
         {
-            AppendToBufferedRPCs(_bufferedChildRpcsKeys,
-                _bufferedChildRpcsDatas,
-                packet.header,
-                new RPC_ID(packet),
-                packet.data,
-                signature
-            );
+            using (_bufferRPCMarker.Auto())
+            {
+                AppendToBufferedRPCs(_bufferedChildRpcsKeys,
+                    _bufferedChildRpcsDatas,
+                    packet.header,
+                    new RPC_ID(packet),
+                    packet.data,
+                    signature
+                );
+            }
         }
 
         public void AppendToBufferedRPCs(RPCPacket packet, RPCSignature signature)
         {
-            AppendToBufferedRPCs(
-                _bufferedRpcsKeys,
-                _bufferedRpcsDatas,
-                packet.header,
-                new RPC_ID(packet),
-                packet.data,
-                signature
-            );
+            using (_bufferRPCMarker.Auto())
+            {
+                AppendToBufferedRPCs(
+                    _bufferedRpcsKeys,
+                    _bufferedRpcsDatas,
+                    packet.header,
+                    new RPC_ID(packet),
+                    packet.data,
+                    signature
+                );
+            }
         }
 
         private void AppendToBufferedRPCs<T>(

@@ -428,6 +428,7 @@ namespace PurrNet
         }
 
         static readonly ProfilerMarker _sendRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.SendRPC");
+        static readonly ProfilerMarker _validatingRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.ValidateSendingRPC");
 
         [UsedByIL]
         protected void SendRPC(RPCPacket packet, RPCSignature signature)
@@ -450,45 +451,70 @@ namespace PurrNet
             }
         }
 
+        static readonly ProfilerMarker _isSpawnedMarker = new ProfilerMarker($"Check isSpawned");
+        static readonly ProfilerMarker _tryGetMarker = new ProfilerMarker($"TryGetModule<RPCModule>()");
+        static readonly ProfilerMarker _rulesMarker = new ProfilerMarker($"Validate Rules");
+
         public bool ValidateSendingRPC(RPCSignature signature, out RPCModule module)
         {
-            if (!isSpawned)
+            using (_validatingRPCMarker.Auto())
             {
-                if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                    PurrLogger.LogError($"Trying to send RPC `{signature.rpcName}` from '{GetType().Name}' which is not spawned.", this);
-                module = null;
-                return false;
+                using (_isSpawnedMarker.Auto())
+                {
+                    if (!isSpawned)
+                    {
+                        if (signature is
+                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                            PurrLogger.LogError(
+                                $"Trying to send RPC `{signature.rpcName}` from '{GetType().Name}' which is not spawned.",
+                                this);
+                        module = null;
+                        return false;
+                    }
+                }
+
+                using (_tryGetMarker.Auto())
+                {
+                    if (!networkManager.TryGetRpcModule(networkManager.isServer, out module))
+                    {
+                        if (signature is
+                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                            PurrLogger.LogError(
+                                $"Trying to send RPC `{signature.rpcName}` from `{GetType().Name}` but RPCModule is missing for `{(networkManager.isServer ? "server" : "client")}`.",
+                                this);
+                        return false;
+                    }
+                }
+
+                using (_rulesMarker.Auto())
+                {
+                    var rules = networkManager.networkRules;
+                    bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
+
+                    if (!shouldIgnoreOwnership && signature.requireOwnership && !isOwner)
+                    {
+                        if (signature is
+                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                            PurrLogger.LogError(
+                                $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without ownership.",
+                                this);
+                        return false;
+                    }
+
+                    bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
+
+                    if (!shouldIgnore && signature.requireServer && !networkManager.isServer)
+                    {
+                        if (signature is
+                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                            PurrLogger.LogError(
+                                $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without server.",
+                                this);
+                        return false;
+                    }
+                }
+                return true;
             }
-
-            if (!networkManager.TryGetModule<RPCModule>(networkManager.isServer, out module))
-            {
-                if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                    PurrLogger.LogError($"Trying to send RPC `{signature.rpcName}` from `{GetType().Name}` but RPCModule is missing for `{(networkManager.isServer ? "server" : "client")}`.", this);
-                return false;
-            }
-
-            var rules = networkManager.networkRules;
-            bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
-
-            if (!shouldIgnoreOwnership && signature.requireOwnership && !isOwner)
-            {
-                if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                    PurrLogger.LogError(
-                        $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without ownership.", this);
-                return false;
-            }
-
-            bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
-
-            if (!shouldIgnore && signature.requireServer && !networkManager.isServer)
-            {
-                if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                    PurrLogger.LogError(
-                        $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without server.", this);
-                return false;
-            }
-
-            return true;
         }
 
         static readonly ProfilerMarker _validateReceivingRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.ValidateReceivingRPC");
@@ -508,102 +534,108 @@ namespace PurrNet
 
         internal bool ValidateIncomingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
         {
-            var rules = networkManager.networkRules;
-            bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
-
-            if (!networkManager.TryGetModule<RPCModule>(networkManager.isServer, out var module))
-                return false;
-
-            if (!shouldIgnoreOwnership && signature.requireOwnership && info.sender != owner)
-                return false;
-
-            if (signature.excludeOwner && isOwner)
-                return false;
-
-            if (signature.type == RPCType.ServerRPC)
+            using (_validateReceivingRPCMarker.Auto())
             {
-                if (!asServer)
-                {
-                    PurrLogger.LogError(
-                        $"Trying to receive server RPC '{signature.rpcName}' from '{name}' on client. Aborting RPC call.",
-                        this);
+                var rules = networkManager.networkRules;
+                bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
+
+                if (!networkManager.TryGetRpcModule(networkManager.isServer, out var module))
                     return false;
-                }
 
-                var idObservers = observers;
-
-                if (idObservers == null)
-                {
-                    PurrLogger.LogError(
-                        $"Trying to receive server RPC '{signature.rpcName}' from '{name}' but failed to get observers.",
-                        this);
+                if (!shouldIgnoreOwnership && signature.requireOwnership && info.sender != owner)
                     return false;
-                }
 
-                if (!IsObserver(info.sender))
+                if (signature.excludeOwner && isOwner)
+                    return false;
+
+                if (signature.type == RPCType.ServerRPC)
                 {
-                    if (signature.channel == Channel.ReliableOrdered)
+                    if (!asServer)
                     {
                         PurrLogger.LogError(
-                            $"Trying to receive server RPC '{signature.rpcName}' from '{name}' by player '{info.sender}' which is not an observer. Aborting RPC call.",
+                            $"Trying to receive server RPC '{signature.rpcName}' from '{name}' on client. Aborting RPC call.",
                             this);
+                        return false;
                     }
 
+                    var idObservers = observers;
+
+                    if (idObservers == null)
+                    {
+                        PurrLogger.LogError(
+                            $"Trying to receive server RPC '{signature.rpcName}' from '{name}' but failed to get observers.",
+                            this);
+                        return false;
+                    }
+
+                    if (!IsObserver(info.sender))
+                    {
+                        if (signature.channel == Channel.ReliableOrdered)
+                        {
+                            PurrLogger.LogError(
+                                $"Trying to receive server RPC '{signature.rpcName}' from '{name}' by player '{info.sender}' which is not an observer. Aborting RPC call.",
+                                this);
+                        }
+
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                if (!asServer)
+                {
+                    return true;
+                }
+
+                bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
+
+                if (!shouldIgnore && signature.requireServer)
+                {
+                    PurrLogger.LogError(
+                        $"Trying to receive client RPC '{signature.rpcName}' from '{name}' on server. " +
+                        "If you want automatic forwarding use 'requireServer: false'.", this);
                     return false;
                 }
 
-                return true;
-            }
-
-            if (!asServer)
-            {
-                return true;
-            }
-
-            bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
-
-            if (!shouldIgnore && signature.requireServer)
-            {
-                PurrLogger.LogError(
-                    $"Trying to receive client RPC '{signature.rpcName}' from '{name}' on server. " +
-                    "If you want automatic forwarding use 'requireServer: false'.", this);
-                return false;
-            }
-
-            switch (signature.type)
-            {
-                case RPCType.ServerRPC: throw new InvalidOperationException("ServerRPC should be handled by server.");
-
-                case RPCType.ObserversRPC:
+                switch (signature.type)
                 {
-                    var cachedOwner = owner;
-                    using var players = DisposableList<PlayerID>.Create(observers.Count);
+                    case RPCType.ServerRPC:
+                        throw new InvalidOperationException("ServerRPC should be handled by server.");
 
-                    for (var i = 0; i < observers.Count; ++i)
+                    case RPCType.ObserversRPC:
                     {
-                        var observer = observers[i];
+                        var cachedOwner = owner;
+                        using var players = DisposableList<PlayerID>.Create(observers.Count);
 
-                        bool ignoreSender = observer == info.sender && (signature.excludeSender || signature.runLocally);
-                        bool ignoreOwner = signature.excludeOwner && observer == cachedOwner;
+                        for (var i = 0; i < observers.Count; ++i)
+                        {
+                            var observer = observers[i];
 
-                        if (ignoreSender || ignoreOwner)
-                            continue;
+                            bool ignoreSender = observer == info.sender &&
+                                                (signature.excludeSender || signature.runLocally);
+                            bool ignoreOwner = signature.excludeOwner && observer == cachedOwner;
 
-                        players.Add(observer);
+                            if (ignoreSender || ignoreOwner)
+                                continue;
+
+                            players.Add(observer);
+                        }
+
+                        Send(players, BroadcastModule.GetImmediateData(data), signature.channel);
+                        AppendToBufferedRPCs(signature, data, module);
+                        return !isClient;
                     }
-
-                    Send(players, BroadcastModule.GetImmediateData(data), signature.channel);
-                    AppendToBufferedRPCs(signature, data, module);
-                    return !isClient;
+                    case RPCType.TargetRPC:
+                    {
+                        var rawData = BroadcastModule.GetImmediateData(data);
+                        bool shouldExecute =
+                            SendToTargetOrServer(rules, data.targetPlayerId, rawData, signature.channel);
+                        AppendToBufferedRPCs(signature, data, module);
+                        return shouldExecute;
+                    }
+                    default: throw new ArgumentOutOfRangeException(nameof(signature.type));
                 }
-                case RPCType.TargetRPC:
-                {
-                    var rawData = BroadcastModule.GetImmediateData(data);
-                    bool shouldExecute = SendToTargetOrServer(rules, data.targetPlayerId, rawData, signature.channel);
-                    AppendToBufferedRPCs(signature, data, module);
-                    return shouldExecute;
-                }
-                default: throw new ArgumentOutOfRangeException(nameof(signature.type));
             }
         }
 
