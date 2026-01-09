@@ -263,192 +263,196 @@ namespace PurrNet
 
         public void SendRPCChild(Type statisticsParent, RPCModule rpcModule, ChildRPCPacket packet, RPCSignature signature)
         {
-            switch (signature.type)
+            using (_sendRPCMarker.Auto())
             {
-                case RPCType.ServerRPC:
-                    if (networkManager.isServerOnly)
-                        break;
-
-                    if (signature.runLocally && isServer)
-                        break;
-
-#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
-                        this);
-#endif
-                    rpcModule.BatchToServer(packet, signature.channel);
-                    break;
-                case RPCType.ObserversRPC:
+                switch (signature.type)
                 {
-                    if (isServer)
-                    {
-                        using var players = GetObservers(signature);
+                    case RPCType.ServerRPC:
+                        if (networkManager.isServerOnly)
+                            break;
 
-                        if (players.Count == 0)
+                        if (signature.runLocally && isServer)
                             break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData, this);
-#endif
-                        rpcModule.BatchToTargets(players, packet, signature.channel);
-                    }
-                    else
-                    {
-#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                            packet.rpcData, this);
+                        Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
+                            this);
 #endif
                         rpcModule.BatchToServer(packet, signature.channel);
-                    }
-
-                    break;
-                }
-                case RPCType.TargetRPC:
-                    if (isServer)
+                        break;
+                    case RPCType.ObserversRPC:
                     {
-                        using var players = signature.GetTargets();
+                        if (isServer)
+                        {
+                            using var players = GetObservers(signature);
 
-                        if (players.Count == 0)
-                            break;
+                            if (players.Count == 0)
+                                break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData, this);
+                            for (var i = players.Count - 1; i >= 0; --i)
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
 #endif
-                        rpcModule.BatchToTargets(players, packet, signature.channel);
-                    }
-                    else
-                    {
-                        using var targets = signature.GetTargets();
-
-                        if (targets.Count == 0)
-                            break;
-
-                        // TODO: we should batch this into one packet to the server instead of N
-                        for (int i = 0; i < targets.Count; i++)
+                            rpcModule.BatchToTargets(players, packet, signature.channel);
+                        }
+                        else
                         {
-                            packet.targetPlayerId = targets[i];
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                                 packet.rpcData, this);
 #endif
                             rpcModule.BatchToServer(packet, signature.channel);
                         }
-                    }
 
-                    break;
-                default: throw new ArgumentOutOfRangeException();
+                        break;
+                    }
+                    case RPCType.TargetRPC:
+                        if (isServer)
+                        {
+                            using var players = signature.GetTargets();
+
+                            if (players.Count == 0)
+                                break;
+
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            for (var i = players.Count - 1; i >= 0; --i)
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
+#endif
+                            rpcModule.BatchToTargets(players, packet, signature.channel);
+                        }
+                        else
+                        {
+                            using var targets = signature.GetTargets();
+
+                            if (targets.Count == 0)
+                                break;
+
+                            // TODO: we should batch this into one packet to the server instead of N
+                            for (int i = 0; i < targets.Count; i++)
+                            {
+                                packet.targetPlayerId = targets[i];
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
+#endif
+                                rpcModule.BatchToServer(packet, signature.channel);
+                            }
+                        }
+
+                        break;
+                    default: throw new ArgumentOutOfRangeException();
+                }
             }
         }
 
         public void SendRPCNormal(Type statisticsParent, RPCModule rpcModule, RPCPacket packet, RPCSignature signature)
         {
-            switch (signature.type)
+            using (_sendRPCMarker.Auto())
             {
-                case RPCType.ServerRPC:
-                    if (networkManager.isServerOnly)
-                        break;
-
-                    if (signature.runLocally && isServer)
-                        break;
-
-#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
-                        this);
-#endif
-                    rpcModule.BatchToServer(packet, signature.channel);
-                    break;
-                case RPCType.ObserversRPC:
+                switch (signature.type)
                 {
-                    if (isServer)
-                    {
-                        using var players = GetObservers(signature);
+                    case RPCType.ServerRPC:
+                        if (networkManager.isServerOnly)
+                            break;
 
-                        if (players.Count == 0)
+                        if (signature.runLocally && isServer)
                             break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData, this);
-#endif
-                        rpcModule.BatchToTargets(players, packet, signature.channel);
-                    }
-                    else
-                    {
-#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                            packet.rpcData, this);
+                        Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
+                            this);
 #endif
                         rpcModule.BatchToServer(packet, signature.channel);
-                    }
-
-                    break;
-                }
-                case RPCType.TargetRPC:
-                    if (isServer)
+                        break;
+                    case RPCType.ObserversRPC:
                     {
-                        using var players = signature.GetTargets();
+                        if (isServer)
+                        {
+                            using var players = GetObservers(signature);
 
-                        if (players.Count == 0)
-                            break;
+                            if (players.Count == 0)
+                                break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData, this);
+                            for (var i = players.Count - 1; i >= 0; --i)
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
 #endif
-                        rpcModule.BatchToTargets(players, packet, signature.channel);
-                    }
-                    else
-                    {
-                        using var targets = signature.GetTargets();
-
-                        if (targets.Count == 0)
-                            break;
-
-                        // TODO: we should batch this into one packet to the server instead of N
-                        for (int i = 0; i < targets.Count; i++)
+                            rpcModule.BatchToTargets(players, packet, signature.channel);
+                        }
+                        else
                         {
-                            packet.targetPlayerId = targets[i];
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                                 packet.rpcData, this);
 #endif
                             rpcModule.BatchToServer(packet, signature.channel);
                         }
-                    }
 
-                    break;
-                default: throw new ArgumentOutOfRangeException();
+                        break;
+                    }
+                    case RPCType.TargetRPC:
+                        if (isServer)
+                        {
+                            using var players = signature.GetTargets();
+
+                            if (players.Count == 0)
+                                break;
+
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            for (var i = players.Count - 1; i >= 0; --i)
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
+#endif
+                            rpcModule.BatchToTargets(players, packet, signature.channel);
+                        }
+                        else
+                        {
+                            using var targets = signature.GetTargets();
+
+                            if (targets.Count == 0)
+                                break;
+
+                            // TODO: we should batch this into one packet to the server instead of N
+                            for (int i = 0; i < targets.Count; i++)
+                            {
+                                packet.targetPlayerId = targets[i];
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
+#endif
+                                rpcModule.BatchToServer(packet, signature.channel);
+                            }
+                        }
+
+                        break;
+                    default: throw new ArgumentOutOfRangeException();
+                }
             }
         }
 
         static readonly ProfilerMarker _sendRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.SendRPC");
         static readonly ProfilerMarker _validatingRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.ValidateSendingRPC");
+        static readonly ProfilerMarker _validatingRRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.ValidateIncomingRPC");
 
         [UsedByIL]
         protected void SendRPC(RPCPacket packet, RPCSignature signature)
         {
-            using (_sendRPCMarker.Auto())
-            {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                _myType ??= GetType();
+            _myType ??= GetType();
 #endif
-                if (!ValidateSendingRPC(signature, out var module))
-                    return;
+            if (!ValidateSendingRPC(signature, out var module))
+                return;
 
-                module.AppendToBufferedRPCs(packet, signature);
+            module.AppendToBufferedRPCs(packet, signature);
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                SendRPCNormal(_myType, module, packet, signature);
+            SendRPCNormal(_myType, module, packet, signature);
 #else
-                SendRPCNormal(null, module, packet, signature);
+            SendRPCNormal(null, module, packet, signature);
 #endif
-            }
         }
 
         public bool ValidateSendingRPC(RPCSignature signature, out RPCModule module)
@@ -504,24 +508,19 @@ namespace PurrNet
             }
         }
 
-        static readonly ProfilerMarker _validateReceivingRPCMarker = new ProfilerMarker($"NetworkIdentity.Broadcasting.ValidateReceivingRPC");
-
         [UsedByIL]
         public bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
         {
-            using (_validateReceivingRPCMarker.Auto())
-            {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                _myType ??= GetType();
-                Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, this);
+            _myType ??= GetType();
+            Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, this);
 #endif
-                return ValidateIncomingRPC(info, signature, data, asServer);
-            }
+            return ValidateIncomingRPC(info, signature, data, asServer);
         }
 
         internal bool ValidateIncomingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
         {
-            using (_validateReceivingRPCMarker.Auto())
+            using (_validatingRRPCMarker.Auto())
             {
                 var rules = networkManager.networkRules;
                 bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
