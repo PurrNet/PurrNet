@@ -778,7 +778,7 @@ namespace PurrNet.Modules
                         }
                         catch (Exception e)
                         {
-                            PurrLogger.LogException(e);
+                            PurrLogger.LogException(e, networkClass.parent);
                         }
                     }
                 }
@@ -871,7 +871,7 @@ namespace PurrNet.Modules
                     }
                     catch (Exception e)
                     {
-                        PurrLogger.LogException(e);
+                        PurrLogger.LogException(e, identity);
                     }
                 }
             }
