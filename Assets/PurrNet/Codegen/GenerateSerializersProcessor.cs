@@ -215,7 +215,8 @@ namespace PurrNet.Codegen
             if (ignoreDelta?.Contains(type) == false)
                 GenerateDeltaSerializersProcessor.HandleType(assembly, type, serializerClass);
 
-            RegisterSerializersProcessor.HandleType(type.Module, serializerClass, null, null);
+            GenerateIEquatableInterface.HandleType(resolvedType);
+            RegisterSerializersProcessor.HandleType(type, type.Module, serializerClass, null, null);
         }
 
         private static void HandleHashOnly(AssemblyDefinition assembly, TypeReference type,
@@ -237,6 +238,9 @@ namespace PurrNet.Codegen
             var networkRegister = assembly.MainModule.GetTypeDefinition(typeof(NetworkRegister))
                 .Import(assembly.MainModule);
             var hashMethod = networkRegister.GetMethod("Hash").Import(assembly.MainModule);
+
+            if (DuplicateHelpers.HasDuplicateInterface(type))
+                DuplicateHelpers.InjectRegistration(serializerClass, type, il);
 
             // NetworkRegister.Hash(RuntimeTypeHandle handle);
             il.Emit(OpCodes.Ldtoken, type);
@@ -310,13 +314,17 @@ namespace PurrNet.Codegen
             };
 
             var register = registerMethod.Body.GetILProcessor();
+
+            if (DuplicateHelpers.HasDuplicateInterface(type))
+                DuplicateHelpers.InjectRegistration(serializerClass, type, register);
+
             GenerateRegisterMethod(assembly.MainModule, type, register, genericT);
             serializerClass.Methods.Add(registerMethod);
         }
 
         private static void GenerateRegisterMethodForIdentity(TypeReference type, ILProcessor il)
         {
-            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkIdentity));
+            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkIdentity)).Import(type.Module);
             var registerMethod = packType.GetMethod("RegisterIdentity", true).Import(type.Module);
 
             var genericRegisterMethod = new GenericInstanceMethod(registerMethod);
@@ -328,7 +336,7 @@ namespace PurrNet.Codegen
 
         private static void GenerateRegisterMethodForModule(TypeReference type, ILProcessor il)
         {
-            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkModule));
+            var packType = type.Module.GetTypeDefinition(typeof(PackNetworkModule)).Import(type.Module);
             var registerMethod = packType.GetMethod("RegisterNetworkModule", true).Import(type.Module);
 
             var genericRegisterMethod = new GenericInstanceMethod(registerMethod);
@@ -957,13 +965,10 @@ namespace PurrNet.Codegen
             }
         }
 
-        private static bool ShouldIgnoreField(FieldDefinition field)
+        public static bool ShouldIgnoreField(FieldDefinition field)
         {
             bool ignore = field.CustomAttributes.Any(a =>
-                a.AttributeType.FullName == typeof(DontPackAttribute).FullName);
-
-            if (DoesTypeHaveDontPackAttribute(field.FieldType.Resolve()))
-                ignore = true;
+                a.AttributeType.FullName == typeof(DontPackAttribute).FullName) || DoesTypeHaveDontPackAttribute(field.FieldType.Resolve());
             return ignore;
         }
 

@@ -1,48 +1,46 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using PurrNet.Packing;
+using PurrNet.Pooling;
 using PurrNet.Transports;
+using Unity.Collections;
 using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
-    [RegisterNetworkType(typeof(RPCBatch<NetworkIdentityRPCHeader>.RPCBatchPacket))]
-    [RegisterNetworkType(typeof(RPCBatch<NetworkModuleRPCHeader>.RPCBatchPacket))]
-    [RegisterNetworkType(typeof(RPCBatch<StaticRPCHeader>.RPCBatchPacket))]
-    public sealed class RPCBatch<HEADER> : IDisposable where HEADER : unmanaged
+    internal struct RPCBatchPacket : IPackedAuto
     {
-        struct BatchKey
-        {
-            public PlayerID playerId;
-            public Channel channel;
+        public Size count;
+        public BitData data;
+    }
 
-            public static bool AreEquals(BatchKey a, BatchKey b)
-            {
-                return a.playerId.id.value == b.playerId.id.value && a.channel == b.channel;
-            }
-        }
+    internal struct PendingBatchedData
+    {
+        public BatchKey key;
+        public UnionRPCHeader lastHeader;
+        public Size lastDataLen;
+        public int batchCount;
+        public int cachedMTU;
+        public BitPacker batchedData;
+    }
 
-        struct PlayerRpcBatchedData
-        {
-            public BatchKey key;
-            public bool completed;
-
-            public HEADER lastHeader;
-            public Size lastDataLen;
-            public int batchCount;
-            public BitPacker batchedData;
-        }
-
-        struct RPCBatchPacket : IPackedAuto
-        {
-            public Size count;
-            public BitPacker data;
-        }
+    public sealed class RPCBatch : IDisposable
+    {
+        static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Flush");
+        static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.FlushChannel");
+        static readonly ProfilerMarker _getSingleBatchMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.GetBatchIndex");
+        static readonly ProfilerMarker _queueSingleMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Queue");
+        static readonly ProfilerMarker _batchWriteDeltasMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Queue.WriteDeltas");
+        static readonly ProfilerMarker _batchReceivedMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived");
+        static readonly ProfilerMarker _batchReceivedDeltasMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived.ReadDeltas");
+        static readonly ProfilerMarker _batchWriteBitsMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived.WriteBits");
 
         private readonly PlayersManager _playersManager;
-        private readonly List<PlayerRpcBatchedData> _batches = new ();
+        private PendingBatchedData[] _batches = new PendingBatchedData[128];
+        private NativeHashMap<BatchKey, int> _batchIndexMap;
+        private int _batchCount = 0;
 
-        public delegate void RPCReceivedDelegate(PlayerID sender, HEADER header, ByteData content, bool asServer);
+        public delegate void RPCReceivedDelegate(PlayerID sender, UnionRPCHeader header, BitData content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
 
         public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback)
@@ -50,135 +48,178 @@ namespace PurrNet.Modules
             _playersManager = playersManager;
             _onRPCReceived = callback;
             _playersManager.Subscribe<RPCBatchPacket>(OnBatchReceived);
+            _batchIndexMap = new NativeHashMap<BatchKey, int>(128, Allocator.Persistent);
         }
 
         public void Dispose()
         {
             _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
+            _batchIndexMap.Dispose();
         }
-
-        static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Flush");
 
         public void Flush()
         {
             using (_flushMarker.Auto())
             {
-                for (int i = 0; i < _batches.Count; i++)
+                for (int i = 0; i < _batchCount; i++)
                 {
-                    var batch = _batches[i];
+                    ref var batch = ref _batches[i];
                     var data = new RPCBatchPacket
                     {
                         count = batch.batchCount,
-                        data = batch.batchedData
+                        data = new BitData(batch.batchedData)
                     };
 
                     _playersManager.Send(batch.key.playerId, data, batch.key.channel);
                     batch.batchedData.Dispose();
                 }
 
-                _batches.Clear();
+                _batchCount = 0;
+                _batchIndexMap.Clear();
             }
         }
-
-        static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.FlushChannel");
 
         public void FlushChannel(Channel channel)
         {
             using (_flushChannelMarker.Auto())
             {
-                for (int i = 0; i < _batches.Count; i++)
+                bool removed = false;
+                int writeIdx = 0;
+
+                for (int i = 0; i < _batchCount; i++)
                 {
-                    var batch = _batches[i];
+                    ref var batch = ref _batches[i];
 
-                    if (batch.key.channel != channel)
-                        continue;
-
-                    var data = new RPCBatchPacket
+                    if (batch.key.channel == channel)
                     {
-                        count = batch.batchCount,
-                        data = batch.batchedData
-                    };
+                        SendBatch(ref batch);
+                        batch.batchedData.Dispose();
+                        removed = true;
+                    }
+                    else
+                    {
+                        // Keep this batch, shift it down if needed
+                        if (writeIdx != i)
+                            _batches[writeIdx] = _batches[i];
+                        writeIdx++;
+                    }
+                }
 
-                    _playersManager.Send(batch.key.playerId, data, batch.key.channel);
-                    batch.batchedData.Dispose();
+                _batchCount = writeIdx;
 
-                    _batches.RemoveAt(i--);
+                if (removed)
+                {
+                    _batchIndexMap.Clear();
+                    for (int i = 0; i < _batchCount; i++)
+                        _batchIndexMap[_batches[i].key] = i;
                 }
             }
         }
 
-        private static int GetBatchIndex(BatchKey key, List<PlayerRpcBatchedData> batches)
+        private void SendBatch(ref PendingBatchedData batch)
         {
-            int c = batches.Count;
-
-            for (var i = c - 1; i >= 0; i--)
+            var data = new RPCBatchPacket
             {
-                var b = batches[i];
-                if (!b.completed && BatchKey.AreEquals(key, b.key))
-                    return i;
-            }
+                count = batch.batchCount,
+                data = new BitData(batch.batchedData)
+            };
 
-            batches.Add(new PlayerRpcBatchedData { key = key, batchedData = BitPackerPool.Get() });
-            return c;
+            _playersManager.Send(batch.key.playerId, data, batch.key.channel);
+        }
+
+        private int GetBatchIndex(BatchKey key)
+        {
+            using (_getSingleBatchMarker.Auto())
+            {
+                if (_batchIndexMap.TryGetValue(key, out int idx))
+                    return idx;
+
+                // Resize if needed
+                if (_batchCount >= _batches.Length)
+                    Array.Resize(ref _batches, _batches.Length * 2);
+
+                int c = _batchCount;
+                _batches[c] = new PendingBatchedData
+                {
+                    key = key,
+                    batchedData = BitPackerPool.Get(),
+                    cachedMTU = _playersManager.GetMTU(key.playerId, key.channel, key.playerId != PlayerID.Server)
+                };
+                _batchIndexMap[key] = c;
+                _batchCount++;
+                return c;
+            }
         }
 
         private void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
         {
-            HEADER lastHeader = default;
-            Size lastLen = default;
-
-            using var tmp = BitPackerPool.Get();
-
-            for (var i = 0; i < data.count.value; ++i)
+            using (_batchReceivedMarker.Auto())
             {
-                DeltaPacker<HEADER>.Read(data.data, lastHeader, ref lastHeader);
-                DeltaPackInteger.ReadIndex(data.data, lastLen, ref lastLen);
-                int pos = data.data.positionInBits;
+                UnionRPCHeader lastHeader = default;
+                Size lastLen = default;
 
-                tmp.WriteBytes(data.data, lastLen);
-                _onRPCReceived.Invoke(player, lastHeader, tmp.ToByteData(), asServer);
-                tmp.ResetPositionAndMode(false);
+                var packer = data.data.packer;
+                using (data.data.AutoScope())
+                {
+                    for (var i = 0; i < data.count.value; ++i)
+                    {
+                        using (_batchReceivedDeltasMarker.Auto())
+                        {
+                            DeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
+                            DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
+                        }
 
-                data.data.SetBitPosition(pos + lastLen * 8);
+                        int pos = packer.positionInBits;
+                        int len = (int)lastLen.value;
+
+                        var bitData = new BitData(packer, pos, len);
+                        _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
+
+                        packer.SetBitPosition(pos + len);
+                    }
+                }
             }
-
-            data.data.Dispose();
         }
 
-        static readonly ProfilerMarker _queueMarker = new ProfilerMarker($"RPCBatch<{typeof(HEADER).Name}>.Queue");
-
-        public void Queue(PlayerID target, HEADER header, ByteData content, Channel channel)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel)
         {
-            using (_queueMarker.Auto())
+            for (var i = targets.Count - 1; i >= 0; i--)
+                Queue(targets[i], header, content, channel);
+        }
+
+        public void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
+        {
+            using (_queueSingleMarker.Auto())
             {
-                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
-                var batch = _batches[batchIdx];
+                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                ref var batch = ref _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
-                Size contentLen = content.length;
+                var contentLen = content.bitLength;
 
-                DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
-                DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+                using (_batchWriteDeltasMarker.Auto())
+                {
+                    DeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
+                    DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+                }
 
-                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.length;
+                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.byteLength;
 
                 // do some MTU checks past 1 batch
-                if (batch.batchCount > 0)
+                if (batch.batchCount > 0 && bytesAfterHeaderLen + 10 >= batch.cachedMTU)
                 {
-                    int mtu = _playersManager.GetMTU(target, channel, target != PlayerID.Server);
+                    // undo the last write
+                    batch.batchedData.SetBitPosition(before);
+                    SendBatch(ref batch);
+                    batch.batchCount = 0;
+                    batch.batchedData.ResetPositionAndMode(false);
 
-                    if (bytesAfterHeaderLen + 10 >= mtu) // 10 here is just a safety margin
+                    // redo the last write
+                    using (_batchWriteDeltasMarker.Auto())
                     {
-                        // undo the last write
-                        batch.batchedData.SetBitPosition(before);
-                        batch.completed = true;
-                        _batches[batchIdx] = batch;
-                        // create new batch
-                        batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel }, _batches);
-                        batch = _batches[batchIdx];
-                        // redo the last write
-                        DeltaPacker<HEADER>.Write(batch.batchedData, batch.lastHeader, header);
-                        DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+                        DeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);
+                        DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                     }
                 }
 
@@ -186,16 +227,21 @@ namespace PurrNet.Modules
                 batch.lastHeader = header;
                 batch.lastDataLen = contentLen;
 
-                if (content.length > 0)
-                    batch.batchedData.WriteBytes(content);
-
-                _batches[batchIdx] = batch;
+                using (_batchWriteBitsMarker.Auto())
+                {
+                    if (content.bitLength > 0)
+                        batch.batchedData.WriteBitDataWithoutConsumingIt(content);
+                }
             }
         }
 
         public void Clear()
         {
-            _batches.Clear();
+            for (int i = 0; i < _batchCount; i++)
+                _batches[i].batchedData.Dispose();
+
+            _batchCount = 0;
+            _batchIndexMap.Clear();
         }
     }
 }

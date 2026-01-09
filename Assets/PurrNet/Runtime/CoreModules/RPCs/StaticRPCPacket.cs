@@ -1,7 +1,8 @@
 ﻿using System;
+using PurrNet.Modules;
 using PurrNet.Packing;
-using PurrNet.Transports;
 using PurrNet.Utils;
+using UnityEngine;
 
 namespace PurrNet
 {
@@ -39,9 +40,9 @@ namespace PurrNet
     public struct StaticRPCPacket : IPackedAuto, IRpc
     {
         public StaticRPCHeader header;
-        [DontDeltaCompress] public ByteData data;
+        [DontDeltaCompress, UsedByIL] public BitData data;
 
-        public ByteData rpcData
+        public BitData rpcData
         {
             get { return data; }
             set { data = value; }

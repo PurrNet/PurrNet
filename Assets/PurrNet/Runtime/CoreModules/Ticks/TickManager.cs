@@ -1,5 +1,6 @@
 using System;
-using System.Threading.Tasks;
+using PurrNet.Packing;
+using PurrNet.Transports;
 using UnityEngine;
 
 namespace PurrNet.Modules
@@ -85,21 +86,40 @@ namespace PurrNet.Modules
         private float _lastTickTime;
         private const int MaxTickPerFrame = 5;
 
-        public TickManager(int tickRate, INetworkManager nm)
+        private readonly BroadcastModule _broadcaster;
+
+        public TickManager(int tickRate, INetworkManager nm, BroadcastModule broadcaster)
         {
             _lastTickTime = Time.unscaledTime;
             _networkManager = nm;
             tickDelta = 1f / tickRate;
             tickDeltaDouble = 1d / tickRate;
+            _broadcaster = broadcaster;
             this.tickRate = tickRate;
         }
 
         public void Enable(bool asServer)
         {
+            if (asServer)
+            {
+                _broadcaster.Subscribe<TickManagerRequestLocalTick>(OnClientRequestedPing);
+            }
+            else
+            {
+                _broadcaster.Subscribe<TickManagerResponseLocalTick>(OnServerRespondedPing);
+            }
         }
 
         public void Disable(bool asServer)
         {
+            if (asServer)
+            {
+                _broadcaster.Unsubscribe<TickManagerRequestLocalTick>(OnClientRequestedPing);
+            }
+            else
+            {
+                _broadcaster.Unsubscribe<TickManagerResponseLocalTick>(OnServerRespondedPing);
+            }
         }
 
         public void Update()
@@ -199,7 +219,7 @@ namespace PurrNet.Modules
             return time * tickRate;
         }
 
-        private async void HandleTickSync()
+        private void HandleTickSync()
         {
             try
             {
@@ -210,10 +230,12 @@ namespace PurrNet.Modules
                     return;
 
                 float requestSendTime = Time.unscaledTime;
-                var rawServerTick = await RPCClass.RequestServerTick();
-                rtt = Time.unscaledTime - requestSendTime;
-                float halfRTT = (float)rtt / 2;
-                syncedTick = rawServerTick + TimeToTick(halfRTT);
+                var packet = new TickManagerRequestLocalTick
+                {
+                    requestTime = requestSendTime
+                };
+
+                _broadcaster.SendToServer(packet);
             }
             catch
             {
@@ -221,13 +243,33 @@ namespace PurrNet.Modules
             }
         }
 
-        private static class RPCClass
+        private void OnServerRespondedPing(Connection conn, TickManagerResponseLocalTick data, bool asServer)
         {
-            [ServerRpc(requireOwnership: false)]
-            public static Task<uint> RequestServerTick(RPCInfo info = default)
-            {
-                return Task.FromResult(info.manager.tickModule.localTick);
-            }
+            rtt = Time.unscaledTime - data.requestTime;
+            float halfRTT = (float)rtt / 2;
+            syncedTick = data.tick + TimeToTick(halfRTT);
         }
+
+        private void OnClientRequestedPing(Connection conn, TickManagerRequestLocalTick data, bool asServer)
+        {
+            var packet = new TickManagerResponseLocalTick
+            {
+                requestTime = data.requestTime,
+                tick = localTick
+            };
+
+            _broadcaster.Send(conn, packet);
+        }
+    }
+
+    public struct TickManagerRequestLocalTick : IPackedAuto
+    {
+        public float requestTime;
+    }
+
+    public struct TickManagerResponseLocalTick : IPackedAuto
+    {
+        public float requestTime;
+        public uint tick;
     }
 }

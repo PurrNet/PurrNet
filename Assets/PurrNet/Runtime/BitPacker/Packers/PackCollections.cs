@@ -9,12 +9,48 @@ namespace PurrNet.Packing
     public static class PackCollections
     {
         [UsedByIL]
+        public static void RegisterHashSet<T>()
+        {
+            Packer<HashSet<T>>.RegisterWriter(WriteCollection);
+            Packer<HashSet<T>>.RegisterReader(ReadHashSet);
+
+            PurrEquality<HashSet<T>>.OverrideDefault(new HashsetComparator<T>());
+        }
+
+        [UsedByIL]
+        public static void RegisterList<T>()
+        {
+            Packer<List<T>>.RegisterWriter(WriteList);
+            Packer<List<T>>.RegisterReader(ReadList);
+
+            DeltaPacker<List<T>>.RegisterWriter(WriteDeltaList);
+            DeltaPacker<List<T>>.RegisterReader(ReadDeltaList);
+
+            PurrEquality<List<T>>.OverrideDefault(new ListComparator<T>());
+        }
+
+        [UsedByIL]
+        public static void RegisterArray<T>()
+        {
+            Packer<T[]>.RegisterWriter(WriteList);
+            Packer<T[]>.RegisterReader(ReadArray);
+
+            DeltaPacker<T[]>.RegisterWriter(WriteDeltaList);
+            DeltaPacker<T[]>.RegisterReader(ReadDeltaArray);
+
+            PurrEquality<T[]>.OverrideDefault(new ArrayComparator<T>());
+        }
+
+        [UsedByIL]
         public static void RegisterNullable<T>() where T : struct
         {
             Packer<T?>.RegisterWriter(PackNullables.WriteNullable);
             Packer<T?>.RegisterReader(PackNullables.ReadNullable);
+
             DeltaPacker<T?>.RegisterWriter(PackNullables.WriteDeltaNullable);
             DeltaPacker<T?>.RegisterReader(PackNullables.ReadDeltaNullable);
+
+            PurrEquality<T?>.OverrideDefault(new NullableComparator<T>());
         }
 
         [UsedByIL]
@@ -24,6 +60,8 @@ namespace PurrNet.Packing
             Packer<Dictionary<TKey, TValue>>.RegisterReader(ReadDictionary);
             RegisterDisposableList<TKey>();
             RegisterDisposableList<TValue>();
+
+            PurrEquality<Dictionary<TKey, TValue>>.OverrideDefault(new DictionaryComparator<TKey, TValue>());
         }
 
         [UsedByIL]
@@ -42,6 +80,8 @@ namespace PurrNet.Packing
         {
             Packer<Queue<T>>.RegisterWriter(WriteQueue);
             Packer<Queue<T>>.RegisterReader(ReadQueue);
+
+            PurrEquality<Queue<T>>.OverrideDefault(new QueueComparator<T>());
         }
 
         [UsedByIL]
@@ -49,6 +89,8 @@ namespace PurrNet.Packing
         {
             Packer<Stack<T>>.RegisterWriter(WriteStack);
             Packer<Stack<T>>.RegisterReader(ReadStack);
+
+            PurrEquality<Stack<T>>.OverrideDefault(new StackComparator<T>());
         }
 
         [UsedByIL]
@@ -203,7 +245,7 @@ namespace PurrNet.Packing
                 Packer<T>.Write(packer, v);
         }
 
-        public static void ReadQueue<T>(BitPacker packer, ref Queue<T> value)
+        private static void ReadQueue<T>(BitPacker packer, ref Queue<T> value)
         {
             bool hasValue = default;
             packer.Read(ref hasValue);
@@ -230,7 +272,7 @@ namespace PurrNet.Packing
             }
         }
 
-        public static void WriteStack<T>(BitPacker packer, Stack<T> value)
+        private static void WriteStack<T>(BitPacker packer, Stack<T> value)
         {
             if (value == null)
             {
@@ -247,7 +289,7 @@ namespace PurrNet.Packing
                 Packer<T>.Write(packer, v);
         }
 
-        public static void ReadStack<T>(BitPacker packer, ref Stack<T> value)
+        private static void ReadStack<T>(BitPacker packer, ref Stack<T> value)
         {
             bool hasValue = default;
             packer.Read(ref hasValue);
@@ -329,33 +371,6 @@ namespace PurrNet.Packing
                     Debug.LogException(e);
                 }
             }
-        }
-
-        [UsedByIL]
-        public static void RegisterHashSet<T>()
-        {
-            Packer<HashSet<T>>.RegisterWriter(WriteCollection);
-            Packer<HashSet<T>>.RegisterReader(ReadHashSet);
-        }
-
-        [UsedByIL]
-        public static void RegisterList<T>()
-        {
-            Packer<List<T>>.RegisterWriter(WriteList);
-            Packer<List<T>>.RegisterReader(ReadList);
-
-            DeltaPacker<List<T>>.RegisterWriter(WriteDeltaList);
-            DeltaPacker<List<T>>.RegisterReader(ReadDeltaList);
-        }
-
-        [UsedByIL]
-        public static void RegisterArray<T>()
-        {
-            Packer<T[]>.RegisterWriter(WriteList);
-            Packer<T[]>.RegisterReader(ReadArray);
-
-            DeltaPacker<T[]>.RegisterWriter(WriteDeltaList);
-            DeltaPacker<T[]>.RegisterReader(ReadDeltaArray);
         }
 
         private static bool WriteDeltaList<T>(BitPacker packer, IList<T> oldvalue, IList<T> newvalue)

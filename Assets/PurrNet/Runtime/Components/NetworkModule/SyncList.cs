@@ -3,6 +3,7 @@ using PurrNet.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
 using UnityEngine.Scripting;
@@ -146,7 +147,7 @@ namespace PurrNet
 
                 var oldValue = _list[idx];
 
-                if (oldValue != null && oldValue.Equals(value) || oldValue == null && value == null)
+                if (PurrEquality<T>.Equals(oldValue, value))
                     return;
 
                 _list[idx] = value;
@@ -223,7 +224,7 @@ namespace PurrNet
                     InvokeChange(SyncListChange<T>.Added(newList[i], i));
                     listChanged = true;
                 }
-                else if (!_list[i]?.Equals(newList[i]) ?? newList[i] != null)
+                else if (!PurrEquality<T>.Equals(_list[i], newList[i]))
                 {
                     var old = _list[i];
                     _list[i] = newList[i];
@@ -354,7 +355,7 @@ namespace PurrNet
         {
             if (!ValidateAuthority())
                 return;
-            
+
             using var sorted = DisposableList<T>.Create(_list);
             sorted.list.Sort(comparison);
 
@@ -366,7 +367,7 @@ namespace PurrNet
                 if (!EqualityComparer<T>.Default.Equals(oldItem, newItem))
                 {
                     _list[i] = newItem;
-                    
+
                     var change = SyncListChange<T>.Set(newItem, oldItem, i);
                     QueueChange(change);
                     InvokeChange(change);

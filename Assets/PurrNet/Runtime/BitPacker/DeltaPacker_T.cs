@@ -1,5 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
 using PurrNet.Modules;
+#if PURR_DELTA_CHECK
+using PurrNet.Logging;
+#endif
 
 namespace PurrNet.Packing
 {

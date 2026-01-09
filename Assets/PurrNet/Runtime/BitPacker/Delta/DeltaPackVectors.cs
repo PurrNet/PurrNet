@@ -90,8 +90,8 @@ namespace PurrNet.Packing
             {
                 int x  = default, y  = default, z = default;
                 DeltaPacker<int>.Read(packer, oldvalue.x, ref x);
-                DeltaPacker<int>.Read(packer, oldvalue.x, ref y);
-                DeltaPacker<int>.Read(packer, oldvalue.x, ref z);
+                DeltaPacker<int>.Read(packer, oldvalue.y, ref y);
+                DeltaPacker<int>.Read(packer, oldvalue.z, ref z);
 
                 value.x = x;
                 value.y = y;

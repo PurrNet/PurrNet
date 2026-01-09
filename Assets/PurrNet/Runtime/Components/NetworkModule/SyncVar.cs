@@ -2,7 +2,6 @@ using UnityEngine;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using System;
-using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Packing;
 using PurrNet.Transports;
@@ -41,14 +40,13 @@ namespace PurrNet
 
         private bool _isSubscribedToTickManager;
 
-        static readonly IEqualityComparer<T> _cmp = EqualityComparer<T>.Default;
-
         public T value
         {
             get => _value;
             set
             {
-                if (_cmp.Equals(value, _value)) return;
+                if (PurrEquality<T>.Default.Equals(value, _value))
+                    return;
 
                 if (isSpawned && !isControllingSyncVar)
                 {
@@ -234,7 +232,7 @@ namespace PurrNet
             if (isServer)
                 return;
 
-            _id = packetId;
+            _id = packetId.value;
 
             var oldValue = _value;
 
@@ -297,10 +295,10 @@ namespace PurrNet
             if (isControllingSyncVar)
                 return;
 
-            if (packetId <= _id)
+            if (packetId.value <= _id)
                 return;
 
-            _id = packetId;
+            _id = packetId.value;
             var oldValue = _value;
 
             if (!Packer.Transform(ref _value, newValue))

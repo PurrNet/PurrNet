@@ -29,6 +29,7 @@ namespace PurrNet.Editor
 
             EditorGUI.BeginChangeCheck();
 
+#if !UNITY_6000_3_OR_NEWER
             var toolbarResult = EditorGUILayout.EnumPopup(
                 new GUIContent("Toolbar Mode",
                     "Defines how the PurrNet toolbar will be displayed in the Unity Editor. " +
@@ -41,6 +42,7 @@ namespace PurrNet.Editor
                 settings.toolbarTransportDropDown);
 
             GUILayout.Space(10f);
+#endif
 
             var stripCodeModeResult = EditorGUILayout.EnumPopup(
                 new GUIContent("Strip Code Mode",

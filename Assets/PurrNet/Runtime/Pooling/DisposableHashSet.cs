@@ -6,7 +6,7 @@ using PurrNet.Packing;
 
 namespace PurrNet.Pooling
 {
-    public struct DisposableHashSet<T> : ISet<T>, IDisposable, IDuplicate<DisposableHashSet<T>>
+    public struct DisposableHashSet<T> : ISet<T>, IDisposable, IDuplicate<DisposableHashSet<T>>, IEquatable<DisposableHashSet<T>>
     {
         private HashSet<T> _set;
 
@@ -194,5 +194,7 @@ namespace PurrNet.Pooling
             }
             return Create(this);
         }
+
+        public bool Equals(DisposableHashSet<T> other) => new HashsetComparator<T>().Equals(set, other.set);
     }
 }

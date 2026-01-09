@@ -1,6 +1,6 @@
 ﻿using System;
+using PurrNet.Modules;
 using PurrNet.Packing;
-using PurrNet.Transports;
 using PurrNet.Utils;
 
 namespace PurrNet
@@ -29,11 +29,6 @@ namespace PurrNet
                    childId.Equals(other.childId);
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is NetworkModuleRPCHeader other && Equals(other);
-        }
-
         public override int GetHashCode()
         {
             return HashCode.Combine(networkId, sceneId, senderId, targetId, rpcId, childId);
@@ -43,9 +38,9 @@ namespace PurrNet
     public struct ChildRPCPacket : IPackedAuto, IRpc
     {
         public NetworkModuleRPCHeader header;
-        [DontDeltaCompress] public ByteData data;
+        [DontDeltaCompress, UsedByIL] public BitData data;
 
-        public ByteData rpcData
+        public BitData rpcData
         {
             get { return data; }
             set { data = value; }

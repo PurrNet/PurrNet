@@ -703,7 +703,7 @@ MonoBehaviour:
   _startClientFlags: 3
   _cookieScope: 1
   _dontDestroyOnLoad: 0
-  _transport: {fileID: 999871917}
+  _transport: {fileID: 999871918}
   _networkPrefabs: {fileID: 11400000, guid: 44629c9ddffa3d347944a4335df094e0, type: 2}
   _networkAssets: {fileID: 0}
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
@@ -1270,7 +1270,7 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _duration: 1
   _type: 0
-  _rpcCount: 100
+  _rpcCount: 10000
   _minRandomValue: 0
   _maxRandomValue: 1000
 --- !u!4 &1683386732
