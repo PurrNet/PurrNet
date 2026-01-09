@@ -1,3 +1,10 @@
+## [1.18.1-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.16...v1.18.1-beta.17) (2026-01-09)
+
+
+### Bug Fixes
+
+* dont include rpc related things here ([f986586](https://github.com/PurrNet/PurrNet/commit/f98658604cdcc4266b52f090ce97c57e50d0ff12))
+
 ## [1.18.1-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.15...v1.18.1-beta.16) (2026-01-09)
 
 
