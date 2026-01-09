@@ -451,67 +451,54 @@ namespace PurrNet
             }
         }
 
-        static readonly ProfilerMarker _isSpawnedMarker = new ProfilerMarker($"Check isSpawned");
-        static readonly ProfilerMarker _tryGetMarker = new ProfilerMarker($"TryGetModule<RPCModule>()");
-        static readonly ProfilerMarker _rulesMarker = new ProfilerMarker($"Validate Rules");
-
         public bool ValidateSendingRPC(RPCSignature signature, out RPCModule module)
         {
             using (_validatingRPCMarker.Auto())
             {
-                using (_isSpawnedMarker.Auto())
+                if (!_isSpawnedServer && !_isSpawnedClient)
                 {
-                    if (!isSpawned)
-                    {
-                        if (signature is
-                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                            PurrLogger.LogError(
-                                $"Trying to send RPC `{signature.rpcName}` from '{GetType().Name}' which is not spawned.",
-                                this);
-                        module = null;
-                        return false;
-                    }
+                    if (signature is
+                        { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                        PurrLogger.LogError(
+                            $"Trying to send RPC `{signature.rpcName}` from '{GetType().Name}' which is not spawned.",
+                            this);
+                    module = null;
+                    return false;
                 }
 
-                using (_tryGetMarker.Auto())
+                if (!networkManager.TryGetRpcModule(networkManager.isServer, out module))
                 {
-                    if (!networkManager.TryGetRpcModule(networkManager.isServer, out module))
-                    {
-                        if (signature is
-                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                            PurrLogger.LogError(
-                                $"Trying to send RPC `{signature.rpcName}` from `{GetType().Name}` but RPCModule is missing for `{(networkManager.isServer ? "server" : "client")}`.",
-                                this);
-                        return false;
-                    }
+                    if (signature is
+                        { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                        PurrLogger.LogError(
+                            $"Trying to send RPC `{signature.rpcName}` from `{GetType().Name}` but RPCModule is missing for `{(networkManager.isServer ? "server" : "client")}`.",
+                            this);
+                    return false;
                 }
 
-                using (_rulesMarker.Auto())
+                var rules = networkManager.networkRules;
+                bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
+
+                if (!shouldIgnoreOwnership && signature.requireOwnership && !isOwner)
                 {
-                    var rules = networkManager.networkRules;
-                    bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
+                    if (signature is
+                        { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                        PurrLogger.LogError(
+                            $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without ownership.",
+                            this);
+                    return false;
+                }
 
-                    if (!shouldIgnoreOwnership && signature.requireOwnership && !isOwner)
-                    {
-                        if (signature is
-                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                            PurrLogger.LogError(
-                                $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without ownership.",
-                                this);
-                        return false;
-                    }
+                bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
 
-                    bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
-
-                    if (!shouldIgnore && signature.requireServer && !networkManager.isServer)
-                    {
-                        if (signature is
-                            { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
-                            PurrLogger.LogError(
-                                $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without server.",
-                                this);
-                        return false;
-                    }
+                if (!shouldIgnore && signature.requireServer && !networkManager.isServer)
+                {
+                    if (signature is
+                        { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                        PurrLogger.LogError(
+                            $"Trying to send RPC '{signature.rpcName}' from '{GetType().Name}' without server.",
+                            this);
+                    return false;
                 }
                 return true;
             }
