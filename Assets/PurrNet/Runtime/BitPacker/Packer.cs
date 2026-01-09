@@ -232,6 +232,10 @@ namespace PurrNet.Packing
                 return false;
 
             packerB.ResetPositionAndMode(true);
+
+            if (target?.GetType() != whatToCopy?.GetType())
+                target = default;
+
             Packer<T>.Read(packerB, ref target);
             return true;
         }
