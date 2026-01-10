@@ -10,6 +10,7 @@ namespace PurrNet.Modules
 {
     public class BroadcastModule : INetworkModule, IDataListener, IPromoteToServerModule
     {
+        public const int MAX_HEADER_SIZE = 5;
         private readonly ITransport _transport;
 
         private readonly Dictionary<uint, List<IBroadcastCallback>> _actions =

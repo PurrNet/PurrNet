@@ -461,8 +461,6 @@ namespace PurrNet.Modules
             tracker.CleanupUpTo(data.upToId);
         }
 
-        const int MTU = 1024;
-
         public void PostFixedUpdate()
         {
             SendAllAcks();
@@ -483,13 +481,15 @@ namespace PurrNet.Modules
                 for (var e = 0; e < count; e++)
                 {
                     var entry = batch.entries[e];
+                    var mtu = _players.GetMTU(batch.playerId, Channel.Unreliable, _asServer) - BroadcastModule.MAX_HEADER_SIZE;
+
                     DeltaPacker<PackedUInt>.Write(packer, prevKey, entry.key);
                     DeltaPacker<PackedUInt>.Write(packer, prevVal, entry.valueId);
 
                     prevKey = entry.key;
                     prevVal = entry.valueId;
 
-                    if (packer.positionInBytes + 10 >= MTU)
+                    if (packer.positionInBytes + 10 >= mtu)
                     {
                         using var pickled = packer.Pickle(LZ4Level.L12_MAX);
                         var batchData = new DeltaBatch
