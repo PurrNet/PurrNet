@@ -248,7 +248,7 @@ namespace PurrNet.Packing
             try
             {
                 bool hasValue = value != null;
-                Packer<bool>.Write(packer, hasValue);
+                packer.WriteBit(hasValue);
 
                 if (!hasValue) return;
 
@@ -262,13 +262,14 @@ namespace PurrNet.Packing
                 else packer.WriteBit(false);
 
                 PackedUInt typeHash = Hasher.GetStableHashU32(obj.GetType());
-                Packer<PackedUInt>.Write(packer, typeHash);
+                PackingIntegers.Write(packer, typeHash);
                 WriteRawObject(obj, packer);
             }
-            catch (Exception e)
+            catch
             {
                 PurrLogger.LogError(
-                    $"Failed to write value of type '{typeof(T)}' when using fallback writer.\n{e.Message}\n{e.StackTrace}");
+                    $"Failed to write value of type '{typeof(T)}' when using fallback writer.");
+                throw;
             }
         }
 
