@@ -53,6 +53,21 @@ public class DisposableListsTests
     }
 
     [Test]
+    public void TestDuplicate()
+    {
+        var list = DisposableList<int>.Create(5);
+
+        for (int i = 0; i < 5; i++)
+            list.Add(i);
+
+        var copy = PurrCopy<DisposableList<int>>.Copy(list);
+        var areEqual = PurrEquality<DisposableList<int>>.Equals(list, copy);
+
+        Assert.IsTrue(areEqual, "Lists should be equal");
+    }
+
+
+    [Test]
     public void TestDeltaSameLength()
     {
         var old = DisposableList<int>.Create(5);
