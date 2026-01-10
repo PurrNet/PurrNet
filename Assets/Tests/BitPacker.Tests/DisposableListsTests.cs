@@ -38,14 +38,18 @@ public class DisposableListsTests
 
         // Test with the same list
         bool hasChanged = packer.WriteDisposableDeltaList(oldList, newList);
+        bool hasChangedEquality = PurrEquality<DisposableList<int>>.Equals(oldList, newList);
         Assert.IsFalse(hasChanged, "Lists should be equal");
+        Assert.IsTrue(hasChangedEquality, "Lists should be equal");
 
         // Modify the new list
         newList[0] = 10;
 
         // Test with different lists
         hasChanged = packer.WriteDisposableDeltaList(oldList, newList);
+        hasChangedEquality = PurrEquality<DisposableList<int>>.Equals(oldList, newList);
         Assert.IsTrue(hasChanged, "Lists should not be equal");
+        Assert.IsFalse(hasChangedEquality, "Lists should not be equal");
     }
 
     [Test]
