@@ -18,7 +18,7 @@ namespace PurrNet
             SendLatestState(player, _id, _value);
         }
         
-        protected new void ForceSendUnreliable()
+        protected override void ForceSendUnreliable()
         {
             if (!isServer)
                 SendToServer(_id++, _value);
@@ -26,7 +26,7 @@ namespace PurrNet
                 SendToTarget(owner.Value, _id++, _value);
         }
         
-        protected new void ForceSendReliable()
+        protected override void ForceSendReliable()
         {
             if (!isServer)
                 SendToServerReliably(_id++, _value);

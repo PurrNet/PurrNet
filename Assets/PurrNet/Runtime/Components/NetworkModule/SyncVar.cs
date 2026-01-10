@@ -165,14 +165,14 @@ namespace PurrNet
 
         private float _lastSendTime;
 
-        protected void ForceSendUnreliable()
+        protected virtual void ForceSendUnreliable()
         {
             if (isServer)
                 SendToAll(_id++, _value);
             else SendToServer(_id++, _value);
         }
 
-        protected void ForceSendReliable()
+        protected virtual void ForceSendReliable()
         {
             if (isServer)
                 SendToAllReliably(_id++, _value);
