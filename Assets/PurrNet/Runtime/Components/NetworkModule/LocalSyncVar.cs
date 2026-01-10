@@ -17,7 +17,7 @@ namespace PurrNet
         public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
             // Only send to the owner, not to all observers
-            if (owner != player)
+            if (owner == null || owner != player)
                 return;
 
             if (isSpawner && ownerAuth)
