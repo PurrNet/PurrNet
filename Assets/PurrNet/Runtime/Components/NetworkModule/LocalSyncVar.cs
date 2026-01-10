@@ -45,7 +45,9 @@ namespace PurrNet
         [TargetRpc(Channel.Unreliable)]
         private void SendToTarget(PlayerID playerID, PackedULong packetId, T newValue)
         {
-            if (!isHost) OnReceivedValue(packetId, newValue);
+            if (isServer)
+                return;
+            OnReceivedValue(packetId, newValue);
             if (newValue is IDisposable disposable)
                 disposable.Dispose();
         }
@@ -53,9 +55,29 @@ namespace PurrNet
         [TargetRpc(Channel.ReliableOrdered)]
         private void SendToTargetReliably(PlayerID playerID, PackedULong packetId, T newValue)
         {
-            if (!isHost) OnReceivedValue(packetId, newValue);
+            if (isServer)
+                return;
+            OnReceivedValue(packetId, newValue);
             if (newValue is IDisposable disposable)
                 disposable.Dispose();
+        }
+        
+        [ServerRpc(Channel.Unreliable, requireOwnership: true)]
+        protected override void SendToServer(PackedULong packetId, T newValue)
+        {
+            if (!_ownerAuth)
+                return;
+
+            OnReceivedValue(packetId, newValue);
+        }
+
+        [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
+        protected override void SendToServerReliably(PackedULong packetId, T newValue)
+        {
+            if (!_ownerAuth)
+                return;
+
+            OnReceivedValue(packetId, newValue);
         }
     }
 }

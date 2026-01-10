@@ -19,7 +19,7 @@ namespace PurrNet
         private bool _isDirty;
 
         [SerializeField, Space(-5), Header("Sync Settings"), PurrLock]
-        private bool _ownerAuth;
+        protected bool _ownerAuth;
 
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
 
@@ -243,7 +243,7 @@ namespace PurrNet
         }
 
         [ServerRpc(Channel.Unreliable, requireOwnership: true)]
-        protected void SendToServer(PackedULong packetId, T newValue)
+        protected virtual void SendToServer(PackedULong packetId, T newValue)
         {
             if (!_ownerAuth)
                 return;
@@ -253,7 +253,7 @@ namespace PurrNet
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
-        protected void SendToServerReliably(PackedULong packetId, T newValue)
+        protected virtual void SendToServerReliably(PackedULong packetId, T newValue)
         {
             if (!_ownerAuth)
                 return;
