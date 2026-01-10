@@ -1,3 +1,10 @@
+## [1.18.1-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.17...v1.18.1-beta.18) (2026-01-10)
+
+
+### Bug Fixes
+
+* delta module proper MTU usage instead of hard coded value ([6e9a1ef](https://github.com/PurrNet/PurrNet/commit/6e9a1efd41878cc010930a1ca1ed4be5e2118c6f))
+
 ## [1.18.1-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.16...v1.18.1-beta.17) (2026-01-09)
 
 
