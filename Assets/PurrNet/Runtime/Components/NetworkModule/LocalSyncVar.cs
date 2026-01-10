@@ -6,6 +6,14 @@ namespace PurrNet
 {
     public class LocalSyncVar<T> : SyncVar<T>
     {
+        public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawnEvent, bool asServer)
+        {
+            base.OnOwnerChanged(oldOwner, newOwner, isSpawnEvent, asServer);
+    
+            if (!isSpawnEvent && newOwner.HasValue)
+                SendLatestState(newOwner.Value, _id, _value);
+        }
+        
         public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
             // Only send to the owner, not to all observers
