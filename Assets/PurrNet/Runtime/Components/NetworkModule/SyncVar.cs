@@ -14,7 +14,7 @@ namespace PurrNet
     {
         private TickManager _tickManager;
 
-        [SerializeField, PurrLock] private T _value;
+        [SerializeField, PurrLock] protected T _value;
 
         private bool _isDirty;
 
@@ -165,14 +165,14 @@ namespace PurrNet
 
         private float _lastSendTime;
 
-        private void ForceSendUnreliable()
+        protected void ForceSendUnreliable()
         {
             if (isServer)
                 SendToAll(_id++, _value);
             else SendToServer(_id++, _value);
         }
 
-        private void ForceSendReliable()
+        protected void ForceSendReliable()
         {
             if (isServer)
                 SendToAllReliably(_id++, _value);
@@ -216,7 +216,7 @@ namespace PurrNet
             }
         }
 
-        private ulong _id;
+        protected ulong _id;
         private bool _wasLastDirty;
 
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
@@ -227,7 +227,7 @@ namespace PurrNet
         }
 
         [TargetRpc, UsedImplicitly]
-        private void SendLatestState(PlayerID player, PackedULong packetId, T newValue)
+        protected void SendLatestState(PlayerID player, PackedULong packetId, T newValue)
         {
             if (isServer)
                 return;
@@ -243,7 +243,7 @@ namespace PurrNet
         }
 
         [ServerRpc(Channel.Unreliable, requireOwnership: true)]
-        private void SendToServer(PackedULong packetId, T newValue)
+        protected void SendToServer(PackedULong packetId, T newValue)
         {
             if (!_ownerAuth)
                 return;
@@ -253,7 +253,7 @@ namespace PurrNet
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
-        private void SendToServerReliably(PackedULong packetId, T newValue)
+        protected void SendToServerReliably(PackedULong packetId, T newValue)
         {
             if (!_ownerAuth)
                 return;
@@ -290,7 +290,7 @@ namespace PurrNet
                 OnReceivedValue(packetId, newValue);
         }
 
-        private void OnReceivedValue(PackedULong packetId, T newValue)
+        protected void OnReceivedValue(PackedULong packetId, T newValue)
         {
             if (isControllingSyncVar)
                 return;
