@@ -5,6 +5,8 @@ namespace PurrNet
 {
     public struct UnionRPCHeader : IPackedAuto, IEquatable<UnionRPCHeader>
     {
+        public const int MAX_SIZE = 6 + 6 + 6 + MinimalIdentityHeader.MAX_SIZE;
+
         public MinimalIdentityHeader? identityRpc;
         public MinimalModuleHeader? moduleRpc;
         public MinimalStaticHeader? staticRpc;

@@ -1830,6 +1830,11 @@ namespace PurrNet
         private RPCModule _clientRpcModule;
         private RPCModule _serverRpcModule;
 
+        public int GetMTU(PlayerID playerId, Channel channel, bool asServer)
+        {
+            return asServer ? _serverPlayersManager.GetMTU(playerId, channel, true) : _clientPlayersManager.GetMTU(playerId, channel, false);
+        }
+
         public bool TryGetRpcModule(bool asServer, out RPCModule module)
         {
             module = asServer ? _serverRpcModule : _clientRpcModule;

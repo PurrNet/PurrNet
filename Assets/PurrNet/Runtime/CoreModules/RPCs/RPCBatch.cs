@@ -10,6 +10,8 @@ namespace PurrNet.Modules
 {
     internal struct RPCBatchPacket : IPackedAuto
     {
+        public const int HEADER = 6;
+
         public Size count;
         public BitData data;
     }
@@ -26,6 +28,8 @@ namespace PurrNet.Modules
 
     public sealed class RPCBatch : IDisposable
     {
+        public const int MAX_HEADER_SIZE = RPCBatchPacket.HEADER + UnionRPCHeader.MAX_SIZE;
+
         static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Flush");
         static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.FlushChannel");
         static readonly ProfilerMarker _getSingleBatchMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.GetBatchIndex");

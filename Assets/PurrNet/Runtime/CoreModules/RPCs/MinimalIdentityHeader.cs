@@ -5,6 +5,8 @@ namespace PurrNet
 {
     public struct MinimalIdentityHeader : IPackedAuto, IEquatable<MinimalIdentityHeader>
     {
+        public const int MAX_SIZE = 6 + 6 + 6;
+
         public NetworkID networkId;
         public SceneID sceneId;
 
