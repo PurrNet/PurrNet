@@ -4,7 +4,8 @@ using PurrNet.Transports;
 
 namespace PurrNet
 {
-    public class LocalSyncVar<T> : SyncVar<T>
+    [Serializable]
+    public class OwnerSyncVar<T> : SyncVar<T>
     {
         public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawnEvent, bool asServer)
         {
@@ -47,9 +48,8 @@ namespace PurrNet
         {
             if (isServer)
                 return;
+            
             OnReceivedValue(packetId, newValue);
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
         }
 
         [TargetRpc(Channel.ReliableOrdered)]
@@ -57,9 +57,8 @@ namespace PurrNet
         {
             if (isServer)
                 return;
+            
             OnReceivedValue(packetId, newValue);
-            if (newValue is IDisposable disposable)
-                disposable.Dispose();
         }
         
         [ServerRpc(Channel.Unreliable, requireOwnership: true)]
