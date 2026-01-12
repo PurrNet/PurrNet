@@ -216,6 +216,7 @@ namespace PurrNet.Codegen
                 GenerateDeltaSerializersProcessor.HandleType(assembly, type, serializerClass);
 
             GenerateIEquatableInterface.HandleType(resolvedType);
+            GenerateIDuplicateInterface.HandleType(resolvedType);
             RegisterSerializersProcessor.HandleType(type, type.Module, serializerClass, null, null);
         }
 

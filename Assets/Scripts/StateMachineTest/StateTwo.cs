@@ -90,6 +90,16 @@ public class MyDataWtf<T> : IPackedAuto, IDuplicate<MyDataWtf<T>>
     }
 }
 
+public struct Brug
+{
+    public int fef;
+
+    public Brug Duplicate()
+    {
+        return default;
+    }
+}
+
 public class MyDataWtf : IPackedAuto
 {
     private readonly int Fails;
@@ -102,6 +112,12 @@ public class MyDataWtf : IPackedAuto
         Fails = fails;
         Time = time;
     }
+
+    public MyDataWtf Duplicate()
+    {
+        return null;
+    }
+
     public bool EqualsFf4e(MyDataWtf other)
     {
         if (other.Fails != Fails || other.Time != Time || !PurrEquality<MyDataWtf>.Equals(other.test, test) || !PurrEquality<MyDataWtf<int>>.Equals(other.fefe, fefe))
@@ -121,6 +137,7 @@ public struct MyData : IPackedAuto
 {
     public int Fails;
     public float Time;
+    public Brug testrg;
     public MyDataWtf test;
     public DisposableList<int> list;
 
@@ -130,7 +147,17 @@ public struct MyData : IPackedAuto
         Time = time;
         test = null;
         list = default;
+        testrg = default;
     }
+
+    public MyData DuplicateEE()
+    {
+        var copy = this;
+        copy.test = test?.Duplicate();
+        copy.list = list.Duplicate();
+        return copy;
+    }
+
 
     public bool Equalsfefe(MyData other)
     {
