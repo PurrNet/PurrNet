@@ -80,8 +80,9 @@ namespace PurrNet.Codegen
             var module = type.Module;
             var iEquatableOpen = new TypeReference("System", "IEquatable`1", module, module.TypeSystem.CoreLibrary);
             var selfRef = MakeSelfRef(type);
+            var importedSelfRef = selfRef?.Import(module);
+            if (importedSelfRef == null) return;
 
-            var importedSelfRef = selfRef.Import(module);
             var iEquatableClosed = new GenericInstanceType(iEquatableOpen);
             iEquatableClosed.GenericArguments.Add(importedSelfRef);
 
@@ -96,9 +97,16 @@ namespace PurrNet.Codegen
 
             equals.Parameters.Add(new ParameterDefinition("other", ParameterAttributes.None, importedSelfRef));
 
-            var il = equals.Body.GetILProcessor();
-            ImplementBody(type, equals, il);
-            type.Methods.Add(equals);
+            try
+            {
+                var il = equals.Body.GetILProcessor();
+                ImplementBody(type, equals, il);
+                type.Methods.Add(equals);
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"Failed IEquatable.ImplementBody for {type.FullName}: {e.Message}", e);
+            }
         }
 
         private static bool IsPrimitiveNumeric(TypeReference type)
