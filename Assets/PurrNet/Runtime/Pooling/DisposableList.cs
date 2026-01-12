@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using PurrNet.Modules;
 using PurrNet.Packing;
+using Unity.Profiling;
 
 namespace PurrNet.Pooling
 {
@@ -13,9 +14,11 @@ namespace PurrNet.Pooling
 
         public List<T> list { get; private set; }
 
+        static readonly ProfilerMarker _dupMarker = new ProfilerMarker($"DisposableList<{typeof(T).Name}>.Duplicate");
+
         public DisposableList<T> Duplicate()
         {
-            if (isDisposed)
+            if (!_isAllocated)
                 return default;
 
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
@@ -23,7 +26,7 @@ namespace PurrNet.Pooling
                 int c = Count;
                 var res = Create(c);
                 for (var i = 0; i < c; ++i)
-                    res.Add(Packer.Copy(list[i]));
+                    res.Add(PurrCopy<T>.Copy(list[i]));
                 return res;
             }
 
@@ -59,6 +62,23 @@ namespace PurrNet.Pooling
                 newList.Capacity = capacity;
 
             val.list = newList;
+            val._isAllocated = true;
+            val._shouldDispose = true;
+            return val;
+        }
+
+        public static DisposableList<T> Create(DisposableList<T> copyFrom)
+        {
+            var val = new DisposableList<T>();
+            val.list = ListPool<T>.Instantiate();
+
+            if (val.list.Capacity < copyFrom.Count)
+                val.list.Capacity = copyFrom.Count;
+
+            int c = copyFrom.Count;
+            for (var i = 0; i < c; ++i)
+                val.list.Add(copyFrom[i]);
+
             val._isAllocated = true;
             val._shouldDispose = true;
             return val;
