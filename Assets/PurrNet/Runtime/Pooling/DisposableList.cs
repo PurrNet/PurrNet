@@ -14,8 +14,6 @@ namespace PurrNet.Pooling
 
         public List<T> list { get; private set; }
 
-        static readonly ProfilerMarker _dupMarker = new ProfilerMarker($"DisposableList<{typeof(T).Name}>.Duplicate");
-
         public DisposableList<T> Duplicate()
         {
             if (!_isAllocated)
