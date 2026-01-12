@@ -22,6 +22,7 @@ namespace PurrNet.Packing
 
         public static CopyDelegate Copy;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T Duplicate(in T value)
         {
             return Copy(in value);
