@@ -1,3 +1,10 @@
+## [1.18.1-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.18...v1.18.1-beta.19) (2026-01-12)
+
+
+### Bug Fixes
+
+* handle null selfRef and improve error handling in IEquatable generation ([44166b5](https://github.com/PurrNet/PurrNet/commit/44166b5a6d826afadcbb85c7d7f3af80586c1e54))
+
 ## [1.18.1-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.17...v1.18.1-beta.18) (2026-01-10)
 
 
