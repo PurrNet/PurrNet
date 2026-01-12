@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using PurrNet.Modules;
 using PurrNet.Packing;
-using Unity.Profiling;
 
 namespace PurrNet.Pooling
 {
