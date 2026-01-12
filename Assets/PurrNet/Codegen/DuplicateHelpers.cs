@@ -63,7 +63,7 @@ namespace PurrNet.Codegen
             var purrDuplicate = parentClass.Module.GetTypeDefinition(typeof(PurrCopy)).Import(parentClass.Module);
             var purrOverrideGen = purrDuplicate.GetMethod("Override", true).Import(parentClass.Module);
             var genericOverride = new GenericInstanceMethod(purrOverrideGen);
-            genericOverride.GenericArguments.Add(type);
+            genericOverride.GenericArguments.Add(type.Import(parentClass.Module));
             il.Emit(OpCodes.Call, genericOverride.Import(parentClass.Module));
         }
     }
