@@ -21,7 +21,8 @@ namespace PurrNet.Pooling
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
                 int c = Count;
-                var res = Create(c);
+                int targetCapacity = c + Math.Max(c >> 2, 8);
+                var res = Create(targetCapacity);
                 for (var i = 0; i < c; ++i)
                     res.Add(PurrCopy<T>.Copy(list[i]));
                 return res;
@@ -69,8 +70,11 @@ namespace PurrNet.Pooling
             var val = new DisposableList<T>();
             val.list = ListPool<T>.Instantiate();
 
-            if (val.list.Capacity < copyFrom.Count)
-                val.list.Capacity = copyFrom.Count;
+            int count = copyFrom.Count;
+            int targetCapacity = count + Math.Max(count >> 2, 8);
+
+            if (val.list.Capacity < targetCapacity)
+                val.list.Capacity = targetCapacity;
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
@@ -86,8 +90,11 @@ namespace PurrNet.Pooling
             var val = new DisposableList<T>();
             val.list = ListPool<T>.Instantiate();
 
-            if (val.list.Capacity < copyFrom.Count)
-                val.list.Capacity = copyFrom.Count;
+            int count = copyFrom.Count;
+            int targetCapacity = count + Math.Max(count >> 2, 8);
+
+            if (val.list.Capacity < targetCapacity)
+                val.list.Capacity = targetCapacity;
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
