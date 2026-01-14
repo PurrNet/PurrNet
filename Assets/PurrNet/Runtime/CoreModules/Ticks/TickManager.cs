@@ -19,7 +19,7 @@ namespace PurrNet.Modules
         {
             get
             {
-                if (_networkManager.isServer)
+                if (_asServer)
                     return localTick;
                 return _syncedTick;
             }
@@ -52,15 +52,7 @@ namespace PurrNet.Modules
         /// <summary>
         /// Gives the exact step of the tick, including the floating point.
         /// </summary>
-        public double localPreciseTick
-        {
-            get => localTick + floatingPoint;
-            private set
-            {
-                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value));
-                localPreciseTick = value;
-            }
-        }
+        public double localPreciseTick => localTick + floatingPoint;
 
         /// <summary>
         /// The amount of ticks per second
@@ -81,16 +73,19 @@ namespace PurrNet.Modules
         public event Action onReliablePreTick, onReliableTick, onReliablePostTick;
 
         private readonly INetworkManager _networkManager;
+        private readonly bool _asServer;
+
         private uint _syncedTick;
         private float _lastSyncTime = -99;
-        private float _lastTickTime;
+        private double _lastTickTime;
         private const int MaxTickPerFrame = 5;
 
         private readonly BroadcastModule _broadcaster;
 
-        public TickManager(int tickRate, INetworkManager nm, BroadcastModule broadcaster)
+        public TickManager(int tickRate, INetworkManager nm, BroadcastModule broadcaster, bool asServer)
         {
-            _lastTickTime = Time.unscaledTime;
+            _asServer = asServer;
+            _lastTickTime = Time.unscaledTimeAsDouble;
             _networkManager = nm;
             tickDelta = 1f / tickRate;
             tickDeltaDouble = 1d / tickRate;
@@ -125,7 +120,7 @@ namespace PurrNet.Modules
         public void Update()
         {
             HandleTick();
-            floatingPoint += Time.unscaledDeltaTime * tickRate;
+            floatingPoint = (Time.unscaledTimeAsDouble - _lastTickTime) * tickRate;
 
             if (_networkManager.isServer || !_networkManager.isClient)
                 return;
@@ -146,11 +141,11 @@ namespace PurrNet.Modules
         {
             int ticksHandled = 0;
 
-            while (_lastTickTime + tickDelta <= Time.unscaledTime)
+            while (_lastTickTime + tickDeltaDouble <= Time.unscaledTimeAsDouble)
             {
-                _lastTickTime += tickDelta;
+                _lastTickTime += tickDeltaDouble;
+                _syncedTick++;
                 localTick++;
-                syncedTick++;
                 floatingPoint = 0;
 
                 bool triggerNormalTicks = ticksHandled < MaxTickPerFrame;
@@ -169,9 +164,6 @@ namespace PurrNet.Modules
 
                 ticksHandled++;
             }
-
-            /*if (ticksHandled >= MaxTickPerFrame)
-                _lastTickTime = Time.unscaledTime;*/
         }
 
         /// <summary>
@@ -223,19 +215,12 @@ namespace PurrNet.Modules
         {
             try
             {
-                if (_networkManager.isOffline)
-                    return;
-
-                if (!_networkManager.HasModule<RPCModule>(_networkManager.isServer))
-                    return;
-
                 float requestSendTime = Time.unscaledTime;
-                var packet = new TickManagerRequestLocalTick
+
+                _broadcaster.SendToServer(new TickManagerRequestLocalTick
                 {
                     requestTime = requestSendTime
-                };
-
-                _broadcaster.SendToServer(packet);
+                });
             }
             catch
             {
