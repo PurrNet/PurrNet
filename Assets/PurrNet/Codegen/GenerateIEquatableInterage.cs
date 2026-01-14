@@ -213,7 +213,7 @@ namespace PurrNet.Codegen
                     il.Append(Instruction.Create(OpCodes.Ceq));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
-                else if (TryGetEqualityOperator(resolvedFieldType, out var opEquality))
+                else if (!field.FieldType.IsArray && TryGetEqualityOperator(resolvedFieldType, out var opEquality))
                 {
                     PushAB(il, field);
 
