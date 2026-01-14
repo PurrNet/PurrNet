@@ -1,3 +1,10 @@
+## [1.18.1-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.21...v1.18.1-beta.22) (2026-01-14)
+
+
+### Bug Fixes
+
+* array comparison ([a278892](https://github.com/PurrNet/PurrNet/commit/a278892d44e3ca79d30a9d5becdc5469f07cff52))
+
 ## [1.18.1-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.20...v1.18.1-beta.21) (2026-01-14)
 
 
