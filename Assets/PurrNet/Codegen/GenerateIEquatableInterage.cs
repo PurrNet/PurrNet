@@ -213,29 +213,31 @@ namespace PurrNet.Codegen
                     il.Append(Instruction.Create(OpCodes.Ceq));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
-                else if (!field.FieldType.IsArray && TryGetEqualityOperator(resolvedFieldType, out var opEquality))
+                else switch (field.FieldType.IsArray)
                 {
-                    PushAB(il, field);
+                    case false when TryGetEqualityOperator(resolvedFieldType, out var opEquality):
+                        PushAB(il, field);
 
-                    il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
-                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
-                }
-                else if (!field.FieldType.IsArray && TryGetEqualsFunction(resolvedFieldType, out var equals))
-                {
-                    PushAB_A(type, il, fieldRef, otherParam);
+                        il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
+                        il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                        break;
+                    case false when TryGetEqualsFunction(resolvedFieldType, out var equals):
+                        PushAB_A(type, il, fieldRef, otherParam);
 
-                    il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
-                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
-                }
-                else
-                {
-                    // Fallback is PurrEquality<T>.Equals(a, b)
-                    var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
-                        purrEqualityType, fieldType, purrEqualityCheck, type.Module);
+                        il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
+                        il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                        break;
+                    default:
+                    {
+                        // Fallback is PurrEquality<T>.Equals(a, b)
+                        var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
+                            purrEqualityType, fieldType, purrEqualityCheck, type.Module);
 
-                    PushAB(il, fieldRef);
-                    il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
-                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                        PushAB(il, fieldRef);
+                        il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
+                        il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
+                        break;
+                    }
                 }
             }
 
