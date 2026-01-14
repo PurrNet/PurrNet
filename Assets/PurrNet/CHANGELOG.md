@@ -1,3 +1,10 @@
+## [1.18.1-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.20...v1.18.1-beta.21) (2026-01-14)
+
+
+### Bug Fixes
+
+* pass asServer parameter to TickManager in NetworkManager and RawNetManager ([0c288b3](https://github.com/PurrNet/PurrNet/commit/0c288b332028caf1f937014201f78ec9f5e8d688))
+
 ## [1.18.1-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.19...v1.18.1-beta.20) (2026-01-12)
 
 
