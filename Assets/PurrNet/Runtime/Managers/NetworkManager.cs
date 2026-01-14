@@ -994,7 +994,7 @@ namespace PurrNet
             }
 
             var connBroadcaster = new BroadcastModule(this, asServer);
-            var tickManager = new TickManager(_tickRate, this, connBroadcaster);
+            var tickManager = new TickManager(_tickRate, this, connBroadcaster, asServer);
 
             if (asServer)
             {

@@ -345,7 +345,7 @@ namespace PurrNet
         public void RegisterModules(ModulesCollection modules, bool asServer)
         {
             var broadcasting = new BroadcastModule(this, asServer);
-            var tickManager = new TickManager(_tickRate, this, broadcasting);
+            var tickManager = new TickManager(_tickRate, this, broadcasting, asServer);
 
             if (asServer)
             {
