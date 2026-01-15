@@ -1,3 +1,10 @@
+## [1.18.1-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.23...v1.18.1-beta.24) (2026-01-15)
+
+
+### Bug Fixes
+
+* remove commented-out code in PlayModePatch ([d1f866c](https://github.com/PurrNet/PurrNet/commit/d1f866c2a0c640764578a12c99b0a6241741492e))
+
 ## [1.18.1-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.22...v1.18.1-beta.23) (2026-01-15)
 
 
