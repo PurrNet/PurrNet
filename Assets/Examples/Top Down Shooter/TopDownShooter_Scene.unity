@@ -964,6 +964,15 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _parentTarget: {fileID: 0}
+  _myTestDictionary:
+    _ownerAuth: 0
+    _serializedDict:
+      keys: 
+      values: []
+      stringKeys: []
+      stringValues: []
+    _sendIntervalInSeconds: 0
+    _useForceSend: 0
 --- !u!114 &634351201
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1011,6 +1020,11 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
+  _materialSync:
+    _value: {fileID: 0}
+    _ownerAuth: 1
+    _sendIntervalInSeconds: 0
+  _setMat: {fileID: 0}
   _players: 
 --- !u!1 &667181803
 GameObject:
@@ -1458,6 +1472,15 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _parentTarget: {fileID: 1129046907}
+  _myTestDictionary:
+    _ownerAuth: 0
+    _serializedDict:
+      keys: 
+      values: []
+      stringKeys: []
+      stringValues: []
+    _sendIntervalInSeconds: 0
+    _useForceSend: 0
 --- !u!1 &890272209
 GameObject:
   m_ObjectHideFlags: 0

@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Utils;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace PurrNet.Packing
@@ -245,32 +246,30 @@ namespace PurrNet.Packing
 
         public static void FallbackWriter<T>(BitPacker packer, T value)
         {
-            try
+            bool hasValue = value != null;
+            packer.WriteBit(hasValue);
+
+            if (!hasValue) return;
+
+            object obj = value;
+
+            if (obj is Object unityObj)
             {
-                bool hasValue = value != null;
-                packer.WriteBit(hasValue);
-
-                if (!hasValue) return;
-
-                object obj = value;
-
-                if (obj is Object unityObj)
+                if (!unityObj)
                 {
-                    if (WriteAsNetworkAsset(packer, unityObj))
-                        return;
+                    packer.SetBitPosition(packer.positionInBits - 1);
+                    packer.WriteBit(false);
+                    return;
                 }
-                else packer.WriteBit(false);
 
-                PackedUInt typeHash = Hasher.GetStableHashU32(obj.GetType());
-                PackingIntegers.Write(packer, typeHash);
-                WriteRawObject(obj, packer);
+                if (WriteAsNetworkAsset(packer, unityObj))
+                    return;
             }
-            catch
-            {
-                PurrLogger.LogError(
-                    $"Failed to write value of type '{typeof(T)}' when using fallback writer.");
-                throw;
-            }
+            else packer.WriteBit(false);
+
+            PackedUInt typeHash = Hasher.GetStableHashU32(obj.GetType());
+            PackingIntegers.Write(packer, typeHash);
+            WriteRawObject(obj, packer);
         }
 
         public static bool WriteAsNetworkAsset(BitPacker packer, Object unityObj)
@@ -278,7 +277,7 @@ namespace PurrNet.Packing
             var nassets = NetworkManager.main.networkAssets;
             int index = nassets && unityObj ? nassets.GetIndex(unityObj) : -1;
             bool isNetworkAsset = index != -1;
-            Packer<bool>.Write(packer, isNetworkAsset);
+            packer.WriteBit(isNetworkAsset);
 
             if (isNetworkAsset)
             {

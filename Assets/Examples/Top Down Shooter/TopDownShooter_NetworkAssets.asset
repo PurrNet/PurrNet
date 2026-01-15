@@ -471,11 +471,15 @@ MonoBehaviour:
   - {fileID: 2652095924681195117, guid: bffcac4e3732f334995c0baa8a5d04a0, type: 3}
   - {fileID: 7842228935128372380, guid: 6f332b4b684075840b8e8ec2c0b4ee8a, type: 3}
   _availableTypeNames:
+  - UnityEngine.Material, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   - UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Texture, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Texture2D, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEngine.Transform, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEditor.AddressableAssets.Settings.AddressableAssetGroup, Unity.Addressables.Editor,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
@@ -505,9 +509,15 @@ MonoBehaviour:
     Culture=neutral, PublicKeyToken=null
   - UnityEditorInternal.AssemblyDefinitionAsset, UnityEditor.CoreModule, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
+  - UnityEditorInternal.AssemblyDefinitionReferenceAsset, UnityEditor.CoreModule,
+    Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEditor.Rendering.Universal.AssetVersion, Unity.RenderPipelines.Universal.Editor,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.AutoStartUI, PurrNet.Examples, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   - UnityEngine.Avatar, UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEngine.EventSystems.BaseRaycaster, UnityEngine.UI, Version=1.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Behaviour, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
@@ -523,10 +533,16 @@ MonoBehaviour:
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEditor.AddressableAssets.Build.DataBuilders.BuildScriptPackedPlayMode, Unity.Addressables.Editor,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.TopDownShooter.Bullet, PurrNet.Examples, Version=0.0.0.0, Culture=neutral,
-    PublicKeyToken=null
+  - PurrNet.Examples.TopDownShooter.Bullet, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
   - UnityEditor.AddressableAssets.Settings.GroupSchemas.BundledAssetGroupSchema,
     Unity.Addressables.Editor, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.UI.Button, UnityEngine.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.Canvas, UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.CanvasRenderer, UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEngine.UI.CanvasScaler, UnityEngine.UI, Version=1.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   - UnityEngine.CapsuleCollider, UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Rendering.Universal.ChannelMixer, Unity.RenderPipelines.Universal.Runtime,
@@ -558,8 +574,14 @@ MonoBehaviour:
     Unity.XR.CoreUtils.Editor, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.FilmGrain, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.Font, UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   - UnityEngine.GameObject, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
+  - UnityEngine.UI.Graphic, UnityEngine.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.UI.GraphicRaycaster, UnityEngine.UI, Version=1.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEngine.UI.Image, UnityEngine.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.LensDistortion, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.LiftGammaGain, Unity.RenderPipelines.Universal.Runtime,
@@ -568,7 +590,7 @@ MonoBehaviour:
     PublicKeyToken=null
   - UnityEngine.LightProbes, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
-  - UnityEngine.Material, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
+  - UnityEngine.UI.MaskableGraphic, UnityEngine.UI, Version=1.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Mesh, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.MeshFilter, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
@@ -583,15 +605,16 @@ MonoBehaviour:
     PublicKeyToken=null
   - UnityEngine.Rendering.Universal.MotionBlur, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.Template.Movement_CharacterController, PurrNet.Examples, Version=0.0.0.0,
+  - PurrNet.Examples.Template.Movement_CharacterController, PurrNet.Internal.Examples,
+    Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.Sumo.Movement_RB_InputSync, PurrNet.Internal.Examples, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.Sumo.Movement_RB_InputSync, PurrNet.Examples, Version=0.0.0.0,
-    Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.Template.Movement_RB_InputSync, PurrNet.Examples, Version=0.0.0.0,
+  - PurrNet.Examples.Template.Movement_RB_InputSync, PurrNet.Internal.Examples, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
   - PurrNet.NetworkAssets, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - PurrNet.NetworkBehaviour, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
+  - PurrNet.NetworkBones, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - PurrNet.NetworkIdentity, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - PurrNet.NetworkOwnershipToggle, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
@@ -613,35 +636,50 @@ MonoBehaviour:
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - ParrelSync.ParrelSyncProjectSettings, ParrelSync, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
-  - PurrNet.Examples.BoxCarry.PlayerBody, PurrNet.Examples, Version=0.0.0.0, Culture=neutral,
-    PublicKeyToken=null
-  - PurrNet.Examples.Sumo.PlayerBody, PurrNet.Examples, Version=0.0.0.0, Culture=neutral,
-    PublicKeyToken=null
-  - PurrNet.Examples.Template.PlayerBody, PurrNet.Examples, Version=0.0.0.0, Culture=neutral,
-    PublicKeyToken=null
-  - PurrNet.Examples.TopDownShooter.PlayerBody, PurrNet.Examples, Version=0.0.0.0,
+  - PurrNet.Examples.BoxCarry.PlayerBody, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.Sumo.PlayerBody, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.Template.PlayerBody, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.TopDownShooter.PlayerBody, PurrNet.Internal.Examples, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
   - PlayerController, PurrNet.Issues.JamieNT, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.TopDownShooter.PlayerHealth, PurrNet.Examples, Version=0.0.0.0,
-    Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.BoxCarry.PlayerMovement, PurrNet.Examples, Version=0.0.0.0,
-    Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.TopDownShooter.PlayerMovement, PurrNet.Examples, Version=0.0.0.0,
-    Culture=neutral, PublicKeyToken=null
-  - PurrNet.Examples.BoxCarry.PlayerPickUp, PurrNet.Examples, Version=0.0.0.0, Culture=neutral,
+  - PlayerHeadLamp, PurrNet.Internal.Examples, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
-  - PurrNet.Examples.TopDownShooter.PlayerShoot, PurrNet.Examples, Version=0.0.0.0,
+  - PurrNet.Examples.TopDownShooter.PlayerHealth, PurrNet.Internal.Examples, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
-  - Unity.Multiplayer.PlayMode.Configurations.Editor.PlayModeConfig, Unity.Multiplayer.PlayMode.Configurations.Editor,
-    Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - PurrNet.PlayerIdentity`1[[StaticRpcTest, PurrNet.Issues.RpcIssue, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null]], PurrNet.Runtime, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - PurrNet.PlayerIdentity`1[[PurrNet.Examples.TopDownShooter.PlayerMovement, PurrNet.Internal.Examples,
+    Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]], PurrNet.Runtime, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.BoxCarry.PlayerMovement, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.TopDownShooter.PlayerMovement, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.BoxCarry.PlayerPickUp, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PurrNet.Examples.TopDownShooter.PlayerShoot, PurrNet.Internal.Examples, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - Unity.PlayMode.Editor.PlayModeConfiguration, UnityEditor.PlayModeModule, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - PositionWithSyncVar, PurrNet.Benchmarks, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - PurrNet.PrefabLink, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - PurrNet.PrefabProviderScriptable, PurrNet.Runtime, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
+  - PrefabTest, PurrNet.Issues.RpcIssue, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - PrintNetworklife, PurrNet.Issues.RpcIssue, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Rendering.ProbeVolumesOptions, Unity.RenderPipelines.Core.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-  - RandomController, PurrNet.Examples, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEditor.AddressableAssets.Settings.ProfileDataSourceSettings, Unity.Addressables.Editor,
+    Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - RandomController, PurrNet.Internal.Examples, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEngine.RectTransform, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   - UnityEngine.Renderer, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.Rendering.RenderPipelineAsset, UnityEngine.CoreModule, Version=0.0.0.0,
@@ -659,7 +697,7 @@ MonoBehaviour:
     PublicKeyToken=null
   - UnityEngine.RuntimeAnimatorController, UnityEngine.AnimationModule, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
-  - Unity.Multiplayer.PlayMode.Scenarios.Editor.ScenarioConfig, Unity.Multiplayer.PlayMode.Scenarios.Editor,
+  - Unity.Multiplayer.PlayMode.Editor.ScenarioConfig, UnityEditor.MultiplayerModule,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
@@ -688,6 +726,14 @@ MonoBehaviour:
   - Unity.XR.CoreUtils.ScriptableSettingsBase`1[[UnityEditor.XR.Simulation.SimulationEnvironmentAssetsManager,
     Unity.XR.Simulation.Editor, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]],
     Unity.XR.CoreUtils, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.UI.Selectable, UnityEngine.UI, Version=1.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEngine.Shader, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
+  - UnityEditor.ShaderGraph.ShaderGraphMetadata, Unity.ShaderGraph.Editor, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - UnityEditor.ShaderInclude, UnityEditor.CoreModule, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   - UnityEngine.Rendering.Universal.ShadowsMidtonesHighlights, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEditor.XR.Simulation.SimulationEnvironmentAssetsManager, Unity.XR.Simulation.Editor,
@@ -701,16 +747,26 @@ MonoBehaviour:
   - UnityEngine.Rendering.Universal.SplitToning, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - StaticRpcTest, PurrNet.Issues.RpcIssue, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TestScriptNB, PurrNet.Internal.Examples, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.TextAsset, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.TextMesh, UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
+  - TMPro.TextMeshProUGUI, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TMPro.TMP_Asset, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TMPro.TMP_FontAsset, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TMPro.TMP_Settings, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TMPro.TMP_SpriteAsset, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TMPro.TMP_StyleSheet, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - TMPro.TMP_Text, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.Tonemapping, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.TrailRenderer, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
-  - UnityEngine.Transform, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral,
+  - UnityEngine.EventSystems.UIBehaviour, UnityEngine.UI, Version=1.0.0.0, Culture=neutral,
     PublicKeyToken=null
+  - UnityEditor.Rendering.Universal.ShaderGraph.UniversalMetadata, Unity.RenderPipelines.Universal.Editor,
+    Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.UniversalRendererData, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset, Unity.RenderPipelines.Universal.Runtime,
@@ -725,11 +781,15 @@ MonoBehaviour:
     Culture=neutral, PublicKeyToken=null
   - UnityEngine.Rendering.Universal.WhiteBalance, Unity.RenderPipelines.Universal.Runtime,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - UnityEngine.XR.Management.XRGeneralSettings, Unity.XR.Management, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
   - UnityEditor.XR.Management.XRGeneralSettingsPerBuildTarget, Unity.XR.Management.Editor,
     Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
   - UnityEngine.XR.Management.XRLoader, Unity.XR.Management, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
   - UnityEngine.XR.Management.XRLoaderHelper, Unity.XR.Management, Version=0.0.0.0,
+    Culture=neutral, PublicKeyToken=null
+  - UnityEngine.XR.Management.XRManagerSettings, Unity.XR.Management, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null
   - UnityEngine.XR.Simulation.XRSimulationPreferences, Unity.XR.Simulation, Version=0.0.0.0,
     Culture=neutral, PublicKeyToken=null

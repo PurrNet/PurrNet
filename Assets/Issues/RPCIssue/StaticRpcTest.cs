@@ -8,7 +8,17 @@ using UnityEngine;
 
 public class StaticRpcTest : PlayerIdentity<StaticRpcTest>
 {
+    [SerializeField] SyncVar<Material> _materialSync = new SyncVar<Material>(ownerAuth: true);
+    [SerializeField] Material _setMat;
     [SerializeField] List<ulong> _players;
+
+
+    [PurrButton("Set Mat"), UsedImplicitly]
+    private void SetMaterial()
+    {
+        _materialSync.value = _setMat;
+    }
+
 
     [ServerRpc(requireOwnership: false)]
     private async Task<bool> Test<T>()

@@ -36,10 +36,10 @@ namespace PurrNet.Packing
         static T Fallback(in T value)
         {
             using var tmpPacker = BitPackerPool.Get();
-            Packer<T>.Write(tmpPacker, value);
+            Packer<T>.WriteFunc(tmpPacker, value);
             tmpPacker.ResetPositionAndMode(true);
             var copy = default(T);
-            Packer<T>.Read(tmpPacker, ref copy);
+            Packer<T>.ReadFunc(tmpPacker, ref copy);
             return copy;
         }
 

@@ -50,11 +50,6 @@ public class StateOne : StateNode
         machine.NextValid(new MyData(5, 7));
     }
 
-    private void Awake()
-    {
-        Test(new MyData(5, 7));
-    }
-
     [ServerRpc(runLocally: true)]
     public void Test(MyData fe)
     {
