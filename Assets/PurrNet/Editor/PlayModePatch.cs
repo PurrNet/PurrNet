@@ -76,7 +76,7 @@ namespace PurrNet.Editor
             _onGUIField?.SetValue(hostView, wrappedDelegate);
             window.Repaint();
 
-            // EditorApplication.update -= TryPatchTopViewGUI;
+            EditorApplication.update -= TryPatchTopViewGUI;
         }
 
         /// <summary>
