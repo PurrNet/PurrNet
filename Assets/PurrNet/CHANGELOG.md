@@ -1,3 +1,10 @@
+## [1.18.1-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.22...v1.18.1-beta.23) (2026-01-15)
+
+
+### Bug Fixes
+
+* improve network assets reliability and synchronization ([c508cd1](https://github.com/PurrNet/PurrNet/commit/c508cd10b733aa9ae841ad7b9a54712766b1a8fe))
+
 ## [1.18.1-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.21...v1.18.1-beta.22) (2026-01-14)
 
 
