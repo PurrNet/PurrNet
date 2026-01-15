@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Utils;
-using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace PurrNet.Packing
