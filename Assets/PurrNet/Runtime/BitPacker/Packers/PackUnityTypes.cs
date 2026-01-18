@@ -8,6 +8,12 @@ namespace PurrNet.Packing
     [UsedImplicitly]
     public static class BitPackerUnityExtensions
     {
+        [RegisterPackers]
+        static void RegisterEqualityOverrides()
+        {
+            PurrEquality<Quaternion>.OverrideDefault(new QuaternionEqualityComparer());
+        }
+
         [UsedImplicitly]
         static ushort PackHalf(float value)
         {

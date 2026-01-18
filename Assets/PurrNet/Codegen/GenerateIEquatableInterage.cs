@@ -3,6 +3,7 @@ using System;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using PurrNet.Packing;
+using UnityEngine;
 
 namespace PurrNet.Codegen
 {
@@ -205,6 +206,8 @@ namespace PurrNet.Codegen
                     fieldRef = field;
                 }
 
+                bool shouldSkipEqualityCheck = field.FieldType.IsArray || field.FieldType.FullName == typeof(Quaternion).FullName;
+
                 if (IsPrimitiveNumeric(field.FieldType))
                 {
                     PushAB(il, fieldRef);
@@ -213,7 +216,7 @@ namespace PurrNet.Codegen
                     il.Append(Instruction.Create(OpCodes.Ceq));
                     il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
                 }
-                else switch (field.FieldType.IsArray)
+                else switch (shouldSkipEqualityCheck)
                 {
                     case false when TryGetEqualityOperator(resolvedFieldType, out var opEquality):
                         PushAB(il, field);
