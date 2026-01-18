@@ -1,3 +1,10 @@
+## [1.18.1-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.24...v1.18.1-beta.25) (2026-01-18)
+
+
+### Bug Fixes
+
+* Quaternion equality check is stupid ([69b1c32](https://github.com/PurrNet/PurrNet/commit/69b1c32d766429307ce0d2b277c45994c53fd838))
+
 ## [1.18.1-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.23...v1.18.1-beta.24) (2026-01-15)
 
 
