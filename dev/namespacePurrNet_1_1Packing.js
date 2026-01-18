@@ -32,6 +32,7 @@ var namespacePurrNet_1_1Packing =
     [ "PackedUInt", "structPurrNet_1_1Packing_1_1PackedUInt.html", null ],
     [ "PackedULong", "structPurrNet_1_1Packing_1_1PackedULong.html", null ],
     [ "PackedUShort", "structPurrNet_1_1Packing_1_1PackedUShort.html", null ],
+    [ "QuaternionEqualityComparer", "structPurrNet_1_1Packing_1_1QuaternionEqualityComparer.html", null ],
     [ "RegisterPackersAttribute", "classPurrNet_1_1Packing_1_1RegisterPackersAttribute.html", "classPurrNet_1_1Packing_1_1RegisterPackersAttribute" ],
     [ "Size", "structPurrNet_1_1Packing_1_1Size.html", null ]
 ];
