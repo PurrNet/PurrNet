@@ -38,7 +38,14 @@ namespace PurrNet.Packing
             }
 
             scope.Write(DiffOp<T>.FinalOperation());
-            return scope.Complete();
+
+            var result = scope.Complete();
+
+            for (int i = 0; i < changes.Count; i++)
+                changes[i].values.Dispose();
+            changes.Dispose();
+
+            return result;
         }
 
         [UsedByIL]

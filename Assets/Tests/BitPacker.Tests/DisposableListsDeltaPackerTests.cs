@@ -1,0 +1,382 @@
+﻿using NUnit.Framework;
+using PurrNet;
+using PurrNet.Packing;
+using PurrNet.Pooling;
+using PurrNet.Utils;
+using UnityEngine;
+
+public class DisposableListsDeltaPackerTests
+{
+    private BitPacker packer;
+
+    [SetUp]
+    public void Setup()
+    {
+        Hasher.ClearState();
+        NetworkManager.CallAllRegisters();
+        packer = BitPackerPool.Get();
+    }
+
+    [TearDown]
+    public void Teardown()
+    {
+        packer?.Dispose();
+    }
+
+    [Test]
+    public void SameListNoChanges()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsFalse(hasChanged);
+
+        old.Dispose();
+        current.Dispose();
+    }
+
+    [Test]
+    public void EmptyToEmpty()
+    {
+        var old = DisposableList<int>.Create();
+        var current = DisposableList<int>.Create();
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsFalse(hasChanged);
+
+        old.Dispose();
+        current.Dispose();
+    }
+
+    [Test]
+    public void EmptyToItems()
+    {
+        var old = DisposableList<int>.Create();
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(3, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void ItemsToEmpty()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create();
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = DisposableList<int>.Create(new[] { 99, 99 }); // pre-populate
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(0, result.Count);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void DisposedList()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create();
+        current.Dispose();
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = DisposableList<int>.Create(new[] { 99 });
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.IsTrue(result.isDisposed);
+
+        old.Dispose();
+    }
+
+    [Test]
+    public void AppendSingle()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3, 4 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        Debug.Log($"Bits written: {packer.positionInBits}");
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(4, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void DeleteMiddle()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create(new[] { 1, 3 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(2, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void InsertMiddle()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 3 });
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(3, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void CompleteReplacement()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create(new[] { 4, 5, 6 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(3, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void MixedOperations()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3, 4 });
+        var current = DisposableList<int>.Create(new[] { 0, 1, 3, 4, 5 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(5, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void ConsecutiveDeletes()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3, 4, 5 });
+        var current = DisposableList<int>.Create(new[] { 1, 5 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(2, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void ConsecutiveInserts()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 5 });
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3, 4, 5 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(5, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void ModifySameLength()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3, 4, 5 });
+        var current = DisposableList<int>.Create(new[] { 2, 4, 6, 8, 10 });
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        Debug.Log($"Bits written: {packer.positionInBits}");
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(5, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void Strings()
+    {
+        var old = DisposableList<string>.Create(new[] { "hello", "world" });
+        var current = DisposableList<string>.Create(new[] { "hello", "beautiful", "world" });
+
+        bool hasChanged = DeltaPacker<DisposableList<string>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<string>);
+        DeltaPacker<DisposableList<string>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(3, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void LargeList()
+    {
+        var old = DisposableList<int>.Create();
+        var current = DisposableList<int>.Create();
+
+        for (int i = 0; i < 100; i++)
+        {
+            old.Add(i);
+            if (i % 3 != 0)
+                current.Add(i);
+        }
+        current.Add(200);
+        current.Add(201);
+
+        bool hasChanged = DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+        Assert.IsTrue(hasChanged);
+
+        Debug.Log($"Bits written for large list: {packer.positionInBits}");
+        packer.ResetPositionAndMode(true);
+
+        var result = default(DisposableList<int>);
+        DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+        Assert.AreEqual(current.Count, result.Count);
+        CollectionAssert.AreEqual(current, result);
+
+        old.Dispose();
+        current.Dispose();
+        result.Dispose();
+    }
+
+    [Test]
+    public void MultipleRoundtrips()
+    {
+        var versions = new[]
+        {
+            new[] { 1, 2, 3 },
+            new[] { 1, 2, 3, 4 },
+            new[] { 1, 3, 4 },
+            new[] { 0, 1, 3, 4, 5 },
+            new[] { 0, 1 }
+        };
+
+        var old = DisposableList<int>.Create(versions[0]);
+
+        for (int i = 1; i < versions.Length; i++)
+        {
+            var current = DisposableList<int>.Create(versions[i]);
+            
+            packer.ResetPositionAndMode(false);
+            DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+            
+            packer.ResetPositionAndMode(true);
+            
+            var result = default(DisposableList<int>);
+            DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+            CollectionAssert.AreEqual(current, result);
+
+            old.Dispose();
+            old = result;
+            current.Dispose();
+        }
+
+        old.Dispose();
+    }
+}
