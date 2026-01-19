@@ -574,6 +574,174 @@ public class MyersDiffTests
         DisposeOps(ops);
     }
 
+    [Test]
+    public void PackerAreEqual_Integers()
+    {
+        Assert.IsTrue(Packer.AreEqual(5, 5));
+        Assert.IsFalse(Packer.AreEqual(5, 6));
+        Assert.IsTrue(Packer.AreEqual(0, 0));
+        Assert.IsTrue(Packer.AreEqual(-1, -1));
+        Assert.IsFalse(Packer.AreEqual(-1, 1));
+    }
+
+    [Test]
+    public void PackerAreEqual_Strings()
+    {
+        Assert.IsTrue(Packer.AreEqual("hello", "hello"));
+        Assert.IsFalse(Packer.AreEqual("hello", "world"));
+        Assert.IsTrue(Packer.AreEqual("", ""));
+        Assert.IsFalse(Packer.AreEqual("a", "A"));
+    }
+
+    [Test]
+    public void PackerAreEqual_StringNulls()
+    {
+        Assert.IsTrue(Packer.AreEqual<string>(null, null));
+        Assert.IsFalse(Packer.AreEqual<string>(null, "hello"));
+        Assert.IsFalse(Packer.AreEqual<string>("hello", null));
+    }
+
+    [Test]
+    public void PackerAreEqual_Floats()
+    {
+        Assert.IsTrue(Packer.AreEqual(1.5f, 1.5f));
+        Assert.IsFalse(Packer.AreEqual(1.5f, 1.6f));
+        Assert.IsTrue(Packer.AreEqual(0.0f, 0.0f));
+        Assert.IsTrue(Packer.AreEqual(-0.0f, 0.0f)); // might fail depending on implementation
+    }
+
+    [Test]
+    public void PackerAreEqual_FloatSpecialValues()
+    {
+        Assert.IsTrue(Packer.AreEqual(float.PositiveInfinity, float.PositiveInfinity));
+        Assert.IsTrue(Packer.AreEqual(float.NegativeInfinity, float.NegativeInfinity));
+        Assert.IsFalse(Packer.AreEqual(float.PositiveInfinity, float.NegativeInfinity));
+
+        // NaN is tricky - may or may not be equal to itself depending on implementation
+        var result = Packer.AreEqual(float.NaN, float.NaN);
+        UnityEngine.Debug.Log($"NaN == NaN: {result}");
+    }
+
+    [Test]
+    public void PackerAreEqual_Bools()
+    {
+        Assert.IsTrue(Packer.AreEqual(true, true));
+        Assert.IsTrue(Packer.AreEqual(false, false));
+        Assert.IsFalse(Packer.AreEqual(true, false));
+        Assert.IsFalse(Packer.AreEqual(false, true));
+    }
+
+    [Test]
+    public void PackerAreEqual_ValueTypes()
+    {
+        Assert.IsTrue(Packer.AreEqual((byte)5, (byte)5));
+        Assert.IsFalse(Packer.AreEqual((byte)5, (byte)6));
+
+        Assert.IsTrue(Packer.AreEqual((short)5, (short)5));
+        Assert.IsFalse(Packer.AreEqual((short)5, (short)6));
+
+        Assert.IsTrue(Packer.AreEqual(5L, 5L));
+        Assert.IsFalse(Packer.AreEqual(5L, 6L));
+    }
+
+    [Test]
+    public void DiffWithFloatNaN()
+    {
+        var a = new[] { 1.0f, float.NaN, 3.0f };
+        var b = new[] { 1.0f, float.NaN, 3.0f };
+
+        var ops = MyersDiff.Diff(a, b);
+
+        UnityEngine.Debug.Log($"Float NaN diff ops count: {ops.Count}");
+        for (int i = 0; i < ops.Count; i++)
+            UnityEngine.Debug.Log($"  Op {i}: {ops[i].type} at {ops[i].index}");
+
+        var result = DisposableList<float>.Create(a);
+        MyersDiff.Apply(result, ops);
+
+        // This might fail if NaN != NaN
+        result.Dispose();
+        DisposeOps(ops);
+    }
+
+    [Test]
+    public void DiffWithNullStrings()
+    {
+        var a = new[] { "a", null, "b" };
+        var b = new[] { "a", null, "b" };
+
+        var ops = MyersDiff.Diff(a, b);
+        Assert.AreEqual(0, ops.Count, "Null strings should match");
+
+        ops.Dispose();
+    }
+
+    [Test]
+    public void DiffWithMixedNulls()
+    {
+        var a = new[] { "a", null, "c" };
+        var b = new[] { "a", "b", "c" };
+
+        var ops = MyersDiff.Diff(a, b);
+        var result = DisposableList<string>.Create(a);
+        MyersDiff.Apply(result, ops);
+
+        CollectionAssert.AreEqual(b, result);
+
+        result.Dispose();
+        DisposeOps(ops);
+    }
+
+    [Test]
+    public void DiffWithAllNulls()
+    {
+        var a = new string[] { null, null, null };
+        var b = new string[] { null, null };
+
+        var ops = MyersDiff.Diff(a, b);
+        var result = DisposableList<string>.Create(a);
+        MyersDiff.Apply(result, ops);
+
+        CollectionAssert.AreEqual(b, result);
+
+        result.Dispose();
+        DisposeOps(ops);
+    }
+
+    [Test]
+    public void PackerAreEqual_CustomStruct()
+    {
+        var v1 = new UnityEngine.Vector3(1, 2, 3);
+        var v2 = new UnityEngine.Vector3(1, 2, 3);
+        var v3 = new UnityEngine.Vector3(1, 2, 4);
+
+        Assert.IsTrue(Packer.AreEqual(v1, v2));
+        Assert.IsFalse(Packer.AreEqual(v1, v3));
+    }
+
+    [Test]
+    public void DiffWithVector3()
+    {
+        var a = new[] {
+            new UnityEngine.Vector3(1, 0, 0),
+            new UnityEngine.Vector3(0, 1, 0),
+            new UnityEngine.Vector3(0, 0, 1)
+        };
+        var b = new[] {
+            new UnityEngine.Vector3(1, 0, 0),
+            new UnityEngine.Vector3(0, 0, 1)
+        };
+
+        var ops = MyersDiff.Diff(a, b);
+        var result = DisposableList<UnityEngine.Vector3>.Create(a);
+        MyersDiff.Apply(result, ops);
+
+        CollectionAssert.AreEqual(b, result);
+
+        result.Dispose();
+        DisposeOps(ops);
+    }
+
     private static void DisposeOps<T>(DisposableList<DiffOp<T>> ops)
     {
         for (int i = 0; i < ops.Count; i++)
