@@ -53,12 +53,14 @@ namespace PurrNet.Transports
         public string region
         {
             get => _region;
+            [Obsolete("Use SetServer() instead")]
             set => _region = value;
         }
 
         public string host
         {
             get => _host;
+            [Obsolete("Use SetServer() instead")]
             set => _host = value;
         }
 
@@ -66,6 +68,12 @@ namespace PurrNet.Transports
         {
             get => _roomName;
             set => _roomName = value;
+        }
+
+        public void SetServer(RelayServer server)
+        {
+            _region = server.region;
+            _host = server.host;
         }
 
         public bool hasRegionAndHost => !string.IsNullOrEmpty(_region) && !string.IsNullOrEmpty(_host);
