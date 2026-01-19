@@ -1,3 +1,10 @@
+## [1.18.1-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.25...v1.18.1-beta.26) (2026-01-19)
+
+
+### Bug Fixes
+
+* dynamically changing region was error prone for the purrtransport ([92e2bb0](https://github.com/PurrNet/PurrNet/commit/92e2bb079091a474b5397327a7efe1e812e62235))
+
 ## [1.18.1-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.24...v1.18.1-beta.25) (2026-01-18)
 
 
