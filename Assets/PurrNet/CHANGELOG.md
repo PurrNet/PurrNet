@@ -1,3 +1,10 @@
+## [1.18.1-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.26...v1.18.1-beta.27) (2026-01-19)
+
+
+### Bug Fixes
+
+* myers diff GC fixes and some tests for consistency ([6fc9525](https://github.com/PurrNet/PurrNet/commit/6fc95257d3aa4d0c2651b68e39e0a17d2bca8583))
+
 ## [1.18.1-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.25...v1.18.1-beta.26) (2026-01-19)
 
 
