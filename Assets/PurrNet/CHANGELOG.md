@@ -1,3 +1,10 @@
+## [1.18.1-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.30...v1.18.1-beta.31) (2026-01-20)
+
+
+### Bug Fixes
+
+* packer duplicate mistake; tests for hasher ([b66ca76](https://github.com/PurrNet/PurrNet/commit/b66ca76f528746e4aa126d90948482ec26e481e6))
+
 ## [1.18.1-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.29...v1.18.1-beta.30) (2026-01-20)
 
 
