@@ -39,11 +39,9 @@ namespace PurrNet
         private const int MAX_JITTER_SAMPLES = 128;
 
         private int[] _pingStats;
-        private readonly uint[] _sentPacketSequences = new uint[MAX_PACKET_HISTORY];
-        private readonly uint[] _receivedPacketSequences = new uint[MAX_PACKET_HISTORY];
         private readonly float[] _sentPacketTimes = new float[MAX_PACKET_HISTORY];
         private readonly float[] _receivedPacketTimes = new float[MAX_PACKET_HISTORY];
-        
+
         private readonly float[] _jitterTimes = new float[MAX_JITTER_SAMPLES];
         private readonly int[] _jitterValues = new int[MAX_JITTER_SAMPLES];
         private int _jitterHead;
@@ -78,7 +76,7 @@ namespace PurrNet
         private string _cachedPacketLossText = "Packet Loss: 0%";
         private string _cachedUploadText = "Upload: 0.000KB/s";
         private string _cachedDownloadText = "Download: 0.000KB/s";
-        
+
         private bool _labelStyleInitialized;
 
         private void Awake()
@@ -180,7 +178,7 @@ namespace PurrNet
             var position = GetPosition();
             const float labelWidth = 200;
             Rect rect = new(position.x, position.y, labelWidth, LineHeight);
-            
+
             if (_displayType.HasFlag(StatisticsDisplayType.Ping))
             {
                 GUI.Label(rect, _cachedPingText, _labelStyle);
@@ -255,12 +253,12 @@ namespace PurrNet
         private string FormatStat(string prefix, int value, string suffix)
         {
             int pos = 0;
-            
+
             for (int i = 0; i < prefix.Length; i++)
                 _charBuffer[pos++] = prefix[i];
-            
+
             pos = WriteInt(_charBuffer, pos, value);
-            
+
             for (int i = 0; i < suffix.Length; i++)
                 _charBuffer[pos++] = suffix[i];
 
@@ -270,20 +268,20 @@ namespace PurrNet
         private string FormatStatFloat(string prefix, float value, string suffix)
         {
             int pos = 0;
-            
+
             for (int i = 0; i < prefix.Length; i++)
                 _charBuffer[pos++] = prefix[i];
-            
+
             int intPart = (int)value;
             int fracPart = Mathf.Abs((int)((value - intPart) * 1000));
-            
+
             pos = WriteInt(_charBuffer, pos, intPart);
             _charBuffer[pos++] = '.';
-            
+
             if (fracPart < 100) _charBuffer[pos++] = '0';
             if (fracPart < 10) _charBuffer[pos++] = '0';
             pos = WriteInt(_charBuffer, pos, fracPart);
-            
+
             for (int i = 0; i < suffix.Length; i++)
                 _charBuffer[pos++] = suffix[i];
 
@@ -369,27 +367,35 @@ namespace PurrNet
 
         private void OnServerConnectionState(ConnectionState state)
         {
-            _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
             _pingHistorySize = Mathf.RoundToInt(_networkManager.tickModule.tickRate * PING_HISTORY_TIME);
             _pingStats = new int[_pingHistorySize];
-
             connectedServer = state == ConnectionState.Connected;
 
-            if (state != ConnectionState.Connected)
+            switch (state)
             {
-                _playersServerBroadcaster.Unsubscribe<PingMessage>(ReceivePing);
-                _playersServerBroadcaster.Unsubscribe<PacketMessage>(ReceivePacket);
-                _networkManager.transport.transport.onDataReceived -= OnDataReceived;
-                _networkManager.transport.transport.onDataSent -= OnDataSent;
-                ServerUnsubscribe_ServerStats();
-                return;
+                case ConnectionState.Disconnected:
+                    if (_playersServerBroadcaster == null)
+                        return;
+                    _playersServerBroadcaster.Unsubscribe<PingMessage>(ReceivePing);
+                    _playersServerBroadcaster.Unsubscribe<PacketMessage>(ReceivePacket);
+                    _playersServerBroadcaster = null;
+                    _networkManager.transport.transport.onDataReceived -= OnDataReceived;
+                    _networkManager.transport.transport.onDataSent -= OnDataSent;
+                    ServerUnsubscribe_ServerStats();
+                    return;
+                case ConnectionState.Connected:
+                    _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
+                    _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
+                    _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
+                    _networkManager.transport.transport.onDataReceived += OnDataReceived;
+                    _networkManager.transport.transport.onDataSent += OnDataSent;
+                    ServerSubscribe_ServerStats();
+                    break;
+                case ConnectionState.Connecting:
+                case ConnectionState.Disconnecting:
+                    break;
+                default: throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
-
-            _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
-            _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
-            _networkManager.transport.transport.onDataReceived += OnDataReceived;
-            _networkManager.transport.transport.onDataSent += OnDataSent;
-            ServerSubscribe_ServerStats();
         }
 
         private void OnClientConnectionState(ConnectionState state)
@@ -455,8 +461,6 @@ namespace PurrNet
             {
                 _sentPacketTimes[i] = 0;
                 _receivedPacketTimes[i] = 0;
-                _sentPacketSequences[i] = 0;
-                _receivedPacketSequences[i] = 0;
             }
 
             for (int i = 0; i < MAX_JITTER_SAMPLES; i++)
@@ -546,7 +550,7 @@ namespace PurrNet
             ping = sum / _pingCount;
 
             float now = Time.time;
-            
+
             _jitterTimes[_jitterHead] = now;
             _jitterValues[_jitterHead] = ping;
             _jitterHead = (_jitterHead + 1) % MAX_JITTER_SAMPLES;
@@ -579,7 +583,6 @@ namespace PurrNet
 
             _lastPacketSendTick = _tickManager.localTick;
 
-            _sentPacketSequences[_sentPacketIndex] = _packetSequence;
             _sentPacketTimes[_sentPacketIndex] = Time.time;
             _sentPacketIndex = (_sentPacketIndex + 1) % MAX_PACKET_HISTORY;
             if (_sentPacketCount < MAX_PACKET_HISTORY)
@@ -633,13 +636,11 @@ namespace PurrNet
                 if (_sentPacketTimes[i] > 0 && _sentPacketTimes[i] < cutoffTime)
                 {
                     _sentPacketTimes[i] = 0;
-                    _sentPacketSequences[i] = 0;
                 }
 
                 if (_receivedPacketTimes[i] > 0 && _receivedPacketTimes[i] < cutoffTime)
                 {
                     _receivedPacketTimes[i] = 0;
-                    _receivedPacketSequences[i] = 0;
                 }
             }
         }
@@ -652,7 +653,6 @@ namespace PurrNet
                 return;
             }
 
-            _receivedPacketSequences[_receivedPacketIndex] = msg.sequenceId;
             _receivedPacketTimes[_receivedPacketIndex] = Time.time;
             _receivedPacketIndex = (_receivedPacketIndex + 1) % MAX_PACKET_HISTORY;
             if (_receivedPacketCount < MAX_PACKET_HISTORY)
