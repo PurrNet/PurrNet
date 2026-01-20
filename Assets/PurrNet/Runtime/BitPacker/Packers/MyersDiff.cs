@@ -51,7 +51,7 @@ namespace PurrNet.Packing
 
                     int y = x - k;
                     // follow diagonal (the "snake")
-                    while (x < n && y < m && Packer.AreEqual(a[x], b[y]))
+                    while (x < n && y < m && PurrEquality<T>.Default.Equals(a[x], b[y]))
                     {
                         x++;
                         y++;

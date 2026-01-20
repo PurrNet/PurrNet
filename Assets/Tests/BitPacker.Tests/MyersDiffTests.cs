@@ -1,10 +1,64 @@
+using System;
 using System.Linq;
 using NUnit.Framework;
 using PurrNet.Packing;
 using PurrNet.Pooling;
+using UnityEngine;
+
+struct Item
+{
+    public int id;
+    public Item(int id) => this.id = id;
+    public override bool Equals(object o) => o is Item i && i.id == id;
+    public override int GetHashCode() => id;
+    public override string ToString() => id.ToString();
+}
 
 public class MyersDiffTests
 {
+      [Test]
+    public void Insert20At12_Delete1At28_ProducesExpected()
+    {
+        // old (no 20)
+        using var old = DisposableList<Item>.Create(new[]
+        {
+            new Item(2), new Item(3), new Item(4), new Item(5), new Item(6),
+            new Item(13), new Item(14), new Item(15), new Item(16),
+            new Item(17), new Item(18), new Item(19),
+            new Item(21), new Item(22), new Item(23), new Item(24), new Item(25), new Item(26),
+            new Item(27), new Item(28), new Item(29), new Item(30), new Item(31),
+            new Item(32), new Item(33), new Item(34), new Item(35), new Item(36), new Item(37),
+        });
+
+        // expected = insert 20 at index 12, then delete tail at index 28 (37 stays)
+        using var expected = DisposableList<Item>.Create(new[]
+        {
+            new Item(2), new Item(3), new Item(4), new Item(5), new Item(6),
+            new Item(13), new Item(14), new Item(15), new Item(16),
+            new Item(17), new Item(18), new Item(19),
+            new Item(20),
+            new Item(21), new Item(22), new Item(23), new Item(24), new Item(25), new Item(26),
+            new Item(27), new Item(28), new Item(29), new Item(30), new Item(31),
+            new Item(32), new Item(33), new Item(34), new Item(35), new Item(36), new Item(37),
+        });
+
+        // Build ops with your diff (it should yield: Insert at 12, Delete 1 at 28)
+        using var snapOld = DisposableList<Item>.Create(old);
+        using var snapNew = DisposableList<Item>.Create(expected);
+        var ops = MyersDiff.Diff(snapOld, snapNew);
+
+        // Apply using a minimal single-pass that matches your current approach
+        using var got = DisposableList<Item>.Create(old);
+        MyersDiff.Apply(got, ops);
+
+        // Assert
+        Assert.AreEqual(expected.Count, got.Count, "Count mismatch");
+        for (int i = 0; i < expected.Count; i++)
+            Assert.AreEqual(expected[i].id, got[i].id, $"Mismatch at {i}");
+
+        ops.Dispose();
+    }
+
     [Test]
     public void EmptyToEmpty()
     {
@@ -96,6 +150,40 @@ public class MyersDiffTests
     {
         var a = new[] { 1, 2, 3 };
         var b = new[] { 4, 5, 6 };
+
+        var ops = MyersDiff.Diff(a, b);
+
+        var result = DisposableList<int>.Create(a);
+        MyersDiff.Apply(result, ops);
+
+        CollectionAssert.AreEqual(b, result);
+
+        result.Dispose();
+        DisposeOps(ops);
+    }
+
+    [Test]
+    public void AddOneInTheMiddle()
+    {
+        var a = new[] { 1, 2, 3 };
+        var b = new[] { 1, 69, 2, 3 };
+
+        var ops = MyersDiff.Diff(a, b);
+
+        var result = DisposableList<int>.Create(a);
+        MyersDiff.Apply(result, ops);
+
+        CollectionAssert.AreEqual(b, result);
+
+        result.Dispose();
+        DisposeOps(ops);
+    }
+
+    [Test]
+    public void AddOneInTheMiddleIsh()
+    {
+        var a = new[] { 1, 2, 3 };
+        var b = new[] { 1, 69, 2, 4 };
 
         var ops = MyersDiff.Diff(a, b);
 
@@ -619,7 +707,7 @@ public class MyersDiffTests
 
         // NaN is tricky - may or may not be equal to itself depending on implementation
         var result = Packer.AreEqual(float.NaN, float.NaN);
-        UnityEngine.Debug.Log($"NaN == NaN: {result}");
+        Debug.Log($"NaN == NaN: {result}");
     }
 
     [Test]
@@ -652,9 +740,9 @@ public class MyersDiffTests
 
         var ops = MyersDiff.Diff(a, b);
 
-        UnityEngine.Debug.Log($"Float NaN diff ops count: {ops.Count}");
+        Debug.Log($"Float NaN diff ops count: {ops.Count}");
         for (int i = 0; i < ops.Count; i++)
-            UnityEngine.Debug.Log($"  Op {i}: {ops[i].type} at {ops[i].index}");
+            Debug.Log($"  Op {i}: {ops[i].type} at {ops[i].index}");
 
         var result = DisposableList<float>.Create(a);
         MyersDiff.Apply(result, ops);
@@ -711,9 +799,9 @@ public class MyersDiffTests
     [Test]
     public void PackerAreEqual_CustomStruct()
     {
-        var v1 = new UnityEngine.Vector3(1, 2, 3);
-        var v2 = new UnityEngine.Vector3(1, 2, 3);
-        var v3 = new UnityEngine.Vector3(1, 2, 4);
+        var v1 = new Vector3(1, 2, 3);
+        var v2 = new Vector3(1, 2, 3);
+        var v3 = new Vector3(1, 2, 4);
 
         Assert.IsTrue(Packer.AreEqual(v1, v2));
         Assert.IsFalse(Packer.AreEqual(v1, v3));
@@ -723,17 +811,17 @@ public class MyersDiffTests
     public void DiffWithVector3()
     {
         var a = new[] {
-            new UnityEngine.Vector3(1, 0, 0),
-            new UnityEngine.Vector3(0, 1, 0),
-            new UnityEngine.Vector3(0, 0, 1)
+            new Vector3(1, 0, 0),
+            new Vector3(0, 1, 0),
+            new Vector3(0, 0, 1)
         };
         var b = new[] {
-            new UnityEngine.Vector3(1, 0, 0),
-            new UnityEngine.Vector3(0, 0, 1)
+            new Vector3(1, 0, 0),
+            new Vector3(0, 0, 1)
         };
 
         var ops = MyersDiff.Diff(a, b);
-        var result = DisposableList<UnityEngine.Vector3>.Create(a);
+        var result = DisposableList<Vector3>.Create(a);
         MyersDiff.Apply(result, ops);
 
         CollectionAssert.AreEqual(b, result);
