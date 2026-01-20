@@ -913,7 +913,7 @@ namespace PurrNet.Packing
 
             unchecked
             {
-                hash ^= (ulong)(uint)bits;
+                hash ^= (uint)bits;
                 hash *= prime;
             }
 
