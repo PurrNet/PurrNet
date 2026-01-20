@@ -1,3 +1,10 @@
+## [1.18.1-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.29...v1.18.1-beta.30) (2026-01-20)
+
+
+### Bug Fixes
+
+* add deterministic hash to the packer ([ceaaf4d](https://github.com/PurrNet/PurrNet/commit/ceaaf4d08db74443a67bdadf533bcd5d955d2c90))
+
 ## [1.18.1-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.28...v1.18.1-beta.29) (2026-01-20)
 
 
