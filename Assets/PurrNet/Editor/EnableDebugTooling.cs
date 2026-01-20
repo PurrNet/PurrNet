@@ -17,22 +17,6 @@ namespace PurrNet.Editor
         public static void InstallDeltaCheck()
         {
             SymbolsHelper.AddSymbol("PURR_DELTA_CHECK");
-            SymbolsHelper.RemoveSymbol("PURR_DELTA_CHECK_LITE");
-        }
-#endif
-
-#if PURR_DELTA_CHECK_LITE
-        [MenuItem(DEBUG_PATH + "/Disable Delta Validator (Lite)", priority = 105)]
-        public static void UninstallDeltaCheckLite()
-        {
-            SymbolsHelper.RemoveSymbol("PURR_DELTA_CHECK_LITE");
-        }
-#else
-        [MenuItem(DEBUG_PATH + "/Enable Delta Validator (Lite)", priority = 105)]
-        public static void InstallDeltaCheckLite()
-        {
-            SymbolsHelper.AddSymbol("PURR_DELTA_CHECK_LITE");
-            SymbolsHelper.RemoveSymbol("PURR_DELTA_CHECK");
         }
 #endif
 

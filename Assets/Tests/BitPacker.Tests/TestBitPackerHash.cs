@@ -142,6 +142,7 @@ public class TestBitPackerHash
         uint h1 = packer.GetDeterministicHash32();
 
         using var dup = packer.Duplicate();
+        dup.SetBitPosition(packer.positionInBits);
         // Make capacity different again
         dup.EnsureBitsExist(dup.positionInBits + 10000);
 
