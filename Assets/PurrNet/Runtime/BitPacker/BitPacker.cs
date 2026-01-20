@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -11,55 +10,6 @@ using PurrNet.Transports;
 
 namespace PurrNet.Packing
 {
-    public readonly struct BitPackerWithLength : IDisposable
-    {
-        public readonly int originalLength;
-        public readonly BitPacker packer;
-
-        public BitPackerWithLength(int ogLength, BitPacker packer)
-        {
-            originalLength = ogLength;
-            this.packer = packer;
-        }
-
-        public void Dispose()
-        {
-            packer.Dispose();
-        }
-    }
-
-    public readonly struct BitPackerWrapper : IBufferWriter<byte>, IDisposable
-    {
-        public readonly BitPacker packer;
-
-        public BitPackerWrapper(BitPacker packer)
-        {
-            this.packer = packer;
-        }
-
-        public void Advance(int count)
-        {
-            packer.AdvanceBits(count * 8);
-        }
-
-        public Memory<byte> GetMemory(int sizeHint = 0)
-        {
-            packer.EnsureBitsExist(sizeHint * 8);
-            return new Memory<byte>(packer.buffer, packer.positionInBytes, sizeHint);
-        }
-
-        public Span<byte> GetSpan(int sizeHint = 0)
-        {
-            packer.EnsureBitsExist(sizeHint * 8);
-            return new Span<byte>(packer.buffer, packer.positionInBytes, sizeHint);
-        }
-
-        public void Dispose()
-        {
-            packer?.Dispose();
-        }
-    }
-
     [UsedImplicitly]
     public sealed partial class BitPacker : IDisposable, IDuplicate<BitPacker>, IEquatable<BitPacker>
     {
@@ -876,6 +826,97 @@ namespace PurrNet.Packing
             this.SetBitPosition(bits);
             packerB.SetBitPosition(bits);
             return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint GetDeterministicHash32()
+        {
+            // FNV-1a 32-bit
+            const uint offset = 2166136261u;
+            const uint prime = 16777619u;
+
+            int bits = _positionInBits;
+            int fullBytes = bits >> 3;
+            int tailBits = bits & 7;
+
+            uint hash = offset;
+
+            // Hash full bytes
+            for (int i = 0; i < fullBytes; i++)
+            {
+                hash ^= _buffer[i];
+                hash *= prime;
+            }
+
+            // Hash partial tail byte (only the written low bits)
+            if (tailBits != 0)
+            {
+                byte mask = (byte)((1 << tailBits) - 1); // keeps low tailBits
+                byte tail = (byte)(_buffer[fullBytes] & mask);
+
+                hash ^= tail;
+                hash *= prime;
+
+                // Optional: include bit-count so different bit-lengths can't collide
+                // when tail byte value matches (e.g. 1-bit '1' vs 2-bit '01' cases).
+                hash ^= (byte)tailBits;
+                hash *= prime;
+            }
+            else
+            {
+                // Still mix in length in bits to distinguish e.g. [0x00] vs empty.
+                hash ^= 0u;
+                hash *= prime;
+            }
+
+            // Mix in exact bit length (strongly recommended)
+            unchecked
+            {
+                hash ^= (uint)bits;
+                hash *= prime;
+            }
+
+            return hash;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ulong GetDeterministicHash64()
+        {
+            // FNV-1a 64-bit
+            const ulong offset = 14695981039346656037UL;
+            const ulong prime = 1099511628211UL;
+
+            int bits = _positionInBits;
+            int fullBytes = bits >> 3;
+            int tailBits = bits & 7;
+
+            ulong hash = offset;
+
+            for (int i = 0; i < fullBytes; i++)
+            {
+                hash ^= _buffer[i];
+                hash *= prime;
+            }
+
+            if (tailBits != 0)
+            {
+                byte mask = (byte)((1 << tailBits) - 1);
+                byte tail = (byte)(_buffer[fullBytes] & mask);
+
+                hash ^= tail;
+                hash *= prime;
+
+                hash ^= (byte)tailBits;
+                hash *= prime;
+            }
+
+            unchecked
+            {
+                hash ^= (ulong)(uint)bits;
+                hash *= prime;
+            }
+
+            return hash;
         }
     }
 }
