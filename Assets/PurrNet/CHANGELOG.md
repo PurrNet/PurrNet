@@ -1,3 +1,10 @@
+## [1.18.1-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.27...v1.18.1-beta.28) (2026-01-20)
+
+
+### Bug Fixes
+
+* GetModule can fail here ([4ea9c5a](https://github.com/PurrNet/PurrNet/commit/4ea9c5ab6133cf14deace076f556649f78619cb6))
+
 ## [1.18.1-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.26...v1.18.1-beta.27) (2026-01-19)
 
 
