@@ -1,3 +1,10 @@
+## [1.18.1-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.28...v1.18.1-beta.29) (2026-01-20)
+
+
+### Bug Fixes
+
+* hash collisions would break delta compression, added type explicitly to avoid this ([bc670ab](https://github.com/PurrNet/PurrNet/commit/bc670ab69682922c31c05fefae40c16f19f4f02f))
+
 ## [1.18.1-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.27...v1.18.1-beta.28) (2026-01-20)
 
 
