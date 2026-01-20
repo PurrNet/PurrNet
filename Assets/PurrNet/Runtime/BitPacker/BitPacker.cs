@@ -776,6 +776,7 @@ namespace PurrNet.Packing
             int len = length;
             newPacker.EnsureBitsExist(len * 8);
             Array.Copy(_buffer, newPacker.buffer, len);
+            newPacker._positionInBits = _positionInBits;
             return newPacker;
         }
 
