@@ -1,13 +1,12 @@
-using System;
 using System.Linq;
 using NUnit.Framework;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using UnityEngine;
 
-struct Item
+internal readonly struct Item
 {
-    public int id;
+    public readonly int id;
     public Item(int id) => this.id = id;
     public override bool Equals(object o) => o is Item i && i.id == id;
     public override int GetHashCode() => id;
