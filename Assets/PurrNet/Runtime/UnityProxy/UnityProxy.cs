@@ -387,7 +387,13 @@ namespace PurrNet
 #else
                 await Task.Delay(TimeSpan.FromSeconds(t));
 #endif
-                Destroy(obj);
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    return;
+#endif
+
+                if (obj)
+                    Destroy(obj);
             }
             catch (Exception e)
             {
