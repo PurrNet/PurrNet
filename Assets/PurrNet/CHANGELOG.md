@@ -1,3 +1,10 @@
+## [1.18.1-beta.33](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.32...v1.18.1-beta.33) (2026-01-21)
+
+
+### Bug Fixes
+
+* DisposableArray duplicate ([af07f84](https://github.com/PurrNet/PurrNet/commit/af07f84b4d71d01a665aa797e71e58502ed11be9))
+
 ## [1.18.1-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.31...v1.18.1-beta.32) (2026-01-21)
 
 
