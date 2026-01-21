@@ -200,7 +200,7 @@ namespace PurrNet.Pooling
             {
                 var res = Create(Count);
                 for (var i = Count - 1; i >= 0; --i)
-                    res.Add(Packer.Copy(array[i]));
+                    res[i] = Packer.Copy(array[i]);
                 return res;
             }
 
