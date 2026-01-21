@@ -1,3 +1,10 @@
+## [1.18.1-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.31...v1.18.1-beta.32) (2026-01-21)
+
+
+### Bug Fixes
+
+* prevent destruction of objects in editor mode and cancel if it was already destroyed ([5351ba5](https://github.com/PurrNet/PurrNet/commit/5351ba52cd4d0569c9c1c05b349f83dd583a6351))
+
 ## [1.18.1-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.30...v1.18.1-beta.31) (2026-01-20)
 
 

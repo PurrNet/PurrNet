@@ -21,6 +21,8 @@ namespace PurrNet.Examples.TopDownShooter
         private float _verticalVelocity;
         private Vector3 currentMove;
 
+        public CharacterController controller => _controller;
+
         private void Awake()
         {
             if (!TryGetComponent(out _controller))
