@@ -367,8 +367,6 @@ namespace PurrNet
 
         private void OnServerConnectionState(ConnectionState state)
         {
-            _pingHistorySize = Mathf.RoundToInt(_networkManager.tickModule.tickRate * PING_HISTORY_TIME);
-            _pingStats = new int[_pingHistorySize];
             connectedServer = state == ConnectionState.Connected;
 
             switch (state)
@@ -384,6 +382,8 @@ namespace PurrNet
                     ServerUnsubscribe_ServerStats();
                     return;
                 case ConnectionState.Connected:
+                    _pingHistorySize = Mathf.RoundToInt(_networkManager.tickModule.tickRate * PING_HISTORY_TIME);
+                    _pingStats = new int[_pingHistorySize];
                     _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
                     _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
