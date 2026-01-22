@@ -1,3 +1,10 @@
+## [1.18.1-beta.34](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.33...v1.18.1-beta.34) (2026-01-22)
+
+
+### Bug Fixes
+
+* initialize ping history size and stats on server connection ([5f8689a](https://github.com/PurrNet/PurrNet/commit/5f8689ae9ae785e2764725bb7f53a0c6ed018aa2))
+
 ## [1.18.1-beta.33](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.32...v1.18.1-beta.33) (2026-01-21)
 
 
