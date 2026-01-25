@@ -594,7 +594,7 @@ PlayerSettings:
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
     Standalone: STEAMWORKS_NET;EDGEGAP_PLUGIN_SERVERS;APP_UI_EDITOR_ONLY
-    WebGL: STEAMWORKS_NET;EDGEGAP_PLUGIN_SERVERS;APP_UI_EDITOR_ONLY
+    WebGL: STEAMWORKS_NET;EDGEGAP_PLUGIN_SERVERS;APP_UI_EDITOR_ONLY;PURR_BUTTONS
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
