@@ -31,6 +31,7 @@ namespace PurrNet.Modules
 
     public struct RpcResponse
     {
+        public PlayerID? sender;
         public PlayerID? forward;
         public Channel? channel;
         public PackedUInt id;
@@ -63,7 +64,9 @@ namespace PurrNet.Modules
 
         private void OnRpcResponse(PlayerID conn, RpcResponse data, bool asServer)
         {
-            if (asServer && data.forward.HasValue && data.forward != _manager.localPlayer)
+            var localPlayer = _manager.localPlayer;
+
+            if (asServer && data.forward.HasValue && data.forward != localPlayer)
             {
                 var rules = _manager.networkRules;
                 if (!rules)
@@ -78,14 +81,20 @@ namespace PurrNet.Modules
                     return;
                 }
 
+                data.sender = localPlayer;
                 _playersManager.Send(data.forward.Value, data, data.channel ?? Channel.ReliableOrdered);
                 return;
             }
 
+            if (asServer)
+                data.sender = null;
+
+            var actualSender = data.sender ?? conn;
+
             for (int i = 0; i < _requests.Count; i++)
             {
                 var request = _requests[i];
-                if (request.id == data.id && (!request.target.HasValue || request.target == conn))
+                if (request.id == data.id && (!request.target.HasValue || request.target == actualSender))
                 {
                     _requests.RemoveAt(i);
 
