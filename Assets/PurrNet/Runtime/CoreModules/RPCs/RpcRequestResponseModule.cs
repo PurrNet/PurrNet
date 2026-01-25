@@ -63,7 +63,7 @@ namespace PurrNet.Modules
 
         private void OnRpcResponse(PlayerID conn, RpcResponse data, bool asServer)
         {
-            if (asServer && data.forward.HasValue)
+            if (asServer && data.forward.HasValue && data.forward != _manager.localPlayer)
             {
                 var rules = _manager.networkRules;
                 if (!rules)

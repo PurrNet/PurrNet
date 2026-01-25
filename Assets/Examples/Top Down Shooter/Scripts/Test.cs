@@ -8,7 +8,7 @@ public class Test : NetworkIdentity
     private SyncTimer _syncTimer = new();
 
     private SyncEvent _syncEvent = new();
-    
+
     [SerializeField] private Transform _parentTarget;
     [SerializeField] private SyncDictionary<int, TestClass> _myTestDictionary = new();
 
@@ -42,19 +42,19 @@ public class Test : NetworkIdentity
     }
 
     [ContextMenu("Start Timer")]
-    private void StartTimer() 
+    private void StartTimer()
     {
         _syncTimer.StartTimer(20);
     }
 
     [ContextMenu("End Timer")]
-    private void EndTimer() 
+    private void EndTimer()
     {
         _syncTimer.StopTimer();
     }
 
     [ContextMenu("Invoke")]
-    private void InvokeTest() 
+    private void InvokeTest()
     {
         _syncEvent?.Invoke();
     }
