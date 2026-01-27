@@ -38,7 +38,7 @@ namespace PurrNet
     }
 
     [RequireComponent(typeof(Rigidbody))]
-    public class NetworkRigidbody : NetworkIdentity, ITick
+    public partial class NetworkRigidbody : NetworkIdentity, ITick
     {
         [Header("Authority")]
         [SerializeField] private bool _ownerAuth;
@@ -68,8 +68,6 @@ namespace PurrNet
         private bool _isCorreting;
         private bool _hasPendingTeleport;
 
-        private bool OwnerAuth => _ownerAuth;
-
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody>();
@@ -89,13 +87,13 @@ namespace PurrNet
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
 
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
                 SyncSettings(GetCurrentSettings());
         }
 
         public void OnTick(float delta)
         {
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
                 ControllerTick();
             else
                 NonControllerTick(delta);
@@ -257,7 +255,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.mass = value;
-                if (IsController(OwnerAuth))
+                if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -268,7 +266,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.linearDamping = value;
-                if (IsController(OwnerAuth))
+                if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -279,7 +277,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.angularDamping = value;
-                if (IsController(OwnerAuth))
+                if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -290,7 +288,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.useGravity = value;
-                if (IsController(OwnerAuth))
+                if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -301,7 +299,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.isKinematic = value;
-                if (IsController(OwnerAuth))
+                if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -313,7 +311,7 @@ namespace PurrNet
             
             var appliedForce = new AppliedForce { force = force, mode = mode };
 
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
                 if(mode != ForceMode.Force)
@@ -332,7 +330,7 @@ namespace PurrNet
 
             var appliedForce = new AppliedForce { force = force, position = position, mode = mode };
 
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForceAtPosition(force, position, mode);
                 QueueForce(appliedForce);
@@ -350,7 +348,7 @@ namespace PurrNet
 
             var appliedForce = new AppliedForce { force = torque, mode = mode, isTorque = true };
 
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
             {
                 _rigidbody.AddTorque(torque, mode);
                 QueueForce(appliedForce);
@@ -363,7 +361,7 @@ namespace PurrNet
 
         public void MovePosition(Vector3 position)
         {
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
             {
                 _rigidbody.MovePosition(position);
                 BroadcastTeleport();
@@ -376,7 +374,7 @@ namespace PurrNet
 
         public void MoveRotation(Quaternion rotation)
         {
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
             {
                 _rigidbody.MoveRotation(rotation);
                 BroadcastTeleport();
@@ -394,7 +392,7 @@ namespace PurrNet
         [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SyncState(RigidbodyStateData data)
         {
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
                 return;
 
             _targetPosition = data.position;
@@ -412,14 +410,14 @@ namespace PurrNet
         {
             ApplyForce(force);
 
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
                 QueueForce(force);
         }
 
         [ObserversRpc(deltaPacked: true)]
         private void Teleport(RigidbodyTeleportData data)
         {
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
                 return;
 
             _hasPendingTeleport = true;
@@ -437,7 +435,7 @@ namespace PurrNet
         [ObserversRpc(bufferLast: true, deltaPacked: true)]
         private void SyncSettings(RigidbodySettingsData data)
         {
-            if (IsController(OwnerAuth))
+            if (IsController(_ownerAuth))
                 return;
 
             _rigidbody.mass = data.mass;
@@ -450,7 +448,7 @@ namespace PurrNet
         [ServerRpc(requireOwnership: false, deltaPacked: true)]
         private void RequestTeleport(Vector3 position, Quaternion rotation)
         {
-            if (OwnerAuth && owner.HasValue)
+            if (_ownerAuth && owner.HasValue)
             {
                 ForwardTeleportRequest(owner.Value, position, rotation);
                 return;
