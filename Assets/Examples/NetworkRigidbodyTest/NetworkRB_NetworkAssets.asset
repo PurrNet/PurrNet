@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d9ac2e59ec50867458fa45964a218963, type: 3}
-  m_Name: TopDownShooter_NetworkAssets
+  m_Name: NetworkRB_NetworkAssets
   m_EditorClassIdentifier: 
   autoGenerate: 1
   folder: {fileID: 102900000, guid: 16bd9ffa7f6b76846af25af50c685cda, type: 3}
