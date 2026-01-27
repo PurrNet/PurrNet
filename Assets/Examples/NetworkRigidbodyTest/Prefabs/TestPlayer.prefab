@@ -205,7 +205,7 @@ MonoBehaviour:
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
-  _debugGizmos: 1
+  _debugGizmos: 0
   _debugTextOffset: 2
 --- !u!54 &1777001343934833439
 Rigidbody:

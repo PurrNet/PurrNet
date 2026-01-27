@@ -143,7 +143,7 @@ namespace PurrNet
         {
             if (!HasStateChanged() && _pendingForces.Count == 0 && !ShouldSyncWhenStopped())
                 return;
-
+            float? myPing = (!isServer && _extrapolateBasedOnPing) ? (float)NetworkManager.main.tickModule.rtt : null;
             var stateData = new RigidbodyStateData
             {
                 position = _rigidbody.position,
@@ -151,7 +151,7 @@ namespace PurrNet
                 linearVelocity = _rigidbody.linearVelocity,
                 angularVelocity = _rigidbody.angularVelocity,
                 recentForces = _pendingForces.ToArray(),
-                senderPing = _extrapolateBasedOnPing ? (!isServer ? (float)NetworkManager.main.tickModule.rtt : 0) : null
+                senderPing = myPing
             };
 
             _targetPosition = _rigidbody.position;
@@ -466,9 +466,22 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
-            float extrapolationMultiplier = data.senderPing.HasValue ? NetworkManager.main.tickModule.TimeToTick((float)NetworkManager.main.tickModule.rtt) + data.senderPing.Value : 0;
-            _lastExtrapolation = extrapolationMultiplier;
-            _targetPosition = data.position + data.linearVelocity * extrapolationMultiplier;
+            float extrapolationTime = 0f;
+
+            if (_extrapolateBasedOnPing)
+            {
+                if (isServer)
+                {
+                    if (data.senderPing.HasValue)
+                        extrapolationTime = data.senderPing.Value / 2f;
+                }
+                else
+                {
+                    extrapolationTime = (float)NetworkManager.main.tickModule.rtt / 2f;
+                }
+            }
+            _lastExtrapolation = extrapolationTime;
+            _targetPosition = data.position + (data.linearVelocity * extrapolationTime);
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
@@ -483,9 +496,15 @@ namespace PurrNet
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SendStateToServer(RigidbodyStateData data)
         {
-            float extrapolationMultiplier = data.senderPing.HasValue ? NetworkManager.main.tickModule.TimeToTick((float)NetworkManager.main.tickModule.rtt) + data.senderPing.Value : 0;
-            _lastExtrapolation = extrapolationMultiplier;
-            _targetPosition = data.position + data.linearVelocity * extrapolationMultiplier;
+            float extrapolationTime = 0f;
+
+            if (_extrapolateBasedOnPing)
+            {
+                if (data.senderPing.HasValue)
+                    extrapolationTime = data.senderPing.Value / 2f;
+            }
+            _lastExtrapolation = extrapolationTime;
+            _targetPosition = data.position + (data.linearVelocity * extrapolationTime);
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
