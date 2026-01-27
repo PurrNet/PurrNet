@@ -17,6 +17,8 @@ namespace PurrNet
     {
         public Vector3 position;
         public Quaternion rotation;
+        public Vector3 linearVelocity;
+        public Vector3 angularVelocity;
         public AppliedForce[] recentForces;
     }
 
@@ -61,8 +63,12 @@ namespace PurrNet
         
         private Vector3 _targetPosition;
         private Quaternion _targetRotation;
+        private Vector3 _targetLinearVelocity;
+        private Vector3 _targetAngularVelocity;
         private Vector3 _lastSyncedPosition;
         private Quaternion _lastSyncedRotation;
+        private Vector3 _lastSyncedLinearVelocity;
+        private Vector3 _lastSyncedAngularVelocity;
         
         private float _correctionTimer;
         private bool _isCorreting;
@@ -84,8 +90,13 @@ namespace PurrNet
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
+            _targetLinearVelocity = _rigidbody.linearVelocity;
+            _targetAngularVelocity = _rigidbody.angularVelocity;
+            
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
+            _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
+            _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
 
             if (IsController(_ownerAuth))
                 SyncSettings(GetCurrentSettings());
@@ -108,11 +119,15 @@ namespace PurrNet
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
+                linearVelocity = _rigidbody.linearVelocity,
+                angularVelocity = _rigidbody.angularVelocity,
                 recentForces = _pendingForces.ToArray()
             };
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
+            _targetLinearVelocity = _rigidbody.linearVelocity;
+            _targetAngularVelocity = _rigidbody.angularVelocity;
 
             if (isServer)
                 SyncState(stateData);
@@ -121,6 +136,8 @@ namespace PurrNet
 
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
+            _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
+            _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
             _pendingForces.Clear();
         }
 
@@ -160,16 +177,23 @@ namespace PurrNet
         {
             Vector3 positionError = _targetPosition - _rigidbody.position;
             Vector3 springForce = positionError * _springConstant * _rigidbody.mass;
-            Vector3 dampingForce = -_rigidbody.linearVelocity * _dampingConstant * _rigidbody.mass;
+            
+            Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
+            Vector3 dampingForce = velocityError * _dampingConstant * _rigidbody.mass;
+            
             _rigidbody.AddForce(springForce + dampingForce);
 
             Quaternion rotationError = _targetRotation * Quaternion.Inverse(_rigidbody.rotation);
             rotationError.ToAngleAxis(out float angle, out Vector3 axis);
             if (angle > 180f) angle -= 360f;
+            
             if (Mathf.Abs(angle) > 0.1f)
             {
                 Vector3 torque = axis * (angle * Mathf.Deg2Rad) * _springConstant * _rigidbody.mass;
-                Vector3 angularDamping = -_rigidbody.angularVelocity * _dampingConstant * _rigidbody.mass;
+                
+                Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
+                Vector3 angularDamping = angularVelocityError * _dampingConstant * _rigidbody.mass;
+                
                 _rigidbody.AddTorque(torque + angularDamping);
             }
         }
@@ -186,8 +210,10 @@ namespace PurrNet
         {
             float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
             float rotationDelta = Quaternion.Angle(_rigidbody.rotation, _lastSyncedRotation);
+            float linearVelocityDelta = Vector3.Distance(_rigidbody.linearVelocity, _lastSyncedLinearVelocity);
+            float angularVelocityDelta = Vector3.Distance(_rigidbody.angularVelocity, _lastSyncedAngularVelocity);
 
-            return positionDelta > _positionChangeThreshold || rotationDelta > _rotationChangeThreshold;
+            return positionDelta > _positionChangeThreshold || rotationDelta > _rotationChangeThreshold || linearVelocityDelta > _velocityStopThreshold || angularVelocityDelta > _velocityStopThreshold;
         }
 
         private bool ShouldSyncWhenStopped()
@@ -316,7 +342,7 @@ namespace PurrNet
                 return;
             
             var appliedForce = new AppliedForce { force = force, mode = mode };
-
+            
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
@@ -403,6 +429,8 @@ namespace PurrNet
 
             _targetPosition = data.position;
             _targetRotation = data.rotation;
+            _targetLinearVelocity = data.linearVelocity;
+            _targetAngularVelocity = data.angularVelocity;
 
             if (data.recentForces != null)
             {
@@ -416,6 +444,8 @@ namespace PurrNet
         {
             _targetPosition = data.position;
             _targetRotation = data.rotation;
+            _targetLinearVelocity = data.linearVelocity;
+            _targetAngularVelocity = data.angularVelocity;
 
             if (data.recentForces != null)
             {

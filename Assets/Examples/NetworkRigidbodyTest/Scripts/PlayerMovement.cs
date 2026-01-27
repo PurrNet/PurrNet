@@ -26,10 +26,12 @@ namespace NetworkRigidbodyTest
         {
             var direction = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical")).normalized;
             _rb.AddForce(direction * (_moveForce * _rb.mass));
-            
+        }
+
+        private void Update()
+        {
             if(Input.GetKeyDown(KeyCode.Space))
-                _rb.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
+                _rb.AddForce(Vector3.up * (_rb.mass * _jumpForce), ForceMode.Impulse);
         }
     }
-
 }
