@@ -2,6 +2,7 @@ var hierarchy =
 [
     [ "PurrNet.Modules.AckDeltaMessage", "structPurrNet_1_1Modules_1_1AckDeltaMessage.html", null ],
     [ "PurrNet.Pooling.AllocationDetails", "structPurrNet_1_1Pooling_1_1AllocationDetails.html", null ],
+    [ "PurrNet.AppliedForce", "structPurrNet_1_1AppliedForce.html", null ],
     [ "Attribute", null, [
       [ "PurrNet.Contributors.ContributorAttribute", "classPurrNet_1_1Contributors_1_1ContributorAttribute.html", null ],
       [ "PurrNet.Contributors.CourtesyOfAttribute", "classPurrNet_1_1Contributors_1_1CourtesyOfAttribute.html", null ],
@@ -337,6 +338,7 @@ var hierarchy =
     [ "PurrNet.StateMachine.IStateCommand", "interfacePurrNet_1_1StateMachine_1_1IStateCommand.html", null ],
     [ "PurrNet.ITick", "interfacePurrNet_1_1ITick.html", [
       [ "PurrNet.NetworkReflection", "classPurrNet_1_1NetworkReflection.html", null ],
+      [ "PurrNet.NetworkRigidbody", "classPurrNet_1_1NetworkRigidbody.html", null ],
       [ "PurrNet.ReliableDeltaStream< T >", "classPurrNet_1_1ReliableDeltaStream.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
       [ "PurrNet.SyncBigData", "classPurrNet_1_1SyncBigData.html", [
@@ -367,6 +369,7 @@ var hierarchy =
         [ "PurrNet.NetworkOwnershipDebug", "classPurrNet_1_1NetworkOwnershipDebug.html", null ],
         [ "PurrNet.NetworkOwnershipToggle", "classPurrNet_1_1NetworkOwnershipToggle.html", null ],
         [ "PurrNet.NetworkReflection", "classPurrNet_1_1NetworkReflection.html", null ],
+        [ "PurrNet.NetworkRigidbody", "classPurrNet_1_1NetworkRigidbody.html", null ],
         [ "PurrNet.NetworkServerToggle", "classPurrNet_1_1NetworkServerToggle.html", null ],
         [ "PurrNet.NetworkTransform", "classPurrNet_1_1NetworkTransform.html", null ],
         [ "PurrNet.PlayerIdentity< T >", "classPurrNet_1_1PlayerIdentity.html", null ],
@@ -444,6 +447,9 @@ var hierarchy =
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
     [ "PurrNet.Transports.RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "PurrNet.Modules.ReliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
+    [ "PurrNet.RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
+    [ "PurrNet.RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", null ],
+    [ "PurrNet.RigidbodyTeleportData", "structPurrNet_1_1RigidbodyTeleportData.html", null ],
     [ "PurrNet.RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
     [ "PurrNet.Modules.RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],
     [ "PurrNet.Modules.RpcRequest", "structPurrNet_1_1Modules_1_1RpcRequest.html", null ],
