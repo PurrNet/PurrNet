@@ -198,11 +198,14 @@ MonoBehaviour:
   _maxCorrectionTime: -1
   _springConstant: 90
   _dampingConstant: 5
+  _lowSpeedThreshold: 1.5
+  _lowSpeedSpringMultiplier: 0.1
+  _extrapolateBasedOnPing: 1
   _maxForcesPerTick: 8
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
-  _debugGizmos: 0
+  _debugGizmos: 1
   _debugTextOffset: 2
 --- !u!54 &1777001343934833439
 Rigidbody:

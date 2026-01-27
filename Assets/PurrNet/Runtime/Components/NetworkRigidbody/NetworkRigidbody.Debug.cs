@@ -66,6 +66,7 @@ namespace PurrNet
                           $"Position: {_rigidbody.position:F2}\n" +
                           $"Target: {_targetPosition:F2}\n" +
                           $"Error: {error:F3}m\n" +
+                          $"Extrapolation: {_lastExtrapolation}\n" +
                           $"---\n" +
                           $"Velocity: {_rigidbody.linearVelocity.magnitude:F2}\n" +
                           $"Correcting: {_isCorreting}\n" +

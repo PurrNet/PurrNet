@@ -20,6 +20,7 @@ namespace PurrNet
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
         public AppliedForce[] recentForces;
+        public float? senderPing;
     }
 
     public struct RigidbodyTeleportData
@@ -69,8 +70,8 @@ namespace PurrNet
         [Tooltip("How much to weaken the spring at low speeds (0.1 = 10% strength). helps smoother stops.")]
         [SerializeField] private float _lowSpeedSpringMultiplier = 0.1f;
 
-        [Tooltip("How far into the future to project the target position based on its velocity. Helps fix 'drag' or 'floaty' lag.")]
-        [SerializeField] private uint _extrapolationTicks = 0;
+        [Tooltip("Whether the target position should extrapolate based on local ping")]
+        [SerializeField] private bool _extrapolateBasedOnPing;
 
         [Header("Sync Settings")]
         [Tooltip("Limit on how many specific force events (like AddForce/Explosions) can be synced in a single frame to prevent flooding.")]
@@ -96,6 +97,7 @@ namespace PurrNet
         private Quaternion _lastSyncedRotation;
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
+        private float _lastExtrapolation;
         
         private float _correctionTimer;
         private bool _isCorreting;
@@ -148,7 +150,8 @@ namespace PurrNet
                 rotation = _rigidbody.rotation,
                 linearVelocity = _rigidbody.linearVelocity,
                 angularVelocity = _rigidbody.angularVelocity,
-                recentForces = _pendingForces.ToArray()
+                recentForces = _pendingForces.ToArray(),
+                senderPing = _extrapolateBasedOnPing ? (!isServer ? (float)NetworkManager.main.tickModule.rtt : 0) : null
             };
 
             _targetPosition = _rigidbody.position;
@@ -212,10 +215,10 @@ namespace PurrNet
             }
 
             Vector3 positionError = _targetPosition - _rigidbody.position;
-            Vector3 springForce = positionError * adaptiveSpring * _rigidbody.mass;
+            Vector3 springForce = positionError * (adaptiveSpring * _rigidbody.mass);
             
             Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
-            Vector3 dampingForce = velocityError * _dampingConstant * _rigidbody.mass;
+            Vector3 dampingForce = velocityError * (_dampingConstant * _rigidbody.mass);
             
             _rigidbody.AddForce(springForce + dampingForce);
 
@@ -225,10 +228,10 @@ namespace PurrNet
             
             if (Mathf.Abs(angle) > 0.1f)
             {
-                Vector3 torque = axis * (angle * Mathf.Deg2Rad) * _springConstant * _rigidbody.mass;
+                Vector3 torque = axis * (angle * Mathf.Deg2Rad * _springConstant * _rigidbody.mass);
                 
                 Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                Vector3 angularDamping = angularVelocityError * _dampingConstant * _rigidbody.mass;
+                Vector3 angularDamping = angularVelocityError * (_dampingConstant * _rigidbody.mass);
                 
                 _rigidbody.AddTorque(torque + angularDamping);
             }
@@ -463,7 +466,9 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
-            _targetPosition = data.position + data.linearVelocity * NetworkManager.main.tickModule.TickToTime(_extrapolationTicks);
+            float extrapolationMultiplier = data.senderPing.HasValue ? NetworkManager.main.tickModule.TimeToTick((float)NetworkManager.main.tickModule.rtt) + data.senderPing.Value : 0;
+            _lastExtrapolation = extrapolationMultiplier;
+            _targetPosition = data.position + data.linearVelocity * extrapolationMultiplier;
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
@@ -478,7 +483,9 @@ namespace PurrNet
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SendStateToServer(RigidbodyStateData data)
         {
-            _targetPosition = data.position + data.linearVelocity * NetworkManager.main.tickModule.TickToTime(_extrapolationTicks);
+            float extrapolationMultiplier = data.senderPing.HasValue ? NetworkManager.main.tickModule.TimeToTick((float)NetworkManager.main.tickModule.rtt) + data.senderPing.Value : 0;
+            _lastExtrapolation = extrapolationMultiplier;
+            _targetPosition = data.position + data.linearVelocity * extrapolationMultiplier;
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
