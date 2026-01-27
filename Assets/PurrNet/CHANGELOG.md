@@ -1,3 +1,10 @@
+## [1.18.1-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.35...v1.18.1-beta.36) (2026-01-27)
+
+
+### Bug Fixes
+
+* using after free ([890a29c](https://github.com/PurrNet/PurrNet/commit/890a29cd72bf96a70665da77c37aca34caaaa187))
+
 ## [1.18.1-beta.35](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.34...v1.18.1-beta.35) (2026-01-25)
 
 
