@@ -43,19 +43,46 @@ namespace PurrNet
     public partial class NetworkRigidbody : NetworkIdentity, ITick
     {
         [Header("Authority")]
+        [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
         [SerializeField] private bool _ownerAuth;
 
         [Header("Correction Settings")]
+        [Tooltip("The distance error below which we stop applying correction forces. Prevents micro-jitter when very close to target.")]
         [SerializeField] private float _acceptableError = 0.05f;
+
+        [Tooltip("If the distance error exceeds this threshold, the object will immediately teleport (snap) to the target.")]
         [SerializeField] private float _hardCorrectionThreshold = 2f;
+
+        [Tooltip("Maximum duration (in seconds) to attempt soft correction forces before forcing a hard teleport. Set to -1 to disable.")]
         [SerializeField] private float _maxCorrectionTime = -1f;
+
+        [Tooltip("The stiffness of the force pulling the object towards the target position. Higher values mean a tighter sync but more potential for jitter.")]
         [SerializeField] private float _springConstant = 80f;
+
+        [Tooltip("The resistance applied to smooth out the movement and match the target's velocity. Helps prevent oscillation.")]
         [SerializeField] private float _dampingConstant = 5f;
 
+        [Header("Stabilization & Prediction")]
+        [Tooltip("Speed under which we relax the spring to prevent jitter while rolling slowly.")]
+        [SerializeField] private float _lowSpeedThreshold = 1.5f;
+
+        [Tooltip("How much to weaken the spring at low speeds (0.1 = 10% strength). helps smoother stops.")]
+        [SerializeField] private float _lowSpeedSpringMultiplier = 0.1f;
+
+        [Tooltip("How far into the future to project the target position based on its velocity. Helps fix 'drag' or 'floaty' lag.")]
+        [SerializeField] private uint _extrapolationTicks = 3;
+
         [Header("Sync Settings")]
+        [Tooltip("Limit on how many specific force events (like AddForce/Explosions) can be synced in a single frame to prevent flooding.")]
         [SerializeField] private int _maxForcesPerTick = 8;
+
+        [Tooltip("Minimum distance moved required to trigger a network update.")]
         [SerializeField] private float _positionChangeThreshold = 0.001f;
+
+        [Tooltip("Minimum angle rotated required to trigger a network update.")]
         [SerializeField] private float _rotationChangeThreshold = 0.001f;
+
+        [Tooltip("If linear and angular velocities are below this value, the object is considered stopped and will stop sending updates.")]
         [SerializeField] private float _velocityStopThreshold = 0.001f;
 
         private Rigidbody _rigidbody;
@@ -175,8 +202,17 @@ namespace PurrNet
 
         private void ApplySoftCorrection()
         {
+            float currentSpeed = _rigidbody.linearVelocity.magnitude;
+            float adaptiveSpring = _springConstant;
+
+            if (currentSpeed < _lowSpeedThreshold)
+            {
+                float factor = Mathf.Clamp01(currentSpeed / _lowSpeedThreshold);
+                adaptiveSpring = Mathf.Lerp(_springConstant * _lowSpeedSpringMultiplier, _springConstant, factor);
+            }
+
             Vector3 positionError = _targetPosition - _rigidbody.position;
-            Vector3 springForce = positionError * _springConstant * _rigidbody.mass;
+            Vector3 springForce = positionError * adaptiveSpring * _rigidbody.mass;
             
             Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
             Vector3 dampingForce = velocityError * _dampingConstant * _rigidbody.mass;
@@ -427,7 +463,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
-            _targetPosition = data.position;
+            _targetPosition = data.position + data.linearVelocity * NetworkManager.main.tickModule.TickToTime(_extrapolationTicks);
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
@@ -442,7 +478,7 @@ namespace PurrNet
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SendStateToServer(RigidbodyStateData data)
         {
-            _targetPosition = data.position;
+            _targetPosition = data.position + data.linearVelocity * NetworkManager.main.tickModule.TickToTime(_extrapolationTicks);
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
