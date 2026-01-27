@@ -145,6 +145,7 @@ namespace PurrNet.Pooling
         {
             if (!_shouldDispose) return;
             ArrayPool<T>.Shared.Return(array);
+            array = null;
 #if UNITY_EDITOR && PURR_LEAKS_CHECK
             AllocationTracker.UnTrack(array);
 #endif
@@ -200,7 +201,7 @@ namespace PurrNet.Pooling
             {
                 var res = Create(Count);
                 for (var i = Count - 1; i >= 0; --i)
-                    res.Add(Packer.Copy(array[i]));
+                    res[i] = PurrCopy<T>.Copy(in array[i]);
                 return res;
             }
 

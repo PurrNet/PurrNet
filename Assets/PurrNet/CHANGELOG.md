@@ -1,3 +1,31 @@
+## [1.18.1-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.35...v1.18.1-beta.36) (2026-01-27)
+
+
+### Bug Fixes
+
+* using after free ([890a29c](https://github.com/PurrNet/PurrNet/commit/890a29cd72bf96a70665da77c37aca34caaaa187))
+
+## [1.18.1-beta.35](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.34...v1.18.1-beta.35) (2026-01-25)
+
+
+### Bug Fixes
+
+* target RPC to host's client failed, this was a regression ([6fdce17](https://github.com/PurrNet/PurrNet/commit/6fdce17673990deb758bd2d4b2348a00ad16c9dd))
+
+## [1.18.1-beta.34](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.33...v1.18.1-beta.34) (2026-01-22)
+
+
+### Bug Fixes
+
+* initialize ping history size and stats on server connection ([5f8689a](https://github.com/PurrNet/PurrNet/commit/5f8689ae9ae785e2764725bb7f53a0c6ed018aa2))
+
+## [1.18.1-beta.33](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.32...v1.18.1-beta.33) (2026-01-21)
+
+
+### Bug Fixes
+
+* DisposableArray duplicate ([af07f84](https://github.com/PurrNet/PurrNet/commit/af07f84b4d71d01a665aa797e71e58502ed11be9))
+
 ## [1.18.1-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.31...v1.18.1-beta.32) (2026-01-21)
 
 
