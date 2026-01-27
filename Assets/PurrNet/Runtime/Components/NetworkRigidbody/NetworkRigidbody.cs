@@ -46,8 +46,8 @@ namespace PurrNet
         [Header("Correction Settings")]
         [SerializeField] private float _acceptableError = 0.05f;
         [SerializeField] private float _hardCorrectionThreshold = 2f;
-        [SerializeField] private float _maxCorrectionTime = 3f;
-        [SerializeField] private float _springConstant = 50f;
+        [SerializeField] private float _maxCorrectionTime = -1f;
+        [SerializeField] private float _springConstant = 80f;
         [SerializeField] private float _dampingConstant = 5f;
 
         [Header("Sync Settings")]

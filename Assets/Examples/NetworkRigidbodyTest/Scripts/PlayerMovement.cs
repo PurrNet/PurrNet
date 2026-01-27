@@ -14,6 +14,12 @@ namespace NetworkRigidbodyTest
         {
             base.OnSpawned();
             enabled = isOwner;
+
+            if (isOwner)
+            {
+                var renderer = GetComponentInChildren<Renderer>();
+                renderer.material.color = Color.green;
+            }
         }
 
         private void FixedUpdate()
