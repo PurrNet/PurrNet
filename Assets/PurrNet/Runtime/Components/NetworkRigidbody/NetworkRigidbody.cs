@@ -70,7 +70,7 @@ namespace PurrNet
         [SerializeField] private float _lowSpeedSpringMultiplier = 0.1f;
 
         [Tooltip("How far into the future to project the target position based on its velocity. Helps fix 'drag' or 'floaty' lag.")]
-        [SerializeField] private uint _extrapolationTicks = 3;
+        [SerializeField] private uint _extrapolationTicks = 0;
 
         [Header("Sync Settings")]
         [Tooltip("Limit on how many specific force events (like AddForce/Explosions) can be synced in a single frame to prevent flooding.")]
