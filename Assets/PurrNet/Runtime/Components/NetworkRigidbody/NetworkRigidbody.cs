@@ -308,6 +308,9 @@ namespace PurrNet
 
         public void AddForce(Vector3 force, ForceMode mode = ForceMode.Force)
         {
+            if (!isSpawned)
+                return;
+            
             var appliedForce = new AppliedForce { force = force, mode = mode };
 
             if (IsController(OwnerAuth))
@@ -324,6 +327,9 @@ namespace PurrNet
 
         public void AddForceAtPosition(Vector3 force, Vector3 position, ForceMode mode = ForceMode.Force)
         {
+            if (!isSpawned)
+                return;
+
             var appliedForce = new AppliedForce { force = force, position = position, mode = mode };
 
             if (IsController(OwnerAuth))
@@ -339,6 +345,9 @@ namespace PurrNet
 
         public void AddTorque(Vector3 torque, ForceMode mode = ForceMode.Force)
         {
+            if (!isSpawned)
+                return;
+
             var appliedForce = new AppliedForce { force = torque, mode = mode, isTorque = true };
 
             if (IsController(OwnerAuth))
