@@ -5,12 +5,6 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    public enum RigidbodyAuthority
-    {
-        Server,
-        Owner
-    }
-
     public struct AppliedForce
     {
         public Vector3 force;
@@ -47,7 +41,7 @@ namespace PurrNet
     public class NetworkRigidbody : NetworkIdentity, ITick
     {
         [Header("Authority")]
-        [SerializeField] private RigidbodyAuthority _authority = RigidbodyAuthority.Server;
+        [SerializeField] private bool _ownerAuth;
 
         [Header("Correction Settings")]
         [SerializeField] private float _acceptableError = 0.05f;
@@ -74,7 +68,7 @@ namespace PurrNet
         private bool _isCorreting;
         private bool _hasPendingTeleport;
 
-        private bool OwnerAuth => _authority == RigidbodyAuthority.Owner;
+        private bool OwnerAuth => _ownerAuth;
 
         private void Awake()
         {
