@@ -36,6 +36,20 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
+        public static void Write(this BitPacker packer, ForceMode value)
+        {
+            packer.Write((int)value);
+        }
+
+        [UsedByIL]
+        public static void Read(this BitPacker packer, ref ForceMode value)
+        {
+            int val = default;
+            packer.Read(ref val);
+            value = (ForceMode)val;
+        }
+
+        [UsedByIL]
         public static void Write(this BitPacker packer, LayerMask value)
         {
             packer.Write((int)value);
