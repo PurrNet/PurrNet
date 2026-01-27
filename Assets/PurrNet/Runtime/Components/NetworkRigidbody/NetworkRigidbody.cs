@@ -313,7 +313,8 @@ namespace PurrNet
             if (IsController(OwnerAuth))
             {
                 _rigidbody.AddForce(force, mode);
-                QueueForce(appliedForce);
+                if(mode != ForceMode.Force)
+                    QueueForce(appliedForce);
             }
             else
             {
