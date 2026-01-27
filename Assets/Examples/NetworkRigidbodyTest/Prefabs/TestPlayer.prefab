@@ -168,7 +168,7 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  _moveForce: 5
+  _moveForce: 8
   _jumpForce: 5
   _rb: {fileID: 186609759476557284}
 --- !u!114 &186609759476557284
@@ -195,13 +195,15 @@ MonoBehaviour:
   _ownerAuth: 1
   _acceptableError: 0.05
   _hardCorrectionThreshold: 2
-  _maxCorrectionTime: 3
-  _springConstant: 50
+  _maxCorrectionTime: -1
+  _springConstant: 90
   _dampingConstant: 5
   _maxForcesPerTick: 8
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
+  _debugGizmos: 0
+  _debugTextOffset: 2
 --- !u!54 &1777001343934833439
 Rigidbody:
   m_ObjectHideFlags: 0
