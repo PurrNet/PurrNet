@@ -1,3 +1,10 @@
+# [1.19.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.36...v1.19.0-beta.1) (2026-01-27)
+
+
+### Features
+
+* Network Rigidbody ([7ca21d4](https://github.com/PurrNet/PurrNet/commit/7ca21d43033c3ecc8b9e154f51782b5da14f5e54))
+
 ## [1.18.1-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.35...v1.18.1-beta.36) (2026-01-27)
 
 
