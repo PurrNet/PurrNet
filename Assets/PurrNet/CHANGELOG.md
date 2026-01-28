@@ -1,3 +1,10 @@
+# [1.19.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.2...v1.19.0-beta.3) (2026-01-28)
+
+
+### Bug Fixes
+
+* make sure we account for local client being gone when handling ticks ([ca622e5](https://github.com/PurrNet/PurrNet/commit/ca622e51372b387b4f687d577341bfcd5f2223a5))
+
 # [1.19.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.1...v1.19.0-beta.2) (2026-01-28)
 
 
