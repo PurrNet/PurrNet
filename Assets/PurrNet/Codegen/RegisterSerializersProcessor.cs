@@ -142,7 +142,6 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForSerialization?.Add(writeType);
-                    GenerateSerializersProcessor.CacheWrite(writeType, method);
                 }
                 else if (IsReadMethod(method, out var readType))
                 {
@@ -156,7 +155,6 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForSerialization?.Add(readType);
-                    GenerateSerializersProcessor.CacheRead(readType, method);
                 }
                 else if (IsDeltaWriteMethod(method, out var deltaWriteType))
                 {

@@ -2878,31 +2878,6 @@ namespace PurrNet.Codegen
                     GenerateSerializersProcessor.HandleType(true, assemblyDefinition, typeRef, visitedTypes,
                         typesToIgnoreForSerialization, typesToIgnoreForDelta);
 
-                // Final pass to optimize packers
-                if (GenerateSerializersProcessor.inlinedWriteMethods != null)
-                {
-                    foreach (var type in GenerateSerializersProcessor.inlinedWriteMethods)
-                        OptimizePackers.HandleType(true, type.Value);
-                }
-
-                if (GenerateSerializersProcessor.inlinedReadMethods != null)
-                {
-                    foreach (var type in GenerateSerializersProcessor.inlinedReadMethods)
-                        OptimizePackers.HandleType(false, type.Value);
-                }
-
-                if (GenerateDeltaSerializersProcessor.inlinedDeltaReadMethods != null)
-                {
-                    foreach (var type in GenerateDeltaSerializersProcessor.inlinedDeltaReadMethods)
-                        OptimizePackers.HandleType(false, type.Value);
-                }
-
-                if (GenerateDeltaSerializersProcessor.inlinedDeltaWriteMethods != null)
-                {
-                    foreach (var type in GenerateDeltaSerializersProcessor.inlinedDeltaWriteMethods)
-                        OptimizePackers.HandleType(true, type.Value);
-                }
-
                 var pe = new MemoryStream();
                 var pdb = new MemoryStream();
 

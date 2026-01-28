@@ -192,7 +192,6 @@ namespace PurrNet.Codegen
                 var write = writeMethod.Body.GetILProcessor();
                 GenerateMethod(true, writeMethod, writeMethodP, writeDirectP, type, write, mainmodule, valueArg);
                 serializerClass.Methods.Add(writeMethod);
-                CacheWrite(type, writeMethod);
 
                 // create static read method
                 var readMethod = new MethodDefinition("Read", MethodAttributes.Public | MethodAttributes.Static,
@@ -209,7 +208,6 @@ namespace PurrNet.Codegen
                 var read = readMethod.Body.GetILProcessor();
                 GenerateMethod(false, readMethod, readMethodP, readDirectP, type, read, mainmodule, valueArg);
                 serializerClass.Methods.Add(readMethod);
-                CacheRead(type, readMethod);
             }
 
             if (ignoreDelta?.Contains(type) == false)
@@ -615,57 +613,6 @@ namespace PurrNet.Codegen
             return DoesTypeHaveAttribute(type, typeof(DontPackAttribute));
         }
 
-        [ThreadStatic] public static Dictionary<TypeReference, MethodReference> inlinedReadMethods;
-        [ThreadStatic] public static Dictionary<TypeReference, MethodReference> inlinedWriteMethods;
-
-        static bool TryGetInlinedRead(TypeReference type, out MethodReference method)
-        {
-            inlinedReadMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
-            return inlinedReadMethods.TryGetValue(type, out method);
-        }
-
-        static bool TryGetInlinedWrite(TypeReference type, out MethodReference method)
-        {
-            inlinedWriteMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
-            return inlinedWriteMethods.TryGetValue(type, out method);
-        }
-
-        public static bool TryGetInlinedMethod(bool writing, TypeReference type, ModuleDefinition module, out MethodReference method)
-        {
-            if (writing)
-            {
-                if (TryGetInlinedWrite(type, out method))
-                {
-                    method = method.Import(module);
-                    return true;
-                }
-                return false;
-            }
-
-            if (TryGetInlinedRead(type, out method))
-            {
-                method = method.Import(module);
-                return true;
-            }
-            return false;
-        }
-
-        public static void CacheRead(TypeReference type, MethodDefinition method)
-        {
-            if (!GenerateDeltaSerializersProcessor.IsSafeForInline(type))
-                return;
-            inlinedReadMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
-            inlinedReadMethods[type] = method;
-        }
-
-        public static void CacheWrite(TypeReference type, MethodReference reference)
-        {
-            if (!GenerateDeltaSerializersProcessor.IsSafeForInline(type))
-                return;
-            inlinedWriteMethods ??= new Dictionary<TypeReference, MethodReference>(128, TypeReferenceEqualityComparer.Default);
-            inlinedWriteMethods[type] = reference;
-        }
-
         private static void GenerateMethod(
             bool isWriting, MethodDefinition method, MethodReference serialize, MethodReference serializeDirect, TypeReference typeRef, ILProcessor il,
             ModuleDefinition mainmodule, ParameterDefinition valueArg)
@@ -745,9 +692,7 @@ namespace PurrNet.Codegen
 
                 if (baseType is { IsValueType: false })
                 {
-                    if (!TryGetInlinedMethod(isWriting, baseType, mainmodule, out var genericM))
-                        genericM = CreateGenericMethod(packerType, baseType, serializeDirect, mainmodule);
-
+                    var genericM = CreateGenericMethod(packerType, baseType, serializeDirect, mainmodule);
                     var variable = new VariableDefinition(baseType);
 
                     if (isWriting)
@@ -796,9 +741,7 @@ namespace PurrNet.Codegen
                     continue;
 
                 var fieldType = ResolveGenericFieldType(field, typeRef);
-
-                if (!TryGetInlinedMethod(isWriting, fieldType, mainmodule, out var genericM))
-                    genericM = CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
+                var genericM = CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
 
                 // make field public
                 if (!field.IsPublic)
@@ -932,9 +875,7 @@ namespace PurrNet.Codegen
             ILProcessor il, ModuleDefinition mainmodule, TypeReference packerType, TypeDefinition standaloneType,
             TypeDefinition type)
         {
-            if (!TryGetInlinedMethod(isWriting, standaloneType, mainmodule, out var genericM))
-                genericM = CreateGenericMethod(packerType, standaloneType, serializeDirect, mainmodule);
-
+            var genericM = CreateGenericMethod(packerType, standaloneType, serializeDirect, mainmodule);
             var variable = new VariableDefinition(standaloneType);
 
             if (isWriting)
@@ -1068,9 +1009,7 @@ namespace PurrNet.Codegen
             TypeDefinition type, ILProcessor il, TypeReference packerType, ModuleDefinition mainmodule)
         {
             var underlyingType = type.GetField("value__").FieldType;
-
-            if (!TryGetInlinedMethod(isWriting, underlyingType, mainmodule, out var enumWriteMethod))
-                enumWriteMethod = CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
+            var enumWriteMethod = CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
 
             var tmpVar = new VariableDefinition(underlyingType);
 
