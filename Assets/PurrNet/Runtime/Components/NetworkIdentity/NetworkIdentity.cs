@@ -572,7 +572,29 @@ namespace PurrNet
         private void ServerTick()
         {
             if (_tickRegisteredClient <= 0)
-                ClientTick();
+            {
+                try
+                {
+                    _ticker?.OnTick(_serverTickManager.tickDelta);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+
+                for (var i = 0; i < _tickables.Count; i++)
+                {
+                    try
+                    {
+                        var ticker = _tickables[i];
+                        ticker.OnTick(_serverTickManager.tickDelta);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
+            }
         }
 
         private void InternalTick()
