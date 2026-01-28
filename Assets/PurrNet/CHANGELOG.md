@@ -1,3 +1,10 @@
+# [1.19.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.1...v1.19.0-beta.2) (2026-01-28)
+
+
+### Bug Fixes
+
+* InvokeLocal wasn't reseting position properly all the time ([66c8536](https://github.com/PurrNet/PurrNet/commit/66c8536ecde5bba6010104f7039cfab3e528a48c))
+
 # [1.19.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.18.1-beta.36...v1.19.0-beta.1) (2026-01-27)
 
 
