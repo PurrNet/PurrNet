@@ -88,8 +88,13 @@ namespace PurrNet
 
         public void InvokePacket(SyncEventData data)
         {
-            if (!ValidateInvoke()) return;
+            if (!ValidateInvoke())
+            {
+                data.Dispose();
+                return;
+            }
 
+            _lastData.Dispose();
             _lastData = data;
 
             if (isSpawned)
@@ -98,7 +103,6 @@ namespace PurrNet
                 else SendToServer(data);
             }
 
-            _lastData.ResetPosition();
             InvokeLocal();
         }
 
@@ -111,8 +115,12 @@ namespace PurrNet
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
         private void SendToServer(SyncEventData data)
         {
-            if (!_ownerAuth) return;
-            SendToOthers(data);
+            using (data)
+            {
+                if (!_ownerAuth)
+                    return;
+                SendToOthers(data);
+            }
         }
 
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
@@ -126,7 +134,6 @@ namespace PurrNet
 
             _lastData.Dispose();
             _lastData = data;
-
             InvokeLocal();
         }
 
@@ -201,7 +208,8 @@ namespace PurrNet
 
         protected override void InvokeLocal()
         {
-            T value = _lastData.ReadData<T>();
+            _lastData.ResetPosition();
+            var value = _lastData.ReadData<T>();
             unityEvent.Invoke(value);
         }
 
@@ -240,8 +248,9 @@ namespace PurrNet
 
         protected override void InvokeLocal()
         {
-            T1 value1 = _lastData.ReadData<T1>();
-            T2 value2 = _lastData.ReadData<T2>();
+            _lastData.ResetPosition();
+            var value1 = _lastData.ReadData<T1>();
+            var value2 = _lastData.ReadData<T2>();
             unityEvent.Invoke(value1, value2);
         }
 
@@ -279,9 +288,10 @@ namespace PurrNet
         public void Invoke(T1 a, T2 b, T3 c) => InvokePacket(new SyncEventData().AddData<T1>(a).AddData<T2>(b).AddData<T3>(c));
         protected override void InvokeLocal()
         {
-            T1 value1 = _lastData.ReadData<T1>();
-            T2 value2 = _lastData.ReadData<T2>();
-            T3 value3 = _lastData.ReadData<T3>();
+            _lastData.ResetPosition();
+            var value1 = _lastData.ReadData<T1>();
+            var value2 = _lastData.ReadData<T2>();
+            var value3 = _lastData.ReadData<T3>();
             unityEvent.Invoke(value1, value2, value3);
         }
 
@@ -319,10 +329,11 @@ namespace PurrNet
         public void Invoke(T1 a, T2 b, T3 c, T4 d) => InvokePacket(new SyncEventData().AddData<T1>(a).AddData<T2>(b).AddData<T3>(c).AddData<T4>(d));
         protected override void InvokeLocal()
         {
-            T1 value1 = _lastData.ReadData<T1>();
-            T2 value2 = _lastData.ReadData<T2>();
-            T3 value3 = _lastData.ReadData<T3>();
-            T4 value4 = _lastData.ReadData<T4>();
+            _lastData.ResetPosition();
+            var value1 = _lastData.ReadData<T1>();
+            var value2 = _lastData.ReadData<T2>();
+            var value3 = _lastData.ReadData<T3>();
+            var value4 = _lastData.ReadData<T4>();
             unityEvent.Invoke(value1, value2, value3, value4);
         }
 
@@ -357,12 +368,13 @@ namespace PurrNet
         public void Invoke(T1 a, T2 b, T3 c, T4 d, T5 e) => InvokePacket(new SyncEventData().AddData<T1>(a).AddData<T2>(b).AddData<T3>(c).AddData<T4>(d).AddData<T5>(e));
         protected override void InvokeLocal()
         {
-            T1 value1 = _lastData.ReadData<T1>();
-            T2 value2 = _lastData.ReadData<T2>();
-            T3 value3 = _lastData.ReadData<T3>();
-            T4 value4 = _lastData.ReadData<T4>();
-            T5 value5 = _lastData.ReadData<T5>();
-            unityEvent.Invoke(value1, value2, value3, value4, value5);
+            _lastData.ResetPosition();
+            var value1 = _lastData.ReadData<T1>();
+            var value2 = _lastData.ReadData<T2>();
+            var value3 = _lastData.ReadData<T3>();
+            var value4 = _lastData.ReadData<T4>();
+            var value5 = _lastData.ReadData<T5>();
+            unityEvent?.Invoke(value1, value2, value3, value4, value5);
         }
 
         protected override void InvokeUnityEvent((T1, T2, T3, T4, T5) data) => unityEvent?.Invoke(data.Item1, data.Item2, data.Item3, data.Item4, data.Item5);
