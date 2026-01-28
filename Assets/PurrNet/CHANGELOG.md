@@ -1,3 +1,10 @@
+# [1.19.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.3...v1.19.0-beta.4) (2026-01-28)
+
+
+### Bug Fixes
+
+* handle exceptions during tick processing in ServerTick method ([78f1408](https://github.com/PurrNet/PurrNet/commit/78f14086bede0a9411ec507e4f47edd191ad1ee3))
+
 # [1.19.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.2...v1.19.0-beta.3) (2026-01-28)
 
 
