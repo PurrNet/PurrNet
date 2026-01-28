@@ -4,7 +4,6 @@ using System.Reflection;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Modules;
-using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 using UnityEngine;
@@ -573,31 +572,7 @@ namespace PurrNet
         private void ServerTick()
         {
             if (_tickRegisteredClient <= 0)
-            {
-                InternalTick();
-
-                try
-                {
-                    _ticker?.OnTick(_serverTickManager.tickDelta);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogException(e);
-                }
-
-                for (var i = 0; i < _tickables.Count; i++)
-                {
-                    try
-                    {
-                        var ticker = _tickables[i];
-                        ticker.OnTick(_serverTickManager.tickDelta);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
-            }
+                ClientTick();
         }
 
         private void InternalTick()
@@ -1521,6 +1496,9 @@ namespace PurrNet
 
         public void TriggerOnObserverRemoved(PlayerID target)
         {
+            if (target == localPlayerForced)
+                UnregisterTickEvent(false);
+
             try
             {
                 OnObserverRemoved(target);
