@@ -1,3 +1,10 @@
+# [1.19.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.4...v1.19.0-beta.5) (2026-01-29)
+
+
+### Bug Fixes
+
+* GetHashCode fails if list is null ([0ab9281](https://github.com/PurrNet/PurrNet/commit/0ab9281b48dce6cb9124dc7a6a601fbb7e7880eb))
+
 # [1.19.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.3...v1.19.0-beta.4) (2026-01-28)
 
 
