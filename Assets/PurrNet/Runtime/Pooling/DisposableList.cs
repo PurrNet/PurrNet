@@ -310,6 +310,8 @@ namespace PurrNet.Pooling
 
         public override int GetHashCode()
         {
+            if (list == null)
+                return 17;
             int result = 17;
             for (var i = 0; i < list.Count; i++)
                 result = result * 31 + list[i].GetHashCode();
