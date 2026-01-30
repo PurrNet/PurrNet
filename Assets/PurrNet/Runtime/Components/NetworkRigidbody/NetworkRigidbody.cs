@@ -181,6 +181,7 @@ namespace PurrNet
             TrackAcceleration(delta);
 
             float error = Vector3.Distance(_rigidbody.position, _targetPosition);
+            float dynamicHardThreshold = GetDynamicHardCorrectionThreshold();
 
             if (error < _acceptableError)
             {
@@ -189,7 +190,7 @@ namespace PurrNet
                 return;
             }
 
-            if (error >= _hardCorrectionThreshold)
+            if (error >= dynamicHardThreshold)
             {
                 HardCorrect();
                 return;
@@ -205,6 +206,13 @@ namespace PurrNet
             }
 
             ApplySoftCorrection();
+        }
+
+        private float GetDynamicHardCorrectionThreshold()
+        {
+            float scale = 1f + _recentAccelerationMagnitude * _uncertaintySpringDampening;
+            float maxScale = 10f;
+            return _hardCorrectionThreshold * Mathf.Min(scale, maxScale);
         }
 
         private void ApplySoftCorrection()
