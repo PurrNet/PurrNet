@@ -210,14 +210,19 @@ namespace PurrNet
         private void ApplySoftCorrection()
         {
             float currentSpeed = _rigidbody.linearVelocity.magnitude;
-            float baseSpring = GetDynamicSpringConstant();
             float springScale = GetDynamicSpringScale();
-            float dynamicDamping = _dampingConstant * springScale;
+            float baseSpring = _springConstant;
+            float dynamicDamping = _dampingConstant;
 
             if (currentSpeed < _lowSpeedThreshold)
             {
                 float factor = Mathf.Clamp01(currentSpeed / _lowSpeedThreshold);
-                baseSpring = Mathf.Lerp(baseSpring * _lowSpeedSpringMultiplier, baseSpring, factor);
+                baseSpring = Mathf.Lerp(_springConstant * _lowSpeedSpringMultiplier, _springConstant, factor);
+            }
+            else
+            {
+                baseSpring = _springConstant * springScale;
+                dynamicDamping = _dampingConstant * springScale;
             }
 
             Vector3 positionError = _targetPosition - _rigidbody.position;
@@ -237,7 +242,7 @@ namespace PurrNet
                 Vector3 torque = axis * (angle * Mathf.Deg2Rad * baseSpring * _rigidbody.mass);
         
                 Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                Vector3 angularDamping = angularVelocityError * (_dampingConstant * _rigidbody.mass);
+                Vector3 angularDamping = angularVelocityError * (dynamicDamping * _rigidbody.mass);
         
                 _rigidbody.AddTorque(torque + angularDamping);
             }
