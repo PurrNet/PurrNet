@@ -62,6 +62,13 @@ namespace PurrNet
         [Tooltip("The resistance applied to smooth out the movement and match the target's velocity. Helps prevent oscillation.")]
         [SerializeField] private float _dampingConstant = 5f;
         
+        [Header("Rotation Correction")]
+        [Tooltip("Multiplier for rotation correction strength relative to position correction.")]
+        [SerializeField] private float _rotationSpringMultiplier = 0.3f;
+
+        [Tooltip("Minimum angle error (degrees) before applying rotation correction.")]
+        [SerializeField] private float _minRotationCorrectionAngle = 1f;
+        
         [Header("Dynamic Spring Scaling")]
         [Tooltip("How much to reduce spring strength based on recent acceleration. Higher = more reduction during collisions.")]
         [SerializeField] private float _uncertaintySpringDampening = 0.5f;
@@ -252,13 +259,17 @@ namespace PurrNet
             rotationError.ToAngleAxis(out float angle, out Vector3 axis);
             if (angle > 180f) angle -= 360f;
     
-            if (Mathf.Abs(angle) > 0.1f)
+            if (Mathf.Abs(angle) > _minRotationCorrectionAngle)
             {
-                Vector3 torque = axis * (angle * Mathf.Deg2Rad * baseSpring * _rigidbody.mass);
-        
+                float angularVelocityDiff = Vector3.Distance(_targetAngularVelocity, _rigidbody.angularVelocity);
+                float rotationUrgency = Mathf.Clamp01(angularVelocityDiff / 5f);
+    
+                float rotationSpring = baseSpring * _rotationSpringMultiplier * (0.2f + 0.8f * rotationUrgency);
+                Vector3 torque = axis * (angle * Mathf.Deg2Rad * rotationSpring * _rigidbody.mass);
+    
                 Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                Vector3 angularDamping = angularVelocityError * (dynamicDamping * _rigidbody.mass);
-        
+                Vector3 angularDamping = angularVelocityError * (dynamicDamping * _rotationSpringMultiplier * _rigidbody.mass);
+    
                 _rigidbody.AddTorque(torque + angularDamping);
             }
         }
