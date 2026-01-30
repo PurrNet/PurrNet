@@ -73,7 +73,7 @@ namespace PurrNet
         [Tooltip("How much to reduce spring strength based on recent acceleration. Higher = more reduction during collisions.")]
         [SerializeField] private float _uncertaintySpringDampening = 0.5f;
 
-        [Tooltip("How quickly the tracked acceleration decays back to zero (per 50ms).")]
+        [Tooltip("How quickly the tracked acceleration decays back to zero.")]
         [SerializeField] private float _accelerationDecay = 0.85f;
 
         [Header("Dynamic Hard Correction")]
