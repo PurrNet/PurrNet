@@ -1,3 +1,13 @@
+# [1.19.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.5...v1.19.0-beta.6) (2026-01-30)
+
+
+### Bug Fixes
+
+* Added dynamic force correction to network RB ([c6a27cf](https://github.com/PurrNet/PurrNet/commit/c6a27cfbac65ec379c33c88bc8d939091a2b4ed7))
+* Scaling hard correction threshold of Network RB ([39d5cb2](https://github.com/PurrNet/PurrNet/commit/39d5cb21b1ffba2c0db9e2210eabfe40b5fec525))
+* Smooth rotational syncing on Network RB ([a4ca898](https://github.com/PurrNet/PurrNet/commit/a4ca898e5372365cf26f3c30ec968c1c6354891c))
+* Solve inconsistency in sync timing ([59e7993](https://github.com/PurrNet/PurrNet/commit/59e7993fbdf64b5cee42e32b19593766e6d377bc))
+
 # [1.19.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.4...v1.19.0-beta.5) (2026-01-29)
 
 
