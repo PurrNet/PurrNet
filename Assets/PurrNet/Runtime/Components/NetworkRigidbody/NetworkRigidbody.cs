@@ -422,8 +422,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
-                if(mode != ForceMode.Force)
-                    QueueForce(appliedForce);
+                QueueForce(appliedForce);
             }
             else
             {
@@ -523,11 +522,11 @@ namespace PurrNet
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
 
-            if (data.recentForces != null)
+            /*if (data.recentForces != null)
             {
                 foreach (var force in data.recentForces)
                     ApplyForce(force);
-            }
+            }*/
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
