@@ -62,6 +62,13 @@ namespace PurrNet
 
         [Tooltip("The resistance applied to smooth out the movement and match the target's velocity. Helps prevent oscillation.")]
         [SerializeField] private float _dampingConstant = 5f;
+        
+        [Header("Dynamic Spring Scaling")]
+        [Tooltip("How much to reduce spring strength based on uncertainty. Higher = more reduction.")]
+        [SerializeField] private float _uncertaintySpringDampening = 0.5f;
+
+        [Tooltip("How quickly the tracked acceleration decays back to zero.")]
+        [SerializeField] private float _accelerationDecay = 0.85f;
 
         [Header("Stabilization & Prediction")]
         [Tooltip("Speed under which we relax the spring to prevent jitter while rolling slowly.")]
@@ -98,6 +105,8 @@ namespace PurrNet
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
         private float _lastExtrapolation;
+        private Vector3 _previousVelocity;
+        private float _recentAccelerationMagnitude;
         
         private float _correctionTimer;
         private bool _isCorreting;
@@ -176,6 +185,8 @@ namespace PurrNet
             if (_hasPendingTeleport)
                 return;
 
+            TrackAcceleration(delta);
+
             float error = Vector3.Distance(_rigidbody.position, _targetPosition);
 
             if (error < _acceptableError)
@@ -206,35 +217,48 @@ namespace PurrNet
         private void ApplySoftCorrection()
         {
             float currentSpeed = _rigidbody.linearVelocity.magnitude;
-            float adaptiveSpring = _springConstant;
+            float baseSpring = GetDynamicSpringConstant();
+            float springScale = GetDynamicSpringScale();
+            float dynamicDamping = _dampingConstant * springScale;
 
             if (currentSpeed < _lowSpeedThreshold)
             {
                 float factor = Mathf.Clamp01(currentSpeed / _lowSpeedThreshold);
-                adaptiveSpring = Mathf.Lerp(_springConstant * _lowSpeedSpringMultiplier, _springConstant, factor);
+                baseSpring = Mathf.Lerp(baseSpring * _lowSpeedSpringMultiplier, baseSpring, factor);
             }
 
             Vector3 positionError = _targetPosition - _rigidbody.position;
-            Vector3 springForce = positionError * (adaptiveSpring * _rigidbody.mass);
-            
+            Vector3 springForce = positionError * (baseSpring * _rigidbody.mass);
+    
             Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
-            Vector3 dampingForce = velocityError * (_dampingConstant * _rigidbody.mass);
-            
+            Vector3 dampingForce = velocityError * (dynamicDamping * _rigidbody.mass);
+    
             _rigidbody.AddForce(springForce + dampingForce);
 
             Quaternion rotationError = _targetRotation * Quaternion.Inverse(_rigidbody.rotation);
             rotationError.ToAngleAxis(out float angle, out Vector3 axis);
             if (angle > 180f) angle -= 360f;
-            
+    
             if (Mathf.Abs(angle) > 0.1f)
             {
-                Vector3 torque = axis * (angle * Mathf.Deg2Rad * _springConstant * _rigidbody.mass);
-                
+                Vector3 torque = axis * (angle * Mathf.Deg2Rad * baseSpring * _rigidbody.mass);
+        
                 Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
                 Vector3 angularDamping = angularVelocityError * (_dampingConstant * _rigidbody.mass);
-                
+        
                 _rigidbody.AddTorque(torque + angularDamping);
             }
+        }
+        
+        private float GetDynamicSpringScale()
+        {
+            float uncertainty = _recentAccelerationMagnitude;
+            return 1f / (1f + uncertainty * _uncertaintySpringDampening);
+        }
+
+        private float GetDynamicSpringConstant()
+        {
+            return _springConstant * GetDynamicSpringScale();
         }
 
         private void HardCorrect()
@@ -244,7 +268,20 @@ namespace PurrNet
             _isCorreting = false;
             _correctionTimer = 0f;
         }
-
+        
+        private void TrackAcceleration(float delta)
+        {
+            if (delta <= 0) return;
+    
+            Vector3 currentAccel = (_rigidbody.linearVelocity - _previousVelocity) / delta;
+            float decay = Mathf.Pow(_accelerationDecay, delta / 0.05f);
+            _recentAccelerationMagnitude = Mathf.Max(
+                _recentAccelerationMagnitude * decay, 
+                currentAccel.magnitude
+            );
+            _previousVelocity = _rigidbody.linearVelocity;
+        }
+        
         private bool HasStateChanged()
         {
             float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
