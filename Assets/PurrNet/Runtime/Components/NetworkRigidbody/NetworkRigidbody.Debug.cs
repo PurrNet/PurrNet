@@ -74,7 +74,6 @@ namespace PurrNet
                           $"Velocity: {_rigidbody.linearVelocity.magnitude:F2}\n" +
                           $"Correcting: {_isCorreting}\n" +
                           $"CorrectionTimer: {_correctionTimer:F2}s\n" +
-                          $"PendingForces: {_pendingForces.Count}\n" +
                           $"---\n" +
                           $"<b>Dynamic Scaling</b>\n" +
                           $"Accel: {_recentAccelerationMagnitude:F2}\n" +

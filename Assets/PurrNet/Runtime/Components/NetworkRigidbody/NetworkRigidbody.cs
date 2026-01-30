@@ -19,7 +19,6 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
-        public AppliedForce[] recentForces;
         public float? senderPing;
     }
 
@@ -81,9 +80,6 @@ namespace PurrNet
         [SerializeField] private bool _extrapolateBasedOnPing;
 
         [Header("Sync Settings")]
-        [Tooltip("Limit on how many specific force events (like AddForce/Explosions) can be synced in a single frame to prevent flooding.")]
-        [SerializeField] private int _maxForcesPerTick = 8;
-
         [Tooltip("Minimum distance moved required to trigger a network update.")]
         [SerializeField] private float _positionChangeThreshold = 0.001f;
 
@@ -94,7 +90,6 @@ namespace PurrNet
         [SerializeField] private float _velocityStopThreshold = 0.001f;
 
         private Rigidbody _rigidbody;
-        private List<AppliedForce> _pendingForces = new();
         
         private Vector3 _targetPosition;
         private Quaternion _targetRotation;
@@ -150,7 +145,7 @@ namespace PurrNet
 
         private void ControllerTick()
         {
-            if (!HasStateChanged() && _pendingForces.Count == 0 && !ShouldSyncWhenStopped())
+            if (!HasStateChanged() && !ShouldSyncWhenStopped())
                 return;
             float? myPing = (!isServer && _extrapolateBasedOnPing) ? (float)NetworkManager.main.tickModule.rtt : null;
             var stateData = new RigidbodyStateData
@@ -159,7 +154,6 @@ namespace PurrNet
                 rotation = _rigidbody.rotation,
                 linearVelocity = _rigidbody.linearVelocity,
                 angularVelocity = _rigidbody.angularVelocity,
-                recentForces = _pendingForces.ToArray(),
                 senderPing = myPing
             };
 
@@ -177,7 +171,6 @@ namespace PurrNet
             _lastSyncedRotation = _rigidbody.rotation;
             _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
             _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
-            _pendingForces.Clear();
         }
 
         private void NonControllerTick(float delta)
@@ -311,16 +304,6 @@ namespace PurrNet
             };
         }
 
-        private void QueueForce(AppliedForce force)
-        {
-            if (_pendingForces.Count >= _maxForcesPerTick)
-            {
-                PurrLogger.LogError($"NetworkRigidbody on {gameObject.name} exceeded max forces per tick ({_maxForcesPerTick})", this);
-                return;
-            }
-            _pendingForces.Add(force);
-        }
-
         private void ApplyForce(AppliedForce force)
         {
             if (force.isTorque)
@@ -416,13 +399,13 @@ namespace PurrNet
         {
             if (!isSpawned)
                 return;
-            
+    
             var appliedForce = new AppliedForce { force = force, mode = mode };
-            
+    
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
-                QueueForce(appliedForce);
+                BroadcastForceToOthers(appliedForce);
             }
             else
             {
@@ -440,7 +423,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForceAtPosition(force, position, mode);
-                QueueForce(appliedForce);
+                BroadcastForceToOthers(appliedForce);
             }
             else
             {
@@ -458,7 +441,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddTorque(torque, mode);
-                QueueForce(appliedForce);
+                BroadcastForceToOthers(appliedForce);
             }
             else
             {
@@ -521,12 +504,6 @@ namespace PurrNet
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
-
-            /*if (data.recentForces != null)
-            {
-                foreach (var force in data.recentForces)
-                    ApplyForce(force);
-            }*/
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
@@ -545,22 +522,19 @@ namespace PurrNet
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
 
-            if (data.recentForces != null)
-            {
-                foreach (var force in data.recentForces)
-                    ApplyForce(force);
-            }
-
             SyncState(data);
         }
 
-        [ObserversRpc(runLocally: true, channel: Channel.Unreliable, deltaPacked: true)]
+        [ObserversRpc(runLocally: true, channel: Channel.Unreliable)]
         private void BroadcastForce(AppliedForce force)
         {
             ApplyForce(force);
-
-            if (IsController(_ownerAuth))
-                QueueForce(force);
+        }
+        
+        [ObserversRpc(excludeOwner: true, channel: Channel.Unreliable)]
+        private void BroadcastForceToOthers(AppliedForce force)
+        {
+            ApplyForce(force);
         }
 
         [ObserversRpc(deltaPacked: true)]
