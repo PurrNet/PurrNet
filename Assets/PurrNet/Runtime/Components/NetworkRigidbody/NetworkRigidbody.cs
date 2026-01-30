@@ -63,11 +63,18 @@ namespace PurrNet
         [SerializeField] private float _dampingConstant = 5f;
         
         [Header("Dynamic Spring Scaling")]
-        [Tooltip("How much to reduce spring strength based on uncertainty. Higher = more reduction.")]
+        [Tooltip("How much to reduce spring strength based on recent acceleration. Higher = more reduction during collisions.")]
         [SerializeField] private float _uncertaintySpringDampening = 0.5f;
 
-        [Tooltip("How quickly the tracked acceleration decays back to zero.")]
+        [Tooltip("How quickly the tracked acceleration decays back to zero (per 50ms).")]
         [SerializeField] private float _accelerationDecay = 0.85f;
+
+        [Header("Dynamic Hard Correction")]
+        [Tooltip("How much to increase hard correction threshold based on recent acceleration.")]
+        [SerializeField] private float _hardCorrectionAccelerationScale = 0.1f;
+
+        [Tooltip("Maximum multiplier for the hard correction threshold.")]
+        [SerializeField] private float _maxHardCorrectionMultiplier = 5f;
 
         [Header("Stabilization & Prediction")]
         [Tooltip("Speed under which we relax the spring to prevent jitter while rolling slowly.")]
@@ -210,9 +217,9 @@ namespace PurrNet
 
         private float GetDynamicHardCorrectionThreshold()
         {
-            float scale = 1f + _recentAccelerationMagnitude * _uncertaintySpringDampening;
-            float maxScale = 10f;
-            return _hardCorrectionThreshold * Mathf.Min(scale, maxScale);
+            float scale = 1f + _recentAccelerationMagnitude * _hardCorrectionAccelerationScale;
+            scale = Mathf.Min(scale, _maxHardCorrectionMultiplier);
+            return _hardCorrectionThreshold * scale;
         }
 
         private void ApplySoftCorrection()
