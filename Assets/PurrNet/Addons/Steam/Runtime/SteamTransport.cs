@@ -268,6 +268,11 @@ namespace PurrNet.Steam
             _server?.Kick(conn.connectionId);
         }
 
+        public ulong GetSteamID(Connection conn)
+        {
+            return _server?.GetSteamID(conn.connectionId) ?? 0;
+        }
+
         public void ReceiveMessages(float delta)
         {
             _server?.ReceiveMessages();
