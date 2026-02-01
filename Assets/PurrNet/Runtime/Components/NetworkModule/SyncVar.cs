@@ -145,7 +145,7 @@ namespace PurrNet
 
         public override void OnDespawned()
         {
-            if (isControllingSyncVar)
+            if (isControllingSyncVar && isSpawned)
             {
                 _id += 1;
                 FlushImmediately();
