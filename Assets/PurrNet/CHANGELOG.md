@@ -1,3 +1,10 @@
+# [1.19.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.6...v1.19.0-beta.7) (2026-02-01)
+
+
+### Bug Fixes
+
+* allow to replace networkAssets at runtime ([d3dcd69](https://github.com/PurrNet/PurrNet/commit/d3dcd6924e1e87f43659542e20475d1e1cbba8fd))
+
 # [1.19.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.5...v1.19.0-beta.6) (2026-01-30)
 
 
