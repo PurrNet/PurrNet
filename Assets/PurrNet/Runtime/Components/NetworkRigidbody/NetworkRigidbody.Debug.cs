@@ -55,6 +55,9 @@ namespace PurrNet
 
             bool isController = IsController(_ownerAuth);
             float error = Vector3.Distance(_rigidbody.position, _targetPosition);
+            float springScale = GetDynamicSpringScale();
+            float effectiveSpring = _springConstant * springScale;
+            float effectiveDamping = _dampingConstant * springScale;
 
             string info = $"<b>NetworkRigidbody</b>\n" +
                           $"Controller: {isController}\n" +
@@ -71,7 +74,12 @@ namespace PurrNet
                           $"Velocity: {_rigidbody.linearVelocity.magnitude:F2}\n" +
                           $"Correcting: {_isCorreting}\n" +
                           $"CorrectionTimer: {_correctionTimer:F2}s\n" +
-                          $"PendingForces: {_pendingForces.Count}";
+                          $"---\n" +
+                          $"<b>Dynamic Scaling</b>\n" +
+                          $"Accel: {_recentAccelerationMagnitude:F2}\n" +
+                          $"Scale: {springScale:P1}\n" +
+                          $"Spring: {_springConstant:F1} → {effectiveSpring:F2}\n" +
+                          $"Damping: {_dampingConstant:F1} → {effectiveDamping:F2}";
 
             GUIStyle style = new GUIStyle(GUI.skin.label)
             {
