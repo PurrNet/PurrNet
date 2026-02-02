@@ -16,6 +16,12 @@ namespace PurrNet.UTP
                     PurrLogger.LogError($"Could not parse address {address} to IPAddress.");
                     return 0;
                 }
+                
+                if (result.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) 
+                {
+                    PurrLogger.LogError($"Address {address} is not a valid IPv4 address.");
+                    return 0;
+                }
 
                 var bytes = result.GetAddressBytes();
                 int ip = bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3];
