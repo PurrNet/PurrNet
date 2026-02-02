@@ -331,10 +331,16 @@ namespace PurrNet.UTP
         public void SendToClient(Connection target, ByteData data, Channel method = Channel.ReliableOrdered)
         {
             if (_server == null)
+            {
+                Debug.LogWarning("Cannot send to client: Server is not initialized");
                 return;
+            }
 
             if (listenerState is not ConnectionState.Connected)
+            {
+                Debug.LogWarning($"Cannot send to client: Server is not connected (state: {listenerState})");
                 return;
+            }
 
             if (!target.isValid)
                 return;
@@ -346,7 +352,16 @@ namespace PurrNet.UTP
         public void SendToServer(ByteData data, Channel method = Channel.ReliableOrdered)
         {
             if (_client == null)
+            {
+                Debug.LogWarning("Cannot send to server: Client is not initialized");
                 return;
+            }
+            
+            if (clientState is not ConnectionState.Connected)
+            {
+                Debug.LogWarning($"Cannot send to server: Client is not connected (state: {clientState})");
+                return;
+            }
 
             _client.Send(data, method);
             RaiseDataSent(default, data, false);
