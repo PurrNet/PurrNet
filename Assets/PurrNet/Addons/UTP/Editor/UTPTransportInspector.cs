@@ -8,6 +8,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using PurrNet.Editor;
 using PurrNet.Transports;
@@ -47,7 +48,7 @@ namespace PurrNet.UTP.Editor
 #else
                 EditorGUILayout.HelpBox("Unity UTP dependencies are not installed. Please install it to use this transport.",
                     MessageType.Warning);
-                if (GUILayout.Button("Add Unity UTP dependencies to Package Manager") && GitHelper.CheckGit())
+                if (GUILayout.Button("Add Unity UTP dependencies to Package Manager") && !IsPackageInstalled("com.unity.transport"))
                 {
                     Client.Add("com.unity.transport");
                     Client.Resolve();
@@ -71,6 +72,12 @@ namespace PurrNet.UTP.Editor
                 }
 #endif
             }
+        }
+        
+        bool IsPackageInstalled(string packageName)
+        {
+            var allPackages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages();
+            return allPackages.Any(p => p.name == packageName);
         }
 
         [UsedImplicitly]
