@@ -139,8 +139,9 @@ namespace PurrNet.UTP
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            if (_driver.IsCreated)
-                _driver.ScheduleUpdate().Complete();
+            // if (_driver.IsCreated)
+            //    _driver.ScheduleUpdate().Complete();
+            // Update is handled in ReceiveMessages
 #endif
         }
 
