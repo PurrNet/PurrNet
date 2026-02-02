@@ -38,7 +38,7 @@ namespace PurrNet.UTP.Editor
                     GUI.enabled = true;
 
                 GUILayout.Space(10);
-#if UTP_NET_PACKAGE && DISABLESTEAMWORKS
+`#if` UTP_NET_PACKAGE && DISABLEUTPWORKS
                 EditorGUILayout.HelpBox("Unity UTP is disabled. Please enable it to use this transport.", MessageType.Warning);
                 if (GUILayout.Button("Enable Unity UTP"))
                 {
