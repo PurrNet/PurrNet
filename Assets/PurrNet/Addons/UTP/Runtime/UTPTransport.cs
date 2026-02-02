@@ -249,6 +249,14 @@ namespace PurrNet.UTP
         {
             if (listenerState != ConnectionState.Disconnected)
                 listenerState = ConnectionState.Disconnecting;
+            
+            if (_server != null)
+            {
+                _server.onDataReceived -= OnServerData;
+                _server.onRemoteConnected -= OnRemoteConnected;
+                _server.onRemoteDisconnected -= OnRemoteDisconnected;
+            }
+            
             _server?.Stop();
             listenerState = ConnectionState.Disconnected;
             _server = null;
