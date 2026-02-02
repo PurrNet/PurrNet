@@ -130,25 +130,32 @@ namespace PurrNet.UTP
                 _ => NetworkPipeline.Null
             };
 
-            try
+            if (result == (int)StatusCode.Success)
             {
-                var result = _driver.BeginSend(pipeline, _connection, out var writer);
-                if (result == (int)StatusCode.Success)
+                try
                 {
-                    unsafe
+                    var result = _driver.BeginSend(pipeline, _connection, out var writer);
+                    if (result == (int)StatusCode.Success)
                     {
-                        fixed (byte* dataPtr = &data.data[data.offset])
+                        unsafe
                         {
-                            var span = new Span<byte>(dataPtr, data.length);
-                            writer.WriteBytes(span);
+                            fixed (byte* dataPtr = &data.data[data.offset])
+                            {
+                                var span = new Span<byte>(dataPtr, data.length);
+                                writer.WriteBytes(span);
+                            }
                         }
+                        _driver.EndSend(writer);
                     }
-                    _driver.EndSend(writer);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogException(e);
                 }
             }
-            catch (Exception e)
+            else
             {
-                PurrLogger.LogException(e);
+                PurrLogger.LogError($"Failed to begin send: {(StatusCode)result}");
             }
 #endif
         }
