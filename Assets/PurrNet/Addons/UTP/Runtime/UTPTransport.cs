@@ -160,7 +160,7 @@ namespace PurrNet.UTP
             );
         }
 
-        public async System.Threading.Tasks.Task<Bool> InitializeRelayClient(string joinCode)
+        public async System.Threading.Tasks.Task<bool> InitializeRelayClient(string joinCode)
         {
             // Convert join code to relay client data
             try
@@ -172,7 +172,7 @@ namespace PurrNet.UTP
                 if (serverEndpoint == null)
                 {
                     Debug.LogError("No DTLS endpoint found in join allocation");
-                    return;
+                    return false;
                 }
 
                 _relayClientData = new RelayServerData(
