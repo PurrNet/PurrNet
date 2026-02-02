@@ -160,7 +160,7 @@ namespace PurrNet.UTP
             );
         }
 
-        public async System.Threading.Tasks.Task InitializeRelayClient(string joinCode)
+        public async System.Threading.Tasks.Task<Bool> InitializeRelayClient(string joinCode)
         {
             // Convert join code to relay client data
             try
@@ -185,10 +185,12 @@ namespace PurrNet.UTP
                     serverEndpoint.Secure,
                     false // isWebSocket
                 );
+                return true;
             }
             catch (Exception e)
             {
                 Debug.LogError($"Failed to initialize relay client: {e.Message}");
+                return false;
             }
         }
 #endif
