@@ -80,6 +80,8 @@ namespace PurrNet.UTP
                 {
                     PurrLogger.LogError($"Failed to parse address: {address}:{port}");
                     connectionState = ConnectionState.Disconnected;
+					if (_driver.IsCreated)
+						_driver.Dispose();
                     yield break;
                 }
             }
