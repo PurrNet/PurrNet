@@ -7,7 +7,9 @@
 #endif
 
 using System;
+#if UTP_LOBBYRELAY
 using System.Collections;
+#endif
 using PurrNet.Transports;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using PurrNet.Logging;
@@ -31,7 +33,7 @@ namespace PurrNet.UTP
         private NetworkConnection _connection;
         private NetworkPipeline _reliablePipeline;
         private NetworkPipeline _unreliablePipeline;
-        
+
         private byte[] _buffer = new byte[1024];
 #endif
 
@@ -41,7 +43,7 @@ namespace PurrNet.UTP
         /// </summary>
         public event Action<ByteData> onDataReceived;
 #pragma warning restore CS0067 // Event is never used
-        
+
         /// <summary>
         /// Event raised when the connection state changes.
         /// </summary>
@@ -64,7 +66,7 @@ namespace PurrNet.UTP
                 onConnectionState?.Invoke(_state);
             }
         }
-
+#if UTP_LOBBYRELAY
         /// <summary>
         /// Connects to a server using a direct IP address and port, or via Unity Relay if relay data is provided.
         /// </summary>
@@ -88,7 +90,7 @@ namespace PurrNet.UTP
             {
                 _driver = NetworkDriver.Create();
             }
-            
+
             _reliablePipeline = _driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
             _unreliablePipeline = NetworkPipeline.Null;
 
@@ -110,7 +112,7 @@ namespace PurrNet.UTP
             }
 
             _connection = _driver.Connect(endpoint);
-            
+
             PostConnect();
 #endif
         }
@@ -137,15 +139,17 @@ namespace PurrNet.UTP
             var settings = new NetworkSettings();
             settings.WithRelayParameters(ref relayDataValue);
             _driver = NetworkDriver.Create(settings);
-            
+
             _reliablePipeline = _driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
             _unreliablePipeline = NetworkPipeline.Null;
 
             _connection = _driver.Connect(relayData.Value.Endpoint);
-            
+
             PostConnect();
 #endif
         }
+
+#endif
 
         /// <summary>
         /// Sends data to the server using the specified network channel.
@@ -227,7 +231,7 @@ namespace PurrNet.UTP
                 {
                     int packetLength = stream.Length;
                     MakeSureBufferCanFit(packetLength);
-                    
+
                     unsafe
                     {
                         fixed (byte* bufferPtr = _buffer)
@@ -236,7 +240,7 @@ namespace PurrNet.UTP
                             stream.ReadBytes(span);
                         }
                     }
-                    
+
                     var byteData = new ByteData(_buffer, 0, packetLength);
                     onDataReceived?.Invoke(byteData);
                 }
@@ -316,7 +320,7 @@ namespace PurrNet.UTP
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
             Disconnect();
-            
+
             if (_driver.IsCreated)
                 _driver.Dispose();
 #endif

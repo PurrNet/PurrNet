@@ -32,7 +32,7 @@ namespace PurrNet.UTP
 
         [Header("Client Settings")] [SerializeField]
         private string _address = "127.0.0.1";
-        
+
         /// <summary>
         /// Gets or sets the port number for the server to listen on.
         /// </summary>
@@ -103,22 +103,22 @@ namespace PurrNet.UTP
                 _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
             };
         }
-        
+
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
         public override bool isSupported => true;
 #else
         public override bool isSupported => false;
 #endif
-        
+
         public override ITransport transport => this;
-        
+
         private readonly List<Connection> _connections = new List<Connection>();
-        
+
         /// <summary>
         /// Gets the read-only list of all active connections.
         /// </summary>
         public IReadOnlyList<Connection> connections => _connections;
-        
+
         private ConnectionState _listenerState = ConnectionState.Disconnected;
 
         /// <summary>
@@ -131,12 +131,12 @@ namespace PurrNet.UTP
             {
                 if (_listenerState == value)
                     return;
-                
+
                 _listenerState = value;
                 onConnectionState?.Invoke(_listenerState, true);
             }
         }
-        
+
         private ConnectionState _clientState = ConnectionState.Disconnected;
 
         /// <summary>
@@ -154,41 +154,41 @@ namespace PurrNet.UTP
                 onConnectionState?.Invoke(_clientState, false);
             }
         }
-        
+
         /// <summary>
         /// Event raised when a connection is established (either as client or when a client connects to server).
         /// </summary>
         public event OnConnected onConnected;
-        
+
         /// <summary>
         /// Event raised when a connection is terminated.
         /// </summary>
         public event OnDisconnected onDisconnected;
-        
+
         /// <summary>
         /// Event raised when data is received from a connection.
         /// </summary>
         public event OnDataReceived onDataReceived;
-        
+
         /// <summary>
         /// Event raised when data is sent to a connection.
         /// </summary>
         public event OnDataSent onDataSent;
-        
+
         /// <summary>
         /// Event raised when the connection state changes.
         /// </summary>
         public event OnConnectionState onConnectionState;
-        
+
         private UTPServer _server;
-        
+
         private UTPClient _client;
-        
+
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
         private RelayServerData? _relayServerData;
         private RelayServerData? _relayClientData;
 #endif
-        
+
         protected override void StartClientInternal()
         {
             Connect(_address, _serverPort);
@@ -242,7 +242,7 @@ namespace PurrNet.UTP
             try
             {
                 var joinAllocation = await Unity.Services.Relay.RelayService.Instance.JoinAllocationAsync(joinCode);
-                
+
                 // Find the dtls endpoint
                 var serverEndpoint = joinAllocation.ServerEndpoints.Find(e => e.ConnectionType == "dtls");
                 if (serverEndpoint == null)
@@ -270,7 +270,7 @@ namespace PurrNet.UTP
             }
         }
 #endif
-        
+
         /// <summary>
         /// Starts listening for incoming client connections on the specified port.
         /// Can operate in direct connection mode or peer-to-peer mode using Unity Relay.
@@ -290,7 +290,7 @@ namespace PurrNet.UTP
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer, _relayServerData);
             else _server.Listen(port, _dedicatedServer, _relayServerData);
-#else
+#elif UTP_LOBBYRELAY
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer);
             else _server.Listen(port, _dedicatedServer);
@@ -299,7 +299,7 @@ namespace PurrNet.UTP
             if (_server.listening)
             {
                 listenerState = ConnectionState.Connected;
-                
+
                 _server.onDataReceived += OnServerData;
                 _server.onRemoteConnected += OnRemoteConnected;
                 _server.onRemoteDisconnected += OnRemoteDisconnected;
@@ -312,24 +312,24 @@ namespace PurrNet.UTP
                 return;
             }
         }
-        
+
         private void OnRemoteConnected(int obj)
         {
             _connections.Add(new Connection(obj));
             onConnected?.Invoke(new Connection(obj), true);
         }
-        
+
         private void OnRemoteDisconnected(int obj)
         {
             _connections.Remove(new Connection(obj));
             onDisconnected?.Invoke(new Connection(obj), DisconnectReason.ClientRequest, true);
         }
-        
+
         private void OnServerData(int conn, ByteData data)
         {
             onDataReceived?.Invoke(new Connection(conn), data, true);
         }
-        
+
         /// <summary>
         /// Stops the server from listening for new connections and disconnects all clients.
         /// </summary>
@@ -337,21 +337,21 @@ namespace PurrNet.UTP
         {
             if (listenerState != ConnectionState.Disconnected)
                 listenerState = ConnectionState.Disconnecting;
-            
+
             if (_server != null)
             {
                 _server.onDataReceived -= OnServerData;
                 _server.onRemoteConnected -= OnRemoteConnected;
                 _server.onRemoteDisconnected -= OnRemoteDisconnected;
             }
-            
+
             _server?.Stop();
             listenerState = ConnectionState.Disconnected;
             _server = null;
         }
-        
+
         private Coroutine _connectClientCoroutine;
-        
+
         /// <summary>
         /// Connects to a server at the specified IP address and port.
         /// Can operate in direct connection mode or peer-to-peer mode using Unity Relay.
@@ -363,7 +363,7 @@ namespace PurrNet.UTP
             if (_client != null)
                 Disconnect();
 
-            
+
             _client = new UTPClient();
             _client.onConnectionState += OnClientStateChanged;
             _client.onDataReceived += OnClientDataReceived;
@@ -372,18 +372,18 @@ namespace PurrNet.UTP
             _connectClientCoroutine = StartCoroutine(_peerToPeer
                 ? _client.ConnectP2P(ip, _dedicatedServer, _relayClientData)
                 : _client.Connect(ip, port, _dedicatedServer, _relayClientData));
-#else
+#elif UTP_LOBBYRELAY
             _connectClientCoroutine = StartCoroutine(_peerToPeer
                 ? _client.ConnectP2P(ip, _dedicatedServer)
                 : _client.Connect(ip, port, _dedicatedServer));
 #endif
         }
-        
+
         private void OnClientDataReceived(ByteData data)
         {
             onDataReceived?.Invoke(new Connection(-1), data, false);
         }
-        
+
         private void OnClientStateChanged(ConnectionState state)
         {
             if (state == ConnectionState.Connected)
@@ -394,7 +394,7 @@ namespace PurrNet.UTP
 
             clientState = state;
         }
-        
+
         /// <summary>
         /// Disconnects the client from the server.
         /// </summary>
@@ -408,14 +408,14 @@ namespace PurrNet.UTP
 
             if (_client == null)
                 return;
-            
+
             _client.onConnectionState -= OnClientStateChanged;
             _client.onDataReceived -= OnClientDataReceived;
 
             _client.Stop();
             _client = null;
         }
-        
+
         /// <summary>
         /// Raises the data received event for external listeners.
         /// </summary>
@@ -437,7 +437,7 @@ namespace PurrNet.UTP
         {
             onDataSent?.Invoke(conn, data, asServer);
         }
-        
+
         /// <summary>
         /// Sends data from the server to a specific client.
         /// </summary>
@@ -464,7 +464,7 @@ namespace PurrNet.UTP
             _server.SendToConnection(target.connectionId, data, method);
             RaiseDataSent(target, data, true);
         }
-        
+
         /// <summary>
         /// Sends data from the client to the server.
         /// </summary>
@@ -477,7 +477,7 @@ namespace PurrNet.UTP
                 Debug.LogWarning("Cannot send to server: Client is not initialized");
                 return;
             }
-            
+
             if (clientState is not ConnectionState.Connected)
             {
                 Debug.LogWarning($"Cannot send to server: Client is not connected (state: {clientState})");
@@ -507,7 +507,7 @@ namespace PurrNet.UTP
             _server?.ReceiveMessages();
             _client?.ReceiveMessages();
         }
-        
+
         /// <summary>
         /// Processes outgoing network messages for both server and client.
         /// Should be called regularly (typically each frame) to flush pending sends.
