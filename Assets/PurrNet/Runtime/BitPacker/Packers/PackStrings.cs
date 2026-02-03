@@ -46,10 +46,12 @@ namespace PurrNet.Packing
 
             packer.Read(ref strLen);
 
-            if (strLen < 0 || strLen > MAX_STRING_LENGTH)
+            if (strLen is < 0 or > MAX_STRING_LENGTH)
+            {
                 throw new System.Runtime.Serialization.SerializationException(
                     $"Invalid string length during deserialization: {strLen}. " +
                     $"This likely indicates a corrupted or truncated network packet.");
+            }
 
             var chars = new char[strLen];
 
