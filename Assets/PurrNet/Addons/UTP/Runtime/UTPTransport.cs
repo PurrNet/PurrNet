@@ -1,6 +1,6 @@
-#if !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || STEAMWORKS_WIN || STEAMWORKS_LIN_OSX)
-#define DISABLEUTPWORKS
-#endif
+`#if` !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID)
+`#define` DISABLEUTPWORKS
+`#endif`
 
 #if UTP_LOBBYRELAY
 #define UTP_NET_PACKAGE
@@ -160,7 +160,7 @@ namespace PurrNet.UTP
             );
         }
 
-        public async System.Threading.Tasks.Task InitializeRelayClient(string joinCode)
+        public async System.Threading.Tasks.Task<bool> InitializeRelayClient(string joinCode)
         {
             // Convert join code to relay client data
             try
@@ -172,7 +172,7 @@ namespace PurrNet.UTP
                 if (serverEndpoint == null)
                 {
                     Debug.LogError("No DTLS endpoint found in join allocation");
-                    return;
+                    return false;
                 }
 
                 _relayClientData = new RelayServerData(
@@ -185,10 +185,12 @@ namespace PurrNet.UTP
                     serverEndpoint.Secure,
                     false // isWebSocket
                 );
+                return true;
             }
             catch (Exception e)
             {
                 Debug.LogError($"Failed to initialize relay client: {e.Message}");
+                return false;
             }
         }
 #endif
@@ -249,6 +251,14 @@ namespace PurrNet.UTP
         {
             if (listenerState != ConnectionState.Disconnected)
                 listenerState = ConnectionState.Disconnecting;
+            
+            if (_server != null)
+            {
+                _server.onDataReceived -= OnServerData;
+                _server.onRemoteConnected -= OnRemoteConnected;
+                _server.onRemoteDisconnected -= OnRemoteDisconnected;
+            }
+            
             _server?.Stop();
             listenerState = ConnectionState.Disconnected;
             _server = null;
@@ -324,10 +334,16 @@ namespace PurrNet.UTP
         public void SendToClient(Connection target, ByteData data, Channel method = Channel.ReliableOrdered)
         {
             if (_server == null)
+            {
+                Debug.LogWarning("Cannot send to client: Server is not initialized");
                 return;
+            }
 
             if (listenerState is not ConnectionState.Connected)
+            {
+                Debug.LogWarning($"Cannot send to client: Server is not connected (state: {listenerState})");
                 return;
+            }
 
             if (!target.isValid)
                 return;
@@ -339,7 +355,16 @@ namespace PurrNet.UTP
         public void SendToServer(ByteData data, Channel method = Channel.ReliableOrdered)
         {
             if (_client == null)
+            {
+                Debug.LogWarning("Cannot send to server: Client is not initialized");
                 return;
+            }
+            
+            if (clientState is not ConnectionState.Connected)
+            {
+                Debug.LogWarning($"Cannot send to server: Client is not connected (state: {clientState})");
+                return;
+            }
 
             _client.Send(data, method);
             RaiseDataSent(default, data, false);

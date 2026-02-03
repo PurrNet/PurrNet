@@ -1,4 +1,4 @@
-#if !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || STEAMWORKS_WIN || STEAMWORKS_LIN_OSX)
+#if !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID)
 #define DISABLEUTPWORKS
 #endif
 
@@ -132,8 +132,8 @@ namespace PurrNet.UTP
 
             try
             {
-                var result = _driver.BeginSend(pipeline, _connection, out var writer);
-                if (result == (int)StatusCode.Success)
+                var beginResult = _driver.BeginSend(pipeline, _connection, out var writer);
+                if (beginResult == (int)StatusCode.Success)
                 {
                     unsafe
                     {
@@ -144,6 +144,10 @@ namespace PurrNet.UTP
                         }
                     }
                     _driver.EndSend(writer);
+                }
+                else
+                {
+                    PurrLogger.LogError($"Failed to begin send: {(StatusCode)beginResult}");
                 }
             }
             catch (Exception e)
@@ -156,8 +160,9 @@ namespace PurrNet.UTP
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            if (_driver.IsCreated)
-                _driver.ScheduleUpdate().Complete();
+            //if (_driver.IsCreated)
+            //    _driver.ScheduleUpdate().Complete();
+            // Update is handled in ReceiveMessages
 #endif
         }
 

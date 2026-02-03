@@ -1,4 +1,4 @@
-#if !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || STEAMWORKS_WIN || STEAMWORKS_LIN_OSX)
+#if !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID)
 #define DISABLEUTPWORKS
 #endif
 
@@ -139,8 +139,9 @@ namespace PurrNet.UTP
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            if (_driver.IsCreated)
-                _driver.ScheduleUpdate().Complete();
+            // if (_driver.IsCreated)
+            //    _driver.ScheduleUpdate().Complete();
+            // Update is handled in ReceiveMessages
 #endif
         }
 
