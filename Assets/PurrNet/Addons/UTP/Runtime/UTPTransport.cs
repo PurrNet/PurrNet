@@ -54,9 +54,15 @@ namespace PurrNet.UTP
 
         public bool SupportsChannel(Channel channel)
         {
-            if (channel is Channel.ReliableOrdered or Channel.Unreliable)
-                return true;
-            return false;
+            return channel switch
+            {
+                Channel.Unreliable => true,
+                Channel.UnreliableSequenced => true,    // Mapped to unreliable pipeline
+                Channel.ReliableOrdered => true,
+                Channel.ReliableUnordered => true,      // Mapped to reliable pipeline
+                
+                _ => false
+            }
         }
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
@@ -137,7 +143,7 @@ namespace PurrNet.UTP
         }
 
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-        public void InitializeRelayServer(Allocation allocation)
+        public bool InitializeRelayServer(Allocation allocation)
         {
             // Store relay server data for use when starting server
             // Find the dtls endpoint
@@ -145,7 +151,7 @@ namespace PurrNet.UTP
             if (serverEndpoint == null)
             {
                 Debug.LogError("No DTLS endpoint found in allocation");
-                return;
+                return false;
             }
 
             _relayServerData = new RelayServerData(
@@ -158,6 +164,7 @@ namespace PurrNet.UTP
                 serverEndpoint.Secure,
                 false // isWebSocket
             );
+            return true;
         }
 
         public async System.Threading.Tasks.Task<bool> InitializeRelayClient(string joinCode)
@@ -218,16 +225,18 @@ namespace PurrNet.UTP
             if (_server.listening)
             {
                 listenerState = ConnectionState.Connected;
+                
+                _server.onDataReceived += OnServerData;
+                _server.onRemoteConnected += OnRemoteConnected;
+                _server.onRemoteDisconnected += OnRemoteDisconnected;
             }
             else
             {
                 listenerState = ConnectionState.Disconnecting;
                 listenerState = ConnectionState.Disconnected;
+                _server = null;
+                return;
             }
-
-            _server.onDataReceived += OnServerData;
-            _server.onRemoteConnected += OnRemoteConnected;
-            _server.onRemoteDisconnected += OnRemoteDisconnected;
         }
         
         private void OnRemoteConnected(int obj)
