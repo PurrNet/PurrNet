@@ -1,3 +1,10 @@
+# [1.19.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.8...v1.19.0-beta.9) (2026-02-03)
+
+
+### Features
+
+* add Unity services dependencies and update UTPClient/UTPServer for Relay support ([1523d06](https://github.com/PurrNet/PurrNet/commit/1523d0620d27a84ecf9db0ec3219ea4f9886a763))
+
 # [1.19.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.7...v1.19.0-beta.8) (2026-02-03)
 
 
