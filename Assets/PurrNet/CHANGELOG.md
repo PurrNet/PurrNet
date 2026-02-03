@@ -1,3 +1,10 @@
+# [1.19.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.10...v1.19.0-beta.11) (2026-02-03)
+
+
+### Bug Fixes
+
+* add bounds checking to BitPacker.ReadBits to prevent native crash on malformed packets ([77abf0d](https://github.com/PurrNet/PurrNet/commit/77abf0dd8d177cf0fc0712aec7eda284c17e0af0))
+
 # [1.19.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.9...v1.19.0-beta.10) (2026-02-03)
 
 
