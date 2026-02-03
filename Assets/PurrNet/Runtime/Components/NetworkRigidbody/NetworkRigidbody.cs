@@ -137,12 +137,22 @@ namespace PurrNet
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
+#if UNITY_6000_0_OR_NEWER
             _targetLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _targetLinearVelocity = _rigidbody.velocity;
+#endif
             _targetAngularVelocity = _rigidbody.angularVelocity;
             
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
+            
+#if UNITY_6000_0_OR_NEWER
             _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _lastSyncedLinearVelocity = _rigidbody.velocity;
+#endif
+            
             _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
 
             if (IsController(_ownerAuth))
@@ -166,14 +176,23 @@ namespace PurrNet
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
+#if UNITY_6000_0_OR_NEWER
                 linearVelocity = _rigidbody.linearVelocity,
+#else
+                linearVelocity = _rigidbody.velocity,
+#endif
                 angularVelocity = _rigidbody.angularVelocity,
                 senderPing = myPing
             };
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
+            
+#if UNITY_6000_0_OR_NEWER
             _targetLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _targetLinearVelocity = _rigidbody.velocity;
+#endif
             _targetAngularVelocity = _rigidbody.angularVelocity;
 
             if (isServer)
@@ -183,7 +202,12 @@ namespace PurrNet
 
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
+            
+#if UNITY_6000_0_OR_NEWER
             _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _lastSyncedLinearVelocity = _rigidbody.velocity;
+#endif
             _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
         }
 
@@ -231,7 +255,11 @@ namespace PurrNet
 
         private void ApplySoftCorrection()
         {
+#if UNITY_6000_0_OR_NEWER
             float currentSpeed = _rigidbody.linearVelocity.magnitude;
+#else
+            float currentSpeed = _rigidbody.velocity.magnitude;
+#endif
             float springScale = GetDynamicSpringScale();
             float baseSpring = _springConstant;
             float dynamicDamping = _dampingConstant;
@@ -250,7 +278,11 @@ namespace PurrNet
             Vector3 positionError = _targetPosition - _rigidbody.position;
             Vector3 springForce = positionError * (baseSpring * _rigidbody.mass);
     
+#if UNITY_6000_0_OR_NEWER
             Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
+#else
+            Vector3 velocityError = _targetLinearVelocity - _rigidbody.velocity;
+#endif
             Vector3 dampingForce = velocityError * (dynamicDamping * _rigidbody.mass);
     
             _rigidbody.AddForce(springForce + dampingForce);
@@ -297,20 +329,33 @@ namespace PurrNet
         {
             if (delta <= 0) return;
     
+#if UNITY_6000_0_OR_NEWER
             Vector3 currentAccel = (_rigidbody.linearVelocity - _previousVelocity) / delta;
+#else
+            Vector3 currentAccel = (_rigidbody.velocity - _previousVelocity) / delta;
+#endif
             float decay = Mathf.Pow(_accelerationDecay, delta / 0.05f);
             _recentAccelerationMagnitude = Mathf.Max(
                 _recentAccelerationMagnitude * decay, 
                 currentAccel.magnitude
             );
+#if UNITY_6000_0_OR_NEWER
             _previousVelocity = _rigidbody.linearVelocity;
+#else
+            _previousVelocity = _rigidbody.velocity;
+#endif
         }
         
         private bool HasStateChanged()
         {
             float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
             float rotationDelta = Quaternion.Angle(_rigidbody.rotation, _lastSyncedRotation);
+            
+#if UNITY_6000_0_OR_NEWER
             float linearVelocityDelta = Vector3.Distance(_rigidbody.linearVelocity, _lastSyncedLinearVelocity);
+#else
+            float linearVelocityDelta = Vector3.Distance(_rigidbody.velocity, _lastSyncedLinearVelocity);
+#endif
             float angularVelocityDelta = Vector3.Distance(_rigidbody.angularVelocity, _lastSyncedAngularVelocity);
 
             return positionDelta > _positionChangeThreshold || rotationDelta > _rotationChangeThreshold || linearVelocityDelta > _velocityStopThreshold || angularVelocityDelta > _velocityStopThreshold;
@@ -318,7 +363,13 @@ namespace PurrNet
 
         private bool ShouldSyncWhenStopped()
         {
-            return _rigidbody.linearVelocity.magnitude < _velocityStopThreshold &&
+#if UNITY_6000_0_OR_NEWER
+            float magnitude = _rigidbody.linearVelocity.magnitude;
+#else
+            float magnitude = _rigidbody.velocity.magnitude;
+#endif
+            
+            return magnitude < _velocityStopThreshold &&
                    _rigidbody.angularVelocity.magnitude < _velocityStopThreshold &&
                    !_rigidbody.IsSleeping();
         }
@@ -328,8 +379,16 @@ namespace PurrNet
             return new RigidbodySettingsData
             {
                 mass = _rigidbody.mass,
+#if UNITY_6000_0_OR_NEWER
                 drag = _rigidbody.linearDamping,
+#else
+                drag = _rigidbody.drag,
+#endif
+#if UNITY_6000_0_OR_NEWER
                 angularDrag = _rigidbody.angularDamping,
+#else
+                angularDrag = _rigidbody.angularDrag,
+#endif
                 useGravity = _rigidbody.useGravity,
                 isKinematic = _rigidbody.isKinematic
             };
@@ -349,8 +408,13 @@ namespace PurrNet
 
         public Vector3 linearVelocity
         {
+#if UNITY_6000_0_OR_NEWER
             get => _rigidbody.linearVelocity;
             set => _rigidbody.linearVelocity = value;
+#else
+            get => _rigidbody.velocity;
+            set => _rigidbody.velocity = value;
+#endif
         }
 
         public Vector3 angularVelocity
@@ -384,6 +448,7 @@ namespace PurrNet
 
         public float drag
         {
+#if UNITY_6000_0_OR_NEWER
             get => _rigidbody.linearDamping;
             set
             {
@@ -391,10 +456,20 @@ namespace PurrNet
                 if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
+#else
+            get => _rigidbody.drag;
+            set
+            {
+                _rigidbody.drag = value;
+                if (IsController(_ownerAuth))
+                    SyncSettings(GetCurrentSettings());
+            }
+#endif
         }
 
         public float angularDrag
         {
+#if UNITY_6000_0_OR_NEWER
             get => _rigidbody.angularDamping;
             set
             {
@@ -402,6 +477,15 @@ namespace PurrNet
                 if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
+#else
+            get => _rigidbody.angularDrag;
+            set
+            {
+                _rigidbody.angularDrag = value;
+                if (IsController(_ownerAuth))
+                    SyncSettings(GetCurrentSettings());
+            }
+#endif
         }
 
         public bool useGravity
@@ -577,7 +661,11 @@ namespace PurrNet
             _hasPendingTeleport = true;
             _rigidbody.MovePosition(data.position);
             _rigidbody.MoveRotation(data.rotation);
+#if UNITY_6000_0_OR_NEWER
             _rigidbody.linearVelocity = data.linearVelocity;
+#else
+            _rigidbody.velocity = data.linearVelocity;
+#endif
             _rigidbody.angularVelocity = data.angularVelocity;
             _targetPosition = data.position;
             _targetRotation = data.rotation;
@@ -593,8 +681,16 @@ namespace PurrNet
                 return;
 
             _rigidbody.mass = data.mass;
+#if UNITY_6000_0_OR_NEWER
             _rigidbody.linearDamping = data.drag;
+#else
+            _rigidbody.drag = data.drag;
+#endif
+#if UNITY_6000_0_OR_NEWER
             _rigidbody.angularDamping = data.angularDrag;
+#else
+            _rigidbody.angularDrag = data.angularDrag;
+#endif
             _rigidbody.useGravity = data.useGravity;
             _rigidbody.isKinematic = data.isKinematic;
         }
@@ -627,7 +723,11 @@ namespace PurrNet
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
+#if UNITY_6000_0_OR_NEWER
                 linearVelocity = _rigidbody.linearVelocity,
+#else
+                linearVelocity = _rigidbody.velocity,
+#endif
                 angularVelocity = _rigidbody.angularVelocity
             };
             Teleport(teleportData);

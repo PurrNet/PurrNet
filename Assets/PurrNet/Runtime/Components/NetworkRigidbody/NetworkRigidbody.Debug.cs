@@ -32,8 +32,13 @@ namespace PurrNet
                 Gizmos.matrix = Matrix4x4.identity;
             }
 
+#if UNITY_6000_0_OR_NEWER
             Gizmos.color = Color.blue;
             Gizmos.DrawRay(_rigidbody.position, _rigidbody.linearVelocity * 0.5f);
+#else
+            Gizmos.color = Color.blue;
+            Gizmos.DrawRay(_rigidbody.position, _rigidbody.velocity * 0.5f);
+#endif
         }
 
         private void OnGUI()
@@ -59,6 +64,12 @@ namespace PurrNet
             float effectiveSpring = _springConstant * springScale;
             float effectiveDamping = _dampingConstant * springScale;
 
+#if UNITY_6000_0_OR_NEWER
+            float velocityMagnitude = _rigidbody.linearVelocity.magnitude;
+#else
+            float velocityMagnitude = _rigidbody.velocity.magnitude;
+#endif
+
             string info = $"<b>NetworkRigidbody</b>\n" +
                           $"Controller: {isController}\n" +
                           $"OwnerAuth: {_ownerAuth}\n" +
@@ -71,7 +82,7 @@ namespace PurrNet
                           $"Error: {error:F3}m\n" +
                           $"Extrapolation: {_lastExtrapolation}\n" +
                           $"---\n" +
-                          $"Velocity: {_rigidbody.linearVelocity.magnitude:F2}\n" +
+                          $"Velocity: {velocityMagnitude:F2}\n" +
                           $"Correcting: {_isCorreting}\n" +
                           $"CorrectionTimer: {_correctionTimer:F2}s\n" +
                           $"---\n" +
