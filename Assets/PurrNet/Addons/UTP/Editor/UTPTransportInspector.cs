@@ -114,14 +114,14 @@ namespace PurrNet.UTP.Editor
         private void OnEnable()
         {
             var generic = (UTPTransport)target;
-            if (generic && generic.transform != null)
+            if (generic && generic.transport != null)
                 generic.transport.onConnectionState += OnDirty;
         }
 
         private void OnDisable()
         {
             var generic = (UTPTransport)target;
-            if (generic && generic.transform != null)
+            if (generic && generic.transport != null)
                 generic.transport.onConnectionState -= OnDirty;
         }
         
