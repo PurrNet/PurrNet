@@ -1,3 +1,10 @@
+# [1.19.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.7...v1.19.0-beta.8) (2026-02-03)
+
+
+### Bug Fixes
+
+* compiler errors ([ae009e6](https://github.com/PurrNet/PurrNet/commit/ae009e64a10965bf78bdfd6a49d470337a94626f))
+
 # [1.19.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.6...v1.19.0-beta.7) (2026-02-01)
 
 
