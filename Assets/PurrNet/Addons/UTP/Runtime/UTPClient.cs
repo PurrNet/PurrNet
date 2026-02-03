@@ -66,7 +66,7 @@ namespace PurrNet.UTP
                 onConnectionState?.Invoke(_state);
             }
         }
-#if UTP_LOBBYRELAY
+#if UTP_LOBBYRELAY && UTP_SERVICES
         /// <summary>
         /// Connects to a server using a direct IP address and port, or via Unity Relay if relay data is provided.
         /// </summary>

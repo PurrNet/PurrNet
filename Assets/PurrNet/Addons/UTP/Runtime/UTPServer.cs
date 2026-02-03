@@ -67,7 +67,7 @@ namespace PurrNet.UTP
         public bool listening => false;
 #endif
 
-#if UTP_LOBBYRELAY
+#if UTP_LOBBYRELAY && UTP_SERVICES
         /// <summary>
         /// Starts listening for incoming client connections on the specified port.
         /// Can operate in direct connection mode or via Unity Relay if relay data is provided.

@@ -24,6 +24,11 @@
             "name": "com.unity.services.multiplayer",
             "expression": "",
             "define": "UTP_LOBBYRELAY"
+        },
+        {
+            "name": "com.unity.services.multiplayer",
+            "expression": "",
+            "define": "UTP_SERVICES"
         }
     ],
     "noEngineReferences": false

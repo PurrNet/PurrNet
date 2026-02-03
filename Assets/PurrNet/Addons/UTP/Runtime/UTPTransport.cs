@@ -4,7 +4,9 @@
 
 #if UTP_LOBBYRELAY
 #define UTP_NET_PACKAGE
+#if UTP_SERVICES
 using Unity.Services.Relay.Models;
+#endif
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Relay;
 #endif
@@ -290,7 +292,7 @@ namespace PurrNet.UTP
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer, _relayServerData);
             else _server.Listen(port, _dedicatedServer, _relayServerData);
-#elif UTP_LOBBYRELAY
+#elif UTP_LOBBYRELAY && UTP_SERVICES
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer);
             else _server.Listen(port, _dedicatedServer);
@@ -372,7 +374,7 @@ namespace PurrNet.UTP
             _connectClientCoroutine = StartCoroutine(_peerToPeer
                 ? _client.ConnectP2P(ip, _dedicatedServer, _relayClientData)
                 : _client.Connect(ip, port, _dedicatedServer, _relayClientData));
-#elif UTP_LOBBYRELAY
+#elif UTP_LOBBYRELAY && UTP_SERVICES
             _connectClientCoroutine = StartCoroutine(_peerToPeer
                 ? _client.ConnectP2P(ip, _dedicatedServer)
                 : _client.Connect(ip, port, _dedicatedServer));
