@@ -161,7 +161,7 @@ namespace PurrNet.UTP
             }
 
             // Process events for existing connections
-            for (var i = 0; i < _connections.Count; i++)
+            for (var i = _connections.Count -1; i >= 0; i--)
             {
                 var conn = _connections[i];
 
