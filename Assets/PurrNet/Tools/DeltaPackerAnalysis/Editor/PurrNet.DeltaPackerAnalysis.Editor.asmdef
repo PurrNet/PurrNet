@@ -1,0 +1,18 @@
+{
+    "name": "PurrNet.DeltaPackerAnalysis.Editor",
+    "rootNamespace": "PurrNet.DeltaPackerAnalysis.Editor",
+    "references": [
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
