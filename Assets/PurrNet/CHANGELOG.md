@@ -1,3 +1,10 @@
+# [1.19.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.12...v1.19.0-beta.13) (2026-02-03)
+
+
+### Bug Fixes
+
+* Backwards compatibility for network RB ([94af929](https://github.com/PurrNet/PurrNet/commit/94af9293ed711a98dfea2a83f35437ab285fc232))
+
 # [1.19.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.11...v1.19.0-beta.12) (2026-02-03)
 
 
