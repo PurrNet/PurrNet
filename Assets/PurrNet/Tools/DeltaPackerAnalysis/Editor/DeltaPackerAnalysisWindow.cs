@@ -17,7 +17,7 @@ namespace PurrNet.DeltaPackerAnalysis.Editor
     /// </summary>
     public class DeltaPackerAnalysisWindow : EditorWindow
     {
-        private const int BenchmarkIterations = 100_000;
+        private const int BenchmarkIterations = 500_000;
         private const float BarWidth = 12f;
         private const float LabelWidth = 80f;
         private const float GraphHeight = 220f;
