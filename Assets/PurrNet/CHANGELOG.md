@@ -1,3 +1,10 @@
+# [1.19.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.9...v1.19.0-beta.10) (2026-02-03)
+
+
+### Bug Fixes
+
+* buffer overflow in RPC response handling ([6a83e07](https://github.com/PurrNet/PurrNet/commit/6a83e07e0d1ce1fbf525fd36ad57df6f3d38e455))
+
 # [1.19.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.8...v1.19.0-beta.9) (2026-02-03)
 
 
