@@ -1,3 +1,10 @@
+# [1.19.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.11...v1.19.0-beta.12) (2026-02-03)
+
+
+### Bug Fixes
+
+* reworking bit packer functions ([0d6ca93](https://github.com/PurrNet/PurrNet/commit/0d6ca93638842268429fbccccb2ae397ec02ca12))
+
 # [1.19.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.10...v1.19.0-beta.11) (2026-02-03)
 
 
