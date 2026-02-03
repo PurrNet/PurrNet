@@ -19,6 +19,11 @@ using Unity.Networking.Transport.Error;
 
 namespace PurrNet.UTP
 {
+    /// <summary>
+    /// Unity Transport Package (UTP) client implementation.
+    /// Handles client-side network connectivity including connection management, data transmission,
+    /// and support for Unity Relay-based peer-to-peer connections.
+    /// </summary>
     public class UTPClient
     {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -31,12 +36,22 @@ namespace PurrNet.UTP
 #endif
 
 #pragma warning disable CS0067 // Event is never used
+        /// <summary>
+        /// Event raised when data is received from the server.
+        /// </summary>
         public event Action<ByteData> onDataReceived;
 #pragma warning restore CS0067 // Event is never used
+        
+        /// <summary>
+        /// Event raised when the connection state changes.
+        /// </summary>
         public event Action<ConnectionState> onConnectionState;
 
         private ConnectionState _state = ConnectionState.Disconnected;
 
+        /// <summary>
+        /// Gets or sets the current connection state of the client.
+        /// </summary>
         public ConnectionState connectionState
         {
             get => _state;
@@ -50,6 +65,14 @@ namespace PurrNet.UTP
             }
         }
 
+        /// <summary>
+        /// Connects to a server using a direct IP address and port, or via Unity Relay if relay data is provided.
+        /// </summary>
+        /// <param name="address">The IP address or hostname of the server.</param>
+        /// <param name="port">The port number to connect to.</param>
+        /// <param name="dedicated">Whether connecting to a dedicated server.</param>
+        /// <param name="relayData">Optional Unity Relay server data for relay-based connections.</param>
+        /// <returns>An enumerator for coroutine execution.</returns>
         public IEnumerator Connect(string address, ushort port, bool dedicated = false, RelayServerData? relayData = null)
         {
             yield return null;
@@ -92,6 +115,14 @@ namespace PurrNet.UTP
 #endif
         }
 
+        /// <summary>
+        /// Connects to a peer-to-peer session using Unity Relay.
+        /// Requires relay data to establish the connection.
+        /// </summary>
+        /// <param name="lobbyId">The lobby ID for the P2P session.</param>
+        /// <param name="dedicated">Whether connecting to a dedicated server.</param>
+        /// <param name="relayData">Unity Relay server data required for P2P connections.</param>
+        /// <returns>An enumerator for coroutine execution.</returns>
         public IEnumerator ConnectP2P(string lobbyId, bool dedicated = false, RelayServerData? relayData = null)
         {
             yield return null;
@@ -116,6 +147,11 @@ namespace PurrNet.UTP
 #endif
         }
 
+        /// <summary>
+        /// Sends data to the server using the specified network channel.
+        /// </summary>
+        /// <param name="data">The data to send.</param>
+        /// <param name="channel">The network channel to use for transmission.</param>
         public void Send(ByteData data, Channel channel)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -159,6 +195,10 @@ namespace PurrNet.UTP
 #endif
         }
 
+        /// <summary>
+        /// Flushes outgoing network messages to the server.
+        /// Should be called regularly to ensure timely message delivery.
+        /// </summary>
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -168,6 +208,10 @@ namespace PurrNet.UTP
 #endif
         }
 
+        /// <summary>
+        /// Processes incoming network messages from the server.
+        /// Should be called regularly (typically each frame) to handle connection events and data reception.
+        /// </summary>
         public void ReceiveMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -265,6 +309,9 @@ namespace PurrNet.UTP
         }
 #endif
 
+        /// <summary>
+        /// Stops the client, disconnects from the server, and releases all resources.
+        /// </summary>
         public void Stop()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS

@@ -19,6 +19,11 @@ using Unity.Networking.Transport.Error;
 
 namespace PurrNet.UTP
 {
+    /// <summary>
+    /// Unity Transport Package (UTP) server implementation.
+    /// Handles server-side network connectivity including listening for connections, managing multiple clients,
+    /// data transmission, and support for Unity Relay-based peer-to-peer hosting.
+    /// </summary>
     public class UTPServer
     {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -34,17 +39,41 @@ namespace PurrNet.UTP
 #endif
 
 #pragma warning disable CS0067 // Event is never used
+        /// <summary>
+        /// Event raised when a remote client connects to the server.
+        /// </summary>
         public event Action<int> onRemoteConnected;
+        
+        /// <summary>
+        /// Event raised when a remote client disconnects from the server.
+        /// </summary>
         public event Action<int> onRemoteDisconnected;
+        
+        /// <summary>
+        /// Event raised when data is received from a connected client.
+        /// </summary>
         public event Action<int, ByteData> onDataReceived;
 #pragma warning restore CS0067 // Event is never used
 
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
+        /// <summary>
+        /// Gets a value indicating whether the server is currently listening for connections.
+        /// </summary>
         public bool listening => _driver.IsCreated && _driver.Bound;
 #else
+        /// <summary>
+        /// Gets a value indicating whether the server is currently listening for connections.
+        /// </summary>
         public bool listening => false;
 #endif
 
+        /// <summary>
+        /// Starts listening for incoming client connections on the specified port.
+        /// Can operate in direct connection mode or via Unity Relay if relay data is provided.
+        /// </summary>
+        /// <param name="port">The port number to listen on.</param>
+        /// <param name="dedicated">Whether this is a dedicated server.</param>
+        /// <param name="relayData">Optional Unity Relay server data for relay-based hosting.</param>
         public void Listen(ushort port, bool dedicated = false, RelayServerData? relayData = null)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -91,6 +120,12 @@ namespace PurrNet.UTP
 #endif
         }
 
+        /// <summary>
+        /// Starts listening for peer-to-peer connections using Unity Relay.
+        /// Requires relay data to establish the hosting endpoint.
+        /// </summary>
+        /// <param name="dedicated">Whether this is a dedicated server.</param>
+        /// <param name="relayData">Unity Relay server data required for P2P hosting.</param>
         public void ListenP2P(bool dedicated = false, RelayServerData? relayData = null)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -197,6 +232,10 @@ namespace PurrNet.UTP
 #endif
         }
 
+        /// <summary>
+        /// Forcibly disconnects a client from the server.
+        /// </summary>
+        /// <param name="id">The connection ID of the client to disconnect.</param>
         public void Kick(int id)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -278,6 +317,9 @@ namespace PurrNet.UTP
         }
 #endif
 
+        /// <summary>
+        /// Stops the server, disconnects all clients, and releases all resources.
+        /// </summary>
         public void Stop()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS

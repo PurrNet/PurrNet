@@ -4,8 +4,16 @@ using PurrNet.Logging;
 
 namespace PurrNet.UTP
 {
+    /// <summary>
+    /// Utility methods for PurrNet UTP transport operations.
+    /// </summary>
     public static class PurrUTPUtils
     {
+        /// <summary>
+        /// Converts an IPv4 address string to its 32-bit unsigned integer representation.
+        /// </summary>
+        /// <param name="address">The IPv4 address string to convert (e.g., "192.168.1.1").</param>
+        /// <returns>The 32-bit unsigned integer representation of the IPv4 address, or 0 if parsing fails.</returns>
         [UsedImplicitly]
         public static uint GetIPv4(this string address)
         {

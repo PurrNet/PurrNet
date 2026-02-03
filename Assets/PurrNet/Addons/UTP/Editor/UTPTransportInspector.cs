@@ -24,6 +24,11 @@ using UnityEngine;
 
 namespace PurrNet.UTP.Editor
 {
+    /// <summary>
+    /// Custom inspector for the UTP Transport component in the Unity Editor.
+    /// Provides UI for configuring the transport, checking package dependencies,
+    /// and displaying runtime connection status.
+    /// </summary>
     [CustomEditor(typeof(UTPTransport), true)]
     public class UTPTransportInspector : UnityEditor.Editor
     {
