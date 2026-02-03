@@ -84,6 +84,7 @@ var annotated_dup =
         [ "UsedByILAttribute", "classPurrNet_1_1Modules_1_1UsedByILAttribute.html", null ]
       ] ],
       [ "Packing", "namespacePurrNet_1_1Packing.html", [
+        [ "BigStructSample", "structPurrNet_1_1Packing_1_1BigStructSample.html", null ],
         [ "BitData", "structPurrNet_1_1Packing_1_1BitData.html", null ],
         [ "BitDataScope", "structPurrNet_1_1Packing_1_1BitDataScope.html", null ],
         [ "BitPacker", "classPurrNet_1_1Packing_1_1BitPacker.html", "classPurrNet_1_1Packing_1_1BitPacker" ],

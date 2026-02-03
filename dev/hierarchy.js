@@ -259,6 +259,7 @@ var hierarchy =
       [ "PurrNet.Modules.TransformInfo", "structPurrNet_1_1Modules_1_1TransformInfo.html", null ],
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
+      [ "PurrNet.Packing.BigStructSample", "structPurrNet_1_1Packing_1_1BigStructSample.html", null ],
       [ "PurrNet.Packing.HalfVector2", "structPurrNet_1_1Packing_1_1HalfVector2.html", null ],
       [ "PurrNet.Packing.HalfVector3", "structPurrNet_1_1Packing_1_1HalfVector3.html", null ],
       [ "PurrNet.Packing.HalfVector4", "structPurrNet_1_1Packing_1_1HalfVector4.html", null ],

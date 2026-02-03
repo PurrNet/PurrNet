@@ -1,9 +1,17 @@
 var searchData=
 [
-  ['this_5bint_20index_5d_0',['this[int index]',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#ac245da2b5878d2f971c2945941ed92a7',1,'PurrNet::Modules::SimpleHistory']]],
-  ['tickmodule_1',['tickModule',['../classPurrNet_1_1NetworkManager.html#a08cb53b2724efa55863f4972a08bee7a',1,'PurrNet::NetworkManager']]],
-  ['tickrate_2',['tickRate',['../classPurrNet_1_1Modules_1_1TickManager.html#af5c5d812bf4da892d3ad579ac80b1c5e',1,'PurrNet::Modules::TickManager']]],
-  ['trackedfields_3',['trackedFields',['../classPurrNet_1_1NetworkReflection.html#a660330810b5aa4f51f0d76375e8ef96f',1,'PurrNet::NetworkReflection']]],
-  ['trackedtype_4',['trackedType',['../classPurrNet_1_1NetworkReflection.html#a7439d1f16446aa4bd85b64328ea25323',1,'PurrNet::NetworkReflection']]],
-  ['transport_5',['transport',['../classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908',1,'PurrNet.NetworkManager.transport()'],['../classPurrNet_1_1Transports_1_1GenericTransport.html#aaab002062b833cde82d0eed05d1633a2',1,'PurrNet.Transports.GenericTransport.transport()']]]
+  ['sceneid_0',['sceneId',['../classPurrNet_1_1NetworkIdentity.html#ade4408d8864bac675dd6cf63b13f86cb',1,'PurrNet::NetworkIdentity']]],
+  ['scenemodule_1',['sceneModule',['../classPurrNet_1_1NetworkManager.html#a36d904d8336f981fdae95d015c51989a',1,'PurrNet::NetworkManager']]],
+  ['sceneplayersmodule_2',['scenePlayersModule',['../classPurrNet_1_1NetworkManager.html#a51b4a49219c890a641afb68155dcb640',1,'PurrNet::NetworkManager']]],
+  ['serverstate_3',['serverState',['../classPurrNet_1_1NetworkManager.html#a29e178dbbfb98fbca42ad59daf57c2c3',1,'PurrNet.NetworkManager.serverState()'],['../classPurrNet_1_1RawNetManager.html#a64b020c811747a3312d8fccfdd9c72db',1,'PurrNet.RawNetManager.serverState()']]],
+  ['shouldautostartclient_4',['shouldAutoStartClient',['../classPurrNet_1_1NetworkManager.html#a486f3d2bb04554034748ef42e83e942f',1,'PurrNet.NetworkManager.shouldAutoStartClient()'],['../classPurrNet_1_1RawNetManager.html#a9328e1c9e9e07f9e9a2f2639b6ce6e9f',1,'PurrNet.RawNetManager.shouldAutoStartClient()']]],
+  ['shouldautostartserver_5',['shouldAutoStartServer',['../classPurrNet_1_1NetworkManager.html#a13eb686cab9722cff602dde0451d51fe',1,'PurrNet.NetworkManager.shouldAutoStartServer()'],['../classPurrNet_1_1RawNetManager.html#a3009aa855cd43034246f26a88d1dd4bc',1,'PurrNet.RawNetManager.shouldAutoStartServer()']]],
+  ['simulatedhostping_6',['simulatedHostPing',['../classPurrNet_1_1SyncInput.html#a2c00b2d37dcfb4455c7da392c97678da',1,'PurrNet::SyncInput']]],
+  ['startclientflags_7',['startClientFlags',['../classPurrNet_1_1RawNetManager.html#acba964e897bd483b352b1df395951b76',1,'PurrNet.RawNetManager.startClientFlags()'],['../classPurrNet_1_1NetworkManager.html#a1ade609f395b02e599eec909fee4e081',1,'PurrNet.NetworkManager.startClientFlags()']]],
+  ['startserverflags_8',['startServerFlags',['../classPurrNet_1_1NetworkManager.html#a76e0c18a472d5675aeeddda8d4dfae4f',1,'PurrNet.NetworkManager.startServerFlags()'],['../classPurrNet_1_1RawNetManager.html#afab81fd2037d3025ee695e01ede676cb',1,'PurrNet.RawNetManager.startServerFlags()']]],
+  ['syncedtick_9',['syncedTick',['../classPurrNet_1_1Modules_1_1TickManager.html#ab92243b9733c0b56fb5a2b2d7d04e249',1,'PurrNet::Modules::TickManager']]],
+  ['syncparent_10',['syncParent',['../interfacePurrNet_1_1INetworkTransform.html#aa5130a3bbf63a6b9dddc799376312a64',1,'PurrNet.INetworkTransform.syncParent()'],['../classPurrNet_1_1NetworkTransform.html#a3990456c0f654fc3d68a36bdf41ca229',1,'PurrNet.NetworkTransform.syncParent()']]],
+  ['syncposition_11',['syncPosition',['../interfacePurrNet_1_1INetworkTransform.html#a7df722412bb5c2728c4a1da166a3a67b',1,'PurrNet.INetworkTransform.syncPosition()'],['../classPurrNet_1_1NetworkTransform.html#a10e35e3a2904f2c1623175f9cbcf5c62',1,'PurrNet.NetworkTransform.syncPosition()']]],
+  ['syncrotation_12',['syncRotation',['../interfacePurrNet_1_1INetworkTransform.html#aff00a94b3ce0f2a6380231b83a4206c6',1,'PurrNet.INetworkTransform.syncRotation()'],['../classPurrNet_1_1NetworkTransform.html#af57ea9e2f3fea7d488fc804f85c6387d',1,'PurrNet.NetworkTransform.syncRotation()']]],
+  ['syncscale_13',['syncScale',['../interfacePurrNet_1_1INetworkTransform.html#add578efc6f2d8c5c210bac2b9ef3972f',1,'PurrNet.INetworkTransform.syncScale()'],['../classPurrNet_1_1NetworkTransform.html#a63b633d022618dae2499fb88a8e993ff',1,'PurrNet.NetworkTransform.syncScale()']]]
 ];
