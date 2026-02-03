@@ -1,6 +1,6 @@
-`#if` !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID)
-`#define` DISABLEUTPWORKS
-`#endif`
+#if !(UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID)
+#define DISABLEUTPWORKS
+#endif
 
 #if UTP_LOBBYRELAY
 #define UTP_NET_PACKAGE
@@ -79,12 +79,12 @@ namespace PurrNet.UTP
             return channel switch
             {
                 Channel.Unreliable => true,
-                Channel.UnreliableSequenced => true,    // Mapped to unreliable pipeline
+                Channel.UnreliableSequenced => true, // Mapped to unreliable pipeline
                 Channel.ReliableOrdered => true,
-                Channel.ReliableUnordered => true,      // Mapped to reliable pipeline
-                
+                Channel.ReliableUnordered => true, // Mapped to reliable pipeline
+
                 _ => false
-            }
+            };
         }
 
         /// <summary>
