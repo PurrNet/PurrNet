@@ -749,7 +749,7 @@ namespace PurrNet.Codegen
                     if (isWriting)
                     {
                         var getterName = MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
-                        var getter = new MethodReference(getterName, fieldType, typeRef)
+                        var getter = new MethodReference(getterName, field.FieldType, typeRef)
                         {
                             HasThis = true
                         };
@@ -793,7 +793,7 @@ namespace PurrNet.Codegen
                         };
 
                         setter.Parameters.Add(
-                            new ParameterDefinition("value", ParameterAttributes.None, fieldType));
+                            new ParameterDefinition("value", ParameterAttributes.None, field.FieldType));
 
                         if (typeRef is GenericInstanceType genericInstanceType)
                         {

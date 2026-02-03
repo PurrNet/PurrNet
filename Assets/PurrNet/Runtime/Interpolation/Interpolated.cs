@@ -5,6 +5,7 @@ namespace PurrNet
 {
     public delegate T LerpFunction<T>(T from, T to, float t);
 
+    [DontPack]
     public class Interpolated<T>
     {
         private readonly LerpFunction<T> _lerp;

@@ -155,7 +155,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
+        private unsafe void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
         {
             using (_batchReceivedMarker.Auto())
             {
@@ -192,7 +192,7 @@ namespace PurrNet.Modules
                 Queue(targets[i], header, content, channel);
         }
 
-        public void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
+        public unsafe void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
         {
             using (_queueSingleMarker.Auto())
             {

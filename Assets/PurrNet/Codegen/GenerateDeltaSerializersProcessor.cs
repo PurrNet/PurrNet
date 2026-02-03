@@ -276,7 +276,7 @@ namespace PurrNet.Codegen
                         var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
                         var setter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Set_{field.Name}");
 
-                        var getterReference = new MethodReference(getter, fieldType, typeRef)
+                        var getterReference = new MethodReference(getter, field.FieldType, typeRef)
                         {
                             HasThis = true
                         };
@@ -287,7 +287,7 @@ namespace PurrNet.Codegen
                         };
 
                         setterReference.Parameters.Add(
-                            new ParameterDefinition("value", ParameterAttributes.None, fieldType));
+                            new ParameterDefinition("value", ParameterAttributes.None, field.FieldType));
 
                         il.Emit(OpCodes.Ldarg_0);
 
@@ -303,7 +303,7 @@ namespace PurrNet.Codegen
                         il.Emit(OpCodes.Ldarg_2);
                         if (isClass) il.Emit(OpCodes.Ldind_Ref);
                         il.Emit(OpCodes.Ldloc, variable);
-                        il.Emit(OpCodes.Call, setterReference);
+                        il.Emit(OpCodes.Callvirt, setterReference);
                         ++readFields;
                         continue;
                     }
@@ -523,7 +523,7 @@ namespace PurrNet.Codegen
                         method.Body.Variables.Add(variable);
 
                         var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
-                        var getterReference = new MethodReference(getter, fieldType, typeRef)
+                        var getterReference = new MethodReference(getter, field.FieldType, typeRef)
                         {
                             HasThis = true
                         };
