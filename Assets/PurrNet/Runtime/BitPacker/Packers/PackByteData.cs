@@ -1,5 +1,4 @@
 using System;
-using LiteNetLib;
 using PurrNet.Modules;
 using PurrNet.Transports;
 
