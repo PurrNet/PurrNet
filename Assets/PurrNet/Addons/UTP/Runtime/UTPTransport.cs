@@ -303,6 +303,9 @@ namespace PurrNet.UTP
 
             if (_client == null)
                 return;
+            
+            _client.onConnectionState -= OnClientStateChanged;
+            _client.onDataReceived -= OnClientDataReceived;
 
             _client.Stop();
             _client = null;
