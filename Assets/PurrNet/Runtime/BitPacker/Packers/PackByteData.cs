@@ -92,6 +92,7 @@ namespace PurrNet.Packing
             int lengthInt = (int)length.value;
             int origin = packer.AdvanceBits(lengthInt);
             data = new BitData(packer, origin, lengthInt);
+            packer.EnsurePadding();
         }
     }
 }

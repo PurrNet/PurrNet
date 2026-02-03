@@ -195,6 +195,13 @@ namespace PurrNet.Packing
             _isReading = readMode;
         }
 
+        public void EnsurePadding()
+        {
+            int requiredBytes = positionInBytes + 8;
+            if (requiredBytes > _buffer.Length)
+                Array.Resize(ref _buffer, requiredBytes);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureBitsExist(int bits)
         {
