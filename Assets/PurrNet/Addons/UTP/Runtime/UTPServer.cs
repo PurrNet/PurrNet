@@ -12,9 +12,12 @@ using PurrNet.Transports;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using Unity.Networking.Transport;
-using Unity.Networking.Transport.Relay;
 using Unity.Collections;
 using Unity.Networking.Transport.Error;
+#endif
+
+#if UTP_SERVICES
+using Unity.Networking.Transport.Relay;
 #endif
 
 namespace PurrNet.UTP

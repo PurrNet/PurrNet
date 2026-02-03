@@ -14,9 +14,12 @@ using PurrNet.Transports;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using PurrNet.Logging;
 using Unity.Networking.Transport;
-using Unity.Networking.Transport.Relay;
 using Unity.Collections;
 using Unity.Networking.Transport.Error;
+#endif
+
+#if UTP_SERVICES
+using Unity.Networking.Transport.Relay;
 #endif
 
 namespace PurrNet.UTP
