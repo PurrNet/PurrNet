@@ -508,8 +508,11 @@ namespace PurrNet.Packing
             if (bits > 64)
                 throw new ArgumentOutOfRangeException(nameof(bits));
 
+            EnsureBitsExist(bits);
+
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
+            int safeBytes = _buffer.Length - bytePos;
 
             ulong result;
 
@@ -517,6 +520,11 @@ namespace PurrNet.Packing
             {
                 if (bitOffset == 0)
                 {
+                    // Guard: fast paths use wide pointer reads (up to 8 bytes).
+                    // Fall back to the safe slow path when near the end of the buffer.
+                    if (safeBytes < 8)
+                        goto SlowPath;
+
                     // Fast path: byte-aligned reads
                     switch (bits)
                     {
@@ -571,6 +579,10 @@ namespace PurrNet.Packing
                 }
                 else
                 {
+                    // Guard: unaligned path reads 8 bytes via pointer
+                    if (safeBytes < 8)
+                        goto SlowPath;
+
                     // Unaligned read - read as 64-bit and extract bits
                     int totalBits = bits + bitOffset;
 
