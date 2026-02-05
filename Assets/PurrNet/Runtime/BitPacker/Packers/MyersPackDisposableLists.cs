@@ -10,7 +10,7 @@ namespace PurrNet.Packing
         {
             var scope = new DeltaWritingScope(packer);
 
-            if (Packer.AreEqual(old, value))
+            if (old.Equals(value))
                 return scope.Complete();
 
             if (value.isDisposed)
