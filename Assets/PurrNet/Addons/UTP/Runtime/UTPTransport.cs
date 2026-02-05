@@ -386,13 +386,16 @@ namespace PurrNet.UTP
         
         private void OnClientStateChanged(ConnectionState state)
         {
+			// Update clientState BEFORE firing events to prevent race condition
+    		// where authentication tries to send before clientState is updated
+    		clientState = state;
+
             if (state == ConnectionState.Connected)
                 onConnected?.Invoke(new Connection(0), false);
 
             if (state == ConnectionState.Disconnected)
                 onDisconnected?.Invoke(new Connection(0), DisconnectReason.ClientRequest, false);
-
-            clientState = state;
+			
         }
         
         /// <summary>
