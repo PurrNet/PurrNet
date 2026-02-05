@@ -1,3 +1,10 @@
+# [1.19.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.14...v1.19.0-beta.15) (2026-02-05)
+
+
+### Bug Fixes
+
+* BadImageFormatException: Method with open type while not compiling gshared ([2216218](https://github.com/PurrNet/PurrNet/commit/2216218a13f64507d2875b7691980251846ef8c4))
+
 # [1.19.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.13...v1.19.0-beta.14) (2026-02-05)
 
 
