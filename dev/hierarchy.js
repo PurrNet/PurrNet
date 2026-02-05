@@ -100,6 +100,7 @@ var hierarchy =
       [ "PurrNet.Packing.BitPackerWithLength", "structPurrNet_1_1Packing_1_1BitPackerWithLength.html", null ],
       [ "PurrNet.Packing.BitPackerWrapper", "structPurrNet_1_1Packing_1_1BitPackerWrapper.html", null ],
       [ "PurrNet.Packing.DiffOp< T >", "structPurrNet_1_1Packing_1_1DiffOp.html", null ],
+      [ "PurrNet.Packing.DiffOpNative< T >", "structPurrNet_1_1Packing_1_1DiffOpNative.html", null ],
       [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
       [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >", "structPurrNet_1_1Pooling_1_1DisposableDictionary.html", null ],
       [ "PurrNet.Pooling.DisposableHashSet< T >", "structPurrNet_1_1Pooling_1_1DisposableHashSet.html", null ],
