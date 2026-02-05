@@ -132,6 +132,8 @@ namespace PurrNet.Packing
             Packer<NativeArray<T>>.RegisterReader(PackNativeCollections.ReadNativeArray<T>);
             DeltaPacker<NativeArray<T>>.RegisterWriter(PackNativeCollections.WriteNativeArrayDelta<T>);
             DeltaPacker<NativeArray<T>>.RegisterReader(PackNativeCollections.ReadNativeArrayDelta<T>);
+            PurrEquality<NativeArray<T>>.OverrideDefault(new NativeArrayComparator<T>());
+            PurrCopy<NativeArray<T>>.Override(PackNativeCollections.CopyNativeArray<T>);
             DiffOpNativeSerializer.Register<T>();
         }
 
@@ -142,6 +144,8 @@ namespace PurrNet.Packing
             Packer<NativeList<T>>.RegisterReader(PackNativeCollections.ReadNativeList<T>);
             DeltaPacker<NativeList<T>>.RegisterWriter(MyersPackNativeLists.WriteNativeListDelta<T>);
             DeltaPacker<NativeList<T>>.RegisterReader(MyersPackNativeLists.ReadNativeListDelta<T>);
+            PurrEquality<NativeList<T>>.OverrideDefault(new NativeListComparator<T>());
+            PurrCopy<NativeList<T>>.Override(PackNativeCollections.CopyNativeList<T>);
             DiffOpNativeSerializer.Register<T>();
         }
 

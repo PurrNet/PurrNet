@@ -9,6 +9,26 @@ namespace PurrNet.Packing
         [UsedImplicitly]
         public static Allocator ReadAllocator { get; set; } = Allocator.Persistent;
 
+        /// <summary>Fast copy for PurrCopy; uses NativeArray.Copy instead of packer round-trip.</summary>
+        [UsedByIL]
+        public static NativeArray<T> CopyNativeArray<T>(in NativeArray<T> value) where T : unmanaged
+        {
+            if (!value.IsCreated) return default;
+            var copy = new NativeArray<T>(value.Length, ReadAllocator);
+            NativeArray<T>.Copy(value, copy);
+            return copy;
+        }
+
+        /// <summary>Fast copy for PurrCopy; copies elements into a new list instead of packer round-trip.</summary>
+        [UsedByIL]
+        public static NativeList<T> CopyNativeList<T>(in NativeList<T> value) where T : unmanaged
+        {
+            if (!value.IsCreated) return default;
+            var copy = new NativeList<T>(value.Length, ReadAllocator);
+            copy.AddRange(value.AsArray());
+            return copy;
+        }
+
         [UsedByIL]
         public static void WriteNativeArray<T>(BitPacker packer, NativeArray<T> value) where T : unmanaged
         {
