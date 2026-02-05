@@ -1338,6 +1338,7 @@ namespace PurrNet
                 {
                     _clientModules.UnregisterModules();
                     CleanupClientModules();
+                    TriggerUnsubscribeEvents(false);
                     _isCleaningClient = false;
                 }
             }
@@ -1347,6 +1348,7 @@ namespace PurrNet
                 _isServerTicking = false;
                 _serverModules.UnregisterModules();
                 CleanupServerModules();
+                TriggerUnsubscribeEvents(true);
                 _isCleaningServer = false;
             }
 
