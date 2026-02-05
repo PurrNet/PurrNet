@@ -1,3 +1,10 @@
+# [1.19.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.13...v1.19.0-beta.14) (2026-02-05)
+
+
+### Bug Fixes
+
+* scene module events not firing ([382094f](https://github.com/PurrNet/PurrNet/commit/382094f8ed40c82c556532dedfd133cd9c3bbd90))
+
 # [1.19.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.12...v1.19.0-beta.13) (2026-02-03)
 
 
