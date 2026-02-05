@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using PurrNet;
 using UnityEngine;
 
@@ -17,6 +16,8 @@ public class Test : NetworkIdentity
         base.OnSpawned();
         if (isServer)
         {
+            _myTestDictionary.Clear();
+
             _myTestDictionary.Add(1, new TestClass() { myStats = 20 });
             _myTestDictionary.Add(3, new TestClass() { myStats = 30 });
             _myTestDictionary.Add(69, new TestClass() { myStats = 420 });

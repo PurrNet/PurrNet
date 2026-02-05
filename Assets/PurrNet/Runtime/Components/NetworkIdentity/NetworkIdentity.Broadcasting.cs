@@ -461,22 +461,24 @@ namespace PurrNet
             {
                 if (!_isSpawnedServer && !_isSpawnedClient)
                 {
-                    if (signature is
-                        { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                    if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                    {
                         PurrLogger.LogError(
                             $"Trying to send RPC `{signature.rpcName}` from '{GetType().Name}' which is not spawned.",
                             this);
+                    }
                     module = null;
                     return false;
                 }
 
                 if (!networkManager.TryGetRpcModule(networkManager.isServer, out module))
                 {
-                    if (signature is
-                        { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                    if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                    {
                         PurrLogger.LogError(
                             $"Trying to send RPC `{signature.rpcName}` from `{GetType().Name}` but RPCModule is missing for `{(networkManager.isServer ? "server" : "client")}`.",
                             this);
+                    }
                     return false;
                 }
 

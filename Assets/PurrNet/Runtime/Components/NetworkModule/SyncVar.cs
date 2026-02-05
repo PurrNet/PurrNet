@@ -145,6 +145,8 @@ namespace PurrNet
 
         public override void OnDespawned()
         {
+            InvalidateIsController();
+
             if (isControllingSyncVar)
             {
                 _id += 1;
