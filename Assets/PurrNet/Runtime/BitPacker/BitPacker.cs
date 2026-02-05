@@ -191,8 +191,12 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPositionAndMode(bool readMode)
         {
+            int writtenBytes = (_positionInBits + 7) >> 3;
             _positionInBits = 0;
             _isReading = readMode;
+            // Ensure read path has enough margin (ReadBits reads 8-byte ulong; need bytePos+8 bytes)
+            if (readMode && !isWrapper && _buffer.Length < writtenBytes + 8)
+                Array.Resize(ref _buffer, writtenBytes + 8);
         }
 
         public void EnsurePadding()
@@ -206,7 +210,21 @@ namespace PurrNet.Packing
         public void EnsureBitsExist(int bits)
         {
             int targetPos = _positionInBits + bits;
-            int requiredBytes = _isReading ? (targetPos + 7) >> 3 : ((targetPos + 7) >> 3) + 8;
+            int requiredBytes;
+            if (_isReading)
+            {
+                int bytePos = _positionInBits >> 3;
+                int bitOffset = _positionInBits & 7;
+                // ReadBitsWithoutChecks always reads 8 bytes (ulong) at bytePos; when overflow it reads bytePos+8
+                int minBytesForUlong = bytePos + 8;
+                int minBytesForOverflow = (bits + bitOffset > 64) ? bytePos + 9 : minBytesForUlong;
+                int requiredFromBits = (targetPos + 7) >> 3;
+                requiredBytes = Math.Max(requiredFromBits, minBytesForOverflow);
+            }
+            else
+            {
+                requiredBytes = ((targetPos + 7) >> 3) + 8;
+            }
 
             if (requiredBytes > _buffer.Length)
             {
@@ -368,6 +386,7 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe bool ReadBit()
         {
+            EnsureBitsExist(1);
             fixed (byte* b = &_buffer[_positionInBits >> 3])
             {
                 bool result = (*b & (1 << (_positionInBits & 7))) != 0;
