@@ -688,7 +688,7 @@ namespace PurrNet.Codegen
 
             if (isClass && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
             {
-                var baseType = type.BaseType;
+                var baseType = ResolveGenericTypeRef(type.BaseType, typeRef);
 
                 if (baseType is { IsValueType: false })
                 {
@@ -912,6 +912,16 @@ namespace PurrNet.Codegen
             bool ignore = field.CustomAttributes.Any(a =>
                 a.AttributeType.FullName == typeof(DontPackAttribute).FullName) || DoesTypeHaveDontPackAttribute(field.FieldType.Resolve());
             return ignore;
+        }
+
+        public static TypeReference ResolveGenericTypeRef(TypeReference fieldType, TypeReference declaringType)
+        {
+            if (declaringType is GenericInstanceType genericDeclaringType)
+            {
+                return SubstituteDeclaringTypeGenerics(fieldType, genericDeclaringType);
+            }
+
+            return fieldType;
         }
 
         public static TypeReference ResolveGenericFieldType(FieldDefinition field, TypeReference declaringType)

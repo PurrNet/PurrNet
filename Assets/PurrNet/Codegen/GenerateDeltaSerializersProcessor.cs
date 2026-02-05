@@ -212,13 +212,18 @@ namespace PurrNet.Codegen
             {
                 if (isClass && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
                 {
-                    var baseType = type.BaseType;
+                    var baseType = GenerateSerializersProcessor.ResolveGenericTypeRef(type.BaseType, typeRef);
 
                     if (baseType is { IsValueType: false })
                     {
                         if (!TryGetInlinedMethod(false, baseType, module, out var genericM))
-                            genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
-                                    module);
+                        {
+                            genericM = GenerateSerializersProcessor.CreateGenericMethod(
+                                deltaPackerGenType,
+                                baseType,
+                                deltaSerializer,
+                                module);
+                        }
 
                         var variable = new VariableDefinition(baseType);
                         method.Body.Variables.Add(variable);
@@ -235,7 +240,7 @@ namespace PurrNet.Codegen
 
                         il.Emit(OpCodes.Ldarg_2);
                         il.Emit(OpCodes.Ldloc, variable);
-                        il.Emit(OpCodes.Castclass, type);
+                        il.Emit(OpCodes.Castclass, typeRef);
                         il.Emit(OpCodes.Stind_Ref);
                         ++readFields;
                     }
@@ -461,7 +466,7 @@ namespace PurrNet.Codegen
 
                 if (isInheritedClass)
                 {
-                    var baseType = type.BaseType;
+                    var baseType = GenerateSerializersProcessor.ResolveGenericTypeRef(type.BaseType, typeRef);
 
                     if (baseType is { IsValueType: false })
                     {
