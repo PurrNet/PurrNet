@@ -335,7 +335,7 @@ namespace PurrNet
                 if (_localPlayer.HasValue)
                     return _localPlayer;
 
-                if (networkManager.TryGetModule<PlayersManager>(false, out var players))
+                if (networkManager && networkManager.TryGetModule<PlayersManager>(false, out var players))
                 {
                     _localPlayer = players.localPlayerId;
                     return _localPlayer;
