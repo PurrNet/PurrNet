@@ -1,3 +1,10 @@
+# [1.19.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.15...v1.19.0-beta.16) (2026-02-05)
+
+
+### Bug Fixes
+
+* add null check for networkManager in PlayersManager retrieval ([567ac4f](https://github.com/PurrNet/PurrNet/commit/567ac4fb1e9022c774c843635db63d1c41c5fe86))
+
 # [1.19.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.14...v1.19.0-beta.15) (2026-02-05)
 
 
