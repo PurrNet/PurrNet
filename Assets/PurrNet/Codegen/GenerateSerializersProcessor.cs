@@ -24,7 +24,9 @@ namespace PurrNet.Codegen
         DisposableList,
         DisposableArray,
         DisposableHashSet,
-        DisposableDictionary
+        DisposableDictionary,
+        NativeArray,
+        NativeList
     }
 
     public static class GenerateSerializersProcessor
@@ -441,6 +443,18 @@ namespace PurrNet.Codegen
                     genericRegisterNullableMethod.GenericArguments.Add(nullableType.GenericArguments[0]);
 
                     il.Emit(OpCodes.Call, genericRegisterNullableMethod);
+                    break;
+                case HandledGenericTypes.NativeArray when importedType is GenericInstanceType nativeArrayType:
+                    var registerNativeArrayMethod = packCollectionsType.GetMethod("RegisterNativeArray", true).Import(module);
+                    var genericRegisterNativeArrayMethod = new GenericInstanceMethod(registerNativeArrayMethod);
+                    genericRegisterNativeArrayMethod.GenericArguments.Add(nativeArrayType.GenericArguments[0]);
+                    il.Emit(OpCodes.Call, genericRegisterNativeArrayMethod);
+                    break;
+                case HandledGenericTypes.NativeList when importedType is GenericInstanceType nativeListType:
+                    var registerNativeListMethod = packCollectionsType.GetMethod("RegisterNativeList", true).Import(module);
+                    var genericRegisterNativeListMethod = new GenericInstanceMethod(registerNativeListMethod);
+                    genericRegisterNativeListMethod.GenericArguments.Add(nativeListType.GenericArguments[0]);
+                    il.Emit(OpCodes.Call, genericRegisterNativeListMethod);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(handledType), handledType, null);
@@ -1083,6 +1097,18 @@ namespace PurrNet.Codegen
                 return true;
             }
 
+            if (IsGenericUnityCollections(typeDef, "Unity.Collections.NativeArray`1"))
+            {
+                type = HandledGenericTypes.NativeArray;
+                return true;
+            }
+
+            if (IsGenericUnityCollections(typeDef, "Unity.Collections.NativeList`1"))
+            {
+                type = HandledGenericTypes.NativeList;
+                return true;
+            }
+
             if (IsGeneric(typeDef, typeof(DisposableArray<>)))
             {
                 type = HandledGenericTypes.DisposableArray;
@@ -1152,6 +1178,17 @@ namespace PurrNet.Codegen
 
                 // Check if the resolved type matches Task<>
                 return resolvedType != null && resolvedType.FullName == type.FullName;
+            }
+
+            return false;
+        }
+
+        private static bool IsGenericUnityCollections(TypeReference typeDef, string genericTypeFullName)
+        {
+            if (typeDef is GenericInstanceType genericInstance)
+            {
+                var resolved = genericInstance.ElementType.Resolve();
+                return resolved != null && resolved.FullName == genericTypeFullName;
             }
 
             return false;
