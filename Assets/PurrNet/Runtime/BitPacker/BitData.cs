@@ -8,16 +8,7 @@ namespace PurrNet.Packing
         public Size bitOrigin;
         public Size bitLength;
 
-        public int byteLength
-        {
-            get
-            {
-                int bitPos = (int)bitLength.value;
-                int pos = bitPos / 8;
-                int len = pos + (bitPos % 8 == 0 ? 0 : 1);
-                return len;
-            }
-        }
+        public int byteLength => ((int)bitLength.value + 7) >> 3;
 
         public BitData(BitPacker packer)
         {
