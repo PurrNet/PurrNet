@@ -9,15 +9,15 @@ namespace PurrNet.Packing
 {
     public static class DeltaPacker<T>
     {
-        public static unsafe delegate*<BitPacker, T, T, bool> WriteFunc;
-        public static unsafe delegate*<BitPacker, T, ref T, void> ReadFunc;
+        public static DeltaWriteFunc<T> WriteFunc;
+        public static DeltaReadFunc<T> ReadFunc;
 
         static bool _hasWriter, _hasReader;
 
-        static unsafe DeltaPacker()
+        static DeltaPacker()
         {
-            WriteFunc = &DeltaPacker.FallbackWriter;
-            ReadFunc = &DeltaPacker.FallbackReader;
+            WriteFunc = DeltaPacker.FallbackWriter;
+            ReadFunc = DeltaPacker.FallbackReader;
         }
 
         [UsedImplicitly]
@@ -32,38 +32,24 @@ namespace PurrNet.Packing
             return _hasWriter && _hasReader;
         }
 
-        public static unsafe void RegisterWriter(DeltaWriteFunc<T> write)
-        {
-            var handle = write.Method.MethodHandle;
-            var ptr = (delegate*<BitPacker, T, T, bool>)handle.GetFunctionPointer();
-            RegisterWriterWithPointer(write, ptr);
-        }
-
-        static unsafe void RegisterWriterWithPointer(DeltaWriteFunc<T> write, delegate*<BitPacker, T, T, bool> ptr)
+        public static void RegisterWriter(DeltaWriteFunc<T> write)
         {
             if (_hasWriter)
                 return;
 
             _hasWriter = true;
             DeltaPacker.RegisterWriter(typeof(T), write.Method);
-            WriteFunc = ptr;
+            WriteFunc = write;
         }
 
-        public static unsafe void RegisterReader(DeltaReadFunc<T> read)
-        {
-            var handle = read.Method.MethodHandle;
-            var ptr = (delegate*<BitPacker, T, ref T, void>)handle.GetFunctionPointer();
-            RegisterReaderWithPointer(read, ptr);
-        }
-
-        public static unsafe void RegisterReaderWithPointer(DeltaReadFunc<T> b, delegate*<BitPacker, T, ref T, void> ptr)
+        public static void RegisterReader(DeltaReadFunc<T> read)
         {
             if (_hasReader)
                 return;
 
             _hasReader = true;
-            DeltaPacker.RegisterReader(typeof(T), b.Method);
-            ReadFunc = ptr;
+            DeltaPacker.RegisterReader(typeof(T), read.Method);
+            ReadFunc = read;
         }
 
         [UsedByIL]
@@ -95,7 +81,7 @@ namespace PurrNet.Packing
 #if !PURR_DELTA_CHECK
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public static unsafe bool Write(BitPacker packer, T oldValue, T newValue)
+        public static bool Write(BitPacker packer, T oldValue, T newValue)
         {
 #if PURR_DELTA_CHECK
             Packer<T>.Write(packer, oldValue);
@@ -118,7 +104,7 @@ namespace PurrNet.Packing
 #if !PURR_DELTA_CHECK
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public static unsafe void Read(BitPacker packer, T oldValue, ref T value)
+        public static void Read(BitPacker packer, T oldValue, ref T value)
         {
 #if PURR_DELTA_CHECK
             var shouldBeOld = Packer<T>.Read(packer);
@@ -147,7 +133,7 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void Serialize(BitPacker packer, T oldValue, ref T value)
+        public static void Serialize(BitPacker packer, T oldValue, ref T value)
         {
             if (packer.isWriting)
                 WriteFunc(packer, oldValue, value);
