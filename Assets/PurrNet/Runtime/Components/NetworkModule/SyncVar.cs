@@ -151,7 +151,13 @@ namespace PurrNet
 
         private void InvalidateIsController()
         {
-            isControllingSyncVar = parent.IsController(_ownerAuth);
+            bool old = isControllingSyncVar;
+            bool @new = parent.IsController(_ownerAuth);
+
+            isControllingSyncVar = @new;
+
+            if (old != @new && !@new)
+                _ignoreServerUpdates = false;
         }
 
         public override void OnDespawned()
