@@ -755,9 +755,10 @@ namespace PurrNet.Codegen
                     continue;
 
                 var fieldType = ResolveGenericFieldType(field, typeRef);
-                var genericM = CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
+                bool useNativeCalli = fieldType.Resolve()?.IsUnmanaged() == true;
+                MethodReference genericM = useNativeCalli ? null : CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
 
-                // make field public
+                // make field publicp
                 if (!field.IsPublic)
                 {
                     if (isWriting)
@@ -793,7 +794,11 @@ namespace PurrNet.Codegen
                             il.Emit(OpCodes.Ldarga_S, valueArg);
 
                         il.Emit(OpCodes.Call, getter);
-                        il.Emit(OpCodes.Call, genericM);
+
+                        if (useNativeCalli)
+                            EmitNativePackerCalli(il, mainmodule, fieldType, bitPackerType, true);
+                        else
+                            il.Emit(OpCodes.Call, genericM);
                     }
                     else
                     {
@@ -828,7 +833,11 @@ namespace PurrNet.Codegen
 
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldloca, variable);
-                        il.Emit(OpCodes.Call, genericM);
+
+                        if (useNativeCalli)
+                            EmitNativePackerCalli(il, mainmodule, fieldType, bitPackerType, false);
+                        else
+                            il.Emit(OpCodes.Call, genericM);
 
                         il.Emit(OpCodes.Ldarg_1);
                         if (isClass) il.Emit(OpCodes.Ldind_Ref);
@@ -846,7 +855,11 @@ namespace PurrNet.Codegen
                     var fieldRef = new FieldReference(field.Name, field.FieldType, typeRef).Import(mainmodule);
 
                     il.Emit(isWriting ? OpCodes.Ldfld : OpCodes.Ldflda, fieldRef);
-                    il.Emit(OpCodes.Call, genericM);
+
+                    if (useNativeCalli)
+                        EmitNativePackerCalli(il, mainmodule, fieldType, bitPackerType, isWriting);
+                    else
+                        il.Emit(OpCodes.Call, genericM);
                 }
             }
 
@@ -1029,11 +1042,48 @@ namespace PurrNet.Codegen
             il.Emit(OpCodes.Ret);
         }
 
+        /// <summary>
+        /// For unmanaged types: emits ldsfld NativePacker(T).WriteFunc/ReadFunc + calli.
+        /// Args must already be on the stack before calling this.
+        /// </summary>
+        static void EmitNativePackerCalli(ILProcessor il, ModuleDefinition module, TypeReference fieldType, TypeReference bitStreamType, bool isWrite)
+        {
+            var nativePackerDef = module.GetTypeDefinition(typeof(NativePacker<>));
+            var fieldName = isWrite ? "WriteFunc" : "ReadFunc";
+            var genericParam = nativePackerDef.GenericParameters[0]; // !0
+
+            // Construct FunctionPointerType matching the field signature:
+            // Write: delegate*<BitPacker, !0, void>
+            // Read:  delegate*<BitPacker, ref !0, void>
+            var funcPtrType = new FunctionPointerType();
+            funcPtrType.ReturnType = module.TypeSystem.Void;
+            funcPtrType.Parameters.Add(new ParameterDefinition(bitStreamType));
+            funcPtrType.Parameters.Add(isWrite
+                ? new ParameterDefinition(genericParam)
+                : new ParameterDefinition(new ByReferenceType(genericParam)));
+
+            var genericInstance = new GenericInstanceType(nativePackerDef.Import(module));
+            genericInstance.GenericArguments.Add(fieldType);
+
+            var fieldRef = new FieldReference(fieldName, funcPtrType, genericInstance);
+            il.Emit(OpCodes.Ldsfld, fieldRef);
+
+            // calli uses concrete types
+            var callSite = new CallSite(module.TypeSystem.Void);
+            callSite.Parameters.Add(new ParameterDefinition(bitStreamType));
+            callSite.Parameters.Add(isWrite
+                ? new ParameterDefinition(fieldType)
+                : new ParameterDefinition(new ByReferenceType(fieldType)));
+            il.Emit(OpCodes.Calli, callSite);
+        }
+
         private static void HandleEnums(bool isWriting, MethodDefinition method, MethodReference serialize,
             TypeDefinition type, ILProcessor il, TypeReference packerType, ModuleDefinition mainmodule)
         {
             var underlyingType = type.GetField("value__").FieldType;
-            var enumWriteMethod = CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
+            bool useNativeCalli = underlyingType.Resolve()?.IsUnmanaged() == true;
+            var enumWriteMethod = useNativeCalli ? null : CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
+            var bitPackerType = mainmodule.GetTypeDefinition(typeof(BitPacker)).Import(mainmodule);
 
             var tmpVar = new VariableDefinition(underlyingType);
 
@@ -1050,12 +1100,20 @@ namespace PurrNet.Codegen
             if (isWriting)
             {
                 il.Emit(OpCodes.Ldarg_1);
-                il.Emit(OpCodes.Call, enumWriteMethod);
+
+                if (useNativeCalli)
+                    EmitNativePackerCalli(il, mainmodule, underlyingType, bitPackerType, true);
+                else
+                    il.Emit(OpCodes.Call, enumWriteMethod);
             }
             else
             {
                 il.Emit(OpCodes.Ldloca, tmpVar);
-                il.Emit(OpCodes.Call, enumWriteMethod);
+
+                if (useNativeCalli)
+                    EmitNativePackerCalli(il, mainmodule, underlyingType, bitPackerType, false);
+                else
+                    il.Emit(OpCodes.Call, enumWriteMethod);
 
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldloc_0);
