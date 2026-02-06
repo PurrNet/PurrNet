@@ -1,3 +1,10 @@
+# [1.19.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.16...v1.19.0-beta.17) (2026-02-06)
+
+
+### Bug Fixes
+
+* before failing to set syncvar double check if cached value is up to date; once client does a change to the syncvar, ingore server catchups ([f2cc835](https://github.com/PurrNet/PurrNet/commit/f2cc835a86300263197632ba5709938f4683b5b5))
+
 # [1.19.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.15...v1.19.0-beta.16) (2026-02-05)
 
 
