@@ -1,3 +1,10 @@
+# [1.19.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.17...v1.19.0-beta.18) (2026-02-06)
+
+
+### Bug Fixes
+
+* update isControllingSyncVar logic to handle server updates correctly ([520e587](https://github.com/PurrNet/PurrNet/commit/520e587008e80341b6adde704e0af9dec87a172f))
+
 # [1.19.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.16...v1.19.0-beta.17) (2026-02-06)
 
 
