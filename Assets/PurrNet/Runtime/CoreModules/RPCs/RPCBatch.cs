@@ -169,7 +169,7 @@ namespace PurrNet.Modules
                     {
                         using (_batchReceivedDeltasMarker.Auto())
                         {
-                            DeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
+                            NativeDeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
                             DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
                         }
 
@@ -204,7 +204,7 @@ namespace PurrNet.Modules
 
                 using (_batchWriteDeltasMarker.Auto())
                 {
-                    DeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
+                    NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
                     DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
                 }
 
