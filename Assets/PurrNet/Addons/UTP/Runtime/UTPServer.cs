@@ -95,7 +95,8 @@ namespace PurrNet.UTP
             NetworkEndpoint endpoint;
             if (relayData.HasValue)
             {
-                endpoint = relayData.Value.Endpoint;
+                // When using Unity Relay, bind to 0.0.0.0:0 (AnyIpv4)
+				endpoint = NetworkEndpoint.AnyIpv4;
             }
             else
             {
