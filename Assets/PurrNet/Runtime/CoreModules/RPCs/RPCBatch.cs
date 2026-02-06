@@ -32,12 +32,9 @@ namespace PurrNet.Modules
 
         static readonly ProfilerMarker _flushMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Flush");
         static readonly ProfilerMarker _flushChannelMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.FlushChannel");
-        static readonly ProfilerMarker _getSingleBatchMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.GetBatchIndex");
         static readonly ProfilerMarker _queueSingleMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Queue");
-        static readonly ProfilerMarker _batchWriteDeltasMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.Queue.WriteDeltas");
+        static readonly ProfilerMarker _queueMultiMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.QueueMulti");
         static readonly ProfilerMarker _batchReceivedMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived");
-        static readonly ProfilerMarker _batchReceivedDeltasMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived.ReadDeltas");
-        static readonly ProfilerMarker _batchWriteBitsMarker = new ProfilerMarker($"RPCBatch<{nameof(UnionRPCHeader)}>.OnBatchReceived.WriteBits");
 
         private readonly PlayersManager _playersManager;
         private PendingBatchedData[] _batches = new PendingBatchedData[128];
@@ -126,97 +123,91 @@ namespace PurrNet.Modules
             _playersManager.Send(batch.key.playerId, data, batch.key.channel);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int GetBatchIndex(BatchKey key)
         {
-            using (_getSingleBatchMarker.Auto())
+            if (_batchIndexMap.TryGetValue(key, out int idx))
+                return idx;
+            return CreateBatch(key);
+        }
+
+        private int CreateBatch(BatchKey key)
+        {
+            // Resize if needed
+            if (_batchCount >= _batches.Length)
+                Array.Resize(ref _batches, _batches.Length * 2);
+
+            int c = _batchCount;
+            _batches[c] = new PendingBatchedData
             {
-                if (_batchIndexMap.TryGetValue(key, out int idx))
-                    return idx;
-
-                // Resize if needed
-                if (_batchCount >= _batches.Length)
-                    Array.Resize(ref _batches, _batches.Length * 2);
-
-                int c = _batchCount;
-                _batches[c] = new PendingBatchedData
-                {
-                    key = key,
-                    batchedData = BitPackerPool.Get(),
-                    cachedMTU = _playersManager.GetMTU(key.playerId, key.channel, key.playerId != PlayerID.Server)
-                };
-                _batchIndexMap[key] = c;
-                _batchCount++;
-                return c;
-            }
+                key = key,
+                batchedData = BitPackerPool.Get(),
+                cachedMTU = _playersManager.GetMTU(key.playerId, key.channel, key.playerId != PlayerID.Server)
+            };
+            _batchIndexMap[key] = c;
+            _batchCount++;
+            return c;
         }
 
         private unsafe void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
         {
-            using (_batchReceivedMarker.Auto())
+            _batchReceivedMarker.Begin();
+
+            UnionRPCHeader lastHeader = default;
+            Size lastLen = default;
+
+            var packer = data.data.packer;
+            using (data.data.AutoScope())
             {
-                UnionRPCHeader lastHeader = default;
-                Size lastLen = default;
-
-                var packer = data.data.packer;
-                using (data.data.AutoScope())
+                for (var i = 0; i < data.count.value; ++i)
                 {
-                    for (var i = 0; i < data.count.value; ++i)
-                    {
-                        using (_batchReceivedDeltasMarker.Auto())
-                        {
-                            NativeDeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
-                            DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
-                        }
+                    NativeDeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
+                    DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
 
-                        int pos = packer.positionInBits;
-                        int len = (int)lastLen.value;
+                    int pos = packer.positionInBits;
+                    int len = (int)lastLen.value;
 
-                        var bitData = new BitData(packer, pos, len);
-                        _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
+                    var bitData = new BitData(packer, pos, len);
+                    _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);
 
-                        packer.SetBitPosition(pos + len);
-                    }
+                    packer.SetBitPosition(pos + len);
                 }
             }
+
+            _batchReceivedMarker.End();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel)
+        public unsafe void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel)
         {
+            _queueMultiMarker.Begin();
+
+            var contentLen = content.bitLength;
+            int contentByteLen = content.byteLength;
+            bool hasContent = contentLen.value > 0;
+
             for (var i = targets.Count - 1; i >= 0; i--)
-                Queue(targets[i], header, content, channel);
-        }
-
-        public unsafe void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
-        {
-            using (_queueSingleMarker.Auto())
             {
-                var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+                var batchIdx = GetBatchIndex(new BatchKey { playerId = targets[i], channel = channel });
                 ref var batch = ref _batches[batchIdx];
 
                 int before = batch.batchedData.positionInBits;
-                var contentLen = content.bitLength;
 
-                using (_batchWriteDeltasMarker.Auto())
-                {
-                    NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
-                    DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
-                }
-
-                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.byteLength;
+                NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
+                DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
 
                 // do some MTU checks past 1 batch
-                if (batch.batchCount > 0 && bytesAfterHeaderLen + 10 >= batch.cachedMTU)
+                if (batch.batchCount > 0)
                 {
-                    // undo the last write
-                    batch.batchedData.SetBitPosition(before);
-                    SendBatch(ref batch);
-                    batch.batchCount = 0;
-                    batch.batchedData.ResetPositionAndMode(false);
-
-                    // redo the last write
-                    using (_batchWriteDeltasMarker.Auto())
+                    int bytesAfterHeaderLen = batch.batchedData.positionInBytes + contentByteLen;
+                    if (bytesAfterHeaderLen + 10 >= batch.cachedMTU)
                     {
+                        // undo the last write
+                        batch.batchedData.SetBitPosition(before);
+                        SendBatch(ref batch);
+                        batch.batchCount = 0;
+                        batch.batchedData.ResetPositionAndMode(false);
+
+                        // redo the last write
                         NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);
                         DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                     }
@@ -226,12 +217,52 @@ namespace PurrNet.Modules
                 batch.lastHeader = header;
                 batch.lastDataLen = contentLen;
 
-                using (_batchWriteBitsMarker.Auto())
+                if (hasContent)
+                    batch.batchedData.WriteBitDataWithoutConsumingIt(content);
+            }
+
+            _queueMultiMarker.End();
+        }
+
+        public unsafe void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
+        {
+            _queueSingleMarker.Begin();
+
+            var batchIdx = GetBatchIndex(new BatchKey { playerId = target, channel = channel });
+            ref var batch = ref _batches[batchIdx];
+
+            int before = batch.batchedData.positionInBits;
+            var contentLen = content.bitLength;
+
+            NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
+            DeltaPackInteger.WriteIndex(batch.batchedData, batch.lastDataLen, contentLen);
+
+            // do some MTU checks past 1 batch
+            if (batch.batchCount > 0)
+            {
+                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.byteLength;
+                if (bytesAfterHeaderLen + 10 >= batch.cachedMTU)
                 {
-                    if (contentLen.value > 0)
-                        batch.batchedData.WriteBitDataWithoutConsumingIt(content);
+                    // undo the last write
+                    batch.batchedData.SetBitPosition(before);
+                    SendBatch(ref batch);
+                    batch.batchCount = 0;
+                    batch.batchedData.ResetPositionAndMode(false);
+
+                    // redo the last write
+                    NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);
+                    DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                 }
             }
+
+            ++batch.batchCount;
+            batch.lastHeader = header;
+            batch.lastDataLen = contentLen;
+
+            if (contentLen.value > 0)
+                batch.batchedData.WriteBitDataWithoutConsumingIt(content);
+
+            _queueSingleMarker.End();
         }
 
         public void Clear()
