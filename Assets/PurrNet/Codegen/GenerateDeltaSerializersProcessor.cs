@@ -101,14 +101,46 @@ namespace PurrNet.Codegen
             inlinedDeltaWriteMethods[type] = reference;
         }
 
+        static TypeReference GetDeltaPackerForType(ModuleDefinition module, TypeReference type)
+        {
+            bool isUnmanaged = type?.Resolve()?.IsUnmanaged() == true;
+            if (isUnmanaged)
+                return module.GetTypeDefinition(typeof(NativeDeltaPacker<>)).Import(module);
+            return module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
+        }
+
+        static MethodReference GetDeltaPackerReadMethod(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("Read").Import(module);
+            return deltaSerializer;
+        }
+
+        static MethodReference GetDeltaPackerReadMethodUnpacked(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("ReadUnpacked").Import(module);
+            return deltaSerializer;
+        }
+
+        static MethodReference GetDeltaPackerWriteMethod(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("Write").Import(module);
+            return deltaSerializer;
+        }
+
+        static MethodReference GetDeltaPackerWriteMethodUnpacked(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("WriteUnpacked").Import(module);
+            return deltaSerializer;
+        }
+
         private static void CreateReadMethod(ModuleDefinition module, MethodDefinition method, TypeReference typeRef,
             TypeReference bitStreamType)
         {
             var packerType = module.GetTypeDefinition(typeof(Packer)).Import(module);
-            var deltaPackerGenType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
-
-            var deltaSerializer = deltaPackerGenType.GetMethod("Read").Import(module);
-            var deltaBypassSerializer = deltaPackerGenType.GetMethod("ReadUnpacked").Import(module);
             var packerTypeBoolean = bitStreamType.GetMethod("ReadBit").Import(module);
             var advanceBit = bitStreamType.GetMethod("AdvanceBit", false).Import(module);
 
@@ -136,8 +168,15 @@ namespace PurrNet.Codegen
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
                 if (!TryGetInlinedMethod(false, standaloneType, module, out var genericM))
-                    genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
+                {
+                    var deltaPackerGenType = GetDeltaPackerForType(module, standaloneType);
+                    var deltaSerializer = GetDeltaPackerReadMethod(module, standaloneType);
+                    genericM = GenerateSerializersProcessor.CreateGenericMethod(
+                        deltaPackerGenType,
+                        standaloneType,
+                        deltaSerializer,
                         module);
+                }
 
                 var variable = new VariableDefinition(standaloneType);
                 method.Body.Variables.Add(variable);
@@ -188,8 +227,12 @@ namespace PurrNet.Codegen
             {
                 var underlyingType = type.GetField("value__").FieldType;
                 if (!TryGetInlinedMethod(false, underlyingType, module, out var enumReadMethod))
+                {
+                    var deltaPackerGenType = GetDeltaPackerForType(module, underlyingType);
+                    var deltaSerializer = GetDeltaPackerReadMethod(module, underlyingType);
                     enumReadMethod = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
                         module);
+                }
 
                 var tmpVar = new VariableDefinition(underlyingType);
 
@@ -218,6 +261,9 @@ namespace PurrNet.Codegen
                     {
                         if (!TryGetInlinedMethod(false, baseType, module, out var genericM))
                         {
+                            var deltaPackerGenType = GetDeltaPackerForType(module, baseType);
+                            var deltaSerializer = GetDeltaPackerReadMethod(module, baseType);
+
                             genericM = GenerateSerializersProcessor.CreateGenericMethod(
                                 deltaPackerGenType,
                                 baseType,
@@ -269,9 +315,15 @@ namespace PurrNet.Codegen
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
                     if (!TryGetInlinedMethod(false, fieldType, module, out var packer))
+                    {
+                        var deltaPackerGenType = GetDeltaPackerForType(module, fieldType);
+                        var deltaSerializer = GetDeltaPackerReadMethod(module, fieldType);
+                        var deltaBypassSerializer = GetDeltaPackerReadMethodUnpacked(module, fieldType);
+
                         packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
                         shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
                         module);
+                    }
 
                     if (!field.IsPublic)
                     {
@@ -364,10 +416,6 @@ namespace PurrNet.Codegen
             TypeReference bitStreamType)
         {
             var bitPackerType = module.GetTypeDefinition(typeof(BitPacker)).Import(module);
-            var deltaPackerGenType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
-
-            var deltaSerializer = deltaPackerGenType.GetMethod("Write").Import(module);
-            var deltaBypassSerializer = deltaPackerGenType.GetMethod("WriteUnpacked").Import(module);
             var advanceOneBitAndSet = bitPackerType.GetMethod("AdvanceOneBitAndSet", false).Import(module);
             var writeBit = bitPackerType.GetMethod("WriteBit", false).Import(module);
             var resetFlagAtAndMovePosition = bitPackerType.GetMethod("ResetFlagAtAndMovePosition", false).Import(module);
@@ -403,9 +451,13 @@ namespace PurrNet.Codegen
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
                 if (!TryGetInlinedMethod(true, standaloneType, module, out var genericM))
+                {
+                    var deltaPackerGenType = GetDeltaPackerForType(module, standaloneType);
+                    var deltaSerializer = GetDeltaPackerWriteMethod(module, standaloneType);
                     genericM =
                     GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
                         module);
+                }
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
@@ -447,8 +499,12 @@ namespace PurrNet.Codegen
             {
                 var underlyingType = type.GetField("value__").FieldType;
                 if (!TryGetInlinedMethod(true, underlyingType, module, out var enumWriteMethod))
+                {
+                    var deltaPackerGenType = GetDeltaPackerForType(module, underlyingType);
+                    var deltaSerializer = GetDeltaPackerWriteMethod(module, underlyingType);
                     enumWriteMethod = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
                         module);
+                }
 
                 il.Emit(OpCodes.Ldarg_0);
 
@@ -471,8 +527,12 @@ namespace PurrNet.Codegen
                     if (baseType is { IsValueType: false })
                     {
                         if (!TryGetInlinedMethod(true, baseType, module, out var genericM))
+                        {
+                            var deltaPackerGenType = GetDeltaPackerForType(module, baseType);
+                            var deltaSerializer = GetDeltaPackerWriteMethod(module, baseType);
                             genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
                                 module);
+                        }
 
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldarg_1);
@@ -513,9 +573,14 @@ namespace PurrNet.Codegen
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
                     if (!TryGetInlinedMethod(true, fieldType, module, out var packer))
+                    {
+                        var deltaPackerGenType = GetDeltaPackerForType(module, fieldType);
+                        var deltaSerializer = GetDeltaPackerWriteMethod(module, fieldType);
+                        var deltaBypassSerializer = GetDeltaPackerWriteMethodUnpacked(module, fieldType);
                         packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
                             shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
                             module);
+                    }
 
                     if (i > 0 || isInheritedClass)
                     {
