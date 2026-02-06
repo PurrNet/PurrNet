@@ -10,7 +10,6 @@ public class PlayerHeadLamp : NetworkIdentity
     {
         if (asServer)
         {
-            Debug.Log("I am the server, adding player stats");
             _playerStats.Clear();
             _playerStats.Add(1);
         }
@@ -20,7 +19,6 @@ public class PlayerHeadLamp : NetworkIdentity
     {
         if (isOwner)
         {
-            Debug.Log("I am the owner, turning lamp off");
             _lampIsOn.value = false;
         }
     }

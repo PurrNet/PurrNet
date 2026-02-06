@@ -122,6 +122,7 @@ GameObject:
   - component: {fileID: 5061607183926739309}
   - component: {fileID: 468800014021081407}
   - component: {fileID: -1040345342283036543}
+  - component: {fileID: -2740744919366121843}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -388,6 +389,27 @@ MonoBehaviour:
   p_parent: {fileID: 6183224292089968140}
   pos: {x: 1, y: 2, z: 3}
   rot: {x: 10, y: 20, z: 30}
+--- !u!114 &-2740744919366121843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2021845121686469242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a02debaf1d37534c8849eaa034822fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Internal.Examples::PlayerNameTest
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
 --- !u!1 &6426148537294609696
 GameObject:
   m_ObjectHideFlags: 0
