@@ -87,7 +87,6 @@ namespace PurrNet.Modules
         {
             using (_flushChannelMarker.Auto())
             {
-                bool removed = false;
                 int writeIdx = 0;
 
                 for (int i = 0; i < _batchCount; i++)
@@ -98,25 +97,21 @@ namespace PurrNet.Modules
                     {
                         SendBatch(ref batch);
                         batch.batchedData.Dispose();
-                        removed = true;
+                        _batchIndexMap.Remove(batch.key);
                     }
                     else
                     {
                         // Keep this batch, shift it down if needed
                         if (writeIdx != i)
+                        {
                             _batches[writeIdx] = _batches[i];
+                            _batchIndexMap[batch.key] = writeIdx;
+                        }
                         writeIdx++;
                     }
                 }
 
                 _batchCount = writeIdx;
-
-                if (removed)
-                {
-                    _batchIndexMap.Clear();
-                    for (int i = 0; i < _batchCount; i++)
-                        _batchIndexMap[_batches[i].key] = i;
-                }
             }
         }
 
@@ -222,7 +217,7 @@ namespace PurrNet.Modules
                     // redo the last write
                     using (_batchWriteDeltasMarker.Auto())
                     {
-                        DeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);
+                        NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);
                         DeltaPackInteger.WriteIndex(batch.batchedData, default, contentLen);
                     }
                 }
@@ -233,7 +228,7 @@ namespace PurrNet.Modules
 
                 using (_batchWriteBitsMarker.Auto())
                 {
-                    if (content.bitLength > 0)
+                    if (contentLen.value > 0)
                         batch.batchedData.WriteBitDataWithoutConsumingIt(content);
                 }
             }
