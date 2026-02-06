@@ -6,7 +6,6 @@ using JetBrains.Annotations;
 using PurrNet.Packing;
 using PurrNet.Transports;
 using PurrNet.Utils;
-using UnityEngine.UIElements;
 
 namespace PurrNet
 {
