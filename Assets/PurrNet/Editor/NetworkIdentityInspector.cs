@@ -111,7 +111,7 @@ namespace PurrNet.Editor
 
             serializedObject.ApplyModifiedProperties();
 
-            if (!string.IsNullOrEmpty(_docsUrl))
+            /*if (!string.IsNullOrEmpty(_docsUrl))
             {
                 _helpIcon ??= Resources.Load("purricon") as Texture2D;
                 GUILayout.BeginHorizontal();
@@ -119,7 +119,7 @@ namespace PurrNet.Editor
                 if (GUILayout.Button(new GUIContent(" Open Docs", _helpIcon), GUILayout.ExpandWidth(false), GUILayout.Height(20)))
                     Application.OpenURL("https://purrnet.gitbook.io/docs/" + _docsUrl);
                 GUILayout.EndHorizontal();
-            }
+            }*/
         }
 
         private void DrawContributors()
