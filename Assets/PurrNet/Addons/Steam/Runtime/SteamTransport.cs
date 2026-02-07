@@ -279,5 +279,10 @@ namespace PurrNet.Steam
             _server?.SendMessages();
             _client?.SendMessages();
         }
+        
+        public ulong GetSteamID(Connection conn)
+        {
+            return _server?.GetSteamID(conn.connectionId) ?? 0;
+        }
     }
 }
