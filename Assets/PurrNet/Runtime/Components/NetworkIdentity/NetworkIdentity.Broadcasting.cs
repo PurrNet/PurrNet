@@ -9,7 +9,6 @@ using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Pooling;
 using PurrNet.Profiler;
-using PurrNet.Transports;
 using Unity.Profiling;
 using Channel = PurrNet.Transports.Channel;
 
