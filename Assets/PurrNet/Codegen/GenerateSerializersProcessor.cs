@@ -24,7 +24,9 @@ namespace PurrNet.Codegen
         DisposableList,
         DisposableArray,
         DisposableHashSet,
-        DisposableDictionary
+        DisposableDictionary,
+        NativeArray,
+        NativeList
     }
 
     public static class GenerateSerializersProcessor
@@ -442,6 +444,18 @@ namespace PurrNet.Codegen
 
                     il.Emit(OpCodes.Call, genericRegisterNullableMethod);
                     break;
+                case HandledGenericTypes.NativeArray when importedType is GenericInstanceType nativeArrayType:
+                    var registerNativeArrayMethod = packCollectionsType.GetMethod("RegisterNativeArray", true).Import(module);
+                    var genericRegisterNativeArrayMethod = new GenericInstanceMethod(registerNativeArrayMethod);
+                    genericRegisterNativeArrayMethod.GenericArguments.Add(nativeArrayType.GenericArguments[0]);
+                    il.Emit(OpCodes.Call, genericRegisterNativeArrayMethod);
+                    break;
+                case HandledGenericTypes.NativeList when importedType is GenericInstanceType nativeListType:
+                    var registerNativeListMethod = packCollectionsType.GetMethod("RegisterNativeList", true).Import(module);
+                    var genericRegisterNativeListMethod = new GenericInstanceMethod(registerNativeListMethod);
+                    genericRegisterNativeListMethod.GenericArguments.Add(nativeListType.GenericArguments[0]);
+                    il.Emit(OpCodes.Call, genericRegisterNativeListMethod);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(handledType), handledType, null);
             }
@@ -688,7 +702,7 @@ namespace PurrNet.Codegen
 
             if (isClass && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
             {
-                var baseType = type.BaseType;
+                var baseType = ResolveGenericTypeRef(type.BaseType, typeRef);
 
                 if (baseType is { IsValueType: false })
                 {
@@ -741,15 +755,16 @@ namespace PurrNet.Codegen
                     continue;
 
                 var fieldType = ResolveGenericFieldType(field, typeRef);
-                var genericM = CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
+                bool useNativeCalli = fieldType.Resolve()?.IsUnmanaged() == true;
+                MethodReference genericM = useNativeCalli ? null : CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
 
-                // make field public
+                // make field publicp
                 if (!field.IsPublic)
                 {
                     if (isWriting)
                     {
                         var getterName = MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
-                        var getter = new MethodReference(getterName, fieldType, typeRef)
+                        var getter = new MethodReference(getterName, field.FieldType, typeRef)
                         {
                             HasThis = true
                         };
@@ -779,7 +794,11 @@ namespace PurrNet.Codegen
                             il.Emit(OpCodes.Ldarga_S, valueArg);
 
                         il.Emit(OpCodes.Call, getter);
-                        il.Emit(OpCodes.Call, genericM);
+
+                        if (useNativeCalli)
+                            EmitNativePackerCalli(il, mainmodule, fieldType, bitPackerType, true);
+                        else
+                            il.Emit(OpCodes.Call, genericM);
                     }
                     else
                     {
@@ -793,7 +812,7 @@ namespace PurrNet.Codegen
                         };
 
                         setter.Parameters.Add(
-                            new ParameterDefinition("value", ParameterAttributes.None, fieldType));
+                            new ParameterDefinition("value", ParameterAttributes.None, field.FieldType));
 
                         if (typeRef is GenericInstanceType genericInstanceType)
                         {
@@ -814,7 +833,11 @@ namespace PurrNet.Codegen
 
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldloca, variable);
-                        il.Emit(OpCodes.Call, genericM);
+
+                        if (useNativeCalli)
+                            EmitNativePackerCalli(il, mainmodule, fieldType, bitPackerType, false);
+                        else
+                            il.Emit(OpCodes.Call, genericM);
 
                         il.Emit(OpCodes.Ldarg_1);
                         if (isClass) il.Emit(OpCodes.Ldind_Ref);
@@ -832,7 +855,11 @@ namespace PurrNet.Codegen
                     var fieldRef = new FieldReference(field.Name, field.FieldType, typeRef).Import(mainmodule);
 
                     il.Emit(isWriting ? OpCodes.Ldfld : OpCodes.Ldflda, fieldRef);
-                    il.Emit(OpCodes.Call, genericM);
+
+                    if (useNativeCalli)
+                        EmitNativePackerCalli(il, mainmodule, fieldType, bitPackerType, isWriting);
+                    else
+                        il.Emit(OpCodes.Call, genericM);
                 }
             }
 
@@ -912,6 +939,16 @@ namespace PurrNet.Codegen
             bool ignore = field.CustomAttributes.Any(a =>
                 a.AttributeType.FullName == typeof(DontPackAttribute).FullName) || DoesTypeHaveDontPackAttribute(field.FieldType.Resolve());
             return ignore;
+        }
+
+        public static TypeReference ResolveGenericTypeRef(TypeReference fieldType, TypeReference declaringType)
+        {
+            if (declaringType is GenericInstanceType genericDeclaringType)
+            {
+                return SubstituteDeclaringTypeGenerics(fieldType, genericDeclaringType);
+            }
+
+            return fieldType;
         }
 
         public static TypeReference ResolveGenericFieldType(FieldDefinition field, TypeReference declaringType)
@@ -1005,11 +1042,48 @@ namespace PurrNet.Codegen
             il.Emit(OpCodes.Ret);
         }
 
+        /// <summary>
+        /// For unmanaged types: emits ldsfld NativePacker(T).WriteFunc/ReadFunc + calli.
+        /// Args must already be on the stack before calling this.
+        /// </summary>
+        static void EmitNativePackerCalli(ILProcessor il, ModuleDefinition module, TypeReference fieldType, TypeReference bitStreamType, bool isWrite)
+        {
+            var nativePackerDef = module.GetTypeDefinition(typeof(NativePacker<>));
+            var fieldName = isWrite ? "WriteFunc" : "ReadFunc";
+            var genericParam = nativePackerDef.GenericParameters[0]; // !0
+
+            // Construct FunctionPointerType matching the field signature:
+            // Write: delegate*<BitPacker, !0, void>
+            // Read:  delegate*<BitPacker, ref !0, void>
+            var funcPtrType = new FunctionPointerType();
+            funcPtrType.ReturnType = module.TypeSystem.Void;
+            funcPtrType.Parameters.Add(new ParameterDefinition(bitStreamType));
+            funcPtrType.Parameters.Add(isWrite
+                ? new ParameterDefinition(genericParam)
+                : new ParameterDefinition(new ByReferenceType(genericParam)));
+
+            var genericInstance = new GenericInstanceType(nativePackerDef.Import(module));
+            genericInstance.GenericArguments.Add(fieldType);
+
+            var fieldRef = new FieldReference(fieldName, funcPtrType, genericInstance);
+            il.Emit(OpCodes.Ldsfld, fieldRef);
+
+            // calli uses concrete types
+            var callSite = new CallSite(module.TypeSystem.Void);
+            callSite.Parameters.Add(new ParameterDefinition(bitStreamType));
+            callSite.Parameters.Add(isWrite
+                ? new ParameterDefinition(fieldType)
+                : new ParameterDefinition(new ByReferenceType(fieldType)));
+            il.Emit(OpCodes.Calli, callSite);
+        }
+
         private static void HandleEnums(bool isWriting, MethodDefinition method, MethodReference serialize,
             TypeDefinition type, ILProcessor il, TypeReference packerType, ModuleDefinition mainmodule)
         {
             var underlyingType = type.GetField("value__").FieldType;
-            var enumWriteMethod = CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
+            bool useNativeCalli = underlyingType.Resolve()?.IsUnmanaged() == true;
+            var enumWriteMethod = useNativeCalli ? null : CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
+            var bitPackerType = mainmodule.GetTypeDefinition(typeof(BitPacker)).Import(mainmodule);
 
             var tmpVar = new VariableDefinition(underlyingType);
 
@@ -1026,12 +1100,20 @@ namespace PurrNet.Codegen
             if (isWriting)
             {
                 il.Emit(OpCodes.Ldarg_1);
-                il.Emit(OpCodes.Call, enumWriteMethod);
+
+                if (useNativeCalli)
+                    EmitNativePackerCalli(il, mainmodule, underlyingType, bitPackerType, true);
+                else
+                    il.Emit(OpCodes.Call, enumWriteMethod);
             }
             else
             {
                 il.Emit(OpCodes.Ldloca, tmpVar);
-                il.Emit(OpCodes.Call, enumWriteMethod);
+
+                if (useNativeCalli)
+                    EmitNativePackerCalli(il, mainmodule, underlyingType, bitPackerType, false);
+                else
+                    il.Emit(OpCodes.Call, enumWriteMethod);
 
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldloc_0);
@@ -1070,6 +1152,18 @@ namespace PurrNet.Codegen
             if (IsGeneric(typeDef, typeof(DisposableList<>)))
             {
                 type = HandledGenericTypes.DisposableList;
+                return true;
+            }
+
+            if (IsGenericUnityCollections(typeDef, "Unity.Collections.NativeArray`1"))
+            {
+                type = HandledGenericTypes.NativeArray;
+                return true;
+            }
+
+            if (IsGenericUnityCollections(typeDef, "Unity.Collections.NativeList`1"))
+            {
+                type = HandledGenericTypes.NativeList;
                 return true;
             }
 
@@ -1142,6 +1236,17 @@ namespace PurrNet.Codegen
 
                 // Check if the resolved type matches Task<>
                 return resolvedType != null && resolvedType.FullName == type.FullName;
+            }
+
+            return false;
+        }
+
+        private static bool IsGenericUnityCollections(TypeReference typeDef, string genericTypeFullName)
+        {
+            if (typeDef is GenericInstanceType genericInstance)
+            {
+                var resolved = genericInstance.ElementType.Resolve();
+                return resolved != null && resolved.FullName == genericTypeFullName;
             }
 
             return false;

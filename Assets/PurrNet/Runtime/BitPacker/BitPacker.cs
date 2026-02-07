@@ -1,12 +1,14 @@
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 using System.Text;
 using JetBrains.Annotations;
 using K4os.Compression.LZ4;
 using PurrNet.Modules;
 using PurrNet.Transports;
+#if PURR_ENDIAN
+using System.Runtime.Serialization;
+#endif
 
 namespace PurrNet.Packing
 {
@@ -26,15 +28,7 @@ namespace PurrNet.Packing
             get => _positionInBits;
         }
 
-        public int positionInBytes
-        {
-            get
-            {
-                int pos = _positionInBits / 8;
-                int len = pos + (_positionInBits % 8 == 0 ? 0 : 1);
-                return len;
-            }
-        }
+        public int positionInBytes => (_positionInBits + 7) >> 3;
 
         public int length
         {
@@ -201,15 +195,24 @@ namespace PurrNet.Packing
             _isReading = readMode;
         }
 
+        public void EnsurePadding()
+        {
+            int requiredBytes = positionInBytes + 8;
+            if (requiredBytes > _buffer.Length)
+                Array.Resize(ref _buffer, requiredBytes);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureBitsExist(int bits)
         {
             int targetPos = _positionInBits + bits;
-            if (targetPos > _buffer.Length << 3)
+            int requiredBytes = _isReading ? (targetPos + 7) >> 3 : ((targetPos + 7) >> 3) + 8;
+
+            if (requiredBytes > _buffer.Length)
             {
                 if (_isReading)
                     throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
-                int newSize = Math.Max(_buffer.Length * 2, (targetPos + 7) / 8);
+                int newSize = Math.Max(_buffer.Length * 2, ((targetPos + 7) >> 3) + 8);
                 Array.Resize(ref _buffer, newSize);
             }
         }
@@ -280,11 +283,7 @@ namespace PurrNet.Packing
                 return true;
 
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-            {
-                if (typeof(T).GetConstructor(Type.EmptyTypes) != null)
-                     value = Activator.CreateInstance<T>();
-                else value = (T)FormatterServices.GetUninitializedObject(typeof(T));
-            }
+                value = FactoryCache<T>.Create();
 
             return true;
         }
@@ -324,7 +323,8 @@ namespace PurrNet.Packing
 
             for (int i = 0; i < chunks; i++)
                 WriteBitsWithoutChecks(packer.ReadBits(64), 64);
-            WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+            if (excess != 0)
+                WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
 
             packer.SetBitPosition(beforeBitPosition);
         }
@@ -338,7 +338,8 @@ namespace PurrNet.Packing
 
             for (int i = 0; i < chunks; i++)
                 WriteBitsWithoutChecks(packer.ReadBits(64), 64);
-            WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+            if (excess != 0)
+                WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
         }
 
         public void WriteBits(ulong data, byte bits)
@@ -364,270 +365,110 @@ namespace PurrNet.Packing
             return data;
         }
 
-        [UsedImplicitly]
-        public bool ReadBit()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe bool ReadBit()
         {
-            var byteIdx = _positionInBits >> 3;
-            int bitOffset = _positionInBits & 7;
-            var currentByte = _buffer[byteIdx];
-            var result = (currentByte & (1 << bitOffset)) != 0;
-            _positionInBits++;
-            return result;
+            fixed (byte* b = &_buffer[_positionInBits >> 3])
+            {
+                bool result = (*b & (1 << (_positionInBits & 7))) != 0;
+                _positionInBits++;
+                return result;
+            }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe void WriteBitsWithoutChecks(ulong data, byte bits)
         {
-            if (bits > 64)
-                throw new ArgumentOutOfRangeException(nameof(bits));
-
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
 
             fixed (byte* b = &_buffer[bytePos])
             {
-                if (bitOffset == 0)
-                {
-                    // Fast path: byte-aligned writes
-                    switch (bits)
-                    {
-                        case 8:
-                            *b = (byte)data;
-                            break;
-                        case 16:
+                ulong dataMask = bits == 64 ? ~0UL : (1UL << bits) - 1;
+                ulong maskedData = data & dataMask;
+                ulong shifted = maskedData << bitOffset;
+                ulong writeMask = dataMask << bitOffset;
+                ulong existing = *(ulong*)b;
 #if PURR_ENDIAN
-                            if (!BitConverter.IsLittleEndian)
-                                data = BinaryPrimitives.ReverseEndianness((ushort)data);
-#endif
-                            *(ushort*)b = (ushort)data;
-                            break;
-                        case 32:
-#if PURR_ENDIAN
-                            if (!BitConverter.IsLittleEndian)
-                                data = BinaryPrimitives.ReverseEndianness((uint)data);
-#endif
-                            *(uint*)b = (uint)data;
-                            break;
-                        case 64:
-#if PURR_ENDIAN
-                            if (!BitConverter.IsLittleEndian)
-                                data = BinaryPrimitives.ReverseEndianness(data);
-#endif
-                            *(ulong*)b = data;
-                            break;
-                        default:
-                            if (bits <= 8)
-                            {
-                                byte mask = (byte)((1 << bits) - 1);
-                                *b = (byte)((*b & ~mask) | ((byte)data & mask));
-                            }
-                            else
-                            {
-                                // Write full bytes + remainder (always little-endian order)
-                                int fullBytes = bits >> 3;
-                                int remainderBits = bits & 7;
-
-                                for (int i = 0; i < fullBytes; i++)
-                                    b[i] = (byte)(data >> (i * 8));
-
-                                if (remainderBits > 0)
-                                {
-                                    byte mask = (byte)((1 << remainderBits) - 1);
-                                    byte value = (byte)(data >> (fullBytes * 8));
-                                    b[fullBytes] = (byte)((b[fullBytes] & ~mask) | (value & mask));
-                                }
-                            }
-                            break;
-                    }
-                }
-                else
-                {
-                    // Unaligned write - shift data and write as 64-bit + remainder
-                    ulong shifted = data << bitOffset;
-                    int totalBits = bits + bitOffset;
-                    int bytesToWrite = (totalBits + 7) >> 3;
-
-                    ulong existing = 0;
-                    if (bytesToWrite <= 8)
-                        existing = *(ulong*)b & ((1UL << bitOffset) - 1);
-
-                    ulong mask = ((1UL << bits) - 1) << bitOffset;
-                    ulong combined = (existing) | (shifted & mask);
-
-#if PURR_ENDIAN
-                    if (!BitConverter.IsLittleEndian)
-                        combined = BinaryPrimitives.ReverseEndianness(combined);
+                if (!BitConverter.IsLittleEndian)
+                    existing = BinaryPrimitives.ReverseEndianness(existing);
 #endif
 
-                    if (totalBits <= 64)
-                    {
-                        // Preserve bits beyond our write
-                        int preserveBits = 64 - totalBits;
-                        if (preserveBits > 0)
-                        {
-                            ulong preserveMask = ~((1UL << totalBits) - 1);
-                            combined |= *(ulong*)b & preserveMask;
-                        }
-                        *(ulong*)b = combined;
-                    }
-                    else
-                    {
-                        // Fallback to original method for edge cases
-                        goto SlowPath;
-                    }
-                }
+                ulong result = (existing & ~writeMask) | shifted;
+
+#if PURR_ENDIAN
+                if (!BitConverter.IsLittleEndian)
+                    result = BinaryPrimitives.ReverseEndianness(result);
+#endif
+                *(ulong*)b = result;
+
+                int overflow = bits + bitOffset - 64;
+                int safeOverflow = overflow & ((overflow >> 31) ^ -1);
+
+                byte* b8 = b + 8;
+                byte highData = (byte)(maskedData >> ((64 - bitOffset) & 63));
+                byte highMask = (byte)((1 << safeOverflow) - 1);
+                *b8 = (byte)((*b8 & ~highMask) | (highData & highMask));
             }
 
-            _positionInBits += bits;
-            return;
-
-        SlowPath:
-            // Original implementation as fallback
-            fixed (byte* b = &_buffer[bytePos])
-            {
-                byte* ptr = b;
-                int bitsLeft = bits;
-
-                while (bitsLeft > 0)
-                {
-                    int bitsToWrite = Math.Min(bitsLeft, 8 - bitOffset);
-                    byte mask = (byte)((1 << bitsToWrite) - 1);
-                    byte value = (byte)((data >> (bits - bitsLeft)) & mask);
-
-                    *ptr = (byte)((*ptr & ~(mask << bitOffset)) | (value << bitOffset));
-
-                    bitsLeft -= bitsToWrite;
-                    bitOffset = 0;
-                    ptr++;
-                }
-            }
             _positionInBits += bits;
         }
 
-        public unsafe ulong ReadBits(byte bits)
+        public ulong ReadBits(byte bits)
         {
-            if (bits > 64)
-                throw new ArgumentOutOfRangeException(nameof(bits));
+            EnsureBitsExist(bits);
+            return ReadBitsWithoutChecks(bits);
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe ulong ReadBitsWithoutChecks(byte bits)
+        {
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
 
-            ulong result;
-
             fixed (byte* b = &_buffer[bytePos])
             {
-                if (bitOffset == 0)
+                ulong raw = *(ulong*)b;
+#if PURR_ENDIAN
+                if (!BitConverter.IsLittleEndian)
+                    raw = BinaryPrimitives.ReverseEndianness(raw);
+#endif
+                raw >>= bitOffset;
+
+                int overflow = bits + bitOffset - 64;
+                if (overflow > 0)
                 {
-                    // Fast path: byte-aligned reads
-                    switch (bits)
-                    {
-                        case 8:
-                            result = *b;
-                            break;
-                        case 16:
-                            result = *(ushort*)b;
-#if PURR_ENDIAN
-                            if (!BitConverter.IsLittleEndian)
-                                result = BinaryPrimitives.ReverseEndianness((ushort)result);
-#endif
-                            break;
-                        case 32:
-                            result = *(uint*)b;
-#if PURR_ENDIAN
-                            if (!BitConverter.IsLittleEndian)
-                                result = BinaryPrimitives.ReverseEndianness((uint)result);
-#endif
-                            break;
-                        case 64:
-                            result = *(ulong*)b;
-#if PURR_ENDIAN
-                            if (!BitConverter.IsLittleEndian)
-                                result = BinaryPrimitives.ReverseEndianness(result);
-#endif
-                            break;
-                        default:
-                            if (bits <= 8)
-                            {
-                                ulong mask = (1UL << bits) - 1;
-                                result = *b & mask;
-                            }
-                            else
-                            {
-                                // Read full bytes + remainder (always little-endian order)
-                                int fullBytes = bits >> 3;
-                                int remainderBits = bits & 7;
-
-                                result = 0;
-                                for (int i = 0; i < fullBytes; i++)
-                                    result |= (ulong)b[i] << (i * 8);
-
-                                if (remainderBits > 0)
-                                {
-                                    ulong mask = (1UL << remainderBits) - 1;
-                                    result |= (b[fullBytes] & mask) << (fullBytes * 8);
-                                }
-                            }
-                            break;
-                    }
+                    ulong highByte = (ulong)b[8] << (64 - bitOffset);
+                    raw |= highByte;
                 }
-                else
-                {
-                    // Unaligned read - read as 64-bit and extract bits
-                    int totalBits = bits + bitOffset;
 
-                    if (totalBits <= 64)
-                    {
-                        ulong data = *(ulong*)b;
-#if PURR_ENDIAN
-                        if (!BitConverter.IsLittleEndian)
-                            data = BinaryPrimitives.ReverseEndianness(data);
-#endif
-                        ulong mask = (1UL << bits) - 1;
-                        result = (data >> bitOffset) & mask;
-                    }
-                    else
-                    {
-                        goto SlowPath;
-                    }
-                }
+                _positionInBits += bits;
+
+                ulong mask = bits == 64 ? ~0UL : (1UL << bits) - 1;
+                return raw & mask;
             }
-
-            _positionInBits += bits;
-            return result;
-
-        SlowPath:
-            // Fallback: manual bit-by-bit read (already little-endian safe)
-            result = 0;
-            int bitsLeft = bits;
-
-            while (bitsLeft > 0)
-            {
-                bytePos = _positionInBits >> 3;
-                bitOffset = _positionInBits & 7;
-                int bitsToRead = Math.Min(bitsLeft, 8 - bitOffset);
-
-                byte mask = (byte)((1 << bitsToRead) - 1);
-                byte value = (byte)((_buffer[bytePos] >> bitOffset) & mask);
-
-                result |= (ulong)value << (bits - bitsLeft);
-
-                bitsLeft -= bitsToRead;
-                _positionInBits += bitsToRead;
-            }
-
-            return result;
         }
 
         public void ReadBytes(Span<byte> destination)
         {
             int count = destination.Length;
-            int fullChunks = count / 8;
-            int excess = count % 8;
+            EnsureBitsExist(count << 3);
+
+            if ((_positionInBits & 7) == 0)
+            {
+                _buffer.AsSpan(_positionInBits >> 3, count).CopyTo(destination);
+                _positionInBits += count << 3;
+                return;
+            }
+
+            int fullChunks = count >> 3;
+            int excess = count & 7;
             int index = 0;
 
             // Process full 64-bit chunks
             for (int i = 0; i < fullChunks; i++)
             {
-                ulong longValue = ReadBits(64);
+                ulong longValue = ReadBitsWithoutChecks(64);
 
                 // Write back as little-endian
                 BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(index, 8), longValue);
@@ -637,7 +478,7 @@ namespace PurrNet.Packing
             // Process remaining excess bytes
             for (int i = 0; i < excess; i++)
             {
-                destination[index++] = (byte)ReadBits(8);
+                destination[index++] = (byte)ReadBitsWithoutChecks(8);
             }
         }
 
@@ -648,11 +489,18 @@ namespace PurrNet.Packing
 
         public void WriteBytes(ReadOnlySpan<byte> bytes)
         {
-            EnsureBitsExist(bytes.Length * 8);
-
             int count = bytes.Length;
-            int fullChunks = count / 8;
-            int excess = count % 8;
+            EnsureBitsExist(count << 3);
+
+            if ((_positionInBits & 7) == 0)
+            {
+                bytes.CopyTo(_buffer.AsSpan(_positionInBits >> 3, count));
+                _positionInBits += count << 3;
+                return;
+            }
+
+            int fullChunks = count >> 3;
+            int excess = count & 7;
             int index = 0;
 
             // Process full 64-bit chunks
@@ -665,9 +513,7 @@ namespace PurrNet.Packing
 
             // Process remaining excess bytes
             for (int i = 0; i < excess; i++)
-            {
                 WriteBitsWithoutChecks(bytes[index++], 8);
-            }
         }
 
         public void SkipBits(int skip)
@@ -755,8 +601,8 @@ namespace PurrNet.Packing
 
             while (bitsLeft > 0)
             {
-                int bytePos = positionInBits / 8;
-                int bitOffset = positionInBits % 8;
+                int bytePos = positionInBits >> 3;
+                int bitOffset = positionInBits & 7;
                 int bitsToWrite = Math.Min(bitsLeft, 8 - bitOffset);
 
                 byte mask = (byte)((1 << bitsToWrite) - 1);
@@ -780,142 +626,76 @@ namespace PurrNet.Packing
             return newPacker;
         }
 
-        public bool Equals(BitPacker packerB)
+        public bool Equals(BitPacker other)
         {
-            if (ReferenceEquals(this, packerB))
-                return true;
+            if (ReferenceEquals(this, other)) return true;
+            if (other == null) return false;
+            if (_positionInBits != other._positionInBits) return false;
 
-            if (packerB == null)
+            int fullBytes = _positionInBits >> 3;
+            int tailBits = _positionInBits & 7;
+
+            // Compare full bytes
+            if (!_buffer.AsSpan(0, fullBytes).SequenceEqual(other._buffer.AsSpan(0, fullBytes)))
                 return false;
 
-            if (this.positionInBits != packerB.positionInBits)
-                return false;
-
-            int bits = this.positionInBits;
-
-            this.ResetPositionAndMode(true);
-            packerB.ResetPositionAndMode(true);
-
-            while (bits >= 64)
+            // Compare tail bits
+            if (tailBits != 0)
             {
-                ulong aBits = this.ReadBits(64);
-                ulong bBits = packerB.ReadBits(64);
-
-                if (aBits != bBits)
-                {
-                    this.SetBitPosition(bits);
-                    packerB.SetBitPosition(bits);
+                byte mask = (byte)((1 << tailBits) - 1);
+                if ((_buffer[fullBytes] & mask) != (other._buffer[fullBytes] & mask))
                     return false;
-                }
-
-                bits -= 64;
             }
 
-            if (bits > 0)
-            {
-                var remainingBits = (byte)bits;
-                ulong aBits = this.ReadBits(remainingBits);
-                ulong bBits = packerB.ReadBits(remainingBits);
-                if (aBits != bBits)
-                {
-                    this.SetBitPosition(bits);
-                    packerB.SetBitPosition(bits);
-                    return false;
-                }
-            }
-
-            this.SetBitPosition(bits);
-            packerB.SetBitPosition(bits);
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint GetDeterministicHash32()
         {
-            // FNV-1a 32-bit
-            const uint offset = 2166136261u;
-            const uint prime = 16777619u;
-
-            int bits = _positionInBits;
-            int fullBytes = bits >> 3;
-            int tailBits = bits & 7;
-
-            uint hash = offset;
-
-            // Hash full bytes
-            for (int i = 0; i < fullBytes; i++)
-            {
-                hash ^= _buffer[i];
-                hash *= prime;
-            }
-
-            // Hash partial tail byte (only the written low bits)
-            if (tailBits != 0)
-            {
-                byte mask = (byte)((1 << tailBits) - 1); // keeps low tailBits
-                byte tail = (byte)(_buffer[fullBytes] & mask);
-
-                hash ^= tail;
-                hash *= prime;
-
-                // Optional: include bit-count so different bit-lengths can't collide
-                // when tail byte value matches (e.g. 1-bit '1' vs 2-bit '01' cases).
-                hash ^= (byte)tailBits;
-                hash *= prime;
-            }
-            else
-            {
-                // Still mix in length in bits to distinguish e.g. [0x00] vs empty.
-                hash ^= 0u;
-                hash *= prime;
-            }
-
-            // Mix in exact bit length (strongly recommended)
-            unchecked
-            {
-                hash ^= (uint)bits;
-                hash *= prime;
-            }
-
-            return hash;
+            var hash64 = GetDeterministicHash64();
+            return (uint)(hash64 ^ (hash64 >> 32));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong GetDeterministicHash64()
+        public unsafe ulong GetDeterministicHash64()
         {
-            // FNV-1a 64-bit
             const ulong offset = 14695981039346656037UL;
             const ulong prime = 1099511628211UL;
 
             int bits = _positionInBits;
             int fullBytes = bits >> 3;
-            int tailBits = bits & 7;
 
             ulong hash = offset;
 
-            for (int i = 0; i < fullBytes; i++)
+            fixed (byte* ptr = _buffer)
             {
-                hash ^= _buffer[i];
-                hash *= prime;
+                int i = 0;
+                // Process 8 bytes at a time
+                for (; i + 8 <= fullBytes; i += 8)
+                {
+                    ulong chunk = *(ulong*)(ptr + i);
+                    hash ^= chunk;
+                    hash *= prime;
+                }
+                // Remaining bytes
+                for (; i < fullBytes; i++)
+                {
+                    hash ^= ptr[i];
+                    hash *= prime;
+                }
             }
 
+            int tailBits = bits & 7;
             if (tailBits != 0)
             {
                 byte mask = (byte)((1 << tailBits) - 1);
-                byte tail = (byte)(_buffer[fullBytes] & mask);
-
-                hash ^= tail;
+                hash ^= (byte)(_buffer[fullBytes] & mask);
                 hash *= prime;
-
                 hash ^= (byte)tailBits;
                 hash *= prime;
             }
 
-            unchecked
-            {
-                hash ^= (uint)bits;
-                hash *= prime;
-            }
+            hash ^= (uint)bits;
+            hash *= prime;
 
             return hash;
         }

@@ -1,6 +1,34 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet.Packing;
+
+
+public class ijhihuihihihi
+{
+	public void Write(BitPacker stream, SafeList<int> value)
+	{
+		if (stream.WriteIsNull(value))
+		{
+			Packer<List<int>>.Write(stream, value.Purrnet_Get___list());
+			Packer<List<SafeList<int>.QueueItem>>.Write(stream, value.Purrnet_Get___queue());
+		}
+	}
+
+	public void Read(BitPacker stream, ref SafeList<int> value)
+	{
+		if (stream.ReadIsNull(ref value))
+		{
+			List<int> value2 = default(List<int>);
+			Packer<List<int>>.Read(stream, ref value2);
+			value.Purrnet_Set___list(value2);
+			List<SafeList<int>.QueueItem> value3 = default(List<SafeList<int>.QueueItem>);
+			Packer<List<SafeList<int>.QueueItem>>.Read(stream, ref value3);
+			value.Purrnet_Set___queue(value3);
+		}
+	}
+}
+
 
 public class SafeList<T> : IEnumerable<T>
 {
@@ -37,7 +65,7 @@ public class SafeList<T> : IEnumerable<T>
         _queue.Clear();
     }
 
-    private readonly struct QueueItem : IEquatable<QueueItem>
+    public readonly struct QueueItem : IEquatable<QueueItem>
     {
         public readonly T item;
         public readonly Instruction instruction;
@@ -53,7 +81,7 @@ public class SafeList<T> : IEnumerable<T>
         }
     }
 
-    private enum Instruction
+    public enum Instruction
     {
         Add,
         Remove
@@ -61,4 +89,25 @@ public class SafeList<T> : IEnumerable<T>
 
     public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+
+    public List<T> Purrnet_Get___list()
+    {
+	    return _list;
+    }
+
+    public List<QueueItem> Purrnet_Get___queue()
+    {
+	    return _queue;
+    }
+
+    public void Purrnet_Set___list(List<T> value)
+    {
+	    _list = value;
+    }
+
+    public void Purrnet_Set___queue(List<QueueItem> value)
+    {
+	    _queue = value;
+    }
 }

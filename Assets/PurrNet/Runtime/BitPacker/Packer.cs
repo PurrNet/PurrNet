@@ -65,6 +65,7 @@ namespace PurrNet.Packing
             WriteFunc = !isStructOrSealed ? WriteClass : DirectWrite;
 
             Packer.RegisterWriter(typeof(T), DirectWrite.Method, WriteFunc.Method);
+            NativePacker<T>.RegisterWriter(a);
         }
 
         public static bool HasPacker() => _hasWriter && _hasReader;
@@ -83,6 +84,7 @@ namespace PurrNet.Packing
             ReadFunc = !isStructOrSealed ? ReadClass : DirectRead;
 
             Packer.RegisterReader(typeof(T), DirectRead.Method, ReadFunc.Method);
+            NativePacker<T>.RegisterReader(b);
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]

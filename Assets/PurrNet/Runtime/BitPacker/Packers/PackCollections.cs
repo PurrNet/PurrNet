@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using PurrNet.Modules;
 using PurrNet.Pooling;
 using UnityEngine;
+using Unity.Collections;
 
 namespace PurrNet.Packing
 {
@@ -122,6 +123,30 @@ namespace PurrNet.Packing
             DeltaPacker<DisposableHashSet<T>>.RegisterWriter(PackDisposableHashsets.WriteDisposableHashSetDelta);
             DeltaPacker<DisposableHashSet<T>>.RegisterReader(PackDisposableHashsets.ReadDisposableHashSetDelta);
             RegisterDisposableList<T>();
+        }
+
+        [UsedByIL]
+        public static void RegisterNativeArray<T>() where T : unmanaged
+        {
+            Packer<NativeArray<T>>.RegisterWriter(PackNativeCollections.WriteNativeArray<T>);
+            Packer<NativeArray<T>>.RegisterReader(PackNativeCollections.ReadNativeArray<T>);
+            DeltaPacker<NativeArray<T>>.RegisterWriter(PackNativeCollections.WriteNativeArrayDelta<T>);
+            DeltaPacker<NativeArray<T>>.RegisterReader(PackNativeCollections.ReadNativeArrayDelta<T>);
+            PurrEquality<NativeArray<T>>.OverrideDefault(new NativeArrayComparator<T>());
+            PurrCopy<NativeArray<T>>.Override(PackNativeCollections.CopyNativeArray<T>);
+            DiffOpNativeSerializer.Register<T>();
+        }
+
+        [UsedByIL]
+        public static void RegisterNativeList<T>() where T : unmanaged
+        {
+            Packer<NativeList<T>>.RegisterWriter(PackNativeCollections.WriteNativeList<T>);
+            Packer<NativeList<T>>.RegisterReader(PackNativeCollections.ReadNativeList<T>);
+            DeltaPacker<NativeList<T>>.RegisterWriter(MyersPackNativeLists.WriteNativeListDelta<T>);
+            DeltaPacker<NativeList<T>>.RegisterReader(MyersPackNativeLists.ReadNativeListDelta<T>);
+            PurrEquality<NativeList<T>>.OverrideDefault(new NativeListComparator<T>());
+            PurrCopy<NativeList<T>>.Override(PackNativeCollections.CopyNativeList<T>);
+            DiffOpNativeSerializer.Register<T>();
         }
 
         [UsedByIL]

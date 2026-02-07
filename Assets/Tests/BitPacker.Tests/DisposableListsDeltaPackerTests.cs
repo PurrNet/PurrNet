@@ -296,6 +296,9 @@ public class DisposableListsDeltaPackerTests
         var old = DisposableList<string>.Create(new[] { "hello", "world" });
         var current = DisposableList<string>.Create(new[] { "hello", "beautiful", "world" });
 
+        bool isOldEqualToCurrent = PurrEquality<DisposableList<string>>.Equals(old, current);
+        Assert.IsFalse(isOldEqualToCurrent, "Expected old and current to be different");
+
         bool hasChanged = DeltaPacker<DisposableList<string>>.Write(packer, old, current);
         Assert.IsTrue(hasChanged);
 
@@ -305,8 +308,8 @@ public class DisposableListsDeltaPackerTests
         DeltaPacker<DisposableList<string>>.Read(packer, old, ref result);
 
         Assert.AreEqual(3, result.Count);
-        CollectionAssert.AreEqual(current, result);
-
+        bool valuesEqual = PurrEquality<DisposableList<string>>.Equals(current, result);
+        Assert.IsTrue(valuesEqual, "Expected values to be equal");
         old.Dispose();
         current.Dispose();
         result.Dispose();

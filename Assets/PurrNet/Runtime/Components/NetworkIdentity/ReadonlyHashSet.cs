@@ -27,6 +27,7 @@ namespace PurrNet.Collections
         public bool Contains(T i);
     }
 
+    [DontPack]
     public class PurrHashSet<T> : ISet<T>, IReadonlyHashSet<T>
     {
         /// <inheritdoc cref="ICollection{T}.Count" />

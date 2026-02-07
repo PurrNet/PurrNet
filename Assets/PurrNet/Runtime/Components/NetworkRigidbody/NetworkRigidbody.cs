@@ -19,7 +19,6 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
-        public AppliedForce[] recentForces;
         public float? senderPing;
     }
 
@@ -62,6 +61,27 @@ namespace PurrNet
 
         [Tooltip("The resistance applied to smooth out the movement and match the target's velocity. Helps prevent oscillation.")]
         [SerializeField] private float _dampingConstant = 5f;
+        
+        [Header("Rotation Correction")]
+        [Tooltip("Multiplier for rotation correction strength relative to position correction.")]
+        [SerializeField] private float _rotationSpringMultiplier = 0.3f;
+
+        [Tooltip("Minimum angle error (degrees) before applying rotation correction.")]
+        [SerializeField] private float _minRotationCorrectionAngle = 1f;
+        
+        [Header("Dynamic Spring Scaling")]
+        [Tooltip("How much to reduce spring strength based on recent acceleration. Higher = more reduction during collisions.")]
+        [SerializeField] private float _uncertaintySpringDampening = 0.5f;
+
+        [Tooltip("How quickly the tracked acceleration decays back to zero.")]
+        [SerializeField] private float _accelerationDecay = 0.85f;
+
+        [Header("Dynamic Hard Correction")]
+        [Tooltip("How much to increase hard correction threshold based on recent acceleration.")]
+        [SerializeField] private float _hardCorrectionAccelerationScale = 0.1f;
+
+        [Tooltip("Maximum multiplier for the hard correction threshold.")]
+        [SerializeField] private float _maxHardCorrectionMultiplier = 5f;
 
         [Header("Stabilization & Prediction")]
         [Tooltip("Speed under which we relax the spring to prevent jitter while rolling slowly.")]
@@ -74,9 +94,6 @@ namespace PurrNet
         [SerializeField] private bool _extrapolateBasedOnPing;
 
         [Header("Sync Settings")]
-        [Tooltip("Limit on how many specific force events (like AddForce/Explosions) can be synced in a single frame to prevent flooding.")]
-        [SerializeField] private int _maxForcesPerTick = 8;
-
         [Tooltip("Minimum distance moved required to trigger a network update.")]
         [SerializeField] private float _positionChangeThreshold = 0.001f;
 
@@ -87,7 +104,6 @@ namespace PurrNet
         [SerializeField] private float _velocityStopThreshold = 0.001f;
 
         private Rigidbody _rigidbody;
-        private List<AppliedForce> _pendingForces = new();
         
         private Vector3 _targetPosition;
         private Quaternion _targetRotation;
@@ -98,6 +114,8 @@ namespace PurrNet
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
         private float _lastExtrapolation;
+        private Vector3 _previousVelocity;
+        private float _recentAccelerationMagnitude;
         
         private float _correctionTimer;
         private bool _isCorreting;
@@ -119,12 +137,22 @@ namespace PurrNet
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
+#if UNITY_6000_0_OR_NEWER
             _targetLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _targetLinearVelocity = _rigidbody.velocity;
+#endif
             _targetAngularVelocity = _rigidbody.angularVelocity;
             
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
+            
+#if UNITY_6000_0_OR_NEWER
             _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _lastSyncedLinearVelocity = _rigidbody.velocity;
+#endif
+            
             _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
 
             if (IsController(_ownerAuth))
@@ -141,22 +169,30 @@ namespace PurrNet
 
         private void ControllerTick()
         {
-            if (!HasStateChanged() && _pendingForces.Count == 0 && !ShouldSyncWhenStopped())
+            if (!HasStateChanged() && !ShouldSyncWhenStopped())
                 return;
             float? myPing = (!isServer && _extrapolateBasedOnPing) ? (float)NetworkManager.main.tickModule.rtt : null;
             var stateData = new RigidbodyStateData
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
+#if UNITY_6000_0_OR_NEWER
                 linearVelocity = _rigidbody.linearVelocity,
+#else
+                linearVelocity = _rigidbody.velocity,
+#endif
                 angularVelocity = _rigidbody.angularVelocity,
-                recentForces = _pendingForces.ToArray(),
                 senderPing = myPing
             };
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
+            
+#if UNITY_6000_0_OR_NEWER
             _targetLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _targetLinearVelocity = _rigidbody.velocity;
+#endif
             _targetAngularVelocity = _rigidbody.angularVelocity;
 
             if (isServer)
@@ -166,9 +202,13 @@ namespace PurrNet
 
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
+            
+#if UNITY_6000_0_OR_NEWER
             _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
+#else
+            _lastSyncedLinearVelocity = _rigidbody.velocity;
+#endif
             _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
-            _pendingForces.Clear();
         }
 
         private void NonControllerTick(float delta)
@@ -176,7 +216,10 @@ namespace PurrNet
             if (_hasPendingTeleport)
                 return;
 
+            TrackAcceleration(delta);
+
             float error = Vector3.Distance(_rigidbody.position, _targetPosition);
+            float dynamicHardThreshold = GetDynamicHardCorrectionThreshold();
 
             if (error < _acceptableError)
             {
@@ -185,7 +228,7 @@ namespace PurrNet
                 return;
             }
 
-            if (error >= _hardCorrectionThreshold)
+            if (error >= dynamicHardThreshold)
             {
                 HardCorrect();
                 return;
@@ -203,38 +246,75 @@ namespace PurrNet
             ApplySoftCorrection();
         }
 
+        private float GetDynamicHardCorrectionThreshold()
+        {
+            float scale = 1f + _recentAccelerationMagnitude * _hardCorrectionAccelerationScale;
+            scale = Mathf.Min(scale, _maxHardCorrectionMultiplier);
+            return _hardCorrectionThreshold * scale;
+        }
+
         private void ApplySoftCorrection()
         {
+#if UNITY_6000_0_OR_NEWER
             float currentSpeed = _rigidbody.linearVelocity.magnitude;
-            float adaptiveSpring = _springConstant;
+#else
+            float currentSpeed = _rigidbody.velocity.magnitude;
+#endif
+            float springScale = GetDynamicSpringScale();
+            float baseSpring = _springConstant;
+            float dynamicDamping = _dampingConstant;
 
             if (currentSpeed < _lowSpeedThreshold)
             {
                 float factor = Mathf.Clamp01(currentSpeed / _lowSpeedThreshold);
-                adaptiveSpring = Mathf.Lerp(_springConstant * _lowSpeedSpringMultiplier, _springConstant, factor);
+                baseSpring = Mathf.Lerp(_springConstant * _lowSpeedSpringMultiplier, _springConstant, factor);
+            }
+            else
+            {
+                baseSpring = _springConstant * springScale;
+                dynamicDamping = _dampingConstant * springScale;
             }
 
             Vector3 positionError = _targetPosition - _rigidbody.position;
-            Vector3 springForce = positionError * (adaptiveSpring * _rigidbody.mass);
-            
+            Vector3 springForce = positionError * (baseSpring * _rigidbody.mass);
+    
+#if UNITY_6000_0_OR_NEWER
             Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
-            Vector3 dampingForce = velocityError * (_dampingConstant * _rigidbody.mass);
-            
+#else
+            Vector3 velocityError = _targetLinearVelocity - _rigidbody.velocity;
+#endif
+            Vector3 dampingForce = velocityError * (dynamicDamping * _rigidbody.mass);
+    
             _rigidbody.AddForce(springForce + dampingForce);
 
             Quaternion rotationError = _targetRotation * Quaternion.Inverse(_rigidbody.rotation);
             rotationError.ToAngleAxis(out float angle, out Vector3 axis);
             if (angle > 180f) angle -= 360f;
-            
-            if (Mathf.Abs(angle) > 0.1f)
+    
+            if (Mathf.Abs(angle) > _minRotationCorrectionAngle)
             {
-                Vector3 torque = axis * (angle * Mathf.Deg2Rad * _springConstant * _rigidbody.mass);
-                
+                float angularVelocityDiff = Vector3.Distance(_targetAngularVelocity, _rigidbody.angularVelocity);
+                float rotationUrgency = Mathf.Clamp01(angularVelocityDiff / 5f);
+    
+                float rotationSpring = baseSpring * _rotationSpringMultiplier * (0.2f + 0.8f * rotationUrgency);
+                Vector3 torque = axis * (angle * Mathf.Deg2Rad * rotationSpring * _rigidbody.mass);
+    
                 Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                Vector3 angularDamping = angularVelocityError * (_dampingConstant * _rigidbody.mass);
-                
+                Vector3 angularDamping = angularVelocityError * (dynamicDamping * _rotationSpringMultiplier * _rigidbody.mass);
+    
                 _rigidbody.AddTorque(torque + angularDamping);
             }
+        }
+        
+        private float GetDynamicSpringScale()
+        {
+            float uncertainty = _recentAccelerationMagnitude;
+            return 1f / (1f + uncertainty * _uncertaintySpringDampening);
+        }
+
+        private float GetDynamicSpringConstant()
+        {
+            return _springConstant * GetDynamicSpringScale();
         }
 
         private void HardCorrect()
@@ -244,12 +324,38 @@ namespace PurrNet
             _isCorreting = false;
             _correctionTimer = 0f;
         }
-
+        
+        private void TrackAcceleration(float delta)
+        {
+            if (delta <= 0) return;
+    
+#if UNITY_6000_0_OR_NEWER
+            Vector3 currentAccel = (_rigidbody.linearVelocity - _previousVelocity) / delta;
+#else
+            Vector3 currentAccel = (_rigidbody.velocity - _previousVelocity) / delta;
+#endif
+            float decay = Mathf.Pow(_accelerationDecay, delta / 0.05f);
+            _recentAccelerationMagnitude = Mathf.Max(
+                _recentAccelerationMagnitude * decay, 
+                currentAccel.magnitude
+            );
+#if UNITY_6000_0_OR_NEWER
+            _previousVelocity = _rigidbody.linearVelocity;
+#else
+            _previousVelocity = _rigidbody.velocity;
+#endif
+        }
+        
         private bool HasStateChanged()
         {
             float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
             float rotationDelta = Quaternion.Angle(_rigidbody.rotation, _lastSyncedRotation);
+            
+#if UNITY_6000_0_OR_NEWER
             float linearVelocityDelta = Vector3.Distance(_rigidbody.linearVelocity, _lastSyncedLinearVelocity);
+#else
+            float linearVelocityDelta = Vector3.Distance(_rigidbody.velocity, _lastSyncedLinearVelocity);
+#endif
             float angularVelocityDelta = Vector3.Distance(_rigidbody.angularVelocity, _lastSyncedAngularVelocity);
 
             return positionDelta > _positionChangeThreshold || rotationDelta > _rotationChangeThreshold || linearVelocityDelta > _velocityStopThreshold || angularVelocityDelta > _velocityStopThreshold;
@@ -257,7 +363,13 @@ namespace PurrNet
 
         private bool ShouldSyncWhenStopped()
         {
-            return _rigidbody.linearVelocity.magnitude < _velocityStopThreshold &&
+#if UNITY_6000_0_OR_NEWER
+            float magnitude = _rigidbody.linearVelocity.magnitude;
+#else
+            float magnitude = _rigidbody.velocity.magnitude;
+#endif
+            
+            return magnitude < _velocityStopThreshold &&
                    _rigidbody.angularVelocity.magnitude < _velocityStopThreshold &&
                    !_rigidbody.IsSleeping();
         }
@@ -267,21 +379,19 @@ namespace PurrNet
             return new RigidbodySettingsData
             {
                 mass = _rigidbody.mass,
+#if UNITY_6000_0_OR_NEWER
                 drag = _rigidbody.linearDamping,
+#else
+                drag = _rigidbody.drag,
+#endif
+#if UNITY_6000_0_OR_NEWER
                 angularDrag = _rigidbody.angularDamping,
+#else
+                angularDrag = _rigidbody.angularDrag,
+#endif
                 useGravity = _rigidbody.useGravity,
                 isKinematic = _rigidbody.isKinematic
             };
-        }
-
-        private void QueueForce(AppliedForce force)
-        {
-            if (_pendingForces.Count >= _maxForcesPerTick)
-            {
-                PurrLogger.LogError($"NetworkRigidbody on {gameObject.name} exceeded max forces per tick ({_maxForcesPerTick})", this);
-                return;
-            }
-            _pendingForces.Add(force);
         }
 
         private void ApplyForce(AppliedForce force)
@@ -298,8 +408,13 @@ namespace PurrNet
 
         public Vector3 linearVelocity
         {
+#if UNITY_6000_0_OR_NEWER
             get => _rigidbody.linearVelocity;
             set => _rigidbody.linearVelocity = value;
+#else
+            get => _rigidbody.velocity;
+            set => _rigidbody.velocity = value;
+#endif
         }
 
         public Vector3 angularVelocity
@@ -333,6 +448,7 @@ namespace PurrNet
 
         public float drag
         {
+#if UNITY_6000_0_OR_NEWER
             get => _rigidbody.linearDamping;
             set
             {
@@ -340,10 +456,20 @@ namespace PurrNet
                 if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
+#else
+            get => _rigidbody.drag;
+            set
+            {
+                _rigidbody.drag = value;
+                if (IsController(_ownerAuth))
+                    SyncSettings(GetCurrentSettings());
+            }
+#endif
         }
 
         public float angularDrag
         {
+#if UNITY_6000_0_OR_NEWER
             get => _rigidbody.angularDamping;
             set
             {
@@ -351,6 +477,15 @@ namespace PurrNet
                 if (IsController(_ownerAuth))
                     SyncSettings(GetCurrentSettings());
             }
+#else
+            get => _rigidbody.angularDrag;
+            set
+            {
+                _rigidbody.angularDrag = value;
+                if (IsController(_ownerAuth))
+                    SyncSettings(GetCurrentSettings());
+            }
+#endif
         }
 
         public bool useGravity
@@ -379,14 +514,13 @@ namespace PurrNet
         {
             if (!isSpawned)
                 return;
-            
+    
             var appliedForce = new AppliedForce { force = force, mode = mode };
-            
+    
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
-                if(mode != ForceMode.Force)
-                    QueueForce(appliedForce);
+                BroadcastForceToOthers(appliedForce);
             }
             else
             {
@@ -404,7 +538,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForceAtPosition(force, position, mode);
-                QueueForce(appliedForce);
+                BroadcastForceToOthers(appliedForce);
             }
             else
             {
@@ -422,7 +556,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddTorque(torque, mode);
-                QueueForce(appliedForce);
+                BroadcastForceToOthers(appliedForce);
             }
             else
             {
@@ -485,12 +619,6 @@ namespace PurrNet
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
-
-            if (data.recentForces != null)
-            {
-                foreach (var force in data.recentForces)
-                    ApplyForce(force);
-            }
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
@@ -509,22 +637,19 @@ namespace PurrNet
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
 
-            if (data.recentForces != null)
-            {
-                foreach (var force in data.recentForces)
-                    ApplyForce(force);
-            }
-
             SyncState(data);
         }
 
-        [ObserversRpc(runLocally: true, channel: Channel.Unreliable, deltaPacked: true)]
+        [ObserversRpc(runLocally: true, channel: Channel.Unreliable)]
         private void BroadcastForce(AppliedForce force)
         {
             ApplyForce(force);
-
-            if (IsController(_ownerAuth))
-                QueueForce(force);
+        }
+        
+        [ObserversRpc(excludeOwner: true, channel: Channel.Unreliable)]
+        private void BroadcastForceToOthers(AppliedForce force)
+        {
+            ApplyForce(force);
         }
 
         [ObserversRpc(deltaPacked: true)]
@@ -536,7 +661,11 @@ namespace PurrNet
             _hasPendingTeleport = true;
             _rigidbody.MovePosition(data.position);
             _rigidbody.MoveRotation(data.rotation);
+#if UNITY_6000_0_OR_NEWER
             _rigidbody.linearVelocity = data.linearVelocity;
+#else
+            _rigidbody.velocity = data.linearVelocity;
+#endif
             _rigidbody.angularVelocity = data.angularVelocity;
             _targetPosition = data.position;
             _targetRotation = data.rotation;
@@ -552,8 +681,16 @@ namespace PurrNet
                 return;
 
             _rigidbody.mass = data.mass;
+#if UNITY_6000_0_OR_NEWER
             _rigidbody.linearDamping = data.drag;
+#else
+            _rigidbody.drag = data.drag;
+#endif
+#if UNITY_6000_0_OR_NEWER
             _rigidbody.angularDamping = data.angularDrag;
+#else
+            _rigidbody.angularDrag = data.angularDrag;
+#endif
             _rigidbody.useGravity = data.useGravity;
             _rigidbody.isKinematic = data.isKinematic;
         }
@@ -586,7 +723,11 @@ namespace PurrNet
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
+#if UNITY_6000_0_OR_NEWER
                 linearVelocity = _rigidbody.linearVelocity,
+#else
+                linearVelocity = _rigidbody.velocity,
+#endif
                 angularVelocity = _rigidbody.angularVelocity
             };
             Teleport(teleportData);

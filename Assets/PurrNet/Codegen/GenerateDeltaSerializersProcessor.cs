@@ -101,14 +101,46 @@ namespace PurrNet.Codegen
             inlinedDeltaWriteMethods[type] = reference;
         }
 
+        static TypeReference GetDeltaPackerForType(ModuleDefinition module, TypeReference type)
+        {
+            bool isUnmanaged = type?.Resolve()?.IsUnmanaged() == true;
+            if (isUnmanaged)
+                return module.GetTypeDefinition(typeof(NativeDeltaPacker<>)).Import(module);
+            return module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
+        }
+
+        static MethodReference GetDeltaPackerReadMethod(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("Read").Import(module);
+            return deltaSerializer;
+        }
+
+        static MethodReference GetDeltaPackerReadMethodUnpacked(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("ReadUnpacked").Import(module);
+            return deltaSerializer;
+        }
+
+        static MethodReference GetDeltaPackerWriteMethod(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("Write").Import(module);
+            return deltaSerializer;
+        }
+
+        static MethodReference GetDeltaPackerWriteMethodUnpacked(ModuleDefinition module, TypeReference type)
+        {
+            var deltaPackerGenType = GetDeltaPackerForType(module, type);
+            var deltaSerializer = deltaPackerGenType.GetMethod("WriteUnpacked").Import(module);
+            return deltaSerializer;
+        }
+
         private static void CreateReadMethod(ModuleDefinition module, MethodDefinition method, TypeReference typeRef,
             TypeReference bitStreamType)
         {
             var packerType = module.GetTypeDefinition(typeof(Packer)).Import(module);
-            var deltaPackerGenType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
-
-            var deltaSerializer = deltaPackerGenType.GetMethod("Read").Import(module);
-            var deltaBypassSerializer = deltaPackerGenType.GetMethod("ReadUnpacked").Import(module);
             var packerTypeBoolean = bitStreamType.GetMethod("ReadBit").Import(module);
             var advanceBit = bitStreamType.GetMethod("AdvanceBit", false).Import(module);
 
@@ -135,9 +167,8 @@ namespace PurrNet.Codegen
 
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
-                if (!TryGetInlinedMethod(false, standaloneType, module, out var genericM))
-                    genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
-                        module);
+                bool useDirectCall = !TryGetInlinedMethod(false, standaloneType, module, out var genericM);
+                bool standaloneUnmanaged = useDirectCall && standaloneType.Resolve()?.IsUnmanaged() == true;
 
                 var variable = new VariableDefinition(standaloneType);
                 method.Body.Variables.Add(variable);
@@ -147,10 +178,17 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldind_Ref);
                 il.Emit(OpCodes.Stloc, variable);
 
+                if (useDirectCall && !standaloneUnmanaged)
+                    EmitLoadDeltaDelegate(il, module, standaloneType, false);
+
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldloca, variable);
-                il.Emit(OpCodes.Call, genericM);
+
+                if (!useDirectCall)
+                    il.Emit(OpCodes.Call, genericM);
+                else
+                    EmitDirectDeltaCall(il, module, standaloneType, bitStreamType, false, standaloneUnmanaged);
 
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Ldloc, variable);
@@ -187,9 +225,8 @@ namespace PurrNet.Codegen
             if (type.IsEnum)
             {
                 var underlyingType = type.GetField("value__").FieldType;
-                if (!TryGetInlinedMethod(false, underlyingType, module, out var enumReadMethod))
-                    enumReadMethod = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
-                        module);
+                bool useDirectCall = !TryGetInlinedMethod(false, underlyingType, module, out var enumReadMethod);
+                bool enumUnmanaged = useDirectCall && underlyingType.Resolve()?.IsUnmanaged() == true;
 
                 var tmpVar = new VariableDefinition(underlyingType);
 
@@ -197,12 +234,20 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldc_I4_0);
                 il.Emit(OpCodes.Stloc, tmpVar);
 
+                if (useDirectCall && !enumUnmanaged)
+                    EmitLoadDeltaDelegate(il, module, underlyingType, false);
+
                 il.Emit(OpCodes.Ldarg_0);
 
                 // load the address of the field
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldloca, tmpVar);
-                il.Emit(OpCodes.Call, enumReadMethod);
+
+                if (!useDirectCall)
+                    il.Emit(OpCodes.Call, enumReadMethod);
+                else
+                    EmitDirectDeltaCall(il, module, underlyingType, bitStreamType, false, enumUnmanaged);
+
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Ldloc, tmpVar);
                 GenerateSerializersProcessor.EmitStindForEnum(il, type);
@@ -212,13 +257,11 @@ namespace PurrNet.Codegen
             {
                 if (isClass && type.BaseType != null && type.BaseType.FullName != typeof(object).FullName)
                 {
-                    var baseType = type.BaseType;
+                    var baseType = GenerateSerializersProcessor.ResolveGenericTypeRef(type.BaseType, typeRef);
 
                     if (baseType is { IsValueType: false })
                     {
-                        if (!TryGetInlinedMethod(false, baseType, module, out var genericM))
-                            genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
-                                    module);
+                        bool useDirectCall = !TryGetInlinedMethod(false, baseType, module, out var genericM);
 
                         var variable = new VariableDefinition(baseType);
                         method.Body.Variables.Add(variable);
@@ -228,14 +271,22 @@ namespace PurrNet.Codegen
                         il.Emit(OpCodes.Ldind_Ref);
                         il.Emit(OpCodes.Stloc, variable);
 
+                        // baseType is always a class (IsValueType: false), so always managed delegate path
+                        if (useDirectCall)
+                            EmitLoadDeltaDelegate(il, module, baseType, false);
+
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldarg_1);
                         il.Emit(OpCodes.Ldloca, variable);
-                        il.Emit(OpCodes.Call, genericM);
+
+                        if (!useDirectCall)
+                            il.Emit(OpCodes.Call, genericM);
+                        else
+                            EmitDelegateInvoke(il, module, baseType, false);
 
                         il.Emit(OpCodes.Ldarg_2);
                         il.Emit(OpCodes.Ldloc, variable);
-                        il.Emit(OpCodes.Castclass, type);
+                        il.Emit(OpCodes.Castclass, typeRef);
                         il.Emit(OpCodes.Stind_Ref);
                         ++readFields;
                     }
@@ -263,10 +314,25 @@ namespace PurrNet.Codegen
 
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
-                    if (!TryGetInlinedMethod(false, fieldType, module, out var packer))
-                        packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
-                        shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
-                        module);
+                    bool useDirectCall = false;
+                    bool isFieldUnmanaged = false;
+                    MethodReference packer = null;
+
+                    if (TryGetInlinedMethod(false, fieldType, module, out packer))
+                    {
+                        // inlined - use Call
+                    }
+                    else if (shouldSkipDelta)
+                    {
+                        var deltaPackerGenType = GetDeltaPackerForType(module, fieldType);
+                        var deltaBypassSerializer = GetDeltaPackerReadMethodUnpacked(module, fieldType);
+                        packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType, deltaBypassSerializer, module);
+                    }
+                    else
+                    {
+                        useDirectCall = true;
+                        isFieldUnmanaged = fieldType.Resolve()?.IsUnmanaged() == true;
+                    }
 
                     if (!field.IsPublic)
                     {
@@ -276,7 +342,7 @@ namespace PurrNet.Codegen
                         var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
                         var setter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Set_{field.Name}");
 
-                        var getterReference = new MethodReference(getter, fieldType, typeRef)
+                        var getterReference = new MethodReference(getter, field.FieldType, typeRef)
                         {
                             HasThis = true
                         };
@@ -287,7 +353,10 @@ namespace PurrNet.Codegen
                         };
 
                         setterReference.Parameters.Add(
-                            new ParameterDefinition("value", ParameterAttributes.None, fieldType));
+                            new ParameterDefinition("value", ParameterAttributes.None, field.FieldType));
+
+                        if (useDirectCall && !isFieldUnmanaged)
+                            EmitLoadDeltaDelegate(il, module, fieldType, false);
 
                         il.Emit(OpCodes.Ldarg_0);
 
@@ -298,17 +367,25 @@ namespace PurrNet.Codegen
                         il.Emit(OpCodes.Call, getterReference);
 
                         il.Emit(OpCodes.Ldloca, variable);
-                        il.Emit(OpCodes.Call, packer);
+
+                        if (!useDirectCall)
+                            il.Emit(OpCodes.Call, packer);
+                        else
+                            EmitDirectDeltaCall(il, module, fieldType, bitStreamType, false, isFieldUnmanaged);
 
                         il.Emit(OpCodes.Ldarg_2);
                         if (isClass) il.Emit(OpCodes.Ldind_Ref);
                         il.Emit(OpCodes.Ldloc, variable);
-                        il.Emit(OpCodes.Call, setterReference);
+                        il.Emit(OpCodes.Callvirt, setterReference);
                         ++readFields;
                         continue;
                     }
 
                     var fieldRef = new FieldReference(field.Name, field.FieldType, typeRef).Import(module);
+
+                    if (useDirectCall && !isFieldUnmanaged)
+                        EmitLoadDeltaDelegate(il, module, fieldType, false);
+
                     il.Emit(OpCodes.Ldarg_0);
 
                     il.Emit(OpCodes.Ldarg_1);
@@ -318,7 +395,11 @@ namespace PurrNet.Codegen
                     if (isClass) il.Emit(OpCodes.Ldind_Ref);
                     il.Emit(OpCodes.Ldflda, fieldRef);
 
-                    il.Emit(OpCodes.Call, packer);
+                    if (!useDirectCall)
+                        il.Emit(OpCodes.Call, packer);
+                    else
+                        EmitDirectDeltaCall(il, module, fieldType, bitStreamType, false, isFieldUnmanaged);
+
                     ++readFields;
                 }
             }
@@ -359,10 +440,6 @@ namespace PurrNet.Codegen
             TypeReference bitStreamType)
         {
             var bitPackerType = module.GetTypeDefinition(typeof(BitPacker)).Import(module);
-            var deltaPackerGenType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
-
-            var deltaSerializer = deltaPackerGenType.GetMethod("Write").Import(module);
-            var deltaBypassSerializer = deltaPackerGenType.GetMethod("WriteUnpacked").Import(module);
             var advanceOneBitAndSet = bitPackerType.GetMethod("AdvanceOneBitAndSet", false).Import(module);
             var writeBit = bitPackerType.GetMethod("WriteBit", false).Import(module);
             var resetFlagAtAndMovePosition = bitPackerType.GetMethod("ResetFlagAtAndMovePosition", false).Import(module);
@@ -397,15 +474,21 @@ namespace PurrNet.Codegen
 
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
-                if (!TryGetInlinedMethod(true, standaloneType, module, out var genericM))
-                    genericM =
-                    GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, standaloneType, deltaSerializer,
-                        module);
+                bool useDirectCall = !TryGetInlinedMethod(true, standaloneType, module, out var genericM);
+                bool standaloneUnmanaged = useDirectCall && standaloneType.Resolve()?.IsUnmanaged() == true;
+
+                if (useDirectCall && !standaloneUnmanaged)
+                    EmitLoadDeltaDelegate(il, module, standaloneType, true);
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldarg_2);
-                il.Emit(OpCodes.Call, genericM);
+
+                if (!useDirectCall)
+                    il.Emit(OpCodes.Call, genericM);
+                else
+                    EmitDirectDeltaCall(il, module, standaloneType, bitStreamType, true, standaloneUnmanaged);
+
                 il.Emit(OpCodes.Ret);
                 return;
             }
@@ -441,15 +524,21 @@ namespace PurrNet.Codegen
             if (type.IsEnum)
             {
                 var underlyingType = type.GetField("value__").FieldType;
-                if (!TryGetInlinedMethod(true, underlyingType, module, out var enumWriteMethod))
-                    enumWriteMethod = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, underlyingType, deltaSerializer,
-                        module);
+                bool useDirectCall = !TryGetInlinedMethod(true, underlyingType, module, out var enumWriteMethod);
+                bool enumUnmanaged = useDirectCall && underlyingType.Resolve()?.IsUnmanaged() == true;
+
+                if (useDirectCall && !enumUnmanaged)
+                    EmitLoadDeltaDelegate(il, module, underlyingType, true);
 
                 il.Emit(OpCodes.Ldarg_0);
 
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldarg_2);
-                il.Emit(OpCodes.Call, enumWriteMethod);
+
+                if (!useDirectCall)
+                    il.Emit(OpCodes.Call, enumWriteMethod);
+                else
+                    EmitDirectDeltaCall(il, module, underlyingType, bitStreamType, true, enumUnmanaged);
 
                 il.Emit(OpCodes.Stloc_1);
                 ++writtenFields;
@@ -461,19 +550,25 @@ namespace PurrNet.Codegen
 
                 if (isInheritedClass)
                 {
-                    var baseType = type.BaseType;
+                    var baseType = GenerateSerializersProcessor.ResolveGenericTypeRef(type.BaseType, typeRef);
 
                     if (baseType is { IsValueType: false })
                     {
-                        if (!TryGetInlinedMethod(true, baseType, module, out var genericM))
-                            genericM = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, baseType, deltaSerializer,
-                                module);
+                        bool useDirectCall = !TryGetInlinedMethod(true, baseType, module, out var genericM);
+
+                        // baseType is always a class (IsValueType: false), so always managed delegate path
+                        if (useDirectCall)
+                            EmitLoadDeltaDelegate(il, module, baseType, true);
 
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldarg_1);
                         il.Emit(OpCodes.Ldarg_2);
 
-                        il.Emit(OpCodes.Call, genericM);
+                        if (!useDirectCall)
+                            il.Emit(OpCodes.Call, genericM);
+                        else
+                            EmitDelegateInvoke(il, module, baseType, true);
+
                         il.Emit(OpCodes.Ldloc_1);
                         il.Emit(OpCodes.Or);
 
@@ -507,15 +602,33 @@ namespace PurrNet.Codegen
 
                     bool shouldSkipDelta = ShouldNotDeltaPackField(field);
 
-                    if (!TryGetInlinedMethod(true, fieldType, module, out var packer))
-                        packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType,
-                            shouldSkipDelta ? deltaBypassSerializer : deltaSerializer,
-                            module);
+                    bool useDirectCall = false;
+                    bool isFieldUnmanaged = false;
+                    MethodReference packer = null;
+
+                    if (TryGetInlinedMethod(true, fieldType, module, out packer))
+                    {
+                        // inlined - use Call
+                    }
+                    else if (shouldSkipDelta)
+                    {
+                        var deltaPackerGenType = GetDeltaPackerForType(module, fieldType);
+                        var deltaBypassSerializer = GetDeltaPackerWriteMethodUnpacked(module, fieldType);
+                        packer = GenerateSerializersProcessor.CreateGenericMethod(deltaPackerGenType, fieldType, deltaBypassSerializer, module);
+                    }
+                    else
+                    {
+                        useDirectCall = true;
+                        isFieldUnmanaged = fieldType.Resolve()?.IsUnmanaged() == true;
+                    }
 
                     if (i > 0 || isInheritedClass)
                     {
                         il.Emit(OpCodes.Ldloc_1);
                     }
+
+                    if (useDirectCall && !isFieldUnmanaged)
+                        EmitLoadDeltaDelegate(il, module, fieldType, true);
 
                     if (!field.IsPublic)
                     {
@@ -523,7 +636,7 @@ namespace PurrNet.Codegen
                         method.Body.Variables.Add(variable);
 
                         var getter = GenerateSerializersProcessor.MakeFullNameValidCSharp($"Purrnet_Get_{field.Name}");
-                        var getterReference = new MethodReference(getter, fieldType, typeRef)
+                        var getterReference = new MethodReference(getter, field.FieldType, typeRef)
                         {
                             HasThis = true
                         };
@@ -555,7 +668,10 @@ namespace PurrNet.Codegen
                         il.Emit(OpCodes.Ldfld, fieldRef);
                     }
 
-                    il.Emit(OpCodes.Call, packer);
+                    if (!useDirectCall)
+                        il.Emit(OpCodes.Call, packer);
+                    else
+                        EmitDirectDeltaCall(il, module, fieldType, bitStreamType, true, isFieldUnmanaged);
 
                     if (i > 0 || isInheritedClass)
                         il.Emit(OpCodes.Or);
@@ -596,6 +712,95 @@ namespace PurrNet.Codegen
                 new ScopeDebugInformation(method.Body.Instructions[0], method.Body.Instructions[^1]);
             method.DebugInformation.Scope.Variables.Add(new VariableDebugInformation(flagPos, "flagPos"));
             method.DebugInformation.Scope.Variables.Add(new VariableDebugInformation(isEqualVar, "wasChanged"));
+        }
+
+        /// <summary>
+        /// For managed types: emits ldsfld DeltaPacker(T).WriteFunc/ReadFunc before args.
+        /// </summary>
+        static void EmitLoadDeltaDelegate(ILProcessor il, ModuleDefinition module, TypeReference fieldType, bool isWrite)
+        {
+            var deltaPackerDef = module.GetTypeDefinition(typeof(DeltaPacker<>));
+            var fieldName = isWrite ? "WriteFunc" : "ReadFunc";
+
+            // Construct the field type: DeltaWriteFunc<!0> or DeltaReadFunc<!0>
+            // We import the open delegate type and use the raw generic parameter !0 from the definition.
+            // This avoids ImportReference crashing on generic parameters without context.
+            var delegateOpenType = isWrite
+                ? module.GetTypeDefinition(typeof(DeltaWriteFunc<>))
+                : module.GetTypeDefinition(typeof(DeltaReadFunc<>));
+            var constructedFieldType = new GenericInstanceType(module.ImportReference(delegateOpenType));
+            constructedFieldType.GenericArguments.Add(deltaPackerDef.GenericParameters[0]);
+
+            var genericInstance = new GenericInstanceType(deltaPackerDef.Import(module));
+            genericInstance.GenericArguments.Add(fieldType);
+
+            var fieldRef = new FieldReference(fieldName, constructedFieldType, genericInstance);
+            il.Emit(OpCodes.Ldsfld, fieldRef);
+        }
+
+        /// <summary>
+        /// For managed types: emits callvirt DeltaWriteFunc(T)/DeltaReadFunc(T).Invoke after args.
+        /// </summary>
+        static void EmitDelegateInvoke(ILProcessor il, ModuleDefinition module, TypeReference fieldType, bool isWrite)
+        {
+            var delegateTypeDef = isWrite
+                ? module.GetTypeDefinition(typeof(DeltaWriteFunc<>))
+                : module.GetTypeDefinition(typeof(DeltaReadFunc<>));
+
+            var genericDelegate = new GenericInstanceType(delegateTypeDef.Import(module));
+            genericDelegate.GenericArguments.Add(fieldType);
+
+            var invokeRef = genericDelegate.GetMethodRef("Invoke").Import(module);
+            il.Emit(OpCodes.Callvirt, invokeRef);
+        }
+
+        /// <summary>
+        /// For unmanaged types: emits ldsfld NativeDeltaPacker(T).WriteFunc/ReadFunc + calli after args.
+        /// </summary>
+        static void EmitNativeCalli(ILProcessor il, ModuleDefinition module, TypeReference fieldType, TypeReference bitStreamType, bool isWrite)
+        {
+            var nativeDeltaPackerDef = module.GetTypeDefinition(typeof(NativeDeltaPacker<>));
+            var fieldName = isWrite ? "WriteFunc" : "ReadFunc";
+            var genericParam = nativeDeltaPackerDef.GenericParameters[0]; // !0
+
+            // Construct FunctionPointerType matching the field signature:
+            // Write: delegate*<BitPacker, !0, !0, bool>
+            // Read:  delegate*<BitPacker, !0, ref !0, void>
+            var funcPtrType = new FunctionPointerType();
+            funcPtrType.ReturnType = isWrite ? module.TypeSystem.Boolean : module.TypeSystem.Void;
+            funcPtrType.Parameters.Add(new ParameterDefinition(bitStreamType));
+            funcPtrType.Parameters.Add(new ParameterDefinition(genericParam));
+            funcPtrType.Parameters.Add(isWrite
+                ? new ParameterDefinition(genericParam)
+                : new ParameterDefinition(new ByReferenceType(genericParam)));
+
+            var genericInstance = new GenericInstanceType(nativeDeltaPackerDef.Import(module));
+            genericInstance.GenericArguments.Add(fieldType);
+
+            var fieldRef = new FieldReference(fieldName, funcPtrType, genericInstance);
+            il.Emit(OpCodes.Ldsfld, fieldRef);
+
+            // calli uses concrete types (the function pointer is already on the stack)
+            var callSite = new CallSite(isWrite ? module.TypeSystem.Boolean : module.TypeSystem.Void);
+            callSite.Parameters.Add(new ParameterDefinition(bitStreamType));
+            callSite.Parameters.Add(new ParameterDefinition(fieldType));
+            callSite.Parameters.Add(isWrite
+                ? new ParameterDefinition(fieldType)
+                : new ParameterDefinition(new ByReferenceType(fieldType)));
+            il.Emit(OpCodes.Calli, callSite);
+        }
+
+        /// <summary>
+        /// Emits a direct delta call, bypassing .Write/.Read wrappers.
+        /// Unmanaged: ldsfld NativeDeltaPacker(T).Func + calli.
+        /// Managed: callvirt DeltaWriteFunc(T)/DeltaReadFunc(T).Invoke (delegate must already be on stack).
+        /// </summary>
+        static void EmitDirectDeltaCall(ILProcessor il, ModuleDefinition module, TypeReference fieldType, TypeReference bitStreamType, bool isWrite, bool isUnmanaged)
+        {
+            if (isUnmanaged)
+                EmitNativeCalli(il, module, fieldType, bitStreamType, isWrite);
+            else
+                EmitDelegateInvoke(il, module, fieldType, isWrite);
         }
 
         private static bool ShouldIgnoreField(FieldDefinition field)

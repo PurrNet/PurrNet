@@ -123,7 +123,18 @@ namespace PurrNet
         /// <summary>
         /// The Network Assets of the network manager.
         /// </summary>
-        public NetworkAssets networkAssets => _networkAssets;
+        public NetworkAssets networkAssets
+        {
+            get => _networkAssets;
+            set
+            {
+                if (isOffline)
+                {
+                    _networkAssets = value;
+                }
+                else PurrLogger.LogError("Failed to update network assets since a connection is active.");
+            }
+        }
 
         /// <summary>
         /// The prefab provider of the network manager.
@@ -1327,6 +1338,7 @@ namespace PurrNet
                 {
                     _clientModules.UnregisterModules();
                     CleanupClientModules();
+                    TriggerUnsubscribeEvents(false);
                     _isCleaningClient = false;
                 }
             }
@@ -1336,6 +1348,7 @@ namespace PurrNet
                 _isServerTicking = false;
                 _serverModules.UnregisterModules();
                 CleanupServerModules();
+                TriggerUnsubscribeEvents(true);
                 _isCleaningServer = false;
             }
 

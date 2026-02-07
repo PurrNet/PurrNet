@@ -99,16 +99,30 @@ namespace PurrNet.Packing
             }
         }
 
+        /// <summary>Fallback for types with no registered delta: write one "changed" bit then full value. Avoids delegating to DeltaPacker&lt;object&gt; which would recurse (stack overflow) for string and other unregistered types.</summary>
         public static bool FallbackWriter<T>(BitPacker packer, T oldValue, T value)
         {
-            return DeltaPacker<object>.Write(packer, oldValue, value);
+            if (Packer.AreEqual(oldValue, value))
+            {
+                packer.WriteBit(false);
+                return false;
+            }
+            packer.WriteBit(true);
+            Packer<T>.Write(packer, value);
+            return true;
         }
 
+        /// <summary>Fallback for types with no registered delta: read one "changed" bit then full value or copy of old.</summary>
         public static void FallbackReader<T>(BitPacker packer, T oldValue, ref T value)
         {
-            object newValue = value;
-            DeltaPacker<object>.Read(packer, oldValue, ref newValue);
-            value = (T)newValue;
+            if (!packer.ReadBit())
+            {
+                if (value is IDisposable disposable)
+                    disposable.Dispose();
+                value = Packer.Copy(oldValue);
+                return;
+            }
+            Packer<T>.Read(packer, ref value);
         }
     }
 }

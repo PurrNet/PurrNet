@@ -1,3 +1,97 @@
+# [1.19.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.17...v1.19.0-beta.18) (2026-02-06)
+
+
+### Bug Fixes
+
+* update isControllingSyncVar logic to handle server updates correctly ([520e587](https://github.com/PurrNet/PurrNet/commit/520e587008e80341b6adde704e0af9dec87a172f))
+
+# [1.19.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.16...v1.19.0-beta.17) (2026-02-06)
+
+
+### Bug Fixes
+
+* before failing to set syncvar double check if cached value is up to date; once client does a change to the syncvar, ingore server catchups ([f2cc835](https://github.com/PurrNet/PurrNet/commit/f2cc835a86300263197632ba5709938f4683b5b5))
+
+# [1.19.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.15...v1.19.0-beta.16) (2026-02-05)
+
+
+### Bug Fixes
+
+* add null check for networkManager in PlayersManager retrieval ([567ac4f](https://github.com/PurrNet/PurrNet/commit/567ac4fb1e9022c774c843635db63d1c41c5fe86))
+
+# [1.19.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.14...v1.19.0-beta.15) (2026-02-05)
+
+
+### Bug Fixes
+
+* BadImageFormatException: Method with open type while not compiling gshared ([2216218](https://github.com/PurrNet/PurrNet/commit/2216218a13f64507d2875b7691980251846ef8c4))
+
+# [1.19.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.13...v1.19.0-beta.14) (2026-02-05)
+
+
+### Bug Fixes
+
+* scene module events not firing ([382094f](https://github.com/PurrNet/PurrNet/commit/382094f8ed40c82c556532dedfd133cd9c3bbd90))
+
+# [1.19.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.12...v1.19.0-beta.13) (2026-02-03)
+
+
+### Bug Fixes
+
+* Backwards compatibility for network RB ([94af929](https://github.com/PurrNet/PurrNet/commit/94af9293ed711a98dfea2a83f35437ab285fc232))
+
+# [1.19.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.11...v1.19.0-beta.12) (2026-02-03)
+
+
+### Bug Fixes
+
+* reworking bit packer functions ([0d6ca93](https://github.com/PurrNet/PurrNet/commit/0d6ca93638842268429fbccccb2ae397ec02ca12))
+
+# [1.19.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.10...v1.19.0-beta.11) (2026-02-03)
+
+
+### Bug Fixes
+
+* add bounds checking to BitPacker.ReadBits to prevent native crash on malformed packets ([77abf0d](https://github.com/PurrNet/PurrNet/commit/77abf0dd8d177cf0fc0712aec7eda284c17e0af0))
+
+# [1.19.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.9...v1.19.0-beta.10) (2026-02-03)
+
+
+### Bug Fixes
+
+* buffer overflow in RPC response handling ([6a83e07](https://github.com/PurrNet/PurrNet/commit/6a83e07e0d1ce1fbf525fd36ad57df6f3d38e455))
+
+# [1.19.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.8...v1.19.0-beta.9) (2026-02-03)
+
+
+### Features
+
+* add Unity services dependencies and update UTPClient/UTPServer for Relay support ([1523d06](https://github.com/PurrNet/PurrNet/commit/1523d0620d27a84ecf9db0ec3219ea4f9886a763))
+
+# [1.19.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.7...v1.19.0-beta.8) (2026-02-03)
+
+
+### Bug Fixes
+
+* compiler errors ([ae009e6](https://github.com/PurrNet/PurrNet/commit/ae009e64a10965bf78bdfd6a49d470337a94626f))
+
+# [1.19.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.6...v1.19.0-beta.7) (2026-02-01)
+
+
+### Bug Fixes
+
+* allow to replace networkAssets at runtime ([d3dcd69](https://github.com/PurrNet/PurrNet/commit/d3dcd6924e1e87f43659542e20475d1e1cbba8fd))
+
+# [1.19.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.5...v1.19.0-beta.6) (2026-01-30)
+
+
+### Bug Fixes
+
+* Added dynamic force correction to network RB ([c6a27cf](https://github.com/PurrNet/PurrNet/commit/c6a27cfbac65ec379c33c88bc8d939091a2b4ed7))
+* Scaling hard correction threshold of Network RB ([39d5cb2](https://github.com/PurrNet/PurrNet/commit/39d5cb21b1ffba2c0db9e2210eabfe40b5fec525))
+* Smooth rotational syncing on Network RB ([a4ca898](https://github.com/PurrNet/PurrNet/commit/a4ca898e5372365cf26f3c30ec968c1c6354891c))
+* Solve inconsistency in sync timing ([59e7993](https://github.com/PurrNet/PurrNet/commit/59e7993fbdf64b5cee42e32b19593766e6d377bc))
+
 # [1.19.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.4...v1.19.0-beta.5) (2026-01-29)
 
 

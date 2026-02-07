@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
 using PurrNet.Modules;
 #if PURR_DELTA_CHECK
 using PurrNet.Logging;
@@ -19,10 +20,12 @@ namespace PurrNet.Packing
             ReadFunc = DeltaPacker.FallbackReader;
         }
 
+        [UsedImplicitly]
         public static void Register(DeltaWriteFunc<T> write, DeltaReadFunc<T> read)
         {
             RegisterWriter(write);
             RegisterReader(read);
+            NativeDeltaPacker<T>.Register(write, read);
         }
 
         public static bool HasPacker()
@@ -30,24 +33,24 @@ namespace PurrNet.Packing
             return _hasWriter && _hasReader;
         }
 
-        public static void RegisterWriter(DeltaWriteFunc<T> a)
+        public static void RegisterWriter(DeltaWriteFunc<T> write)
         {
             if (_hasWriter)
                 return;
 
             _hasWriter = true;
-            DeltaPacker.RegisterWriter(typeof(T), a.Method);
-            WriteFunc = a;
+            DeltaPacker.RegisterWriter(typeof(T), write.Method);
+            WriteFunc = write;
         }
 
-        public static void RegisterReader(DeltaReadFunc<T> b)
+        public static void RegisterReader(DeltaReadFunc<T> read)
         {
             if (_hasReader)
                 return;
 
             _hasReader = true;
-            DeltaPacker.RegisterReader(typeof(T), b.Method);
-            ReadFunc = b;
+            DeltaPacker.RegisterReader(typeof(T), read.Method);
+            ReadFunc = read;
         }
 
         [UsedByIL]

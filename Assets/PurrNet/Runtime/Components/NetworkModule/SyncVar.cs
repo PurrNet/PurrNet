@@ -40,6 +40,8 @@ namespace PurrNet
 
         private bool _isSubscribedToTickManager;
 
+        private bool _ignoreServerUpdates;
+
         public T value
         {
             get => _value;
@@ -50,14 +52,19 @@ namespace PurrNet
 
                 if (isSpawned && !isControllingSyncVar)
                 {
-                    PurrLogger.LogError(
-                        $"Invalid permissions when setting `<b>SyncVar<{typeof(T).Name}> {name}</b>` on `{parent.name}`." +
-                        $"\n{GetPermissionErrorDetails(_ownerAuth, this)}", parent);
-                    return;
+                    InvalidateIsController(); // Re-check controller status in case it changed since last check.
+                    if (!isControllingSyncVar)
+                    {
+                        PurrLogger.LogError(
+                            $"Invalid permissions when setting `<b>SyncVar<{typeof(T).Name}> {name}</b>` on `{parent.name}`." +
+                            $"\n{GetPermissionErrorDetails(_ownerAuth, this)}", parent);
+                        return;
+                    }
                 }
 
                 var oldValue = _value;
                 _value = value;
+                _ignoreServerUpdates = true;
 
                 SetDirty();
                 TriggerEvents(oldValue);
@@ -69,6 +76,10 @@ namespace PurrNet
             onChanged = null;
             onChangedWithOld = null;
             isControllingSyncVar = false;
+            _isDirty = false;
+            _wasLastDirty = false;
+            _id = 0;
+            _ignoreServerUpdates = false;
         }
 
         public override void OnOwnerDisconnected(PlayerID ownerId)
@@ -140,11 +151,19 @@ namespace PurrNet
 
         private void InvalidateIsController()
         {
-            isControllingSyncVar = parent.IsController(_ownerAuth);
+            bool old = isControllingSyncVar;
+            bool @new = parent.IsController(_ownerAuth);
+
+            isControllingSyncVar = @new;
+
+            if (old != @new && !@new)
+                _ignoreServerUpdates = false;
         }
 
         public override void OnDespawned()
         {
+            InvalidateIsController();
+
             if (isControllingSyncVar)
             {
                 _id += 1;
@@ -230,6 +249,9 @@ namespace PurrNet
         private void SendLatestState(PlayerID player, PackedULong packetId, T newValue)
         {
             if (isServer)
+                return;
+
+            if (_ignoreServerUpdates)
                 return;
 
             _id = packetId.value;

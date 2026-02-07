@@ -12,9 +12,12 @@ using PurrNet.Transports;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using Unity.Networking.Transport;
-using Unity.Networking.Transport.Relay;
 using Unity.Collections;
 using Unity.Networking.Transport.Error;
+#endif
+
+#if UTP_SERVICES
+using Unity.Networking.Transport.Relay;
 #endif
 
 namespace PurrNet.UTP
@@ -43,12 +46,12 @@ namespace PurrNet.UTP
         /// Event raised when a remote client connects to the server.
         /// </summary>
         public event Action<int> onRemoteConnected;
-        
+
         /// <summary>
         /// Event raised when a remote client disconnects from the server.
         /// </summary>
         public event Action<int> onRemoteDisconnected;
-        
+
         /// <summary>
         /// Event raised when data is received from a connected client.
         /// </summary>
@@ -67,6 +70,7 @@ namespace PurrNet.UTP
         public bool listening => false;
 #endif
 
+#if UTP_LOBBYRELAY && UTP_SERVICES
         /// <summary>
         /// Starts listening for incoming client connections on the specified port.
         /// Can operate in direct connection mode or via Unity Relay if relay data is provided.
@@ -88,7 +92,7 @@ namespace PurrNet.UTP
             {
                 _driver = NetworkDriver.Create();
             }
-            
+
             _reliablePipeline = _driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
             _unreliablePipeline = NetworkPipeline.Null;
 
@@ -140,7 +144,7 @@ namespace PurrNet.UTP
             var settings = new NetworkSettings();
             settings.WithRelayParameters(ref relayDataValue);
             _driver = NetworkDriver.Create(settings);
-            
+
             _reliablePipeline = _driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
             _unreliablePipeline = NetworkPipeline.Null;
 
@@ -162,6 +166,7 @@ namespace PurrNet.UTP
             PostListen();
 #endif
         }
+#endif
 
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
         private void PostListen()
@@ -212,7 +217,7 @@ namespace PurrNet.UTP
                     {
                         int packetLength = stream.Length;
                         MakeSureBufferCanFit(packetLength);
-                        
+
                         unsafe
                         {
                             fixed (byte* bufferPtr = _buffer)
@@ -221,7 +226,7 @@ namespace PurrNet.UTP
                                 stream.ReadBytes(span);
                             }
                         }
-                        
+
                         var byteData = new ByteData(_buffer, 0, packetLength);
                         onDataReceived?.Invoke(connId, byteData);
                     }

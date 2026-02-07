@@ -1,0 +1,204 @@
+{
+    "name": "Snapshot 2026-02-03 17:59",
+    "timestamp": "2026-02-03T17:59:10.2253071+01:00",
+    "results": [
+        {
+            "TypeName": "bool",
+            "BitsFull": 1,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 1,
+            "WriteTimeMicroseconds": 0.3464632,
+            "ReadTimeMicroseconds": 0.3947456,
+            "Error": ""
+        },
+        {
+            "TypeName": "byte",
+            "BitsFull": 8,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 9,
+            "WriteTimeMicroseconds": 0.4835668,
+            "ReadTimeMicroseconds": 0.388139,
+            "Error": ""
+        },
+        {
+            "TypeName": "sbyte",
+            "BitsFull": 8,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 9,
+            "WriteTimeMicroseconds": 0.369041,
+            "ReadTimeMicroseconds": 0.3877168,
+            "Error": ""
+        },
+        {
+            "TypeName": "short",
+            "BitsFull": 16,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 17,
+            "WriteTimeMicroseconds": 0.3851458,
+            "ReadTimeMicroseconds": 0.3989978,
+            "Error": ""
+        },
+        {
+            "TypeName": "ushort",
+            "BitsFull": 16,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 17,
+            "WriteTimeMicroseconds": 0.3807166,
+            "ReadTimeMicroseconds": 0.400768,
+            "Error": ""
+        },
+        {
+            "TypeName": "int",
+            "BitsFull": 32,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 9,
+            "WriteTimeMicroseconds": 0.368501,
+            "ReadTimeMicroseconds": 0.3917326,
+            "Error": ""
+        },
+        {
+            "TypeName": "uint",
+            "BitsFull": 32,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 9,
+            "WriteTimeMicroseconds": 0.3680578,
+            "ReadTimeMicroseconds": 0.3916582,
+            "Error": ""
+        },
+        {
+            "TypeName": "long",
+            "BitsFull": 64,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 25,
+            "WriteTimeMicroseconds": 0.511737,
+            "ReadTimeMicroseconds": 0.4004876,
+            "Error": ""
+        },
+        {
+            "TypeName": "ulong",
+            "BitsFull": 64,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 25,
+            "WriteTimeMicroseconds": 0.3961402,
+            "ReadTimeMicroseconds": 0.4092448,
+            "Error": ""
+        },
+        {
+            "TypeName": "float",
+            "BitsFull": 32,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 33,
+            "WriteTimeMicroseconds": 0.3602098,
+            "ReadTimeMicroseconds": 0.3742506,
+            "Error": ""
+        },
+        {
+            "TypeName": "double",
+            "BitsFull": 64,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 73,
+            "WriteTimeMicroseconds": 0.467937,
+            "ReadTimeMicroseconds": 0.4482288,
+            "Error": ""
+        },
+        {
+            "TypeName": "PackedUInt",
+            "BitsFull": 8,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 9,
+            "WriteTimeMicroseconds": 0.3852964,
+            "ReadTimeMicroseconds": 0.3860172,
+            "Error": ""
+        },
+        {
+            "TypeName": "PackedLong",
+            "BitsFull": 24,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 25,
+            "WriteTimeMicroseconds": 0.4065552,
+            "ReadTimeMicroseconds": 0.4126914,
+            "Error": ""
+        },
+        {
+            "TypeName": "Vector2",
+            "BitsFull": 64,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 67,
+            "WriteTimeMicroseconds": 0.431622,
+            "ReadTimeMicroseconds": 0.4896402,
+            "Error": ""
+        },
+        {
+            "TypeName": "Vector2Int",
+            "BitsFull": 64,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 65,
+            "WriteTimeMicroseconds": 0.3706374,
+            "ReadTimeMicroseconds": 0.4180438,
+            "Error": ""
+        },
+        {
+            "TypeName": "Vector3",
+            "BitsFull": 96,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 100,
+            "WriteTimeMicroseconds": 0.4350904,
+            "ReadTimeMicroseconds": 0.4164912,
+            "Error": ""
+        },
+        {
+            "TypeName": "Vector3Int",
+            "BitsFull": 96,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 28,
+            "WriteTimeMicroseconds": 0.4224166,
+            "ReadTimeMicroseconds": 0.427787,
+            "Error": ""
+        },
+        {
+            "TypeName": "Vector4",
+            "BitsFull": 128,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 133,
+            "WriteTimeMicroseconds": 0.461827,
+            "ReadTimeMicroseconds": 0.4340432,
+            "Error": ""
+        },
+        {
+            "TypeName": "Quaternion",
+            "BitsFull": 128,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 69,
+            "WriteTimeMicroseconds": 0.41708,
+            "ReadTimeMicroseconds": 0.4209528,
+            "Error": ""
+        },
+        {
+            "TypeName": "BS 0 ch",
+            "BitsFull": 352,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 1,
+            "WriteTimeMicroseconds": 0.4594114,
+            "ReadTimeMicroseconds": 0.5278346,
+            "Error": ""
+        },
+        {
+            "TypeName": "BS 1 fld",
+            "BitsFull": 352,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 39,
+            "WriteTimeMicroseconds": 0.4701562,
+            "ReadTimeMicroseconds": 0.4258198,
+            "Error": ""
+        },
+        {
+            "TypeName": "BS all",
+            "BitsFull": 352,
+            "BitsDeltaUnchanged": 1,
+            "BitsDeltaChanged": 254,
+            "WriteTimeMicroseconds": 0.5973398,
+            "ReadTimeMicroseconds": 0.5251818,
+            "Error": ""
+        }
+    ]
+}
