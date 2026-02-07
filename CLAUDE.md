@@ -98,3 +98,4 @@ Defined automatically via `versionDefines` in the runtime `.asmdef`:
 - Custom attributes: `[PurrDocs("link")]` for doc links, `[PurrLock]` for inspector locking
 - Uses TriInspector for custom inspector attributes
 - `[UsedImplicitly]` from JetBrains annotations marks reflection/IL-accessed members
+- Never use `#region` / `#endregion`
