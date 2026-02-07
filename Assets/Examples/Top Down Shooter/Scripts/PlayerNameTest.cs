@@ -15,7 +15,7 @@ public class PlayerNameTest : NetworkIdentity
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space) && isController)
         {
             Test("Hello World");
         }
@@ -24,6 +24,6 @@ public class PlayerNameTest : NetworkIdentity
     [ObserversRpc]
     static void Test(string wtf)
     {
-        Debug.Log(wtf);
+        Debug.Log(wtf + " fefe");
     }
 }

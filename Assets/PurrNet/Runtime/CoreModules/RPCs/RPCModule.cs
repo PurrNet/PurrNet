@@ -365,6 +365,7 @@ namespace PurrNet.Modules
                 case RPCType.ObserversRPC:
                 {
                     var playersManager = networkManager.GetModule<PlayersManager>(true);
+                    var finalList = DisposableList<PlayerID>.Create(playersManager.players.Count);
 
                     for (var i = 0; i < networkManager.players.Count; ++i)
                     {
@@ -375,9 +376,11 @@ namespace PurrNet.Modules
                         if (ignoreSender)
                             continue;
 
-                        var rawData = BroadcastModule.GetImmediateData(data);
-                        playersManager.Send(observer, rawData, signature.channel);
+                        finalList.Add(observer);
                     }
+
+                    playersManager.Send(finalList, data, signature.channel);
+                    finalList.Dispose();
 
                     if (data is StaticRPCPacket staticRpc)
                         module.AppendToBufferedRPCs(staticRpc, signature);
@@ -385,14 +388,13 @@ namespace PurrNet.Modules
                 }
                 case RPCType.TargetRPC:
                 {
-                    var rawData = BroadcastModule.GetImmediateData(data);
                     var playersManager = networkManager.GetModule<PlayersManager>(true);
 
                     bool isTargetingServer = data.targetPlayerId == PlayerID.Server;
                     bool shouldExecute = isTargetingServer && rules.CanTargetServerWithTargetRpc();
 
                     if (!isTargetingServer)
-                        playersManager.Send(data.targetPlayerId, rawData, signature.channel);
+                        playersManager.Send(data.targetPlayerId, data, signature.channel);
 
                     if (data is StaticRPCPacket staticRpc)
                         module.AppendToBufferedRPCs(staticRpc, signature);

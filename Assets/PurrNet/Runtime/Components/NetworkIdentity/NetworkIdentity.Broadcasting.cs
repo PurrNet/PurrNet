@@ -610,15 +610,14 @@ namespace PurrNet
                             players.Add(observer);
                         }
 
-                        Send(players, BroadcastModule.GetImmediateData(data), signature.channel);
+                        Send(players, data, signature.channel);
                         AppendToBufferedRPCs(signature, data, module);
                         return !isClient;
                     }
                     case RPCType.TargetRPC:
                     {
-                        var rawData = BroadcastModule.GetImmediateData(data);
                         bool shouldExecute =
-                            SendToTargetOrServer(rules, data.targetPlayerId, rawData, signature.channel);
+                            SendToTargetOrServer(rules, data.targetPlayerId, data, signature.channel);
                         AppendToBufferedRPCs(signature, data, module);
                         return shouldExecute;
                     }
@@ -646,13 +645,7 @@ namespace PurrNet
                 networkManager.GetModule<PlayersManager>(true).Send(player, packet, method);
         }
 
-        public void Send(PlayerID player, ByteData data, Channel method = Channel.ReliableOrdered)
-        {
-            if (networkManager.isServer)
-                networkManager.GetModule<PlayersManager>(true).SendRaw(player, data, method);
-        }
-
-        bool SendToTargetOrServer(NetworkRules rules, PlayerID player, ByteData data, Channel method = Channel.ReliableOrdered)
+        bool SendToTargetOrServer<T>(NetworkRules rules, PlayerID player, T data, Channel method = Channel.ReliableOrdered)
         {
             if (player == PlayerID.Server)
             {
@@ -671,7 +664,7 @@ namespace PurrNet
                 return false;
             }
 
-            Send(player, data, method);
+            Send<T>(player, data, method);
             return false;
         }
 
@@ -679,18 +672,6 @@ namespace PurrNet
         {
             if (networkManager.isServer)
                 networkManager.GetModule<PlayersManager>(true).Send(players, data, method);
-        }
-
-        public void Send(IReadOnlyList<PlayerID> players, ByteData data, Channel method = Channel.ReliableOrdered)
-        {
-            if (networkManager.isServer)
-                networkManager.GetModule<PlayersManager>(true).SendRaw(players, data, method);
-        }
-
-        public void SendToServer<T>(T packet, Channel method = Channel.ReliableOrdered)
-        {
-            if (networkManager.isClient)
-                networkManager.GetModule<PlayersManager>(false).SendToServer(packet, method);
         }
     }
 }
