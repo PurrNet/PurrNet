@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Statistics Manager")]
     public partial class StatisticsManager : MonoBehaviour
     {
         [Range(0.05f, 1f)] public float checkInterval = 0.33f;

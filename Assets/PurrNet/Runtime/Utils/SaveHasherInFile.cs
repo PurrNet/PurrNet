@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Debug/Save Hasher In File")]
     public class SaveHasherInFile : MonoBehaviour
     {
         private void Start()

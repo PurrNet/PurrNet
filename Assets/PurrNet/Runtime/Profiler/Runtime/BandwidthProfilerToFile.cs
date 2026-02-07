@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Debug/Bandwidth Profiler To File")]
     public class BandwidthProfilerToFile : MonoBehaviour
     {
         [SerializeField] private string _fileName = "bandwidth_profiler.data";

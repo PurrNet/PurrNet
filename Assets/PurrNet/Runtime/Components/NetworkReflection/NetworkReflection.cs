@@ -7,6 +7,7 @@ using Object = UnityEngine.Object;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Reflection")]
     public class NetworkReflection : NetworkIdentity, ITick
     {
         [PurrDocs("systems-and-modules/plug-n-play-components/network-reflection-auto-sync")]

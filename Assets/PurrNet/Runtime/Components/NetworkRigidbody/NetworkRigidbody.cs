@@ -40,6 +40,7 @@ namespace PurrNet
     }
 
     [RequireComponent(typeof(Rigidbody))]
+    [AddComponentMenu("PurrNet/Network Rigidbody")]
     public partial class NetworkRigidbody : NetworkIdentity, ITick
     {
         [Header("Authority")]

@@ -9,6 +9,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Raw Net Manager")]
     public class RawNetManager : MonoBehaviour, IRegisterModules, INetworkManager
     {
         [Header("Auto Start Settings")]

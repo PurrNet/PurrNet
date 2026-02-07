@@ -7,6 +7,7 @@ using UnityEngine.Serialization;
 
 namespace PurrNet.StateMachine
 {
+    [AddComponentMenu("PurrNet/State Machine")]
     [DefaultExecutionOrder(-1000)]
     public sealed class StateMachine : NetworkBehaviour
     {

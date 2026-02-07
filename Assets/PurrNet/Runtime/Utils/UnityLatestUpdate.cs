@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("")]
     [DefaultExecutionOrder(32000)]
     public class UnityLatestUpdate : MonoBehaviour
     {

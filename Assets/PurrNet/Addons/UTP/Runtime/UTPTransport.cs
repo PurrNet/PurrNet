@@ -24,6 +24,7 @@ namespace PurrNet.UTP
     /// Supports multiple network channels (reliable, unreliable) and can function as both client and server.
     /// </summary>
     [DefaultExecutionOrder(-100)]
+    [AddComponentMenu("PurrNet/Transport/UTP Transport")]
     public partial class UTPTransport : GenericTransport, ITransport
     {
         [Header("Server Settings")] [SerializeField]

@@ -14,6 +14,7 @@ using UnityEngine;
 namespace PurrNet.Steam
 {
     [DefaultExecutionOrder(-100)]
+    [AddComponentMenu("PurrNet/Transport/Steam Transport")]
     public partial class SteamTransport : GenericTransport, ITransport
     {
         [Header("Server Settings")] [SerializeField]

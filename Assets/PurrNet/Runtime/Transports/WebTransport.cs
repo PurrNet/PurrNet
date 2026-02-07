@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace PurrNet.Transports
 {
+    [AddComponentMenu("PurrNet/Transport/Web Transport")]
     public partial class WebTransport : GenericTransport, ITransport
     {
         [SerializeField] private AutomaticCloudSetups _automaticCloudSetups;

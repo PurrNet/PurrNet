@@ -24,6 +24,7 @@ namespace PurrNet
     public delegate void OnTickDelegate(bool asServer);
 
     [DefaultExecutionOrder(-999)]
+    [AddComponentMenu("PurrNet/Network Manager")]
     public sealed partial class NetworkManager : MonoBehaviour, IRegisterModules, INetworkManager
     {
         /// <summary>

@@ -6,6 +6,7 @@ using UnityEngine.Serialization;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Transform")]
     public sealed class NetworkTransform : NetworkIdentity, INetworkTransform
     {
         [Header("What to Sync")]

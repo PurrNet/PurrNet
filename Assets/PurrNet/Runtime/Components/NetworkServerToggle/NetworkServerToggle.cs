@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Server Toggle")]
     public sealed class NetworkServerToggle : NetworkIdentity
     {
         [Header("GameObjects to toggle when OnSpawned is called - from perspective of server")]

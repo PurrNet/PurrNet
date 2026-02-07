@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Audio Source")]
     [PurrDocs("plug-n-play-components/networkaudiosource")]
     public sealed class NetworkAudioSource : NetworkIdentity, ITick
     {
