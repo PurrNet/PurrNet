@@ -11,6 +11,7 @@ var hierarchy =
       [ "PurrNet.LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
       [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ]
     ] ],
+    [ "PurrNet.AudioSourceState", "structPurrNet_1_1AudioSourceState.html", null ],
     [ "PurrNet.Authentication.AuthenticationBehaviour< string >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", [
       [ "PurrNet.Authentication.SimpleAuthenticator", "classPurrNet_1_1Authentication_1_1SimpleAuthenticator.html", null ]
     ] ],
@@ -232,6 +233,7 @@ var hierarchy =
     [ "PurrNet.InterpolatedWithDispose< T >", "classPurrNet_1_1InterpolatedWithDispose.html", null ],
     [ "PurrNet.IOwnerAuth", "interfacePurrNet_1_1IOwnerAuth.html", null ],
     [ "PurrNet.Packing.IPacked", "interfacePurrNet_1_1Packing_1_1IPacked.html", [
+      [ "PurrNet.AudioSourceDelta", "structPurrNet_1_1AudioSourceDelta.html", null ],
       [ "PurrNet.StateMachine.StateMachineState", "structPurrNet_1_1StateMachine_1_1StateMachineState.html", null ]
     ] ],
     [ "PurrNet.Packing.IPackedAuto", "interfacePurrNet_1_1Packing_1_1IPackedAuto.html", [
@@ -339,6 +341,7 @@ var hierarchy =
     [ "PurrNet.Packing.IStandaloneSerializable", "interfacePurrNet_1_1Packing_1_1IStandaloneSerializable.html", null ],
     [ "PurrNet.StateMachine.IStateCommand", "interfacePurrNet_1_1StateMachine_1_1IStateCommand.html", null ],
     [ "PurrNet.ITick", "interfacePurrNet_1_1ITick.html", [
+      [ "PurrNet.NetworkAudioSource", "classPurrNet_1_1NetworkAudioSource.html", null ],
       [ "PurrNet.NetworkReflection", "classPurrNet_1_1NetworkReflection.html", null ],
       [ "PurrNet.NetworkRigidbody", "classPurrNet_1_1NetworkRigidbody.html", null ],
       [ "PurrNet.ReliableDeltaStream< T >", "classPurrNet_1_1ReliableDeltaStream.html", null ],
@@ -363,6 +366,7 @@ var hierarchy =
       [ "PurrNet.BandwidthProfilerToFile", "classPurrNet_1_1BandwidthProfilerToFile.html", null ],
       [ "PurrNet.NetworkIdentity", "classPurrNet_1_1NetworkIdentity.html", [
         [ "PurrNet.NetworkAnimator", "classPurrNet_1_1NetworkAnimator.html", null ],
+        [ "PurrNet.NetworkAudioSource", "classPurrNet_1_1NetworkAudioSource.html", null ],
         [ "PurrNet.NetworkBehaviour", "classPurrNet_1_1NetworkBehaviour.html", [
           [ "PurrNet.StateMachine.StateMachine", "classPurrNet_1_1StateMachine_1_1StateMachine.html", null ],
           [ "PurrNet.StateMachine.StateNode< T >", "classPurrNet_1_1StateMachine_1_1StateNode.html", null ]

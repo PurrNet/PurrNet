@@ -10,5 +10,6 @@ var searchData=
   ['localtick_7',['localTick',['../classPurrNet_1_1Modules_1_1TickManager.html#ab8ea7b7b0dce2b4c4a7b1c2cd5887899',1,'PurrNet::Modules::TickManager']]],
   ['localtransform_8',['LocalTransform',['../structPurrNet_1_1Modules_1_1LocalTransform.html',1,'PurrNet::Modules']]],
   ['localtransport_9',['LocalTransport',['../classPurrNet_1_1Transports_1_1LocalTransport.html',1,'PurrNet::Transports']]],
-  ['logstyle_10',['LogStyle',['../structPurrNet_1_1Logging_1_1LogStyle.html',1,'PurrNet::Logging']]]
+  ['logstyle_10',['LogStyle',['../structPurrNet_1_1Logging_1_1LogStyle.html',1,'PurrNet::Logging']]],
+  ['loop_11',['loop',['../classPurrNet_1_1NetworkAudioSource.html#a412171afdd9010a7cb1c0b83302f7242',1,'PurrNet::NetworkAudioSource']]]
 ];

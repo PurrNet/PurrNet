@@ -10,12 +10,15 @@ var searchData=
   ['allocationdetails_7',['AllocationDetails',['../structPurrNet_1_1Pooling_1_1AllocationDetails.html',1,'PurrNet::Pooling']]],
   ['alwaysvisiblerule_8',['AlwaysVisibleRule',['../classPurrNet_1_1AlwaysVisibleRule.html',1,'PurrNet']]],
   ['appliedforce_9',['AppliedForce',['../structPurrNet_1_1AppliedForce.html',1,'PurrNet']]],
-  ['authenticationbehaviour_10',['AuthenticationBehaviour',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html',1,'PurrNet::Authentication']]],
-  ['authenticationbehaviour_3c_20string_20_3e_11',['AuthenticationBehaviour&lt; string &gt;',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html',1,'PurrNet::Authentication']]],
-  ['authenticationlayer_12',['AuthenticationLayer',['../classPurrNet_1_1Authentication_1_1AuthenticationLayer.html',1,'PurrNet::Authentication']]],
-  ['authenticationrequest_13',['AuthenticationRequest',['../structPurrNet_1_1Authentication_1_1AuthenticationRequest.html',1,'PurrNet::Authentication']]],
-  ['authenticationrequestdata_14',['AuthenticationRequestData',['../structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html',1,'PurrNet::Authentication']]],
-  ['authenticationresponse_15',['AuthenticationResponse',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html',1,'PurrNet::Authentication']]],
-  ['authmodule_16',['AuthModule',['../classPurrNet_1_1Modules_1_1AuthModule.html',1,'PurrNet::Modules']]],
-  ['automaticcloudsetups_17',['AutomaticCloudSetups',['../classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html',1,'PurrNet::Transports']]]
+  ['audiosource_10',['audioSource',['../classPurrNet_1_1NetworkAudioSource.html#a651a1f477f62e4aa34c3ecab94ba1258',1,'PurrNet::NetworkAudioSource']]],
+  ['audiosourcedelta_11',['AudioSourceDelta',['../structPurrNet_1_1AudioSourceDelta.html',1,'PurrNet']]],
+  ['audiosourcestate_12',['AudioSourceState',['../structPurrNet_1_1AudioSourceState.html',1,'PurrNet']]],
+  ['authenticationbehaviour_13',['AuthenticationBehaviour',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html',1,'PurrNet::Authentication']]],
+  ['authenticationbehaviour_3c_20string_20_3e_14',['AuthenticationBehaviour&lt; string &gt;',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html',1,'PurrNet::Authentication']]],
+  ['authenticationlayer_15',['AuthenticationLayer',['../classPurrNet_1_1Authentication_1_1AuthenticationLayer.html',1,'PurrNet::Authentication']]],
+  ['authenticationrequest_16',['AuthenticationRequest',['../structPurrNet_1_1Authentication_1_1AuthenticationRequest.html',1,'PurrNet::Authentication']]],
+  ['authenticationrequestdata_17',['AuthenticationRequestData',['../structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html',1,'PurrNet::Authentication']]],
+  ['authenticationresponse_18',['AuthenticationResponse',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html',1,'PurrNet::Authentication']]],
+  ['authmodule_19',['AuthModule',['../classPurrNet_1_1Modules_1_1AuthModule.html',1,'PurrNet::Modules']]],
+  ['automaticcloudsetups_20',['AutomaticCloudSetups',['../classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html',1,'PurrNet::Transports']]]
 ];
