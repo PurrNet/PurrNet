@@ -148,7 +148,8 @@ namespace PurrNet.UTP
             _reliablePipeline = _driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
             _unreliablePipeline = NetworkPipeline.Null;
 
-            if (_driver.Bind(relayData.Value.Endpoint) != 0)
+            // When using Unity Relay, bind to 0.0.0.0:0 (AnyIpv4) as required by Unity Transport
+            if (_driver.Bind(NetworkEndpoint.AnyIpv4) != 0)
             {
                 PurrLogger.LogError("Failed to bind to relay endpoint");
                 _driver.Dispose();
