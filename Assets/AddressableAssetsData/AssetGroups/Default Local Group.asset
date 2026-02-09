@@ -14,7 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Default Local Group
   m_GUID: d995fd8290f74d04885ee309c463eff3
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 59f20f308aff60045adccd2cdee2a9e6
+    m_Address: Assets/Examples/AddressablesTest/Prefabs/TestAddressable.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: e502b0d2149c6a04e90746d3f378d377, type: 2}
   m_SchemaSet:
