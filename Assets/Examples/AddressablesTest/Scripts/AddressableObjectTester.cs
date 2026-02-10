@@ -6,15 +6,21 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace AddressablesTest
 {
-    public class AddressableObjectTester : MonoBehaviour
+    public class AddressableObjectTester : NetworkIdentity
     {
-        public AssetReference prefabReference;
-        public string prefabAddress = "MyPrefab";
+        public AssetReferenceGameObject prefabReference;
         
         List<AsyncOperationHandle<GameObject>> _handles = new();
     
         [PurrButton]
-        async void SpawnByReference()
+        void SpawnByReference()
+        {
+            var go = networkManager.SpawnAddressable(prefabReference);
+            Debug.Log($"[{go.name}] Spawn by reference.", go);
+        }
+    
+        [PurrButton]
+        async void InstantiateByReference()
         {
             var handle = prefabReference.InstantiateAsync(Random.insideUnitSphere * 3f, Quaternion.identity);
             await handle.Task;
@@ -22,20 +28,7 @@ namespace AddressablesTest
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
                 _handles.Add(handle);
-                Debug.Log($"Spawned by reference. Total: {_handles.Count}");
-            }
-        }
-    
-        [PurrButton]
-        async void SpawnByAddress()
-        {
-            var handle = Addressables.InstantiateAsync(prefabAddress, Random.insideUnitSphere * 3f, Quaternion.identity);
-            await handle.Task;
-            
-            if (handle.Status == AsyncOperationStatus.Succeeded)
-            {
-                _handles.Add(handle);
-                Debug.Log($"Spawned by address. Total: {_handles.Count}");
+                Debug.Log($"Instantiate by reference. Total: {_handles.Count}");
             }
         }
     
