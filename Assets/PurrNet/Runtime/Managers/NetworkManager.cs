@@ -61,6 +61,12 @@ namespace PurrNet
         [PurrDocs("systems-and-modules/network-manager/network-prefabs")] [SerializeField]
         private NetworkPrefabs _networkPrefabs;
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+        //[PurrDocs("systems-and-modules/network-manager/addressable-network-prefabs")] //TODO: Add this in the future
+        [SerializeField]
+        private AddressableNetworkPrefabs _addressableNetworkPrefabs;
+#endif
+
         [PurrDocs("systems-and-modules/network-manager/network-assets")] [SerializeField]
         private NetworkAssets _networkAssets;
 
@@ -141,6 +147,13 @@ namespace PurrNet
         /// The prefab provider of the network manager.
         /// </summary>
         public IPrefabProvider prefabProvider { get; private set; }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        /// <summary>
+        /// The Addressable network prefabs configuration, if assigned.
+        /// </summary>
+        public AddressableNetworkPrefabs addressableNetworkPrefabs => _addressableNetworkPrefabs;
+#endif
 
         /// <summary>
         /// The visibility rules of the network manager.
@@ -1206,7 +1219,51 @@ namespace PurrNet
                    (flags.HasFlag(StartFlags.ServerBuild) && ApplicationContext.isServerBuild);
         }
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+        /// <summary>
+        /// Sets up a composite prefab provider that merges the regular NetworkPrefabs
+        /// and the AddressableNetworkPrefabs into a single unified provider.
+        /// Called after Addressable prefabs have been loaded.
+        /// </summary>
+        private void SetupCompositePrefabProvider()
+        {
+            if (!_addressableNetworkPrefabs || _addressableNetworkPrefabs.count == 0)
+                return;
+
+            var composite = new CompositePrefabProvider();
+
+            if (_networkPrefabs)
+                composite.AddProvider(_networkPrefabs);
+
+            composite.AddProvider(_addressableNetworkPrefabs);
+            SetPrefabProvider(composite);
+        }
+
+        private async void Start()
+        {
+            if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0)
+            {
+                try
+                {
+                    await _addressableNetworkPrefabs.LoadAllAsync();
+                    SetupCompositePrefabProvider();
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"Failed to load Addressable network prefabs: {e.Message}");
+                }
+            }
+
+            AutoStart();
+        }
+#else
         private void Start()
+        {
+            AutoStart();
+        }
+#endif
+
+        private void AutoStart()
         {
             bool shouldStartServer = transport && ShouldStart(_startServerFlags);
             bool shouldStartClient = transport && ShouldStart(_startClientFlags);
@@ -1386,6 +1443,11 @@ namespace PurrNet
                     _serverModules.UnregisterModules();
                 }
             }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+            if (_addressableNetworkPrefabs)
+                _addressableNetworkPrefabs.ReleaseAll();
+#endif
         }
 
         /// <summary>
