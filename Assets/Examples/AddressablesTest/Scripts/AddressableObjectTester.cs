@@ -11,12 +11,26 @@ namespace AddressablesTest
         public AssetReferenceGameObject prefabReference;
         
         List<AsyncOperationHandle<GameObject>> _handles = new();
+
+        private List<GameObject> _spawned = new();
     
         [PurrButton]
         void SpawnByReference()
         {
             var go = networkManager.SpawnAddressable(prefabReference);
-            Debug.Log($"[{go.name}] Spawn by reference.", go);
+            _spawned.Add(go);
+            Debug.Log($"[{go.name}] Spawn by reference. | Total spawned: {_spawned}", go);
+        }
+    
+        [PurrButton]
+        void DespawnByReference()
+        {
+            if (_spawned.Count == 0) return;
+            
+            var go = _spawned[^1];
+            _spawned.Remove(go);
+            networkManager.DespawnAddressable(go);
+            Debug.Log($"[{go.name}] Despawn by reference. | Total spawned: {_spawned}", go);
         }
     
         [PurrButton]
