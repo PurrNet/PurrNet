@@ -184,7 +184,8 @@ namespace PurrNet.Editor
             EditorGUILayout.PropertyField(_dontDestroyOnLoad);
             EditorGUILayout.PropertyField(_transport);
             DrawNetworkPrefabs();
-            EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+            if(_addressableNetworkPrefabs != null)
+                EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
             DrawNetworkAssets();
             EditorGUILayout.PropertyField(_networkRules);
             EditorGUILayout.PropertyField(_visibilityRules);
