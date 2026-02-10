@@ -21,6 +21,7 @@ var namespacePurrNet =
     [ "ChildRPCPacket", "structPurrNet_1_1ChildRPCPacket.html", null ],
     [ "ClientAttribute", "classPurrNet_1_1ClientAttribute.html", null ],
     [ "ColliderRollback", "classPurrNet_1_1ColliderRollback.html", null ],
+    [ "CompositePrefabProvider", "classPurrNet_1_1CompositePrefabProvider.html", "classPurrNet_1_1CompositePrefabProvider" ],
     [ "DistanceRule", "classPurrNet_1_1DistanceRule.html", "classPurrNet_1_1DistanceRule" ],
     [ "DontDeltaCompressAttribute", "classPurrNet_1_1DontDeltaCompressAttribute.html", null ],
     [ "DontPackAttribute", "classPurrNet_1_1DontPackAttribute.html", null ],

@@ -293,6 +293,7 @@ var hierarchy =
     ] ],
     [ "PurrNet.IPlayerEvents", "interfacePurrNet_1_1IPlayerEvents.html", null ],
     [ "PurrNet.IPrefabProvider", "interfacePurrNet_1_1IPrefabProvider.html", [
+      [ "PurrNet.CompositePrefabProvider", "classPurrNet_1_1CompositePrefabProvider.html", null ],
       [ "PurrNet.PrefabProviderScriptable", "classPurrNet_1_1PrefabProviderScriptable.html", [
         [ "PurrNet.NetworkPrefabs", "classPurrNet_1_1NetworkPrefabs.html", null ]
       ] ]
