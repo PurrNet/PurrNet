@@ -195,7 +195,6 @@ namespace PurrNet
             _loadHandles.Clear();
             isLoaded = false;
 
-            // Clear prefab references but keep the lookup structure
             var keys = new List<int>(_prefabLookup.Keys);
             for (int i = 0; i < keys.Count; i++)
             {
