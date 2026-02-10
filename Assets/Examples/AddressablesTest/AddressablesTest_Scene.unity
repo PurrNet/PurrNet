@@ -275,13 +275,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee79e0f004603f54c9cd8dc51609baed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AddressablesTest::AddressablesTest.AddressableObjectTester
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   prefabReference:
     m_AssetGUID: 59f20f308aff60045adccd2cdee2a9e6
     m_SubObjectName: 
     m_SubObjectType: 
     m_SubObjectGUID: 
     m_EditorAssetChanged: 0
-  prefabAddress: MyPrefab
 --- !u!4 &433382365
 Transform:
   m_ObjectHideFlags: 0
@@ -477,7 +485,7 @@ MonoBehaviour:
   _dontDestroyOnLoad: 1
   _transport: {fileID: 1216416902}
   _networkPrefabs: {fileID: 11400000, guid: a055442f60d2cf6418eae0f23ab5d76e, type: 2}
-  _addressableNetworkPrefabs: {fileID: 0}
+  _addressableNetworkPrefabs: {fileID: 11400000, guid: 25e62997801d6184987c13365b3868c4, type: 2}
   _networkAssets: {fileID: 0}
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}

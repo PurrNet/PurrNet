@@ -11,7 +11,7 @@ using UnityEditor;
 
 namespace PurrNet
 {
-    [CreateAssetMenu(fileName = "NetworkPrefabs", menuName = "PurrNet/Network Prefabs", order = -201)]
+    [CreateAssetMenu(fileName = "NetworkPrefabs", menuName = "PurrNet/Network Prefabs/Prefabs", order = -201)]
     public class NetworkPrefabs : PrefabProviderScriptable
     {
         public bool autoGenerate = true;
