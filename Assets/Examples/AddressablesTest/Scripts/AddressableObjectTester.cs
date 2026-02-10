@@ -19,7 +19,7 @@ namespace AddressablesTest
         {
             var go = networkManager.SpawnAddressable(prefabReference);
             _spawned.Add(go);
-            Debug.Log($"[{go.name}] Spawn by reference. | Total spawned: {_spawned}", go);
+            Debug.Log($"[{go.name}] Spawn by reference. | Total spawned: {_spawned.Count}", go);
         }
     
         [PurrButton]
@@ -30,7 +30,7 @@ namespace AddressablesTest
             var go = _spawned[^1];
             _spawned.Remove(go);
             networkManager.DespawnAddressable(go);
-            Debug.Log($"[{go.name}] Despawn by reference. | Total spawned: {_spawned}", go);
+            Debug.Log($"[{go.name}] Despawn by reference. | Total spawned: {_spawned.Count}", go);
         }
     
         [PurrButton]
