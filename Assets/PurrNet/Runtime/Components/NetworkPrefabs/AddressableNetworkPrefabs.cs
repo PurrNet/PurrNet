@@ -1,6 +1,7 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PurrNet.Logging;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -77,6 +78,27 @@ namespace PurrNet
 
             prefabData = default;
             return false;
+        }
+
+        public bool TryGetGuid(int localPrefabId, out string assetGuid)
+        {
+            return _idToGuid.TryGetValue(localPrefabId, out assetGuid);
+        }
+
+        public static event Action<string, bool> onLoadStateChanged;
+
+        internal static void NotifyLoadStateChanged(string guid, bool loaded)
+        {
+            onLoadStateChanged?.Invoke(guid, loaded);
+        }
+
+        public System.Collections.Generic.IEnumerable<string> GetLoadedGuids()
+        {
+            foreach (var kvp in _prefabLookup)
+            {
+                if (kvp.Value.prefab != null && _idToGuid.TryGetValue(kvp.Key, out var g))
+                    yield return g;
+            }
         }
 
         public override void Refresh()
@@ -184,6 +206,7 @@ namespace PurrNet
 
                 data.prefab = handle.Result;
                 _prefabLookup[prefabId] = data;
+                NotifyLoadStateChanged(guid, true);
                 return data;
             }
             catch (Exception e)
@@ -232,6 +255,7 @@ namespace PurrNet
                     {
                         data.prefab = prefab;
                         _prefabLookup[id] = data;
+                        NotifyLoadStateChanged(guid, true);
                     }
                 }
                 catch (Exception e)
@@ -257,6 +281,9 @@ namespace PurrNet
 
             _loadHandles.Clear();
             isLoaded = false;
+
+            foreach (var guid in _idToGuid.Values)
+                NotifyLoadStateChanged(guid, false);
 
             var keys = new List<int>(_prefabLookup.Keys);
             for (int i = 0; i < keys.Count; i++)

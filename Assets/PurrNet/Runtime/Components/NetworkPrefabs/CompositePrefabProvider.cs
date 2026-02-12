@@ -150,5 +150,27 @@ namespace PurrNet
             prefabData = default;
             return false;
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        public bool TryGetAddressableGuid(int prefabId, out string assetGuid)
+        {
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                int count = _counts[i];
+                if (prefabId < _offsets[i] || prefabId >= _offsets[i] + count)
+                    continue;
+
+                int localId = prefabId - _offsets[i];
+                if (_providers[i] is AddressableNetworkPrefabs addr)
+                    return addr.TryGetGuid(localId, out assetGuid);
+
+                assetGuid = null;
+                return false;
+            }
+
+            assetGuid = null;
+            return false;
+        }
+#endif
     }
 }
