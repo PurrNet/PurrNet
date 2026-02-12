@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 318e803fbbbdba84e84e0a41f9a86896, type: 3}
   m_Name: AddressableNetworkPrefabs
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.AddressableNetworkPrefabs
+  _preloadAtStartup: 0
   _entries:
   - asset:
       m_AssetGUID: 59f20f308aff60045adccd2cdee2a9e6

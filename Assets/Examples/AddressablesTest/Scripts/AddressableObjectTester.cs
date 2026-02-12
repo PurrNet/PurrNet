@@ -15,9 +15,10 @@ namespace AddressablesTest
         private List<GameObject> _spawned = new();
     
         [PurrButton]
-        void SpawnByReference()
+        async void SpawnByReference()
         {
-            var go = networkManager.SpawnAddressable(prefabReference);
+            var go = await networkManager.SpawnAddressableAsync(prefabReference);
+            if (!go) return;
             _spawned.Add(go);
             Debug.Log($"[{go.name}] Spawn by reference. | Total spawned: {_spawned.Count}", go);
         }
