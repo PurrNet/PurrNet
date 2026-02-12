@@ -1063,6 +1063,27 @@ namespace PurrNet.Modules
             HashSetPool<NetworkIdentity>.Destroy(roots);
         }
 
+        public void EvaluateVisibilityForPlayer(PlayerID player)
+        {
+            if (!_asServer || !_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
+                return;
+
+            var roots = HashSetPool<NetworkIdentity>.Instantiate();
+            var count = _spawnedIdentities.Count;
+
+            for (var i = 0; i < count; i++)
+            {
+                var id = _spawnedIdentities[i];
+                if (!id || id.isManualSpawn) continue;
+                var root = id.GetRootIdentity();
+                if (root && roots.Add(root))
+                    _visibility.RefreshVisibilityForGameObject(player, root.transform);
+            }
+
+            FlushSpawnPackets();
+            HashSetPool<NetworkIdentity>.Destroy(roots);
+        }
+
         /// <summary>
         /// Evaluates the visibility of a hierarchy of objects rooted at the specified transform
         /// for all players currently present in the associated scene. This operation is intended
