@@ -9,7 +9,7 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace PurrNet
 {
     [CreateAssetMenu(fileName = "AddressableNetworkPrefabs", menuName = "PurrNet/Network Prefabs/Addressable Network Prefabs", order = -200)]
-    public class AddressableNetworkPrefabs : PrefabProviderScriptable
+    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAsyncPrefabProvider
     {
         [Serializable]
         public struct Entry
@@ -18,7 +18,8 @@ namespace PurrNet
             public bool pooled;
             public int warmupCount;
         }
-
+        
+        [SerializeField] private bool _preloadAtStartup = true;
         [SerializeField] private List<Entry> _entries = new();
 
         /// <summary>
@@ -28,6 +29,7 @@ namespace PurrNet
 
         private readonly Dictionary<int, PrefabData> _prefabLookup = new();
         private readonly Dictionary<string, int> _guidToId = new();
+        private readonly Dictionary<int, string> _idToGuid = new();
         private readonly List<AsyncOperationHandle<GameObject>> _loadHandles = new();
 
         /// <summary>
@@ -39,6 +41,8 @@ namespace PurrNet
         /// Number of registered entries.
         /// </summary>
         public int count => _entries.Count;
+
+        public bool preloadAtStartup => _preloadAtStartup;
 
         public override IEnumerable<PrefabData> allPrefabs => _prefabLookup.Values;
 
@@ -96,6 +100,7 @@ namespace PurrNet
         {
             _prefabLookup.Clear();
             _guidToId.Clear();
+            _idToGuid.Clear();
 
             var sorted = new List<(string guid, int originalIndex)>();
 
@@ -120,13 +125,61 @@ namespace PurrNet
                 var entry = _entries[originalIndex];
 
                 _guidToId[guid] = i;
+                _idToGuid[i] = guid;
                 _prefabLookup[i] = new PrefabData
                 {
                     prefabId = i,
-                    prefab = null, // Not loaded yet
+                    prefab = null,
                     pooled = entry.pooled,
                     warmupCount = entry.warmupCount
                 };
+            }
+        }
+
+        public bool NeedsLoad(int prefabId)
+        {
+            if (!_prefabLookup.TryGetValue(prefabId, out var data))
+                return false;
+            return data.prefab == null;
+        }
+
+        public async Awaitable<PrefabData> LoadPrefabAsync(int prefabId)
+        {
+            if (!_prefabLookup.TryGetValue(prefabId, out var data))
+            {
+                PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} not found in AddressableNetworkPrefabs.");
+                return default;
+            }
+
+            if (data.prefab != null)
+                return data;
+
+            if (!_idToGuid.TryGetValue(prefabId, out var guid))
+            {
+                PurrLogger.LogError($"LoadPrefabAsync: no GUID mapping for prefabId {prefabId}.");
+                return default;
+            }
+
+            try
+            {
+                var handle = Addressables.LoadAssetAsync<GameObject>(guid);
+                _loadHandles.Add(handle);
+                await handle.Task;
+
+                if (handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
+                {
+                    PurrLogger.LogError($"LoadPrefabAsync: failed to load Addressable prefab prefabId {prefabId} GUID '{guid}'.");
+                    return default;
+                }
+
+                data.prefab = handle.Result;
+                _prefabLookup[prefabId] = data;
+                return data;
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogError($"LoadPrefabAsync: exception loading prefabId {prefabId} GUID '{guid}': {e.Message}\n{e.StackTrace}");
+                return default;
             }
         }
 
