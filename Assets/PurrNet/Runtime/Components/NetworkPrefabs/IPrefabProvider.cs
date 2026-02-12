@@ -3,6 +3,12 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    public interface IAsyncPrefabProvider : IPrefabProvider
+    {
+        bool NeedsLoad(int prefabId);
+        Awaitable<PrefabData> LoadPrefabAsync(int prefabId);
+    }
+
     public struct PrefabData
     {
         public int prefabId;
