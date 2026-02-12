@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2314004410295764718}
+  - component: {fileID: 6511147985845130874}
   - component: {fileID: 2087940300521165039}
   m_Layer: 0
   m_Name: TestAddressable
@@ -33,6 +34,18 @@ Transform:
   - {fileID: 5159991565428145238}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6511147985845130874
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3460198399945453242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b66976102dfedb7449962c4fdd33011f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AddressablesTest::AddressablesTest.TestAddressable
 --- !u!114 &2087940300521165039
 MonoBehaviour:
   m_ObjectHideFlags: 0
