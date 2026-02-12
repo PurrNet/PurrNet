@@ -161,13 +161,13 @@ namespace PurrNet
 
         public void OnTick(float delta)
         {
+            if (_dirtyFlags == AudioDirtyFlags.None) return;
+
             if (!IsController(_ownerAuth))
             {
                 _dirtyFlags = AudioDirtyFlags.None;
                 return;
             }
-
-            if (_dirtyFlags == AudioDirtyFlags.None) return;
 
             var state = CaptureState();
             var packet = new AudioSourceDelta { flags = _dirtyFlags, state = state };
