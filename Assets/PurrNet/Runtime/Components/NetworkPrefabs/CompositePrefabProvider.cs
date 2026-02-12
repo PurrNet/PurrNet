@@ -1,12 +1,14 @@
 using System.Collections.Generic;
+using PurrNet.Logging;
 using UnityEngine;
 
 namespace PurrNet
 {
-    public class CompositePrefabProvider : IPrefabProvider
+    public class CompositePrefabProvider : IPrefabProvider, IAsyncPrefabProvider
     {
         private readonly List<IPrefabProvider> _providers = new();
         private readonly List<int> _offsets = new();
+        private readonly List<int> _counts = new();
         private readonly Dictionary<int, PrefabData> _unified = new();
 
         public IEnumerable<PrefabData> allPrefabs => _unified.Values;
@@ -28,6 +30,7 @@ namespace PurrNet
         {
             _unified.Clear();
             _offsets.Clear();
+            _counts.Clear();
 
             int offset = 0;
 
@@ -53,8 +56,62 @@ namespace PurrNet
                         localMax = data.prefabId;
                 }
 
-                offset += localMax + 1;
+                int count = localMax + 1;
+                _counts.Add(count);
+                offset += count;
             }
+        }
+
+        public bool NeedsLoad(int prefabId)
+        {
+            return _unified.TryGetValue(prefabId, out var data) && data.prefab == null;
+        }
+
+        public async Awaitable<PrefabData> LoadPrefabAsync(int prefabId)
+        {
+            if (!_unified.TryGetValue(prefabId, out var data))
+            {
+                PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} not found in CompositePrefabProvider.");
+                return default;
+            }
+
+            if (data.prefab != null)
+                return data;
+
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                int count = _counts[i];
+                if (prefabId < _offsets[i] || prefabId >= _offsets[i] + count)
+                    continue;
+
+                int localId = prefabId - _offsets[i];
+                var provider = _providers[i];
+
+                if (provider is IAsyncPrefabProvider asyncProvider)
+                {
+                    try
+                    {
+                        var loaded = await asyncProvider.LoadPrefabAsync(localId);
+                        if (loaded.prefab == null)
+                            return default;
+
+                        data.prefab = loaded.prefab;
+                        _unified[prefabId] = data;
+                        return data;
+                    }
+                    catch (System.Exception e)
+                    {
+                        PurrLogger.LogError($"LoadPrefabAsync: exception loading prefabId {prefabId} (provider {i} local {localId}): {e.Message}\n{e.StackTrace}");
+                        return default;
+                    }
+                }
+
+                PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} needs load but provider {i} does not support async loading.");
+                return default;
+            }
+
+            PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} not in any provider range.");
+            return default;
         }
 
         public bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
