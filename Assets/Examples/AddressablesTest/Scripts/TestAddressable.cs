@@ -11,7 +11,7 @@ namespace AddressablesTest
             if (isController)
             {
                 transform.position += new Vector3(Random.Range(-5f, 5f), Random.Range(0f, 2f), Random.Range(-5f, 5f));
-                TestRpc();
+                TestRpc(); 
             }
         }
 
