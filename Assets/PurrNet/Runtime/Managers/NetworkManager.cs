@@ -1245,12 +1245,15 @@ namespace PurrNet
             {
                 try
                 {
-                    await _addressableNetworkPrefabs.LoadAllAsync();
+                    if (_addressableNetworkPrefabs.preloadAtStartup)
+                    {
+                        await _addressableNetworkPrefabs.LoadAllAsync();
+                    }
                     SetupCompositePrefabProvider();
                 }
                 catch (Exception e)
                 {
-                    PurrLogger.LogError($"Failed to load Addressable network prefabs: {e.Message}");
+                    PurrLogger.LogError($"Failed to load Addressable network prefabs: {e.Message}\n{e.StackTrace}");
                 }
             }
 
