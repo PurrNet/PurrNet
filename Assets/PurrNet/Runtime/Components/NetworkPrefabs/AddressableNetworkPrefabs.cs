@@ -143,6 +143,16 @@ namespace PurrNet
             return data.prefab == null;
         }
 
+        public async Awaitable<PrefabData> LoadPrefabByGuidAsync(string assetGuid)
+        {
+            if (!_guidToId.TryGetValue(assetGuid, out int localId))
+            {
+                PurrLogger.LogError($"LoadPrefabByGuidAsync: GUID '{assetGuid}' not registered.");
+                return default;
+            }
+            return await LoadPrefabAsync(localId);
+        }
+
         public async Awaitable<PrefabData> LoadPrefabAsync(int prefabId)
         {
             if (!_prefabLookup.TryGetValue(prefabId, out var data))
