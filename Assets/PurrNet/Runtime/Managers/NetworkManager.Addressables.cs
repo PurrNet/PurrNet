@@ -1,4 +1,5 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
+using System;
 using PurrNet.Logging;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -54,13 +55,6 @@ namespace PurrNet
                 return null;
             }
 
-            if (!_addressableNetworkPrefabs.isLoaded)
-            {
-                PurrLogger.LogError("SpawnAddressable failed: Addressable prefabs have not been loaded yet. " +
-                                    "Ensure LoadAllAsync has completed before spawning.");
-                return null;
-            }
-
             if (!_addressableNetworkPrefabs.TryGetPrefabDataByGuid(assetGuid, out var localData))
             {
                 PurrLogger.LogError($"SpawnAddressable failed: No Addressable prefab registered with GUID '{assetGuid}'.");
@@ -69,18 +63,60 @@ namespace PurrNet
 
             if (!localData.prefab)
             {
-                PurrLogger.LogError($"SpawnAddressable failed: Addressable prefab with GUID '{assetGuid}' is registered but not loaded.");
+                PurrLogger.LogError($"SpawnAddressable failed: Addressable prefab with GUID '{assetGuid}' is registered but not loaded. Use SpawnAddressableAsync and await it.");
                 return null;
             }
 
-            GameObject instance;
-
             if (parent)
-                instance = UnityProxy.Instantiate(localData.prefab, position, rotation, parent);
-            else
-                instance = UnityProxy.Instantiate(localData.prefab, position, rotation);
+                return UnityProxy.Instantiate(localData.prefab, position, rotation, parent);
+            return UnityProxy.Instantiate(localData.prefab, position, rotation);
+        }
 
-            return instance;
+        public async Awaitable<GameObject> SpawnAddressableAsync(
+            AssetReferenceGameObject assetRef,
+            Vector3 position = default,
+            Quaternion rotation = default,
+            Transform parent = null)
+        {
+            if (assetRef == null || !assetRef.RuntimeKeyIsValid())
+            {
+                PurrLogger.LogError("SpawnAddressableAsync failed: AssetReference is null or invalid.");
+                return null;
+            }
+
+            return await SpawnAddressableByGuidAsync(assetRef.AssetGUID, position, rotation, parent);
+        }
+
+        public async Awaitable<GameObject> SpawnAddressableByGuidAsync(
+            string assetGuid,
+            Vector3 position = default,
+            Quaternion rotation = default,
+            Transform parent = null)
+        {
+            if (!_addressableNetworkPrefabs)
+            {
+                PurrLogger.LogError("SpawnAddressableAsync failed: No AddressableNetworkPrefabs assigned on NetworkManager.");
+                return null;
+            }
+
+            try
+            {
+                var prefabData = await _addressableNetworkPrefabs.LoadPrefabByGuidAsync(assetGuid);
+                if (prefabData.prefab == null)
+                {
+                    PurrLogger.LogError($"SpawnAddressableAsync failed: could not load Addressable prefab GUID '{assetGuid}'.");
+                    return null;
+                }
+
+                if (parent)
+                    return UnityProxy.Instantiate(prefabData.prefab, position, rotation, parent);
+                return UnityProxy.Instantiate(prefabData.prefab, position, rotation);
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogError($"SpawnAddressableAsync failed for GUID '{assetGuid}': {e.Message}\n{e.StackTrace}");
+                return null;
+            }
         }
 
         /// <summary>
