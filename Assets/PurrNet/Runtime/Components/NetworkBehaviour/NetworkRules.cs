@@ -144,6 +144,21 @@ namespace PurrNet
         [Range(1, 10)] public int syncedTickUpdateInterval;
     }
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+    [Serializable]
+    public struct AddressableRules
+    {
+        [Tooltip("Sync Addressable load state (loaded/unloaded) with the server. Enables server to only add observers when clients have the prefab ready.")]
+        public bool syncLoadState;
+
+        [Tooltip("Only add as observer when client has reported the Addressable as loaded. Avoids RPCs arriving before the identity exists.")]
+        public bool waitForLoadBeforeObserver;
+
+        [Tooltip("Release Addressable from memory when the last spawned instance is despawned.")]
+        public bool releaseWhenLastDespawned;
+    }
+#endif
+
     [CreateAssetMenu(fileName = "NetworkRules", menuName = "PurrNet/Network Rules", order = -201)]
     public class NetworkRules : ScriptableObject
     {
@@ -215,6 +230,20 @@ namespace PurrNet
         {
             syncedTickUpdateInterval = 1
         };
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        [SerializeField]
+        private AddressableRules _addressableRules = new AddressableRules
+        {
+            syncLoadState = true,
+            waitForLoadBeforeObserver = true,
+            releaseWhenLastDespawned = true
+        };
+
+        public bool AddressablesSyncLoadState => _addressableRules.syncLoadState;
+        public bool AddressablesWaitForLoadBeforeObserver => _addressableRules.waitForLoadBeforeObserver;
+        public bool AddressablesReleaseWhenLastDespawned => _addressableRules.releaseWhenLastDespawned;
+#endif
 
         public bool HasDespawnAuthority(NetworkIdentity identity, PlayerID player, bool asServer)
         {
