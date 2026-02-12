@@ -1187,6 +1187,14 @@ namespace PurrNet
             modules.AddModule(new RpcRequestResponseModule(this, playersManager));
             modules.AddModule(colliderRollback);
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+            if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0 &&
+                networkRules && networkRules.AddressablesSyncLoadState)
+            {
+                modules.AddModule(new AddressablesSyncModule(this, playersManager));
+            }
+#endif
+
             RenewSubscriptions(asServer);
         }
 

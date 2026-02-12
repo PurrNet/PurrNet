@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using PurrNet.Collections;
 using PurrNet.Pooling;
 using UnityEngine;
@@ -7,6 +7,7 @@ namespace PurrNet.Modules
 {
     internal class VisilityV2
     {
+        readonly NetworkManager _manager;
         readonly NetworkVisibilityRuleSet _defaultRuleSet;
 
         public delegate void VisibilityChanged(PlayerID player, Transform scope, bool hasVisibility);
@@ -15,6 +16,7 @@ namespace PurrNet.Modules
 
         public VisilityV2(NetworkManager manager)
         {
+            _manager = manager;
             _defaultRuleSet = manager.visibilityRules;
         }
 
@@ -120,7 +122,7 @@ namespace PurrNet.Modules
 
             transform.GetComponents(identities.list);
 
-            var isVisible = Evaluate(player, identities.list, ref rules, isParentVisible, out bool fullyChanged);
+            var isVisible = Evaluate(player, identities.list, ref rules, isParentVisible, out bool fullyChanged, transform);
             bool shouldTrigger = !wasParentDirtied && fullyChanged;
 
             if (shouldTrigger)
@@ -171,8 +173,8 @@ namespace PurrNet.Modules
         /// Evaluate visibility of the object.
         /// Also adds/removes observers based on the visibility.
         /// </summary>
-        private static bool Evaluate(PlayerID player, List<NetworkIdentity> identities,
-            ref NetworkVisibilityRuleSet rules, bool isParentVisible, out bool fullyChanged)
+        private bool Evaluate(PlayerID player, List<NetworkIdentity> identities,
+            ref NetworkVisibilityRuleSet rules, bool isParentVisible, out bool fullyChanged, Transform transform)
         {
             fullyChanged = false;
 
@@ -192,7 +194,7 @@ namespace PurrNet.Modules
                 if (identity.whitelist.Contains(player))
                 {
                     isAnyVisible = true;
-                    if (identity.TryAddObserver(player))
+                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
                         fullyChanged = true;
                     continue;
                 }
@@ -212,7 +214,7 @@ namespace PurrNet.Modules
                 if (!r)
                 {
                     isAnyVisible = true;
-                    if (identity.TryAddObserver(player))
+                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
                         fullyChanged = true;
                     continue;
                 }
@@ -220,7 +222,7 @@ namespace PurrNet.Modules
                 if (identity.owner == player)
                 {
                     isAnyVisible = true;
-                    if (identity.TryAddObserver(player))
+                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
                         fullyChanged = true;
                     continue;
                 }
@@ -233,12 +235,47 @@ namespace PurrNet.Modules
                 else
                 {
                     isAnyVisible = true;
-                    if (identity.TryAddObserver(player))
+                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
                         fullyChanged = true;
                 }
             }
 
             return isAnyVisible;
         }
+
+        private bool ShouldAddObserver(PlayerID player, NetworkIdentity identity)
+        {
+#if ADDRESSABLES_PURRNET_SUPPORT
+            return ShouldAddObserverAddressables(player, identity);
+#else
+            return true;
+#endif
+        }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        private bool ShouldAddObserverAddressables(PlayerID player, NetworkIdentity identity)
+        {
+            if (!_manager.networkRules)
+                return true;
+
+            if (!_manager.networkRules.AddressablesWaitForLoadBeforeObserver)
+                return true;
+
+            if (!(_manager.prefabProvider is CompositePrefabProvider composite))
+                return true;
+
+            if (!composite.TryGetAddressableGuid(identity.prefabId, out var guid))
+                return true;
+
+            if (!_manager.TryGetModule<AddressablesSyncModule>(true, out var sync))
+                return true;
+
+            if (sync.ClientHasLoaded(player, guid))
+                return true;
+
+            sync.RequestPlayerToLoad(player, guid);
+            return false;
+        }
+#endif
     }
 }
