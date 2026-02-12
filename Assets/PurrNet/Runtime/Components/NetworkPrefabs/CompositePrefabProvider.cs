@@ -130,6 +130,23 @@ namespace PurrNet
                 }
             }
 
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                if (_providers[i].TryGetPrefabData(prefab, out var pd) && pd.prefab != null)
+                {
+                    int unifiedId = _offsets[i] + pd.prefabId;
+                    prefabData = new PrefabData
+                    {
+                        prefabId = unifiedId,
+                        prefab = pd.prefab,
+                        pooled = pd.pooled,
+                        warmupCount = pd.warmupCount
+                    };
+                    _unified[unifiedId] = prefabData;
+                    return true;
+                }
+            }
+
             prefabData = default;
             return false;
         }
