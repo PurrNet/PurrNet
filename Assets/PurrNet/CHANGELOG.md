@@ -1,3 +1,10 @@
+# [1.19.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.19...v1.19.0-beta.20) (2026-02-13)
+
+
+### Bug Fixes
+
+* Improved Unity 5 support ([d228ee1](https://github.com/PurrNet/PurrNet/commit/d228ee1dc9ee91f73e743d03fba210a4eb32c723))
+
 # [1.19.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.18...v1.19.0-beta.19) (2026-02-13)
 
 
