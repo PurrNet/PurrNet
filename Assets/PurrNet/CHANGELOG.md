@@ -1,3 +1,10 @@
+# [1.19.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.18...v1.19.0-beta.19) (2026-02-13)
+
+
+### Bug Fixes
+
+* ensure Awake is called before registering modules ([0b07224](https://github.com/PurrNet/PurrNet/commit/0b072244d039609817343b8a62ffd9b3ceca5785))
+
 # [1.19.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.17...v1.19.0-beta.18) (2026-02-13)
 
 
