@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Transports;
 
@@ -71,6 +72,13 @@ namespace PurrNet
 
         public void RegisterModules()
         {
+            if (_manager == null)
+            {
+                PurrLogger.LogError(
+                    $"NetworkManager is null, cannot register modules as {(_asServer ? "Server" : "Client")}.");
+                return;
+            }
+
             bool isClientTransfering = !_asServer && _manager.isTranferingToNewServer;
 
             if (!isClientTransfering)
