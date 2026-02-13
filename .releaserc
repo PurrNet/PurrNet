@@ -22,14 +22,6 @@
             "files": ["Assets/PurrNet/package.json"],
             "from": "\"version\": \".*?\"",
             "to": "\"version\": \"${nextRelease.version}\"",
-            "results": [
-              {
-                "file": "Assets/PurrNet/package.json",
-                "hasChanged": true,
-                "numMatches": 1,
-                "numReplacements": 1
-              }
-            ],
             "countMatches": true
           }
         ]
