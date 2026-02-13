@@ -1,5 +1,6 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
 using System;
+using System.Threading.Tasks;
 using PurrNet.Logging;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -72,7 +73,7 @@ namespace PurrNet
             return UnityProxy.Instantiate(localData.prefab, position, rotation);
         }
 
-        public async Awaitable<GameObject> SpawnAddressableAsync(
+        public async Task<GameObject> SpawnAddressableAsync(
             AssetReferenceGameObject assetRef,
             Vector3 position = default,
             Quaternion rotation = default,
@@ -87,7 +88,7 @@ namespace PurrNet
             return await SpawnAddressableByGuidAsync(assetRef.AssetGUID, position, rotation, parent);
         }
 
-        public async Awaitable<GameObject> SpawnAddressableByGuidAsync(
+        public async Task<GameObject> SpawnAddressableByGuidAsync(
             string assetGuid,
             Vector3 position = default,
             Quaternion rotation = default,

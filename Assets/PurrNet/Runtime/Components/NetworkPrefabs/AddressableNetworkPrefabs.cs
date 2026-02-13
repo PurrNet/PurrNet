@@ -165,7 +165,7 @@ namespace PurrNet
             return data.prefab == null;
         }
 
-        public async Awaitable<PrefabData> LoadPrefabByGuidAsync(string assetGuid)
+        public async Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid)
         {
             if (!_guidToId.TryGetValue(assetGuid, out int localId))
             {
@@ -175,7 +175,7 @@ namespace PurrNet
             return await LoadPrefabAsync(localId);
         }
 
-        public async Awaitable<PrefabData> LoadPrefabAsync(int prefabId)
+        public async Task<PrefabData> LoadPrefabAsync(int prefabId)
         {
             if (!_prefabLookup.TryGetValue(prefabId, out var data))
             {
@@ -221,7 +221,7 @@ namespace PurrNet
         /// Must be called (and awaited) before the network is started.
         /// After loading, PrefabData.prefab will contain valid references.
         /// </summary>
-        public async Awaitable LoadAllAsync()
+        public async Task LoadAllAsync()
         {
             RebuildLookup();
             ReleaseAll();

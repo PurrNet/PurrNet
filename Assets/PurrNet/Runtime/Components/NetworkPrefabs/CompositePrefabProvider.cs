@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PurrNet.Logging;
 using UnityEngine;
 
@@ -67,7 +68,7 @@ namespace PurrNet
             return _unified.TryGetValue(prefabId, out var data) && data.prefab == null;
         }
 
-        public async Awaitable<PrefabData> LoadPrefabAsync(int prefabId)
+        public async Task<PrefabData> LoadPrefabAsync(int prefabId)
         {
             if (!_unified.TryGetValue(prefabId, out var data))
             {
