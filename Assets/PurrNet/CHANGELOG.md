@@ -1,3 +1,22 @@
+# [1.19.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.17...v1.19.0-beta.18) (2026-02-13)
+
+
+### Bug Fixes
+
+* Basic addressables spawning and despawning through network manager ([50a6c20](https://github.com/PurrNet/PurrNet/commit/50a6c204bfc6fcd159ef50166d29492ba453fd74))
+* Composite Prefab Provider for NM ([c74f155](https://github.com/PurrNet/PurrNet/commit/c74f155c61c2a385d0c6258a722a4c4260d0cf96))
+* notify user if modules can't be registered properly ([1f002e9](https://github.com/PurrNet/PurrNet/commit/1f002e9c50671a51605ab8f5d886053073c2485d))
+* Push for version change ([2cb71d5](https://github.com/PurrNet/PurrNet/commit/2cb71d513db1f3540f38c9e9ffb913f3c3ff37ad))
+* Small miss on the inspector ([0df0d5c](https://github.com/PurrNet/PurrNet/commit/0df0d5c22ac515243454f9a05d123b39047d3a95))
+* Static observer RPC was failing due to bad Send function; removed Raw variants due to easy confusion point ([f7fc861](https://github.com/PurrNet/PurrNet/commit/f7fc8610e6c25c894cc6db5da7143f6fc74b79d4))
+* update isControllingSyncVar logic to handle server updates correctly ([520e587](https://github.com/PurrNet/PurrNet/commit/520e587008e80341b6adde704e0af9dec87a172f))
+
+
+### Features
+
+* add NetworkAudioSource component for synchronized audio playback ([1d9d8d5](https://github.com/PurrNet/PurrNet/commit/1d9d8d54b47e0b9a17fb91ae3e5e302b1bfcae75))
+* add Steam ID lookup for connections ([b3bf9ea](https://github.com/PurrNet/PurrNet/commit/b3bf9ea5e33325321e357785a876d5afbfdb7aac))
+
 # [1.19.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.17...v1.19.0-beta.18) (2026-02-06)
 
 
