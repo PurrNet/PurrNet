@@ -190,6 +190,8 @@ namespace PurrNet
 
         public ITransport rawTransport => _transport ? _transport.transport : null;
 
+        private bool _ready;
+
         /// <summary>
         /// Unsubscribes all listeners and any other internal state.
         /// This is meant to be called manually if you encounter any caching issues due to bad unsubscribing.
@@ -638,6 +640,9 @@ namespace PurrNet
 
         private void Awake()
         {
+            if (_ready)
+                return;
+
 #if UNITY_EDITOR
             static string TryFindVersion()
             {
@@ -714,6 +719,7 @@ namespace PurrNet
 
             _serverModules = new ModulesCollection(this, true);
             _clientModules = new ModulesCollection(this, false);
+            _ready = true;
 
             if (_dontDestroyOnLoad)
                 DontDestroyOnLoad(gameObject);
@@ -1657,6 +1663,9 @@ namespace PurrNet
         /// </summary>
         public void InternalRegisterServerModules()
         {
+            if (!_ready)
+                Awake();
+
             _isServerTicking = false;
             _serverModules.RegisterModules();
             _isSubscribedServer = true;
@@ -1669,6 +1678,9 @@ namespace PurrNet
         /// </summary>
         public void InternalRegisterClientModules()
         {
+            if (!_ready)
+                Awake();
+
             _clientModules.RegisterModules();
             _isSubscribedClient = true;
             TriggerSubscribeEvents(false);
