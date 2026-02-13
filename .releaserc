@@ -36,6 +36,14 @@
             "files": ["Assets/PurrNet/package.json"],
             "from": "\"changelogUrl\": \".*?\"",
             "to": "\"changelogUrl\": \"https://github.com/PurrNet/PurrNet/blob/dev/Assets/PurrNet/CHANGELOG.md\"",
+            "results": [
+              {
+                "file": "Assets/PurrNet/package.json",
+                "hasChanged": true,
+                "numMatches": 1,
+                "numReplacements": 1
+              }
+            ],
             "countMatches": true
           }
         ]
