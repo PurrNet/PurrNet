@@ -48,6 +48,12 @@ namespace PurrNet
         /// </summary>
         public Animator animator => _animator;
 
+        /// <summary>
+        /// Sets the animator to sync and rebuilds internal state (avatar root cache, dont-sync parameter hashes).
+        /// </summary>
+        /// <param name="animator">The animator to sync. Can be null.</param>
+        /// <remarks>Use this when switching animators at runtime (e.g. after spawning, pooling, or model swap).</remarks>
+        [PurrDocs("systems-and-modules/plug-n-play-components/network-animator")]
         public void SetAnimator(Animator animator)
         {
             _animator = animator;
