@@ -48,6 +48,24 @@ namespace PurrNet
         /// </summary>
         public Animator animator => _animator;
 
+        public void SetAnimator(Animator animator)
+        {
+            _animator = animator;
+            _avatarRoot = null;
+            _dontSyncHashes.Clear();
+            for (var i = 0; i < _dontSyncParameters.Count; i++)
+                _dontSyncHashes.Add(Animator.StringToHash(_dontSyncParameters[i]));
+            if (_animator != null)
+            {
+                for (var i = 0; i < _animator.parameters.Length; i++)
+                {
+                    var parameter = _animator.parameters[i];
+                    if (_animator.IsParameterControlledByCurve(parameter.nameHash))
+                        _dontSyncHashes.Add(parameter.nameHash);
+                }
+            }
+        }
+
         public List<string> dontSyncParameters => _dontSyncParameters;
 
         private void Awake()
