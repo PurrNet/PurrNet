@@ -53,7 +53,6 @@ namespace PurrNet
         /// </summary>
         /// <param name="animator">The animator to sync. Can be null.</param>
         /// <remarks>Use this when switching animators at runtime (e.g. after spawning, pooling, or model swap).</remarks>
-        [PurrDocs("systems-and-modules/plug-n-play-components/network-animator")]
         public void SetAnimator(Animator animator)
         {
             _animator = animator;
