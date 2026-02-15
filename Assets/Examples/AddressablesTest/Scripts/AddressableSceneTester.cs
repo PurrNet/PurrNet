@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using PurrNet;
 using PurrNet.Modules;
 using UnityEngine;
@@ -9,7 +10,7 @@ namespace AddressablesTest
     public class AddressableSceneTester : MonoBehaviour
     {
         [SerializeField] private AssetReference _sceneToLoadTo;
-        private SceneID? _loadedAddressableSceneId;
+        private List<SceneID> _loadedAddressableSceneIds = new();
         
         [PurrButton, ContextMenu("Load scene")]
         private void LoadAddressableScene()
@@ -36,14 +37,14 @@ namespace AddressablesTest
         private void OnAddressableSceneLoaded(SceneID sceneId, bool asServer)
         {
             if (!asServer) return;
-            _loadedAddressableSceneId = sceneId;
+            _loadedAddressableSceneIds.Add(sceneId);
             NetworkManager.main.sceneModule.onSceneLoaded -= OnAddressableSceneLoaded;
         }
 
         [PurrButton, ContextMenu("Unload scene")]
         private void UnloadAddressableScene()
         {
-            if (!NetworkManager.main || _sceneToLoadTo == null || !_loadedAddressableSceneId.HasValue)
+            if (!NetworkManager.main || _sceneToLoadTo == null || _loadedAddressableSceneIds.Count == 0)
                 return;
 
             if (!NetworkManager.main.isServer)
@@ -52,8 +53,8 @@ namespace AddressablesTest
                 return;
             }
             
-            NetworkManager.main.sceneModule.UnloadSceneAsync(_loadedAddressableSceneId.Value);
-            _loadedAddressableSceneId = null;
+            NetworkManager.main.sceneModule.UnloadSceneAsync(_loadedAddressableSceneIds[0]);
+            _loadedAddressableSceneIds.RemoveAt(0);
         }
     }
 }
