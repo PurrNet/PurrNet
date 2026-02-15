@@ -1,3 +1,10 @@
+# [1.19.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.20...v1.19.0-beta.21) (2026-02-15)
+
+
+### Features
+
+* add SetAnimator method to NetworkAnimator for improved animator management ([bcf69d2](https://github.com/PurrNet/PurrNet/commit/bcf69d28ef849af881e997f75e78477e63ba0bac))
+
 # [1.19.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.19...v1.19.0-beta.20) (2026-02-13)
 
 
