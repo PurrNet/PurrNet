@@ -20,6 +20,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a6d4e95d4ff5efd4b863db7ac955d323
+    m_Address: Assets/Examples/AddressablesTest/AddressablesAdditive_Scene.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: e502b0d2149c6a04e90746d3f378d377, type: 2}
   m_SchemaSet:
