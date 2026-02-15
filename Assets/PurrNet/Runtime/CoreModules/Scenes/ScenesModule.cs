@@ -872,10 +872,43 @@ namespace PurrNet.Modules
             }
 
             _history.AddUnloadAction(new UnloadSceneAction { sceneID = sceneIndex, options = options });
+#if ADDRESSABLES_PURRNET_SUPPORT
+            if (TryUnloadAddressableScene(sceneIndex, options))
+                return null;
+#endif
             var op = SceneManager.UnloadSceneAsync(scene, options);
             RemoveScene(scene);
 
             return op;
+        }
+
+        /// <summary>
+        /// Unloads a scene asynchronously by its SceneID.
+        /// Use this when you have the SceneID from onSceneLoaded or sceneStates.
+        /// </summary>
+        /// <param name="sceneId">The SceneID of the scene to unload</param>
+        /// <param name="options">The UnityEngine UnloadSceneOptions to use for the unloading</param>
+        public void UnloadSceneAsync(SceneID sceneId, UnloadSceneOptions options = UnloadSceneOptions.None)
+        {
+            if (!_asServer)
+            {
+                PurrLogger.LogError("Only server can unload scenes; for now at least ;)");
+                return;
+            }
+
+            if (!_scenes.TryGetValue(sceneId, out var state))
+            {
+                PurrLogger.LogError($"Scene with ID {sceneId} not found in scenes list");
+                return;
+            }
+
+            if (_networkManager.gameObject.scene == state.scene)
+            {
+                PurrLogger.LogError("Can't unload the network manager scene");
+                return;
+            }
+
+            UnloadSceneAsync(state.scene, options);
         }
 
         static readonly List<SceneAction> _playerFilteredActions = new List<SceneAction>();
