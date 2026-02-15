@@ -257,6 +257,7 @@ GameObject:
   - component: {fileID: 433382365}
   - component: {fileID: 433382364}
   - component: {fileID: 433382366}
+  - component: {fileID: 433382367}
   m_Layer: 0
   m_Name: AddressablesTester
   m_TagString: Untagged
@@ -318,6 +319,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e703596e7549e0499744b38bb28235c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AddressablesTest::AddressablesTest.AddressableLogger
+--- !u!114 &433382367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 433382363}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22d4ed21773a91b4887d2b58ddf213cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AddressablesTest::AddressablesTest.AddressableSceneTester
+  _sceneToLoadTo:
+    m_AssetGUID: a6d4e95d4ff5efd4b863db7ac955d323
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
 --- !u!1 &926210937
 GameObject:
   m_ObjectHideFlags: 0
