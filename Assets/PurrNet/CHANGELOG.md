@@ -1,3 +1,10 @@
+# [1.19.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.21...v1.19.0-beta.22) (2026-02-16)
+
+
+### Bug Fixes
+
+* Added addressables scenes support ([e35670b](https://github.com/PurrNet/PurrNet/commit/e35670b50a8fe08593daa088b315eee9f6767758))
+
 # [1.19.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.20...v1.19.0-beta.21) (2026-02-15)
 
 
