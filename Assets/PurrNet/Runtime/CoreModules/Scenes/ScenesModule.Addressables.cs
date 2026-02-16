@@ -14,6 +14,7 @@ namespace PurrNet.Modules
     {
         private struct PendingAddressableSceneOperation
         {
+            public string guid;
             public AsyncOperationHandle<SceneInstance> handle;
             public SceneID idToAssign;
             public PurrSceneSettings settings;
@@ -24,6 +25,12 @@ namespace PurrNet.Modules
 
         private readonly Dictionary<SceneID, AsyncOperationHandle<SceneInstance>> _addressableSceneHandles =
             new Dictionary<SceneID, AsyncOperationHandle<SceneInstance>>();
+
+        private readonly Dictionary<SceneID, string> _addressableSceneIdToGuid =
+            new Dictionary<SceneID, string>();
+
+        private readonly Dictionary<string, List<SceneID>> _addressableSceneGuidToIds =
+            new Dictionary<string, List<SceneID>>();
 
         partial void ProcessCompletedAddressableLoads()
         {
@@ -39,6 +46,16 @@ namespace PurrNet.Modules
                     var scene = op.handle.Result.Scene;
                     AddScene(scene, op.settings, op.idToAssign);
                     _addressableSceneHandles[op.idToAssign] = op.handle;
+                    if (!string.IsNullOrEmpty(op.guid))
+                    {
+                        _addressableSceneIdToGuid[op.idToAssign] = op.guid;
+                        if (!_addressableSceneGuidToIds.TryGetValue(op.guid, out var list))
+                        {
+                            list = new List<SceneID>();
+                            _addressableSceneGuidToIds[op.guid] = list;
+                        }
+                        list.Add(op.idToAssign);
+                    }
                 }
                 else
                 {
@@ -74,6 +91,7 @@ namespace PurrNet.Modules
 
             _pendingAddressableOperations.Add(new PendingAddressableSceneOperation
             {
+                guid = guid,
                 handle = handle,
                 idToAssign = action.sceneID,
                 settings = action.parameters
@@ -84,6 +102,7 @@ namespace PurrNet.Modules
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
                 clientModule._pendingAddressableOperations.Add(new PendingAddressableSceneOperation
                 {
+                    guid = guid,
                     handle = handle,
                     idToAssign = action.sceneID,
                     settings = action.parameters
@@ -112,6 +131,16 @@ namespace PurrNet.Modules
 
             Addressables.UnloadSceneAsync(handle, options);
             _addressableSceneHandles.Remove(sceneId);
+            if (_addressableSceneIdToGuid.TryGetValue(sceneId, out var guid))
+            {
+                _addressableSceneIdToGuid.Remove(sceneId);
+                if (_addressableSceneGuidToIds.TryGetValue(guid, out var list))
+                {
+                    list.Remove(sceneId);
+                    if (list.Count == 0)
+                        _addressableSceneGuidToIds.Remove(guid);
+                }
+            }
             RemoveScene(state.scene);
 
             return true;
@@ -177,6 +206,7 @@ namespace PurrNet.Modules
 
             _pendingAddressableOperations.Add(new PendingAddressableSceneOperation
             {
+                guid = guid,
                 handle = handle,
                 idToAssign = idToAssign,
                 settings = settings
@@ -187,6 +217,7 @@ namespace PurrNet.Modules
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
                 clientModule._pendingAddressableOperations.Add(new PendingAddressableSceneOperation
                 {
+                    guid = guid,
                     handle = handle,
                     idToAssign = idToAssign,
                     settings = settings
@@ -253,6 +284,7 @@ namespace PurrNet.Modules
 
             _pendingAddressableOperations.Add(new PendingAddressableSceneOperation
             {
+                guid = guid,
                 handle = handle,
                 idToAssign = idToAssign,
                 settings = settings
@@ -263,6 +295,7 @@ namespace PurrNet.Modules
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
                 clientModule._pendingAddressableOperations.Add(new PendingAddressableSceneOperation
                 {
+                    guid = guid,
                     handle = handle,
                     idToAssign = idToAssign,
                     settings = settings
@@ -270,6 +303,109 @@ namespace PurrNet.Modules
             }
 
             return handle;
+        }
+
+        /// <summary>
+        /// Returns true if an Addressable scene with the given GUID is currently loaded (or loading).
+        /// </summary>
+        /// <param name="guid">The Addressable asset GUID of the scene</param>
+        /// <returns>True if at least one instance of the scene is loaded or currently loading</returns>
+        public bool IsAddressableSceneLoaded(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return false;
+
+            if (_addressableSceneGuidToIds.TryGetValue(guid, out var list) && list.Count > 0)
+                return true;
+
+            return IsAddressableSceneLoading(guid);
+        }
+
+        /// <summary>
+        /// Returns true if an Addressable scene with the given GUID is currently loading.
+        /// </summary>
+        /// <param name="guid">The Addressable asset GUID of the scene</param>
+        /// <returns>True if the scene is currently loading</returns>
+        public bool IsAddressableSceneLoading(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return false;
+
+            for (var i = 0; i < _pendingAddressableOperations.Count; i++)
+            {
+                if (_pendingAddressableOperations[i].guid == guid)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Tries to get the first SceneID for an Addressable scene loaded by the given GUID.
+        /// Use GetSceneIdsByAddressableGuid when multiple instances may exist.
+        /// </summary>
+        /// <param name="guid">The Addressable asset GUID of the scene</param>
+        /// <param name="sceneId">The SceneID if found</param>
+        /// <returns>True if the scene is loaded and a SceneID was found</returns>
+        public bool TryGetSceneIdByAddressableGuid(string guid, out SceneID sceneId)
+        {
+            if (string.IsNullOrEmpty(guid))
+            {
+                sceneId = default;
+                return false;
+            }
+
+            if (_addressableSceneGuidToIds.TryGetValue(guid, out var list) && list.Count > 0)
+            {
+                sceneId = list[0];
+                return true;
+            }
+
+            sceneId = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Gets all SceneIDs for Addressable scenes loaded by the given GUID.
+        /// Returns an empty list if none are loaded.
+        /// </summary>
+        /// <param name="guid">The Addressable asset GUID of the scene</param>
+        /// <returns>A list of SceneIDs (may be empty, never null). Do not modify the returned list.</returns>
+        public IReadOnlyList<SceneID> GetSceneIdsByAddressableGuid(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return System.Array.Empty<SceneID>();
+
+            if (_addressableSceneGuidToIds.TryGetValue(guid, out var list))
+                return list;
+
+            return System.Array.Empty<SceneID>();
+        }
+
+        /// <summary>
+        /// Unloads all instances of an Addressable scene by its asset GUID.
+        /// Only the server can unload scenes. Returns the number of instances unloaded.
+        /// </summary>
+        /// <param name="guid">The Addressable asset GUID of the scene to unload</param>
+        /// <param name="options">The UnloadSceneOptions to use</param>
+        /// <returns>The number of scene instances that were unloaded</returns>
+        public int UnloadAddressableSceneByGuid(
+            string guid,
+            UnloadSceneOptions options = UnloadSceneOptions.None)
+        {
+            if (!_asServer)
+            {
+                PurrLogger.LogError("Only server can unload scenes; for now at least ;)");
+                return 0;
+            }
+
+            var ids = GetSceneIdsByAddressableGuid(guid);
+            var count = ids.Count;
+
+            for (var i = ids.Count - 1; i >= 0; i--)
+                UnloadSceneAsync(ids[i], options);
+
+            return count;
         }
     }
 }
