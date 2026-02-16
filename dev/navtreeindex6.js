@@ -1,5 +1,7 @@
 var NAVTREEINDEX6 =
 {
+"structPurrNet_1_1Packing_1_1PackedInt.html":[0,0,0,5,26],
+"structPurrNet_1_1Packing_1_1PackedLong.html":[0,0,0,5,27],
 "structPurrNet_1_1Packing_1_1PackedLong.html":[1,0,0,5,27],
 "structPurrNet_1_1Packing_1_1PackedQuaternion.html":[1,0,0,5,28],
 "structPurrNet_1_1Packing_1_1PackedQuaternion.html":[0,0,0,5,28],
