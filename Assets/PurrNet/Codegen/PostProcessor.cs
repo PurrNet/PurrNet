@@ -575,9 +575,31 @@ namespace PurrNet.Codegen
             ReturnMode returnMode,
             bool isNetworkClass)
         {
-            var code = newMethod.Body.GetILProcessor();
             var originalMethod = rpcMethod.originalMethod;
             int paramCount = originalMethod.Parameters.Count;
+
+            var hasAsyncPackableParam = false;
+            for (var p = 0; p < paramCount; p++)
+            {
+                var param = originalMethod.Parameters[p];
+                if (ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out _)) continue;
+                if (param.ParameterType is GenericParameter) continue;
+                var def = param.ParameterType.Resolve();
+                if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                {
+                    hasAsyncPackableParam = true;
+                    break;
+                }
+            }
+
+            if (hasAsyncPackableParam)
+            {
+                HandleNonGenericRPCReceiverAsyncPackable(module, rpcMethod, newMethod, streamVariable, info,
+                    returnMode, isNetworkClass);
+                return;
+            }
+
+            var code = newMethod.Body.GetILProcessor();
 
             var managerType = module.GetTypeDefinition<NetworkManager>();
             var networkModule = module.GetTypeDefinition<NetworkModule>();
@@ -780,6 +802,315 @@ namespace PurrNet.Codegen
                     });
                 }
             }
+        }
+
+        private static void HandleNonGenericRPCReceiverAsyncPackable(
+            ModuleDefinition module,
+            RPCMethod rpcMethod,
+            MethodDefinition newMethod,
+            VariableDefinition streamVariable,
+            ParameterDefinition info,
+            ReturnMode returnMode,
+            bool isNetworkClass)
+        {
+            var code = newMethod.Body.GetILProcessor();
+            var originalMethod = rpcMethod.originalMethod;
+            int paramCount = originalMethod.Parameters.Count;
+
+            var packetType = rpcMethod.Signature.isStatic ? module.GetTypeDefinition<StaticRPCPacket>() :
+                isNetworkClass ? module.GetTypeDefinition<ChildRPCPacket>() : module.GetTypeDefinition<RPCPacket>();
+            var managerType = module.GetTypeDefinition<NetworkManager>();
+            var networkModule = module.GetTypeDefinition<NetworkModule>();
+            var identityType = module.GetTypeDefinition<NetworkIdentity>();
+            var rpcReqRespType = module.GetTypeDefinition<RpcRequestResponseModule>();
+            var rpcModule = originalMethod.DeclaringType.Module.GetTypeDefinition<RPCModule>();
+            var getLocalPlayer = rpcModule.GetMethod("GetLocalPlayer").Import(module);
+            var responder = rpcReqRespType.GetMethod("CompleteRequestWithResponse", true).Import(module);
+            var responderUniTask = rpcReqRespType.GetMethod("CompleteRequestWithUniTask", true).Import(module);
+            var responderWithoutResponse = rpcReqRespType.GetMethod("CompleteRequestWithEmptyResponse").Import(module);
+            var responderCoroutine = rpcReqRespType.GetMethod("CompleteRequestWithCoroutine").Import(module);
+            var responderUniTaskWithoutResponse =
+                rpcReqRespType.GetMethod("CompleteRequestWithUniTaskEmptyResponse").Import(module);
+            var RPCPacketPackerType = module.GetTypeDefinition<RPCPacketPacker>();
+
+            var localPlayerProp = identityType.GetProperty("localPlayerForced");
+            var localPlayerGetter = localPlayerProp.GetMethod.Import(module);
+            var localPlayerPropModule = networkModule.GetProperty("localPlayerForced");
+            var localPlayerGetterModule = localPlayerPropModule.GetMethod.Import(module);
+            var mainManagerProp = managerType.GetProperty("main");
+            var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
+
+            VariableDefinition reqId = null;
+            VariableDefinition rpcPacker = null;
+            bool useDeltaPacking = rpcMethod.Signature.deltaPacked && rpcMethod.Signature.type != RPCType.ServerRPC;
+
+            ResolveTaskTypes(module, out var taskType, out var taskArrayType, out var taskOfTOpen,
+                out var actionOfTOpen, out _, out var actionCtor);
+
+            var actionOfTOpenResolved = actionOfTOpen.Resolve();
+            var actionOfTaskArray = new GenericInstanceType(actionOfTOpen) { GenericArguments = { taskArrayType } };
+            var actionOfTaskArrayCtorDef = actionOfTOpenResolved.Methods.First(m =>
+                m.IsConstructor && m.Parameters.Count == 2);
+            var actionOfTaskArrayCtor = new MethodReference(".ctor", module.TypeSystem.Void, actionOfTaskArray)
+                { HasThis = true };
+            actionOfTaskArrayCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.Object));
+            actionOfTaskArrayCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.IntPtr));
+
+            var stateType = new TypeDefinition("", $"RpcReceiveState_{rpcMethod.originalMethod.MetadataToken.RID}",
+                TypeAttributes.NestedPrivate | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+                module.TypeSystem.Object);
+            originalMethod.DeclaringType.NestedTypes.Add(stateType);
+
+            var stateCtorBase = new MethodReference(".ctor", module.TypeSystem.Void, module.TypeSystem.Object)
+                { HasThis = true };
+            var objectCtor = module.ImportReference(
+                module.TypeSystem.Object.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters));
+            var stateCtor = new MethodDefinition(".ctor", MethodAttributes.Public, module.TypeSystem.Void);
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ldarg_0));
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Call, objectCtor));
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));
+            stateType.Methods.Add(stateCtor);
+
+            var thisField = !originalMethod.IsStatic
+                ? new FieldDefinition("_this", FieldAttributes.Public, originalMethod.DeclaringType.Import(module))
+                : null;
+            if (thisField != null) stateType.Fields.Add(thisField);
+
+            var infoField = new FieldDefinition("_info", FieldAttributes.Public, info.ParameterType);
+            stateType.Fields.Add(infoField);
+
+            FieldDefinition reqIdStateField = null;
+            if (returnMode != ReturnMode.Void)
+            {
+                reqId = new VariableDefinition(module.TypeSystem.UInt32);
+                newMethod.Body.Variables.Add(reqId);
+                reqIdStateField = new FieldDefinition("_reqId", FieldAttributes.Public, module.TypeSystem.UInt32);
+                stateType.Fields.Add(reqIdStateField);
+            }
+
+            var paramFields = new List<FieldDefinition>();
+            var asyncParamParamIndices = new List<int>();
+            for (var p = 0; p < paramCount; p++)
+            {
+                var param = originalMethod.Parameters[p];
+                var field = new FieldDefinition($"_p{p}", FieldAttributes.Public, param.ParameterType);
+                stateType.Fields.Add(field);
+                paramFields.Add(field);
+
+                if (!ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out _) &&
+                    param.ParameterType is not GenericParameter)
+                {
+                    var def = param.ParameterType.Resolve();
+                    if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                        asyncParamParamIndices.Add(p);
+                }
+            }
+
+            var invokeMethod = new MethodDefinition("InvokeAfterPrepare", MethodAttributes.Public, module.TypeSystem.Void);
+            invokeMethod.Parameters.Add(new ParameterDefinition(taskArrayType));
+            stateType.Methods.Add(invokeMethod);
+            var invokeIl = invokeMethod.Body.GetILProcessor();
+
+            var asyncIdx = 0;
+            foreach (var p in asyncParamParamIndices)
+            {
+                var paramType = paramFields[p].FieldType;
+                var taskOfT = new GenericInstanceType(taskOfTOpen) { GenericArguments = { paramType } };
+                var getTaskResult = CreateGetTaskResultMethod(module, paramType);
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_1));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldc_I4, asyncIdx++));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldelem_Ref));
+                invokeIl.Append(Instruction.Create(OpCodes.Castclass, taskOfT.Import(module)));
+                invokeIl.Append(Instruction.Create(OpCodes.Call, getTaskResult));
+                invokeIl.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+            }
+
+            if (!originalMethod.IsStatic)
+            {
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, thisField.Import(module)));
+            }
+            for (var p = 0; p < paramCount; p++)
+            {
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, paramFields[p].Import(module)));
+            }
+            invokeIl.Append(Instruction.Create(OpCodes.Call, GetOriginalMethod(originalMethod)));
+
+            if (reqIdStateField != null)
+            {
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, infoField.Import(module)));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, reqIdStateField.Import(module)));
+                var getNetworkManager = identityType.GetProperty("networkManager").GetMethod.Import(module);
+                var getNetworkManagerModule = networkModule.GetProperty("networkManager").GetMethod.Import(module);
+                if (originalMethod.IsStatic)
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, mainManagerGetter));
+                else
+                {
+                    invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                    invokeIl.Append(Instruction.Create(OpCodes.Ldfld, thisField.Import(module)));
+                    invokeIl.Append(Instruction.Create(OpCodes.Call,
+                        isNetworkClass ? getNetworkManagerModule : getNetworkManager));
+                }
+                if (returnMode is ReturnMode.Task or ReturnMode.UniTask &&
+                    originalMethod.ReturnType is GenericInstanceType genericInstance &&
+                    genericInstance.GenericArguments.Count == 1)
+                {
+                    var genericResponse = new GenericInstanceMethod(responder) { GenericArguments = { genericInstance.GenericArguments[0] } };
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, genericResponse.Import(module)));
+                }
+                else
+                {
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, responderWithoutResponse));
+                }
+            }
+            invokeIl.Append(Instruction.Create(OpCodes.Ret));
+
+            var packetParam = newMethod.Parameters[0];
+            var infoParam = newMethod.Parameters[1];
+
+            if (useDeltaPacking)
+            {
+                rpcPacker = new VariableDefinition(RPCPacketPackerType.Import(module));
+                newMethod.Body.Variables.Add(rpcPacker);
+                var createPackerForRPC = RPCPacketPackerType.GetMethod(GetCreateWithInfoName(rpcMethod, isNetworkClass))
+                    .Import(module);
+                PushNetworkManager(module, code, isNetworkClass, originalMethod.IsStatic);
+                code.Append(Instruction.Create(OpCodes.Ldarg, packetParam));
+                code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
+                code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
+                code.Append(Instruction.Create(OpCodes.Stloc, rpcPacker));
+            }
+
+            if (reqId != null)
+            {
+                var serializer = useDeltaPacking
+                    ? CreateDeltaSerializer(module, module.TypeSystem.UInt32, rpcPacker, false)
+                    : CreateSerializer(module, module.TypeSystem.UInt32, false);
+                if (useDeltaPacking)
+                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
+                code.Append(Instruction.Create(OpCodes.Ldloca, reqId));
+                code.Append(Instruction.Create(OpCodes.Call, serializer));
+            }
+
+            var stateVar = new VariableDefinition(stateType.Import(module));
+            newMethod.Body.Variables.Add(stateVar);
+
+            code.Append(Instruction.Create(OpCodes.Newobj, module.ImportReference(stateCtor)));
+            code.Append(Instruction.Create(OpCodes.Stloc, stateVar));
+
+            if (thisField != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                code.Append(Instruction.Create(OpCodes.Stfld, thisField.Import(module)));
+            }
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
+            code.Append(Instruction.Create(OpCodes.Stfld, infoField.Import(module)));
+            if (reqIdStateField != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldloc, reqId));
+                code.Append(Instruction.Create(OpCodes.Stfld, reqIdStateField.Import(module)));
+            }
+
+            var taskList = new List<VariableDefinition>();
+            for (var p = 0; p < paramCount; p++)
+            {
+                var param = originalMethod.Parameters[p];
+                var variable = new VariableDefinition(param.ParameterType);
+                newMethod.Body.Variables.Add(variable);
+
+                if (ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out var specialType))
+                {
+                    switch (specialType)
+                    {
+                        case SpecialParamType.RPCInfo:
+                            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                            code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
+                            code.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+                            break;
+                        case SpecialParamType.SenderId:
+                            if (GetArgType(param.ParameterType) == TargetArgType.Player)
+                            {
+                                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                                if (!originalMethod.IsStatic)
+                                {
+                                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                                    code.Append(isNetworkClass
+                                        ? Instruction.Create(OpCodes.Call, localPlayerGetterModule)
+                                        : Instruction.Create(OpCodes.Call, localPlayerGetter));
+                                }
+                                else
+                                    code.Append(Instruction.Create(OpCodes.Call, getLocalPlayer));
+                                code.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+                            }
+                            break;
+                    }
+                    continue;
+                }
+
+                var serialize = useDeltaPacking
+                    ? CreateDeltaSerializer(module, param.ParameterType, rpcPacker, false)
+                    : CreateSerializer(module, param.ParameterType, false);
+                if (useDeltaPacking)
+                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
+                code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                code.Append(Instruction.Create(OpCodes.Call, serialize));
+
+                var def = param.ParameterType.Resolve();
+                if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                {
+                    var prepareAsync = CreatePrepareAfterUnpackAsyncMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloc, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareAsync));
+                    var taskVar = new VariableDefinition(taskType);
+                    newMethod.Body.Variables.Add(taskVar);
+                    taskList.Add(taskVar);
+                    code.Append(Instruction.Create(OpCodes.Stloc, taskVar));
+                }
+                else
+                {
+                    var prepareSync = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareSync));
+                    code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                    code.Append(Instruction.Create(OpCodes.Ldloc, variable));
+                    code.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+                }
+            }
+
+            code.Append(Instruction.Create(OpCodes.Ldc_I4, taskList.Count));
+            code.Append(Instruction.Create(OpCodes.Newarr, taskType));
+            var tasksArrayVar = new VariableDefinition(taskArrayType);
+            newMethod.Body.Variables.Add(tasksArrayVar);
+            code.Append(Instruction.Create(OpCodes.Stloc, tasksArrayVar));
+            for (var t = 0; t < taskList.Count; t++)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, tasksArrayVar));
+                code.Append(Instruction.Create(OpCodes.Ldc_I4, t));
+                code.Append(Instruction.Create(OpCodes.Ldloc, taskList[t]));
+                code.Append(Instruction.Create(OpCodes.Stelem_Ref));
+            }
+
+            var executeAfterPrepare = module.GetTypeDefinition(typeof(AsyncPackableHelper))
+                .Methods.First(m => m.Name == "ExecuteAfterPrepareAsync" && m.Parameters.Count == 2 &&
+                    m.Parameters[0].ParameterType.IsArray)
+                .Import(module);
+
+            code.Append(Instruction.Create(OpCodes.Ldloc, tasksArrayVar));
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldftn, invokeMethod.Import(module)));
+            code.Append(Instruction.Create(OpCodes.Newobj, module.ImportReference(actionOfTaskArrayCtor)));
+            code.Append(Instruction.Create(OpCodes.Call, executeAfterPrepare));
+            code.Append(Instruction.Create(OpCodes.Pop));
+            code.Append(Instruction.Create(OpCodes.Ret));
         }
 
         private static string GetCreateWithInfoName(RPCMethod rpcMethod, bool isNetworkClass)
@@ -2347,6 +2678,18 @@ namespace PurrNet.Codegen
             return genericMethod.Import(module);
         }
 
+        private static MethodReference CreatePrepareAfterUnpackAsyncMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareAfterUnpackAsync" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
         private static TypeReference GetTaskTypeFromModule(ModuleDefinition module)
         {
             var refsToCheck = new List<AssemblyNameReference>(module.AssemblyReferences);
@@ -3000,9 +3343,10 @@ namespace PurrNet.Codegen
                         if (instruction.Operand is MethodReference methodReference &&
                             methodReference.GetElementMethod() == old)
                         {
-                            // RpcSendState.RunLocal and similar intentionally call the _Original method,
-                            // not the wrapper. Skip updating refs in those generated types.
-                            if (type.Name.StartsWith("RpcSendState", StringComparison.Ordinal))
+                            // RpcSendState.RunLocal and RpcReceiveState.InvokeAfterPrepare intentionally
+                            // call the _Original method, not the wrapper. Skip updating refs in those types.
+                            if (type.Name.StartsWith("RpcSendState", StringComparison.Ordinal) ||
+                                type.Name.StartsWith("RpcReceiveState", StringComparison.Ordinal))
                                 continue;
                             var newRef = GenerateNewRef(@new, methodReference);
                             processor.Replace(instruction, Instruction.Create(instruction.OpCode, newRef));
