@@ -85,6 +85,20 @@ namespace PurrNet.Codegen
                 .Replace("`", "_").Replace("/", "_").Replace("[", "_I_").Replace("]", "_I_");
         }
 
+        private static void AddSerializerToAssembly(AssemblyDefinition assembly, TypeDefinition serializerClass,
+            TypeDefinition serializerParent)
+        {
+            if (serializerParent != null)
+            {
+                serializerClass.DeclaringType = serializerParent;
+                serializerParent.NestedTypes.Add(serializerClass);
+            }
+            else
+            {
+                assembly.MainModule.Types.Add(serializerClass);
+            }
+        }
+
         public static void HandleType(bool hashOnly, AssemblyDefinition assembly, TypeReference type,
             HashSet<string> visited, HashSet<TypeReference> ignoreSerialization,
             HashSet<TypeReference> ignoreDelta)
@@ -98,12 +112,27 @@ namespace PurrNet.Codegen
             if (!PostProcessor.IsTypeInOwnModule(type, assembly.MainModule))
                 return;
 
-            string namespaceName = type.Namespace;
-            if (string.IsNullOrWhiteSpace(namespaceName))
-                namespaceName = "PurrNet.CodeGen.Serializers";
-            else namespaceName += ".PurrNet.CodeGen.Serializers";
+            var resolvedType = type.Resolve();
+            if (resolvedType == null)
+                return;
 
-            // create static class
+            string namespaceName;
+            TypeDefinition serializerParent;
+            if (resolvedType.DeclaringType != null)
+            {
+                namespaceName = "";
+                serializerParent = resolvedType.DeclaringType.Resolve();
+            }
+            else
+            {
+                namespaceName = type.Namespace;
+                if (string.IsNullOrWhiteSpace(namespaceName))
+                    namespaceName = "PurrNet.CodeGen.Serializers";
+                else namespaceName += ".PurrNet.CodeGen.Serializers";
+                serializerParent = null;
+            }
+
+            // create static class; nest inside declaring type when serializing private nested types
             var serializerClass = new TypeDefinition(namespaceName,
                 $"{MakeFullNameValidCSharp(type.FullName)}_Serializer",
                 TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.Abstract | TypeAttributes.Public,
@@ -114,10 +143,6 @@ namespace PurrNet.Codegen
             var editorConstructor = editorType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(assembly.MainModule);
             var editorAttribute = new CustomAttribute(editorConstructor);
             serializerClass.CustomAttributes.Add(editorAttribute);
-            var resolvedType = type.Resolve();
-
-            if (resolvedType == null)
-                return;
 
             bool hasDontPack = DoesTypeHaveDontPackAttribute(resolvedType);
 
@@ -129,7 +154,7 @@ namespace PurrNet.Codegen
 
             if (resolvedType.IsInterface || hashOnly)
             {
-                assembly.MainModule.Types.Add(serializerClass);
+                AddSerializerToAssembly(assembly, serializerClass, serializerParent);
                 HandleHashOnly(assembly, type, serializerClass);
                 return;
             }
@@ -150,7 +175,7 @@ namespace PurrNet.Codegen
                 return;
             }
 
-            assembly.MainModule.Types.Add(serializerClass);
+            AddSerializerToAssembly(assembly, serializerClass, serializerParent);
 
             if (IsGeneric(type, out var genericT))
             {
