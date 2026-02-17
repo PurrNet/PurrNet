@@ -710,6 +710,10 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                 code.Append(Instruction.Create(OpCodes.Ldloca, variable));
                 code.Append(Instruction.Create(OpCodes.Call, serialize));
+
+                var prepareAfterUnpack = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
+                code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
             }
 
             if (!originalMethod.IsStatic)
@@ -1942,6 +1946,16 @@ namespace PurrNet.Codegen
                 if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _))
                     continue;
 
+                var paramLocal = new VariableDefinition(param.ParameterType);
+                newMethod.Body.Variables.Add(paramLocal);
+
+                code.Append(Instruction.Create(OpCodes.Ldarg, param));
+                code.Append(Instruction.Create(OpCodes.Stloc, paramLocal));
+
+                var prepareForPack = CreatePrepareForPackMethod(module, param.ParameterType);
+                code.Append(Instruction.Create(OpCodes.Ldloca, paramLocal));
+                code.Append(Instruction.Create(OpCodes.Call, prepareForPack));
+
                 MethodReference serializeGenericMethod;
 
                 if (useDeltaPacking)
@@ -1952,7 +1966,7 @@ namespace PurrNet.Codegen
                 else serializeGenericMethod = CreateSerializer(module, param.ParameterType, true);
 
                 code.Append(Instruction.Create(OpCodes.Ldloc, streamVariable));
-                code.Append(Instruction.Create(OpCodes.Ldarg, param));
+                code.Append(Instruction.Create(OpCodes.Ldloc, paramLocal));
                 code.Append(Instruction.Create(OpCodes.Call, serializeGenericMethod));
             }
 
@@ -2243,6 +2257,30 @@ namespace PurrNet.Codegen
                     $"Failed to import method '{genericWriteMethod.FullName}'. Module: {module.Name}, Target: {type.FullName}",
                     e);
             }
+        }
+
+        private static MethodReference CreatePrepareForPackMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareForPack" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
+        private static MethodReference CreatePrepareAfterUnpackMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareAfterUnpack" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
         }
 
         enum TargetArgType
