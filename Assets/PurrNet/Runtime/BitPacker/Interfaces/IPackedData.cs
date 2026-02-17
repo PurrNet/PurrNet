@@ -9,14 +9,15 @@ namespace PurrNet.Packing
     /// Implement on types that need async preparation around sync serialization.
     /// PrepareForPackAsync runs before packing (sender); PrepareAfterUnpackAsync runs after unpacking (receiver).
     /// The sync packer only sees the wire-ready representation.
+    /// PrepareForPackAsync returns the prepared instance to avoid Unity/IL2CPP boxing-mutation issues with structs.
     /// </summary>
     public interface IAsyncPackable
     {
-        /// <summary>Prepare this instance for sync serialization. Called before Packer runs on sender.</summary>
-        Task PrepareForPackAsync();
+        /// <summary>Prepare for sync serialization. Returns the prepared instance (for structs, return this after mutating).</summary>
+        Task<IAsyncPackable> PrepareForPackAsync();
 
-        /// <summary>Hydrate this instance after sync deserialization. Called after Packer runs on receiver.</summary>
-        Task PrepareAfterUnpackAsync();
+        /// <summary>Hydrate after sync deserialization. Returns the prepared instance (for structs, return this after mutating).</summary>
+        Task<IAsyncPackable> PrepareAfterUnpackAsync();
     }
     public class NetworkRegister
     {

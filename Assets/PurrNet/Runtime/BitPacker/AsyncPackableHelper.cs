@@ -19,8 +19,8 @@ namespace PurrNet.Packing
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                asyncPackable.PrepareForPackAsync().GetAwaiter().GetResult();
-                value = (T)(object)asyncPackable;
+                var result = asyncPackable.PrepareForPackAsync().GetAwaiter().GetResult();
+                value = (T)(object)result;
             }
         }
 
@@ -32,8 +32,8 @@ namespace PurrNet.Packing
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                asyncPackable.PrepareAfterUnpackAsync().GetAwaiter().GetResult();
-                value = (T)(object)asyncPackable;
+                var result = asyncPackable.PrepareAfterUnpackAsync().GetAwaiter().GetResult();
+                value = (T)(object)result;
             }
         }
 
@@ -46,8 +46,8 @@ namespace PurrNet.Packing
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                await asyncPackable.PrepareForPackAsync();
-                return (T)(object)asyncPackable;
+                var result = await asyncPackable.PrepareForPackAsync();
+                return (T)(object)result;
             }
             return value;
         }
@@ -60,8 +60,8 @@ namespace PurrNet.Packing
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                await asyncPackable.PrepareAfterUnpackAsync();
-                return (T)(object)asyncPackable;
+                var result = await asyncPackable.PrepareAfterUnpackAsync();
+                return (T)(object)result;
             }
             return value;
         }
