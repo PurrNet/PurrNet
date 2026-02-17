@@ -7,15 +7,17 @@ public class AsyncPackableTest : NetworkIdentity
 {
     [SerializeField] private Renderer _renderer;
 
-    [PurrButton]
+    [ContextMenu("Test async packable"), PurrButton]
     private void TestAsyncPackable()
     {
+        Debug.Log($"1 (sender entry)");
         RunTest(new NetRenderer() { renderer = _renderer });
     }
 
-    [ObserversRpc(bufferLast: true)]
+    [ObserversRpc(bufferLast: true, runLocally: false)]
     private void RunTest(NetRenderer rend)
     {
+        Debug.Log($"4 (RunTest body)");
         if (rend.renderer)
             rend.renderer.material.color = Color.green;
     }
@@ -23,11 +25,12 @@ public class AsyncPackableTest : NetworkIdentity
     [System.Serializable]
     private struct NetRenderer : IAsyncPackable
     {
-        [DontPack] private string _goName;
-        public Renderer renderer;
+        private string _goName;       // packed - used to resolve renderer on receiver
+        [DontPack] public Renderer renderer;  // not packed - resolved via _goName in PrepareAfterUnpackAsync
         
         public async Task PrepareForPackAsync()
         {
+            Debug.Log($"2");
             if (!renderer)
                 return;
             
@@ -37,6 +40,7 @@ public class AsyncPackableTest : NetworkIdentity
 
         public async Task PrepareAfterUnpackAsync()
         {
+            Debug.Log($"3");
             await Task.Delay(300);
             var go = GameObject.Find(_goName);
             if (!go)
