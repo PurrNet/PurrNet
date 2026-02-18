@@ -83,28 +83,13 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static Task ExecuteAfterPrepareAsync(Task[] prepareTasks, Action<Task[]> storeResultsAndSend)
         {
-            var executed = false;
-            void OnComplete()
+            return Task.WhenAll(prepareTasks).ContinueWith(_ =>
             {
-                void Invoke()
-                {
-                    if (executed) return;
-                    executed = true;
-                    try
-                    {
-                        storeResultsAndSend(prepareTasks);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"IAsyncPackable RPC dropped: {ex.Message}");
-                    }
-                }
                 if (System.Threading.SynchronizationContext.Current != null)
-                    Invoke();
+                    InvokeOnMain(prepareTasks, storeResultsAndSend);
                 else
-                    UnityLatestUpdate.ExecuteAsap(Invoke);
-            }
-            return Task.WhenAll(prepareTasks).ContinueWith(_ => OnComplete());
+                    UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(prepareTasks, storeResultsAndSend));
+            });
         }
 
         /// <summary>
@@ -113,28 +98,37 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static Task ExecuteAfterPrepareAsync(Task prepareTask, Action sendAction)
         {
-            var executed = false;
-            void OnComplete()
+            return prepareTask.ContinueWith(_ =>
             {
-                void Invoke()
-                {
-                    if (executed) return;
-                    executed = true;
-                    try
-                    {
-                        sendAction();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"IAsyncPackable RPC dropped: {ex.Message}");
-                    }
-                }
                 if (System.Threading.SynchronizationContext.Current != null)
-                    Invoke();
+                    InvokeOnMain(sendAction);
                 else
-                    UnityLatestUpdate.ExecuteAsap(Invoke);
+                    UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(sendAction));
+            });
+        }
+
+        private static void InvokeOnMain(Task[] tasks, Action<Task[]> callback)
+        {
+            try
+            {
+                callback(tasks);
             }
-            return prepareTask.ContinueWith(_ => OnComplete());
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"IAsyncPackable RPC dropped: {ex.Message}");
+            }
+        }
+
+        private static void InvokeOnMain(Action callback)
+        {
+            try
+            {
+                callback();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"IAsyncPackable RPC dropped: {ex.Message}");
+            }
         }
     }
 }
