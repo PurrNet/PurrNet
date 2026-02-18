@@ -8,6 +8,7 @@ using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using Object = UnityEngine.Object;
+using UnityEngine.Scripting;
 
 namespace PurrNet.Codegen
 {
@@ -117,11 +118,13 @@ namespace PurrNet.Codegen
                 return;
 
             string namespaceName;
-            TypeDefinition serializerParent;
+            TypeDefinition serializerParent = null;
             if (resolvedType.DeclaringType != null)
             {
-                namespaceName = "";
-                serializerParent = resolvedType.DeclaringType.Resolve();
+                var declaring = resolvedType.DeclaringType.Resolve();
+                namespaceName = string.IsNullOrWhiteSpace(declaring.Namespace)
+                    ? "PurrNet.CodeGen.Serializers"
+                    : declaring.Namespace + ".PurrNet.CodeGen.Serializers";
             }
             else
             {
@@ -129,20 +132,21 @@ namespace PurrNet.Codegen
                 if (string.IsNullOrWhiteSpace(namespaceName))
                     namespaceName = "PurrNet.CodeGen.Serializers";
                 else namespaceName += ".PurrNet.CodeGen.Serializers";
-                serializerParent = null;
             }
-
-            // create static class; nest inside declaring type when serializing private nested types
             var serializerClass = new TypeDefinition(namespaceName,
                 $"{MakeFullNameValidCSharp(type.FullName)}_Serializer",
                 TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.Abstract | TypeAttributes.Public,
                 assembly.MainModule.TypeSystem.Object
             );
 
-            var editorType = assembly.MainModule.GetTypeDefinition<GeneratedByILAttribute>().Import(assembly.MainModule);
-            var editorConstructor = editorType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(assembly.MainModule);
-            var editorAttribute = new CustomAttribute(editorConstructor);
-            serializerClass.CustomAttributes.Add(editorAttribute);
+            var module = assembly.MainModule;
+            var editorType = module.GetTypeDefinition<GeneratedByILAttribute>().Import(module);
+            var editorConstructor = editorType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(module);
+            serializerClass.CustomAttributes.Add(new CustomAttribute(editorConstructor));
+
+            var preserveType = module.GetTypeDefinition<PreserveAttribute>();
+            var preserveCtor = preserveType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(module);
+            serializerClass.CustomAttributes.Add(new CustomAttribute(preserveCtor));
 
             bool hasDontPack = DoesTypeHaveDontPackAttribute(resolvedType);
 
