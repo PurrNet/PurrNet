@@ -1,0 +1,133 @@
+using Newtonsoft.Json;
+
+namespace PurrNet.Editor
+{
+    public struct Result<T>
+    {
+        public bool Success { get; }
+        public T Value { get; }
+        public string Error { get; }
+
+        public Result(T value)
+        {
+            Success = true;
+            Value = value;
+            Error = null;
+        }
+
+        public Result(string error)
+        {
+            Success = false;
+            Value = default;
+            Error = error;
+        }
+    }
+
+    public class PackagesResponse
+    {
+        [JsonProperty("packages")]
+        public PackageInfo[] Packages { get; private set; }
+    }
+
+    public class PackageInfo
+    {
+        [JsonProperty("id")]
+        public string Id { get; private set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; private set; }
+
+        [JsonProperty("description")]
+        public string Description { get; private set; }
+
+        [JsonProperty("upm_package_name")]
+        public string UpmPackageName { get; private set; }
+
+        [JsonProperty("required_tier")]
+        public string RequiredTier { get; private set; }
+
+        [JsonProperty("entitled_version")]
+        public string EntitledVersion { get; private set; }
+
+        [JsonProperty("frozen")]
+        public bool Frozen { get; private set; }
+
+        [JsonProperty("latest_version")]
+        public string LatestVersion { get; private set; }
+
+        [JsonProperty("versions")]
+        public VersionInfo[] Versions { get; private set; }
+
+        public string GetUpmPackageName()
+        {
+            if (!string.IsNullOrEmpty(UpmPackageName))
+                return UpmPackageName;
+
+            var derived = (DisplayName ?? "unknown").ToLower().Replace(" ", "-");
+            return "com.purrnet." + derived;
+        }
+    }
+
+    public class VersionInfo
+    {
+        [JsonProperty("id")]
+        public string Id { get; private set; }
+
+        [JsonProperty("version")]
+        public string Version { get; private set; }
+
+        [JsonProperty("channel")]
+        public string Channel { get; private set; }
+
+        [JsonProperty("tag_name")]
+        public string TagName { get; private set; }
+
+        [JsonProperty("release_notes")]
+        public string ReleaseNotes { get; private set; }
+
+        [JsonProperty("published_at")]
+        public string PublishedAt { get; private set; }
+    }
+
+    public class DownloadResponse
+    {
+        [JsonProperty("url")]
+        public string Url { get; private set; }
+
+        [JsonProperty("filename")]
+        public string Filename { get; private set; }
+    }
+
+    public class EntitlementsResponse
+    {
+        [JsonProperty("tier")]
+        public string Tier { get; private set; }
+
+        [JsonProperty("total_donated_cents")]
+        public int TotalDonatedCents { get; private set; }
+
+        [JsonProperty("features")]
+        public FeaturesInfo Features { get; private set; }
+    }
+
+    public class FeaturesInfo
+    {
+        [JsonProperty("basic-tools")]
+        public bool BasicTools { get; private set; }
+
+        [JsonProperty("pro-tools")]
+        public bool ProTools { get; private set; }
+
+        [JsonProperty("premium-tools")]
+        public bool PremiumTools { get; private set; }
+
+        [JsonProperty("supporter")]
+        public bool Supporter { get; private set; }
+    }
+
+    public class ApiError
+    {
+        [JsonProperty("error")]
+        public string Error { get; private set; }
+    }
+}
