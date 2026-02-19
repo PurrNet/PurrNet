@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
+using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
@@ -42,7 +45,7 @@ namespace PurrNet.Editor
                 if (!downloadResult.Success)
                 {
                     EditorUtility.ClearProgressBar();
-                    return new Result<bool>(downloadResult.Error);
+                    return Result<bool>.Fail(downloadResult.Error);
                 }
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Downloading {package.DisplayName}...", 0.3f);
@@ -54,7 +57,7 @@ namespace PurrNet.Editor
                 if (!fileResult.Success)
                 {
                     EditorUtility.ClearProgressBar();
-                    return new Result<bool>(fileResult.Error);
+                    return Result<bool>.Fail(fileResult.Error);
                 }
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Installing package...", 0.7f);
@@ -63,7 +66,7 @@ namespace PurrNet.Editor
                 if (Directory.Exists(upmFolder))
                     Directory.Delete(upmFolder, true);
 
-                AssetDatabase.ImportPackage(tempPath, false);
+                ExtractUnityPackage(tempPath, upmFolder);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
@@ -71,15 +74,16 @@ namespace PurrNet.Editor
                     File.Delete(tempPath);
 
                 PurrPackageManagerCache.Invalidate();
+                UnityEditor.PackageManager.Client.Resolve();
                 AssetDatabase.Refresh();
                 EditorUtility.ClearProgressBar();
 
-                return new Result<bool>(true);
+                return Result<bool>.Ok(true);
             }
             catch (Exception e)
             {
                 EditorUtility.ClearProgressBar();
-                return new Result<bool>(e.Message);
+                return Result<bool>.Fail(e.Message);
             }
         }
 
@@ -106,6 +110,193 @@ namespace PurrNet.Editor
                 Debug.LogError($"Failed to remove package: {e.Message}");
                 return false;
             }
+        }
+
+        private static void ExtractUnityPackage(string packagePath, string targetDir)
+        {
+            // .unitypackage = gzipped tar
+            // Each asset is a folder named by GUID containing:
+            //   pathname  - the original asset path
+            //   asset     - the file content
+            //   asset.meta - the .meta file content
+
+            var entries = new Dictionary<string, PackageEntry>();
+            string longName = null;
+
+            using (var fileStream = File.OpenRead(packagePath))
+            using (var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress))
+            using (var memStream = new MemoryStream())
+            {
+                gzipStream.CopyTo(memStream);
+                var tarBytes = memStream.ToArray();
+
+                int pos = 0;
+                while (pos + 512 <= tarBytes.Length)
+                {
+                    // Check for zero block (end of archive)
+                    bool allZero = true;
+                    for (int i = 0; i < 512; i++)
+                    {
+                        if (tarBytes[pos + i] != 0) { allZero = false; break; }
+                    }
+                    if (allZero) break;
+
+                    // Parse tar header
+                    string name = Encoding.ASCII.GetString(tarBytes, pos, 100).TrimEnd('\0');
+                    string sizeStr = Encoding.ASCII.GetString(tarBytes, pos + 124, 12).Trim('\0', ' ');
+                    long size = sizeStr.Length > 0 ? Convert.ToInt64(sizeStr, 8) : 0;
+                    char typeFlag = (char)tarBytes[pos + 156];
+
+                    // ustar prefix field (offset 345, 155 bytes)
+                    string prefix = Encoding.ASCII.GetString(tarBytes, pos + 345, 155).TrimEnd('\0');
+                    if (!string.IsNullOrEmpty(prefix))
+                        name = prefix + "/" + name;
+
+                    pos += 512;
+
+                    byte[] content = null;
+                    if (size > 0)
+                    {
+                        content = new byte[size];
+                        Array.Copy(tarBytes, pos, content, 0, (int)size);
+                        pos += (int)((size + 511) / 512) * 512;
+                    }
+
+                    // Handle GNU long name extension
+                    if (typeFlag == 'L')
+                    {
+                        longName = content != null ? Encoding.ASCII.GetString(content).TrimEnd('\0') : null;
+                        continue;
+                    }
+
+                    // Use long name if set by previous ././@LongLink entry
+                    if (longName != null)
+                    {
+                        name = longName;
+                        longName = null;
+                    }
+
+                    // Skip pax extended headers
+                    if (typeFlag == 'x' || typeFlag == 'g')
+                        continue;
+
+                    // Skip directories
+                    if (typeFlag == '5')
+                        continue;
+
+                    // Strip leading "./"
+                    if (name.StartsWith("./"))
+                        name = name.Substring(2);
+
+                    // Strip trailing "/"
+                    name = name.TrimEnd('/');
+
+                    // Entries are "{guid}/{type}" where type is pathname, asset, or asset.meta
+                    var slashIdx = name.IndexOf('/');
+                    if (slashIdx < 0)
+                        continue;
+
+                    string guid = name.Substring(0, slashIdx);
+                    string entryName = name.Substring(slashIdx + 1);
+
+                    if (!entries.TryGetValue(guid, out var entry))
+                    {
+                        entry = new PackageEntry();
+                        entries[guid] = entry;
+                    }
+
+                    if (entryName == "pathname" && content != null)
+                        entry.Pathname = Encoding.UTF8.GetString(content).Trim();
+                    else if (entryName == "asset")
+                        entry.AssetContent = content;
+                    else if (entryName == "asset.meta")
+                        entry.MetaContent = content;
+                }
+            }
+
+            // Find the root prefix by locating package.json
+            string rootPrefix = null;
+            foreach (var entry in entries.Values)
+            {
+                if (entry.Pathname == null)
+                    continue;
+
+                var filename = entry.Pathname;
+                // Normalize slashes
+                filename = filename.Replace('\\', '/');
+                entry.Pathname = filename;
+
+                if (filename.EndsWith("/package.json") || filename == "package.json")
+                {
+                    rootPrefix = filename.Substring(0, filename.Length - "package.json".Length);
+                    break;
+                }
+            }
+
+            // Fallback: find the shortest common directory prefix
+            if (rootPrefix == null)
+            {
+                foreach (var entry in entries.Values)
+                {
+                    if (entry.Pathname == null)
+                        continue;
+                    var lastSlash = entry.Pathname.LastIndexOf('/');
+                    var dir = lastSlash >= 0 ? entry.Pathname.Substring(0, lastSlash + 1) : "";
+                    if (rootPrefix == null || dir.Length < rootPrefix.Length)
+                        rootPrefix = dir;
+                }
+            }
+
+            rootPrefix ??= "";
+
+            // Write files to target directory
+            Directory.CreateDirectory(targetDir);
+            int fileCount = 0;
+
+            foreach (var entry in entries.Values)
+            {
+                if (entry.Pathname == null)
+                    continue;
+
+                // Strip root prefix
+                string relativePath = entry.Pathname;
+                if (rootPrefix.Length > 0 && relativePath.StartsWith(rootPrefix))
+                    relativePath = relativePath.Substring(rootPrefix.Length);
+
+                if (string.IsNullOrEmpty(relativePath))
+                    continue;
+
+                // Write asset content
+                if (entry.AssetContent != null)
+                {
+                    var fullPath = Path.Combine(targetDir, relativePath);
+                    var dir = Path.GetDirectoryName(fullPath);
+                    if (!string.IsNullOrEmpty(dir))
+                        Directory.CreateDirectory(dir);
+                    File.WriteAllBytes(fullPath, entry.AssetContent);
+                    fileCount++;
+                }
+
+                // Write .meta file
+                if (entry.MetaContent != null)
+                {
+                    var metaPath = Path.Combine(targetDir, relativePath + ".meta");
+                    var dir = Path.GetDirectoryName(metaPath);
+                    if (!string.IsNullOrEmpty(dir))
+                        Directory.CreateDirectory(dir);
+                    File.WriteAllBytes(metaPath, entry.MetaContent);
+                }
+            }
+
+            if (fileCount == 0)
+                Debug.LogWarning("[PurrNet] Package extraction produced no files.");
+        }
+
+        private class PackageEntry
+        {
+            public string Pathname;
+            public byte[] AssetContent;
+            public byte[] MetaContent;
         }
     }
 }

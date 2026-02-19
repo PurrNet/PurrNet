@@ -34,13 +34,13 @@ namespace PurrNet.Editor
                 await request.SendWebRequest();
 
                 if (request.result != UnityWebRequest.Result.Success)
-                    return new Result<string>(request.error);
+                    return Result<string>.Fail(request.error);
 
-                return new Result<string>(destPath);
+                return Result<string>.Ok(destPath);
             }
             catch (Exception e)
             {
-                return new Result<string>(e.Message);
+                return Result<string>.Fail(e.Message);
             }
         }
 
@@ -69,15 +69,15 @@ namespace PurrNet.Editor
                         // use the original error
                     }
 
-                    return new Result<T>(errorMsg);
+                    return Result<T>.Fail(errorMsg);
                 }
 
                 var result = JsonConvert.DeserializeObject<T>(request.downloadHandler.text);
-                return new Result<T>(result);
+                return Result<T>.Ok(result);
             }
             catch (Exception e)
             {
-                return new Result<T>(e.Message);
+                return Result<T>.Fail(e.Message);
             }
         }
     }
