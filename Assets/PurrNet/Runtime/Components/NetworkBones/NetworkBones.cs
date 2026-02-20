@@ -215,6 +215,8 @@ namespace PurrNet
             }
         }
 
+        const int MAX_BONE_ENTRY_SIZE = 32; // a bit of an exaggeration, but better safe than sorry when it comes to MTU
+
         void SendTransforms(DeltaModule module, bool asServer)
         {
             if (asServer)
@@ -228,7 +230,8 @@ namespace PurrNet
                     if ((checkOwner && observer == owner) || observer == localPlayerCached)
                         continue;
 
-                    int mtu = networkManager.GetMTU(observer, Channel.Unreliable, true) - RPCBatch.MAX_HEADER_SIZE;
+                    int mtu = networkManager.GetMTU(observer, Channel.Unreliable, true) -
+                              RPCBatch.MAX_HEADER_SIZE - MAX_BONE_ENTRY_SIZE;
 
                     SendPositions(observer, mtu, module);
                     SendRotations(observer, mtu, module);
@@ -237,7 +240,8 @@ namespace PurrNet
             }
             else if (!isServer)
             {
-                int mtu = networkManager.GetMTU(PlayerID.Server, Channel.Unreliable, false) - RPCBatch.MAX_HEADER_SIZE;
+                int mtu = networkManager.GetMTU(PlayerID.Server, Channel.Unreliable, false) -
+                          RPCBatch.MAX_HEADER_SIZE - MAX_BONE_ENTRY_SIZE;
 
                 SendPositions(default, mtu, module);
                 SendRotations(default, mtu, module);
