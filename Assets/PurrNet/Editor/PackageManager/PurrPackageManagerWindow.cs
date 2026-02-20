@@ -40,8 +40,7 @@ namespace PurrNet.Editor
         {
             _logo = Resources.Load<Texture2D>("purrlogo");
             _apiKeyInput = PurrPackageManagerAuth.GetApiKey();
-            if (PurrPackageManagerAuth.HasApiKey())
-                LoadData();
+            LoadData();
         }
 
         private void InitStyles()
@@ -89,15 +88,6 @@ namespace PurrNet.Editor
 
             DrawHeader();
             DrawSeparator();
-
-            if (!PurrPackageManagerAuth.HasApiKey())
-            {
-                EditorGUILayout.Space(8);
-                DrawApiKeySection();
-                EditorGUILayout.Space(8);
-                DrawCenteredMessage("Enter your API key to view available packages.", MessageType.Info);
-                return;
-            }
 
             DrawApiKeySection();
             DrawSeparator();
@@ -216,7 +206,7 @@ namespace PurrNet.Editor
 
             // Refresh button
             var buttonRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
-            GUI.enabled = !_isLoading && PurrPackageManagerAuth.HasApiKey();
+            GUI.enabled = !_isLoading;
             if (GUI.Button(buttonRect, "Refresh"))
             {
                 PurrPackageManagerCache.Invalidate();
@@ -257,9 +247,9 @@ namespace PurrNet.Editor
                 _apiKeyInput = "";
                 PurrPackageManagerAuth.ClearApiKey();
                 PurrPackageManagerCache.Invalidate();
-                _packages = null;
                 _entitlements = null;
                 _errorMessage = null;
+                LoadData();
             }
             GUI.enabled = true;
 
@@ -481,26 +471,27 @@ namespace PurrNet.Editor
             try
             {
                 var apiKey = PurrPackageManagerAuth.GetApiKey();
+                bool hasKey = !string.IsNullOrEmpty(apiKey);
 
-                if (PurrPackageManagerCache.TryGetEntitlements(out var cachedEntitlements))
+                if (hasKey)
                 {
-                    _entitlements = cachedEntitlements;
-                }
-                else
-                {
-                    var entitlementsResult = await PurrPackageManagerAPI.GetEntitlements(apiKey);
-                    if (entitlementsResult.Success)
+                    if (PurrPackageManagerCache.TryGetEntitlements(out var cachedEntitlements))
                     {
-                        _entitlements = entitlementsResult.Value;
-                        PurrPackageManagerCache.SetEntitlements(_entitlements);
+                        _entitlements = cachedEntitlements;
                     }
                     else
                     {
-                        _errorMessage = entitlementsResult.Error;
-                        _isLoading = false;
-                        Repaint();
-                        return;
+                        var entitlementsResult = await PurrPackageManagerAPI.GetEntitlements(apiKey);
+                        if (entitlementsResult.Success)
+                        {
+                            _entitlements = entitlementsResult.Value;
+                            PurrPackageManagerCache.SetEntitlements(_entitlements);
+                        }
                     }
+                }
+                else
+                {
+                    _entitlements = null;
                 }
 
                 if (PurrPackageManagerCache.TryGetPackages(out var cachedPackages))
