@@ -1,3 +1,10 @@
+# [1.19.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.22...v1.19.0-beta.23) (2026-02-20)
+
+
+### Bug Fixes
+
+* adjust MTU calculation to account for maximum bone entry size ([add7ebc](https://github.com/PurrNet/PurrNet/commit/add7ebcf7cab85b6b5aa8ad921620876ebd74114))
+
 # [1.19.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.19.0-beta.21...v1.19.0-beta.22) (2026-02-16)
 
 
