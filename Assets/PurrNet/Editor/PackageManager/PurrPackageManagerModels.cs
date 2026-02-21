@@ -63,6 +63,21 @@ namespace PurrNet.Editor
         [JsonProperty("versions")]
         public VersionInfo[] Versions { get; private set; }
 
+        [JsonProperty("is_external")]
+        public bool IsExternal { get; private set; }
+
+        [JsonProperty("git_install_url_release")]
+        public string GitInstallUrlRelease { get; private set; }
+
+        [JsonProperty("git_install_url_dev")]
+        public string GitInstallUrlDev { get; private set; }
+
+        [JsonProperty("latest_commit_release")]
+        public string LatestCommitRelease { get; private set; }
+
+        [JsonProperty("latest_commit_dev")]
+        public string LatestCommitDev { get; private set; }
+
         public string GetUpmPackageName()
         {
             if (!string.IsNullOrEmpty(UpmPackageName))

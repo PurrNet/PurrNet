@@ -413,10 +413,21 @@ namespace PurrNet.Editor
                 EditorGUI.DrawRect(itemRect, _hoverBg);
             }
 
+            // External update detection — compare lock file hash against both channel commits
+            bool hasExternalUpdate = false;
+            if (package.IsExternal && isInstalled)
+            {
+                var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
+                if (hash != null)
+                    hasExternalUpdate = hash != package.LatestCommitRelease && hash != package.LatestCommitDev;
+            }
+
             // Build right-side info text
             string info;
             if (!package.HasAccess)
                 info = "No access";
+            else if (package.IsExternal)
+                info = hasExternalUpdate ? "update" : isInstalled ? "installed" : "";
             else if (hasUpdate)
                 info = $"v{installedVersion} \u2192 v{package.LatestVersion}";
             else if (isInstalled && installedVersion != null)
@@ -430,7 +441,8 @@ namespace PurrNet.Editor
             float infoWidth = string.IsNullOrEmpty(info) ? 0 : _listItemDetailStyle.CalcSize(new GUIContent(info)).x + 4;
 
             // Status dot
-            float dotSpace = (hasUpdate || isInstalled) ? 12 : 0;
+            bool showDot = hasUpdate || hasExternalUpdate || isInstalled;
+            float dotSpace = showDot ? 12 : 0;
 
             // Name (left) — drawn as pure text, no event handling
             float nameWidth = itemRect.width - infoWidth - dotSpace;
@@ -439,9 +451,9 @@ namespace PurrNet.Editor
                 _listItemStyle.Draw(nameRect, package.DisplayName, false, false, false, false);
 
             // Status dot (between name and info)
-            if (hasUpdate || isInstalled)
+            if (showDot)
             {
-                var dotColor = hasUpdate ? _updateColor : _installedColor;
+                var dotColor = (hasUpdate || hasExternalUpdate) ? _updateColor : _installedColor;
                 float dotX = nameRect.xMax + 2;
                 var dotRect = new Rect(dotX, itemRect.y + (itemRect.height - 6) / 2, 6, 6);
                 EditorGUI.DrawRect(dotRect, dotColor);
@@ -503,6 +515,20 @@ namespace PurrNet.Editor
                              && !string.IsNullOrEmpty(package.LatestVersion)
                              && installedVersion != package.LatestVersion;
 
+            // External update detection — compare lock file hash against both channel commits
+            string externalInstalledHash = null;
+            bool hasExternalUpdate = false;
+            if (package.IsExternal && isInstalled)
+            {
+                externalInstalledHash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
+                if (externalInstalledHash != null)
+                {
+                    bool matchesRelease = externalInstalledHash == package.LatestCommitRelease;
+                    bool matchesDev = externalInstalledHash == package.LatestCommitDev;
+                    hasExternalUpdate = !matchesRelease && !matchesDev;
+                }
+            }
+
             EditorGUILayout.Space(8);
             GUILayout.Space(4);
 
@@ -512,7 +538,19 @@ namespace PurrNet.Editor
             GUILayout.Label(package.DisplayName, _detailTitleStyle);
             GUILayout.FlexibleSpace();
 
-            if (package.Frozen)
+            if (package.IsExternal)
+            {
+                if (hasExternalUpdate)
+                {
+                    DrawBadge("UPDATE", _updateColor);
+                    DrawBadge("INSTALLED", _installedColor);
+                }
+                else if (isInstalled)
+                {
+                    DrawBadge("INSTALLED", _installedColor);
+                }
+            }
+            else if (package.Frozen)
             {
                 DrawBadge("FROZEN", _frozenColor);
             }
@@ -553,18 +591,32 @@ namespace PurrNet.Editor
             if (!string.IsNullOrEmpty(package.RequiredTier))
                 GUILayout.Label($"Tier: {package.RequiredTier}", _smallLabelStyle);
 
-            if (isInstalled && installedVersion != null)
-                GUILayout.Label($"Installed: v{installedVersion}", _smallLabelStyle);
+            if (package.IsExternal)
+            {
+                if (isInstalled)
+                {
+                    GUILayout.Label("Installed via git", _smallLabelStyle);
+                    if (externalInstalledHash != null)
+                        GUILayout.Label($"Commit: {externalInstalledHash.Substring(0, Math.Min(8, externalInstalledHash.Length))}", _smallLabelStyle);
+                    if (hasExternalUpdate)
+                        GUILayout.Label("Update available", _smallLabelStyle);
+                }
+            }
+            else
+            {
+                if (isInstalled && installedVersion != null)
+                    GUILayout.Label($"Installed: v{installedVersion}", _smallLabelStyle);
 
-            if (!string.IsNullOrEmpty(package.LatestVersion))
-                GUILayout.Label($"Latest: v{package.LatestVersion}", _smallLabelStyle);
+                if (!string.IsNullOrEmpty(package.LatestVersion))
+                    GUILayout.Label($"Latest: v{package.LatestVersion}", _smallLabelStyle);
+            }
 
             EditorGUILayout.EndVertical();
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
-            // Frozen notice
-            if (package.Frozen)
+            // Frozen notice (non-external only)
+            if (!package.IsExternal && package.Frozen)
             {
                 EditorGUILayout.Space(8);
                 EditorGUILayout.BeginHorizontal();
@@ -622,36 +674,50 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.BeginVertical();
 
-            EditorGUILayout.BeginHorizontal();
-            DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
-            GUILayout.Space(4);
-            DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
-            EditorGUILayout.EndHorizontal();
-
-            // Version history dropdowns — split by channel, capped at 20 each
-            if (package.Versions != null && package.Versions.Length > 0)
+            if (package.IsExternal)
             {
-                var releaseVersions = new List<VersionInfo>();
-                var devVersions = new List<VersionInfo>();
+                // External packages: git URL install buttons
+                EditorGUILayout.BeginHorizontal();
+                DrawExternalInstallButton(package, "Release", package.GitInstallUrlRelease,
+                    isInstalled, externalInstalledHash, package.LatestCommitRelease, _installedColor);
+                GUILayout.Space(4);
+                DrawExternalInstallButton(package, "Dev", package.GitInstallUrlDev,
+                    isInstalled, externalInstalledHash, package.LatestCommitDev, _accentColor);
+                EditorGUILayout.EndHorizontal();
+            }
+            else
+            {
+                EditorGUILayout.BeginHorizontal();
+                DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
+                GUILayout.Space(4);
+                DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
+                EditorGUILayout.EndHorizontal();
 
-                foreach (var v in package.Versions)
+                // Version history dropdowns — split by channel, capped at 20 each
+                if (package.Versions != null && package.Versions.Length > 0)
                 {
-                    if (string.Equals(v.Channel, "release", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (releaseVersions.Count < 20) releaseVersions.Add(v);
-                    }
-                    else
-                    {
-                        if (devVersions.Count < 20) devVersions.Add(v);
-                    }
-                }
+                    var releaseVersions = new List<VersionInfo>();
+                    var devVersions = new List<VersionInfo>();
 
-                EditorGUILayout.Space(8);
-                DrawVersionDropdown("Release", releaseVersions, ref _releasePopupIndex,
-                    isInstalled, installedVersion, package, _installedColor);
-                EditorGUILayout.Space(4);
-                DrawVersionDropdown("Dev", devVersions, ref _devPopupIndex,
-                    isInstalled, installedVersion, package, _accentColor);
+                    foreach (var v in package.Versions)
+                    {
+                        if (string.Equals(v.Channel, "release", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (releaseVersions.Count < 20) releaseVersions.Add(v);
+                        }
+                        else
+                        {
+                            if (devVersions.Count < 20) devVersions.Add(v);
+                        }
+                    }
+
+                    EditorGUILayout.Space(8);
+                    DrawVersionDropdown("Release", releaseVersions, ref _releasePopupIndex,
+                        isInstalled, installedVersion, package, _installedColor);
+                    EditorGUILayout.Space(4);
+                    DrawVersionDropdown("Dev", devVersions, ref _devPopupIndex,
+                        isInstalled, installedVersion, package, _accentColor);
+                }
             }
 
             // Remove button
@@ -668,8 +734,8 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
-            // Changelog
-            if (package.Versions != null && package.Versions.Length > 0)
+            // Changelog (non-external only)
+            if (!package.IsExternal && package.Versions != null && package.Versions.Length > 0)
             {
                 // Collect relevant versions:
                 // - Not installed: just the latest version
@@ -806,6 +872,41 @@ namespace PurrNet.Editor
                     label = $"Switch to {channelLabel} v{version.Version}";
                 if (GUILayout.Button(label, GUILayout.Height(26)))
                     InstallPackage(package, version);
+                GUI.color = Color.white;
+            }
+        }
+
+        private void DrawExternalInstallButton(PackageInfo package, string channelLabel, string gitUrl,
+            bool isInstalled, string installedHash, string latestCommit, Color buttonColor)
+        {
+            if (string.IsNullOrEmpty(gitUrl))
+            {
+                GUI.enabled = false;
+                GUILayout.Button($"No {channelLabel} Version", GUILayout.Height(26));
+                GUI.enabled = true;
+                return;
+            }
+
+            if (!isInstalled)
+            {
+                GUI.color = buttonColor;
+                if (GUILayout.Button($"Install {channelLabel}", GUILayout.Height(26)))
+                    PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                GUI.color = Color.white;
+            }
+            else if (!string.IsNullOrEmpty(latestCommit)
+                && !string.IsNullOrEmpty(installedHash)
+                && installedHash == latestCommit)
+            {
+                GUI.enabled = false;
+                GUILayout.Button($"{channelLabel} (up to date)", GUILayout.Height(26));
+                GUI.enabled = true;
+            }
+            else
+            {
+                GUI.color = buttonColor;
+                if (GUILayout.Button($"Install {channelLabel}", GUILayout.Height(26)))
+                    PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
                 GUI.color = Color.white;
             }
         }

@@ -15,6 +15,7 @@ namespace PurrNet.Editor
     {
         private const string PackagesDir = "PurrPackages";
         private const string ManifestPath = "Packages/manifest.json";
+        private const string LockFilePath = "Packages/packages-lock.json";
 
         public static bool IsInstalled(PackageInfo package)
         {
@@ -30,6 +31,10 @@ namespace PurrNet.Editor
             var value = match.Value.value;
             var key = match.Value.key;
 
+            // Git URL entries don't have a semver version
+            if (IsGitUrl(value))
+                return "git";
+
             // Parse version from the entry value
             // Format: "file:../PurrPackages/{name}-{version}.tgz" or "embedded:{name}-{version}"
             string nameAndVersion;
@@ -41,6 +46,35 @@ namespace PurrNet.Editor
             if (nameAndVersion != null && nameAndVersion.StartsWith(key + "-"))
                 return nameAndVersion.Substring(key.Length + 1);
             return null;
+        }
+
+        /// <summary>
+        /// Reads the resolved commit hash from packages-lock.json for a git-installed package.
+        /// </summary>
+        public static string GetInstalledCommitHash(PackageInfo package)
+        {
+            var upmName = package.GetUpmPackageName();
+            if (!File.Exists(LockFilePath))
+                return null;
+
+            try
+            {
+                var lockFile = JObject.Parse(File.ReadAllText(LockFilePath));
+                var deps = lockFile["dependencies"] as JObject;
+                var entry = deps?[upmName] as JObject;
+                if (entry == null)
+                    return null;
+
+                var source = entry["source"]?.ToString();
+                if (source != "git")
+                    return null;
+
+                return entry["hash"]?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -86,6 +120,10 @@ namespace PurrNet.Editor
             // Try direct lookup with API-provided name
             var directEntry = deps[apiName]?.ToString();
             if (directEntry != null && directEntry.Contains(PackagesDir))
+                return (apiName, directEntry);
+
+            // Check for git URL entries (external packages)
+            if (directEntry != null && IsGitUrl(directEntry))
                 return (apiName, directEntry);
 
             // API name may differ from the real name in package.json.
@@ -352,6 +390,55 @@ namespace PurrNet.Editor
                 Debug.LogError($"Failed to remove package: {e.Message}");
                 return false;
             }
+        }
+
+        public static void InstallExternal(PackageInfo package, string gitUrl)
+        {
+            try
+            {
+                EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
+
+                var upmName = package.GetUpmPackageName();
+
+                // Remove old entry if present
+                var oldMatch = FindInstalledEntry(package);
+                if (oldMatch != null)
+                {
+                    RemoveManifestEntry(oldMatch.Value.key);
+
+                    // Clean up old tgz files if switching from tgz install
+                    if (Directory.Exists(PackagesDir))
+                    {
+                        foreach (var oldTgz in Directory.GetFiles(PackagesDir, oldMatch.Value.key + "-*.tgz"))
+                        {
+                            try { File.Delete(oldTgz); }
+                            catch { /* best effort */ }
+                        }
+                    }
+                }
+
+                // Remove embedded packages if they exist
+                if (HasEmbeddedPackage(upmName))
+                    RemoveEmbeddedPackage(upmName);
+
+                SetManifestEntry(upmName, gitUrl);
+
+                PurrPackageManagerCache.Invalidate();
+                UnityEditor.PackageManager.Client.Resolve();
+                AssetDatabase.Refresh();
+                EditorUtility.ClearProgressBar();
+            }
+            catch (Exception e)
+            {
+                EditorUtility.ClearProgressBar();
+                Debug.LogError($"[PurrNet] Failed to install external package: {e.Message}");
+            }
+        }
+
+        private static bool IsGitUrl(string value)
+        {
+            return value != null &&
+                   (value.StartsWith("https://") || value.StartsWith("git://") || value.StartsWith("git+"));
         }
 
         private static void SetManifestEntry(string packageName, string value)
