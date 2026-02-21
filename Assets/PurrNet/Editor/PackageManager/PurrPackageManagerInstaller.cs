@@ -63,15 +63,51 @@ namespace PurrNet.Editor
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Installing package...", 0.7f);
 
                 var upmFolder = Path.Combine("Packages", package.GetUpmPackageName());
-                if (Directory.Exists(upmFolder))
-                    Directory.Delete(upmFolder, true);
+                string backupFolder = null;
 
-                ExtractUnityPackage(tempPath, upmFolder);
+                // Move existing package to temp instead of deleting (native DLLs can be locked)
+                if (Directory.Exists(upmFolder))
+                {
+                    backupFolder = Path.Combine("Temp", package.GetUpmPackageName() + "_backup_" + DateTime.Now.Ticks);
+                    try
+                    {
+                        Directory.Move(upmFolder, backupFolder);
+                    }
+                    catch (Exception moveEx)
+                    {
+                        EditorUtility.ClearProgressBar();
+                        return Result<bool>.Fail($"Failed to move existing package out of the way: {moveEx.Message}");
+                    }
+                }
+
+                try
+                {
+                    ExtractUnityPackage(tempPath, upmFolder);
+                }
+                catch (Exception extractEx)
+                {
+                    // Restore backup if extraction failed
+                    if (backupFolder != null && Directory.Exists(backupFolder))
+                    {
+                        if (Directory.Exists(upmFolder))
+                            Directory.Delete(upmFolder, true);
+                        Directory.Move(backupFolder, upmFolder);
+                    }
+                    EditorUtility.ClearProgressBar();
+                    return Result<bool>.Fail($"Failed to extract package: {extractEx.Message}");
+                }
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
                 if (File.Exists(tempPath))
                     File.Delete(tempPath);
+
+                // Best-effort cleanup of the backup; locked native DLLs will be left for the OS
+                if (backupFolder != null && Directory.Exists(backupFolder))
+                {
+                    try { Directory.Delete(backupFolder, true); }
+                    catch { /* locked files will be cleaned up on next restart */ }
+                }
 
                 PurrPackageManagerCache.Invalidate();
                 UnityEditor.PackageManager.Client.Resolve();

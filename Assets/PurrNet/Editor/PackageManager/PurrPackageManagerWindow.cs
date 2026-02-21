@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -18,6 +20,7 @@ namespace PurrNet.Editor
         private float _splitWidth = 240f;
         private bool _isDraggingSplitter;
         private Rect _cachedSplitterRect;
+        private int _prevKeyboardControl;
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
@@ -135,12 +138,15 @@ namespace PurrNet.Editor
                 margin = new RectOffset(0, 0, 0, 4)
             };
 
+            var notesColor = new Color(0.75f, 0.75f, 0.75f, 1f);
             _releaseNotesStyle = new GUIStyle(EditorStyles.label)
             {
                 wordWrap = true,
                 fontSize = 11,
                 richText = true,
-                normal = { textColor = new Color(0.75f, 0.75f, 0.75f, 1f) }
+                normal = { textColor = notesColor },
+                focused = { textColor = notesColor },
+                onFocused = { textColor = notesColor }
             };
         }
 
@@ -258,6 +264,8 @@ namespace PurrNet.Editor
                 DrawPackageList(fullListRect);
                 DrawSplitter(_cachedSplitterRect);
             }
+
+            _prevKeyboardControl = GUIUtility.keyboardControl;
         }
 
         private void DrawHeader()
@@ -461,6 +469,7 @@ namespace PurrNet.Editor
             if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
             {
                 _selectedIndex = index;
+                GUI.FocusControl(null);
                 Event.current.Use();
                 Repaint();
             }
@@ -586,6 +595,19 @@ namespace PurrNet.Editor
                 GUILayout.Space(8);
                 EditorGUILayout.EndHorizontal();
 
+                if (isInstalled)
+                {
+                    EditorGUILayout.Space(8);
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Space(8);
+                    GUI.color = _frozenColor;
+                    if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
+                        PurrPackageManagerInstaller.Remove(package);
+                    GUI.color = Color.white;
+                    GUILayout.Space(8);
+                    EditorGUILayout.EndHorizontal();
+                }
+
                 EditorGUILayout.EndScrollView();
                 return;
             }
@@ -596,9 +618,11 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.BeginVertical();
 
+            EditorGUILayout.BeginHorizontal();
             DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
-            EditorGUILayout.Space(4);
+            GUILayout.Space(4);
             DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
+            EditorGUILayout.EndHorizontal();
 
             // Remove button
             if (isInstalled)
@@ -644,9 +668,13 @@ namespace PurrNet.Editor
             else
             {
                 GUI.color = buttonColor;
-                string label = isInstalled
-                    ? $"Switch to {channelLabel} v{version.Version}"
-                    : $"Install {channelLabel} v{version.Version}";
+                string label;
+                if (!isInstalled)
+                    label = $"Install {channelLabel} v{version.Version}";
+                else if (IsInstalledOnChannel(package, version.Channel, installedVersion))
+                    label = $"Update to {channelLabel} v{version.Version}";
+                else
+                    label = $"Switch to {channelLabel} v{version.Version}";
                 if (GUILayout.Button(label, GUILayout.Height(26)))
                     InstallPackage(package, version);
                 GUI.color = Color.white;
@@ -667,7 +695,20 @@ namespace PurrNet.Editor
             EditorGUILayout.Space(4);
             GUILayout.Label($"{channelLabel} Release Notes (v{version.Version})", EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField(version.ReleaseNotes, _releaseNotesStyle);
+            var rendered = MarkdownToRichText(version.ReleaseNotes);
+            var content = new GUIContent(rendered);
+            var height = _releaseNotesStyle.CalcHeight(content, EditorGUIUtility.currentViewWidth - 24);
+            var rect = GUILayoutUtility.GetRect(content, _releaseNotesStyle, GUILayout.Height(height));
+            EditorGUI.SelectableLabel(rect, rendered, _releaseNotesStyle);
+
+            // Clear the select-all that happens on first focus
+            int kb = GUIUtility.keyboardControl;
+            if (kb != 0 && kb != _prevKeyboardControl)
+            {
+                var te = GUIUtility.GetStateObject(typeof(TextEditor), kb) as TextEditor;
+                if (te != null)
+                    te.selectIndex = te.cursorIndex;
+            }
 
             EditorGUILayout.EndVertical();
             GUILayout.Space(8);
@@ -743,6 +784,20 @@ namespace PurrNet.Editor
             EditorGUILayout.EndHorizontal();
         }
 
+        private static bool IsInstalledOnChannel(PackageInfo package, string channel, string installedVersion)
+        {
+            if (package.Versions == null || installedVersion == null)
+                return false;
+
+            foreach (var v in package.Versions)
+            {
+                if (v.Version == installedVersion)
+                    return string.Equals(v.Channel, channel, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return false;
+        }
+
         private static VersionInfo FindLatestByChannel(PackageInfo package, string channel)
         {
             if (package.Versions == null)
@@ -755,6 +810,86 @@ namespace PurrNet.Editor
             }
 
             return null;
+        }
+
+        private static string MarkdownToRichText(string markdown)
+        {
+            if (string.IsNullOrEmpty(markdown))
+                return markdown;
+
+            var sb = new StringBuilder();
+            var lines = markdown.Split('\n');
+            bool lastWasBlank = false;
+
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.TrimEnd('\r');
+
+                // Collapse consecutive blank lines into one
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    if (lastWasBlank) continue;
+                    lastWasBlank = true;
+                    sb.AppendLine();
+                    continue;
+                }
+                lastWasBlank = false;
+
+                // Headers
+                if (line.StartsWith("### "))
+                {
+                    sb.AppendLine($"<b>{ProcessInline(line.Substring(4))}</b>");
+                    continue;
+                }
+                if (line.StartsWith("## "))
+                {
+                    sb.AppendLine($"<size=13><b>{ProcessInline(line.Substring(3))}</b></size>");
+                    continue;
+                }
+                if (line.StartsWith("# "))
+                {
+                    sb.AppendLine($"<size=15><b>{ProcessInline(line.Substring(2))}</b></size>");
+                    continue;
+                }
+
+                // Unordered list items
+                if (line.StartsWith("- ") || line.StartsWith("* "))
+                {
+                    sb.AppendLine($"  \u2022 {ProcessInline(line.Substring(2))}");
+                    continue;
+                }
+
+                // Horizontal rules
+                var trimmed = line.Trim();
+                if (trimmed == "---" || trimmed == "***" || trimmed == "___")
+                {
+                    sb.AppendLine("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+                    continue;
+                }
+
+                sb.AppendLine(ProcessInline(line));
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string ProcessInline(string text)
+        {
+            // Links [text](url) → colored text
+            text = Regex.Replace(text, @"\[([^\]]+)\]\([^\)]+\)", "<color=#66aaff>$1</color>");
+
+            // Inline code `text`
+            text = Regex.Replace(text, @"`([^`]+)`", "<color=#88cccc>$1</color>");
+
+            // Bold **text** or __text__
+            text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<b>$1</b>");
+            text = Regex.Replace(text, @"__(.+?)__", "<b>$1</b>");
+
+            // Italic *text* or _text_
+            text = Regex.Replace(text, @"(?<!\*)\*(.+?)\*(?!\*)", "<i>$1</i>");
+            text = Regex.Replace(text, @"(?<!_)_(.+?)_(?!_)", "<i>$1</i>");
+
+            return text;
         }
 
         private async void LoadData()
