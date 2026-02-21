@@ -45,6 +45,9 @@ namespace PurrNet.Editor
         [JsonProperty("entitled_version")]
         public string EntitledVersion { get; private set; }
 
+        [JsonProperty("has_access")]
+        public bool HasAccess { get; private set; }
+
         [JsonProperty("frozen")]
         public bool Frozen { get; private set; }
 

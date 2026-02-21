@@ -10,34 +10,62 @@ namespace PurrNet.Editor
         private string _apiKeyInput = "";
         private string _errorMessage;
         private bool _isLoading;
-        private Vector2 _scrollPosition;
+
+        private int _selectedIndex = -1;
+        private Vector2 _listScrollPosition;
+        private Vector2 _detailScrollPosition;
+
+        private float _splitWidth = 240f;
+        private bool _isDraggingSplitter;
+        private Rect _cachedSplitterRect;
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
 
-        private static readonly Color _headerBg = new Color(0.15f, 0.15f, 0.15f, 1f);
+        // Cached sorted list rebuilt each frame from _packages
+        private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
+        private readonly List<(string name, int startIndex, int count)> _categories = new();
+
+        private static readonly Color _headerBg = new Color(0.17f, 0.17f, 0.17f, 1f);
         private static readonly Color _accentColor = new Color(0.4f, 0.7f, 1f, 1f);
-        private static readonly Color _installedColor = new Color(0.35f, 0.8f, 0.35f, 1f);
-        private static readonly Color _updateColor = new Color(1f, 0.75f, 0.2f, 1f);
-        private static readonly Color _frozenColor = new Color(0.9f, 0.35f, 0.35f, 1f);
-        private static readonly Color _separatorColor = new Color(0.3f, 0.3f, 0.3f, 1f);
+        private static readonly Color _installedColor = new Color(0.4f, 0.8f, 0.4f, 1f);
+        private static readonly Color _updateColor = new Color(1f, 0.76f, 0.28f, 1f);
+        private static readonly Color _frozenColor = new Color(0.95f, 0.5f, 0.5f, 1f);
+        private static readonly Color _separatorColor = new Color(0.13f, 0.13f, 0.13f, 1f);
+        private static readonly Color _listBg = new Color(0.2f, 0.2f, 0.2f, 1f);
+        private static readonly Color _selectedBg = new Color(0.17f, 0.36f, 0.53f, 1f);
+        private static readonly Color _hoverBg = new Color(0.26f, 0.26f, 0.26f, 1f);
+        private static readonly Color _noAccessColor = new Color(0.95f, 0.45f, 0.45f, 1f);
+        private static readonly Color _categoryBg = new Color(0.16f, 0.16f, 0.16f, 1f);
+        private static readonly Color _selectedAccent = new Color(0.35f, 0.65f, 0.95f, 1f);
 
         private GUIStyle _titleStyle;
         private GUIStyle _descStyle;
         private GUIStyle _badgeStyle;
         private GUIStyle _smallLabelStyle;
-        private GUIStyle _cardStyle;
+        private GUIStyle _listItemStyle;
+        private GUIStyle _listItemDetailStyle;
+        private GUIStyle _categoryStyle;
+        private GUIStyle _detailTitleStyle;
+        private GUIStyle _releaseNotesStyle;
         private Texture2D _logo;
+
+        private const float SplitMargin = 80f;
+        private const float ListItemHeight = 28f;
+        private const float CategoryHeaderHeight = 20f;
+        private const float CategoryGap = 8f;
+        private const float SplitterWidth = 6f;
 
         [MenuItem("Tools/PurrNet/Package Manager", false, -99)]
         public static void ShowWindow()
         {
             var window = GetWindow<PurrPackageManagerWindow>("PurrNet Package Manager");
-            window.minSize = new Vector2(420, 350);
+            window.minSize = new Vector2(520, 350);
         }
 
         private void OnEnable()
         {
+            wantsMouseMove = true;
             _logo = Resources.Load<Texture2D>("purrlogo");
             _apiKeyInput = PurrPackageManagerAuth.GetApiKey();
             LoadData();
@@ -45,7 +73,7 @@ namespace PurrNet.Editor
 
         private void InitStyles()
         {
-            if (_titleStyle != null)
+            if (_detailTitleStyle != null && _listItemDetailStyle != null && _releaseNotesStyle != null)
                 return;
 
             _titleStyle = new GUIStyle(EditorStyles.boldLabel)
@@ -58,7 +86,7 @@ namespace PurrNet.Editor
             {
                 wordWrap = true,
                 fontSize = 11,
-                normal = { textColor = new Color(0.7f, 0.7f, 0.7f, 1f) }
+                normal = { textColor = new Color(0.78f, 0.78f, 0.78f, 1f) }
             };
 
             _badgeStyle = new GUIStyle(EditorStyles.miniLabel)
@@ -72,19 +100,96 @@ namespace PurrNet.Editor
 
             _smallLabelStyle = new GUIStyle(EditorStyles.miniLabel)
             {
+                normal = { textColor = new Color(0.7f, 0.7f, 0.7f, 1f) }
+            };
+
+            _listItemStyle = new GUIStyle(EditorStyles.label)
+            {
+                fontSize = 11,
+                padding = new RectOffset(12, 4, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+                alignment = TextAnchor.MiddleLeft
+            };
+
+            _listItemDetailStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = 9,
+                padding = new RectOffset(0, 6, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+                alignment = TextAnchor.MiddleRight,
                 normal = { textColor = new Color(0.6f, 0.6f, 0.6f, 1f) }
             };
 
-            _cardStyle = new GUIStyle(EditorStyles.helpBox)
+            _categoryStyle = new GUIStyle(EditorStyles.miniLabel)
             {
-                padding = new RectOffset(10, 10, 8, 8),
-                margin = new RectOffset(4, 4, 2, 4)
+                fontSize = 9,
+                fontStyle = FontStyle.Bold,
+                padding = new RectOffset(10, 4, 3, 3),
+                margin = new RectOffset(0, 0, 0, 0),
+                normal = { textColor = new Color(0.48f, 0.48f, 0.48f, 1f) }
             };
+
+            _detailTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                fontSize = 16,
+                margin = new RectOffset(0, 0, 0, 4)
+            };
+
+            _releaseNotesStyle = new GUIStyle(EditorStyles.label)
+            {
+                wordWrap = true,
+                fontSize = 11,
+                richText = true,
+                normal = { textColor = new Color(0.75f, 0.75f, 0.75f, 1f) }
+            };
+        }
+
+        private void RebuildSortedPackages()
+        {
+            _sortedPackages.Clear();
+            _categories.Clear();
+
+            if (_packages?.Packages == null)
+                return;
+
+            foreach (var package in _packages.Packages)
+                _sortedPackages.Add((package, FindLatestByChannel(package, "release"), FindLatestByChannel(package, "dev")));
+
+            _sortedPackages.Sort((a, b) => a.pkg.DisplayOrder.CompareTo(b.pkg.DisplayOrder));
+
+            // Build category index
+            var categoryMap = new Dictionary<string, int>();
+            foreach (var item in _sortedPackages)
+            {
+                var cat = item.pkg.Category ?? "";
+                if (!categoryMap.ContainsKey(cat))
+                {
+                    categoryMap[cat] = _categories.Count;
+                    _categories.Add((cat, 0, 0));
+                }
+            }
+
+            // Compute start index and count per category
+            int idx = 0;
+            foreach (var item in _sortedPackages)
+            {
+                var cat = item.pkg.Category ?? "";
+                int ci = categoryMap[cat];
+                var c = _categories[ci];
+                if (c.count == 0)
+                    _categories[ci] = (c.name, idx, 1);
+                else
+                    _categories[ci] = (c.name, c.startIndex, c.count + 1);
+                idx++;
+            }
         }
 
         private void OnGUI()
         {
             InitStyles();
+
+            // Handle splitter drag FIRST, before any GUILayout controls can consume events
+            HandleSplitterDrag(_cachedSplitterRect);
 
             DrawHeader();
             DrawSeparator();
@@ -116,71 +221,43 @@ namespace PurrNet.Editor
                 return;
             }
 
-            EditorGUILayout.Space(4);
-            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+            RebuildSortedPackages();
 
-            // Collect visible packages sorted by display order
-            var visible = new List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)>();
-            foreach (var package in _packages.Packages)
+            // Clamp selection
+            if (_selectedIndex >= _sortedPackages.Count)
+                _selectedIndex = _sortedPackages.Count - 1;
+
+            // Auto-select first if nothing selected
+            if (_selectedIndex < 0 && _sortedPackages.Count > 0)
+                _selectedIndex = 0;
+
+            _splitWidth = Mathf.Clamp(_splitWidth, SplitMargin, position.width - SplitMargin);
+
+            // Split view: left placeholder + splitter space + right detail (EditorGUILayout)
+            EditorGUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
+
+            // Left panel: reserve space for the list (drawn with immediate-mode later)
+            EditorGUILayout.BeginVertical(GUILayout.Width(_splitWidth));
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndVertical();
+            var listRect = GUILayoutUtility.GetLastRect();
+
+            // Splitter space
+            GUILayout.Space(SplitterWidth);
+
+            // Right panel: detail using EditorGUILayout (gets proper Layout pass)
+            DrawPackageDetail();
+
+            EditorGUILayout.EndHorizontal();
+
+            // Overlay immediate-mode list and splitter, using exact positions to avoid layout padding gaps
+            if (Event.current.type != EventType.Layout)
             {
-                if (package.Versions == null || package.Versions.Length == 0)
-                    continue;
-                visible.Add((package, FindLatestByChannel(package, "release"), FindLatestByChannel(package, "dev")));
+                var fullListRect = new Rect(0, listRect.y, _splitWidth, listRect.height);
+                _cachedSplitterRect = new Rect(_splitWidth, listRect.y, SplitterWidth, listRect.height);
+                DrawPackageList(fullListRect);
+                DrawSplitter(_cachedSplitterRect);
             }
-            visible.Sort((a, b) => a.pkg.DisplayOrder.CompareTo(b.pkg.DisplayOrder));
-
-            // Group by category
-            var categories = new List<(string name, List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> items)>();
-            var categoryMap = new Dictionary<string, int>();
-
-            foreach (var item in visible)
-            {
-                var cat = item.pkg.Category ?? "";
-                if (!categoryMap.TryGetValue(cat, out int idx))
-                {
-                    idx = categories.Count;
-                    categoryMap[cat] = idx;
-                    categories.Add((cat, new List<(PackageInfo, VersionInfo, VersionInfo)>()));
-                }
-                categories[idx].items.Add(item);
-            }
-
-            // Responsive card grid
-            const float minCardWidth = 280f;
-            int columns = Mathf.Max(1, Mathf.FloorToInt((position.width - 16) / minCardWidth));
-            float cardWidth = (position.width - 16 - (columns - 1) * 4) / columns;
-
-            foreach (var (categoryName, items) in categories)
-            {
-                // Category header
-                EditorGUILayout.Space(6);
-                GUILayout.Label(string.IsNullOrEmpty(categoryName) ? "Other" : categoryName, EditorStyles.boldLabel);
-                DrawSeparator();
-                EditorGUILayout.Space(4);
-
-                // Card grid for this category
-                for (int i = 0; i < items.Count; i += columns)
-                {
-                    EditorGUILayout.BeginHorizontal();
-                    for (int j = 0; j < columns; j++)
-                    {
-                        if (i + j < items.Count)
-                        {
-                            var (pkg, release, dev) = items[i + j];
-                            DrawPackageCard(pkg, release, dev, cardWidth);
-                        }
-                        else
-                        {
-                            GUILayout.Space(cardWidth);
-                        }
-                    }
-                    EditorGUILayout.EndHorizontal();
-                    EditorGUILayout.Space(2);
-                }
-            }
-
-            EditorGUILayout.Space(4);
-            EditorGUILayout.EndScrollView();
         }
 
         private void DrawHeader()
@@ -258,21 +335,169 @@ namespace PurrNet.Editor
             EditorGUILayout.Space(6);
         }
 
-        private void DrawPackageCard(PackageInfo package, VersionInfo release, VersionInfo dev, float width)
+        private void DrawPackageList(Rect areaRect)
         {
-            EditorGUILayout.BeginVertical(_cardStyle, GUILayout.Width(width));
+            EditorGUI.DrawRect(areaRect, _listBg);
 
-            // Row 1: Name + status badges + remove X
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label(package.DisplayName, _titleStyle);
-            GUILayout.FlexibleSpace();
+            // Calculate total content height
+            float totalHeight = 0;
+            for (int c = 0; c < _categories.Count; c++)
+            {
+                if (c > 0) totalHeight += CategoryGap;
+                totalHeight += CategoryHeaderHeight + _categories[c].count * ListItemHeight;
+            }
 
+            bool needsScroll = totalHeight > areaRect.height;
+            var viewRect = new Rect(0, 0, areaRect.width - (needsScroll ? 13f : 0f), totalHeight);
+            _listScrollPosition = GUI.BeginScrollView(areaRect, _listScrollPosition, viewRect);
+
+            float y = 0;
+            bool firstCategory = true;
+            foreach (var (categoryName, startIndex, count) in _categories)
+            {
+                // Gap between categories
+                if (!firstCategory)
+                    y += CategoryGap;
+                firstCategory = false;
+
+                // Category header — non-interactive delimiter
+                var catLabel = string.IsNullOrEmpty(categoryName) ? "Other" : categoryName;
+                var catRect = new Rect(0, y, viewRect.width, CategoryHeaderHeight);
+
+                EditorGUI.DrawRect(catRect, _categoryBg);
+                GUI.Label(catRect, catLabel.ToUpperInvariant(), _categoryStyle);
+                y += CategoryHeaderHeight;
+
+                // Package items in this category
+                for (int i = startIndex; i < startIndex + count; i++)
+                {
+                    var itemRect = new Rect(0, y, viewRect.width, ListItemHeight);
+                    DrawListItem(_sortedPackages[i].pkg, i, itemRect);
+                    y += ListItemHeight;
+                }
+            }
+
+            GUI.EndScrollView();
+        }
+
+        private void DrawListItem(PackageInfo package, int index, Rect itemRect)
+        {
+            bool isSelected = index == _selectedIndex;
+            bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
+            var installedVersion = isInstalled ? PurrPackageManagerInstaller.GetInstalledVersion(package) : null;
+            bool hasUpdate = isInstalled && installedVersion != null
+                             && !string.IsNullOrEmpty(package.LatestVersion)
+                             && installedVersion != package.LatestVersion;
+
+            // Hover detection
+            bool isHover = itemRect.Contains(Event.current.mousePosition);
+
+            // Background
+            if (isSelected)
+            {
+                EditorGUI.DrawRect(itemRect, _selectedBg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 3, itemRect.height), _selectedAccent);
+            }
+            else if (isHover)
+            {
+                EditorGUI.DrawRect(itemRect, _hoverBg);
+            }
+
+            // Build right-side info text
+            string info;
+            if (!package.HasAccess)
+                info = "No access";
+            else if (hasUpdate)
+                info = $"v{installedVersion} \u2192 v{package.LatestVersion}";
+            else if (isInstalled && installedVersion != null)
+                info = $"v{installedVersion}";
+            else if (!string.IsNullOrEmpty(package.LatestVersion))
+                info = $"v{package.LatestVersion}";
+            else
+                info = "";
+
+            // Measure right-side text width
+            float infoWidth = string.IsNullOrEmpty(info) ? 0 : _listItemDetailStyle.CalcSize(new GUIContent(info)).x + 4;
+
+            // Status dot
+            float dotSpace = (hasUpdate || isInstalled) ? 12 : 0;
+
+            // Name (left) — drawn as pure text, no event handling
+            float nameWidth = itemRect.width - infoWidth - dotSpace;
+            var nameRect = new Rect(itemRect.x, itemRect.y, nameWidth, itemRect.height);
+            if (Event.current.type == EventType.Repaint)
+                _listItemStyle.Draw(nameRect, package.DisplayName, false, false, false, false);
+
+            // Status dot (between name and info)
+            if (hasUpdate || isInstalled)
+            {
+                var dotColor = hasUpdate ? _updateColor : _installedColor;
+                float dotX = nameRect.xMax + 2;
+                var dotRect = new Rect(dotX, itemRect.y + (itemRect.height - 6) / 2, 6, 6);
+                EditorGUI.DrawRect(dotRect, dotColor);
+            }
+
+            // Info text (right-aligned) — drawn as pure text, no event handling
+            if (infoWidth > 0 && Event.current.type == EventType.Repaint)
+            {
+                var infoRect = new Rect(itemRect.xMax - infoWidth, itemRect.y, infoWidth, itemRect.height);
+                if (!package.HasAccess)
+                {
+                    var noAccessStyle = new GUIStyle(_listItemDetailStyle)
+                    {
+                        fontSize = 10,
+                        fontStyle = FontStyle.Bold,
+                        normal = { textColor = _noAccessColor }
+                    };
+                    noAccessStyle.Draw(infoRect, info, false, false, false, false);
+                }
+                else
+                {
+                    _listItemDetailStyle.Draw(infoRect, info, false, false, false, false);
+                }
+            }
+
+            // Click to select — at the end so nothing above can interfere
+            if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
+            {
+                _selectedIndex = index;
+                Event.current.Use();
+                Repaint();
+            }
+
+            // Repaint on hover for highlight
+            if (isHover && Event.current.type == EventType.Repaint)
+                Repaint();
+        }
+
+        private void DrawPackageDetail()
+        {
+            _detailScrollPosition = EditorGUILayout.BeginScrollView(_detailScrollPosition,
+                GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+
+            if (_selectedIndex < 0 || _selectedIndex >= _sortedPackages.Count)
+            {
+                EditorGUILayout.Space(40);
+                DrawCenteredLabel("Select a package to view details.");
+                EditorGUILayout.EndScrollView();
+                return;
+            }
+
+            var (package, release, dev) = _sortedPackages[_selectedIndex];
             var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(package);
             bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
-
             bool hasUpdate = isInstalled && installedVersion != null
-                            && !string.IsNullOrEmpty(package.LatestVersion)
-                            && installedVersion != package.LatestVersion;
+                             && !string.IsNullOrEmpty(package.LatestVersion)
+                             && installedVersion != package.LatestVersion;
+
+            EditorGUILayout.Space(8);
+            GUILayout.Space(4);
+
+            // Title row: name + badges
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            GUILayout.Label(package.DisplayName, _detailTitleStyle);
+            GUILayout.FlexibleSpace();
 
             if (package.Frozen)
             {
@@ -292,28 +517,25 @@ namespace PurrNet.Editor
                 DrawBadge($"v{package.LatestVersion}", _accentColor);
             }
 
-            // Remove X button in the top-right corner
-            if (isInstalled)
-            {
-                GUILayout.Space(4);
-                GUI.color = _frozenColor;
-                if (GUILayout.Button("x", EditorStyles.miniButton, GUILayout.Width(20), GUILayout.Height(18)))
-                    PurrPackageManagerInstaller.Remove(package);
-                GUI.color = Color.white;
-            }
-
+            GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
             // Description
             if (!string.IsNullOrEmpty(package.Description))
             {
-                EditorGUILayout.Space(2);
-                GUILayout.Label(package.Description, _descStyle);
+                EditorGUILayout.Space(8);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(8);
+                EditorGUILayout.LabelField(package.Description, _descStyle);
+                GUILayout.Space(8);
+                EditorGUILayout.EndHorizontal();
             }
 
-            // Info row
-            EditorGUILayout.Space(4);
+            // Info section
+            EditorGUILayout.Space(8);
             EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
 
             if (!string.IsNullOrEmpty(package.RequiredTier))
                 GUILayout.Label($"Tier: {package.RequiredTier}", _smallLabelStyle);
@@ -321,13 +543,20 @@ namespace PurrNet.Editor
             if (isInstalled && installedVersion != null)
                 GUILayout.Label($"Installed: v{installedVersion}", _smallLabelStyle);
 
-            GUILayout.FlexibleSpace();
+            if (!string.IsNullOrEmpty(package.LatestVersion))
+                GUILayout.Label($"Latest: v{package.LatestVersion}", _smallLabelStyle);
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
             // Frozen notice
             if (package.Frozen)
             {
-                EditorGUILayout.Space(4);
+                EditorGUILayout.Space(8);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(8);
+                EditorGUILayout.BeginVertical();
 
                 string frozenMsg = !string.IsNullOrEmpty(package.EntitledVersion)
                     ? $"Access limited to v{package.EntitledVersion} and below. Resubscribe to unlock v{package.LatestVersion}."
@@ -335,89 +564,121 @@ namespace PurrNet.Editor
                 EditorGUILayout.HelpBox(frozenMsg, MessageType.Warning);
 
                 GUI.color = _accentColor;
-                if (GUILayout.Button("Resubscribe", GUILayout.Height(22)))
+                if (GUILayout.Button("Resubscribe", GUILayout.Height(24)))
                     Application.OpenURL("https://purrnet.dev");
-                GUI.color = Color.white;
-            }
-
-            // No access
-            if (release == null && dev == null)
-            {
-                EditorGUILayout.Space(4);
-                EditorGUILayout.HelpBox("You don't have access to this package.", MessageType.Info);
-
-                GUI.color = _accentColor;
-                if (GUILayout.Button("Get Access", GUILayout.Height(22)))
-                    Application.OpenURL("https://purrnet.dev/membership");
                 GUI.color = Color.white;
 
                 EditorGUILayout.EndVertical();
+                GUILayout.Space(8);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            // No access
+            if (!package.HasAccess)
+            {
+                EditorGUILayout.Space(12);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(8);
+                GUI.color = _accentColor;
+                if (GUILayout.Button("Get Access", GUILayout.Height(28)))
+                    Application.OpenURL("https://purrnet.dev/membership");
+                GUI.color = Color.white;
+                GUILayout.Space(8);
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.EndScrollView();
                 return;
             }
 
             // Action buttons
-            EditorGUILayout.Space(6);
+            EditorGUILayout.Space(12);
             EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
 
-            bool releaseUpToDate = release != null && isInstalled && installedVersion == release.Version;
-            bool devUpToDate = dev != null && isInstalled && installedVersion == dev.Version;
+            DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
+            EditorGUILayout.Space(4);
+            DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
 
-            if (release != null)
+            // Remove button
+            if (isInstalled)
             {
-                if (releaseUpToDate)
-                {
-                    GUI.enabled = false;
-                    GUILayout.Button($"Release v{release.Version} (installed)", GUILayout.Height(24));
-                    GUI.enabled = true;
-                }
-                else
-                {
-                    GUI.color = _installedColor;
-                    if (GUILayout.Button(isInstalled ? $"Switch to Release v{release.Version}" : $"Install Release v{release.Version}", GUILayout.Height(24)))
-                        InstallPackage(package, release);
-                    GUI.color = Color.white;
-                }
+                EditorGUILayout.Space(8);
+                GUI.color = _frozenColor;
+                if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
+                    PurrPackageManagerInstaller.Remove(package);
+                GUI.color = Color.white;
             }
-            else
-            {
-                GUI.enabled = false;
-                GUILayout.Button("No Release", GUILayout.Height(24));
-                GUI.enabled = true;
-            }
-
-            if (dev != null)
-            {
-                if (devUpToDate)
-                {
-                    GUI.enabled = false;
-                    GUILayout.Button($"Dev v{dev.Version} (installed)", GUILayout.Height(24));
-                    GUI.enabled = true;
-                }
-                else
-                {
-                    GUI.color = _accentColor;
-                    if (GUILayout.Button(isInstalled ? $"Switch to Dev v{dev.Version}" : $"Install Dev v{dev.Version}", GUILayout.Height(24)))
-                        InstallPackage(package, dev);
-                    GUI.color = Color.white;
-                }
-            }
-            else
-            {
-                GUI.enabled = false;
-                GUILayout.Button("No Dev", GUILayout.Height(24));
-                GUI.enabled = true;
-            }
-
-            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Release notes
+            DrawReleaseNotes("Release", release);
+            DrawReleaseNotes("Dev", dev);
+
+            EditorGUILayout.Space(12);
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawInstallButton(PackageInfo package, VersionInfo version, string channelLabel,
+            bool isInstalled, string installedVersion, Color buttonColor)
+        {
+            if (version == null)
+            {
+                GUI.enabled = false;
+                GUILayout.Button($"No {channelLabel} Version", GUILayout.Height(26));
+                GUI.enabled = true;
+                return;
+            }
+
+            bool upToDate = isInstalled && installedVersion == version.Version;
+
+            if (upToDate)
+            {
+                GUI.enabled = false;
+                GUILayout.Button($"{channelLabel} v{version.Version} (installed)", GUILayout.Height(26));
+                GUI.enabled = true;
+            }
+            else
+            {
+                GUI.color = buttonColor;
+                string label = isInstalled
+                    ? $"Switch to {channelLabel} v{version.Version}"
+                    : $"Install {channelLabel} v{version.Version}";
+                if (GUILayout.Button(label, GUILayout.Height(26)))
+                    InstallPackage(package, version);
+                GUI.color = Color.white;
+            }
+        }
+
+        private void DrawReleaseNotes(string channelLabel, VersionInfo version)
+        {
+            if (version == null || string.IsNullOrEmpty(version.ReleaseNotes))
+                return;
+
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+
+            DrawSeparator();
+            EditorGUILayout.Space(4);
+            GUILayout.Label($"{channelLabel} Release Notes (v{version.Version})", EditorStyles.boldLabel);
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField(version.ReleaseNotes, _releaseNotesStyle);
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawBadge(string text, Color color)
         {
             var rect = GUILayoutUtility.GetRect(new GUIContent(text), _badgeStyle);
             rect.height = 18;
-            EditorGUI.DrawRect(rect, new Color(color.r, color.g, color.b, 0.2f));
+            EditorGUI.DrawRect(rect, new Color(color.r, color.g, color.b, 0.25f));
             var prevColor = GUI.color;
             GUI.color = color;
             GUI.Label(rect, text, _badgeStyle);
@@ -430,21 +691,55 @@ namespace PurrNet.Editor
             EditorGUI.DrawRect(rect, _separatorColor);
         }
 
+        private void DrawSplitter(Rect rect)
+        {
+            EditorGUI.DrawRect(rect, _separatorColor);
+            EditorGUIUtility.AddCursorRect(rect, MouseCursor.ResizeHorizontal);
+        }
+
+        private void HandleSplitterDrag(Rect splitterRect)
+        {
+            if (splitterRect.width < 1)
+                return;
+
+            var evt = Event.current;
+
+            switch (evt.type)
+            {
+                case EventType.MouseDown:
+                    if (splitterRect.Contains(evt.mousePosition))
+                    {
+                        _isDraggingSplitter = true;
+                        evt.Use();
+                    }
+                    break;
+
+                case EventType.MouseDrag:
+                    if (_isDraggingSplitter)
+                    {
+                        _splitWidth = evt.mousePosition.x;
+                        _splitWidth = Mathf.Clamp(_splitWidth, SplitMargin, position.width - SplitMargin);
+                        evt.Use();
+                        Repaint();
+                    }
+                    break;
+
+                case EventType.MouseUp:
+                    if (_isDraggingSplitter)
+                    {
+                        _isDraggingSplitter = false;
+                        evt.Use();
+                    }
+                    break;
+            }
+        }
+
         private static void DrawCenteredLabel(string text)
         {
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             GUILayout.Label(text, EditorStyles.centeredGreyMiniLabel);
             GUILayout.FlexibleSpace();
-            EditorGUILayout.EndHorizontal();
-        }
-
-        private static void DrawCenteredMessage(string text, MessageType type)
-        {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            EditorGUILayout.HelpBox(text, type);
-            GUILayout.Space(20);
             EditorGUILayout.EndHorizontal();
         }
 
