@@ -1,0 +1,26 @@
+{
+    "name": "PurrNet.UTP.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:629ad64ea20117f43b28b33033f75b88",
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb",
+        "GUID:3b9dfc9f402a40b4a6c9688de64a5c38"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.transport",
+            "expression": "",
+            "define": "UTP_LOBBYRELAY"
+        }
+    ],
+    "noEngineReferences": false
+}

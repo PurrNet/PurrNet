@@ -7,7 +7,7 @@ using PurrNet.Packing;
 
 namespace PurrNet.Pooling
 {
-    public struct DisposableList<T> : IList<T>, IDisposable, IReadOnlyList<T>, IDuplicate<DisposableList<T>>
+    public struct DisposableList<T> : IList<T>, IDisposable, IReadOnlyList<T>, IDuplicate<DisposableList<T>>, IEquatable<DisposableList<T>>
     {
         private bool _shouldDispose;
 
@@ -15,20 +15,23 @@ namespace PurrNet.Pooling
 
         public DisposableList<T> Duplicate()
         {
-            if (isDisposed)
+            if (!_isAllocated)
                 return default;
 
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
                 int c = Count;
-                var res = Create(c);
+                int targetCapacity = c + Math.Max(c >> 2, 8);
+                var res = Create(targetCapacity);
                 for (var i = 0; i < c; ++i)
-                    res.Add(Packer.Copy(list[i]));
+                    res.Add(PurrCopy<T>.Copy(list[i]));
                 return res;
             }
 
             return Create(this);
         }
+
+        public readonly bool Equals(DisposableList<T> other) => new ListComparator<T>().Equals(list, other.list);
 
         public override string ToString()
         {
@@ -62,13 +65,36 @@ namespace PurrNet.Pooling
             return val;
         }
 
+        public static DisposableList<T> Create(DisposableList<T> copyFrom)
+        {
+            var val = new DisposableList<T>();
+            val.list = ListPool<T>.Instantiate();
+
+            int count = copyFrom.Count;
+            int targetCapacity = count + Math.Max(count >> 2, 8);
+
+            if (val.list.Capacity < targetCapacity)
+                val.list.Capacity = targetCapacity;
+
+            int c = copyFrom.Count;
+            for (var i = 0; i < c; ++i)
+                val.list.Add(copyFrom[i]);
+
+            val._isAllocated = true;
+            val._shouldDispose = true;
+            return val;
+        }
+
         public static DisposableList<T> Create(IList<T> copyFrom)
         {
             var val = new DisposableList<T>();
             val.list = ListPool<T>.Instantiate();
 
-            if (val.list.Capacity < copyFrom.Count)
-                val.list.Capacity = copyFrom.Count;
+            int count = copyFrom.Count;
+            int targetCapacity = count + Math.Max(count >> 2, 8);
+
+            if (val.list.Capacity < targetCapacity)
+                val.list.Capacity = targetCapacity;
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
@@ -280,6 +306,16 @@ namespace PurrNet.Pooling
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
             NotifyUsage();
             list.InsertRange(index, values);
+        }
+
+        public override int GetHashCode()
+        {
+            if (list == null)
+                return 17;
+            int result = 17;
+            for (var i = 0; i < list.Count; i++)
+                result = result * 31 + list[i].GetHashCode();
+            return result;
         }
     }
 }

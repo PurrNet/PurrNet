@@ -4,12 +4,12 @@ using PurrNet.Pooling;
 
 namespace PurrNet.Packing
 {
-    public readonly struct DiffOp<T> : IDisposable
+    public struct DiffOp<T> : IDisposable
     {
         public readonly OperationType type;
         public readonly int index;       // for Insert/Delete/Replace
         public readonly int length;      // for Delete (count) / Replace (old length)
-        public readonly DisposableList<T> values; // for Insert/Replace/Add
+        public DisposableList<T> values; // for Insert/Replace/Add
 
         public DiffOp(OperationType type, int index, int length, DisposableList<T> values = default)
         {
@@ -153,7 +153,7 @@ namespace PurrNet.Packing
             if (Packer.AreEqual(old, newVal))
                 return scope.CompleteWithoutChanges();
 
-            WriteOperation<T>(packer, newVal);
+            packer.WriteOperation<T>(newVal);
             return scope.CompleteWithChanges();
         }
 
@@ -163,7 +163,7 @@ namespace PurrNet.Packing
             if (!DeltaReadingScope.Continue(packer, old, ref newVal))
                 return;
 
-            ReadOperation<T>(packer, ref newVal);
+            packer.ReadOperation<T>(ref newVal);
         }
     }
 }

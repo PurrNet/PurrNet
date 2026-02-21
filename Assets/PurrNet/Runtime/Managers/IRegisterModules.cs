@@ -1,6 +1,4 @@
-﻿using PurrNet.Transports;
-
-namespace PurrNet
+﻿namespace PurrNet
 {
     public interface IRegisterModules
     {
@@ -9,7 +7,5 @@ namespace PurrNet
         bool isPromotingToServer { get; }
 
         bool isTranferingToNewServer { get; }
-
-        ITransport currentTransport { get; }
     }
 }

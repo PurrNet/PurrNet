@@ -1,8 +1,10 @@
+using System;
 using UnityEngine;
 using UnityEditor;
 
 namespace PurrNet.Utils
 {
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Class | AttributeTargets.Property)]
     public class PurrDocsAttribute : PropertyAttribute
     {
         public readonly string url;

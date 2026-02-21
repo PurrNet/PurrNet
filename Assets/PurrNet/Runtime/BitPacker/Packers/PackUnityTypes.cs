@@ -8,6 +8,12 @@ namespace PurrNet.Packing
     [UsedImplicitly]
     public static class BitPackerUnityExtensions
     {
+        [RegisterPackers]
+        static void RegisterEqualityOverrides()
+        {
+            PurrEquality<Quaternion>.OverrideDefault(new QuaternionEqualityComparer());
+        }
+
         [UsedImplicitly]
         static ushort PackHalf(float value)
         {
@@ -27,6 +33,20 @@ namespace PurrNet.Packing
         static float UnpackHalf(ushort value)
         {
             return value / 65535f * 2f - 1f;
+        }
+
+        [UsedByIL]
+        public static void Write(this BitPacker packer, ForceMode value)
+        {
+            packer.Write((int)value);
+        }
+
+        [UsedByIL]
+        public static void Read(this BitPacker packer, ref ForceMode value)
+        {
+            int val = default;
+            packer.Read(ref val);
+            value = (ForceMode)val;
         }
 
         [UsedByIL]

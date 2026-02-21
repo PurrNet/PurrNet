@@ -10,11 +10,6 @@ namespace PurrNet.Packing
         static readonly Dictionary<Type, MethodInfo> _writeMethods = new Dictionary<Type, MethodInfo>();
         static readonly Dictionary<Type, MethodInfo> _readMethods = new Dictionary<Type, MethodInfo>();
 
-        public static bool ShouldBeDeltaPacked(Type type)
-        {
-            return type.IsAssignableFrom(typeof(DeltaPacker));
-        }
-
         public static void RegisterWriter(Type type, MethodInfo method)
         {
             _writeMethods.TryAdd(type, method);
@@ -31,18 +26,18 @@ namespace PurrNet.Packing
         {
             if (Packer.AreEqual(oldValue, newValue))
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return false;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             Packer.Write(packer, type, newValue);
             return true;
         }
 
         static void ReadUnpacked(BitPacker packer, Type type, object oldValue, ref object value)
         {
-            if (!Packer<bool>.Read(packer))
+            if (!packer.ReadBit())
             {
                 value = Packer.Copy(oldValue);
                 return;
@@ -99,16 +94,30 @@ namespace PurrNet.Packing
             }
         }
 
+        /// <summary>Fallback for types with no registered delta: write one "changed" bit then full value. Avoids delegating to DeltaPacker&lt;object&gt; which would recurse (stack overflow) for string and other unregistered types.</summary>
         public static bool FallbackWriter<T>(BitPacker packer, T oldValue, T value)
         {
-            return DeltaPacker<object>.Write(packer, oldValue, value);
+            if (Packer.AreEqual(oldValue, value))
+            {
+                packer.WriteBit(false);
+                return false;
+            }
+            packer.WriteBit(true);
+            Packer<T>.Write(packer, value);
+            return true;
         }
 
+        /// <summary>Fallback for types with no registered delta: read one "changed" bit then full value or copy of old.</summary>
         public static void FallbackReader<T>(BitPacker packer, T oldValue, ref T value)
         {
-            object newValue = value;
-            DeltaPacker<object>.Read(packer, oldValue, ref newValue);
-            value = (T)newValue;
+            if (!packer.ReadBit())
+            {
+                if (value is IDisposable disposable)
+                    disposable.Dispose();
+                value = Packer.Copy(oldValue);
+                return;
+            }
+            Packer<T>.Read(packer, ref value);
         }
     }
 }

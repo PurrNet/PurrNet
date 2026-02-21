@@ -17,11 +17,11 @@ namespace PurrNet
         {
             if (module is not { isSpawned: true } || !module.parent)
             {
-                Packer<bool>.Write(packer, false);
+                packer.WriteBit(false);
                 return;
             }
 
-            Packer<bool>.Write(packer, true);
+            packer.WriteBit(true);
             Packer<byte>.Write(packer, module.index);
 
             Packer<NetworkIdentity>.Write(packer, module.parent);
@@ -30,11 +30,7 @@ namespace PurrNet
         [UsedByIL]
         public static void ReadModule<T>(this BitPacker packer, ref T module) where T : NetworkModule
         {
-            bool hasValue = false;
-
-            Packer<bool>.Read(packer, ref hasValue);
-
-            if (!hasValue)
+            if (!packer.ReadBit())
             {
                 module = null;
                 return;

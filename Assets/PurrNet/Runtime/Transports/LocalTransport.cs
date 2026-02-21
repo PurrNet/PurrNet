@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PurrNet.Transports
 {
+    [AddComponentMenu("PurrNet/Transport/Local Transport")]
     [DefaultExecutionOrder(-100)]
     public class LocalTransport : GenericTransport, ITransport
     {

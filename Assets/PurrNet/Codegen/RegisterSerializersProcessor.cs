@@ -11,7 +11,7 @@ namespace PurrNet.Codegen
 {
     public static class RegisterSerializersProcessor
     {
-        static bool IsDeltaWriteMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsDeltaWriteMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -34,7 +34,7 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        static bool IsDeltaReadMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsDeltaReadMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -55,7 +55,7 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        static bool IsWriteMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsWriteMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -72,7 +72,7 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        static bool IsReadMethod(MethodDefinition method, out TypeReference type)
+        public static bool IsReadMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
 
@@ -87,6 +87,9 @@ namespace PurrNet.Codegen
 
             type = method.Parameters[1].ParameterType;
 
+            if (type is ByReferenceType byRefType)
+                type = byRefType.ElementType;
+
             return true;
         }
 
@@ -97,7 +100,7 @@ namespace PurrNet.Codegen
             public MethodDefinition method;
         }
 
-        public static void HandleType(ModuleDefinition module, TypeDefinition type,
+        public static void HandleType(TypeReference actualType, ModuleDefinition module, TypeDefinition type,
             HashSet<TypeReference> toIgnoreForDelta, HashSet<TypeReference> toIgnoreForSerialization)
         {
             if (type.FullName == typeof(Packer).FullName)
@@ -166,6 +169,7 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForDelta?.Add(deltaWriteType);
+                    GenerateDeltaSerializersProcessor.CacheDeltaWrite(deltaWriteType, method);
                 }
                 else if (IsDeltaReadMethod(method, out var deltaReadType))
                 {
@@ -180,10 +184,12 @@ namespace PurrNet.Codegen
                     });
 
                     toIgnoreForDelta?.Add(deltaReadType);
+                    GenerateDeltaSerializersProcessor.CacheDeltaRead(deltaReadType, method);
                 }
             }
 
-            if (writeTypes.Count == 0 && readTypes.Count == 0)
+            bool hasIDuplicate = DuplicateHelpers.HasDuplicateInterface(actualType);
+            if (writeTypes.Count == 0 && readTypes.Count == 0 && !hasIDuplicate)
                 return;
 
             var writeFuncDelegate = module.GetTypeDefinition(typeof(WriteFunc<>)).Import(module);
@@ -222,8 +228,9 @@ namespace PurrNet.Codegen
             {
                 var writeType = writeTypes[i];
                 var writeMethod = writeType.method.Import(module);
-
-                writeMethod.Resolve().AggressiveInlining = true;
+                var resolved = writeMethod.Resolve();
+                resolved.IsPublic = true;
+                resolved.AggressiveInlining = true;
 
                 var nonDeltaPackerType = module.GetTypeDefinition(typeof(Packer<>)).Import(module);
                 var deltaPackerType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
@@ -274,8 +281,10 @@ namespace PurrNet.Codegen
             {
                 var readType = readTypes[i];
                 var readMethod = readType.method.Import(module);
+                var resolved = readMethod.Resolve();
 
-                readMethod.Resolve().AggressiveInlining = true;
+                resolved.IsPublic = true;
+                resolved.AggressiveInlining = true;
 
                 // Create a GenericInstanceMethod for Packer.RegisterReader<T>
 
@@ -338,6 +347,9 @@ namespace PurrNet.Codegen
 
                 il.Emit(OpCodes.Call, genericread);
             }
+
+            if (hasIDuplicate)
+                DuplicateHelpers.InjectRegistration(type, actualType, il);
 
             il.Emit(OpCodes.Ret);
         }

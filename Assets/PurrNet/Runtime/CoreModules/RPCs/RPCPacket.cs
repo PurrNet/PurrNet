@@ -1,6 +1,6 @@
 ﻿using System;
+using PurrNet.Modules;
 using PurrNet.Packing;
-using PurrNet.Transports;
 using PurrNet.Utils;
 
 namespace PurrNet
@@ -8,9 +8,9 @@ namespace PurrNet
     public struct RPCPacket : IPackedAuto, IRpc
     {
         public NetworkIdentityRPCHeader header;
-        [DontDeltaCompress] public ByteData data;
+        [DontDeltaCompress, UsedByIL] public BitData data;
 
-        public ByteData rpcData
+        public BitData rpcData
         {
             get { return data; }
             set { data = value; }
@@ -112,10 +112,18 @@ namespace PurrNet
         }
     }
 
+    internal class RPC_DATA_BASE<T>
+    {
+        public RPC_ID rpcid;
+        public T header;
+        public RPCSignature sig;
+        public BitPacker stream;
+    }
+
     internal class RPC_DATA
     {
         public RPC_ID rpcid;
-        public RPCPacket packet;
+        public NetworkIdentityRPCHeader header;
         public RPCSignature sig;
         public BitPacker stream;
     }
@@ -123,7 +131,7 @@ namespace PurrNet
     internal class CHILD_RPC_DATA
     {
         public RPC_ID rpcid;
-        public ChildRPCPacket packet;
+        public NetworkModuleRPCHeader header;
         public RPCSignature sig;
         public BitPacker stream;
     }
@@ -131,7 +139,7 @@ namespace PurrNet
     internal class STATIC_RPC_DATA
     {
         public RPC_ID rpcid;
-        public StaticRPCPacket packet;
+        public StaticRPCHeader header;
         public RPCSignature sig;
         public BitPacker stream;
     }

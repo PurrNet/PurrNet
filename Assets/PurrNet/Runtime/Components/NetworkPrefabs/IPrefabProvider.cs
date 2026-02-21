@@ -1,8 +1,15 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace PurrNet
 {
+    public interface IAsyncPrefabProvider : IPrefabProvider
+    {
+        bool NeedsLoad(int prefabId);
+        Task<PrefabData> LoadPrefabAsync(int prefabId);
+    }
+
     public struct PrefabData
     {
         public int prefabId;

@@ -15,8 +15,6 @@ namespace PurrNet.Packing
                 case 0:
                 {
                     var res = DisposableList<DiffOp<T>>.Create();
-                    if (b.Count == 0)
-                        return res;
                     var bList = DisposableList<T>.Create(b);
                     res.Add(new DiffOp<T>(OperationType.Add, 0, 0, bList));
                     return res;
@@ -53,7 +51,7 @@ namespace PurrNet.Packing
 
                     int y = x - k;
                     // follow diagonal (the "snake")
-                    while (x < n && y < m && Packer.AreEqual(a[x], b[y]))
+                    while (x < n && y < m && PurrEquality<T>.Default.Equals(a[x], b[y]))
                     {
                         x++;
                         y++;
@@ -147,7 +145,13 @@ namespace PurrNet.Packing
             elementOps.Reverse();
 
             // merge to ranges/Replace
-            return MergeOps(elementOps);
+            var result = MergeOps(elementOps);
+
+            for (var i = 0; i < elementOps.Count; i++)
+                elementOps[i].values.Dispose();
+            elementOps.Dispose();
+
+            return result;
         }
 
         private static DisposableList<DiffOp<T>> MergeOps<T>(DisposableList<DiffOp<T>> ops)

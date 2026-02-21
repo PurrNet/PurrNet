@@ -21,6 +21,7 @@ namespace PurrNet
         public void OnPrefabInstantiated(GameObject prefabInstance, PlayerID player, SceneID scene);
     }
 
+    [AddComponentMenu("PurrNet/Player Spawner")]
     public class PlayerSpawner : PurrMonoBehaviour
     {
         [SerializeField, HideInInspector] private NetworkIdentity playerPrefab;

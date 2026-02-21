@@ -38,7 +38,7 @@ namespace PurrNet.Packing
                 Write(packer, new ByteData());
                 return;
             }
-            
+
             Write(packer, data.ToByteData());
         }
 
@@ -48,8 +48,12 @@ namespace PurrNet.Packing
             Size length = default;
             Packer<Size>.Read(packer, ref length);
 
-            data = BitPackerPool.Get();
-            packer.ReadBytes(data, length);
+            if (data == null)
+                data = BitPackerPool.Get();
+            else data.ResetPositionAndMode(false);
+
+            var dest = data.GetSpan(length);
+            packer.ReadBytes(dest);
             data.ResetPositionAndMode(true);
         }
 
@@ -66,10 +70,29 @@ namespace PurrNet.Packing
             Packer<Size>.Read(packer, ref length);
 
             var dataPacker = BitPackerPool.Get();
-            packer.ReadBytes(dataPacker, length);
+            var span = dataPacker.GetSpan(length);
+            packer.ReadBytes(span);
             dataPacker.ResetPosition();
 
             data = new BitPackerWithLength(length, dataPacker);
+        }
+
+        [UsedByIL]
+        public static void Write(this BitPacker packer, BitData data)
+        {
+            Packer<Size>.Write(packer, data.bitLength);
+            packer.WriteBitDataWithoutConsumingIt(data);
+        }
+
+        [UsedByIL]
+        public static void Read(this BitPacker packer, ref BitData data)
+        {
+            Size length = default;
+            Packer<Size>.Read(packer, ref length);
+            int lengthInt = (int)length.value;
+            int origin = packer.AdvanceBits(lengthInt);
+            data = new BitData(packer, origin, lengthInt);
+            packer.EnsurePadding();
         }
     }
 }

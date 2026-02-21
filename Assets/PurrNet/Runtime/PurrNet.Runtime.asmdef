@@ -6,7 +6,11 @@
         "GUID:f51ebe6a0ceec4240a699833d6309b23",
         "GUID:1beb10fd218482c4c919c79f867341a0",
         "GUID:00687f3485071f442bbe5c9dc860fe98",
-        "GUID:6c512c1d945cc374885c9a38d9b21034"
+        "GUID:6c512c1d945cc374885c9a38d9b21034",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:d8b63aba1907145bea998dd612889d6b",
+        "GUID:9e24947de15b9834991c9d8411ea37cf",
+        "GUID:84651a3751eca9349aac36a66bba901b"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -48,9 +52,14 @@
             "define": "UNITY_ANIMATION"
         },
         {
-          "name": "com.edgegap.unity-servers-plugin",
-          "expression": "",
-          "define": "EDGEGAP_PURRNET_SUPPORT"
+            "name": "com.edgegap.unity-servers-plugin",
+            "expression": "",
+            "define": "EDGEGAP_PURRNET_SUPPORT"
+        },
+        {
+            "name": "com.unity.addressables",
+            "expression": "",
+            "define": "ADDRESSABLES_PURRNET_SUPPORT"
         }
     ],
     "noEngineReferences": false

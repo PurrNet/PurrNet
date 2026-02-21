@@ -24,7 +24,7 @@ namespace PurrNet.Packing
     ///     - IEEE 754 revision, link: http://grouper.ieee.org/groups/754/
     /// </remarks>
     [Serializable]
-    public struct Half : IComparable, IFormattable, IConvertible, IComparable<Half>, IEquatable<Half>
+    public struct Half : IComparable, IFormattable, IConvertible, IComparable<Half>, IEquatable<Half>, IDuplicate<Half>
     {
         /// <summary>
         /// Internal representation of the half-precision floating-point number.
@@ -666,6 +666,11 @@ namespace PurrNet.Packing
         public bool Equals(Half other)
         {
             return ((other == this) || (IsNaN(other) && IsNaN(this)));
+        }
+
+        public Half Duplicate()
+        {
+            return this;
         }
 
         /// <summary>

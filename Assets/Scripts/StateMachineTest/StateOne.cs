@@ -1,3 +1,4 @@
+using System;
 using PurrNet;
 using PurrNet.StateMachine;
 using UnityEngine;
@@ -7,7 +8,7 @@ public class StateOne : StateNode
     [SerializeField] private bool _force;
     [SerializeField] private StateNode _stateToAdd;
     [SerializeField] private int _indexTest;
-    
+
     protected override void OnSpawned()
     {
         base.OnSpawned();
@@ -48,7 +49,13 @@ public class StateOne : StateNode
     {
         machine.NextValid(new MyData(5, 7));
     }
-    
+
+    [ServerRpc(runLocally: true)]
+    public void Test(MyData fe)
+    {
+        Debug.Log(fe.Fails);
+    }
+
     [ContextMenu("Next state")]
     private void NextState()
     {
@@ -61,19 +68,19 @@ public class StateOne : StateNode
     {
         machine.AddState(_stateToAdd);
     }
-    
+
     [ContextMenu("Remove state")]
     private void RemoveState()
     {
         machine.RemoveState(_stateToAdd);
     }
-    
+
     [ContextMenu("Insert state")]
     private void InsertState()
     {
         machine.InsertState(_stateToAdd, _indexTest);
     }
-    
+
     [ContextMenu("Remove state at index")]
     private void RemoveStateAtIndex()
     {

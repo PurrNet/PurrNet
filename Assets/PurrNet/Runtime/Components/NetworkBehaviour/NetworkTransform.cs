@@ -6,6 +6,7 @@ using UnityEngine.Serialization;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Transform")]
     public sealed class NetworkTransform : NetworkIdentity, INetworkTransform
     {
         [Header("What to Sync")]
@@ -102,6 +103,12 @@ namespace PurrNet
         Interpolated<Vector3WithParent> _position;
         Interpolated<QuaternionWithParent> _rotation;
         Interpolated<ScaleWithParent> _scale;
+
+        public Vector3 latestReadPosition => _lastReadData.position;
+
+        public Quaternion latestReadRotation => _lastReadData.rotation;
+
+        public Vector3 latestReadScale => _lastReadData.scale;
 
         private Transform _trs;
 #if UNITY_PHYSICS_3D

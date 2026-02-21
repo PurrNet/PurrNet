@@ -15,8 +15,8 @@ namespace PurrNet.Modules
     {
         private readonly PlayersManager _players;
         private readonly PlayersBroadcaster _broadcaster;
-        private readonly Dictionary<PlayerID, Dictionary<uint, ClientDeltaTracker>> _receivingTrackers;
-        private readonly Dictionary<PlayerID, Dictionary<uint, ClientDeltaTracker>> _sendingTrackers;
+        private readonly Dictionary<PlayerID, Dictionary<KeyHash, ClientDeltaTracker>> _receivingTrackers;
+        private readonly Dictionary<PlayerID, Dictionary<KeyHash, ClientDeltaTracker>> _sendingTrackers;
 
         private readonly List<DeltaAcknowledgeBatch> _acknowledgements = new ();
 
@@ -26,8 +26,8 @@ namespace PurrNet.Modules
         {
             _players = players;
             _broadcaster = broadcaster;
-            _receivingTrackers = new Dictionary<PlayerID, Dictionary<uint, ClientDeltaTracker>>();
-            _sendingTrackers = new Dictionary<PlayerID, Dictionary<uint, ClientDeltaTracker>>();
+            _receivingTrackers = new Dictionary<PlayerID, Dictionary<KeyHash, ClientDeltaTracker>>();
+            _sendingTrackers = new Dictionary<PlayerID, Dictionary<KeyHash, ClientDeltaTracker>>();
         }
 
         public void PromoteToServerModule()
@@ -97,26 +97,27 @@ namespace PurrNet.Modules
             }
         }
 
-        private ClientDeltaTracker GetTracker(PlayerID player, uint key, bool isWriting)
+        private ClientDeltaTracker GetTracker(PlayerID player, KeyHash key, bool isWriting)
         {
             var dictionary = isWriting ? _sendingTrackers : _receivingTrackers;
             if (!dictionary.TryGetValue(player, out var clientDict))
             {
-                clientDict = new Dictionary<uint, ClientDeltaTracker>();
+                clientDict = new Dictionary<KeyHash, ClientDeltaTracker>();
                 dictionary[player] = clientDict;
             }
             return clientDict.GetValueOrDefault(key);
         }
 
-        private ClientDeltaTracker<T> GetOrCreateTracker<T>(PlayerID player, uint key, bool isWriting)
+        private ClientDeltaTracker<T> GetOrCreateTracker<T>(PlayerID player, uint keyHash, bool isWriting)
         {
             var dictionary = isWriting ? _sendingTrackers : _receivingTrackers;
             if (!dictionary.TryGetValue(player, out var clientDict))
             {
-                clientDict = new Dictionary<uint, ClientDeltaTracker>();
+                clientDict = new Dictionary<KeyHash, ClientDeltaTracker>();
                 dictionary[player] = clientDict;
             }
 
+            var key = new KeyHash(typeof(T), keyHash);
             if (!clientDict.TryGetValue(key, out var tracker))
             {
                 var result = new ClientDeltaTracker<T>();
@@ -160,7 +161,7 @@ namespace PurrNet.Modules
             }
 
             var pos = packer.positionInBits;
-            Packer<bool>.Write(packer, false);
+            packer.WriteBit(false);
             modifier(ref oldValue);
             bool changed = DeltaPacker<T>.Write(packer, oldValue, newValue);
 
@@ -202,7 +203,7 @@ namespace PurrNet.Modules
             }
 
             var pos = packer.positionInBits;
-            Packer<bool>.Write(packer, false);
+            packer.WriteBit(false);
             bool changed = DeltaPacker<T>.Write(packer, oldValue, newValue);
 
             packer.WriteAt(pos, changed);
@@ -243,7 +244,7 @@ namespace PurrNet.Modules
             cachedKey = bestKey;
 
             var pos = packer.positionInBits;
-            Packer<bool>.Write(packer, false);
+            packer.WriteBit(false);
             bool changed = DeltaPacker<T>.Write(packer, oldValue, newValue);
 
             packer.WriteAt(pos, changed);
@@ -357,7 +358,8 @@ namespace PurrNet.Modules
 
                 var data = new DeltaAcknowledge
                 {
-                    key = keyHash,
+                    keyType = Hasher.GetStableHashU32<T>(),
+                    keyHash = keyHash,
                     valueId = valueId
                 };
 
@@ -388,15 +390,20 @@ namespace PurrNet.Modules
                 // add sorted
                 for (int j = 0; j < entry.entries.Count; j++)
                 {
-                    if (entry.entries[j].key > acknowledge.key)
+                    var existing = entry.entries[j];
+
+                    if (existing.keyType.value > acknowledge.keyType.value ||
+                        (existing.keyType.value == acknowledge.keyType.value && existing.keyHash.value > acknowledge.keyHash.value))
                     {
                         entry.entries.Insert(j, acknowledge);
                         return;
                     }
 
-                    if (entry.entries[j].key == acknowledge.key && entry.entries[j].valueId >= acknowledge.valueId)
+                    // Check if already acknowledged
+                    if (existing.keyType.value == acknowledge.keyType.value &&
+                        existing.keyHash.value == acknowledge.keyHash.value &&
+                        existing.valueId.value >= acknowledge.valueId.value)
                     {
-                        // already acknowledged
                         return;
                     }
                 }
@@ -423,12 +430,16 @@ namespace PurrNet.Modules
 
         private void Acknowledge(PlayerID player, DeltaAcknowledge data, bool asServer)
         {
+            if (!Hasher.TryGetType(data.keyType.value, out var type))
+                return;
+
             const float MAX_HISTORY_TIME_ALIVE = 0.5f;
 
             if (!asServer)
                 player = default;
 
-            var tracker = GetTracker(player, data.key, true);
+            var keyHash = new KeyHash(type, data.keyHash.value);
+            var tracker = GetTracker(player, keyHash, true);
 
             if (tracker == null)
                 return;
@@ -440,7 +451,8 @@ namespace PurrNet.Modules
             {
                 var cleanupPacket = new DeltaCleanup
                 {
-                    key = data.key,
+                    keyType = data.keyType,
+                    keyHash = data.keyHash,
                     upToId = removeUpTo
                 };
 
@@ -454,14 +466,16 @@ namespace PurrNet.Modules
         {
             var player = _players.localPlayerId ?? default;
 
+            if (!Hasher.TryGetType(data.keyType.value, out var type))
+                return;
+
+            var key = new KeyHash(type, data.keyHash.value);
             if (!_receivingTrackers.TryGetValue(player, out var clientDict) ||
-                !clientDict.TryGetValue(data.key, out var tracker))
+                !clientDict.TryGetValue(key, out var tracker))
                 return;
 
             tracker.CleanupUpTo(data.upToId);
         }
-
-        const int MTU = 1024;
 
         public void PostFixedUpdate()
         {
@@ -475,7 +489,8 @@ namespace PurrNet.Modules
                 var batch = _acknowledgements[i];
                 using var packer = BitPackerPool.Get();
 
-                PackedUInt prevKey = default;
+                PackedUInt prevType = default;
+                PackedUInt prevHash = default;
                 PackedUInt prevVal = default;
 
                 var count = batch.entries.Count;
@@ -483,13 +498,17 @@ namespace PurrNet.Modules
                 for (var e = 0; e < count; e++)
                 {
                     var entry = batch.entries[e];
-                    DeltaPacker<PackedUInt>.Write(packer, prevKey, entry.key);
+                    var mtu = _players.GetMTU(batch.playerId, Channel.Unreliable, _asServer) - BroadcastModule.MAX_HEADER_SIZE;
+
+                    DeltaPacker<PackedUInt>.Write(packer, prevType, entry.keyType);
+                    DeltaPacker<PackedUInt>.Write(packer, prevHash, entry.keyHash);
                     DeltaPacker<PackedUInt>.Write(packer, prevVal, entry.valueId);
 
-                    prevKey = entry.key;
+                    prevType = entry.keyType;
+                    prevHash = entry.keyHash;
                     prevVal = entry.valueId;
 
-                    if (packer.positionInBytes + 10 >= MTU)
+                    if (packer.positionInBytes + 10 >= mtu)
                     {
                         using var pickled = packer.Pickle(LZ4Level.L12_MAX);
                         var batchData = new DeltaBatch
@@ -504,7 +523,7 @@ namespace PurrNet.Modules
                         else _broadcaster.SendToServer(batchData, Channel.Unreliable);
 
                         packer.ResetPositionAndMode(false);
-                        prevKey = default;
+                        prevHash = default;
                         prevVal = default;
                     }
                 }
@@ -539,17 +558,20 @@ namespace PurrNet.Modules
                 packer.UnpickleFrom(data.data);
                 packer.ResetPositionAndMode(false);
 
-                PackedUInt prevKey = default;
+                PackedUInt prevType = default;
+                PackedUInt prevHash = default;
                 PackedUInt prevVal = default;
 
                 while (packer.positionInBits < data.ogBitCount)
                 {
-                    DeltaPacker<PackedUInt>.Read(packer, prevKey, ref prevKey);
+                    DeltaPacker<PackedUInt>.Read(packer, prevType, ref prevType);
+                    DeltaPacker<PackedUInt>.Read(packer, prevHash, ref prevHash);
                     DeltaPacker<PackedUInt>.Read(packer, prevVal, ref prevVal);
 
                     var acknowledge = new DeltaAcknowledge
                     {
-                        key = prevKey,
+                        keyType =  prevType,
+                        keyHash = prevHash,
                         valueId = prevVal
                     };
 

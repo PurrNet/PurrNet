@@ -47,7 +47,7 @@ namespace PurrNet.Modules
 
     public delegate void OnSceneVisibilityEvent(SceneID scene, bool isVisible, bool asServer);
 
-    public class ScenesModule : INetworkModule, IFixedUpdate, ICleanup, IConnectionStateListener, ITransferToNewServer, IPromoteToServerModule
+    public partial class ScenesModule : INetworkModule, IFixedUpdate, ICleanup, IConnectionStateListener, ITransferToNewServer, IPromoteToServerModule
     {
         private readonly NetworkManager _networkManager;
         private readonly PlayersManager _players;
@@ -413,7 +413,10 @@ namespace PurrNet.Modules
                 if (_pendingOperations[i].idToAssign == sceneId)
                     return true;
             }
-
+#if ADDRESSABLES_PURRNET_SUPPORT
+            if (IsScenePendingAddressable(sceneId))
+                return true;
+#endif
             return false;
         }
 
@@ -484,6 +487,22 @@ namespace PurrNet.Modules
                         _actionsQueue.Dequeue();
                         break;
                     }
+                case SceneActionType.LoadAddressable:
+                    {
+                        if (_networkManager.isHost && !_asServer)
+                        {
+                            _actionsQueue.Dequeue();
+                            break;
+                        }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+                        ProcessLoadAddressableAction(action.loadAddressableSceneAction);
+#else
+                        PurrLogger.LogError("Received LoadAddressable scene action but Addressables support is not available");
+#endif
+                        _actionsQueue.Dequeue();
+                        break;
+                    }
                 case SceneActionType.Unload:
                     {
                         var currentlyLoadedCount = GetCurrentLoadedScenes();
@@ -504,6 +523,13 @@ namespace PurrNet.Modules
 
                         // if the scene is pending, don't do anything for now
                         if (IsScenePending(idx)) break;
+#if ADDRESSABLES_PURRNET_SUPPORT
+                        if (TryUnloadAddressableScene(idx, action.unloadSceneAction.options))
+                        {
+                            _actionsQueue.Dequeue();
+                            break;
+                        }
+#endif
 
                         if (!_scenes.TryGetValue(idx, out var sceneState))
                         {
@@ -561,6 +587,15 @@ namespace PurrNet.Modules
 
                             if (serverModule.TryGetSceneState(action.loadSceneAction.sceneID, out var state))
                                 AddScene(state.scene, state.settings, action.loadSceneAction.sceneID);
+                            break;
+                        }
+                        case SceneActionType.LoadAddressable:
+                        {
+                            if (_scenes.ContainsKey(action.loadAddressableSceneAction.sceneID))
+                                continue;
+
+                            if (serverModule.TryGetSceneState(action.loadAddressableSceneAction.sceneID, out var state))
+                                AddScene(state.scene, state.settings, action.loadAddressableSceneAction.sceneID);
                             break;
                         }
                         case SceneActionType.Unload:
@@ -767,7 +802,7 @@ namespace PurrNet.Modules
             if (!settings.isPublic)
             {
                 var rules = _networkManager.networkRules;
-                if (rules && rules.ShouldForceSceneToAlwaysPublic())
+                if (rules && rules.IsHostMigrationEnabled() && rules.ShouldForceSceneToAlwaysPublic())
                 {
                     PurrLogger.LogWarning("Host migration is enabled, so scenes cannot be set to private");
                     settings.isPublic = true;
@@ -837,10 +872,43 @@ namespace PurrNet.Modules
             }
 
             _history.AddUnloadAction(new UnloadSceneAction { sceneID = sceneIndex, options = options });
+#if ADDRESSABLES_PURRNET_SUPPORT
+            if (TryUnloadAddressableScene(sceneIndex, options))
+                return null;
+#endif
             var op = SceneManager.UnloadSceneAsync(scene, options);
             RemoveScene(scene);
 
             return op;
+        }
+
+        /// <summary>
+        /// Unloads a scene asynchronously by its SceneID.
+        /// Use this when you have the SceneID from onSceneLoaded or sceneStates.
+        /// </summary>
+        /// <param name="sceneId">The SceneID of the scene to unload</param>
+        /// <param name="options">The UnityEngine UnloadSceneOptions to use for the unloading</param>
+        public void UnloadSceneAsync(SceneID sceneId, UnloadSceneOptions options = UnloadSceneOptions.None)
+        {
+            if (!_asServer)
+            {
+                PurrLogger.LogError("Only server can unload scenes; for now at least ;)");
+                return;
+            }
+
+            if (!_scenes.TryGetValue(sceneId, out var state))
+            {
+                PurrLogger.LogError($"Scene with ID {sceneId} not found in scenes list");
+                return;
+            }
+
+            if (_networkManager.gameObject.scene == state.scene)
+            {
+                PurrLogger.LogError("Can't unload the network manager scene");
+                return;
+            }
+
+            UnloadSceneAsync(state.scene, options);
         }
 
         static readonly List<SceneAction> _playerFilteredActions = new List<SceneAction>();
@@ -855,6 +923,7 @@ namespace PurrNet.Modules
                 var target = action.type switch
                 {
                     SceneActionType.Load => action.loadSceneAction.sceneID,
+                    SceneActionType.LoadAddressable => action.loadAddressableSceneAction.sceneID,
                     SceneActionType.Unload => action.unloadSceneAction.sceneID,
                     SceneActionType.SetActive => action.setActiveSceneAction.sceneID,
                     _ => default
@@ -875,6 +944,7 @@ namespace PurrNet.Modules
                 var target = action.type switch
                 {
                     SceneActionType.Load => action.loadSceneAction.sceneID,
+                    SceneActionType.LoadAddressable => action.loadAddressableSceneAction.sceneID,
                     SceneActionType.Unload => action.unloadSceneAction.sceneID,
                     SceneActionType.SetActive => action.setActiveSceneAction.sceneID,
                     _ => default
@@ -888,8 +958,11 @@ namespace PurrNet.Modules
             }
         }
 
+        partial void ProcessCompletedAddressableLoads();
+
         public void FixedUpdate()
         {
+            ProcessCompletedAddressableLoads();
             HandleNextSceneAction();
 
             if (_history.hasUnflushedActions)

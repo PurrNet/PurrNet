@@ -16,10 +16,13 @@ MonoBehaviour:
   networkOnly: 1
   poolByDefault: 0
   folder: {fileID: 102900000, guid: 67eb3970d59c3ab4aab5e9cf601c5e81, type: 3}
+  linkedNetworkPrefabs: []
   prefabs:
-  - prefab: {fileID: 4613143156050449228, guid: 569e12f57058e814e874b567e33057ca, type: 3}
+  - guid: 569e12f57058e814e874b567e33057ca
+    prefab: {fileID: 4613143156050449228, guid: 569e12f57058e814e874b567e33057ca, type: 3}
     pooled: 0
     warmupCount: 5
-  - prefab: {fileID: 6085727582062549369, guid: 8d26ea03532006d4db7d29387027d65b, type: 3}
+  - guid: 8d26ea03532006d4db7d29387027d65b
+    prefab: {fileID: 6085727582062549369, guid: 8d26ea03532006d4db7d29387027d65b, type: 3}
     pooled: 0
     warmupCount: 5

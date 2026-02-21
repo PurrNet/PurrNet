@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Ownership Toggle")]
     [Contributor("RoxDevvv", "https://github.com/RoxDevvv")]
     public sealed class NetworkOwnershipToggle : NetworkIdentity
     {

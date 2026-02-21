@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Collider Rollback")]
     public class ColliderRollback : PurrMonoBehaviour
     {
         [Tooltip("How long to store the collider state for rollback in seconds.\n" +

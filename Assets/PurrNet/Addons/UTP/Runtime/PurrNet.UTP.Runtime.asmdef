@@ -1,0 +1,35 @@
+{
+    "name": "PurrNet.UTP.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb",
+        "GUID:f2d49d9fa7e7eb3418e39723a7d3b92f",
+        "GUID:37e17ffe38d86ae48bc3207e83ffef88",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.transport",
+            "expression": "",
+            "define": "UTP_LOBBYRELAY"
+        },
+        {
+            "name": "com.unity.services.multiplayer",
+            "expression": "",
+            "define": "UTP_LOBBYRELAY"
+        },
+        {
+            "name": "com.unity.services.multiplayer",
+            "expression": "",
+            "define": "UTP_SERVICES"
+        }
+    ],
+    "noEngineReferences": false
+}

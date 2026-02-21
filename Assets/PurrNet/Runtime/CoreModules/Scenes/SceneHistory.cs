@@ -8,6 +8,7 @@ namespace PurrNet.Modules
     internal enum SceneActionType : byte
     {
         Load,
+        LoadAddressable,
         Unload,
         SetActive
     }
@@ -17,6 +18,7 @@ namespace PurrNet.Modules
         public SceneActionType type;
 
         public LoadSceneAction loadSceneAction;
+        public LoadAddressableSceneAction loadAddressableSceneAction;
         public UnloadSceneAction unloadSceneAction;
         public SetActiveSceneAction setActiveSceneAction;
 
@@ -28,6 +30,9 @@ namespace PurrNet.Modules
             {
                 case SceneActionType.Load:
                     Packer<LoadSceneAction>.Serialize(packer, ref loadSceneAction);
+                    break;
+                case SceneActionType.LoadAddressable:
+                    Packer<LoadAddressableSceneAction>.Serialize(packer, ref loadAddressableSceneAction);
                     break;
                 case SceneActionType.Unload:
                     Packer<UnloadSceneAction>.Serialize(packer, ref unloadSceneAction);
@@ -45,6 +50,7 @@ namespace PurrNet.Modules
             return type switch
             {
                 SceneActionType.Load => $"SceneAction: {{ type: {type}, data: {loadSceneAction} }}",
+                SceneActionType.LoadAddressable => $"SceneAction: {{ type: {type}, data: {loadAddressableSceneAction} }}",
                 SceneActionType.SetActive => $"SceneAction: {{ type: {type}, data: {setActiveSceneAction} }}",
                 SceneActionType.Unload => $"SceneAction: {{ type: {type}, data: {unloadSceneAction} }}",
                 _ => $"SceneAction: {{ type: {type} }}"
@@ -80,6 +86,27 @@ namespace PurrNet.Modules
         public override string ToString()
         {
             return $"LoadSceneAction: {{ buildIndex: {buildIndex}, sceneID: {sceneID}, parameters: {parameters} }}";
+        }
+    }
+
+    internal struct LoadAddressableSceneAction
+    {
+        public StringUTF8 guid;
+        public SceneID sceneID;
+        public PurrSceneSettings parameters;
+
+        public LoadSceneParameters GetLoadSceneParameters()
+        {
+            return new LoadSceneParameters
+            {
+                loadSceneMode = parameters.mode,
+                localPhysicsMode = parameters.physicsMode
+            };
+        }
+
+        public override string ToString()
+        {
+            return $"LoadAddressableSceneAction: {{ guid: {guid}, sceneID: {sceneID}, parameters: {parameters} }}";
         }
     }
 
@@ -151,6 +178,11 @@ namespace PurrNet.Modules
                             _sceneIds.Clear();
                         _sceneIds.Add(action.loadSceneAction.sceneID);
                         break;
+                    case SceneActionType.LoadAddressable:
+                        if (action.loadAddressableSceneAction.parameters.mode == LoadSceneMode.Single)
+                            _sceneIds.Clear();
+                        _sceneIds.Add(action.loadAddressableSceneAction.sceneID);
+                        break;
                     case SceneActionType.Unload:
                         _sceneIds.Remove(action.unloadSceneAction.sceneID);
                         break;
@@ -164,6 +196,10 @@ namespace PurrNet.Modules
                 {
                     case SceneActionType.Load:
                         if (!_sceneIds.Contains(action.loadSceneAction.sceneID))
+                            _actions.RemoveAt(i);
+                        break;
+                    case SceneActionType.LoadAddressable:
+                        if (!_sceneIds.Contains(action.loadAddressableSceneAction.sceneID))
                             _actions.RemoveAt(i);
                         break;
                     case SceneActionType.Unload:
@@ -180,6 +216,17 @@ namespace PurrNet.Modules
             {
                 type = SceneActionType.Load,
                 loadSceneAction = action
+            });
+
+            hasUnflushedActions = true;
+        }
+
+        internal void AddLoadAddressableAction(LoadAddressableSceneAction action)
+        {
+            _pending.Add(new SceneAction
+            {
+                type = SceneActionType.LoadAddressable,
+                loadAddressableSceneAction = action
             });
 
             hasUnflushedActions = true;

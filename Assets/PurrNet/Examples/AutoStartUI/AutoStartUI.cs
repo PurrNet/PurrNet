@@ -30,8 +30,8 @@ namespace PurrNet.Examples
             if (!NetworkManager.main)
                 return;
 
-            NetworkManager.main.onServerConnectionState += OnServerConnectionStateChanged;
-            NetworkManager.main.onClientConnectionState += OnClientConnectionStateChanged;
+            NetworkManager.main.onServerConnectionState -= OnServerConnectionStateChanged;
+            NetworkManager.main.onClientConnectionState -= OnClientConnectionStateChanged;
         }
 
         private void OnValidate()

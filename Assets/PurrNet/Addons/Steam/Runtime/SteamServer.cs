@@ -34,6 +34,7 @@ namespace PurrNet.Steam
  new Dictionary<int, HSteamNetConnection>();
         private readonly Dictionary<HSteamNetConnection, int> _idByConnection =
  new Dictionary<HSteamNetConnection, int>();
+        private readonly Dictionary<int, ulong> _steamIdByConnection = new Dictionary<int, ulong>();
 
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
 #endif
@@ -181,6 +182,15 @@ namespace PurrNet.Steam
             else SteamNetworkingSockets.CloseConnection(conn, 0, null, false);
 #endif
         }
+        
+        public ulong GetSteamID(int connectionId)
+        {
+#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+            if (_steamIdByConnection.TryGetValue(connectionId, out var steamID))
+                return steamID;
+#endif
+            return 0;
+        }
 
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
         private static void MakeSureBufferCanFit(int packetLength)
@@ -227,12 +237,13 @@ namespace PurrNet.Steam
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
         private int _nextConnectionId;
 
-        private void AddConnection(HSteamNetConnection connection)
+        private void AddConnection(HSteamNetConnection connection, ulong steamId)
         {
             int id = _nextConnectionId++;
             _connections.Add(connection);
             _connectionById.Add(id, connection);
             _idByConnection.Add(connection, id);
+            _steamIdByConnection.Add(id, steamId);
 
             onRemoteConnected?.Invoke(id);
         }
@@ -243,6 +254,7 @@ namespace PurrNet.Steam
             {
                 _connectionById.Remove(_id);
                 onRemoteDisconnected?.Invoke(_id);
+                _steamIdByConnection.Remove(_id);
             }
         }
 
@@ -267,7 +279,7 @@ namespace PurrNet.Steam
                 }
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
                 {
-                    AddConnection(args.m_hConn);
+                    AddConnection(args.m_hConn, args.m_info.m_identityRemote.GetSteamID64());
                     break;
                 }
                 default:
@@ -309,6 +321,7 @@ namespace PurrNet.Steam
             _connections.Clear();
             _connectionById.Clear();
             _idByConnection.Clear();
+            _steamIdByConnection.Clear();
 
             try
             {

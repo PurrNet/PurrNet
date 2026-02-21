@@ -14,6 +14,7 @@ using UnityEngine;
 
 namespace PurrNet.Transports
 {
+    [AddComponentMenu("PurrNet/Transport/Purr Transport")]
     public partial class PurrTransport : GenericTransport, ITransport
     {
         enum SERVER_PACKET_TYPE : byte
@@ -53,12 +54,14 @@ namespace PurrNet.Transports
         public string region
         {
             get => _region;
+            [Obsolete("Use SetServer() instead")]
             set => _region = value;
         }
 
         public string host
         {
             get => _host;
+            [Obsolete("Use SetServer() instead")]
             set => _host = value;
         }
 
@@ -66,6 +69,12 @@ namespace PurrNet.Transports
         {
             get => _roomName;
             set => _roomName = value;
+        }
+
+        public void SetServer(RelayServer server)
+        {
+            _region = server.region;
+            _host = server.host;
         }
 
         public bool hasRegionAndHost => !string.IsNullOrEmpty(_region) && !string.IsNullOrEmpty(_host);
@@ -120,12 +129,23 @@ namespace PurrNet.Transports
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
-            return channel switch
+            if (_isUsingUDP)
             {
-                Channel.Unreliable => 1024,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
-            };
+                try
+                {
+                    var method = UDPTransport.ToDeliveryMethod(channel);
+                    var result = asServer ?
+                        _udpServer.FirstPeer.GetMaxSinglePacketSize(method) :
+                        _udpClient.FirstPeer.GetMaxSinglePacketSize(method);
+                    return result - 16; // give the relay some space for metadata
+                }
+                catch
+                {
+                    return 1024;
+                }
+            }
+
+            return 8192 * 2;
         }
 
 
@@ -300,7 +320,9 @@ namespace PurrNet.Transports
                         true);
                     break;
                 }
-                default: throw new ArgumentOutOfRangeException(type.ToString());
+                default:
+                    PurrLogger.LogError($"Unexpected packet type {type} from server");
+                    break;
             }
         }
 
@@ -333,7 +355,9 @@ namespace PurrNet.Transports
                     case SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED:
                         Disconnect();
                         break;
-                    default: throw new ArgumentOutOfRangeException(type.ToString());
+                    default:
+                        PurrLogger.LogError($"Unexpected packet type {type} from server");
+                        break;
                 }
             }
         }

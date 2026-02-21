@@ -1,6 +1,7 @@
 using System.Net;
 using JetBrains.Annotations;
 using PurrNet.Logging;
+using PurrNet.Modules;
 
 namespace PurrNet.Steam
 {
@@ -23,6 +24,29 @@ namespace PurrNet.Steam
             }
 
             return 0;
+        }
+        
+        public static bool TryGetSteamID(PlayerID playerID, out ulong steamID)
+        {
+            steamID = default;
+
+            var networkManager = NetworkManager.main;
+            if (networkManager == null)
+                return false;
+
+            bool asServer = networkManager.isServer;
+
+            if (networkManager.TryGetModule<PlayersManager>(asServer, out var playersManager) &&
+                playersManager.TryGetConnection(playerID, out var connection))
+            {
+                if (networkManager.transport is SteamTransport steamTransport)
+                {
+                    steamID = steamTransport.GetSteamID(connection);
+                    return steamID != 0;
+                }
+            }
+
+            return false;
         }
     }
 }

@@ -24,13 +24,15 @@ namespace PurrNet.Modules
 
     internal struct DeltaAcknowledge : IPackedAuto
     {
-        public PackedUInt key;
+        public PackedUInt keyType;
+        public PackedUInt keyHash;
         public PackedUInt valueId;
     }
 
     internal struct DeltaCleanup : IPackedAuto
     {
-        public PackedUInt key;
+        public PackedUInt keyType;
+        public PackedUInt keyHash;
         public PackedUInt upToId;
     }
 

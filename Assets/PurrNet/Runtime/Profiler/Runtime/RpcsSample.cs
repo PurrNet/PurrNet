@@ -11,14 +11,14 @@ namespace PurrNet.Profiler
         public readonly BitPacker data;
         public readonly UnityEngine.Object context;
 
-        public RpcsSample(Type type, RPCType rpcType, string method, ArraySegment<byte> data, UnityEngine.Object context)
+        public RpcsSample(Type type, RPCType rpcType, string method, BitData data, UnityEngine.Object context)
         {
             this.type = type;
             this.method = method;
             this.rpcType = rpcType;
             this.context = context;
             this.data = BitPackerPool.Get();
-            this.data.WriteBytes(data);
+            this.data.WriteBitDataWithoutConsumingIt(data);
         }
 
         public void Dispose()

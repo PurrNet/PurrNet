@@ -16,6 +16,7 @@ namespace PurrNet.Editor
         private SerializedProperty _cookieScope;
         private SerializedProperty _dontDestroyOnLoad;
         private SerializedProperty _networkPrefabs;
+        private SerializedProperty _addressableNetworkPrefabs;
         private SerializedProperty _networkAssets;
         private SerializedProperty _networkRules;
         private SerializedProperty _authenticator;
@@ -45,6 +46,7 @@ namespace PurrNet.Editor
             _cookieScope = serializedObject.FindProperty("_cookieScope");
             _dontDestroyOnLoad = serializedObject.FindProperty("_dontDestroyOnLoad");
             _networkPrefabs = serializedObject.FindProperty("_networkPrefabs");
+            _addressableNetworkPrefabs = serializedObject.FindProperty("_addressableNetworkPrefabs");
             _networkAssets = serializedObject.FindProperty("_networkAssets");
             _networkRules = serializedObject.FindProperty("_networkRules");
             _transport = serializedObject.FindProperty("_transport");
@@ -182,6 +184,8 @@ namespace PurrNet.Editor
             EditorGUILayout.PropertyField(_dontDestroyOnLoad);
             EditorGUILayout.PropertyField(_transport);
             DrawNetworkPrefabs();
+            if(_addressableNetworkPrefabs != null)
+                EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
             DrawNetworkAssets();
             EditorGUILayout.PropertyField(_networkRules);
             EditorGUILayout.PropertyField(_visibilityRules);

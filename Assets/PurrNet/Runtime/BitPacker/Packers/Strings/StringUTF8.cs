@@ -16,7 +16,7 @@ namespace PurrNet
         }
     }
 
-    public readonly struct StringUTF8
+    public readonly struct StringUTF8 : IPackedAuto
     {
         public readonly string value;
 

@@ -119,7 +119,7 @@ namespace PurrNet.Editor
         }
 #else
         [MenuItem(PACKAGES + "/Install Edgegap", priority = 100)]
-        public static async void InstallEdgegap()
+        public static void InstallEdgegap()
         {
             if (!GitHelper.CheckGit())
                 return;

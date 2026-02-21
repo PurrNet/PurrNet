@@ -8,6 +8,7 @@ using UnityEngine.Playables;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Animator")]
     public sealed partial class NetworkAnimator : NetworkIdentity
     {
 #if UNITY_ANIMATION
@@ -46,6 +47,29 @@ namespace PurrNet
         /// The animator to sync
         /// </summary>
         public Animator animator => _animator;
+
+        /// <summary>
+        /// Sets the animator to sync and rebuilds internal state (avatar root cache, dont-sync parameter hashes).
+        /// </summary>
+        /// <param name="animator">The animator to sync. Can be null.</param>
+        /// <remarks>Use this when switching animators at runtime (e.g. after spawning, pooling, or model swap).</remarks>
+        public void SetAnimator(Animator animator)
+        {
+            _animator = animator;
+            _avatarRoot = null;
+            _dontSyncHashes.Clear();
+            for (var i = 0; i < _dontSyncParameters.Count; i++)
+                _dontSyncHashes.Add(Animator.StringToHash(_dontSyncParameters[i]));
+            if (_animator != null)
+            {
+                for (var i = 0; i < _animator.parameters.Length; i++)
+                {
+                    var parameter = _animator.parameters[i];
+                    if (_animator.IsParameterControlledByCurve(parameter.nameHash))
+                        _dontSyncHashes.Add(parameter.nameHash);
+                }
+            }
+        }
 
         public List<string> dontSyncParameters => _dontSyncParameters;
 

@@ -1,10 +1,10 @@
-﻿using PurrNet.Transports;
+﻿using PurrNet.Packing;
 
 namespace PurrNet
 {
     public interface IRpc
     {
-        public ByteData rpcData { get; set; }
+        public BitData rpcData { get; set; }
 
         PlayerID senderPlayerId { get; }
 

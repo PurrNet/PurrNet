@@ -13,6 +13,8 @@ namespace PurrNet.Editor
 
             var content = PlayerSettings.GetScriptingDefineSymbols(namedTarget);
             int idxOf = content.IndexOf(symbol, StringComparison.Ordinal);
+            if (idxOf == -1)
+                return;
             bool isNextSemicolon = idxOf < content.Length - 1 && content[idxOf + 1] == ';';
             if (isNextSemicolon)
                 idxOf++;

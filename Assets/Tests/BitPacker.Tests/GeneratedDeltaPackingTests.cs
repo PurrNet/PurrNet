@@ -1,9 +1,14 @@
 using NUnit.Framework;
 using PurrNet.Packing;
 
-public struct SomeStruct : IPackedAuto
+public struct SomeStruct : IPackedAuto, IDuplicate<SomeStruct>
 {
     public int value;
+
+    public SomeStruct Duplicate()
+    {
+        return this;
+    }
 }
 
 public class GeneratedDeltaPackingTests

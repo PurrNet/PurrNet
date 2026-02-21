@@ -1,11 +1,12 @@
 using PurrNet;
 using UnityEngine;
 
-public class PrintNetworklife : NetworkIdentity
+public class PrintNetworklife : NetworkIdentity, ITick
 {
     [SerializeField] private bool _earlySpawnPrint = true;
     [SerializeField] private bool _spawnPrint = true;
     [SerializeField] private bool _ownerPrint = true;
+    [SerializeField] private bool _onTick = true;
 
     protected override void OnEarlySpawn()
     {
@@ -48,4 +49,11 @@ public class PrintNetworklife : NetworkIdentity
         if (_ownerPrint)
             Debug.Log($"OnOwnerChanged {this} {oldOwner} -> {newOwner} {asServer}", this);
     }
+
+    public void OnTick(float delta)
+    {
+        if (_onTick)
+            Debug.Log($"OnTick {this} {owner} {delta}", this);
+    }
+
 }

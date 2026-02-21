@@ -219,5 +219,11 @@ namespace PurrNet.Modules
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].TransferToNewServer();
         }
+
+        public void EvaluateVisibilityForPlayer(PlayerID player)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].EvaluateVisibilityForPlayer(player);
+        }
     }
 }

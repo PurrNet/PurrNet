@@ -10,7 +10,7 @@ namespace PurrNet.Packing
         {
             var scope = new DeltaWritingScope(packer);
 
-            if (Packer.AreEqual(old, value))
+            if (old.Equals(value))
                 return scope.Complete();
 
             if (value.isDisposed)
@@ -38,7 +38,14 @@ namespace PurrNet.Packing
             }
 
             scope.Write(DiffOp<T>.FinalOperation());
-            return scope.Complete();
+
+            var result = scope.Complete();
+
+            for (int i = 0; i < changes.Count; i++)
+                changes[i].values.Dispose();
+            changes.Dispose();
+
+            return result;
         }
 
         [UsedByIL]
@@ -47,9 +54,7 @@ namespace PurrNet.Packing
             if (!DeltaReadingScope.Continue(packer, old, ref value))
                 return;
 
-            bool hasValue = Packer<bool>.Read(packer);
-
-            if (!hasValue)
+            if (!packer.ReadBit())
             {
                 value.Dispose();
                 return;

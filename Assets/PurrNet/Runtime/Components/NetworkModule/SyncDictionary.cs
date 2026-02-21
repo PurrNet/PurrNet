@@ -133,12 +133,12 @@ namespace PurrNet
 
         public void OnBeforeSerialize()
         {
-            _serializedDict.FromDictionary(_dict);
+            _serializedDict?.FromDictionary(_dict);
         }
 
         public void OnAfterDeserialize()
         {
-            _dict = _serializedDict.ToDictionary();
+            _dict = _serializedDict?.ToDictionary();
         }
 
         public override void OnSpawn()
@@ -612,10 +612,8 @@ namespace PurrNet
 
         public SerializableDictionary()
         {
-            isKeySerializable =
-                typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
-            isValueSerializable = typeof(TValue).IsSerializable ||
-                                  typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
+            isKeySerializable = typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
+            isValueSerializable = typeof(TValue).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
         }
 
         public Dictionary<TKey, TValue> ToDictionary()
@@ -636,8 +634,8 @@ namespace PurrNet
                 var count = Mathf.Min(stringKeys.Count, stringValues.Count);
                 for (int i = 0; i < count; i++)
                 {
-                    if (stringKeys[i] != null && !dict.ContainsKey(default(TKey)))
-                        dict.Add(default(TKey), default(TValue));
+                    if (stringKeys[i] != null && !dict.ContainsKey(default(TKey)!))
+                        dict.Add(default(TKey)!, default(TValue));
                 }
             }
 

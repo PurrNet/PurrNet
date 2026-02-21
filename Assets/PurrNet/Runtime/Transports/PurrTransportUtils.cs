@@ -184,7 +184,7 @@ namespace PurrNet.Transports
 
             string master = $"{server}servers";
             var response = await Get(master);
-            if (response == null)
+            if (string.IsNullOrEmpty(response))
                 return default;
             return JsonUtility.FromJson<Relayers>(response);
         }

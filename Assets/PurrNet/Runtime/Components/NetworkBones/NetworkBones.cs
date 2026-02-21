@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    [AddComponentMenu("PurrNet/Network Bones")]
     [CourtesyOf("Resolute Games", "https://resolutegames.com/")]
     public class NetworkBones : NetworkIdentity
     {
@@ -214,6 +215,8 @@ namespace PurrNet
             }
         }
 
+        const int MAX_BONE_ENTRY_SIZE = 32; // a bit of an exaggeration, but better safe than sorry when it comes to MTU
+
         void SendTransforms(DeltaModule module, bool asServer)
         {
             if (asServer)
@@ -227,16 +230,22 @@ namespace PurrNet
                     if ((checkOwner && observer == owner) || observer == localPlayerCached)
                         continue;
 
-                    SendPositions(observer, module);
-                    SendRotations(observer, module);
-                    SendScales(observer, module);
+                    int mtu = networkManager.GetMTU(observer, Channel.Unreliable, true) -
+                              RPCBatch.MAX_HEADER_SIZE - MAX_BONE_ENTRY_SIZE;
+
+                    SendPositions(observer, mtu, module);
+                    SendRotations(observer, mtu, module);
+                    SendScales(observer, mtu, module);
                 }
             }
             else if (!isServer)
             {
-                SendPositions(default, module);
-                SendRotations(default, module);
-                SendScales(default, module);
+                int mtu = networkManager.GetMTU(PlayerID.Server, Channel.Unreliable, false) -
+                          RPCBatch.MAX_HEADER_SIZE - MAX_BONE_ENTRY_SIZE;
+
+                SendPositions(default, mtu, module);
+                SendRotations(default, mtu, module);
+                SendScales(default, mtu, module);
             }
         }
 
@@ -291,12 +300,10 @@ namespace PurrNet
             );
         }
 
-        const int MTU = 1100;
-
         delegate void Forward(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data);
         delegate bool Write(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey);
 
-        void Pack(PlayerID observer, DeltaModule module, Forward forward, Write write)
+        void Pack(PlayerID observer, int MTU, DeltaModule module, Forward forward, Write write)
         {
             using var packer = BitPackerPool.Get();
             PackedUInt cache = default;
@@ -329,8 +336,8 @@ namespace PurrNet
             }
         }
 
-        private void SendPositions(PlayerID observer, DeltaModule module) =>
-            Pack(observer, module, ForwardPositions, WritePosition);
+        private void SendPositions(PlayerID observer, int MTU, DeltaModule module) =>
+            Pack(observer, MTU, module, ForwardPositions, WritePosition);
 
         bool WritePosition(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey)
         {
@@ -381,8 +388,8 @@ namespace PurrNet
             }
         }
 
-        private void SendRotations(PlayerID observer, DeltaModule module)
-            => Pack(observer, module, ForwardRotations, WriteRotation);
+        private void SendRotations(PlayerID observer, int MTU, DeltaModule module)
+            => Pack(observer, MTU, module, ForwardRotations, WriteRotation);
 
         bool WriteRotation(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey)
         {
@@ -433,8 +440,8 @@ namespace PurrNet
             }
         }
 
-        private void SendScales(PlayerID observer, DeltaModule module)
-            => Pack(observer, module, ForwardScales, WriteScale);
+        private void SendScales(PlayerID observer, int MTU, DeltaModule module)
+            => Pack(observer, MTU, module, ForwardScales, WriteScale);
 
         bool WriteScale(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey)
         {

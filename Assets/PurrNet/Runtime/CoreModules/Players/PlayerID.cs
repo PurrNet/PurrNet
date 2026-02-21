@@ -31,7 +31,7 @@ namespace PurrNet
 
         public override string ToString()
         {
-            return _id == 0 ? "Server" : _id.value.ToString("000");
+            return _id.value == 0 ? "Server" : _id.value.ToString("000");
         }
 
         public override int GetHashCode()
@@ -41,7 +41,7 @@ namespace PurrNet
 
         public bool Equals(PlayerID other)
         {
-            return _id == other._id;
+            return _id.value == other._id.value;
         }
 
         public override bool Equals(object obj)
@@ -51,12 +51,12 @@ namespace PurrNet
 
         public static bool operator ==(PlayerID a, PlayerID b)
         {
-            return a._id == b._id;
+            return a._id.value == b._id.value;
         }
 
         public static bool operator !=(PlayerID a, PlayerID b)
         {
-            return a._id != b._id;
+            return a._id.value != b._id.value;
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using PurrNet.Contributors;
+using PurrNet.Utils;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -27,6 +28,8 @@ namespace PurrNet.Editor
         private SerializedProperty _visitiblityRules;
         private readonly List<Contributor> _contributors = new ();
         private readonly List<Contributor> _courtesyOf = new ();
+        private string _docsUrl;
+        private static Texture2D _helpIcon;
 
 #if TRI_INSPECTOR_PACKAGE || ODIN_INSPECTOR
         protected override void OnEnable()
@@ -78,6 +81,10 @@ namespace PurrNet.Editor
                         url = attr.url
                     });
                 }
+
+                var docsAttr = targetType.GetCustomAttribute<PurrDocsAttribute>();
+                if (docsAttr != null)
+                    _docsUrl = docsAttr.url;
             }
         }
 
@@ -103,6 +110,16 @@ namespace PurrNet.Editor
             DrawContributors();
 
             serializedObject.ApplyModifiedProperties();
+
+            /*if (!string.IsNullOrEmpty(_docsUrl))
+            {
+                _helpIcon ??= Resources.Load("purricon") as Texture2D;
+                GUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button(new GUIContent(" Open Docs", _helpIcon), GUILayout.ExpandWidth(false), GUILayout.Height(20)))
+                    Application.OpenURL("https://purrnet.gitbook.io/docs/" + _docsUrl);
+                GUILayout.EndHorizontal();
+            }*/
         }
 
         private void DrawContributors()

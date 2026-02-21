@@ -4,7 +4,6 @@ using System.Reflection;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Modules;
-using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 using UnityEngine;
@@ -336,7 +335,7 @@ namespace PurrNet
                 if (_localPlayer.HasValue)
                     return _localPlayer;
 
-                if (networkManager.TryGetModule<PlayersManager>(false, out var players))
+                if (networkManager && networkManager.TryGetModule<PlayersManager>(false, out var players))
                 {
                     _localPlayer = players.localPlayerId;
                     return _localPlayer;
@@ -359,9 +358,11 @@ namespace PurrNet
 
         public bool IsObserver(PlayerID player) => _observers.Contains(player);
 
-        public virtual void OnReceivedRpc(int id, BitPacker stream, RPCPacket packet, RPCInfo info, bool asServer) { }
+        [UsedByIL]
+        public virtual void OnReceivedRpc(int id, RPCPacket packet, RPCInfo info, bool asServer) { }
 
-        public static void OnReceivedRpc(int id, BitPacker stream, StaticRPCPacket packet, RPCInfo info, bool asServer) { }
+        [UsedByIL]
+        public static void OnReceivedRpc(int id, StaticRPCPacket packet, RPCInfo info, bool asServer) { }
 
         [UsedImplicitly]
         public void QueueOnSpawned(Action action)
@@ -572,8 +573,6 @@ namespace PurrNet
         {
             if (_tickRegisteredClient <= 0)
             {
-                InternalTick();
-
                 try
                 {
                     _ticker?.OnTick(_serverTickManager.tickDelta);
@@ -760,12 +759,6 @@ namespace PurrNet
         protected virtual void OnObserverRemoved(PlayerID player)
         {
         }
-
-        public bool IsNotOwnerPredicate(PlayerID player)
-        {
-            return player != owner;
-        }
-
 
         static readonly Dictionary<Type, List<MethodInfo>> _methodCache = new();
 
@@ -1525,6 +1518,9 @@ namespace PurrNet
 
         public void TriggerOnObserverRemoved(PlayerID target)
         {
+            if (target == localPlayerForced)
+                UnregisterTickEvent(false);
+
             try
             {
                 OnObserverRemoved(target);

@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace PurrNet.Transports
 {
+    [AddComponentMenu("PurrNet/Transport/UDP Transport")]
     [DefaultExecutionOrder(-100)]
     public partial class UDPTransport : GenericTransport, ITransport, INetLogger
     {

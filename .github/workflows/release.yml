@@ -25,7 +25,7 @@ jobs:
       # Step 3: Install dependencies
       - run: npm ci
       - run: npm i @iam1337/create-unitypackage
-      - run: npm i semantic-release-replace-plugin -D
+      - run: npm i semantic-release-replace-plugin@1.2.7 -D
       - run: npm i @semantic-release/git -D
       - run: npm i @semantic-release/changelog -D
       

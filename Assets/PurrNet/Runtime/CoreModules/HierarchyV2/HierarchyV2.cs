@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Pooling;
 using PurrNet.Utils;
@@ -618,6 +619,8 @@ namespace PurrNet.Modules
         }
 
         private readonly Dictionary<SpawnID, DisposableList<NetworkIdentity>> _pendingSpawns = new();
+        private readonly List<(SpawnID packetIdx, PlayerID player, bool asServer)> _pendingFinishSpawns = new();
+        private readonly List<(PlayerID player, DespawnPacket packet, bool asServer)> _pendingDespawns = new();
 
         private void OnFinishSpawnPacket(PlayerID player, FinishSpawnPacket data, bool asServer)
         {
@@ -662,6 +665,88 @@ namespace PurrNet.Modules
                             nid.TriggerSpawnEvent(false);
                         onIdentityAdded?.Invoke(nid);
                     }
+                }
+            }
+            else
+            {
+                _pendingFinishSpawns.Add((data.packetIdx, player, asServer));
+            }
+        }
+
+        private void ProcessBufferedFinishSpawnsFor(SpawnID packetIdx)
+        {
+            for (int i = _pendingFinishSpawns.Count - 1; i >= 0; i--)
+            {
+                var (idx, player, asServer) = _pendingFinishSpawns[i];
+                if (!idx.Equals(packetIdx))
+                    continue;
+
+                _pendingFinishSpawns.RemoveAt(i);
+
+                if (!_pendingSpawns.Remove(packetIdx, out var list))
+                    return;
+
+                bool disposeList = true;
+                try
+                {
+                    int count = list.Count;
+                    if (count > 0 && (!list[0] || !list[0].isSpawned))
+                    {
+                        _pendingSpawns.Add(packetIdx, list);
+                        disposeList = false;
+                        return;
+                    }
+
+                    if (count > 0 && list[0] && _asServer &&
+                        _scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
+                    {
+                        for (int j = 0; j < players.Count; j++)
+                            _visibility.RefreshVisibilityForGameObject(players[j], list[0].transform);
+                        FlushSpawnPackets();
+                    }
+
+                    bool isHost = IsServerHost();
+                    for (int j = 0; j < count; j++)
+                    {
+                        var nid = list[j];
+                        if (!nid || !nid.isSpawned) continue;
+                        nid.TriggerSpawnEvent(_asServer);
+                        if (_asServer && isHost)
+                            nid.TriggerSpawnEvent(false);
+                        onIdentityAdded?.Invoke(nid);
+                    }
+                }
+                finally
+                {
+                    if (disposeList && !list.isDisposed)
+                        list.Dispose();
+                }
+                return;
+            }
+        }
+
+        private void ProcessBufferedDespawnsFor(DisposableList<NetworkIdentity> createdNids)
+        {
+            for (int i = _pendingDespawns.Count - 1; i >= 0; i--)
+            {
+                var (player, packet, asServer) = _pendingDespawns[i];
+
+                for (int j = 0; j < createdNids.Count; j++)
+                {
+                    var nid = createdNids[j];
+                    if (!nid || !nid.id.HasValue || nid.id.Value != packet.parentId)
+                        continue;
+
+                    _pendingDespawns.RemoveAt(i);
+                    try
+                    {
+                        Despawn(nid.gameObject, true, true);
+                    }
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogError($"ProcessBufferedDespawnsFor: exception despawning {nid.gameObject.name}: {e.Message}\n{e.StackTrace}");
+                    }
+                    return;
                 }
             }
         }
@@ -756,66 +841,136 @@ namespace PurrNet.Modules
                             PurrLogger.LogWarning(
                                 $"Spawn validation failed for player `{player}` by `{declaring?.Name}.{methodName}`");
 
-                        // send despawn packet to the player
                         RollbackSpawnOnClient(player, data);
                         return;
                     }
                 }
             }
 
-            var createdNids =  DisposableList<NetworkIdentity>.Create(16);
-            var go = CreatePrototype(data.prototype, createdNids.list);
-
-            onPreSpawn?.Invoke(go, false);
-
-            if (_asServer)
+            if (data.prototype.framework.Count > 0)
             {
-                bool isHost = IsServerHost();
-
-                for (var i = 0; i < createdNids.Count; i++)
+                int rootPrefabId = data.prototype.framework[0].pid.prefabId;
+                if (_manager.prefabProvider.TryGetPrefabData(rootPrefabId, out var prefabData) &&
+                    prefabData.prefab == null &&
+                    _manager.prefabProvider is IAsyncPrefabProvider asyncProvider)
                 {
-                    var nid = createdNids[i];
-                    nid.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
-                    RegisterIdentity(nid, false);
+                    ProcessSpawnWhenLoadedAsync(player, data, flushData, asyncProvider, rootPrefabId);
+                    return;
+                }
+            }
 
-                    if (nid.TryAddObserver(player))
-                    {
-                        onObserverAdded?.Invoke(player, nid);
-                        nid.TriggerOnPreObserverAdded(player, true);
-                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = true});
-                    }
+            CompleteSpawn(player, data, flushData);
+        }
+
+        private async void ProcessSpawnWhenLoadedAsync(PlayerID player, SpawnPacket data, bool flushData,
+            IAsyncPrefabProvider asyncProvider, int rootPrefabId)
+        {
+            var prototypeCopy = data.prototype.Clone();
+            var packetIdx = data.packetIdx;
+            var sceneId = data.sceneId;
+
+            try
+            {
+                var loaded = await asyncProvider.LoadPrefabAsync(rootPrefabId);
+                if (loaded.prefab == null)
+                {
+                    PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
+                    prototypeCopy.Dispose();
+                    return;
                 }
 
-                if (createdNids.Count > 0)
+                if (_isDisposed)
                 {
-                    if (_scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
+                    prototypeCopy.Dispose();
+                    return;
+                }
+
+                var spawnData = new SpawnPacket { sceneId = sceneId, packetIdx = packetIdx, prototype = prototypeCopy };
+                CompleteSpawn(player, spawnData, flushData);
+                spawnData.Dispose();
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: exception for prefab {rootPrefabId}: {e.Message}\n{e.StackTrace}");
+                try { prototypeCopy.Dispose(); } catch { /* ignore */ }
+            }
+        }
+
+        private void CompleteSpawn(PlayerID player, SpawnPacket data, bool flushData)
+        {
+            var createdNids = DisposableList<NetworkIdentity>.Create(16);
+            var go = CreatePrototype(data.prototype, createdNids.list);
+
+            if (!go || createdNids.Count == 0)
+            {
+                PurrLogger.LogError($"CompleteSpawn: CreatePrototype failed for packet {data.packetIdx}.");
+                createdNids.Dispose();
+                return;
+            }
+
+            try
+            {
+                onPreSpawn?.Invoke(go, false);
+
+                if (_asServer)
+                {
+                    bool isHost = IsServerHost();
+
+                    for (var i = 0; i < createdNids.Count; i++)
                     {
-                        for (var i = 0; i < players.Count; i++)
+                        var nid = createdNids[i];
+                        nid.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
+                        RegisterIdentity(nid, false);
+
+                        if (nid.TryAddObserver(player))
                         {
-                            var playerInScene = players[i];
-                            _visibility.RefreshVisibilityForGameObject(playerInScene, createdNids[0].transform);
+                            onObserverAdded?.Invoke(player, nid);
+                            nid.TriggerOnPreObserverAdded(player, true);
+                            _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = true});
                         }
                     }
 
-                    var lastNid = createdNids[^1];
-                    if (lastNid.id.HasValue)
-                        _playersManager.RegisterClientLastId(player, lastNid.id.Value);
-                }
-            }
-            else
-            {
-                for (var i = 0; i < createdNids.Count; i++)
-                {
-                    var nid = createdNids[i];
-                    nid.SetIdentity(_manager, this, _sceneId, _asServer, false);
-                    RegisterIdentity(nid, false);
-                }
-            }
+                    if (createdNids.Count > 0)
+                    {
+                        if (_scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
+                        {
+                            for (var i = 0; i < players.Count; i++)
+                            {
+                                var playerInScene = players[i];
+                                _visibility.RefreshVisibilityForGameObject(playerInScene, createdNids[0].transform);
+                            }
+                        }
 
-            if (!_pendingSpawns.TryAdd(data.packetIdx, createdNids))
+                        var lastNid = createdNids[^1];
+                        if (lastNid.id.HasValue)
+                            _playersManager.RegisterClientLastId(player, lastNid.id.Value);
+                    }
+                }
+                else
+                {
+                    for (var i = 0; i < createdNids.Count; i++)
+                    {
+                        var nid = createdNids[i];
+                        nid.SetIdentity(_manager, this, _sceneId, _asServer, false);
+                        RegisterIdentity(nid, false);
+                    }
+                }
+
+                if (!_pendingSpawns.TryAdd(data.packetIdx, createdNids))
+                {
+                    PurrLogger.LogError($"CompleteSpawn: failed to add spawn packet {data.packetIdx} to pending spawns.");
+                    createdNids.Dispose();
+                    return;
+                }
+
+                ProcessBufferedFinishSpawnsFor(data.packetIdx);
+                ProcessBufferedDespawnsFor(createdNids);
+            }
+            catch (Exception e)
             {
-                var first = createdNids[0];
-                PurrLogger.LogError($"Failed to add spawn packet `{data.packetIdx}` to pending spawns from player `{player}`", first);
+                PurrLogger.LogError($"CompleteSpawn: exception for packet {data.packetIdx}: {e.Message}\n{e.StackTrace}");
+                createdNids.Dispose();
+                return;
             }
 
             if (flushData)
@@ -848,6 +1003,8 @@ namespace PurrNet.Modules
 
             if (!TryGetIdentity(data.parentId, out var identity))
             {
+                if (!_asServer)
+                    _pendingDespawns.Add((player, data, asServer));
                 return;
             }
 
@@ -906,6 +1063,27 @@ namespace PurrNet.Modules
             HashSetPool<NetworkIdentity>.Destroy(roots);
         }
 
+        public void EvaluateVisibilityForPlayer(PlayerID player)
+        {
+            if (!_asServer || !_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
+                return;
+
+            var roots = HashSetPool<NetworkIdentity>.Instantiate();
+            var count = _spawnedIdentities.Count;
+
+            for (var i = 0; i < count; i++)
+            {
+                var id = _spawnedIdentities[i];
+                if (!id || id.isManualSpawn) continue;
+                var root = id.GetRootIdentity();
+                if (root && roots.Add(root))
+                    _visibility.RefreshVisibilityForGameObject(player, root.transform);
+            }
+
+            FlushSpawnPackets();
+            HashSetPool<NetworkIdentity>.Destroy(roots);
+        }
+
         /// <summary>
         /// Evaluates the visibility of a hierarchy of objects rooted at the specified transform
         /// for all players currently present in the associated scene. This operation is intended
@@ -953,6 +1131,15 @@ namespace PurrNet.Modules
         private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
 
+        private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
+        {
+            for (var i = 0; i < _triggerLateObserverAdded.Count; i++)
+            {
+                if (_triggerLateObserverAdded[i].player == player && _triggerLateObserverAdded[i].nid == id)
+                    _triggerLateObserverAdded.RemoveAt(i--);
+            }
+        }
+
         private void OnVisibilityChanged(PlayerID player, Transform scope, bool isVisible)
         {
             if (isVisible)
@@ -985,6 +1172,8 @@ namespace PurrNet.Modules
                 for (var i = 0; i < children.Count; i++)
                 {
                     var child = children[i];
+
+                    ClearPendingLateObserverAdded(player, child);
                     child.TriggerOnObserverRemoved(player);
                     onObserverRemoved?.Invoke(player, child);
                 }
@@ -1253,6 +1442,12 @@ namespace PurrNet.Modules
                 return;
             }
 
+            bool isHost = IsServerHost();
+
+            // Try to despawn the object properly if despawn was on the same tick (by first calling OnSpawned)
+            for (var i = 0; i < c; i++)
+                CompletePendingSpawnsFor(children[i], isHost);
+
             if (_asServer)
             {
                 _visibility.ClearVisibilityForGameObject(gameObject.transform);
@@ -1407,6 +1602,25 @@ namespace PurrNet.Modules
             FlushSpawnPackets();
             _manager.FlushBatchedRPCs();
             SpawnDelayedIdentities();
+        }
+
+        private void CompletePendingSpawnsFor(NetworkIdentity toSpawn, bool isHost)
+        {
+            if (_toSpawnNextFrame.Remove(toSpawn))
+            {
+                if (!toSpawn || !toSpawn.isSpawned)
+                    return;
+
+                toSpawn.TriggerSpawnEvent(_asServer);
+
+                if (_asServer && isHost)
+                {
+                    toSpawn.SetIsSpawned(true, false);
+                    toSpawn.TriggerSpawnEvent(false);
+                }
+
+                onIdentityAdded?.Invoke(toSpawn);
+            }
         }
 
         private void SendDelayedObserverEvents()
@@ -1569,7 +1783,16 @@ namespace PurrNet.Modules
 
             var resultTrs = result.transform;
             result.transform.SetParent(null, false);
-            SceneManager.MoveGameObjectToScene(result, _scene);
+
+            try
+            {
+                SceneManager.MoveGameObjectToScene(result, _scene);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
 
             if (prototype.parentID.HasValue)
             {
@@ -1693,6 +1916,7 @@ namespace PurrNet.Modules
 
             if (identity.TryRemoveObserver(player))
             {
+                ClearPendingLateObserverAdded(player, identity);
                 identity.TriggerOnObserverRemoved(player);
                 onObserverRemoved?.Invoke(player, identity);
             }
