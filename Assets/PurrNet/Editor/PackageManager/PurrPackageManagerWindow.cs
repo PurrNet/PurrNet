@@ -21,6 +21,8 @@ namespace PurrNet.Editor
         private bool _isDraggingSplitter;
         private Rect _cachedSplitterRect;
         private int _prevKeyboardControl;
+        private int _releasePopupIndex;
+        private int _devPopupIndex;
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
@@ -469,6 +471,8 @@ namespace PurrNet.Editor
             if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
             {
                 _selectedIndex = index;
+                _releasePopupIndex = -1;
+                _devPopupIndex = -1;
                 GUI.FocusControl(null);
                 Event.current.Use();
                 Repaint();
@@ -624,6 +628,32 @@ namespace PurrNet.Editor
             DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
             EditorGUILayout.EndHorizontal();
 
+            // Version history dropdowns — split by channel, capped at 20 each
+            if (package.Versions != null && package.Versions.Length > 0)
+            {
+                var releaseVersions = new List<VersionInfo>();
+                var devVersions = new List<VersionInfo>();
+
+                foreach (var v in package.Versions)
+                {
+                    if (string.Equals(v.Channel, "release", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (releaseVersions.Count < 20) releaseVersions.Add(v);
+                    }
+                    else
+                    {
+                        if (devVersions.Count < 20) devVersions.Add(v);
+                    }
+                }
+
+                EditorGUILayout.Space(8);
+                DrawVersionDropdown("Release", releaseVersions, ref _releasePopupIndex,
+                    isInstalled, installedVersion, package, _installedColor);
+                EditorGUILayout.Space(4);
+                DrawVersionDropdown("Dev", devVersions, ref _devPopupIndex,
+                    isInstalled, installedVersion, package, _accentColor);
+            }
+
             // Remove button
             if (isInstalled)
             {
@@ -638,12 +668,111 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
-            // Release notes
-            DrawReleaseNotes("Release", release);
-            DrawReleaseNotes("Dev", dev);
+            // Changelog
+            if (package.Versions != null && package.Versions.Length > 0)
+            {
+                // Collect relevant versions:
+                // - Not installed: just the latest version
+                // - Installed: only versions newer than the installed one
+                var relevantVersions = new List<VersionInfo>();
+                if (!isInstalled)
+                {
+                    // Show the latest version that has release notes
+                    foreach (var v in package.Versions)
+                    {
+                        if (!string.IsNullOrEmpty(v.ReleaseNotes))
+                        {
+                            relevantVersions.Add(v);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // Versions array is newest-first; collect until we hit the installed version
+                    foreach (var v in package.Versions)
+                    {
+                        if (v.Version == installedVersion)
+                            break;
+                        if (!string.IsNullOrEmpty(v.ReleaseNotes))
+                            relevantVersions.Add(v);
+                    }
+                }
+
+                if (relevantVersions.Count > 0)
+                {
+                    EditorGUILayout.Space(12);
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Space(8);
+                    EditorGUILayout.BeginVertical();
+                    DrawSeparator();
+                    EditorGUILayout.Space(4);
+
+                    var title = isInstalled && hasUpdate
+                        ? $"What's New ({relevantVersions.Count} update{(relevantVersions.Count > 1 ? "s" : "")})"
+                        : "Release Notes";
+                    GUILayout.Label(title, _detailTitleStyle);
+                    EditorGUILayout.Space(4);
+
+                    foreach (var v in relevantVersions)
+                    {
+                        DrawReleaseNotesText(v.ReleaseNotes);
+                        EditorGUILayout.Space(8);
+                    }
+
+                    EditorGUILayout.EndVertical();
+                    GUILayout.Space(8);
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
 
             EditorGUILayout.Space(12);
             EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawVersionDropdown(string channelLabel, List<VersionInfo> versions,
+            ref int popupIndex, bool isInstalled, string installedVersion, PackageInfo package, Color color)
+        {
+            if (versions.Count == 0)
+                return;
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label(channelLabel, EditorStyles.miniLabel, GUILayout.Width(48));
+
+            var labels = new string[versions.Count];
+            for (int i = 0; i < versions.Count; i++)
+            {
+                labels[i] = "v" + versions[i].Version;
+                if (isInstalled && installedVersion == versions[i].Version)
+                    labels[i] += " (installed)";
+            }
+
+            // Default to the installed version if uninitialized
+            if (popupIndex < 0 && isInstalled && installedVersion != null)
+            {
+                for (int i = 0; i < versions.Count; i++)
+                {
+                    if (versions[i].Version == installedVersion)
+                    {
+                        popupIndex = i;
+                        break;
+                    }
+                }
+            }
+            popupIndex = Mathf.Clamp(popupIndex, 0, labels.Length - 1);
+            popupIndex = EditorGUILayout.Popup(popupIndex, labels, GUILayout.Height(20));
+
+            var selected = versions[popupIndex];
+            bool isSelectedInstalled = isInstalled && installedVersion == selected.Version;
+
+            GUI.enabled = !isSelectedInstalled;
+            GUI.color = color;
+            if (GUILayout.Button(isSelectedInstalled ? "Installed" : "Install", GUILayout.Width(66), GUILayout.Height(20)))
+                InstallPackage(package, selected);
+            GUI.color = Color.white;
+            GUI.enabled = true;
+
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawInstallButton(PackageInfo package, VersionInfo version, string channelLabel,
@@ -681,23 +810,12 @@ namespace PurrNet.Editor
             }
         }
 
-        private void DrawReleaseNotes(string channelLabel, VersionInfo version)
+        private void DrawReleaseNotesText(string notes)
         {
-            if (version == null || string.IsNullOrEmpty(version.ReleaseNotes))
-                return;
-
-            EditorGUILayout.Space(12);
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(8);
-            EditorGUILayout.BeginVertical();
-
-            DrawSeparator();
-            EditorGUILayout.Space(4);
-            GUILayout.Label($"{channelLabel} Release Notes (v{version.Version})", EditorStyles.boldLabel);
-            EditorGUILayout.Space(4);
-            var rendered = MarkdownToRichText(version.ReleaseNotes);
+            var rendered = MarkdownToRichText(notes);
             var content = new GUIContent(rendered);
-            var height = _releaseNotesStyle.CalcHeight(content, EditorGUIUtility.currentViewWidth - 24);
+            var width = EditorGUIUtility.currentViewWidth - 40;
+            var height = _releaseNotesStyle.CalcHeight(content, width);
             var rect = GUILayoutUtility.GetRect(content, _releaseNotesStyle, GUILayout.Height(height));
             EditorGUI.SelectableLabel(rect, rendered, _releaseNotesStyle);
 
@@ -709,10 +827,6 @@ namespace PurrNet.Editor
                 if (te != null)
                     te.selectIndex = te.cursorIndex;
             }
-
-            EditorGUILayout.EndVertical();
-            GUILayout.Space(8);
-            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawBadge(string text, Color color)
@@ -735,6 +849,17 @@ namespace PurrNet.Editor
         private void DrawSplitter(Rect rect)
         {
             EditorGUI.DrawRect(rect, _separatorColor);
+
+            // Draw grip dots in the center to hint it's draggable
+            float centerX = rect.x + rect.width / 2f;
+            float centerY = rect.y + rect.height / 2f;
+            var dotColor = new Color(0.35f, 0.35f, 0.35f, 1f);
+            for (int i = -2; i <= 2; i++)
+            {
+                var dotRect = new Rect(centerX - 1, centerY + i * 5, 2, 2);
+                EditorGUI.DrawRect(dotRect, dotColor);
+            }
+
             EditorGUIUtility.AddCursorRect(rect, MouseCursor.ResizeHorizontal);
         }
 
@@ -966,6 +1091,8 @@ namespace PurrNet.Editor
                 if (!result.Success)
                     EditorUtility.DisplayDialog("Install Failed", result.Error, "Ok");
 
+                _releasePopupIndex = -1;
+                _devPopupIndex = -1;
                 Repaint();
             }
             catch (Exception e)
