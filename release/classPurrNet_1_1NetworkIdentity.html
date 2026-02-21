@@ -108,15 +108,17 @@ Inheritance diagram for PurrNet.NetworkIdentity:</div>
   <img src="classPurrNet_1_1NetworkIdentity.png" usemap="#PurrNet.NetworkIdentity_map" alt=""/>
   <map id="PurrNet.NetworkIdentity_map" name="PurrNet.NetworkIdentity_map">
 <area href="classPurrNet_1_1NetworkAnimator.html" alt="PurrNet.NetworkAnimator" shape="rect" coords="215,112,420,136"/>
-<area href="classPurrNet_1_1NetworkBehaviour.html" alt="PurrNet.NetworkBehaviour" shape="rect" coords="215,168,420,192"/>
-<area href="classPurrNet_1_1NetworkBones.html" alt="PurrNet.NetworkBones" shape="rect" coords="215,224,420,248"/>
-<area href="classPurrNet_1_1NetworkOwnershipDebug.html" alt="PurrNet.NetworkOwnershipDebug" shape="rect" coords="215,280,420,304"/>
-<area href="classPurrNet_1_1NetworkOwnershipToggle.html" alt="PurrNet.NetworkOwnershipToggle" shape="rect" coords="215,336,420,360"/>
-<area href="classPurrNet_1_1NetworkReflection.html" alt="PurrNet.NetworkReflection" shape="rect" coords="215,392,420,416"/>
-<area href="classPurrNet_1_1NetworkServerToggle.html" alt="PurrNet.NetworkServerToggle" shape="rect" coords="215,448,420,472"/>
-<area href="classPurrNet_1_1NetworkTransform.html" alt="PurrNet.NetworkTransform" shape="rect" coords="215,504,420,528"/>
-<area href="classPurrNet_1_1PlayerIdentity.html" alt="PurrNet.PlayerIdentity&lt; T &gt;" shape="rect" coords="215,560,420,584"/>
-<area href="classPurrNet_1_1PrefabLink.html" alt="PurrNet.PrefabLink" shape="rect" coords="215,616,420,640"/>
+<area href="classPurrNet_1_1NetworkAudioSource.html" alt="PurrNet.NetworkAudioSource" shape="rect" coords="215,168,420,192"/>
+<area href="classPurrNet_1_1NetworkBehaviour.html" alt="PurrNet.NetworkBehaviour" shape="rect" coords="215,224,420,248"/>
+<area href="classPurrNet_1_1NetworkBones.html" alt="PurrNet.NetworkBones" shape="rect" coords="215,280,420,304"/>
+<area href="classPurrNet_1_1NetworkOwnershipDebug.html" alt="PurrNet.NetworkOwnershipDebug" shape="rect" coords="215,336,420,360"/>
+<area href="classPurrNet_1_1NetworkOwnershipToggle.html" alt="PurrNet.NetworkOwnershipToggle" shape="rect" coords="215,392,420,416"/>
+<area href="classPurrNet_1_1NetworkReflection.html" alt="PurrNet.NetworkReflection" shape="rect" coords="215,448,420,472"/>
+<area href="classPurrNet_1_1NetworkRigidbody.html" alt="PurrNet.NetworkRigidbody" shape="rect" coords="215,504,420,528"/>
+<area href="classPurrNet_1_1NetworkServerToggle.html" alt="PurrNet.NetworkServerToggle" shape="rect" coords="215,560,420,584"/>
+<area href="classPurrNet_1_1NetworkTransform.html" alt="PurrNet.NetworkTransform" shape="rect" coords="215,616,420,640"/>
+<area href="classPurrNet_1_1PlayerIdentity.html" alt="PurrNet.PlayerIdentity&lt; T &gt;" shape="rect" coords="215,672,420,696"/>
+<area href="classPurrNet_1_1PrefabLink.html" alt="PurrNet.PrefabLink" shape="rect" coords="215,728,420,752"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -144,29 +146,23 @@ Task&#160;</td><td class="memItemRight" valign="bottom"><b>GetNextId</b> (RPCTyp
 <tr class="memitem:a477055310986b6fcc0118aa78faf3dcd"><td class="memItemLeft" align="right" valign="top"><a id="a477055310986b6fcc0118aa78faf3dcd" name="a477055310986b6fcc0118aa78faf3dcd"></a>
 <a class="el" href="structPurrNet_1_1Pooling_1_1DisposableList.html">DisposableList</a>&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetObservers</b> (<a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
 <tr class="separator:a477055310986b6fcc0118aa78faf3dcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab342316425b52cd9c394d1c336723823"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab342316425b52cd9c394d1c336723823">SendRPC&lt; T &gt;</a> (Type statisticsParent, <a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a> rpcModule, T packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
-<tr class="separator:ab342316425b52cd9c394d1c336723823"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add2c76576fb0a0d453d5b30839594b4d"><td class="memItemLeft" align="right" valign="top"><a id="add2c76576fb0a0d453d5b30839594b4d" name="add2c76576fb0a0d453d5b30839594b4d"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendRPCChild</b> (Type statisticsParent, <a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a> rpcModule, <a class="el" href="structPurrNet_1_1ChildRPCPacket.html">ChildRPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
+<tr class="separator:add2c76576fb0a0d453d5b30839594b4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb39265eb17f294a61e3f116c9cb9436"><td class="memItemLeft" align="right" valign="top"><a id="abb39265eb17f294a61e3f116c9cb9436" name="abb39265eb17f294a61e3f116c9cb9436"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendRPCNormal</b> (Type statisticsParent, <a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a> rpcModule, <a class="el" href="structPurrNet_1_1RPCPacket.html">RPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
+<tr class="separator:abb39265eb17f294a61e3f116c9cb9436"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab41e5f944b443a71b53400a671322da6"><td class="memItemLeft" align="right" valign="top"><a id="ab41e5f944b443a71b53400a671322da6" name="ab41e5f944b443a71b53400a671322da6"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>ValidateSendingRPC</b> (<a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, out <a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a> module)</td></tr>
 <tr class="separator:ab41e5f944b443a71b53400a671322da6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a50a157e6278c7e29c250a2e89a8bf198"><td class="memItemLeft" align="right" valign="top"><a id="a50a157e6278c7e29c250a2e89a8bf198" name="a50a157e6278c7e29c250a2e89a8bf198"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>ValidateReceivingRPC</b> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, <a class="el" href="interfacePurrNet_1_1IRpc.html">IRpc</a> data, bool asServer)</td></tr>
-<tr class="separator:a50a157e6278c7e29c250a2e89a8bf198"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a40cee5a878093f79a2eaace22dffdc94"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a40cee5a878093f79a2eaace22dffdc94">ValidateReceivingRPC&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, T data, bool asServer)</td></tr>
+<tr class="separator:a40cee5a878093f79a2eaace22dffdc94"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad3271c166de2e56f4f8d1d9f77b71b3c"><td class="memItemLeft" align="right" valign="top"><a id="ad3271c166de2e56f4f8d1d9f77b71b3c" name="ad3271c166de2e56f4f8d1d9f77b71b3c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T packet, Channel method=Channel.ReliableOrdered)</td></tr>
 <tr class="separator:ad3271c166de2e56f4f8d1d9f77b71b3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4237540d4b338c8134fb07612a3c764b"><td class="memItemLeft" align="right" valign="top"><a id="a4237540d4b338c8134fb07612a3c764b" name="a4237540d4b338c8134fb07612a3c764b"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a4237540d4b338c8134fb07612a3c764b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aad1e4969d0d608cf45e304d0ddaa2cd6"><td class="memItemLeft" align="right" valign="top"><a id="aad1e4969d0d608cf45e304d0ddaa2cd6" name="aad1e4969d0d608cf45e304d0ddaa2cd6"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, T data, Channel method=Channel.ReliableOrdered)</td></tr>
 <tr class="separator:aad1e4969d0d608cf45e304d0ddaa2cd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a969732aa451f25fdf78a0e9a63a050af"><td class="memItemLeft" align="right" valign="top"><a id="a969732aa451f25fdf78a0e9a63a050af" name="a969732aa451f25fdf78a0e9a63a050af"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send</b> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a969732aa451f25fdf78a0e9a63a050af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6a450108a12abd8d3d0c2795c143847c"><td class="memItemLeft" align="right" valign="top"><a id="a6a450108a12abd8d3d0c2795c143847c" name="a6a450108a12abd8d3d0c2795c143847c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToServer&lt; T &gt;</b> (T packet, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a6a450108a12abd8d3d0c2795c143847c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af42ac01c6542efe7a2e8c29c3bcff710"><td class="memItemLeft" align="right" valign="top"><a id="af42ac01c6542efe7a2e8c29c3bcff710" name="af42ac01c6542efe7a2e8c29c3bcff710"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ResetIsSetup</b> ()</td></tr>
 <tr class="memdesc:af42ac01c6542efe7a2e8c29c3bcff710"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used for internal cleanup, avoid using this.  <br /></td></tr>
@@ -192,9 +188,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsController</b> (<a 
 <tr class="memitem:af006d59ad60196aeb9444640ae07c203"><td class="memItemLeft" align="right" valign="top"><a id="af006d59ad60196aeb9444640ae07c203" name="af006d59ad60196aeb9444640ae07c203"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsObserver</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="separator:af006d59ad60196aeb9444640ae07c203"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a968b355862ed69cc2c04d5788bc4c68f"><td class="memItemLeft" align="right" valign="top"><a id="a968b355862ed69cc2c04d5788bc4c68f" name="a968b355862ed69cc2c04d5788bc4c68f"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnReceivedRpc</b> (int <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b">id</a>, <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> stream, <a class="el" href="structPurrNet_1_1RPCPacket.html">RPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, bool asServer)</td></tr>
-<tr class="separator:a968b355862ed69cc2c04d5788bc4c68f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5a2e39776087a57c006466fb4e550923"><td class="memItemLeft" align="right" valign="top"><a id="a5a2e39776087a57c006466fb4e550923" name="a5a2e39776087a57c006466fb4e550923"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnReceivedRpc</b> (int <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b">id</a>, <a class="el" href="structPurrNet_1_1RPCPacket.html">RPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, bool asServer)</td></tr>
+<tr class="separator:a5a2e39776087a57c006466fb4e550923"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a41ae9e9354aa8867befdcbf0497b12c6"><td class="memItemLeft" align="right" valign="top"><a id="a41ae9e9354aa8867befdcbf0497b12c6" name="a41ae9e9354aa8867befdcbf0497b12c6"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>QueueOnSpawned</b> (Action action)</td></tr>
 <tr class="separator:a41ae9e9354aa8867befdcbf0497b12c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -208,9 +204,6 @@ GameObject&#160;</td><td class="memItemRight" valign="bottom"><b>Duplicate</b> (
 <tr class="memitem:a14dde094ebd386c9a661f59db0f9779a"><td class="memItemLeft" align="right" valign="top"><a id="a14dde094ebd386c9a661f59db0f9779a" name="a14dde094ebd386c9a661f59db0f9779a"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsSpawned</b> (bool asServer)</td></tr>
 <tr class="separator:a14dde094ebd386c9a661f59db0f9779a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a494f698a5ae3d51ad6c40748e9d9a5fa"><td class="memItemLeft" align="right" valign="top"><a id="a494f698a5ae3d51ad6c40748e9d9a5fa" name="a494f698a5ae3d51ad6c40748e9d9a5fa"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsNotOwnerPredicate</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
-<tr class="separator:a494f698a5ae3d51ad6c40748e9d9a5fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a3245425f3960807888182357065557"><td class="memItemLeft" align="right" valign="top"><a id="a7a3245425f3960807888182357065557" name="a7a3245425f3960807888182357065557"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Despawn</b> ()</td></tr>
 <tr class="separator:a7a3245425f3960807888182357065557"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -315,9 +308,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasRemoveOwnershipAut
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:ac2a7b322c09b52bd94e807d7175446e2"><td class="memItemLeft" align="right" valign="top"><a id="ac2a7b322c09b52bd94e807d7175446e2" name="ac2a7b322c09b52bd94e807d7175446e2"></a>
-static void&#160;</td><td class="memItemRight" valign="bottom"><b>OnReceivedRpc</b> (int <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b">id</a>, <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> stream, <a class="el" href="structPurrNet_1_1StaticRPCPacket.html">StaticRPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, bool asServer)</td></tr>
-<tr class="separator:ac2a7b322c09b52bd94e807d7175446e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abf5e87e5ea5173cbb90b4c4d5bdf6956"><td class="memItemLeft" align="right" valign="top"><a id="abf5e87e5ea5173cbb90b4c4d5bdf6956" name="abf5e87e5ea5173cbb90b4c4d5bdf6956"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>OnReceivedRpc</b> (int <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b">id</a>, <a class="el" href="structPurrNet_1_1StaticRPCPacket.html">StaticRPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, bool asServer)</td></tr>
+<tr class="separator:abf5e87e5ea5173cbb90b4c4d5bdf6956"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9b7ee2a31dcbc75d07dfd0109e693754"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a9b7ee2a31dcbc75d07dfd0109e693754">Spawn</a> (GameObject go, GameObject prefab, <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> manager=null)</td></tr>
 <tr class="memdesc:a9b7ee2a31dcbc75d07dfd0109e693754"><td class="mdescLeft">&#160;</td><td class="mdescRight">Spawn any child objects of this object.   <a href="classPurrNet_1_1NetworkIdentity.html#a9b7ee2a31dcbc75d07dfd0109e693754">More...</a><br /></td></tr>
 <tr class="separator:a9b7ee2a31dcbc75d07dfd0109e693754"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -757,7 +750,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#ab80b05c91be6ae800af6302be6ef3ab6">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkReflection.html#a6c6c4ef81394ea9af3125db592d6cc6b">PurrNet.NetworkReflection</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#abb8906c3a6f0b96f4d572f8a8d15eb91">PurrNet.StateMachine.StateMachine</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkAudioSource.html#a0266daf624d14df5048c61104b401201">PurrNet.NetworkAudioSource</a>, <a class="el" href="classPurrNet_1_1NetworkTransform.html#ab80b05c91be6ae800af6302be6ef3ab6">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkReflection.html#a6c6c4ef81394ea9af3125db592d6cc6b">PurrNet.NetworkReflection</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#abb8906c3a6f0b96f4d572f8a8d15eb91">PurrNet.StateMachine.StateMachine</a>.</p>
 
 </div>
 </div>
@@ -1129,7 +1122,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 
 <p>Called when this object is spawned This is only called once even if in host mode.  </p>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a4b3b472f61dfbab82d4c32b5e7e7c987">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a33a4bed8502eb8cc8439bc768ee79a19">PurrNet.NetworkBones</a>, <a class="el" href="classPurrNet_1_1PlayerIdentity.html#a69d8f1f438af1e8d66579449dbb51237">PurrNet.PlayerIdentity&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1NetworkOwnershipToggle.html#a5c70caa8bfff557fd891124fa8eb0972">PurrNet.NetworkOwnershipToggle</a>, and <a class="el" href="classPurrNet_1_1NetworkServerToggle.html#a00057cf0d58404458520bbdee31f7ad9">PurrNet.NetworkServerToggle</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a4b3b472f61dfbab82d4c32b5e7e7c987">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a33a4bed8502eb8cc8439bc768ee79a19">PurrNet.NetworkBones</a>, <a class="el" href="classPurrNet_1_1PlayerIdentity.html#a69d8f1f438af1e8d66579449dbb51237">PurrNet.PlayerIdentity&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1NetworkOwnershipToggle.html#a5c70caa8bfff557fd891124fa8eb0972">PurrNet.NetworkOwnershipToggle</a>, <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a1f5307a5ffaa725eea3fe068a2875216">PurrNet.NetworkRigidbody</a>, and <a class="el" href="classPurrNet_1_1NetworkServerToggle.html#a00057cf0d58404458520bbdee31f7ad9">PurrNet.NetworkServerToggle</a>.</p>
 
 </div>
 </div>
@@ -1195,54 +1188,6 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 <p>Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.  </p>
 
 <p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkBones.html#aafc635ff3b42490da93f937f1b57aa92">PurrNet.NetworkBones</a>.</p>
-
-</div>
-</div>
-<a id="ab342316425b52cd9c394d1c336723823" name="ab342316425b52cd9c394d1c336723823"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab342316425b52cd9c394d1c336723823">&#9670;&#160;</a></span>SendRPC&lt; T &gt;()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void PurrNet.NetworkIdentity.SendRPC&lt; T &gt; </td>
-          <td>(</td>
-          <td class="paramtype">Type&#160;</td>
-          <td class="paramname"><em>statisticsParent</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a>&#160;</td>
-          <td class="paramname"><em>rpcModule</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">T&#160;</td>
-          <td class="paramname"><em>packet</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a>&#160;</td>
-          <td class="paramname"><em>signature</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<div class="typeconstraint">
-<dl><dt><b>Type Constraints</b></dt><dd>
-<table border="0" cellspacing="2" cellpadding="0">
-<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>IRpc</em></td><td>&#160;</td></tr>
-</table>
-</dd>
-</dl>
-</div>
 
 </div>
 </div>
@@ -1332,6 +1277,55 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a40cee5a878093f79a2eaace22dffdc94" name="a40cee5a878093f79a2eaace22dffdc94"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a40cee5a878093f79a2eaace22dffdc94">&#9670;&#160;</a></span>ValidateReceivingRPC&lt; T &gt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.NetworkIdentity.ValidateReceivingRPC&lt; T &gt; </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a>&#160;</td>
+          <td class="paramname"><em>info</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a>&#160;</td>
+          <td class="paramname"><em>signature</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">T&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>asServer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="typeconstraint">
+<dl><dt><b>Type Constraints</b></dt><dd>
+<table border="0" cellspacing="2" cellpadding="0">
+<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>struct</em></td><td>&#160;</td></tr>
+<tr><td valign="top"><em>T</em></td><td>&#160;:</td><td valign="top"><em>IRpc</em></td><td>&#160;</td></tr>
+</table>
+</dd>
+</dl>
+</div>
 
 </div>
 </div>

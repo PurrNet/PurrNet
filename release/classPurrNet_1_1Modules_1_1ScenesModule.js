@@ -12,6 +12,7 @@ var classPurrNet_1_1Modules_1_1ScenesModule =
     [ "TryGetSceneID", "classPurrNet_1_1Modules_1_1ScenesModule.html#a2e978a865fbc025e7bae081cadb35854", null ],
     [ "UnloadSceneAsync", "classPurrNet_1_1Modules_1_1ScenesModule.html#ab42d89665d1c76ad56b12826226bceba", null ],
     [ "UnloadSceneAsync", "classPurrNet_1_1Modules_1_1ScenesModule.html#a93106f912fba2a6af4f93a6c4cc53b44", null ],
+    [ "UnloadSceneAsync", "classPurrNet_1_1Modules_1_1ScenesModule.html#aa70e3c3e527cb8a47bbdb1d509efa757", null ],
     [ "UnloadSceneAsync", "classPurrNet_1_1Modules_1_1ScenesModule.html#a329622e10dea6bbbb6269bcaa7ddec8a", null ],
     [ "UpdateSceneVisibility", "classPurrNet_1_1Modules_1_1ScenesModule.html#a8e41cea5176b89f712ea020c40591512", null ],
     [ "onPostSceneLoaded", "classPurrNet_1_1Modules_1_1ScenesModule.html#ac99c38db7b8de7b34047a8ca1d38adf9", null ],

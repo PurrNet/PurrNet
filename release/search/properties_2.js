@@ -1,4 +1,9 @@
 var searchData=
 [
-  ['floatingpoint_0',['floatingPoint',['../classPurrNet_1_1Modules_1_1TickManager.html#a227da955ded5ed38b90fa6198666e5b2',1,'PurrNet::Modules::TickManager']]]
+  ['clientstate_0',['clientState',['../classPurrNet_1_1NetworkManager.html#a20f3ee5a2f36a4c1e58a02eac015d4e7',1,'PurrNet.NetworkManager.clientState()'],['../classPurrNet_1_1RawNetManager.html#ac76ac19005125605f4e3f549088eb9ae',1,'PurrNet.RawNetManager.clientState()']]],
+  ['clienttoserverconn_1',['clientToServerConn',['../classPurrNet_1_1NetworkManager.html#a9c80a6e87b8482c29074affab43e774f',1,'PurrNet::NetworkManager']]],
+  ['clip_2',['clip',['../classPurrNet_1_1NetworkAudioSource.html#a3056ce62df54392e48df8a1c2dde9817',1,'PurrNet::NetworkAudioSource']]],
+  ['complexity_3',['complexity',['../classPurrNet_1_1AlwaysVisibleRule.html#ac2ea75d00d99c96c445e0e8c95df62ee',1,'PurrNet.AlwaysVisibleRule.complexity()'],['../classPurrNet_1_1DistanceRule.html#ac1135fe063d3f36eaaaa58e0be7fcdb3',1,'PurrNet.DistanceRule.complexity()'],['../interfacePurrNet_1_1INetworkVisibilityRule.html#aa0f2df6b3a1fb47b835bfdef145eb1ca',1,'PurrNet.INetworkVisibilityRule.complexity()'],['../classPurrNet_1_1NetworkVisibilityRule.html#a806b8fc0e35743f143abc3f35ef3a490',1,'PurrNet.NetworkVisibilityRule.complexity()'],['../classPurrNet_1_1NoVisibilityRule.html#ad847f8d8794fe97b5330315afab022c0',1,'PurrNet.NoVisibilityRule.complexity()']]],
+  ['cookiescope_4',['cookieScope',['../classPurrNet_1_1NetworkManager.html#acb61530123b279cdc3eae54c4d2e4494',1,'PurrNet::NetworkManager']]],
+  ['count_5',['Count',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a454c38bc9b5f86ea7afddedba3f6cc77',1,'PurrNet.Modules.SimpleHistory.Count()'],['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a58bc1b3b876368825553970679eb8d3c',1,'PurrNet.Collections.PurrHashSet.Count()'],['../classPurrNet_1_1SyncDictionary.html#aa885b20b3d2d126b30de341bbf6c1dab',1,'PurrNet.SyncDictionary.Count()'],['../classPurrNet_1_1SyncHashSet.html#a45fc5b8532e26ef4cbd861d493db3e67',1,'PurrNet.SyncHashSet.Count()'],['../classPurrNet_1_1SyncList.html#a07ddff797ff9fdea2e57eff9432650f6',1,'PurrNet.SyncList.Count()']]]
 ];

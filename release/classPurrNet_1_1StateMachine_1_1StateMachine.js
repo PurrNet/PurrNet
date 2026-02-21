@@ -2,6 +2,9 @@ var classPurrNet_1_1StateMachine_1_1StateMachine =
 [
     [ "AddState", "classPurrNet_1_1StateMachine_1_1StateMachine.html#a8ece992d3564f244d9f04a2e0a47374a", null ],
     [ "InsertState", "classPurrNet_1_1StateMachine_1_1StateMachine.html#ae3d87e303db0033890486ef496c52830", null ],
+    [ "IsCurrentState", "classPurrNet_1_1StateMachine_1_1StateMachine.html#abac2079b9b1f736538a96850059b4292", null ],
+    [ "IsCurrentState< T >", "classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a", null ],
+    [ "IsCurrentState< T >", "classPurrNet_1_1StateMachine_1_1StateMachine.html#a8bf5b7be2c600925d9deb94b6c293f96", null ],
     [ "Next", "classPurrNet_1_1StateMachine_1_1StateMachine.html#a255bac9ecb047fa94ff528f3da729850", null ],
     [ "Next< T >", "classPurrNet_1_1StateMachine_1_1StateMachine.html#a19d42340b0694b38379338795c8409a9", null ],
     [ "NextValid", "classPurrNet_1_1StateMachine_1_1StateMachine.html#a6cd8b4dffcce361cbc19d740368bd525", null ],

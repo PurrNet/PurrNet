@@ -110,6 +110,9 @@ Inheritance diagram for PurrNet.Packing.BitPacker:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a9d8eb0f9de0356825574a6f8dc4500da"><td class="memItemLeft" align="right" valign="top"><a id="a9d8eb0f9de0356825574a6f8dc4500da" name="a9d8eb0f9de0356825574a6f8dc4500da"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>AdvanceBit</b> ()</td></tr>
+<tr class="separator:a9d8eb0f9de0356825574a6f8dc4500da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0695b4b7100fa3a6752d727d35953e73"><td class="memItemLeft" align="right" valign="top"><a id="a0695b4b7100fa3a6752d727d35953e73" name="a0695b4b7100fa3a6752d727d35953e73"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>PickleInto</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer, LZ4Level level=LZ4Level.L00_FAST)</td></tr>
 <tr class="memdesc:a0695b4b7100fa3a6752d727d35953e73"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pickles the current buffer into the provided <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>.  <br /></td></tr>
@@ -126,15 +129,24 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>UnpickleFrom</b> (<a 
 <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Pickle</b> (LZ4Level level=LZ4Level.L00_FAST)</td></tr>
 <tr class="memdesc:aa16a5c2c850b316daae5f4be504d047d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pickles the current buffer into a new <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>. Don't forget to dispose of the returned <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>.  <br /></td></tr>
 <tr class="separator:aa16a5c2c850b316daae5f4be504d047d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a983082b8726c5cd9e9aa3087c66cbcec"><td class="memItemLeft" align="right" valign="top"><a id="a983082b8726c5cd9e9aa3087c66cbcec" name="a983082b8726c5cd9e9aa3087c66cbcec"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Advance</b> (int count)</td></tr>
-<tr class="separator:a983082b8726c5cd9e9aa3087c66cbcec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8f9dee3a74ba810ac3e7db9d4c1f8c2"><td class="memItemLeft" align="right" valign="top"><a id="ab8f9dee3a74ba810ac3e7db9d4c1f8c2" name="ab8f9dee3a74ba810ac3e7db9d4c1f8c2"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>AdvanceBytes</b> (int count)</td></tr>
+<tr class="separator:ab8f9dee3a74ba810ac3e7db9d4c1f8c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3c2e7f3649512c9330b2cf5d890844f8"><td class="memItemLeft" align="right" valign="top"><a id="a3c2e7f3649512c9330b2cf5d890844f8" name="a3c2e7f3649512c9330b2cf5d890844f8"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>AdvanceBits</b> (int bitCount)</td></tr>
 <tr class="separator:a3c2e7f3649512c9330b2cf5d890844f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a118afca6a385397a3756edc2fda61720"><td class="memItemLeft" align="right" valign="top"><a id="a118afca6a385397a3756edc2fda61720" name="a118afca6a385397a3756edc2fda61720"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>AdvanceOneBitAndClear</b> ()</td></tr>
+<tr class="separator:a118afca6a385397a3756edc2fda61720"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadf8f286bf7c8ac5b41ce8fbc7316d4d"><td class="memItemLeft" align="right" valign="top"><a id="aadf8f286bf7c8ac5b41ce8fbc7316d4d" name="aadf8f286bf7c8ac5b41ce8fbc7316d4d"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>AdvanceOneBitAndSet</b> ()</td></tr>
+<tr class="separator:aadf8f286bf7c8ac5b41ce8fbc7316d4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac04e3e8e91cee8d309aea15631b554ac"><td class="memItemLeft" align="right" valign="top"><a id="ac04e3e8e91cee8d309aea15631b554ac" name="ac04e3e8e91cee8d309aea15631b554ac"></a>
 Memory&lt; byte &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetMemory</b> (int sizeHint=0)</td></tr>
 <tr class="separator:ac04e3e8e91cee8d309aea15631b554ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e098559d6233c8cfea4ce391efaaeb1"><td class="memItemLeft" align="right" valign="top"><a id="a2e098559d6233c8cfea4ce391efaaeb1" name="a2e098559d6233c8cfea4ce391efaaeb1"></a>
+ArraySegment&lt; byte &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>AsSegment</b> ()</td></tr>
+<tr class="separator:a2e098559d6233c8cfea4ce391efaaeb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e9fd1d51de5b5b14919856e325eee52"><td class="memItemLeft" align="right" valign="top"><a id="a9e9fd1d51de5b5b14919856e325eee52" name="a9e9fd1d51de5b5b14919856e325eee52"></a>
 Span&lt; byte &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetSpan</b> (int sizeHint=0)</td></tr>
 <tr class="separator:a9e9fd1d51de5b5b14919856e325eee52"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -168,6 +180,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SkipBytes</b> (uint s
 <tr class="memitem:ab9b7ba1c522936afac0e963b82f6e630"><td class="memItemLeft" align="right" valign="top"><a id="ab9b7ba1c522936afac0e963b82f6e630" name="ab9b7ba1c522936afac0e963b82f6e630"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ResetPositionAndMode</b> (bool readMode)</td></tr>
 <tr class="separator:ab9b7ba1c522936afac0e963b82f6e630"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0a5a264341f453577430f8da327f8ccc"><td class="memItemLeft" align="right" valign="top"><a id="a0a5a264341f453577430f8da327f8ccc" name="a0a5a264341f453577430f8da327f8ccc"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>EnsurePadding</b> ()</td></tr>
+<tr class="separator:a0a5a264341f453577430f8da327f8ccc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae4a6f3f914f0bea0e38880ec3eb74b01"><td class="memItemLeft" align="right" valign="top"><a id="ae4a6f3f914f0bea0e38880ec3eb74b01" name="ae4a6f3f914f0bea0e38880ec3eb74b01"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EnsureBitsExist</b> (int bits)</td></tr>
 <tr class="separator:ae4a6f3f914f0bea0e38880ec3eb74b01"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -179,9 +194,12 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>HandleNullScenarios&l
 <tr class="memitem:a90ac3c0ae6a555c5fef9eb4b20180c86"><td class="memItemLeft" align="right" valign="top"><a id="a90ac3c0ae6a555c5fef9eb4b20180c86" name="a90ac3c0ae6a555c5fef9eb4b20180c86"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>ReadIsNull&lt; T &gt;</b> (ref T value)</td></tr>
 <tr class="separator:a90ac3c0ae6a555c5fef9eb4b20180c86"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c251bc00375396d65d8c07604c05e88"><td class="memItemLeft" align="right" valign="top"><a id="a9c251bc00375396d65d8c07604c05e88" name="a9c251bc00375396d65d8c07604c05e88"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBits</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
-<tr class="separator:a9c251bc00375396d65d8c07604c05e88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a83807e8e5803ff3314a2c82b580d098a"><td class="memItemLeft" align="right" valign="top"><a id="a83807e8e5803ff3314a2c82b580d098a" name="a83807e8e5803ff3314a2c82b580d098a"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBitDataWithoutConsumingIt</b> (<a class="el" href="structPurrNet_1_1Packing_1_1BitData.html">BitData</a> data)</td></tr>
+<tr class="separator:a83807e8e5803ff3314a2c82b580d098a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab281f8c97a9ee18647121bfd913e5ca3"><td class="memItemLeft" align="right" valign="top"><a id="ab281f8c97a9ee18647121bfd913e5ca3" name="ab281f8c97a9ee18647121bfd913e5ca3"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBitsWithoutConsumingIt</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer, int bits)</td></tr>
+<tr class="separator:ab281f8c97a9ee18647121bfd913e5ca3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a62bd8502c1eea2562cce7d8f7f19729e"><td class="memItemLeft" align="right" valign="top"><a id="a62bd8502c1eea2562cce7d8f7f19729e" name="a62bd8502c1eea2562cce7d8f7f19729e"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBits</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer, int bits)</td></tr>
 <tr class="separator:a62bd8502c1eea2562cce7d8f7f19729e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -191,24 +209,24 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBits</b> (ulong 
 <tr class="memitem:a45509b0378fa1dc32d1f732ad629e81a"><td class="memItemLeft" align="right" valign="top"><a id="a45509b0378fa1dc32d1f732ad629e81a" name="a45509b0378fa1dc32d1f732ad629e81a"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBit</b> (bool data)</td></tr>
 <tr class="separator:a45509b0378fa1dc32d1f732ad629e81a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa99a0691b67015391adb9f1845c7f2f5"><td class="memItemLeft" align="right" valign="top"><a id="aa99a0691b67015391adb9f1845c7f2f5" name="aa99a0691b67015391adb9f1845c7f2f5"></a>
+unsafe bool&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBit</b> ()</td></tr>
+<tr class="separator:aa99a0691b67015391adb9f1845c7f2f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0d47222bc3e6b57d150f9f3a7364331b"><td class="memItemLeft" align="right" valign="top"><a id="a0d47222bc3e6b57d150f9f3a7364331b" name="a0d47222bc3e6b57d150f9f3a7364331b"></a>
 unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBitsWithoutChecks</b> (ulong data, byte bits)</td></tr>
 <tr class="separator:a0d47222bc3e6b57d150f9f3a7364331b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a225ba680ea5115354c8b2b570926e1dc"><td class="memItemLeft" align="right" valign="top"><a id="a225ba680ea5115354c8b2b570926e1dc" name="a225ba680ea5115354c8b2b570926e1dc"></a>
-unsafe ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBits</b> (byte bits)</td></tr>
-<tr class="separator:a225ba680ea5115354c8b2b570926e1dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1b2ee4d6eb179bb14a62815a4942248d"><td class="memItemLeft" align="right" valign="top"><a id="a1b2ee4d6eb179bb14a62815a4942248d" name="a1b2ee4d6eb179bb14a62815a4942248d"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBytes</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> target, int count)</td></tr>
-<tr class="separator:a1b2ee4d6eb179bb14a62815a4942248d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9aacb4b2ce73eb0c03a23a7ff076c2e"><td class="memItemLeft" align="right" valign="top"><a id="af9aacb4b2ce73eb0c03a23a7ff076c2e" name="af9aacb4b2ce73eb0c03a23a7ff076c2e"></a>
+ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBits</b> (byte bits)</td></tr>
+<tr class="separator:af9aacb4b2ce73eb0c03a23a7ff076c2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5186900a300f10fd9d7ee784b178ae03"><td class="memItemLeft" align="right" valign="top"><a id="a5186900a300f10fd9d7ee784b178ae03" name="a5186900a300f10fd9d7ee784b178ae03"></a>
+unsafe ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBitsWithoutChecks</b> (byte bits)</td></tr>
+<tr class="separator:a5186900a300f10fd9d7ee784b178ae03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a107c1d8857be6f10bd0f997fb9a7c130"><td class="memItemLeft" align="right" valign="top"><a id="a107c1d8857be6f10bd0f997fb9a7c130" name="a107c1d8857be6f10bd0f997fb9a7c130"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBytes</b> (Span&lt; byte &gt; destination)</td></tr>
 <tr class="separator:a107c1d8857be6f10bd0f997fb9a7c130"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a571bcc6c34debe4296c132fa1ad42739"><td class="memItemLeft" align="right" valign="top"><a id="a571bcc6c34debe4296c132fa1ad42739" name="a571bcc6c34debe4296c132fa1ad42739"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBytes</b> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> byteData)</td></tr>
 <tr class="separator:a571bcc6c34debe4296c132fa1ad42739"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abd11a9142b5ec8d8d6a150a43a595b91"><td class="memItemLeft" align="right" valign="top"><a id="abd11a9142b5ec8d8d6a150a43a595b91" name="abd11a9142b5ec8d8d6a150a43a595b91"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBytes</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> other, int count)</td></tr>
-<tr class="separator:abd11a9142b5ec8d8d6a150a43a595b91"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60634b2535756cd6897d44e6a39cc97d"><td class="memItemLeft" align="right" valign="top"><a id="a60634b2535756cd6897d44e6a39cc97d" name="a60634b2535756cd6897d44e6a39cc97d"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBytes</b> (ReadOnlySpan&lt; byte &gt; bytes)</td></tr>
 <tr class="separator:a60634b2535756cd6897d44e6a39cc97d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -224,6 +242,9 @@ string&#160;</td><td class="memItemRight" valign="bottom"><b>ReadString</b> (Enc
 <tr class="memitem:a9919266c2e5f8969a45a3b3e4c766a5e"><td class="memItemLeft" align="right" valign="top"><a id="a9919266c2e5f8969a45a3b3e4c766a5e" name="a9919266c2e5f8969a45a3b3e4c766a5e"></a>
 char&#160;</td><td class="memItemRight" valign="bottom"><b>ReadChar</b> ()</td></tr>
 <tr class="separator:a9919266c2e5f8969a45a3b3e4c766a5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae8a7807d0b27fc747ef13dfd4a958d5c"><td class="memItemLeft" align="right" valign="top"><a id="ae8a7807d0b27fc747ef13dfd4a958d5c" name="ae8a7807d0b27fc747ef13dfd4a958d5c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>ResetFlagAtAndMovePosition</b> (int positionInBits)</td></tr>
+<tr class="separator:ae8a7807d0b27fc747ef13dfd4a958d5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af0342c09496edcac3ff1901454bbe71c"><td class="memItemLeft" align="right" valign="top"><a id="af0342c09496edcac3ff1901454bbe71c" name="af0342c09496edcac3ff1901454bbe71c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteAt</b> (int positionInBits, bool data)</td></tr>
 <tr class="separator:af0342c09496edcac3ff1901454bbe71c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -233,6 +254,15 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBitsAt</b> (int 
 <tr class="memitem:a039cd0fbbf9020617d65e1de3e3b67a1"><td class="memItemLeft" align="right" valign="top"><a id="a039cd0fbbf9020617d65e1de3e3b67a1" name="a039cd0fbbf9020617d65e1de3e3b67a1"></a>
 <a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Duplicate</b> ()</td></tr>
 <tr class="separator:a039cd0fbbf9020617d65e1de3e3b67a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5fe102b4921b69dcaa91fca7a46f1415"><td class="memItemLeft" align="right" valign="top"><a id="a5fe102b4921b69dcaa91fca7a46f1415" name="a5fe102b4921b69dcaa91fca7a46f1415"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>Equals</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> other)</td></tr>
+<tr class="separator:a5fe102b4921b69dcaa91fca7a46f1415"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a47f7e9c6f36dd8dea1a9822fed6395bd"><td class="memItemLeft" align="right" valign="top"><a id="a47f7e9c6f36dd8dea1a9822fed6395bd" name="a47f7e9c6f36dd8dea1a9822fed6395bd"></a>
+uint&#160;</td><td class="memItemRight" valign="bottom"><b>GetDeterministicHash32</b> ()</td></tr>
+<tr class="separator:a47f7e9c6f36dd8dea1a9822fed6395bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6d483ffee0fa057ed334176539af566f"><td class="memItemLeft" align="right" valign="top"><a id="a6d483ffee0fa057ed334176539af566f" name="a6d483ffee0fa057ed334176539af566f"></a>
+unsafe ulong&#160;</td><td class="memItemRight" valign="bottom"><b>GetDeterministicHash64</b> ()</td></tr>
+<tr class="separator:a6d483ffee0fa057ed334176539af566f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae35d8082f39196c70e594ed81e6fd927"><td class="memItemLeft" align="right" valign="top"><a id="ae35d8082f39196c70e594ed81e6fd927" name="ae35d8082f39196c70e594ed81e6fd927"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteInteger</b> (long data, long minValue, long maxValue, byte bitCount)</td></tr>
 <tr class="separator:ae35d8082f39196c70e594ed81e6fd927"><td class="memSeparator" colspan="2">&#160;</td></tr>
