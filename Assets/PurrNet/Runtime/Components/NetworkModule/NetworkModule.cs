@@ -256,7 +256,7 @@ namespace PurrNet
         {
             if (!parent)
                 throw new InvalidOperationException(
-                    $"Trying to send RPC from '{GetType().Name}' which is not spawned.");
+                    $"Trying to send RPC from '<b>{GetType().FullName}</b> {name}' which is not spawned.");
 
             var rpc = new ChildRPCPacket
             {
@@ -268,7 +268,7 @@ namespace PurrNet
                     rpcId = rpcId,
                     senderId = RPCModule.GetLocalPlayer(networkManager)
                 },
-                data = new BitData(data) // TODO: this size here is wrong, it needs to be updated or just set later..
+                data = new BitData(data)
             };
 
             return rpc;
