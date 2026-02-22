@@ -1,3 +1,10 @@
+## [1.19.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.1...v1.19.1-beta.2) (2026-02-22)
+
+
+### Bug Fixes
+
+* ensure parent is not null before checking controller status ([58b299e](https://github.com/PurrNet/PurrNet/commit/58b299e1b17639e6c2d5448694f3e00ba25be465))
+
 ## [1.19.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.0...v1.19.1-beta.1) (2026-02-22)
 
 
