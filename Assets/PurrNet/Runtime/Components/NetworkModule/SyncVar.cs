@@ -152,7 +152,7 @@ namespace PurrNet
         private void InvalidateIsController()
         {
             bool old = isControllingSyncVar;
-            bool @new = parent.IsController(_ownerAuth);
+            bool @new = parent && parent.IsController(_ownerAuth);
 
             isControllingSyncVar = @new;
 
