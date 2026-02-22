@@ -1,3 +1,10 @@
+## [1.19.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.2...v1.19.1-beta.3) (2026-02-22)
+
+
+### Bug Fixes
+
+* add isLocalPlayerReady property and enhance owner change logging ([d42bfa9](https://github.com/PurrNet/PurrNet/commit/d42bfa98101df8e1435d1f0c07caf37c163a764e))
+
 ## [1.19.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.1...v1.19.1-beta.2) (2026-02-22)
 
 
