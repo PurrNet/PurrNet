@@ -1,3 +1,10 @@
+## [1.19.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.0...v1.19.1-beta.1) (2026-02-22)
+
+
+### Bug Fixes
+
+* if network module RPC fails, include some extra context ([375a26e](https://github.com/PurrNet/PurrNet/commit/375a26e3451198b98b5b8d7ca920823d8480a710))
+
 # [1.19.0](https://github.com/PurrNet/PurrNet/compare/v1.18.0...v1.19.0) (2026-02-21)
 
 
