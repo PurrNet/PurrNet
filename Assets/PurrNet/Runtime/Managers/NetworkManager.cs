@@ -888,6 +888,8 @@ namespace PurrNet
         /// </summary>
         public PlayerID localPlayer => _clientPlayersManager?.localPlayerId ?? default;
 
+        public bool isLocalPlayerReady => _clientPlayersManager?.localPlayerId.HasValue == true;
+
         public AuthenticationLayer authenticator => _authenticator;
 
         private ScenesModule _clientSceneModule;
