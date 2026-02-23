@@ -665,34 +665,6 @@ namespace PurrNet.StateMachine
         }
         
         /// <summary>
-        /// Takes the state machine to the first state in the states list
-        /// </summary>
-
-        public bool First(bool force = false)
-        {
-            return SetState(_syncedStates[0], force);
-        }
-        
-        /// <summary>
-        /// Takes the state machine to the last state in the states list
-        /// </summary>
-
-        public bool Last(bool force = false)
-        {
-            return SetState(_syncedStates[^1], force);
-        }
-        
-        
-        /// <summary>
-        ///  The state machine will reload the current state
-        /// </summary>
-
-        public bool ReloadCurrent(bool force = false)
-        {
-            return SetState(_syncedStates[currentState.stateId], force);
-        }
-        
-        /// <summary>
         /// Will continue to the previous state in the states list until it finds a state that can be entered
         /// </summary>
         public bool PreviousValid()
@@ -770,6 +742,34 @@ namespace PurrNet.StateMachine
             if (prevNodeId < 0)
                 prevNodeId = _syncedStates.Count - 1;
             return prevNodeId;
+        }
+        
+        /// <summary>
+        /// Takes the state machine to the first state in the states list
+        /// </summary>
+
+        public bool First(bool force = false)
+        {
+            return SetState(_syncedStates[0], force);
+        }
+        
+        /// <summary>
+        /// Takes the state machine to the last state in the states list
+        /// </summary>
+
+        public bool Last(bool force = false)
+        {
+            return SetState(_syncedStates[^1], force);
+        }
+        
+        
+        /// <summary>
+        ///  The state machine will reload the current state
+        /// </summary>
+
+        public bool ReloadCurrent(bool force = false)
+        {
+            return SetState(_syncedStates[currentState.stateId], force);
         }
         
         internal enum StateTransitionStatus
