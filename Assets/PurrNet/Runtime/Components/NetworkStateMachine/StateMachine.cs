@@ -753,6 +753,18 @@ namespace PurrNet.StateMachine
             return SetState(_syncedStates[0], force);
         }
         
+        public bool First<T>(T data, bool force = false)
+        {
+            var firstNode = _syncedStates[0];
+            if (firstNode is StateNode<T> stateNode)
+            {
+                return SetState(stateNode, data, force);
+            }
+            
+            PurrLogger.LogException($"Node {_syncedStates[0].name}:{_syncedStates[0].GetType().Name} does not have a generic type argument of type {typeof(T).Name}");
+            return false;
+        }
+        
         /// <summary>
         /// Takes the state machine to the last state in the states list
         /// </summary>
@@ -762,6 +774,17 @@ namespace PurrNet.StateMachine
             return SetState(_syncedStates[^1], force);
         }
         
+        public bool Last<T>(T data, bool force = false)
+        {
+            var lastNode = _syncedStates[^1];
+            if (lastNode is StateNode<T> stateNode)
+            {
+                return SetState(stateNode, data, force);
+            }
+            
+            PurrLogger.LogException($"Node {_syncedStates[0].name}:{_syncedStates[0].GetType().Name} does not have a generic type argument of type {typeof(T).Name}");
+            return false;
+        }
         
         /// <summary>
         ///  The state machine will reload the current state
