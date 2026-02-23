@@ -682,6 +682,16 @@ namespace PurrNet.StateMachine
             return SetState(_syncedStates[^1], force);
         }
         
+        
+        /// <summary>
+        ///  The state machine will reload the current state
+        /// </summary>
+
+        public bool ReloadCurrent(bool force = false)
+        {
+            return SetState(_syncedStates[currentState.stateId], force);
+        }
+        
         /// <summary>
         /// Will continue to the previous state in the states list until it finds a state that can be entered
         /// </summary>
