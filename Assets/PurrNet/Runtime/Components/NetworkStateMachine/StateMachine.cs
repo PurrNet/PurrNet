@@ -665,6 +665,24 @@ namespace PurrNet.StateMachine
         }
         
         /// <summary>
+        /// Takes the state machine to the first state in the states list
+        /// </summary>
+
+        public bool First(bool force = false)
+        {
+            return SetState(_syncedStates[0], force);
+        }
+        
+        /// <summary>
+        /// Takes the state machine to the last state in the states list
+        /// </summary>
+
+        public bool Last(bool force = false)
+        {
+            return SetState(_syncedStates[^1], force);
+        }
+        
+        /// <summary>
         /// Will continue to the previous state in the states list until it finds a state that can be entered
         /// </summary>
         public bool PreviousValid()
