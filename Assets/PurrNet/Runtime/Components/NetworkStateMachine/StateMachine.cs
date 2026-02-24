@@ -796,6 +796,16 @@ namespace PurrNet.StateMachine
             return SetState(_syncedStates[_currentState.stateId], force);
         }
         
+        public bool ReloadCurrent<T>(T data, bool force = false)
+        {
+            if (currentStateNode is StateNode<T> stateNode)
+            {
+                return SetState(stateNode, data, force);
+            }
+            PurrLogger.LogException($"Node {currentStateNode.name}:{currentStateNode.GetType().Name} does not have a generic type argument of type {typeof(T).Name}");
+            return false;
+        }
+        
         internal enum StateTransitionStatus
         {
             Success,
