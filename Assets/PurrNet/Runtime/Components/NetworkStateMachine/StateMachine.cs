@@ -787,12 +787,13 @@ namespace PurrNet.StateMachine
         }
         
         /// <summary>
-        ///  The state machine will reload the current state
+        /// The state machine will reload the current state
+        /// This will exit the state and re-enter it
         /// </summary>
 
         public bool ReloadCurrent(bool force = false)
         {
-            return SetState(_syncedStates[currentState.stateId], force);
+            return SetState(_syncedStates[_currentState.stateId], force);
         }
         
         internal enum StateTransitionStatus
