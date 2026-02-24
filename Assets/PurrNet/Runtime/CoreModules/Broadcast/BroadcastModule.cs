@@ -69,21 +69,18 @@ namespace PurrNet.Modules
             int connCount = _transport.connections.Count;
             for (int i = 0; i < connCount; i++)
             {
+                var conn = _transport.connections[i];
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                 if (shouldTrack)
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
-                _transport.SendToClient(_transport.connections[i], byteData, method);
-            }
-        }
-
-        public void SendRaw(Connection conn, ByteData data, Channel method = Channel.ReliableOrdered)
-        {
-            AssertIsServer("Cannot send data to player from client.");
-#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-            Statistics.ForwardedBytes(data.length);
+#if PURR_MTU_DEBUGGING
+                var mtu = _transport.GetMTU(conn, method, _asServer);
+                if (byteData.length > mtu)
+                    PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
 #endif
-            _transport.SendToClient(conn, data, method);
+                _transport.SendToClient(conn, byteData, method);
+            }
         }
 
         public void Send<T>(Connection conn, T data, Channel method = Channel.ReliableOrdered)
@@ -95,6 +92,11 @@ namespace PurrNet.Modules
             var type = typeof(T);
             if (ShouldTrackType(type))
                 Statistics.SentBroadcast(type, byteData.segment);
+#endif
+#if PURR_MTU_DEBUGGING
+            var mtu = _transport.GetMTU(conn, method, _asServer);
+            if (byteData.length > mtu)
+                PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
 #endif
             _transport.SendToClient(conn, byteData, method);
         }
@@ -116,19 +118,10 @@ namespace PurrNet.Modules
                 if (shouldTrack)
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
-                _transport.SendToClient(connection, byteData, method);
-            }
-        }
-
-        public void Send(IReadOnlyList<Connection> conn, ByteData byteData, Channel method = Channel.ReliableOrdered)
-        {
-            AssertIsServer("Cannot send data to player from client.");
-
-            for (var i = 0; i < conn.Count; i++)
-            {
-                var connection = conn[i];
-#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                Statistics.ForwardedBytes(byteData.length);
+#if PURR_MTU_DEBUGGING
+                var mtu = _transport.GetMTU(connection, method, _asServer);
+                if (byteData.length > mtu)
+                    PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
 #endif
                 _transport.SendToClient(connection, byteData, method);
             }
@@ -144,6 +137,11 @@ namespace PurrNet.Modules
             var type = typeof(T);
             if (ShouldTrackType(type))
                 Statistics.SentBroadcast(type, byteData.segment);
+#endif
+#if PURR_MTU_DEBUGGING
+            var mtu = _transport.GetMTU(default, method, _asServer);
+            if (byteData.length > mtu)
+                PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
 #endif
             _transport.SendToServer(byteData, method);
         }

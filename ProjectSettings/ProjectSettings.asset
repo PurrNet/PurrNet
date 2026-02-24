@@ -593,7 +593,7 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Standalone: STEAMWORKS_NET;EDGEGAP_PLUGIN_SERVERS;APP_UI_EDITOR_ONLY;PURR_BUTTONS
+    Standalone: STEAMWORKS_NET;EDGEGAP_PLUGIN_SERVERS;APP_UI_EDITOR_ONLY;PURR_BUTTONS;PURR_MTU_DEBUGGING
     WebGL: STEAMWORKS_NET;EDGEGAP_PLUGIN_SERVERS;APP_UI_EDITOR_ONLY;PURR_BUTTONS
   additionalCompilerArguments: {}
   platformArchitecture: {}

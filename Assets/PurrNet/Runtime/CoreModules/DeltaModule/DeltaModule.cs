@@ -498,7 +498,8 @@ namespace PurrNet.Modules
                 for (var e = 0; e < count; e++)
                 {
                     var entry = batch.entries[e];
-                    var mtu = _players.GetMTU(batch.playerId, Channel.Unreliable, _asServer) - BroadcastModule.MAX_HEADER_SIZE;
+                    var mtu = _players.GetMTU(batch.playerId, Channel.Unreliable, _asServer)
+                              - BroadcastModule.MAX_HEADER_SIZE;
 
                     DeltaPacker<PackedUInt>.Write(packer, prevType, entry.keyType);
                     DeltaPacker<PackedUInt>.Write(packer, prevHash, entry.keyHash);
