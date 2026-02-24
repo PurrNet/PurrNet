@@ -1,3 +1,10 @@
+## [1.19.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.3...v1.19.1-beta.4) (2026-02-24)
+
+
+### Bug Fixes
+
+* improve error messages in Hasher and update null check in NetworkManager ([c5977ef](https://github.com/PurrNet/PurrNet/commit/c5977efb6f86711a47d408ff4d3cd1de0e586dfe))
+
 ## [1.19.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.2...v1.19.1-beta.3) (2026-02-22)
 
 
