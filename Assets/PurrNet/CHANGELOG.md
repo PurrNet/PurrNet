@@ -1,3 +1,10 @@
+## [1.19.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.4...v1.19.1-beta.5) (2026-02-24)
+
+
+### Bug Fixes
+
+* replace CalculateHashes with LoadOrGenerateHashes in NetworkManager and related tests ([237a628](https://github.com/PurrNet/PurrNet/commit/237a6280650c267fb9042a18222d12af3b9e718b))
+
 ## [1.19.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.3...v1.19.1-beta.4) (2026-02-24)
 
 
