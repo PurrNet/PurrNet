@@ -747,7 +747,6 @@ namespace PurrNet.StateMachine
         /// <summary>
         /// Takes the state machine to the first state in the states list
         /// </summary>
-
         public bool First(bool force = false)
         {
             return SetState(_syncedStates[0], force);
@@ -768,7 +767,6 @@ namespace PurrNet.StateMachine
         /// <summary>
         /// Takes the state machine to the last state in the states list
         /// </summary>
-
         public bool Last(bool force = false)
         {
             return SetState(_syncedStates[^1], force);
@@ -790,7 +788,6 @@ namespace PurrNet.StateMachine
         /// The state machine will reload the current state
         /// This will exit the state and re-enter it
         /// </summary>
-
         public bool ReloadCurrent(bool force = false)
         {
             return SetState(_syncedStates[_currentState.stateId], force);
