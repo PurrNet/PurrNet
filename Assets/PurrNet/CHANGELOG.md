@@ -1,3 +1,10 @@
+## [1.19.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.5...v1.19.1-beta.6) (2026-02-24)
+
+
+### Bug Fixes
+
+* implement MTU debugging and clean up unused SendRaw methods ([d2f872d](https://github.com/PurrNet/PurrNet/commit/d2f872dabf8030f95f0b58c6d82fe9ec33488c88))
+
 ## [1.19.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.4...v1.19.1-beta.5) (2026-02-24)
 
 
