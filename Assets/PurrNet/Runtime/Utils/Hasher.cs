@@ -105,7 +105,7 @@ namespace PurrNet.Utils
                 return 0;
 
             if (_hashCounter == 1)
-                throw new InvalidOperationException("Hasher hasn't been initialized yet.");
+                throw new InvalidOperationException($"Hasher hasn't been initialized yet when trying to get hash for type '{type.FullName}'.");
 
             return _hashes.TryGetValue(type, out var hash)
                 ? hash

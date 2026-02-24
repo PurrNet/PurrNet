@@ -587,7 +587,7 @@ namespace PurrNet
             // ReSharper disable once Unity.UnknownResource
             var hashes = Resources.Load<TextAsset>("PurrHashes");
 
-            if (hashes == null)
+            if (!hashes)
             {
                 PurrLogger.LogError("Failed to load PurrHashes.");
                 return;
