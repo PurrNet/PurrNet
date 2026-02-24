@@ -1,3 +1,10 @@
+## [1.19.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.6...v1.19.1-beta.7) (2026-02-24)
+
+
+### Bug Fixes
+
+* enhance error handling in ProcessSpawnWhenLoadedAsync ([d3ec7b5](https://github.com/PurrNet/PurrNet/commit/d3ec7b5403f89d3dcc3e24ef91819abd1c046400))
+
 ## [1.19.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.5...v1.19.1-beta.6) (2026-02-24)
 
 
