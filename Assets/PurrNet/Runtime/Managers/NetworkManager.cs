@@ -561,8 +561,17 @@ namespace PurrNet
 
         private static bool _hasGeneratedAlready;
 
+        public static void LoadOrGenerateHashes()
+        {
+#if !UNITY_EDITOR
+            RefreshHashes();
+#else
+            CalculateHashes();
+#endif
+        }
+
         [UsedImplicitly]
-        public static void CalculateHashes()
+        static void CalculateHashes()
         {
             if (_hasGeneratedAlready)
                 return;
@@ -697,11 +706,7 @@ namespace PurrNet
 
             main = this;
 
-#if !UNITY_EDITOR
-            RefreshHashes();
-#else
-            CalculateHashes();
-#endif
+            LoadOrGenerateHashes();
 
             Application.runInBackground = true;
 
