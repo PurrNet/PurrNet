@@ -1,3 +1,10 @@
+## [1.19.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.9...v1.19.1-beta.10) (2026-02-25)
+
+
+### Bug Fixes
+
+* convert short form jumps to long form to prevent overflow ([b5d6e80](https://github.com/PurrNet/PurrNet/commit/b5d6e808293d48a58d31c4f99f67f4edc4bd631d))
+
 ## [1.19.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.8...v1.19.1-beta.9) (2026-02-25)
 
 
