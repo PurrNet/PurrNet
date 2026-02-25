@@ -2089,6 +2089,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1075187354}
   - component: {fileID: 1075187353}
+  - component: {fileID: 1075187355}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -2123,6 +2124,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1075187355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1075187352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92060dc0c47e81b4c9ee034e7bd57b8e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Benchmarks::DeltaPackingTests
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _so: {fileID: 0}
 --- !u!1001 &1115805413
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2386,7 +2409,6 @@ GameObject:
   - component: {fileID: 1216416911}
   - component: {fileID: 1216416912}
   - component: {fileID: 1216416913}
-  - component: {fileID: 1216416914}
   m_Layer: 0
   m_Name: Network
   m_TagString: Untagged
@@ -2411,8 +2433,9 @@ MonoBehaviour:
   _startClientFlags: 7
   _cookieScope: 1
   _dontDestroyOnLoad: 1
-  _transport: {fileID: 1216416908}
+  _transport: {fileID: 1216416902}
   _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
+  _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
@@ -2556,19 +2579,6 @@ MonoBehaviour:
   _displayTarget: 6
   fontSize: 13
   textColor: {r: 1, g: 1, b: 1, a: 1}
---- !u!114 &1216416914
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1216416895}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cc59f175cf9bf4e4296567bae60c96e7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LogServerConnectionState
-  _manager: {fileID: 1216416897}
 --- !u!1001 &1312733901
 PrefabInstance:
   m_ObjectHideFlags: 0

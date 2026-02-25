@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using PurrNet.Packing;
 
 namespace PurrNet.Transports
@@ -84,10 +85,11 @@ namespace PurrNet.Transports
 
         public override string ToString()
         {
-            string str = $"LENGTH: {length} DATA: ";
+            var sb = new StringBuilder(16 + length * 3);
+            sb.Append("LENGTH: ").Append(length).Append(" DATA: ");
             for (int i = 0; i < length; i++)
-                str += data[i + offset].ToString("X2") + " ";
-            return str;
+                sb.Append(data[i + offset].ToString("X2")).Append(' ');
+            return sb.ToString();
         }
 
         public bool Equals(ByteData other)

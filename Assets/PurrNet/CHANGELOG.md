@@ -1,3 +1,83 @@
+## [1.19.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.10...v1.19.1-beta.11) (2026-02-25)
+
+
+### Bug Fixes
+
+* clear exception handlers in PostProcessor to ensure clean IL processing ([d33c4f9](https://github.com/PurrNet/PurrNet/commit/d33c4f9b8adf291ca76d9ee2999f8d18aaf0b1cc))
+
+## [1.19.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.9...v1.19.1-beta.10) (2026-02-25)
+
+
+### Bug Fixes
+
+* convert short form jumps to long form to prevent overflow ([b5d6e80](https://github.com/PurrNet/PurrNet/commit/b5d6e808293d48a58d31c4f99f67f4edc4bd631d))
+
+## [1.19.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.8...v1.19.1-beta.9) (2026-02-25)
+
+
+### Bug Fixes
+
+* enhance delegate handling in NativeDeltaPacker and NativePacker for better compatibility ([c3f8bc0](https://github.com/PurrNet/PurrNet/commit/c3f8bc0c827b72296a7cdf469f14ce0638201b4f))
+
+## [1.19.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.7...v1.19.1-beta.8) (2026-02-25)
+
+
+### Bug Fixes
+
+* ensure directory creation for version file in OnPreprocessBuild ([82dd9a7](https://github.com/PurrNet/PurrNet/commit/82dd9a738f406adf5188d18844f3fa9d22f9108b))
+* refactor hashing for better compatibility across builds and platforms ([1de34d2](https://github.com/PurrNet/PurrNet/commit/1de34d282691f7c508cf0bba7222659dfc45d32c))
+* replace MethodHandle with Marshal.GetFunctionPointerForDelegate for delegate compatibility ([246c242](https://github.com/PurrNet/PurrNet/commit/246c242f689d715986b30ef42e8fbcb1a7311226))
+* replace PackedUInt with uint for typeHash consistency across structures ([df45960](https://github.com/PurrNet/PurrNet/commit/df4596012cf3f145b4a7f7438caabb8bd489d87e))
+
+## [1.19.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.6...v1.19.1-beta.7) (2026-02-24)
+
+
+### Bug Fixes
+
+* enhance error handling in ProcessSpawnWhenLoadedAsync ([d3ec7b5](https://github.com/PurrNet/PurrNet/commit/d3ec7b5403f89d3dcc3e24ef91819abd1c046400))
+
+## [1.19.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.5...v1.19.1-beta.6) (2026-02-24)
+
+
+### Bug Fixes
+
+* implement MTU debugging and clean up unused SendRaw methods ([d2f872d](https://github.com/PurrNet/PurrNet/commit/d2f872dabf8030f95f0b58c6d82fe9ec33488c88))
+
+## [1.19.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.4...v1.19.1-beta.5) (2026-02-24)
+
+
+### Bug Fixes
+
+* replace CalculateHashes with LoadOrGenerateHashes in NetworkManager and related tests ([237a628](https://github.com/PurrNet/PurrNet/commit/237a6280650c267fb9042a18222d12af3b9e718b))
+
+## [1.19.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.3...v1.19.1-beta.4) (2026-02-24)
+
+
+### Bug Fixes
+
+* improve error messages in Hasher and update null check in NetworkManager ([c5977ef](https://github.com/PurrNet/PurrNet/commit/c5977efb6f86711a47d408ff4d3cd1de0e586dfe))
+
+## [1.19.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.2...v1.19.1-beta.3) (2026-02-22)
+
+
+### Bug Fixes
+
+* add isLocalPlayerReady property and enhance owner change logging ([d42bfa9](https://github.com/PurrNet/PurrNet/commit/d42bfa98101df8e1435d1f0c07caf37c163a764e))
+
+## [1.19.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.1...v1.19.1-beta.2) (2026-02-22)
+
+
+### Bug Fixes
+
+* ensure parent is not null before checking controller status ([58b299e](https://github.com/PurrNet/PurrNet/commit/58b299e1b17639e6c2d5448694f3e00ba25be465))
+
+## [1.19.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.0...v1.19.1-beta.1) (2026-02-22)
+
+
+### Bug Fixes
+
+* if network module RPC fails, include some extra context ([375a26e](https://github.com/PurrNet/PurrNet/commit/375a26e3451198b98b5b8d7ca920823d8480a710))
+
 # [1.19.0](https://github.com/PurrNet/PurrNet/compare/v1.18.0...v1.19.0) (2026-02-21)
 
 

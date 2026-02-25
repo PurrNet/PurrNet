@@ -509,20 +509,15 @@ namespace PurrNet.Modules
 
             ListPool<NetworkIdentity>.Destroy(tmpList);
 
+            var nt = identity.GetComponent<NetworkTransform>();
+            if (nt) nt.StartIgnoringParentChanges();
+
             if (parent)
-            {
-                var nt = identity.GetComponent<NetworkTransform>();
-                if (nt) nt.StartIgnoringParentChanges();
                 HierarchyPool.WalkThePath(parent.transform, idTrs, path, true);
-                if (nt) nt.StopIgnoringParentChanges();
-            }
             else
-            {
-                var nt = identity.GetComponent<NetworkTransform>();
-                if (nt) nt.StartIgnoringParentChanges();
                 idTrs.SetParent(null, true);
-                if (nt) nt.StopIgnoringParentChanges();
-            }
+
+            if (nt) nt.StopIgnoringParentChanges();
 
             if (parent)
                 parent.AddDirectChild(first);
@@ -677,7 +672,7 @@ namespace PurrNet.Modules
         {
             for (int i = _pendingFinishSpawns.Count - 1; i >= 0; i--)
             {
-                var (idx, player, asServer) = _pendingFinishSpawns[i];
+                var (idx, _, _) = _pendingFinishSpawns[i];
                 if (!idx.Equals(packetIdx))
                     continue;
 
@@ -729,7 +724,7 @@ namespace PurrNet.Modules
         {
             for (int i = _pendingDespawns.Count - 1; i >= 0; i--)
             {
-                var (player, packet, asServer) = _pendingDespawns[i];
+                var (_, packet, _) = _pendingDespawns[i];
 
                 for (int j = 0; j < createdNids.Count; j++)
                 {
@@ -847,12 +842,10 @@ namespace PurrNet.Modules
                 }
             }
 
-            if (data.prototype.framework.Count > 0)
+            if (data.prototype.framework.Count > 0 && _manager.prefabProvider is IAsyncPrefabProvider asyncProvider)
             {
                 int rootPrefabId = data.prototype.framework[0].pid.prefabId;
-                if (_manager.prefabProvider.TryGetPrefabData(rootPrefabId, out var prefabData) &&
-                    prefabData.prefab == null &&
-                    _manager.prefabProvider is IAsyncPrefabProvider asyncProvider)
+                if (_manager.prefabProvider.TryGetPrefabData(rootPrefabId, out var prefabData) && !prefabData.prefab)
                 {
                     ProcessSpawnWhenLoadedAsync(player, data, flushData, asyncProvider, rootPrefabId);
                     return;
@@ -865,34 +858,41 @@ namespace PurrNet.Modules
         private async void ProcessSpawnWhenLoadedAsync(PlayerID player, SpawnPacket data, bool flushData,
             IAsyncPrefabProvider asyncProvider, int rootPrefabId)
         {
-            var prototypeCopy = data.prototype.Clone();
-            var packetIdx = data.packetIdx;
-            var sceneId = data.sceneId;
-
             try
             {
-                var loaded = await asyncProvider.LoadPrefabAsync(rootPrefabId);
-                if (loaded.prefab == null)
-                {
-                    PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
-                    prototypeCopy.Dispose();
-                    return;
-                }
+                var prototypeCopy = data.prototype.Clone();
+                var packetIdx = data.packetIdx;
+                var sceneId = data.sceneId;
 
-                if (_isDisposed)
+                try
                 {
-                    prototypeCopy.Dispose();
-                    return;
-                }
+                    var loaded = await asyncProvider.LoadPrefabAsync(rootPrefabId);
+                    if (loaded.prefab == null)
+                    {
+                        PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
+                        prototypeCopy.Dispose();
+                        return;
+                    }
 
-                var spawnData = new SpawnPacket { sceneId = sceneId, packetIdx = packetIdx, prototype = prototypeCopy };
-                CompleteSpawn(player, spawnData, flushData);
-                spawnData.Dispose();
+                    if (_isDisposed)
+                    {
+                        prototypeCopy.Dispose();
+                        return;
+                    }
+
+                    var spawnData = new SpawnPacket { sceneId = sceneId, packetIdx = packetIdx, prototype = prototypeCopy };
+                    CompleteSpawn(player, spawnData, flushData);
+                    spawnData.Dispose();
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: exception for prefab {rootPrefabId}: {e.Message}\n{e.StackTrace}");
+                    try { prototypeCopy.Dispose(); } catch { /* ignore */ }
+                }
             }
             catch (Exception e)
             {
-                PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: exception for prefab {rootPrefabId}: {e.Message}\n{e.StackTrace}");
-                try { prototypeCopy.Dispose(); } catch { /* ignore */ }
+                Debug.LogException(e);
             }
         }
 

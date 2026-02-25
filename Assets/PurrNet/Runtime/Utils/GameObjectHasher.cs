@@ -35,7 +35,7 @@ namespace PurrNet
 
         public static uint ComputeHashRecursive(GameObject obj)
         {
-            return Hasher.ActualHash(ComputeStringRecursive(obj).ToString());
+            return Hasher.Hash(ComputeStringRecursive(obj).ToString());
         }
     }
 }
