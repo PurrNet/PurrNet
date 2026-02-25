@@ -509,20 +509,15 @@ namespace PurrNet.Modules
 
             ListPool<NetworkIdentity>.Destroy(tmpList);
 
+            var nt = identity.GetComponent<NetworkTransform>();
+            if (nt) nt.StartIgnoringParentChanges();
+
             if (parent)
-            {
-                var nt = identity.GetComponent<NetworkTransform>();
-                if (nt) nt.StartIgnoringParentChanges();
                 HierarchyPool.WalkThePath(parent.transform, idTrs, path, true);
-                if (nt) nt.StopIgnoringParentChanges();
-            }
             else
-            {
-                var nt = identity.GetComponent<NetworkTransform>();
-                if (nt) nt.StartIgnoringParentChanges();
                 idTrs.SetParent(null, true);
-                if (nt) nt.StopIgnoringParentChanges();
-            }
+
+            if (nt) nt.StopIgnoringParentChanges();
 
             if (parent)
                 parent.AddDirectChild(first);
