@@ -67,6 +67,8 @@ namespace PurrNet.Editor
         public void OnPreprocessBuild(BuildReport report)
         {
             const string VERSION = "Assets/Resources/PurrVersion.json";
+
+            Directory.CreateDirectory(Path.GetDirectoryName(VERSION) ?? string.Empty);
             File.WriteAllText(VERSION, TryFindVersion());
 
             AssetDatabase.Refresh();
