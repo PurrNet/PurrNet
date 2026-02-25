@@ -389,7 +389,6 @@ var hierarchy =
       [ "PurrNet.PurrMonoBehaviour", "classPurrNet_1_1PurrMonoBehaviour.html", null ],
       [ "PurrNet.PurrSceneInfo", "classPurrNet_1_1PurrSceneInfo.html", null ],
       [ "PurrNet.RawNetManager", "classPurrNet_1_1RawNetManager.html", null ],
-      [ "PurrNet.SaveHasherInFile", "classPurrNet_1_1SaveHasherInFile.html", null ],
       [ "PurrNet.StatisticsManager", "classPurrNet_1_1StatisticsManager.html", null ],
       [ "PurrNet.Transports.GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", [
         [ "PurrNet.Transports.CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", null ],
