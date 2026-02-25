@@ -111,7 +111,6 @@ var namespacePurrNet =
     [ "RPCPacket", "structPurrNet_1_1RPCPacket.html", null ],
     [ "RpcRules", "structPurrNet_1_1RpcRules.html", null ],
     [ "RPCSignature", "structPurrNet_1_1RPCSignature.html", null ],
-    [ "SaveHasherInFile", "classPurrNet_1_1SaveHasherInFile.html", null ],
     [ "ScaleWithParent", "structPurrNet_1_1ScaleWithParent.html", null ],
     [ "SceneID", "structPurrNet_1_1SceneID.html", null ],
     [ "SerializableDictionary", "classPurrNet_1_1SerializableDictionary.html", null ],
