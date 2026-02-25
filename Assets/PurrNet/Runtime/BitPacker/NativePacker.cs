@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using PurrNet.Modules;
 
@@ -10,6 +11,9 @@ namespace PurrNet.Packing
 
         static bool _hasWriter, _hasReader;
 
+        static WriteFunc<T> _writeDelegate;
+        static ReadFunc<T> _readDelegate;
+
         static unsafe NativePacker()
         {
             WriteFunc = &Packer.FallbackWriter;
@@ -21,11 +25,32 @@ namespace PurrNet.Packing
             return _hasWriter && _hasReader;
         }
 
+        static void WriteDelegateFallback(BitPacker packer, T value)
+        {
+            _writeDelegate(packer, value);
+        }
+
+        static void ReadDelegateFallback(BitPacker packer, ref T value)
+        {
+            _readDelegate(packer, ref value);
+        }
+
         public static unsafe void RegisterWriter(WriteFunc<T> write)
         {
-            var handle = write.Method.MethodHandle;
-            var ptr = (delegate*<BitPacker, T, void>)handle.GetFunctionPointer();
-            RegisterWriterWithPointer(ptr);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return;
+
+            try
+            {
+                var ptr = (delegate*<BitPacker, T, void>)write.Method.MethodHandle.GetFunctionPointer();
+                RegisterWriterWithPointer(ptr);
+            }
+            catch (NotSupportedException)
+            {
+                // IL2CPP doesn't support RuntimeMethodHandle.GetFunctionPointer()
+                _writeDelegate = write;
+                RegisterWriterWithPointer(&WriteDelegateFallback);
+            }
         }
 
         static unsafe void RegisterWriterWithPointer(delegate*<BitPacker, T, void> ptr)
@@ -39,9 +64,19 @@ namespace PurrNet.Packing
 
         public static unsafe void RegisterReader(ReadFunc<T> read)
         {
-            var handle = read.Method.MethodHandle;
-            var ptr = (delegate*<BitPacker, ref T, void>)handle.GetFunctionPointer();
-            RegisterReaderWithPointer(ptr);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return;
+
+            try
+            {
+                var ptr = (delegate*<BitPacker, ref T, void>)read.Method.MethodHandle.GetFunctionPointer();
+                RegisterReaderWithPointer(ptr);
+            }
+            catch (NotSupportedException)
+            {
+                _readDelegate = read;
+                RegisterReaderWithPointer(&ReadDelegateFallback);
+            }
         }
 
         static unsafe void RegisterReaderWithPointer(delegate*<BitPacker, ref T, void> ptr)

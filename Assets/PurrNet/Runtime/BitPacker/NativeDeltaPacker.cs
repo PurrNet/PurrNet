@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using PurrNet.Modules;
 #if PURR_DELTA_CHECK
@@ -12,6 +13,9 @@ namespace PurrNet.Packing
         public static unsafe delegate*<BitPacker, T, ref T, void> ReadFunc;
 
         static bool _hasWriter, _hasReader;
+
+        static DeltaWriteFunc<T> _writeDelegate;
+        static DeltaReadFunc<T> _readDelegate;
 
         static unsafe NativeDeltaPacker()
         {
@@ -30,11 +34,31 @@ namespace PurrNet.Packing
             return _hasWriter && _hasReader;
         }
 
+        static bool WriteDelegateFallback(BitPacker packer, T oldValue, T newValue)
+        {
+            return _writeDelegate(packer, oldValue, newValue);
+        }
+
+        static void ReadDelegateFallback(BitPacker packer, T oldValue, ref T value)
+        {
+            _readDelegate(packer, oldValue, ref value);
+        }
+
         public static unsafe void RegisterWriter(DeltaWriteFunc<T> write)
         {
-            var handle = write.Method.MethodHandle;
-            var ptr = (delegate*<BitPacker, T, T, bool>)handle.GetFunctionPointer();
-            RegisterWriterWithPointer(write, ptr);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return;
+
+            try
+            {
+                var ptr = (delegate*<BitPacker, T, T, bool>)write.Method.MethodHandle.GetFunctionPointer();
+                RegisterWriterWithPointer(write, ptr);
+            }
+            catch (NotSupportedException)
+            {
+                _writeDelegate = write;
+                RegisterWriterWithPointer(write, &WriteDelegateFallback);
+            }
         }
 
         static unsafe void RegisterWriterWithPointer(DeltaWriteFunc<T> write, delegate*<BitPacker, T, T, bool> ptr)
@@ -49,9 +73,19 @@ namespace PurrNet.Packing
 
         public static unsafe void RegisterReader(DeltaReadFunc<T> read)
         {
-            var handle = read.Method.MethodHandle;
-            var ptr = (delegate*<BitPacker, T, ref T, void>)handle.GetFunctionPointer();
-            RegisterReaderWithPointer(read, ptr);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return;
+
+            try
+            {
+                var ptr = (delegate*<BitPacker, T, ref T, void>)read.Method.MethodHandle.GetFunctionPointer();
+                RegisterReaderWithPointer(read, ptr);
+            }
+            catch (NotSupportedException)
+            {
+                _readDelegate = read;
+                RegisterReaderWithPointer(read, &ReadDelegateFallback);
+            }
         }
 
         public static unsafe void RegisterReaderWithPointer(DeltaReadFunc<T> b, delegate*<BitPacker, T, ref T, void> ptr)

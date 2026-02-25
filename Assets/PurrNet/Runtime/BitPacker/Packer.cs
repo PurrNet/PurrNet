@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Utils;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace PurrNet.Packing
@@ -356,6 +357,8 @@ namespace PurrNet.Packing
             }
             catch (Exception e)
             {
+                if (e.InnerException != null)
+                    Debug.LogException(e);
                 PurrLogger.LogError($"Failed to write value of type '{type}'.\n{e.Message}\n{e.StackTrace}");
             }
         }
