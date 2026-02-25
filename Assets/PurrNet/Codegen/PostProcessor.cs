@@ -1388,6 +1388,7 @@ namespace PurrNet.Codegen
                 return;
 
             var il = method.Body.GetILProcessor();
+            method.Body.ExceptionHandlers.Clear();
             il.Clear();
 
             AppendStripAction(method, methodName, mode, il, "stripped");
