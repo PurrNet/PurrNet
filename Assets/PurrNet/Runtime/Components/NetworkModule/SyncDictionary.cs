@@ -618,7 +618,7 @@ namespace PurrNet
 
         public Dictionary<TKey, TValue> ToDictionary()
         {
-            var dict = new Dictionary<TKey, TValue>();
+            var dict = new Dictionary<TKey, TValue>(keys.Count);
 
             if (isKeySerializable && isValueSerializable)
             {
