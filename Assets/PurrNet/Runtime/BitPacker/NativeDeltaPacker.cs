@@ -98,7 +98,7 @@ namespace PurrNet.Packing
             ReadFunc = ptr;
         }
 
-        [UsedByIL]
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteUnpacked(BitPacker packer, T oldValue, T newValue)
         {
             if (Packer.AreEqual(oldValue, newValue))
@@ -112,7 +112,7 @@ namespace PurrNet.Packing
             return true;
         }
 
-        [UsedByIL]
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ReadUnpacked(BitPacker packer, T oldValue, ref T value)
         {
             if (!packer.ReadBit())
