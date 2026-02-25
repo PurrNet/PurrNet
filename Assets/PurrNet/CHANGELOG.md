@@ -1,3 +1,13 @@
+## [1.19.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.7...v1.19.1-beta.8) (2026-02-25)
+
+
+### Bug Fixes
+
+* ensure directory creation for version file in OnPreprocessBuild ([82dd9a7](https://github.com/PurrNet/PurrNet/commit/82dd9a738f406adf5188d18844f3fa9d22f9108b))
+* refactor hashing for better compatibility across builds and platforms ([1de34d2](https://github.com/PurrNet/PurrNet/commit/1de34d282691f7c508cf0bba7222659dfc45d32c))
+* replace MethodHandle with Marshal.GetFunctionPointerForDelegate for delegate compatibility ([246c242](https://github.com/PurrNet/PurrNet/commit/246c242f689d715986b30ef42e8fbcb1a7311226))
+* replace PackedUInt with uint for typeHash consistency across structures ([df45960](https://github.com/PurrNet/PurrNet/commit/df4596012cf3f145b4a7f7438caabb8bd489d87e))
+
 ## [1.19.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.6...v1.19.1-beta.7) (2026-02-24)
 
 
