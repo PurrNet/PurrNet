@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using PurrNet.Modules;
 #if PURR_DELTA_CHECK
 using PurrNet.Logging;
@@ -33,7 +32,8 @@ namespace PurrNet.Packing
 
         public static unsafe void RegisterWriter(DeltaWriteFunc<T> write)
         {
-            var ptr = (delegate*<BitPacker, T, T, bool>)Marshal.GetFunctionPointerForDelegate(write);
+            var handle = write.Method.MethodHandle;
+            var ptr = (delegate*<BitPacker, T, T, bool>)handle.GetFunctionPointer();
             RegisterWriterWithPointer(write, ptr);
         }
 
@@ -49,7 +49,8 @@ namespace PurrNet.Packing
 
         public static unsafe void RegisterReader(DeltaReadFunc<T> read)
         {
-            var ptr = (delegate*<BitPacker, T, ref T, void>)Marshal.GetFunctionPointerForDelegate(read);
+            var handle = read.Method.MethodHandle;
+            var ptr = (delegate*<BitPacker, T, ref T, void>)handle.GetFunctionPointer();
             RegisterReaderWithPointer(read, ptr);
         }
 

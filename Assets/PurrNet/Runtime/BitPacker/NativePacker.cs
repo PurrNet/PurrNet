@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using PurrNet.Modules;
 
 namespace PurrNet.Packing
@@ -24,7 +23,8 @@ namespace PurrNet.Packing
 
         public static unsafe void RegisterWriter(WriteFunc<T> write)
         {
-            var ptr = (delegate*<BitPacker, T, void>)Marshal.GetFunctionPointerForDelegate(write);
+            var handle = write.Method.MethodHandle;
+            var ptr = (delegate*<BitPacker, T, void>)handle.GetFunctionPointer();
             RegisterWriterWithPointer(ptr);
         }
 
@@ -39,7 +39,8 @@ namespace PurrNet.Packing
 
         public static unsafe void RegisterReader(ReadFunc<T> read)
         {
-            var ptr = (delegate*<BitPacker, ref T, void>)Marshal.GetFunctionPointerForDelegate(read);
+            var handle = read.Method.MethodHandle;
+            var ptr = (delegate*<BitPacker, ref T, void>)handle.GetFunctionPointer();
             RegisterReaderWithPointer(ptr);
         }
 
