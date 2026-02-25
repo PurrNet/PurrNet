@@ -1,3 +1,10 @@
+## [1.19.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.10...v1.19.1-beta.11) (2026-02-25)
+
+
+### Bug Fixes
+
+* clear exception handlers in PostProcessor to ensure clean IL processing ([d33c4f9](https://github.com/PurrNet/PurrNet/commit/d33c4f9b8adf291ca76d9ee2999f8d18aaf0b1cc))
+
 ## [1.19.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.9...v1.19.1-beta.10) (2026-02-25)
 
 
