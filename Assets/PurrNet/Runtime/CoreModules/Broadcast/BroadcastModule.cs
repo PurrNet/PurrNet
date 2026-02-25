@@ -45,7 +45,7 @@ namespace PurrNet.Modules
             using var stream = BitPackerPool.Get();
             var typeId = Hasher.GetStableHashU32<T>();
 
-            Packer<PackedUInt>.WriteFunc(stream, typeId);
+            Packer<uint>.WriteFunc(stream, typeId);
             Packer<T>.WriteFunc(stream, data);
 
             return stream.ToByteData();
@@ -154,7 +154,7 @@ namespace PurrNet.Modules
                     return;
 
                 using var stream = BitPackerPool.Get(data);
-                var typeId = Packer<PackedUInt>.Read(stream);
+                var typeId = Packer<uint>.Read(stream);
 
                 if (!Hasher.TryGetType(typeId, out var typeInfo))
                 {

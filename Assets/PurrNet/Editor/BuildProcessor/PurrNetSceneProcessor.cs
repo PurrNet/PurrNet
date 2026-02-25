@@ -1,7 +1,6 @@
 using System.IO;
 using Newtonsoft.Json.Linq;
 using PurrNet.Pooling;
-using PurrNet.Utils;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -22,17 +21,10 @@ namespace PurrNet.Editor
 
         private static void Cleanup()
         {
-            const string PATH = "Assets/Resources/PurrHashes.json";
             const string VERSION = "Assets/Resources/PurrVersion.json";
-
-            if (File.Exists(PATH))
-                File.Delete(PATH);
 
             if (File.Exists(VERSION))
                 File.Delete(VERSION);
-
-            if (File.Exists(PATH + ".meta"))
-                File.Delete(PATH + ".meta");
 
             if (File.Exists(VERSION + ".meta"))
                 File.Delete(VERSION + ".meta");
@@ -74,15 +66,6 @@ namespace PurrNet.Editor
 
         public void OnPreprocessBuild(BuildReport report)
         {
-            Hasher.ClearState();
-            NetworkManager.CallAllRegisters();
-
-            const string PATH = "Assets/Resources/PurrHashes.json";
-            Directory.CreateDirectory(Path.GetDirectoryName(PATH) ?? string.Empty);
-
-            var hashes = Hasher.GetAllHashesAsText();
-            File.WriteAllText(PATH, hashes);
-
             const string VERSION = "Assets/Resources/PurrVersion.json";
             File.WriteAllText(VERSION, TryFindVersion());
 

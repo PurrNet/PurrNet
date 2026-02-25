@@ -563,11 +563,7 @@ namespace PurrNet
 
         public static void LoadOrGenerateHashes()
         {
-#if !UNITY_EDITOR
-            RefreshHashes();
-#else
             CalculateHashes();
-#endif
         }
 
         [UsedImplicitly]
@@ -580,54 +576,6 @@ namespace PurrNet
 
             Hasher.ClearState();
             CallAllRegisters();
-        }
-
-        [UsedImplicitly]
-        static void RefreshHashes()
-        {
-            if (_hasGeneratedAlready)
-                return;
-
-            _hasGeneratedAlready = true;
-
-            Hasher.ClearState();
-            CallAllRegisters();
-
-            // ReSharper disable once Unity.UnknownResource
-            var hashes = Resources.Load<TextAsset>("PurrHashes");
-
-            if (!hashes)
-            {
-                PurrLogger.LogError("Failed to load PurrHashes.");
-                return;
-            }
-
-            Hasher.ClearState();
-
-            var lines = hashes.text.Split('\n');
-
-            for (var i = 0; i < lines.Length; i++)
-            {
-                var line = lines[i];
-                if (string.IsNullOrEmpty(line))
-                    continue;
-
-                var parts = line.Split(';');
-                if (parts.Length != 2)
-                    continue;
-
-                var fullTypeName = parts[0];
-                var hash = uint.Parse(parts[1]);
-
-                var type = Type.GetType(fullTypeName);
-
-                if (type == null)
-                    continue;
-
-                Hasher.Load(type, hash);
-            }
-
-            Hasher.FinishLoad(lines.Length);
         }
 
 #if !UNITY_EDITOR
@@ -1262,23 +1210,30 @@ namespace PurrNet
 
         private async void Start()
         {
-            if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0)
+            try
             {
-                try
+                if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0)
                 {
-                    if (_addressableNetworkPrefabs.preloadAtStartup)
+                    try
                     {
-                        await _addressableNetworkPrefabs.LoadAllAsync();
+                        if (_addressableNetworkPrefabs.preloadAtStartup)
+                        {
+                            await _addressableNetworkPrefabs.LoadAllAsync();
+                        }
+                        SetupCompositePrefabProvider();
                     }
-                    SetupCompositePrefabProvider();
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogError($"Failed to load Addressable network prefabs: {e.Message}\n{e.StackTrace}");
+                    }
                 }
-                catch (Exception e)
-                {
-                    PurrLogger.LogError($"Failed to load Addressable network prefabs: {e.Message}\n{e.StackTrace}");
-                }
-            }
 
-            AutoStart();
+                AutoStart();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
 #else
         private void Start()

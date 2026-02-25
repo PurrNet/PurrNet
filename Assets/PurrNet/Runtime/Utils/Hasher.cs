@@ -19,13 +19,7 @@ namespace PurrNet.Utils
 
     public static class Hasher<T>
     {
-        // ReSharper disable once StaticMemberInGenericType
-        public static readonly uint stableHash;
-
-        static Hasher()
-        {
-            stableHash = Hasher.ActualHash(typeof(T).FullName);
-        }
+        public static readonly uint stableHash = Hasher.Hash(typeof(T));
     }
 
     public class Hasher
@@ -36,11 +30,12 @@ namespace PurrNet.Utils
         static readonly Dictionary<Type, uint> _hashes = new Dictionary<Type, uint>();
         static readonly Dictionary<uint, Type> _decoder = new Dictionary<uint, Type>();
 
-        static uint _hashCounter = 1;
+        public static uint Hash(Type type)
+        {
+            return Hash($"{type.FullName}, {type.Assembly.GetName().Name}");
+        }
 
-        public static uint hashCounter => _hashCounter;
-
-        public static uint ActualHash(string txt)
+        public static uint Hash(string txt)
         {
             unchecked
             {
@@ -71,20 +66,13 @@ namespace PurrNet.Utils
             return _decoder.TryGetValue(hash, out type);
         }
 
-        public static uint Load(Type type, uint hash)
-        {
-            _hashes[type] = hash;
-            _decoder[hash] = type;
-            return hash;
-        }
-
         [UsedImplicitly]
         public static uint PrepareType(Type type)
         {
             if (_hashes.TryGetValue(type, out var hash))
                 return hash;
 
-            hash = _hashCounter++;
+            hash = Hash(type);
             _hashes[type] = hash;
             _decoder[hash] = type;
 
@@ -103,9 +91,6 @@ namespace PurrNet.Utils
         {
             if (type == null)
                 return 0;
-
-            if (_hashCounter == 1)
-                throw new InvalidOperationException($"Hasher hasn't been initialized yet when trying to get hash for type '{type.FullName}'.");
 
             return _hashes.TryGetValue(type, out var hash)
                 ? hash
@@ -158,12 +143,6 @@ namespace PurrNet.Utils
         {
             _hashes.Clear();
             _decoder.Clear();
-            _hashCounter = 1;
-        }
-
-        public static void FinishLoad(int linesLength)
-        {
-            _hashCounter += (uint)linesLength;
         }
     }
 }
