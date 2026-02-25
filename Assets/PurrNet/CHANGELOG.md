@@ -1,3 +1,10 @@
+## [1.19.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.8...v1.19.1-beta.9) (2026-02-25)
+
+
+### Bug Fixes
+
+* enhance delegate handling in NativeDeltaPacker and NativePacker for better compatibility ([c3f8bc0](https://github.com/PurrNet/PurrNet/commit/c3f8bc0c827b72296a7cdf469f14ce0638201b4f))
+
 ## [1.19.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.1-beta.7...v1.19.1-beta.8) (2026-02-25)
 
 
