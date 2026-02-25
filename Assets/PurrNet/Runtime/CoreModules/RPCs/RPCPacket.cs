@@ -55,7 +55,7 @@ namespace PurrNet
 
     internal readonly struct RPC_ID : IEquatable<RPC_ID>
     {
-        public readonly PackedUInt typeHash;
+        public readonly uint typeHash;
         public readonly SceneID sceneId;
         public readonly NetworkID networkId;
         private readonly Size rpcId;
