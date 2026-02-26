@@ -1,3 +1,10 @@
+## [1.19.2-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.1...v1.19.2-beta.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* update MTU retrieval logic in PlayersManager and optimize byte length calculation in RPCBatch ([e35d7b4](https://github.com/PurrNet/PurrNet/commit/e35d7b42a8de9e2a91665ab0e3cb7dfb42bed804))
+
 ## [1.19.1](https://github.com/PurrNet/PurrNet/compare/v1.19.0...v1.19.1) (2026-02-25)
 
 
