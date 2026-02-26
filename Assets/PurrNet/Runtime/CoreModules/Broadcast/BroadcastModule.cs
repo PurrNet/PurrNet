@@ -75,9 +75,13 @@ namespace PurrNet.Modules
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
 #if PURR_MTU_DEBUGGING
-                var mtu = _transport.GetMTU(conn, method, _asServer);
-                if (byteData.length > mtu)
-                    PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+                if (method != Channel.ReliableOrdered)
+                {
+                    var mtu = _transport.GetMTU(conn, method, _asServer);
+                    if (byteData.length > mtu)
+                        PurrLogger.LogError(
+                            $"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+                }
 #endif
                 _transport.SendToClient(conn, byteData, method);
             }
@@ -94,9 +98,13 @@ namespace PurrNet.Modules
                 Statistics.SentBroadcast(type, byteData.segment);
 #endif
 #if PURR_MTU_DEBUGGING
-            var mtu = _transport.GetMTU(conn, method, _asServer);
-            if (byteData.length > mtu)
-                PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+            if (method != Channel.ReliableOrdered)
+            {
+                var mtu = _transport.GetMTU(conn, method, _asServer);
+                if (byteData.length > mtu)
+                    PurrLogger.LogError(
+                        $"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+            }
 #endif
             _transport.SendToClient(conn, byteData, method);
         }
@@ -119,9 +127,13 @@ namespace PurrNet.Modules
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
 #if PURR_MTU_DEBUGGING
-                var mtu = _transport.GetMTU(connection, method, _asServer);
-                if (byteData.length > mtu)
-                    PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+                if (method != Channel.ReliableOrdered)
+                {
+                    var mtu = _transport.GetMTU(connection, method, _asServer);
+                    if (byteData.length > mtu)
+                        PurrLogger.LogError(
+                            $"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+                }
 #endif
                 _transport.SendToClient(connection, byteData, method);
             }
@@ -139,9 +151,13 @@ namespace PurrNet.Modules
                 Statistics.SentBroadcast(type, byteData.segment);
 #endif
 #if PURR_MTU_DEBUGGING
-            var mtu = _transport.GetMTU(default, method, _asServer);
-            if (byteData.length > mtu)
-                PurrLogger.LogError($"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+            if (method != Channel.ReliableOrdered)
+            {
+                var mtu = _transport.GetMTU(default, method, _asServer);
+                if (byteData.length > mtu)
+                    PurrLogger.LogError(
+                        $"MTU exceeded by `{typeof(T)}` with {byteData.length} bytes when MTU is {mtu} bytes.");
+            }
 #endif
             _transport.SendToServer(byteData, method);
         }
