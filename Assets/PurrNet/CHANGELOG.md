@@ -1,3 +1,10 @@
+## [1.19.2-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.1...v1.19.2-beta.2) (2026-02-27)
+
+
+### Bug Fixes
+
+* icons failing to be reimported in newer versions ([fa971b8](https://github.com/PurrNet/PurrNet/commit/fa971b8668b14289fdb24aed2a016b272a018611))
+
 ## [1.19.2-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.1...v1.19.2-beta.1) (2026-02-26)
 
 
