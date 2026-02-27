@@ -308,7 +308,7 @@ namespace PurrNet.Editor
 
             if (_networkManager.TryGetPlayerScenes(playerId, out var scenes) && scenes.Length > 0)
             {
-                DrawPlayerScenes(scenes);
+                DrawPlayerScenes(playerId, scenes);
             }
             else
             {
@@ -318,7 +318,7 @@ namespace PurrNet.Editor
             EditorGUI.indentLevel--;
         }
 
-        private void DrawPlayerScenes(SceneID[] scenes)
+        private void DrawPlayerScenes(PlayerID player, SceneID[] scenes)
         {
             EditorGUILayout.LabelField("Scenes (SceneId):");
             foreach (var sceneId in scenes)
@@ -326,8 +326,10 @@ namespace PurrNet.Editor
                 if (!_networkManager.TryGetScene(sceneId, out var scene))
                     continue;
 
+                bool loaded = _networkManager.scenePlayersModule.IsPlayerLoadedInScene(player, sceneId);
+
                 EditorGUI.indentLevel++;
-                EditorGUILayout.LabelField($"- {scene.name} ({sceneId})");
+                EditorGUILayout.LabelField($"- {scene.name}; ID: {sceneId}; Loaded: {loaded})");
                 EditorGUI.indentLevel--;
             }
         }
