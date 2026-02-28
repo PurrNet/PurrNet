@@ -206,13 +206,19 @@ namespace PurrNet.Packing
         public void EnsureBitsExist(int bits)
         {
             int targetPos = _positionInBits + bits;
-            int requiredBytes = _isReading ? (targetPos + 7) >> 3 : ((targetPos + 7) >> 3) + 8;
+            int requiredBytes = (targetPos + 7) >> 3;
 
+            if (_isReading)
+            {
+                if (requiredBytes > _buffer.Length)
+                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
+                return;
+            }
+
+            requiredBytes += 8;
             if (requiredBytes > _buffer.Length)
             {
-                if (_isReading)
-                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
-                int newSize = Math.Max(_buffer.Length * 2, ((targetPos + 7) >> 3) + 8);
+                int newSize = Math.Max(_buffer.Length * 2, requiredBytes);
                 Array.Resize(ref _buffer, newSize);
             }
         }
@@ -425,21 +431,39 @@ namespace PurrNet.Packing
         {
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
+            int available = _buffer.Length - bytePos;
 
             fixed (byte* b = &_buffer[bytePos])
             {
-                ulong raw = *(ulong*)b;
-#if PURR_ENDIAN
-                if (!BitConverter.IsLittleEndian)
-                    raw = BinaryPrimitives.ReverseEndianness(raw);
-#endif
-                raw >>= bitOffset;
+                ulong raw;
 
-                int overflow = bits + bitOffset - 64;
-                if (overflow > 0)
+                if (available >= 9)
                 {
-                    ulong highByte = (ulong)b[8] << (64 - bitOffset);
-                    raw |= highByte;
+                    // Fast path: enough room for ulong read + overflow byte
+                    raw = *(ulong*)b;
+#if PURR_ENDIAN
+                    if (!BitConverter.IsLittleEndian)
+                        raw = BinaryPrimitives.ReverseEndianness(raw);
+#endif
+                    raw >>= bitOffset;
+
+                    int overflow = bits + bitOffset - 64;
+                    if (overflow > 0)
+                    {
+                        ulong highByte = (ulong)b[8] << (64 - bitOffset);
+                        raw |= highByte;
+                    }
+                }
+                else
+                {
+                    // Safe path: near end of buffer, read byte-by-byte
+                    // Assembles in little-endian order, no endian swap needed
+                    raw = 0;
+                    int toCopy = available < 8 ? available : 8;
+                    for (int i = 0; i < toCopy; i++)
+                        raw |= (ulong)b[i] << (i * 8);
+
+                    raw >>= bitOffset;
                 }
 
                 _positionInBits += bits;
