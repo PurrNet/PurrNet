@@ -1,3 +1,10 @@
+## [1.19.2-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.3...v1.19.2-beta.4) (2026-02-28)
+
+
+### Bug Fixes
+
+* BitPacker reinforce reading to avoid reading out of bounds ([84c655c](https://github.com/PurrNet/PurrNet/commit/84c655cbae4ea063232290583d0232670188bac2))
+
 ## [1.19.2-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.2...v1.19.2-beta.3) (2026-02-28)
 
 
