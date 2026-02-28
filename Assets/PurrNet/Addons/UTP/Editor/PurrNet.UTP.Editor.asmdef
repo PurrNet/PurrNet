@@ -14,7 +14,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": false,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "UTP_LOBBYRELAY"
+    ],
     "versionDefines": [
         {
             "name": "com.unity.transport",
