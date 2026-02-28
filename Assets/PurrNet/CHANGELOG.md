@@ -1,3 +1,10 @@
+## [1.19.2-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.2...v1.19.2-beta.3) (2026-02-28)
+
+
+### Bug Fixes
+
+* define symbols for UTP package ([639ccfa](https://github.com/PurrNet/PurrNet/commit/639ccfa88efba3e29962e8ac15ecc5a10494cd64))
+
 ## [1.19.2-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.1...v1.19.2-beta.2) (2026-02-27)
 
 
