@@ -14,7 +14,8 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "UTP_LOBBYRELAY"
+        "UTP_LOBBYRELAY",
+        "UTP_SERVICES"
     ],
     "versionDefines": [
         {

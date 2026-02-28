@@ -15,13 +15,19 @@
     "precompiledReferences": [],
     "autoReferenced": false,
     "defineConstraints": [
-        "UTP_LOBBYRELAY"
+        "UTP_LOBBYRELAY",
+        "UTP_SERVICES"
     ],
     "versionDefines": [
         {
             "name": "com.unity.transport",
             "expression": "",
             "define": "UTP_LOBBYRELAY"
+        },
+        {
+            "name": "com.unity.services.multiplayer",
+            "expression": "",
+            "define": "UTP_SERVICES"
         }
     ],
     "noEngineReferences": false
