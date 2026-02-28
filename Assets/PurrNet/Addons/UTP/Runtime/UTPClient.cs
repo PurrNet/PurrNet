@@ -2,12 +2,8 @@
 #define DISABLEUTPWORKS
 #endif
 
-#if UTP_LOBBYRELAY
-#define UTP_NET_PACKAGE
-#endif
-
 using System;
-#if UTP_LOBBYRELAY
+#if UTP_NET_PACKAGE
 using System.Collections;
 #endif
 using PurrNet.Transports;
@@ -18,7 +14,7 @@ using Unity.Collections;
 using Unity.Networking.Transport.Error;
 #endif
 
-#if UTP_SERVICES
+#if UTP_NET_PACKAGE
 using Unity.Networking.Transport.Relay;
 #endif
 
@@ -69,7 +65,7 @@ namespace PurrNet.UTP
                 onConnectionState?.Invoke(_state);
             }
         }
-#if UTP_LOBBYRELAY && UTP_SERVICES
+#if UTP_NET_PACKAGE
         /// <summary>
         /// Connects to a server using a direct IP address and port, or via Unity Relay if relay data is provided.
         /// </summary>
