@@ -164,13 +164,21 @@ namespace PurrNet
         {
             InvalidateIsController();
 
-            if (isControllingSyncVar)
+            try
             {
-                _id += 1;
-                FlushImmediately();
+                if (isControllingSyncVar && parent)
+                {
+                    _id += 1;
+                    ForceSendReliable();
+                    _lastSendTime = Time.time;
+                }
             }
-
-            UnsubscribeFromTickManager();
+            finally
+            {
+                _wasLastDirty = false;
+                _isDirty = false;
+                UnsubscribeFromTickManager();
+            }
         }
 
         public void SetDirty()
@@ -209,7 +217,7 @@ namespace PurrNet
 
         public void OnTick()
         {
-            if (!isControllingSyncVar)
+            if (!isControllingSyncVar || !parent)
             {
                 UnsubscribeFromTickManager();
                 return;
