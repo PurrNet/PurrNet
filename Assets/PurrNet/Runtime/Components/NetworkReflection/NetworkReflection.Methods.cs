@@ -70,8 +70,6 @@ namespace PurrNet
                         return true;
 
                     case ReflectionRPCType.ObserversRpc:
-                        if (!IsController(_ownerAuth))
-                            return false;
                         SendMethodToObservers(i, args);
                         return true;
                 }
@@ -97,16 +95,12 @@ namespace PurrNet
         [ServerRpc(requireOwnership: false)]
         private void MethodForwardToServerThenBroadcast(int methodIndex, object[] args)
         {
-            if (_ownerAuth)
-                MethodBroadcastToObservers(methodIndex, args);
+            MethodBroadcastToObservers(methodIndex, args);
         }
 
         [ObserversRpc(runLocally: true)]
         private void MethodBroadcastToObservers(int methodIndex, object[] args)
         {
-            if (IsController(_ownerAuth))
-                return;
-
             ExecuteMethodLocally(methodIndex, args);
         }
 
