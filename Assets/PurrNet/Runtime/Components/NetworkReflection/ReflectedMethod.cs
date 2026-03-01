@@ -18,7 +18,7 @@ namespace PurrNet
             _method = data.GetMethod(type);
 
             if (_method == null)
-                PurrLogger.LogError($"Method '{name}' not found on {type.Name}");
+                PurrLogger.LogError($"Method '{name}' not found on {type.Name}", target);
         }
 
         public void Invoke(UnityEngine.Object target, object[] args)
