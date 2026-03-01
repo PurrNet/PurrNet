@@ -33,8 +33,13 @@ namespace PurrNet.Utils
         {
             var old = GUI.enabled;
             if (old) GUI.enabled = false;
-            EditorGUI.PropertyField(position, property, label);
+            EditorGUI.PropertyField(position, property, label, true);
             if (old) GUI.enabled = true;
+        }
+
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            return EditorGUI.GetPropertyHeight(property, label, true);
         }
     }
 #endif
