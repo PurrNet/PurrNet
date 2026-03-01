@@ -9,7 +9,8 @@ var hierarchy =
       [ "PurrNet.DontDeltaCompressAttribute", "classPurrNet_1_1DontDeltaCompressAttribute.html", null ],
       [ "PurrNet.DontPackAttribute", "classPurrNet_1_1DontPackAttribute.html", null ],
       [ "PurrNet.LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
-      [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ]
+      [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ],
+      [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ]
     ] ],
     [ "PurrNet.AudioSourceState", "structPurrNet_1_1AudioSourceState.html", null ],
     [ "PurrNet.Authentication.AuthenticationBehaviour< string >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", [
@@ -454,6 +455,7 @@ var hierarchy =
     [ "PurrNet.Modules.PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "PurrNet.QuaternionWithParent", "structPurrNet_1_1QuaternionWithParent.html", null ],
     [ "PurrNet.ReflectionData", "structPurrNet_1_1ReflectionData.html", null ],
+    [ "PurrNet.ReflectionMethodData", "structPurrNet_1_1ReflectionMethodData.html", null ],
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
     [ "PurrNet.Transports.RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "PurrNet.Modules.ReliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],

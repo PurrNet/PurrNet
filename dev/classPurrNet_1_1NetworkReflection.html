@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1NetworkReflection.html
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="classPurrNet_1_1NetworkReflection-members.html">List of all members</a>  </div>
@@ -114,6 +115,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a036b40e3fed0466ecf56c30417271666"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkReflection.html#a036b40e3fed0466ecf56c30417271666">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:a036b40e3fed0466ecf56c30417271666"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1NetworkReflection.html#a036b40e3fed0466ecf56c30417271666">More...</a><br /></td></tr>
 <tr class="separator:a036b40e3fed0466ecf56c30417271666"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a878991494694b6f42c2667be5d3310e7"><td class="memItemLeft" align="right" valign="top"><a id="a878991494694b6f42c2667be5d3310e7" name="a878991494694b6f42c2667be5d3310e7"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryDispatchMethod</b> (string methodName, object[] args)</td></tr>
+<tr class="memdesc:a878991494694b6f42c2667be5d3310e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called by IL-injected dispatch code on target methods. Returns true if the call was dispatched as an RPC (caller should return). Returns false if the method should execute locally.  <br /></td></tr>
+<tr class="separator:a878991494694b6f42c2667be5d3310e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:aa9ca1d8499152c7c2a641b0b8783adf6 inherit pub_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="aa9ca1d8499152c7c2a641b0b8783adf6" name="aa9ca1d8499152c7c2a641b0b8783adf6"></a>
 Task&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetNextId&lt; T &gt;</b> (RPCType rpcType, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? target, float timeout, out <a class="el" href="structPurrNet_1_1Modules_1_1RpcRequest.html">RpcRequest</a> request)</td></tr>
@@ -295,6 +300,12 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasRemoveOwnershipAut
 <tr class="memdesc:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">More...</a><br /></td></tr>
 <tr class="separator:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a48a90db12384bee31996fb77903b13c5"><td class="memItemLeft" align="right" valign="top"><a id="a48a90db12384bee31996fb77903b13c5" name="a48a90db12384bee31996fb77903b13c5"></a>
+static bool&#160;</td><td class="memItemRight" valign="bottom"><b>__bypassMethodDispatch</b></td></tr>
+<tr class="separator:a48a90db12384bee31996fb77903b13c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:a6c6c4ef81394ea9af3125db592d6cc6b"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkReflection.html#a6c6c4ef81394ea9af3125db592d6cc6b">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
@@ -381,6 +392,14 @@ Type&#160;</td><td class="memItemRight" valign="bottom"><b>trackedType</b><code>
 List&lt; <a class="el" href="structPurrNet_1_1ReflectionData.html">ReflectionData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>trackedFields</b><code> [get, set]</code></td></tr>
 <tr class="memdesc:a660330810b5aa4f51f0d76375e8ef96f"><td class="mdescLeft">&#160;</td><td class="mdescRight">The fields/properties to track and sync on the behaviour  <br /></td></tr>
 <tr class="separator:a660330810b5aa4f51f0d76375e8ef96f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89989ca079b6833f142882f4b364ea15"><td class="memItemLeft" align="right" valign="top"><a id="a89989ca079b6833f142882f4b364ea15" name="a89989ca079b6833f142882f4b364ea15"></a>
+List&lt; <a class="el" href="structPurrNet_1_1ReflectionMethodData.html">ReflectionMethodData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>trackedMethods</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a89989ca079b6833f142882f4b364ea15"><td class="mdescLeft">&#160;</td><td class="mdescRight">The methods to expose as RPCs on the behaviour  <br /></td></tr>
+<tr class="separator:a89989ca079b6833f142882f4b364ea15"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26c3e9dee44bf865cc3c3a656af03e48"><td class="memItemLeft" align="right" valign="top"><a id="a26c3e9dee44bf865cc3c3a656af03e48" name="a26c3e9dee44bf865cc3c3a656af03e48"></a>
+Object&#160;</td><td class="memItemRight" valign="bottom"><b>trackedBehaviour</b><code> [get]</code></td></tr>
+<tr class="memdesc:a26c3e9dee44bf865cc3c3a656af03e48"><td class="mdescLeft">&#160;</td><td class="mdescRight">The tracked behaviour instance  <br /></td></tr>
+<tr class="separator:a26c3e9dee44bf865cc3c3a656af03e48"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('properties_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:a1522cd87b4ab0a7206b51e1d7d282f19 inherit properties_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a1522cd87b4ab0a7206b51e1d7d282f19" name="a1522cd87b4ab0a7206b51e1d7d282f19"></a>
 <a class="el" href="classPurrNet_1_1Modules_1_1RollbackModule.html">RollbackModule</a>&#160;</td><td class="memItemRight" valign="bottom"><b>rollbackModule</b><code> [get]</code></td></tr>
@@ -598,8 +617,9 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 
 </div>
 </div>
-<hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following files:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkReflection/NetworkReflection.cs</li>
+<li>Assets/PurrNet/Runtime/Components/NetworkReflection/NetworkReflection.Methods.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

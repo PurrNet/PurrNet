@@ -263,6 +263,8 @@ var annotated_dup =
       [ "RawNetManager", "classPurrNet_1_1RawNetManager.html", "classPurrNet_1_1RawNetManager" ],
       [ "Reference", "classPurrNet_1_1Reference.html", "classPurrNet_1_1Reference" ],
       [ "ReflectionData", "structPurrNet_1_1ReflectionData.html", null ],
+      [ "ReflectionMethodData", "structPurrNet_1_1ReflectionMethodData.html", null ],
+      [ "ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
       [ "RegisterNetworkTypeAttribute", "classPurrNet_1_1RegisterNetworkTypeAttribute.html", null ],
       [ "ReliableDeltaStream", "classPurrNet_1_1ReliableDeltaStream.html", "classPurrNet_1_1ReliableDeltaStream" ],
       [ "RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
