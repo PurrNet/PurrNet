@@ -4630,14 +4630,24 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        private static string GetProjectRoot(ICompiledAssembly compiledAssembly)
+        private static string FindReflectionTargetsCache(ICompiledAssembly compiledAssembly)
         {
+            const string relativePath = "Library/PurrNet/ReflectionRPCTargets.txt";
+
+            if (File.Exists(relativePath))
+                return relativePath;
+
             foreach (var reference in compiledAssembly.References)
             {
                 var normalized = reference.Replace('\\', '/');
                 var idx = normalized.IndexOf("Library/", StringComparison.Ordinal);
-                if (idx > 0)
-                    return reference.Substring(0, idx);
+                if (idx <= 0)
+                    continue;
+
+                var root = reference.Substring(0, idx);
+                var fullPath = Path.Combine(root, relativePath);
+                if (File.Exists(fullPath))
+                    return fullPath;
             }
 
             return null;
@@ -4648,38 +4658,34 @@ namespace PurrNet.Codegen
         {
             var processedTypes = new HashSet<string>();
 
-            var projectRoot = GetProjectRoot(compiledAssembly);
-            if (projectRoot != null)
+            var cacheFile = FindReflectionTargetsCache(compiledAssembly);
+            if (cacheFile != null)
             {
-                var cacheFile = Path.Combine(projectRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
-                if (File.Exists(cacheFile))
+                var lines = File.ReadAllLines(cacheFile);
+                foreach (var line in lines)
                 {
-                    var lines = File.ReadAllLines(cacheFile);
-                    foreach (var line in lines)
+                    var typeName = line.Trim();
+                    if (string.IsNullOrEmpty(typeName))
+                        continue;
+
+                    var targetType = module.GetType(typeName);
+                    if (targetType == null)
+                        continue;
+
+                    if (!processedTypes.Add(targetType.FullName))
+                        continue;
+
+                    try
                     {
-                        var typeName = line.Trim();
-                        if (string.IsNullOrEmpty(typeName))
-                            continue;
-
-                        var targetType = module.GetType(typeName);
-                        if (targetType == null)
-                            continue;
-
-                        if (!processedTypes.Add(targetType.FullName))
-                            continue;
-
-                        try
+                        ProcessReflectionRPCType(module, targetType, messages);
+                    }
+                    catch (Exception e)
+                    {
+                        messages.Add(new DiagnosticMessage
                         {
-                            ProcessReflectionRPCType(module, targetType, messages);
-                        }
-                        catch (Exception e)
-                        {
-                            messages.Add(new DiagnosticMessage
-                            {
-                                DiagnosticType = DiagnosticType.Error,
-                                MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
-                            });
-                        }
+                            DiagnosticType = DiagnosticType.Error,
+                            MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
+                        });
                     }
                 }
             }
