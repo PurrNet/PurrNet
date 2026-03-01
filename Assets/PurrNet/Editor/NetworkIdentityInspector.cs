@@ -184,12 +184,46 @@ namespace PurrNet.Editor
 
         private void HandleOverrides(NetworkIdentity identity, bool multi)
         {
-            if (multi || identity.isSpawned)
-                GUI.enabled = false;
+            bool anySpawned = false;
+            if (multi)
+            {
+                foreach (var t in targets)
+                {
+                    if (t is NetworkIdentity ni && ni.isSpawned)
+                    {
+                        anySpawned = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                anySpawned = identity.isSpawned;
+            }
 
             string label = "Override Defaults";
 
-            if (!multi)
+            if (multi)
+            {
+                bool networkRulesMixed = _networkRules.hasMultipleDifferentValues;
+                bool visibilityRulesMixed = _visitiblityRules.hasMultipleDifferentValues;
+
+                bool isNetworkRulesOverridden = _networkRules.objectReferenceValue != null;
+                bool isVisibilityRulesOverridden = _visitiblityRules.objectReferenceValue != null;
+
+                int overriddenCount = (isNetworkRulesOverridden ? 1 : 0) + (isVisibilityRulesOverridden ? 1 : 0);
+
+                if (networkRulesMixed || visibilityRulesMixed || overriddenCount > 0)
+                {
+                    label += " (";
+                    label += networkRulesMixed ? "P*" : (isNetworkRulesOverridden ? "P" : "");
+                    if ((networkRulesMixed || isNetworkRulesOverridden) && (visibilityRulesMixed || isVisibilityRulesOverridden))
+                        label += ",";
+                    label += visibilityRulesMixed ? "V*" : (isVisibilityRulesOverridden ? "V" : "");
+                    label += ")";
+                }
+            }
+            else
             {
                 bool isNetworkRulesOverridden = _networkRules.objectReferenceValue != null;
                 bool isVisibilityRulesOverridden = _visitiblityRules.objectReferenceValue != null;
@@ -201,9 +235,7 @@ namespace PurrNet.Editor
                     label += " (";
 
                     if (isNetworkRulesOverridden)
-                    {
                         label += overridenCount > 1 ? "P," : "P";
-                    }
 
                     if (isVisibilityRulesOverridden)
                         label += "V";
@@ -211,21 +243,25 @@ namespace PurrNet.Editor
                     label += ")";
                 }
             }
-            else
-            {
-                label += " (...)";
-            }
 
             var old = GUI.enabled;
-            GUI.enabled = !multi;
             _foldoutVisible = EditorGUILayout.BeginFoldoutHeaderGroup(_foldoutVisible, label);
-            GUI.enabled = old;
-            if (!multi && _foldoutVisible)
+
+            if (_foldoutVisible)
             {
+                GUI.enabled = !anySpawned;
                 EditorGUI.indentLevel++;
+
+                EditorGUI.showMixedValue = _networkRules.hasMultipleDifferentValues;
                 EditorGUILayout.PropertyField(_networkRules, new GUIContent("Permissions Override"));
+                EditorGUI.showMixedValue = false;
+
+                EditorGUI.showMixedValue = _visitiblityRules.hasMultipleDifferentValues;
                 EditorGUILayout.PropertyField(_visitiblityRules, new GUIContent("Visibility Override"));
+                EditorGUI.showMixedValue = false;
+
                 EditorGUI.indentLevel--;
+                GUI.enabled = old;
             }
 
             EditorGUILayout.EndFoldoutHeaderGroup();
