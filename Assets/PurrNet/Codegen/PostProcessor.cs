@@ -3745,6 +3745,19 @@ namespace PurrNet.Codegen
                                 MessageData = $"FindUsedTypes {e.Message}\n{e.StackTrace}"
                             });
                         }
+
+                        try
+                        {
+                            ProcessReflectionRPCTargets(module, compiledAssembly, messages);
+                        }
+                        catch (Exception e)
+                        {
+                            messages.Add(new DiagnosticMessage
+                            {
+                                DiagnosticType = DiagnosticType.Error,
+                                MessageData = $"ProcessReflectionRPCTargets: {e.Message}\n{e.StackTrace}"
+                            });
+                        }
                     }
                 }
 
@@ -4615,6 +4628,217 @@ namespace PurrNet.Codegen
                 return false;
 
             return true;
+        }
+
+        private static string FindReflectionTargetsCache(ICompiledAssembly compiledAssembly)
+        {
+            const string relativePath = "Library/PurrNet/ReflectionRPCTargets.txt";
+
+            if (File.Exists(relativePath))
+                return relativePath;
+
+            foreach (var reference in compiledAssembly.References)
+            {
+                var normalized = reference.Replace('\\', '/');
+                var idx = normalized.IndexOf("Library/", StringComparison.Ordinal);
+                if (idx <= 0)
+                    continue;
+
+                var root = reference.Substring(0, idx);
+                var fullPath = Path.Combine(root, relativePath);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
+        }
+
+        private static void ProcessReflectionRPCTargets(ModuleDefinition module,
+            ICompiledAssembly compiledAssembly, List<DiagnosticMessage> messages)
+        {
+            var processedTypes = new HashSet<string>();
+
+            var cacheFile = FindReflectionTargetsCache(compiledAssembly);
+            if (cacheFile != null)
+            {
+                var lines = File.ReadAllLines(cacheFile);
+                foreach (var line in lines)
+                {
+                    var typeName = line.Trim();
+                    if (string.IsNullOrEmpty(typeName))
+                        continue;
+
+                    var targetType = module.GetType(typeName);
+                    if (targetType == null)
+                        continue;
+
+                    if (!processedTypes.Add(targetType.FullName))
+                        continue;
+
+                    try
+                    {
+                        ProcessReflectionRPCType(module, targetType, messages);
+                    }
+                    catch (Exception e)
+                    {
+                        messages.Add(new DiagnosticMessage
+                        {
+                            DiagnosticType = DiagnosticType.Error,
+                            MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
+                        });
+                    }
+                }
+            }
+
+            var attrFullName = typeof(ReflectionRPCTargetAttribute).FullName;
+
+            foreach (var attr in module.Assembly.CustomAttributes)
+            {
+                if (attr.AttributeType.FullName != attrFullName)
+                    continue;
+
+                if (attr.ConstructorArguments.Count != 1)
+                    continue;
+
+                var targetTypeRef = attr.ConstructorArguments[0].Value as TypeReference;
+                if (targetTypeRef == null)
+                    continue;
+
+                var targetType = targetTypeRef.Resolve();
+                if (targetType == null)
+                    continue;
+
+                if (targetType.Module != module)
+                    continue;
+
+                if (!processedTypes.Add(targetType.FullName))
+                    continue;
+
+                try
+                {
+                    ProcessReflectionRPCType(module, targetType, messages);
+                }
+                catch (Exception e)
+                {
+                    messages.Add(new DiagnosticMessage
+                    {
+                        DiagnosticType = DiagnosticType.Error,
+                        MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
+                    });
+                }
+            }
+        }
+
+        private static void ProcessReflectionRPCType(ModuleDefinition module, TypeDefinition targetType,
+            List<DiagnosticMessage> messages)
+        {
+            var networkReflectionTypeDef = module.GetTypeDefinition<NetworkReflection>();
+            var reflectionFieldRef = module.ImportReference(
+                new FieldReference("__purrnet_reflection", networkReflectionTypeDef.Import(module), targetType));
+
+            bool fieldAdded = false;
+            for (int i = 0; i < targetType.Fields.Count; i++)
+            {
+                if (targetType.Fields[i].Name == "__purrnet_reflection")
+                {
+                    fieldAdded = true;
+                    reflectionFieldRef = targetType.Fields[i].Import(module);
+                    break;
+                }
+            }
+
+            if (!fieldAdded)
+            {
+                var field = new FieldDefinition("__purrnet_reflection",
+                    FieldAttributes.Public | FieldAttributes.NotSerialized,
+                    networkReflectionTypeDef.Import(module));
+                targetType.Fields.Add(field);
+                reflectionFieldRef = field.Import(module);
+            }
+
+            var bypassFieldRef = networkReflectionTypeDef.GetField("__bypassMethodDispatch").Import(module);
+            var tryDispatchRef = networkReflectionTypeDef.GetMethod("TryDispatchMethod").Import(module);
+            var objectTypeRef = module.ImportReference(module.TypeSystem.Object);
+
+            for (int i = 0; i < targetType.Methods.Count; i++)
+            {
+                var method = targetType.Methods[i];
+
+                if (method.IsStatic) continue;
+                if (method.IsConstructor) continue;
+                if (method.IsAbstract) continue;
+                if (!method.HasBody) continue;
+                if (method.ReturnType.FullName != module.TypeSystem.Void.FullName) continue;
+                if (method.IsGetter || method.IsSetter) continue;
+                if (method.HasGenericParameters) continue;
+
+                try
+                {
+                    InjectReflectionRPCDispatch(module, method, reflectionFieldRef, bypassFieldRef,
+                        tryDispatchRef, objectTypeRef);
+                }
+                catch (Exception e)
+                {
+                    messages.Add(new DiagnosticMessage
+                    {
+                        DiagnosticType = DiagnosticType.Error,
+                        MessageData =
+                            $"ReflectionRPC inject [{targetType.Name}.{method.Name}]: {e.Message}\n{e.StackTrace}"
+                    });
+                }
+            }
+        }
+
+        private static void InjectReflectionRPCDispatch(ModuleDefinition module, MethodDefinition method,
+            FieldReference reflectionFieldRef, FieldReference bypassFieldRef,
+            MethodReference tryDispatchRef, TypeReference objectTypeRef)
+        {
+            var body = method.Body;
+            var il = body.GetILProcessor();
+            var originalFirst = body.Instructions[0];
+
+            var objectArrayType = new ArrayType(objectTypeRef);
+            var reflLocal = new VariableDefinition(reflectionFieldRef.FieldType);
+            var argsLocal = new VariableDefinition(objectArrayType);
+            body.Variables.Add(reflLocal);
+            body.Variables.Add(argsLocal);
+
+            var paramCount = method.Parameters.Count;
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldsfld, bypassFieldRef));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Brtrue, originalFirst));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldarg_0));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldfld, reflectionFieldRef));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Stloc, reflLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldloc, reflLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Brfalse, originalFirst));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldc_I4, paramCount));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Newarr, objectTypeRef));
+
+            for (int i = 0; i < paramCount; i++)
+            {
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Dup));
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldc_I4, i));
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldarg, method.Parameters[i]));
+
+                var paramType = method.Parameters[i].ParameterType;
+                if (paramType.IsValueType || paramType.IsGenericParameter)
+                    il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Box, module.ImportReference(paramType)));
+
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Stelem_Ref));
+            }
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Stloc, argsLocal));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldloc, reflLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldstr, method.Name));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldloc, argsLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Callvirt, tryDispatchRef));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Brfalse, originalFirst));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ret));
         }
     }
 }
