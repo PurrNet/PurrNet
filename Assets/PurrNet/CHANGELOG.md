@@ -1,3 +1,11 @@
+## [1.19.2-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.6...v1.19.2-beta.7) (2026-03-01)
+
+
+### Bug Fixes
+
+* Added methods to network reflection ([8ada03c](https://github.com/PurrNet/PurrNet/commit/8ada03c293326820a0f92ce3542a57c0e4e8e3b9))
+* Safety for network identity inspector ([0a794eb](https://github.com/PurrNet/PurrNet/commit/0a794eb229a815b6ec6d3c901cf6b3288af020a2))
+
 ## [1.19.2-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.5...v1.19.2-beta.6) (2026-03-01)
 
 
