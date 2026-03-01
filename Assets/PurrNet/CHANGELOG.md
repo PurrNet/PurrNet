@@ -1,3 +1,10 @@
+## [1.19.2-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.5...v1.19.2-beta.6) (2026-03-01)
+
+
+### Bug Fixes
+
+* Proper serialization of custom struct and classes ([249da35](https://github.com/PurrNet/PurrNet/commit/249da35a6ceb3d6d2097882a72b2ed719bdf5ffa))
+
 ## [1.19.2-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.4...v1.19.2-beta.5) (2026-03-01)
 
 
