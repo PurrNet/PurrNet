@@ -106,9 +106,15 @@ namespace PurrNet.Modules
 
         public int GetMTU(PlayerID player, Channel channel, bool asServer)
         {
+            if (!asServer)
+            {
+                return _networkManager.transport.transport.GetMTU(default, channel, false);
+            }
+
             if (_playerToConnection.TryGetValue(player, out var p))
-                return _networkManager.transport.transport.GetMTU(p, channel, asServer);
-            return 1024;
+                return _networkManager.transport.transport.GetMTU(p, channel, true);
+
+            return 500;
         }
 
         /// <summary>
@@ -156,12 +162,6 @@ namespace PurrNet.Modules
         {
             _playerBroadcaster = broadcaster;
         }
-
-        public void SendRaw(PlayerID player, ByteData data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendRaw(player, data, method);
-
-        public void SendRaw(IReadOnlyList<PlayerID> player, ByteData data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendRaw(player, data, method);
 
         public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered)
             => _playerBroadcaster.Send(player, data, method);

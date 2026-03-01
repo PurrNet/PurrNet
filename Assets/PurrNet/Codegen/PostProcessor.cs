@@ -1723,9 +1723,41 @@ namespace PurrNet.Codegen
                 return;
 
             var il = method.Body.GetILProcessor();
+            method.Body.ExceptionHandlers.Clear();
             il.Clear();
 
             AppendStripAction(method, methodName, mode, il, "stripped");
+        }
+
+        static void FixShortFormJumps(MethodDefinition method)
+        {
+            // convert short branches that overflow, took me long to figure this one out
+            foreach (var inst in method.Body.Instructions)
+            {
+                if (inst.Operand is Instruction target)
+                {
+                    int delta = target.Offset - (inst.Offset + inst.GetSize());
+
+                    if (delta is <= -128 or >= 127)
+                    {
+                        // Overflow - convert to long form
+                        if (inst.OpCode == OpCodes.Br_S) inst.OpCode = OpCodes.Br;
+                        else if (inst.OpCode == OpCodes.Brfalse_S) inst.OpCode = OpCodes.Brfalse;
+                        else if (inst.OpCode == OpCodes.Brtrue_S) inst.OpCode = OpCodes.Brtrue;
+                        else if (inst.OpCode == OpCodes.Beq_S) inst.OpCode = OpCodes.Beq;
+                        else if (inst.OpCode == OpCodes.Bne_Un_S) inst.OpCode = OpCodes.Bne_Un;
+                        else if (inst.OpCode == OpCodes.Bge_S) inst.OpCode = OpCodes.Bge;
+                        else if (inst.OpCode == OpCodes.Bge_Un_S) inst.OpCode = OpCodes.Bge_Un;
+                        else if (inst.OpCode == OpCodes.Bgt_S) inst.OpCode = OpCodes.Bgt;
+                        else if (inst.OpCode == OpCodes.Bgt_Un_S) inst.OpCode = OpCodes.Bgt_Un;
+                        else if (inst.OpCode == OpCodes.Ble_S) inst.OpCode = OpCodes.Ble;
+                        else if (inst.OpCode == OpCodes.Ble_Un_S) inst.OpCode = OpCodes.Ble_Un;
+                        else if (inst.OpCode == OpCodes.Blt_S) inst.OpCode = OpCodes.Blt;
+                        else if (inst.OpCode == OpCodes.Blt_Un_S) inst.OpCode = OpCodes.Blt_Un;
+                        else if (inst.OpCode == OpCodes.Leave_S) inst.OpCode = OpCodes.Leave;
+                    }
+                }
+            }
         }
 
         private static void AppendStripAction(MethodDefinition method, string methodName, StripCodeMode mode, ILProcessor il, string action)
@@ -2483,6 +2515,7 @@ namespace PurrNet.Codegen
                 if (settings.stripServerCode && methodRpc.Signature is { runLocally: false, type: RPCType.ServerRPC })
                 {
                     StripBody(method, methodRpc.ogName, settings, methodRpc.Signature.stripCodeMode);
+                    FixShortFormJumps(method);
                 }
             }
 
@@ -3920,6 +3953,7 @@ namespace PurrNet.Codegen
             PutServerCheck(method, settings, stripCodeMode);
             if (!serverBuild)
                 StripBody(method, method.Name, settings, stripCodeMode);
+            FixShortFormJumps(method);
         }
 
         static void PutServerCheck(MethodDefinition method, PurrNetSettings settings, StripCodeModeOverride modeOverride)

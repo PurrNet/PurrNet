@@ -8,7 +8,7 @@ namespace PurrNet
 {
     public struct StaticRPCHeader : IPackedAuto, IEquatable<StaticRPCHeader>
     {
-        public PackedUInt typeHash;
+        public uint typeHash;
         public Size rpcId;
         public PlayerID senderId;
         public PlayerID? targetId;
@@ -57,7 +57,7 @@ namespace PurrNet
 
         public uint GetStableHeaderHash()
         {
-            ulong nid = header.typeHash.value;
+            ulong nid = header.typeHash;
             ulong rpc = header.rpcId.value;
 
             ulong hash = 1469598103934665603UL;

@@ -987,9 +987,9 @@ namespace PurrNet.Profiler.Editor
 
         private static string PrintBroadcast(Type type, BitPacker tempPacker)
         {
-            var typeIdx = default(PackedUInt);
+            uint typeIdx = default;
             object obj = _deserializedObjects.GetValueOrDefault(type);
-            Packer<PackedUInt>.Read(tempPacker, ref typeIdx);
+            Packer<uint>.Read(tempPacker, ref typeIdx);
             Packer.Read(tempPacker, type, ref obj);
             _deserializedObjects[type] = obj;
             return $"{obj}";

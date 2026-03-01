@@ -126,32 +126,6 @@ namespace PurrNet
             }
         }
 
-        public void SendRaw(PlayerID player, ByteData data, Channel method = Channel.ReliableOrdered)
-        {
-            if (player.isBot)
-                return;
-
-            if (_playersManager.TryGetConnection(player, out var conn))
-                _broadcastModule.SendRaw(conn, data, method);
-        }
-
-        public void SendRaw(IReadOnlyList<PlayerID> players, ByteData data, Channel method = Channel.ReliableOrdered)
-        {
-            _connections.Clear();
-
-            for (var i = 0; i < players.Count; i++)
-            {
-                var player = players[i];
-                if (player.isBot)
-                    continue;
-
-                if (_playersManager.TryGetConnection(player, out var conn))
-                    _connections.Add(conn);
-            }
-
-            _broadcastModule.Send(_connections, data, method);
-        }
-
         public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered)
         {
             if (player == PlayerID.Server)

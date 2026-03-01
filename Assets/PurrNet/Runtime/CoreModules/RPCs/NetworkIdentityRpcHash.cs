@@ -7,7 +7,7 @@ namespace PurrNet.Modules
     {
         private readonly NetworkID id;
         private readonly SceneID scene;
-        private readonly PackedUInt typeId;
+        private readonly uint typeId;
         private readonly Size childId;
         private readonly Size rpcId;
         private readonly ulong offset;
@@ -70,7 +70,7 @@ namespace PurrNet.Modules
             hash ^= rpc;
             hash *= prime;
 
-            hash ^= typeId.value;
+            hash ^= typeId;
             hash *= prime;
 
             hash ^= childId.value;

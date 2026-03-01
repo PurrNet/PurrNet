@@ -9,7 +9,7 @@ public class TestBitPackerHash
     [SetUp]
     public void Setup()
     {
-        NetworkManager.CalculateHashes();
+        NetworkManager.LoadOrGenerateHashes();
         packer = BitPackerPool.Get();
     }
 

@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Utils;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace PurrNet.Packing
@@ -123,7 +124,7 @@ namespace PurrNet.Packing
                 return;
             }
 
-            PackingIntegers.Write(packer, (PackedUInt)Hasher.GetStableHashU32(type));
+            packer.Write(Hasher.GetStableHashU32(type));
             Packer.WriteAsExactType(packer, type, value);
         }
 
@@ -137,7 +138,8 @@ namespace PurrNet.Packing
                 return;
             }
 
-            var hash = Packer<PackedUInt>.Read(packer);
+            uint hash = default;
+            packer.Read(ref hash);
 
             if (!Hasher.TryGetType(hash, out var type))
             {
@@ -268,8 +270,8 @@ namespace PurrNet.Packing
             }
             else packer.WriteBit(false);
 
-            PackedUInt typeHash = Hasher.GetStableHashU32(obj.GetType());
-            PackingIntegers.Write(packer, typeHash);
+            uint typeHash = Hasher.GetStableHashU32(obj.GetType());
+            PackUIntegers.Write(packer, typeHash);
             WriteRawObject(obj, packer);
         }
 
@@ -305,7 +307,8 @@ namespace PurrNet.Packing
                 if (ReadAsNetworkAsset(packer, ref value))
                     return;
 
-                var typeHash = Packer<PackedUInt>.Read(packer);
+                uint typeHash = default;
+                NativePacker<uint>.Read(packer, ref typeHash);
                 var type = Hasher.ResolveType(typeHash);
 
                 object obj = null;
@@ -354,6 +357,8 @@ namespace PurrNet.Packing
             }
             catch (Exception e)
             {
+                if (e.InnerException != null)
+                    Debug.LogException(e);
                 PurrLogger.LogError($"Failed to write value of type '{type}'.\n{e.Message}\n{e.StackTrace}");
             }
         }

@@ -16,7 +16,7 @@ public class BitPackerEdgeCaseTests
     [SetUp]
     public void Setup()
     {
-        NetworkManager.CalculateHashes();
+        NetworkManager.LoadOrGenerateHashes();
         _packer = BitPackerPool.Get();
     }
 

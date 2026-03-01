@@ -232,6 +232,7 @@ namespace PurrNet.Modules
             ref var batch = ref _batches[batchIdx];
 
             int before = batch.batchedData.positionInBits;
+            int contentByteLen = content.byteLength;
             var contentLen = content.bitLength;
 
             NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, batch.lastHeader, header);
@@ -240,7 +241,7 @@ namespace PurrNet.Modules
             // do some MTU checks past 1 batch
             if (batch.batchCount > 0)
             {
-                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + content.byteLength;
+                int bytesAfterHeaderLen = batch.batchedData.positionInBytes + contentByteLen;
                 if (bytesAfterHeaderLen + 10 >= batch.cachedMTU)
                 {
                     // undo the last write

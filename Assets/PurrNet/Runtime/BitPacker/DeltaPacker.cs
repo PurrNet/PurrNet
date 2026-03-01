@@ -10,11 +10,6 @@ namespace PurrNet.Packing
         static readonly Dictionary<Type, MethodInfo> _writeMethods = new Dictionary<Type, MethodInfo>();
         static readonly Dictionary<Type, MethodInfo> _readMethods = new Dictionary<Type, MethodInfo>();
 
-        public static bool ShouldBeDeltaPacked(Type type)
-        {
-            return type.IsAssignableFrom(typeof(DeltaPacker));
-        }
-
         public static void RegisterWriter(Type type, MethodInfo method)
         {
             _writeMethods.TryAdd(type, method);

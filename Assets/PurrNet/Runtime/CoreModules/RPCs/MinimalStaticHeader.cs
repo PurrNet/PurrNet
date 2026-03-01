@@ -5,11 +5,11 @@ namespace PurrNet
 {
     public struct MinimalStaticHeader : IPackedAuto, IEquatable<MinimalStaticHeader>
     {
-        public PackedUInt typeHash;
+        public uint typeHash;
 
         public bool Equals(MinimalStaticHeader other)
         {
-            return typeHash.value == other.typeHash.value;
+            return typeHash == other.typeHash;
         }
 
         public override bool Equals(object obj)

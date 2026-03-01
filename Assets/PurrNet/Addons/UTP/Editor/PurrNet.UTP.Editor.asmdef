@@ -1,6 +1,6 @@
 {
     "name": "PurrNet.UTP.Editor",
-    "rootNamespace": "",
+    "rootNamespace": "PurrNet.UTP.Editor",
     "references": [
         "GUID:629ad64ea20117f43b28b33033f75b88",
         "GUID:6e20f757a1bae164fa42750dd2b27dcb",
@@ -19,7 +19,7 @@
         {
             "name": "com.unity.transport",
             "expression": "",
-            "define": "UTP_LOBBYRELAY"
+            "define": "UTP_NET_PACKAGE"
         }
     ],
     "noEngineReferences": false

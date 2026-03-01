@@ -194,7 +194,7 @@ namespace PurrNet
 
         public static void LoadSamples(string file)
         {
-            NetworkManager.CalculateHashes();
+            NetworkManager.LoadOrGenerateHashes();
 
             foreach (var sample in Statistics.samples)
                 sample.Dispose();

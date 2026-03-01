@@ -60,22 +60,16 @@ namespace PurrNet.Modules
 
         private void ClearTrackers()
         {
-            foreach (var player in _sendingTrackers.Keys)
+            foreach (var clientDict in _sendingTrackers.Values)
             {
-                if (_sendingTrackers.TryGetValue(player, out var clientDict))
-                {
-                    foreach (var tracker in clientDict.Values)
-                        tracker.Dispose();
-                }
+                foreach (var tracker in clientDict.Values)
+                    tracker.Dispose();
             }
 
-            foreach (var player in _receivingTrackers.Keys)
+            foreach (var receiveDict in _receivingTrackers.Values)
             {
-                if (_receivingTrackers.TryGetValue(player, out var receiveDict))
-                {
-                    foreach (var tracker in receiveDict.Values)
-                        tracker.Dispose();
-                }
+                foreach (var tracker in receiveDict.Values)
+                    tracker.Dispose();
             }
 
             _sendingTrackers.Clear();
@@ -498,7 +492,8 @@ namespace PurrNet.Modules
                 for (var e = 0; e < count; e++)
                 {
                     var entry = batch.entries[e];
-                    var mtu = _players.GetMTU(batch.playerId, Channel.Unreliable, _asServer) - BroadcastModule.MAX_HEADER_SIZE;
+                    var mtu = _players.GetMTU(batch.playerId, Channel.Unreliable, _asServer)
+                              - BroadcastModule.MAX_HEADER_SIZE;
 
                     DeltaPacker<PackedUInt>.Write(packer, prevType, entry.keyType);
                     DeltaPacker<PackedUInt>.Write(packer, prevHash, entry.keyHash);

@@ -2,21 +2,16 @@
 #define DISABLEUTPWORKS
 #endif
 
-#if UTP_LOBBYRELAY
-#define UTP_NET_PACKAGE
-#endif
-
 using System;
 using PurrNet.Transports;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using System.Collections.Generic;
 using PurrNet.Logging;
 using Unity.Networking.Transport;
-using Unity.Collections;
 using Unity.Networking.Transport.Error;
 #endif
 
-#if UTP_SERVICES
+#if UTP_NET_PACKAGE
 using Unity.Networking.Transport.Relay;
 #endif
 
@@ -70,7 +65,7 @@ namespace PurrNet.UTP
         public bool listening => false;
 #endif
 
-#if UTP_LOBBYRELAY && UTP_SERVICES
+#if UTP_NET_PACKAGE
         /// <summary>
         /// Starts listening for incoming client connections on the specified port.
         /// Can operate in direct connection mode or via Unity Relay if relay data is provided.
