@@ -1,3 +1,10 @@
+## [1.19.2-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.4...v1.19.2-beta.5) (2026-03-01)
+
+
+### Bug Fixes
+
+* Processor change for IL2 build issues ([fdf4f53](https://github.com/PurrNet/PurrNet/commit/fdf4f534e6fa5e532c8925960bf30c15992a2156))
+
 ## [1.19.2-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.3...v1.19.2-beta.4) (2026-02-28)
 
 
