@@ -102,6 +102,7 @@ var annotated_dup =
         [ "HalfVector2", "structPurrNet_1_1Packing_1_1HalfVector2.html", null ],
         [ "HalfVector3", "structPurrNet_1_1Packing_1_1HalfVector3.html", null ],
         [ "HalfVector4", "structPurrNet_1_1Packing_1_1HalfVector4.html", null ],
+        [ "IAsyncPackable", "interfacePurrNet_1_1Packing_1_1IAsyncPackable.html", "interfacePurrNet_1_1Packing_1_1IAsyncPackable" ],
         [ "IDuplicate", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", null ],
         [ "IPacked", "interfacePurrNet_1_1Packing_1_1IPacked.html", null ],
         [ "IPackedAuto", "interfacePurrNet_1_1Packing_1_1IPackedAuto.html", null ],

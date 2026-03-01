@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: Class Members - Functions</title>
+<title>PurrNet: PurrNet.Packing.IAsyncPackable Interface Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -64,7 +64,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('functions_func_p.html',''); initResizable(); });
+$(document).ready(function(){initNavTree('interfacePurrNet_1_1Packing_1_1IAsyncPackable.html',''); initResizable(); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -89,31 +89,39 @@ $(document).ready(function(){initNavTree('functions_func_p.html',''); initResiza
 </div>
 </div>
 
+<div class="header">
+  <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="interfacePurrNet_1_1Packing_1_1IAsyncPackable-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">PurrNet.Packing.IAsyncPackable Interface Reference</div></div>
+</div><!--header-->
 <div class="contents">
-&#160;
 
-<h3><a id="index_p" name="index_p"></a>- p -</h3><ul>
-<li>Parse()&#160;:&#160;<a class="el" href="structPurrNet_1_1Packing_1_1Half.html#a2880ec23ec4c2083298ba21973bfe330">PurrNet.Packing.Half</a></li>
-<li>Pause()&#160;:&#160;<a class="el" href="classPurrNet_1_1NetworkAudioSource.html#aa5296749ebae5ee8da12e1c810183c74">PurrNet.NetworkAudioSource</a></li>
-<li>Pickle()&#160;:&#160;<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html#aa16a5c2c850b316daae5f4be504d047d">PurrNet.Packing.BitPacker</a></li>
-<li>PickleInto()&#160;:&#160;<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html#a0695b4b7100fa3a6752d727d35953e73">PurrNet.Packing.BitPacker</a></li>
-<li>Play()&#160;:&#160;<a class="el" href="classPurrNet_1_1NetworkAudioSource.html#a9c3277533d4aa9d44146600339d40a20">PurrNet.NetworkAudioSource</a></li>
-<li>PlayOneShot()&#160;:&#160;<a class="el" href="classPurrNet_1_1NetworkAudioSource.html#a82ff0e84ff747332704d3f692336cfc9">PurrNet.NetworkAudioSource</a></li>
-<li>PreciseTickToTime()&#160;:&#160;<a class="el" href="classPurrNet_1_1Modules_1_1TickManager.html#a5b3da68c8cbe54d6e8f28e56b83c22b9">PurrNet.Modules.TickManager</a></li>
-<li>PrepareAfterUnpackAsync()&#160;:&#160;<a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#a292c687ddc4c1acdd375376af791a662">PurrNet.Packing.IAsyncPackable</a></li>
-<li>PrepareForPackAsync()&#160;:&#160;<a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#aacb53a3ff10fd379855b41c929dab12b">PurrNet.Packing.IAsyncPackable</a></li>
-<li>Previous()&#160;:&#160;<a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a4af26918ef23a075f5d5fe831cc13c5e">PurrNet.StateMachine.StateMachine</a></li>
-<li>Previous&lt; T &gt;()&#160;:&#160;<a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#a24734a36fb7d85aaa5f8b8341a5634a2">PurrNet.StateMachine.StateMachine</a></li>
-<li>PreviousValid()&#160;:&#160;<a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#aeed0075eae21b8e6aca50f1be66cc26a">PurrNet.StateMachine.StateMachine</a></li>
-<li>PreviousValid&lt; T &gt;()&#160;:&#160;<a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#ac60303d96f58e2fb1f6ce1a21eea2414">PurrNet.StateMachine.StateMachine</a></li>
-<li>PromoteToServer()&#160;:&#160;<a class="el" href="classPurrNet_1_1NetworkBones.html#aafc635ff3b42490da93f937f1b57aa92">PurrNet.NetworkBones</a>, <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e">PurrNet.NetworkIdentity</a>, <a class="el" href="classPurrNet_1_1NetworkManager.html#a483e37b314094bd8cd3e93b679a4d19d">PurrNet.NetworkManager</a>, <a class="el" href="classPurrNet_1_1NetworkModule.html#a1370d458228d460a3bc2ce33610555ed">PurrNet.NetworkModule</a></li>
-<li>PurrHashSet()&#160;:&#160;<a class="el" href="classPurrNet_1_1Collections_1_1PurrHashSet.html#aaa83b21a370bea6001303698076223e9">PurrNet.Collections.PurrHashSet&lt; T &gt;</a></li>
+<p>Implement on types that need async preparation around sync serialization. PrepareForPackAsync runs before packing (sender); PrepareAfterUnpackAsync runs after unpacking (receiver). Both return the prepared instance (for structs, return this after mutating).   
+ <a href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#details">More...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:aacb53a3ff10fd379855b41c929dab12b"><td class="memItemLeft" align="right" valign="top"><a id="aacb53a3ff10fd379855b41c929dab12b" name="aacb53a3ff10fd379855b41c929dab12b"></a>
+Task&lt; <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareForPackAsync</b> ()</td></tr>
+<tr class="memdesc:aacb53a3ff10fd379855b41c929dab12b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepare for sync serialization. Returns the prepared instance (for structs, return this after mutating). <br /></td></tr>
+<tr class="separator:aacb53a3ff10fd379855b41c929dab12b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a292c687ddc4c1acdd375376af791a662"><td class="memItemLeft" align="right" valign="top"><a id="a292c687ddc4c1acdd375376af791a662" name="a292c687ddc4c1acdd375376af791a662"></a>
+Task&lt; <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareAfterUnpackAsync</b> ()</td></tr>
+<tr class="memdesc:a292c687ddc4c1acdd375376af791a662"><td class="mdescLeft">&#160;</td><td class="mdescRight">Hydrate after sync deserialization. Returns the prepared instance (for structs, return this after mutating). <br /></td></tr>
+<tr class="separator:a292c687ddc4c1acdd375376af791a662"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p >Implement on types that need async preparation around sync serialization. PrepareForPackAsync runs before packing (sender); PrepareAfterUnpackAsync runs after unpacking (receiver). Both return the prepared instance (for structs, return this after mutating).  </p>
+</div><hr/>The documentation for this interface was generated from the following file:<ul>
+<li>Assets/PurrNet/Runtime/BitPacker/Interfaces/IPackedData.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
+    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="namespacePurrNet_1_1Packing.html">Packing</a></li><li class="navelem"><a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
   </ul>
 </div>
