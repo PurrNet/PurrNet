@@ -3748,7 +3748,7 @@ namespace PurrNet.Codegen
 
                         try
                         {
-                            ProcessReflectionRPCTargets(module, messages);
+                            ProcessReflectionRPCTargets(module, compiledAssembly, messages);
                         }
                         catch (Exception e)
                         {
@@ -4630,9 +4630,60 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        private static void ProcessReflectionRPCTargets(ModuleDefinition module, List<DiagnosticMessage> messages)
+        private static string GetProjectRoot(ICompiledAssembly compiledAssembly)
+        {
+            foreach (var reference in compiledAssembly.References)
+            {
+                var normalized = reference.Replace('\\', '/');
+                var idx = normalized.IndexOf("Library/", StringComparison.Ordinal);
+                if (idx > 0)
+                    return reference.Substring(0, idx);
+            }
+
+            return null;
+        }
+
+        private static void ProcessReflectionRPCTargets(ModuleDefinition module,
+            ICompiledAssembly compiledAssembly, List<DiagnosticMessage> messages)
         {
             var processedTypes = new HashSet<string>();
+
+            var projectRoot = GetProjectRoot(compiledAssembly);
+            if (projectRoot != null)
+            {
+                var cacheFile = Path.Combine(projectRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
+                if (File.Exists(cacheFile))
+                {
+                    var lines = File.ReadAllLines(cacheFile);
+                    foreach (var line in lines)
+                    {
+                        var typeName = line.Trim();
+                        if (string.IsNullOrEmpty(typeName))
+                            continue;
+
+                        var targetType = module.GetType(typeName);
+                        if (targetType == null)
+                            continue;
+
+                        if (!processedTypes.Add(targetType.FullName))
+                            continue;
+
+                        try
+                        {
+                            ProcessReflectionRPCType(module, targetType, messages);
+                        }
+                        catch (Exception e)
+                        {
+                            messages.Add(new DiagnosticMessage
+                            {
+                                DiagnosticType = DiagnosticType.Error,
+                                MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
+                            });
+                        }
+                    }
+                }
+            }
+
             var attrFullName = typeof(ReflectionRPCTargetAttribute).FullName;
 
             foreach (var attr in module.Assembly.CustomAttributes)
