@@ -101,7 +101,7 @@ namespace PurrNet
                 MethodBroadcastToObservers(methodIndex, args);
         }
 
-        [ObserversRpc]
+        [ObserversRpc(runLocally: true)]
         private void MethodBroadcastToObservers(int methodIndex, object[] args)
         {
             if (IsController(_ownerAuth))
