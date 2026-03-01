@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Modules;
@@ -103,6 +103,7 @@ namespace PurrNet
         {
             T value = default;
             Packer<T>.Read(stream, ref value);
+            AsyncPackableHelper.PrepareAfterUnpack(ref value);
             values[index] = value;
         }
     }

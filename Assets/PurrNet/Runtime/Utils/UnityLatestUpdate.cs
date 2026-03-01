@@ -68,13 +68,15 @@ namespace PurrNet
 
         public static void TriggerPendingAsaps()
         {
-            for (var i = 0; i < _executeASAP.Count; i++)
+            if (_executeASAP.Count == 0)
+                return;
+            var toRun = new List<PriorityAction>(_executeASAP);
+            _executeASAP.Clear();
+            for (var i = 0; i < toRun.Count; i++)
             {
-                var action = _executeASAP[i];
-
                 try
                 {
-                    action.action?.Invoke();
+                    toRun[i].action?.Invoke();
                 }
                 catch (Exception e)
                 {

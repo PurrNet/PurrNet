@@ -52,39 +52,49 @@ namespace PurrNet.Editor
 
             if (target)
             {
-                var targetType = target.GetType();
-                var attributes = targetType.GetCustomAttributes(typeof(ContributorAttribute), true);
-                var courtesy = targetType.GetCustomAttributes(typeof(CourtesyOfAttribute), true);
-
-                for (var i = 0; i < attributes.Length; i++)
+                try
                 {
-                    var attr = (ContributorAttribute)attributes[i];
+                    var targetType = target.GetType();
+                    var attributes = targetType.GetCustomAttributes(typeof(ContributorAttribute), true);
+                    var courtesy = targetType.GetCustomAttributes(typeof(CourtesyOfAttribute), true);
 
-                    if (attr == null)
-                        continue;
-
-                    _contributors.Add(new Contributor
+                    for (var i = 0; i < attributes.Length; i++)
                     {
-                        name = attr.name,
-                        url = attr.url
-                    });
-                }
+                        var attr = (ContributorAttribute)attributes[i];
 
-                for (var i = 0; i < courtesy.Length; i++)
+                        if (attr == null)
+                            continue;
+
+                        _contributors.Add(new Contributor
+                        {
+                            name = attr.name,
+                            url = attr.url
+                        });
+                    }
+
+                    for (var i = 0; i < courtesy.Length; i++)
+                    {
+                        var attr = (CourtesyOfAttribute)courtesy[i];
+                        if (attr == null)
+                            continue;
+                        _courtesyOf.Add(new Contributor
+                        {
+                            name = attr.name,
+                            url = attr.url
+                        });
+                    }
+
+                    var docsAttr = targetType.GetCustomAttribute<PurrDocsAttribute>();
+                    if (docsAttr != null)
+                        _docsUrl = docsAttr.url;
+                }
+                catch (System.IO.FileNotFoundException)
                 {
-                    var attr = (CourtesyOfAttribute)courtesy[i];
-                    if (attr == null)
-                        continue;
-                    _courtesyOf.Add(new Contributor
-                    {
-                        name = attr.name,
-                        url = attr.url
-                    });
+                    // Reflection on types that reference .NET 6 assemblies can fail in Unity's runtime
                 }
-
-                var docsAttr = targetType.GetCustomAttribute<PurrDocsAttribute>();
-                if (docsAttr != null)
-                    _docsUrl = docsAttr.url;
+                catch (System.Reflection.ReflectionTypeLoadException)
+                {
+                }
             }
         }
 
@@ -102,7 +112,18 @@ namespace PurrNet.Editor
                 EditorGUILayout.HelpBox("NetworkIdentity is a child of a NetworkManager. This is not supported.",
                     MessageType.Error);
 
-            base.OnInspectorGUI();
+            try
+            {
+                base.OnInspectorGUI();
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                DrawDefaultInspectorFallback();
+            }
+            catch (System.Reflection.ReflectionTypeLoadException)
+            {
+                DrawDefaultInspectorFallback();
+            }
 
             DrawIdentityInspector();
             GUI.enabled = true;
@@ -332,11 +353,44 @@ namespace PurrNet.Editor
             EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
+        private void DrawDefaultInspectorFallback()
+        {
+            serializedObject.UpdateIfRequiredOrScript();
+            var iterator = serializedObject.GetIterator();
+            for (bool enterChildren = true; iterator.NextVisible(enterChildren); enterChildren = false)
+            {
+                try
+                {
+                    EditorGUILayout.PropertyField(iterator, true);
+                }
+                catch (System.IO.FileNotFoundException)
+                {
+                }
+                catch (System.Reflection.ReflectionTypeLoadException)
+                {
+                }
+            }
+        }
+
         protected void DrawPurrButtons(NetworkIdentity targetIdentity)
         {
             if (targetIdentity == null)
                 return;
 
+            try
+            {
+                DrawPurrButtonsInternal(targetIdentity);
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+            }
+            catch (System.Reflection.ReflectionTypeLoadException)
+            {
+            }
+        }
+
+        private void DrawPurrButtonsInternal(NetworkIdentity targetIdentity)
+        {
             GUILayout.Space(5);
 
             var methods = targetIdentity.GetType().GetMethods(
@@ -349,7 +403,19 @@ namespace PurrNet.Editor
 
             foreach (var method in methods)
             {
-                var buttonAttr = method.GetCustomAttribute<PurrButtonAttribute>();
+                PurrButtonAttribute buttonAttr;
+                try
+                {
+                    buttonAttr = method.GetCustomAttribute<PurrButtonAttribute>();
+                }
+                catch (System.IO.FileNotFoundException)
+                {
+                    continue;
+                }
+                catch (System.Reflection.ReflectionTypeLoadException)
+                {
+                    continue;
+                }
 
                 if (buttonAttr != null)
                 {
