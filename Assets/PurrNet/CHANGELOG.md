@@ -1,3 +1,10 @@
+## [1.19.2-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.7...v1.19.2-beta.8) (2026-03-02)
+
+
+### Bug Fixes
+
+* Try to avoid missing scripts causing editor spam ([d36ef20](https://github.com/PurrNet/PurrNet/commit/d36ef206b246f395fe5eaeeddb7817193eb83f3b))
+
 ## [1.19.2-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.6...v1.19.2-beta.7) (2026-03-01)
 
 
