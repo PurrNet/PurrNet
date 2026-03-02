@@ -317,7 +317,7 @@ namespace PurrNet.Editor
             EditorGUI.EndProperty();
 
             if (methodsChanged)
-                RefreshReflectionTargetsCache();
+                RefreshReflectionTargetsCacheFull();
         }
 
         internal static void RefreshReflectionTargetsCache()
@@ -327,24 +327,51 @@ namespace PurrNet.Editor
             var allReflections = Resources.FindObjectsOfTypeAll<NetworkReflection>();
             foreach (var reflection in allReflections)
             {
+                if (reflection == null) continue;
                 if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
                     continue;
 
                 var type = reflection.trackedType;
                 if (type != null)
-                    targetTypes.Add(type.AssemblyQualifiedName != null ? type.FullName : type.Name);
+                    targetTypes.Add(type.FullName);
+            }
+
+            WriteCacheFile(targetTypes);
+        }
+
+        internal static void RefreshReflectionTargetsCacheFull()
+        {
+            var targetTypes = new HashSet<string>();
+
+            var allReflections = Resources.FindObjectsOfTypeAll<NetworkReflection>();
+            foreach (var reflection in allReflections)
+            {
+                if (reflection == null) continue;
+                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                    continue;
+
+                var type = reflection.trackedType;
+                if (type != null)
+                    targetTypes.Add(type.FullName);
             }
 
             var prefabGuids = AssetDatabase.FindAssets("t:Prefab");
             foreach (var guid in prefabGuids)
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
+
+                // Only load prefabs that actually contain NetworkReflection to avoid
+                // triggering missing script warnings on unrelated prefabs
+                if (!PrefabContainsNetworkReflection(path))
+                    continue;
+
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 if (prefab == null) continue;
 
                 var reflections = prefab.GetComponentsInChildren<NetworkReflection>(true);
                 foreach (var reflection in reflections)
                 {
+                    if (reflection == null) continue;
                     if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
                         continue;
 
@@ -355,6 +382,19 @@ namespace PurrNet.Editor
             }
 
             WriteCacheFile(targetTypes);
+        }
+
+        static bool PrefabContainsNetworkReflection(string prefabPath)
+        {
+            try
+            {
+                var text = File.ReadAllText(prefabPath);
+                return text.Contains("NetworkReflection");
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         static void WriteCacheFile(HashSet<string> targetTypeNames)
@@ -382,7 +422,7 @@ namespace PurrNet.Editor
         [InitializeOnLoadMethod]
         static void OnEditorLoad()
         {
-            EditorApplication.delayCall += NetworkReflectionInspector.RefreshReflectionTargetsCache;
+            EditorApplication.delayCall += NetworkReflectionInspector.RefreshReflectionTargetsCacheFull;
         }
     }
 }
