@@ -1,3 +1,10 @@
+## [1.19.2-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.10...v1.19.2-beta.11) (2026-03-02)
+
+
+### Bug Fixes
+
+* enhance bone info and delta module with key hash caching for improved performance ([ab264f0](https://github.com/PurrNet/PurrNet/commit/ab264f0417ffe00a390c10ec64347f5f9cc2a4ad))
+
 ## [1.19.2-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.9...v1.19.2-beta.10) (2026-03-02)
 
 
