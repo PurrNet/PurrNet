@@ -1,3 +1,10 @@
+## [1.19.2-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.8...v1.19.2-beta.9) (2026-03-02)
+
+
+### Bug Fixes
+
+* refactoring and fixing async RPC issues ([6957af5](https://github.com/PurrNet/PurrNet/commit/6957af5f1e3e3d3de131d9c37cc47d0cc3a43783))
+
 ## [1.19.2-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.7...v1.19.2-beta.8) (2026-03-02)
 
 
