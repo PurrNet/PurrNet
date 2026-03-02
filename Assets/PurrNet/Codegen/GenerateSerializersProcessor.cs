@@ -8,6 +8,7 @@ using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using Object = UnityEngine.Object;
+using UnityEngine.Scripting;
 
 namespace PurrNet.Codegen
 {
@@ -85,6 +86,20 @@ namespace PurrNet.Codegen
                 .Replace("`", "_").Replace("/", "_").Replace("[", "_I_").Replace("]", "_I_");
         }
 
+        private static void AddSerializerToAssembly(AssemblyDefinition assembly, TypeDefinition serializerClass,
+            TypeDefinition serializerParent)
+        {
+            if (serializerParent != null)
+            {
+                serializerClass.DeclaringType = serializerParent;
+                serializerParent.NestedTypes.Add(serializerClass);
+            }
+            else
+            {
+                assembly.MainModule.Types.Add(serializerClass);
+            }
+        }
+
         public static void HandleType(bool hashOnly, AssemblyDefinition assembly, TypeReference type,
             HashSet<string> visited, HashSet<TypeReference> ignoreSerialization,
             HashSet<TypeReference> ignoreDelta)
@@ -98,26 +113,40 @@ namespace PurrNet.Codegen
             if (!PostProcessor.IsTypeInOwnModule(type, assembly.MainModule))
                 return;
 
-            string namespaceName = type.Namespace;
-            if (string.IsNullOrWhiteSpace(namespaceName))
-                namespaceName = "PurrNet.CodeGen.Serializers";
-            else namespaceName += ".PurrNet.CodeGen.Serializers";
+            var resolvedType = type.Resolve();
+            if (resolvedType == null)
+                return;
 
-            // create static class
+            string namespaceName;
+            TypeDefinition serializerParent = null;
+            if (resolvedType.DeclaringType != null)
+            {
+                var declaring = resolvedType.DeclaringType.Resolve();
+                namespaceName = string.IsNullOrWhiteSpace(declaring.Namespace)
+                    ? "PurrNet.CodeGen.Serializers"
+                    : declaring.Namespace + ".PurrNet.CodeGen.Serializers";
+            }
+            else
+            {
+                namespaceName = type.Namespace;
+                if (string.IsNullOrWhiteSpace(namespaceName))
+                    namespaceName = "PurrNet.CodeGen.Serializers";
+                else namespaceName += ".PurrNet.CodeGen.Serializers";
+            }
             var serializerClass = new TypeDefinition(namespaceName,
                 $"{MakeFullNameValidCSharp(type.FullName)}_Serializer",
                 TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.Abstract | TypeAttributes.Public,
                 assembly.MainModule.TypeSystem.Object
             );
 
-            var editorType = assembly.MainModule.GetTypeDefinition<GeneratedByILAttribute>().Import(assembly.MainModule);
-            var editorConstructor = editorType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(assembly.MainModule);
-            var editorAttribute = new CustomAttribute(editorConstructor);
-            serializerClass.CustomAttributes.Add(editorAttribute);
-            var resolvedType = type.Resolve();
+            var module = assembly.MainModule;
+            var editorType = module.GetTypeDefinition<GeneratedByILAttribute>().Import(module);
+            var editorConstructor = editorType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(module);
+            serializerClass.CustomAttributes.Add(new CustomAttribute(editorConstructor));
 
-            if (resolvedType == null)
-                return;
+            var preserveType = module.GetTypeDefinition<PreserveAttribute>();
+            var preserveCtor = preserveType.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters).Import(module);
+            serializerClass.CustomAttributes.Add(new CustomAttribute(preserveCtor));
 
             bool hasDontPack = DoesTypeHaveDontPackAttribute(resolvedType);
 
@@ -129,7 +158,7 @@ namespace PurrNet.Codegen
 
             if (resolvedType.IsInterface || hashOnly)
             {
-                assembly.MainModule.Types.Add(serializerClass);
+                AddSerializerToAssembly(assembly, serializerClass, serializerParent);
                 HandleHashOnly(assembly, type, serializerClass);
                 return;
             }
@@ -150,7 +179,7 @@ namespace PurrNet.Codegen
                 return;
             }
 
-            assembly.MainModule.Types.Add(serializerClass);
+            AddSerializerToAssembly(assembly, serializerClass, serializerParent);
 
             if (IsGeneric(type, out var genericT))
             {

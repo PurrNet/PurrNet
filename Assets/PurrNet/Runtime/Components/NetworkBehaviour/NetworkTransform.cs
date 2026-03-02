@@ -20,7 +20,7 @@ namespace PurrNet
         [Tooltip("Whether to sync the scale of the transform.")] [SerializeField, PurrLock]
         private bool _syncScale = true;
 
-        [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentiy.")]
+        [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.")]
         [SerializeField, PurrLock]
         private bool _syncParent = true;
 
@@ -47,7 +47,7 @@ namespace PurrNet
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
         /// <summary>
-        /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentiy.
+        /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
         public bool syncParent => _syncParent;
 

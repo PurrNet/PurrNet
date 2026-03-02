@@ -15,11 +15,11 @@ public class LogServerConnectionState : MonoBehaviour
 
     private void OnClientConnectionState(ConnectionState obj)
     {
-        Debug.Log($"Client connection state changed: {obj}");
+        //Debug.Log($"Client connection state changed: {obj}");
     }
 
     private void OnServerConnectionState(ConnectionState obj)
     {
-        Debug.Log($"Server connection state changed: {obj}");
+        //Debug.Log($"Server connection state changed: {obj}");
     }
 }

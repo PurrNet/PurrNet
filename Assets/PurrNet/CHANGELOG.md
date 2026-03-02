@@ -1,3 +1,39 @@
+## [1.19.2-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.7...v1.19.2-beta.8) (2026-03-02)
+
+
+### Bug Fixes
+
+* Try to avoid missing scripts causing editor spam ([d36ef20](https://github.com/PurrNet/PurrNet/commit/d36ef206b246f395fe5eaeeddb7817193eb83f3b))
+
+## [1.19.2-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.6...v1.19.2-beta.7) (2026-03-01)
+
+
+### Bug Fixes
+
+* Added methods to network reflection ([8ada03c](https://github.com/PurrNet/PurrNet/commit/8ada03c293326820a0f92ce3542a57c0e4e8e3b9))
+* Safety for network identity inspector ([0a794eb](https://github.com/PurrNet/PurrNet/commit/0a794eb229a815b6ec6d3c901cf6b3288af020a2))
+
+## [1.19.2-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.5...v1.19.2-beta.6) (2026-03-01)
+
+
+### Bug Fixes
+
+* Proper serialization of custom struct and classes ([249da35](https://github.com/PurrNet/PurrNet/commit/249da35a6ceb3d6d2097882a72b2ed719bdf5ffa))
+
+## [1.19.2-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.4...v1.19.2-beta.5) (2026-03-01)
+
+
+### Bug Fixes
+
+* Processor change for IL2 build issues ([fdf4f53](https://github.com/PurrNet/PurrNet/commit/fdf4f534e6fa5e532c8925960bf30c15992a2156))
+
+## [1.19.2-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.3...v1.19.2-beta.4) (2026-02-28)
+
+
+### Bug Fixes
+
+* BitPacker reinforce reading to avoid reading out of bounds ([84c655c](https://github.com/PurrNet/PurrNet/commit/84c655cbae4ea063232290583d0232670188bac2))
+
 ## [1.19.2-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.2...v1.19.2-beta.3) (2026-02-28)
 
 
