@@ -70,7 +70,7 @@ namespace PurrNet.Codegen
         public static void HandleType(TypeDefinition type)
         {
             if (type == null) return;
-            if (!(type.IsValueType || type.IsClass)) return;
+            if (!type.IsValueType) return;
             if (type.IsInterface) return;
             if (type.IsEnum) return;
             if (type.Module?.Assembly == null) return;
