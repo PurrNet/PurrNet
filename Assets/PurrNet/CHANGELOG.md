@@ -1,3 +1,10 @@
+## [1.19.2-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.11...v1.19.2-beta.12) (2026-03-02)
+
+
+### Bug Fixes
+
+* optimize owner connection checks and caching in NetworkBones ([436f332](https://github.com/PurrNet/PurrNet/commit/436f33271b2eef290a09bd9e395771cb5bc06355))
+
 ## [1.19.2-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.10...v1.19.2-beta.11) (2026-03-02)
 
 
