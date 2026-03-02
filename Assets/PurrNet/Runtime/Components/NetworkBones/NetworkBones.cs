@@ -125,11 +125,17 @@ namespace PurrNet
 
             for (var bIdx = 0; bIdx < _bones.Count; bIdx++)
             {
+                var posId = new NetworkBoneID(sceneId, nid, bIdx, BoneInfoType.Position);
+                var rotId = new NetworkBoneID(sceneId, nid, bIdx, BoneInfoType.Rotation);
+                var scaleId = new NetworkBoneID(sceneId, nid, bIdx, BoneInfoType.Scale);
                 _bonesInfo[bIdx] = new BoneInfo
                 {
-                    posHash = new NetworkBoneID(sceneId, nid, bIdx, BoneInfoType.Position),
-                    rotHash = new NetworkBoneID(sceneId, nid, bIdx, BoneInfoType.Rotation),
-                    scaleHash = new NetworkBoneID(sceneId, nid, bIdx, BoneInfoType.Scale)
+                    posHash = posId,
+                    rotHash = rotId,
+                    scaleHash = scaleId,
+                    posKeyHash = DeltaModule.GetKeyHash(posId),
+                    rotKeyHash = DeltaModule.GetKeyHash(rotId),
+                    scaleKeyHash = DeltaModule.GetKeyHash(scaleId),
                 };
                 _positions[bIdx] = new Interpolated<Vector3>(Vector3.Lerp, _sendDelta, _bones[bIdx].localPosition, _maxBufferSize, _minBufferSize);
                 _rotations[bIdx] = new Interpolated<Quaternion>(Quaternion.Slerp, _sendDelta, _bones[bIdx].localRotation, _maxBufferSize, _minBufferSize);
@@ -342,7 +348,7 @@ namespace PurrNet
         bool WritePosition(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey)
         {
             var newPos = CompressPosition(info.localPosition);
-            return module.Write(packer, player, info.posHash, newPos, ref cachedKey);
+            return module.Write<Vector3Int>(packer, player, info.posKeyHash, newPos, ref cachedKey);
         }
 
         private void ForwardPositions(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data)
@@ -383,7 +389,7 @@ namespace PurrNet
             {
                 var boneInfo = _bonesInfo[(int)i];
                 Vector3Int newPos = default;
-                module.Read(packer, boneInfo.posHash, sender, ref newPos, ref cache);
+                module.Read<Vector3Int>(packer, boneInfo.posKeyHash, sender, ref newPos, ref cache);
                 _positions[i].Add(DecompressPosition(newPos));
             }
         }
@@ -394,7 +400,7 @@ namespace PurrNet
         bool WriteRotation(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey)
         {
             var newRot = CompressEuler(info.localRotation.eulerAngles);
-            return module.Write(packer, player, info.rotHash, newRot, ref cachedKey);
+            return module.Write<Vector3Int>(packer, player, info.rotKeyHash, newRot, ref cachedKey);
         }
 
         private void ForwardRotations(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data)
@@ -435,7 +441,7 @@ namespace PurrNet
             {
                 var boneInfo = _bonesInfo[(int)i];
                 Vector3Int newRot = default;
-                module.Read(packer, boneInfo.rotHash, sender, ref newRot, ref cache);
+                module.Read<Vector3Int>(packer, boneInfo.rotKeyHash, sender, ref newRot, ref cache);
                 _rotations[i].Add(Quaternion.Euler(DecompressEuler(newRot)));
             }
         }
@@ -446,7 +452,7 @@ namespace PurrNet
         bool WriteScale(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey)
         {
             var newScale = CompressScale(info.localScale);
-            return module.Write(packer, player, info.scaleHash, newScale, ref cachedKey);
+            return module.Write<Vector3Int>(packer, player, info.scaleKeyHash, newScale, ref cachedKey);
         }
 
         private void ForwardScales(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data)
@@ -488,7 +494,7 @@ namespace PurrNet
             {
                 var boneInfo = _bonesInfo[(int)i];
                 Vector3Int newScale = default;
-                module.Read(packer, boneInfo.scaleHash, sender, ref newScale, ref cache);
+                module.Read<Vector3Int>(packer, boneInfo.scaleKeyHash, sender, ref newScale, ref cache);
                 _scales[i].Add(DecompressScale(newScale));
             }
         }
