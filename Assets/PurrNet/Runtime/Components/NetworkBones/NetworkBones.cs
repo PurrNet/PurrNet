@@ -35,6 +35,8 @@ namespace PurrNet
         private DeltaModule _serverDeltaModule;
 
         private float _sendDelta;
+        private bool _cachedIsController;
+        private bool _cachedConnectedOwner;
 
         protected override void OnDestroy()
         {
@@ -52,6 +54,9 @@ namespace PurrNet
 
         protected override void OnSpawned(bool asServer)
         {
+            _cachedConnectedOwner = hasConnectedOwner;
+            _cachedIsController = IsController(_ownerAuth);
+
             if (asServer)
                  networkManager.TryGetModule<DeltaModule>(out _serverDeltaModule, true);
             else networkManager.TryGetModule<DeltaModule>(out _clientDeltaModule, false);
@@ -61,6 +66,25 @@ namespace PurrNet
         {
             networkManager.TryGetModule<DeltaModule>(out _serverDeltaModule, true);
             networkManager.TryGetModule<DeltaModule>(out _clientDeltaModule, false);
+            _cachedIsController = IsController(_ownerAuth);
+        }
+
+        protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
+        {
+            _cachedConnectedOwner = hasConnectedOwner;
+            _cachedIsController = IsController(_ownerAuth);
+        }
+
+        protected override void OnOwnerDisconnected(PlayerID ownerId)
+        {
+            _cachedConnectedOwner = false;
+            _cachedIsController = IsController(_ownerAuth);
+        }
+
+        protected override void OnOwnerReconnected(PlayerID ownerId)
+        {
+            _cachedConnectedOwner = hasConnectedOwner;
+            _cachedIsController = IsController(_ownerAuth);
         }
 
         private void OnEnable()
@@ -169,7 +193,7 @@ namespace PurrNet
             _accumulateTime += Time.unscaledDeltaTime;
 
             // if we dont control it, update from incoming data
-            if (!IsController(_ownerAuth))
+            if (!_cachedIsController)
             {
                 UpdateVisuals();
 
@@ -203,14 +227,15 @@ namespace PurrNet
 
         private void UpdateVisuals()
         {
+            float dt = Time.unscaledDeltaTime;
             for (var i = 0; i < _bones.Count; i++)
             {
                 var bone = _bones[i];
                 ref var boneInfo = ref _bonesInfo[i];
 
-                var locPos = _positions[i].Advance(Time.unscaledDeltaTime);
-                var locRot = _rotations[i].Advance(Time.unscaledDeltaTime);
-                var locScale = _scales[i].Advance(Time.unscaledDeltaTime);
+                var locPos = _positions[i].Advance(dt);
+                var locRot = _rotations[i].Advance(dt);
+                var locScale = _scales[i].Advance(dt);
 
                 bone.SetLocalPositionAndRotation(locPos, locRot);
                 bone.localScale = locScale;
@@ -227,7 +252,7 @@ namespace PurrNet
         {
             if (asServer)
             {
-                bool checkOwner = _ownerAuth && hasConnectedOwner;
+                bool checkOwner = _ownerAuth && _cachedConnectedOwner;
                 var localPlayerCached = localPlayer;
                 for (var i = 0; i < observers.Count; i++)
                 {
