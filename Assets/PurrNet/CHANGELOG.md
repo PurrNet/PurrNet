@@ -1,3 +1,10 @@
+## [1.19.2-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.9...v1.19.2-beta.10) (2026-03-02)
+
+
+### Bug Fixes
+
+* remove redundant empty response sending in RPC error handling ([692af16](https://github.com/PurrNet/PurrNet/commit/692af167bbf05ac51675b6d1f98f7f41c83443e6))
+
 ## [1.19.2-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.8...v1.19.2-beta.9) (2026-03-02)
 
 
