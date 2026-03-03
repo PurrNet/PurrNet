@@ -603,8 +603,11 @@ namespace PurrNet
         {
             if (_whiteBlackDirty)
             {
+                foreach (var player in _whiteBlackDirtyPlayers)
+                    EvaluateVisibility(player);
+
+                _whiteBlackDirtyPlayers.Clear();
                 _whiteBlackDirty = false;
-                EvaluateVisibility();
                 UnregisterTickEvent(true);
             }
         }
