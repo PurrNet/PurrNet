@@ -877,6 +877,7 @@ namespace PurrNet
             isManualSpawn = false;
             _whitelist.Clear();
             _blacklist.Clear();
+            _whiteBlackDirtyPlayers.Clear();
         }
 
         private void OnChildDespawned(NetworkIdentity networkIdentity)
