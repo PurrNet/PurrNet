@@ -573,6 +573,8 @@ namespace PurrNet
         {
             if (_tickRegisteredClient <= 0)
             {
+                InternalTick();
+
                 try
                 {
                     _ticker?.OnTick(_serverTickManager.tickDelta);
