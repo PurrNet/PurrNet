@@ -1,3 +1,10 @@
+## [1.19.2-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.13...v1.19.2-beta.14) (2026-03-03)
+
+
+### Bug Fixes
+
+* update bone entry size calculations for accurate MTU handling in NetworkBones ([9ae2cde](https://github.com/PurrNet/PurrNet/commit/9ae2cde5ba0d019569afe0f8e8dd085dd83a9253))
+
 ## [1.19.2-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.12...v1.19.2-beta.13) (2026-03-03)
 
 
