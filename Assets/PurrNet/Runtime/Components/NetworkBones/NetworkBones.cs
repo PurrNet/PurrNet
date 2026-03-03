@@ -246,7 +246,8 @@ namespace PurrNet
             }
         }
 
-        const int MAX_BONE_ENTRY_SIZE = 32; // a bit of an exaggeration, but better safe than sorry when it comes to MTU
+        const int MAX_BONE_ENTRY_SIZE = 32; // worst-case single bone delta write ~26 bytes, rounded up
+        const int RPC_BONE_PARAMS_SIZE = 10; // startingIdx + count + BitPacker size prefix per bone RPC
 
         void SendTransforms(DeltaModule module, bool asServer)
         {
@@ -262,7 +263,7 @@ namespace PurrNet
                         continue;
 
                     int mtu = networkManager.GetMTU(observer, Channel.Unreliable, true) -
-                              RPCBatch.MAX_HEADER_SIZE - MAX_BONE_ENTRY_SIZE;
+                              RPCBatch.MAX_HEADER_SIZE - RPC_BONE_PARAMS_SIZE;
 
                     SendPositions(observer, mtu, module);
                     SendRotations(observer, mtu, module);
@@ -272,7 +273,7 @@ namespace PurrNet
             else if (!isServer)
             {
                 int mtu = networkManager.GetMTU(PlayerID.Server, Channel.Unreliable, false) -
-                          RPCBatch.MAX_HEADER_SIZE - MAX_BONE_ENTRY_SIZE;
+                          RPCBatch.MAX_HEADER_SIZE - RPC_BONE_PARAMS_SIZE;
 
                 SendPositions(default, mtu, module);
                 SendRotations(default, mtu, module);
@@ -341,23 +342,20 @@ namespace PurrNet
             uint lastIndex = 0;
             bool writtenAny = false;
 
-            for (uint b = 0; b <_bones.Count; b++)
+            for (uint b = 0; b < _bones.Count; b++)
             {
-                writtenAny = write(packer, module, observer, _bonesInfo[b], ref cache) || writtenAny;
-
-                if (packer.positionInBytes > MTU)
+                if (writtenAny && packer.positionInBytes + MAX_BONE_ENTRY_SIZE > MTU)
                 {
-                    if (writtenAny)
-                    {
-                        var count = b - lastIndex + 1;
-                        forward(observer, lastIndex, count, packer);
-                    }
+                    var count = b - lastIndex;
+                    forward(observer, lastIndex, count, packer);
 
                     cache = default;
-                    lastIndex = b + 1;
+                    lastIndex = b;
                     packer.ResetPosition();
                     writtenAny = false;
                 }
+
+                writtenAny = write(packer, module, observer, _bonesInfo[b], ref cache) || writtenAny;
             }
 
             if (writtenAny && packer.positionInBits > 0)
