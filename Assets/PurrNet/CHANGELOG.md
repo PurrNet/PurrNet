@@ -1,3 +1,10 @@
+## [1.19.2-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.12...v1.19.2-beta.13) (2026-03-03)
+
+
+### Bug Fixes
+
+* invoke InternalTick in NetworkIdentity when client is not registered ([c164ee0](https://github.com/PurrNet/PurrNet/commit/c164ee011c8c548496a9dedef0be4f0f1473930e))
+
 ## [1.19.2-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.11...v1.19.2-beta.12) (2026-03-02)
 
 
