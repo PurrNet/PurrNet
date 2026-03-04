@@ -31,9 +31,12 @@ namespace PurrNet.Editor
             var value = match.Value.value;
             var key = match.Value.key;
 
-            // Git URL entries don't have a semver version
+            // Git URL entries — try to resolve the actual version
             if (IsGitUrl(value))
-                return "git";
+            {
+                var resolved = GetResolvedPackageVersion(key);
+                return resolved ?? "git";
+            }
 
             // Parse version from the entry value
             // Format: "file:../PurrPackages/{name}-{version}.tgz" or "embedded:{name}-{version}"
@@ -49,19 +52,36 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
+        /// Returns true if the package is currently installed via a git URL
+        /// (either in manifest.json or resolved by Unity).
+        /// </summary>
+        public static bool IsInstalledViaGit(PackageInfo package)
+        {
+            var match = FindInstalledEntry(package);
+            if (match == null)
+                return false;
+            return IsGitUrl(match.Value.value);
+        }
+
+        /// <summary>
         /// Reads the resolved commit hash from packages-lock.json for a git-installed package.
+        /// Uses the actual manifest key (which may differ from GetUpmPackageName).
         /// </summary>
         public static string GetInstalledCommitHash(PackageInfo package)
         {
-            var upmName = package.GetUpmPackageName();
             if (!File.Exists(LockFilePath))
                 return null;
+
+            // Use the actual installed key, which may differ from apiName
+            // when the package was matched by git URL scanning.
+            var match = FindInstalledEntry(package);
+            var lookupName = match?.key ?? package.GetUpmPackageName();
 
             try
             {
                 var lockFile = JObject.Parse(File.ReadAllText(LockFilePath));
                 var deps = lockFile["dependencies"] as JObject;
-                var entry = deps?[upmName] as JObject;
+                var entry = deps?[lookupName] as JObject;
                 if (entry == null)
                     return null;
 
@@ -129,24 +149,46 @@ namespace PurrNet.Editor
             // API name may differ from the real name in package.json.
             // Scan entries pointing to PurrPackages/ — this is safe because only our
             // installer puts tarballs there, unlike Packages/ which has unrelated packages.
-            if (package.Versions == null || package.Versions.Length == 0)
-                return null;
-
-            foreach (var prop in deps.Properties())
+            if (package.Versions != null && package.Versions.Length > 0)
             {
-                var val = prop.Value?.ToString();
-                if (val == null || !val.Contains(PackagesDir))
-                    continue;
-
-                // val is "file:../PurrPackages/{key}-{version}.tgz"
-                var filename = Path.GetFileNameWithoutExtension(val);
-                if (filename == null || !filename.StartsWith(prop.Name + "-"))
-                    continue;
-
-                var fileVersion = filename.Substring(prop.Name.Length + 1);
-                foreach (var v in package.Versions)
+                foreach (var prop in deps.Properties())
                 {
-                    if (v.Version == fileVersion)
+                    var val = prop.Value?.ToString();
+                    if (val == null || !val.Contains(PackagesDir))
+                        continue;
+
+                    // val is "file:../PurrPackages/{key}-{version}.tgz"
+                    var filename = Path.GetFileNameWithoutExtension(val);
+                    if (filename == null || !filename.StartsWith(prop.Name + "-"))
+                        continue;
+
+                    var fileVersion = filename.Substring(prop.Name.Length + 1);
+                    foreach (var v in package.Versions)
+                    {
+                        if (v.Version == fileVersion)
+                            return (prop.Name, val);
+                    }
+                }
+            }
+
+            // Scan manifest for git URLs matching the package's known git URLs.
+            // This handles cases where the UPM name differs or the user installed
+            // via Unity's Package Manager using the same repo URL.
+            if (!string.IsNullOrEmpty(package.GitInstallUrlRelease) || !string.IsNullOrEmpty(package.GitInstallUrlDev))
+            {
+                var knownBaseUrls = new HashSet<string>();
+                if (!string.IsNullOrEmpty(package.GitInstallUrlRelease))
+                    knownBaseUrls.Add(GetBaseGitUrl(package.GitInstallUrlRelease));
+                if (!string.IsNullOrEmpty(package.GitInstallUrlDev))
+                    knownBaseUrls.Add(GetBaseGitUrl(package.GitInstallUrlDev));
+
+                foreach (var prop in deps.Properties())
+                {
+                    var val = prop.Value?.ToString();
+                    if (val == null || !IsGitUrl(val))
+                        continue;
+
+                    if (knownBaseUrls.Contains(GetBaseGitUrl(val)))
                         return (prop.Name, val);
                 }
             }
@@ -170,7 +212,7 @@ namespace PurrNet.Editor
                 var manifest = JObject.Parse(File.ReadAllText(ManifestPath));
                 var deps = manifest["dependencies"] as JObject;
                 var entry = deps?[upmName]?.ToString();
-                if (entry != null && entry.StartsWith("file:"))
+                if (entry != null && (entry.StartsWith("file:") || IsGitUrl(entry)))
                     return false;
             }
             catch { }
@@ -439,6 +481,50 @@ namespace PurrNet.Editor
         {
             return value != null &&
                    (value.StartsWith("https://") || value.StartsWith("git://") || value.StartsWith("git+"));
+        }
+
+        /// <summary>
+        /// Strips the fragment (#branch/tag/commit) and query string from a git URL
+        /// so that URLs pointing to the same repo can be compared regardless of ref.
+        /// </summary>
+        private static string GetBaseGitUrl(string gitUrl)
+        {
+            if (gitUrl == null) return "";
+            var hashIdx = gitUrl.IndexOf('#');
+            if (hashIdx >= 0)
+                gitUrl = gitUrl.Substring(0, hashIdx);
+            var queryIdx = gitUrl.IndexOf('?');
+            if (queryIdx >= 0)
+                gitUrl = gitUrl.Substring(0, queryIdx);
+            return gitUrl.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Reads the actual semver version from the resolved package in Library/PackageCache.
+        /// </summary>
+        private static string GetResolvedPackageVersion(string packageName)
+        {
+            const string cacheDir = "Library/PackageCache";
+            if (!Directory.Exists(cacheDir))
+                return null;
+
+            try
+            {
+                var dirs = Directory.GetDirectories(cacheDir, packageName + "@*");
+                if (dirs.Length == 0)
+                    return null;
+
+                var pkgJsonPath = Path.Combine(dirs[0], "package.json");
+                if (!File.Exists(pkgJsonPath))
+                    return null;
+
+                var json = JObject.Parse(File.ReadAllText(pkgJsonPath));
+                return json["version"]?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static void SetManifestEntry(string packageName, string value)
