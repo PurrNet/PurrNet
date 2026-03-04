@@ -65,7 +65,7 @@ namespace PurrNet.Editor
         private const float CategoryGap = 8f;
         private const float SplitterWidth = 6f;
 
-        [MenuItem("Tools/PurrNet/PurrNet Packages %&i", false, -99)]
+        [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -99)]
         public static void ShowWindow()
         {
             var window = GetWindow<PurrPackageManagerWindow>();

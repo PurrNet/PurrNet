@@ -39,12 +39,14 @@ namespace PurrNet.Editor
             }
 
             // Parse version from the entry value
-            // Format: "file:../PurrPackages/{name}-{version}.tgz" or "embedded:{name}-{version}"
+            // Format: "file:../PurrPackages/{name}-{version}.tgz", "file:../PurrPackages/{name}-{version}", or "embedded:{name}-{version}"
             string nameAndVersion;
             if (value.StartsWith("embedded:"))
                 nameAndVersion = value.Substring("embedded:".Length);
-            else
+            else if (value.EndsWith(".tgz"))
                 nameAndVersion = Path.GetFileNameWithoutExtension(value);
+            else
+                nameAndVersion = Path.GetFileName(value);
 
             if (nameAndVersion != null && nameAndVersion.StartsWith(key + "-"))
                 return nameAndVersion.Substring(key.Length + 1);
@@ -157,8 +159,8 @@ namespace PurrNet.Editor
                     if (val == null || !val.Contains(PackagesDir))
                         continue;
 
-                    // val is "file:../PurrPackages/{key}-{version}.tgz"
-                    var filename = Path.GetFileNameWithoutExtension(val);
+                    // val is "file:../PurrPackages/{key}-{version}.tgz" or "file:../PurrPackages/{key}-{version}"
+                    var filename = val.EndsWith(".tgz") ? Path.GetFileNameWithoutExtension(val) : Path.GetFileName(val);
                     if (filename == null || !filename.StartsWith(prop.Name + "-"))
                         continue;
 
@@ -250,6 +252,46 @@ namespace PurrNet.Editor
         {
             try
             {
+                // Git+tag fast path: no download needed, just set manifest to git URL with tag
+                if (!package.IsExternal)
+                {
+                    var gitUrl = GetGitUrlForChannel(package, version.Channel);
+                    if (gitUrl != null && !string.IsNullOrEmpty(version.TagName))
+                    {
+                        EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
+
+                        var gitUpmName = package.GetUpmPackageName();
+
+                        // Remove old entry (tgz, folder, or git)
+                        var gitOldMatch = FindInstalledEntry(package);
+                        if (gitOldMatch != null)
+                        {
+                            RemoveManifestEntry(gitOldMatch.Value.key);
+                            CleanupPackageFiles(gitOldMatch.Value.key);
+                        }
+
+                        // Clean up old package files under the canonical name too
+                        CleanupPackageFiles(gitUpmName);
+
+                        // Remove embedded packages if they exist
+                        if (HasEmbeddedPackage(gitUpmName))
+                            RemoveEmbeddedPackage(gitUpmName);
+
+                        // Set manifest to git URL with tag
+                        SetManifestEntry(gitUpmName, StripGitRef(gitUrl) + "#" + version.TagName);
+
+                        if (resolve)
+                        {
+                            PurrPackageManagerCache.Invalidate();
+                            UnityEditor.PackageManager.Client.Resolve();
+                            AssetDatabase.Refresh();
+                        }
+
+                        EditorUtility.ClearProgressBar();
+                        return Result<bool>.Ok(true);
+                    }
+                }
+
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Getting download URL...", 0.1f);
 
                 var downloadResult = await PurrPackageManagerAPI.GetDownloadUrl(apiKey, package.Id, version.Id);
@@ -331,41 +373,24 @@ namespace PurrNet.Editor
                 if (oldMatch != null)
                 {
                     RemoveManifestEntry(oldMatch.Value.key);
-                    if (Directory.Exists(PackagesDir))
-                    {
-                        foreach (var oldTgz in Directory.GetFiles(PackagesDir, oldMatch.Value.key + "-*.tgz"))
-                        {
-                            try { File.Delete(oldTgz); }
-                            catch { /* best effort */ }
-                        }
-                    }
+                    CleanupPackageFiles(oldMatch.Value.key);
                 }
 
-                // Create the tgz tarball
+                // Move extracted folder to PurrPackages/{name}-{version}/
                 Directory.CreateDirectory(PackagesDir);
-                var tgzFileName = $"{upmName}-{upmVersion}.tgz";
-                var tgzPath = Path.Combine(PackagesDir, tgzFileName);
+                var folderName = $"{upmName}-{upmVersion}";
+                var folderPath = Path.Combine(PackagesDir, folderName);
 
-                // Remove any orphaned tgz with the real name (e.g., removed via Unity PM but file remains)
-                foreach (var oldTgz in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
-                {
-                    try { File.Delete(oldTgz); }
-                    catch { /* best effort */ }
-                }
+                // Clean up any old package files under the canonical name too
+                CleanupPackageFiles(upmName);
 
-                try
-                {
-                    CreateTarGz(tempExtractDir, tgzPath);
-                }
-                catch (Exception tgzEx)
-                {
-                    Directory.Delete(tempExtractDir, true);
-                    EditorUtility.ClearProgressBar();
-                    return Result<bool>.Fail($"Failed to create package tarball: {tgzEx.Message}");
-                }
+                // Move extracted content to final location
+                if (Directory.Exists(folderPath))
+                    Directory.Delete(folderPath, true);
+                Directory.Move(tempExtractDir, folderPath);
 
                 // Add file: reference to manifest.json
-                SetManifestEntry(upmName, "file:../" + PackagesDir + "/" + tgzFileName);
+                SetManifestEntry(upmName, "file:../" + PackagesDir + "/" + folderName);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
@@ -413,15 +438,8 @@ namespace PurrNet.Editor
                 if (apiName != upmName)
                     RemoveEmbeddedPackage(apiName);
 
-                // Delete the tgz file
-                if (Directory.Exists(PackagesDir))
-                {
-                    foreach (var tgz in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
-                    {
-                        try { File.Delete(tgz); }
-                        catch { /* best effort */ }
-                    }
-                }
+                // Delete old package files (tgz or folders)
+                CleanupPackageFiles(upmName);
 
                 RemoveManifestEntry(upmName);
 
@@ -451,15 +469,8 @@ namespace PurrNet.Editor
                 {
                     RemoveManifestEntry(oldMatch.Value.key);
 
-                    // Clean up old tgz files if switching from tgz install
-                    if (Directory.Exists(PackagesDir))
-                    {
-                        foreach (var oldTgz in Directory.GetFiles(PackagesDir, oldMatch.Value.key + "-*.tgz"))
-                        {
-                            try { File.Delete(oldTgz); }
-                            catch { /* best effort */ }
-                        }
-                    }
+                    // Clean up old package files if switching install method
+                    CleanupPackageFiles(oldMatch.Value.key);
                 }
 
                 // Remove embedded packages if they exist
@@ -499,6 +510,43 @@ namespace PurrNet.Editor
         {
             return value != null &&
                    (value.StartsWith("https://") || value.StartsWith("git://") || value.StartsWith("git+"));
+        }
+
+        /// <summary>
+        /// Strips the #fragment from a git URL but preserves ?path= query parameters.
+        /// Used when constructing git+tag manifest entries.
+        /// </summary>
+        private static string StripGitRef(string gitUrl)
+        {
+            if (gitUrl == null) return "";
+            var hashIdx = gitUrl.IndexOf('#');
+            return hashIdx >= 0 ? gitUrl.Substring(0, hashIdx) : gitUrl;
+        }
+
+        /// <summary>
+        /// Picks the appropriate git install URL for a given channel,
+        /// falling back to the other channel if the preferred one is null.
+        /// </summary>
+        private static string GetGitUrlForChannel(PackageInfo package, string channel)
+        {
+            if (string.Equals(channel, "dev", StringComparison.OrdinalIgnoreCase))
+                return package.GitInstallUrlDev ?? package.GitInstallUrlRelease;
+            return package.GitInstallUrlRelease ?? package.GitInstallUrlDev;
+        }
+
+        /// <summary>
+        /// Cleans up old package files in PurrPackages/ for a given UPM name.
+        /// Handles both legacy .tgz files and folder-based installs.
+        /// </summary>
+        private static void CleanupPackageFiles(string upmName)
+        {
+            if (!Directory.Exists(PackagesDir)) return;
+            // Old tgz files
+            foreach (var f in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
+                try { File.Delete(f); } catch { }
+            // Folder installs
+            foreach (var d in Directory.GetDirectories(PackagesDir, upmName + "-*"))
+                try { Directory.Delete(d, true); } catch { }
         }
 
         /// <summary>
