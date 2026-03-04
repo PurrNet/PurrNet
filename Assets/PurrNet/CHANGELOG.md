@@ -1,3 +1,10 @@
+## [1.19.2-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.16...v1.19.2-beta.17) (2026-03-04)
+
+
+### Bug Fixes
+
+* compares all package.json entries and picks the shallowest one (shortest prefix) instead of ([f5decec](https://github.com/PurrNet/PurrNet/commit/f5dececb4f5888a4f7fec30a53791adb24ec8e9a))
+
 ## [1.19.2-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.15...v1.19.2-beta.16) (2026-03-04)
 
 
