@@ -9,10 +9,17 @@ namespace PurrNet.Modules
 {
     public class AddressablesSyncModule : INetworkModule
     {
+        public delegate void OnClientAddressableLoadStateChanged(PlayerID player, string guid, bool loaded);
+        
         private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
 
         private readonly Dictionary<PlayerID, HashSet<string>> _clientLoadedGuids = new();
+
+        /// <summary>
+        /// Fired on the server when a client reports that an Addressable asset has been loaded or unloaded.
+        /// </summary>
+        public event OnClientAddressableLoadStateChanged onClientLoadStateChanged;
 
         public AddressablesSyncModule(NetworkManager manager, PlayersManager playersManager)
         {
@@ -95,10 +102,14 @@ namespace PurrNet.Modules
                 _clientLoadedGuids[player] = set;
             }
 
+            var guid = packet.guid.value ?? string.Empty;
+
             if (packet.loaded)
-                set.Add(packet.guid.value ?? string.Empty);
+                set.Add(guid);
             else
-                set.Remove(packet.guid.value ?? string.Empty);
+                set.Remove(guid);
+
+            onClientLoadStateChanged?.Invoke(player, guid, packet.loaded);
 
             if (packet.loaded && _manager.TryGetModule<HierarchyFactory>(true, out var factory))
                 factory.EvaluateVisibilityForPlayer(player);
