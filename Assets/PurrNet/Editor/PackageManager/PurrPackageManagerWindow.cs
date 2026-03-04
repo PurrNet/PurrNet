@@ -55,23 +55,33 @@ namespace PurrNet.Editor
         [NonSerialized] private GUIStyle _releaseNotesStyle;
         private Texture2D _logo;
 
+        private const int StudiosEntryIndex = int.MaxValue;
+
         private const float SplitMargin = 80f;
         private const float ListItemHeight = 28f;
         private const float CategoryHeaderHeight = 20f;
         private const float CategoryGap = 8f;
         private const float SplitterWidth = 6f;
 
-        [MenuItem("Tools/PurrNet/Package Manager", false, -99)]
+        [MenuItem("Tools/PurrNet/PurrNet Packages", false, -99)]
         public static void ShowWindow()
         {
-            var window = GetWindow<PurrPackageManagerWindow>("PurrNet Package Manager");
+            var window = GetWindow<PurrPackageManagerWindow>();
+            var icon = Resources.Load<Texture2D>("purricon");
+            window.titleContent = new GUIContent("PurrNet Packages", icon);
             window.minSize = new Vector2(520, 350);
+        }
+
+        [MenuItem("Tools/PurrNet/PurrNet for Studios", false, 1000)]
+        private static void OpenStudiosPage()
+        {
+            Application.OpenURL("https://purrnet.dev/studios");
         }
 
         private void OnEnable()
         {
             wantsMouseMove = true;
-            _logo = Resources.Load<Texture2D>("purrlogo");
+            _logo = Resources.Load<Texture2D>("purricon");
             _apiKeyInput = PurrPackageManagerAuth.GetApiKey();
             LoadData();
         }
@@ -231,8 +241,8 @@ namespace PurrNet.Editor
 
             RebuildSortedPackages();
 
-            // Clamp selection
-            if (_selectedIndex >= _sortedPackages.Count)
+            // Clamp selection (preserve special entries like Studios)
+            if (_selectedIndex != StudiosEntryIndex && _selectedIndex >= _sortedPackages.Count)
                 _selectedIndex = _sortedPackages.Count - 1;
 
             // Auto-select first if nothing selected
@@ -281,7 +291,7 @@ namespace PurrNet.Editor
 
             var labelRect = new Rect(logoRect.xMax + 8, headerRect.y + 4, 200, 20);
             var headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
-            GUI.Label(labelRect, "Package Manager", headerStyle);
+            GUI.Label(labelRect, "PurrNet Packages", headerStyle);
 
             // Tier badge
             if (_entitlements != null)
@@ -354,7 +364,8 @@ namespace PurrNet.Editor
             for (int c = 0; c < _categories.Count; c++)
             {
                 if (c > 0) totalHeight += CategoryGap;
-                totalHeight += CategoryHeaderHeight + _categories[c].count * ListItemHeight;
+                int extra = string.Equals(_categories[c].name, "Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                totalHeight += CategoryHeaderHeight + (_categories[c].count + extra) * ListItemHeight;
             }
 
             bool needsScroll = totalHeight > areaRect.height;
@@ -383,6 +394,14 @@ namespace PurrNet.Editor
                 {
                     var itemRect = new Rect(0, y, viewRect.width, ListItemHeight);
                     DrawListItem(_sortedPackages[i].pkg, i, itemRect);
+                    y += ListItemHeight;
+                }
+
+                // "PurrNet for Studios" entry at the end of the Core category
+                if (string.Equals(categoryName, "Core", StringComparison.OrdinalIgnoreCase))
+                {
+                    var studioRect = new Rect(0, y, viewRect.width, ListItemHeight);
+                    DrawStudiosListItem(studioRect);
                     y += ListItemHeight;
                 }
             }
@@ -497,8 +516,142 @@ namespace PurrNet.Editor
                 Repaint();
         }
 
+        private static readonly Color _studiosAccent = new Color(0.85f, 0.65f, 0.3f, 1f);
+        private static readonly Color _studiosBg = new Color(0.85f, 0.65f, 0.3f, 0.06f);
+        private static readonly Color _studiosHoverBg = new Color(0.85f, 0.65f, 0.3f, 0.12f);
+
+        private void DrawStudiosListItem(Rect itemRect)
+        {
+            bool isSelected = _selectedIndex == StudiosEntryIndex;
+            bool isHover = itemRect.Contains(Event.current.mousePosition);
+
+            if (isSelected)
+            {
+                EditorGUI.DrawRect(itemRect, _selectedBg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 2, itemRect.height), _studiosAccent);
+            }
+            else
+            {
+                EditorGUI.DrawRect(itemRect, isHover ? _studiosHoverBg : _studiosBg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 2, itemRect.height),
+                    new Color(_studiosAccent.r, _studiosAccent.g, _studiosAccent.b, isHover ? 0.6f : 0.3f));
+            }
+
+            if (Event.current.type == EventType.Repaint)
+            {
+                var nameRect = new Rect(itemRect.x, itemRect.y, itemRect.width, itemRect.height);
+                _listItemStyle.Draw(nameRect, "PurrNet for Studios", false, false, false, false);
+            }
+
+            if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
+            {
+                _selectedIndex = StudiosEntryIndex;
+                _releasePopupIndex = -1;
+                _devPopupIndex = -1;
+                GUI.FocusControl(null);
+                Event.current.Use();
+                Repaint();
+            }
+
+            if (isHover && Event.current.type == EventType.Repaint)
+                Repaint();
+        }
+
+        private void DrawStudiosDetail()
+        {
+            _detailScrollPosition = EditorGUILayout.BeginScrollView(_detailScrollPosition,
+                GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+
+            EditorGUILayout.Space(8);
+            GUILayout.Space(4);
+
+            // Title
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            GUILayout.Label("PurrNet for Studios", _detailTitleStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Description
+            EditorGUILayout.Space(8);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.LabelField(
+                "Professional networking solutions with dedicated support, custom integrations, " +
+                "and consulting services designed to help your studio succeed at scale.",
+                _descStyle);
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Enterprise features
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Enterprise Features", _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            GUILayout.Label("\u2022  Priority support with direct access to the engineering team", _smallLabelStyle);
+            GUILayout.Label("\u2022  Hands-on project access for immediate troubleshooting and fixes", _smallLabelStyle);
+            GUILayout.Label("\u2022  Custom integrations tailored to your infrastructure and workflows", _smallLabelStyle);
+            GUILayout.Label("\u2022  Performance optimization tuned to your scale requirements", _smallLabelStyle);
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Singleplayer to multiplayer
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Singleplayer to Multiplayer", _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            GUILayout.Label("\u2022  Full conversion of existing singleplayer projects to multiplayer", _smallLabelStyle);
+            GUILayout.Label("\u2022  Custom tooling built around your game's specific needs", _smallLabelStyle);
+            GUILayout.Label("\u2022  State synchronization, lobby systems, and matchmaking integration", _smallLabelStyle);
+            GUILayout.Label("\u2022  Minimal disruption to your existing codebase and workflows", _smallLabelStyle);
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Consulting services
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Consulting Services", _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            GUILayout.Label("\u2022  Architecture review and optimization recommendations", _smallLabelStyle);
+            GUILayout.Label("\u2022  Migration planning from other networking solutions", _smallLabelStyle);
+            GUILayout.Label("\u2022  Performance auditing to identify bottlenecks", _smallLabelStyle);
+            GUILayout.Label("\u2022  Custom development for bespoke features and integrations", _smallLabelStyle);
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Contact button
+            EditorGUILayout.Space(16);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            GUI.color = _accentColor;
+            if (GUILayout.Button("Learn More", GUILayout.Height(30)))
+                Application.OpenURL("https://purrnet.dev/studios");
+            GUI.color = Color.white;
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(12);
+            EditorGUILayout.EndScrollView();
+        }
+
         private void DrawPackageDetail()
         {
+            if (_selectedIndex == StudiosEntryIndex)
+            {
+                DrawStudiosDetail();
+                return;
+            }
+
             _detailScrollPosition = EditorGUILayout.BeginScrollView(_detailScrollPosition,
                 GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
