@@ -1,3 +1,10 @@
+## [1.19.2-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.17...v1.19.2-beta.18) (2026-03-04)
+
+
+### Bug Fixes
+
+* PurrNet Packages: allow to update all packages at once ([ecd3291](https://github.com/PurrNet/PurrNet/commit/ecd32918d4a2b36c7d3f84b8e242f0e1d3c5d318))
+
 ## [1.19.2-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.16...v1.19.2-beta.17) (2026-03-04)
 
 
