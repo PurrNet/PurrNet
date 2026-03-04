@@ -23,6 +23,8 @@ namespace PurrNet.Editor
         private int _prevKeyboardControl;
         private int _releasePopupIndex;
         private int _devPopupIndex;
+        private bool _isUpdatingAll;
+        private int _updatableCount;
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
@@ -63,7 +65,7 @@ namespace PurrNet.Editor
         private const float CategoryGap = 8f;
         private const float SplitterWidth = 6f;
 
-        [MenuItem("Tools/PurrNet/PurrNet Packages", false, -99)]
+        [MenuItem("Tools/PurrNet/PurrNet Packages %&i", false, -99)]
         public static void ShowWindow()
         {
             var window = GetWindow<PurrPackageManagerWindow>();
@@ -240,6 +242,7 @@ namespace PurrNet.Editor
             }
 
             RebuildSortedPackages();
+            _updatableCount = CountUpdatablePackages();
 
             // Clamp selection (preserve special entries like Studios)
             if (_selectedIndex != StudiosEntryIndex && _selectedIndex >= _sortedPackages.Count)
@@ -303,13 +306,26 @@ namespace PurrNet.Editor
 
             // Refresh button
             var buttonRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
-            GUI.enabled = !_isLoading;
+            GUI.enabled = !_isLoading && !_isUpdatingAll;
             if (GUI.Button(buttonRect, "Refresh"))
             {
                 PurrPackageManagerCache.Invalidate();
                 LoadData();
             }
             GUI.enabled = true;
+
+            // Update All button (to the left of Refresh)
+            if (_updatableCount > 0)
+            {
+                var updateLabel = $"Update All ({_updatableCount})";
+                var updateRect = new Rect(buttonRect.x - 104, headerRect.y + 10, 100, 22);
+                GUI.enabled = !_isLoading && !_isUpdatingAll;
+                GUI.color = _updateColor;
+                if (GUI.Button(updateRect, updateLabel))
+                    UpdateAllPackages();
+                GUI.color = Color.white;
+                GUI.enabled = true;
+            }
         }
 
         private void DrawApiKeySection()
@@ -565,7 +581,7 @@ namespace PurrNet.Editor
             EditorGUILayout.Space(8);
             GUILayout.Space(4);
 
-            // Title
+            // Title row
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(8);
             GUILayout.Label("PurrNet for Studios", _detailTitleStyle);
@@ -581,6 +597,20 @@ namespace PurrNet.Editor
                 "Professional networking solutions with dedicated support, custom integrations, " +
                 "and consulting services designed to help your studio succeed at scale.",
                 _descStyle);
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Action buttons
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            GUI.color = _accentColor;
+            if (GUILayout.Button("Learn More", GUILayout.Height(28)))
+                Application.OpenURL("https://purrnet.dev/studios");
+            GUILayout.Space(4);
+            if (GUILayout.Button("Contact Us", GUILayout.Height(28)))
+                Application.OpenURL("mailto:martin@pebblesgames.com");
+            GUI.color = Color.white;
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
@@ -626,17 +656,6 @@ namespace PurrNet.Editor
             GUILayout.Label("\u2022  Performance auditing to identify bottlenecks", _smallLabelStyle);
             GUILayout.Label("\u2022  Custom development for bespoke features and integrations", _smallLabelStyle);
             EditorGUILayout.EndVertical();
-            GUILayout.Space(8);
-            EditorGUILayout.EndHorizontal();
-
-            // Contact button
-            EditorGUILayout.Space(16);
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(8);
-            GUI.color = _accentColor;
-            if (GUILayout.Button("Learn More", GUILayout.Height(30)))
-                Application.OpenURL("https://purrnet.dev/studios");
-            GUI.color = Color.white;
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
@@ -1274,6 +1293,150 @@ namespace PurrNet.Editor
             text = Regex.Replace(text, @"(?<!_)_(.+?)_(?!_)", "<i>$1</i>");
 
             return text;
+        }
+
+        private int CountUpdatablePackages()
+        {
+            int count = 0;
+
+            foreach (var (pkg, release, dev) in _sortedPackages)
+            {
+                if (!pkg.HasAccess || pkg.Frozen) continue;
+
+                bool isInstalled = PurrPackageManagerInstaller.IsInstalled(pkg);
+                if (!isInstalled) continue;
+
+                bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
+                var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
+
+                if (pkg.IsExternal && isGitInstall)
+                {
+                    var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
+                    if (hash != null && hash != pkg.LatestCommitRelease && hash != pkg.LatestCommitDev)
+                        count++;
+                }
+                else
+                {
+                    if (installedVersion != null
+                        && !string.IsNullOrEmpty(pkg.LatestVersion)
+                        && installedVersion != pkg.LatestVersion)
+                    {
+                        VersionInfo target = IsInstalledOnChannel(pkg, "dev", installedVersion)
+                            ? dev : (release ?? dev);
+                        if (target != null && target.Version != installedVersion)
+                            count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        private List<(PackageInfo pkg, VersionInfo version, string gitUrl)> CollectUpdatablePackages()
+        {
+            var updates = new List<(PackageInfo pkg, VersionInfo version, string gitUrl)>();
+
+            foreach (var (pkg, release, dev) in _sortedPackages)
+            {
+                if (!pkg.HasAccess || pkg.Frozen) continue;
+
+                bool isInstalled = PurrPackageManagerInstaller.IsInstalled(pkg);
+                if (!isInstalled) continue;
+
+                bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
+                var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
+
+                if (pkg.IsExternal && isGitInstall)
+                {
+                    var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
+                    if (hash != null && hash != pkg.LatestCommitRelease && hash != pkg.LatestCommitDev)
+                    {
+                        var channel = PurrPackageManagerInstaller.GetInstalledGitChannel(pkg);
+                        var gitUrl = channel == "dev" ? pkg.GitInstallUrlDev : pkg.GitInstallUrlRelease;
+                        if (!string.IsNullOrEmpty(gitUrl))
+                            updates.Add((pkg, null, gitUrl));
+                    }
+                }
+                else
+                {
+                    if (installedVersion != null
+                        && !string.IsNullOrEmpty(pkg.LatestVersion)
+                        && installedVersion != pkg.LatestVersion)
+                    {
+                        VersionInfo target = IsInstalledOnChannel(pkg, "dev", installedVersion)
+                            ? dev : (release ?? dev);
+                        if (target != null && target.Version != installedVersion)
+                            updates.Add((pkg, target, null));
+                    }
+                }
+            }
+
+            return updates;
+        }
+
+        private async void UpdateAllPackages()
+        {
+            if (_isUpdatingAll || _packages?.Packages == null)
+                return;
+
+            var updates = CollectUpdatablePackages();
+            if (updates.Count == 0)
+                return;
+
+            var names = new StringBuilder();
+            foreach (var (pkg, _, _) in updates)
+                names.AppendLine($"\u2022 {pkg.DisplayName}");
+
+            if (!EditorUtility.DisplayDialog("Update All Packages",
+                $"The following {updates.Count} package(s) will be updated:\n\n{names}",
+                "Update All", "Cancel"))
+                return;
+
+            _isUpdatingAll = true;
+            Repaint();
+
+            var apiKey = PurrPackageManagerAuth.GetApiKey();
+            var errors = new List<string>();
+
+            for (int i = 0; i < updates.Count; i++)
+            {
+                var (pkg, version, gitUrl) = updates[i];
+                EditorUtility.DisplayProgressBar("Updating All Packages",
+                    $"Updating {pkg.DisplayName} ({i + 1}/{updates.Count})...",
+                    (float)(i + 1) / updates.Count);
+
+                try
+                {
+                    if (gitUrl != null)
+                    {
+                        PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl, false);
+                    }
+                    else if (version != null)
+                    {
+                        var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version, false);
+                        if (!result.Success)
+                            errors.Add($"{pkg.DisplayName}: {result.Error}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    errors.Add($"{pkg.DisplayName}: {e.Message}");
+                }
+            }
+
+            EditorUtility.ClearProgressBar();
+
+            PurrPackageManagerCache.Invalidate();
+            UnityEditor.PackageManager.Client.Resolve();
+            AssetDatabase.Refresh();
+
+            _isUpdatingAll = false;
+
+            if (errors.Count > 0)
+                EditorUtility.DisplayDialog("Update Failed",
+                    string.Join("\n", errors), "Ok");
+
+            LoadData();
         }
 
         private async void LoadData()

@@ -246,7 +246,7 @@ namespace PurrNet.Editor
             }
         }
 
-        public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version)
+        public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
             try
             {
@@ -375,9 +375,12 @@ namespace PurrNet.Editor
                 if (Directory.Exists(tempExtractDir))
                     Directory.Delete(tempExtractDir, true);
 
-                PurrPackageManagerCache.Invalidate();
-                UnityEditor.PackageManager.Client.Resolve();
-                AssetDatabase.Refresh();
+                if (resolve)
+                {
+                    PurrPackageManagerCache.Invalidate();
+                    UnityEditor.PackageManager.Client.Resolve();
+                    AssetDatabase.Refresh();
+                }
                 EditorUtility.ClearProgressBar();
 
                 return Result<bool>.Ok(true);
@@ -434,7 +437,7 @@ namespace PurrNet.Editor
             }
         }
 
-        public static void InstallExternal(PackageInfo package, string gitUrl)
+        public static void InstallExternal(PackageInfo package, string gitUrl, bool resolve = true)
         {
             try
             {
@@ -465,9 +468,12 @@ namespace PurrNet.Editor
 
                 SetManifestEntry(upmName, gitUrl);
 
-                PurrPackageManagerCache.Invalidate();
-                UnityEditor.PackageManager.Client.Resolve();
-                AssetDatabase.Refresh();
+                if (resolve)
+                {
+                    PurrPackageManagerCache.Invalidate();
+                    UnityEditor.PackageManager.Client.Resolve();
+                    AssetDatabase.Refresh();
+                }
                 EditorUtility.ClearProgressBar();
             }
             catch (Exception e)
@@ -475,6 +481,18 @@ namespace PurrNet.Editor
                 EditorUtility.ClearProgressBar();
                 Debug.LogError($"[PurrNet] Failed to install external package: {e.Message}");
             }
+        }
+
+        public static string GetInstalledGitChannel(PackageInfo package)
+        {
+            var match = FindInstalledEntry(package);
+            if (match == null) return "release";
+            var value = match.Value.value;
+            if (!IsGitUrl(value)) return "release";
+
+            if (!string.IsNullOrEmpty(package.GitInstallUrlDev) && value == package.GitInstallUrlDev)
+                return "dev";
+            return "release";
         }
 
         private static bool IsGitUrl(string value)
