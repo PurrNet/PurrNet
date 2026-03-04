@@ -757,7 +757,7 @@ namespace PurrNet.Editor
                 }
             }
 
-            // Find the root prefix by locating package.json
+            // Find the root prefix by locating the shallowest package.json
             string rootPrefix = null;
             foreach (var entry in entries.Values)
             {
@@ -771,8 +771,9 @@ namespace PurrNet.Editor
 
                 if (fn.EndsWith("/package.json") || fn == "package.json")
                 {
-                    rootPrefix = fn.Substring(0, fn.Length - "package.json".Length);
-                    break;
+                    var prefix = fn.Substring(0, fn.Length - "package.json".Length);
+                    if (rootPrefix == null || prefix.Length < rootPrefix.Length)
+                        rootPrefix = prefix;
                 }
             }
 
