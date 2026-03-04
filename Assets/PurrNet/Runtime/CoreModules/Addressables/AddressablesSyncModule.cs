@@ -125,14 +125,34 @@ namespace PurrNet.Modules
             return _clientLoadedGuids.TryGetValue(player, out var set) ? set : (IReadOnlyCollection<string>)Array.Empty<string>();
         }
 
-        public void OnPlayerLeft(PlayerID player, bool asServer)
+        private void OnPlayerLeft(PlayerID player, bool asServer)
         {
             if (!asServer)
                 return;
             
             _clientLoadedGuids.Remove(player);
         }
+        
+        /// <summary>
+        /// Returns all players that have reported the given Addressable GUID as loaded.
+        /// </summary>
+        public IReadOnlyList<PlayerID> GetPlayersWithGuidLoaded(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return Array.Empty<PlayerID>();
 
+            var result = new List<PlayerID>();
+            foreach (var (player, guids) in _clientLoadedGuids)
+            {
+                if (guids.Contains(guid))
+                    result.Add(player);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Checks whether a client has loaded a specific GUID
+        /// </summary>
         public bool ClientHasLoaded(PlayerID player, string assetGuid)
         {
             if (string.IsNullOrEmpty(assetGuid))
@@ -144,6 +164,9 @@ namespace PurrNet.Modules
             return set.Contains(assetGuid);
         }
 
+        /// <summary>
+        /// Sends the request to a player to prepare/warmup/fetch a specific GUID
+        /// </summary>
         public void RequestPlayerToLoad(PlayerID player, string assetGuid)
         {
             if (string.IsNullOrEmpty(assetGuid) || player.isServer)
