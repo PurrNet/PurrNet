@@ -1,3 +1,10 @@
+## [1.19.2-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.18...v1.19.2-beta.19) (2026-03-04)
+
+
+### Bug Fixes
+
+* Package manager shortcut + prefer git urls ([bdf2fcb](https://github.com/PurrNet/PurrNet/commit/bdf2fcbd5b97adad784a2622a71650b30b69188f))
+
 ## [1.19.2-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.17...v1.19.2-beta.18) (2026-03-04)
 
 
