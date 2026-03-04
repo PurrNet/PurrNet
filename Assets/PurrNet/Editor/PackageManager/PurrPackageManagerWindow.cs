@@ -415,8 +415,9 @@ namespace PurrNet.Editor
             }
 
             // Git update detection — compare lock file hash against both channel commits
+            // Only used for IsExternal packages; non-external uses version comparison.
             bool hasGitUpdate = false;
-            if (isGitInstall)
+            if (package.IsExternal && isGitInstall)
             {
                 var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
                 if (hash != null)
@@ -427,7 +428,7 @@ namespace PurrNet.Editor
             string info;
             if (!package.HasAccess)
                 info = "No access";
-            else if (isGitInstall)
+            else if (package.IsExternal && isGitInstall)
                 info = hasGitUpdate ? "update" : "installed";
             else if (hasUpdate)
                 info = $"v{installedVersion} \u2192 v{package.LatestVersion}";
@@ -518,9 +519,10 @@ namespace PurrNet.Editor
                              && installedVersion != package.LatestVersion;
 
             // Git update detection — compare lock file hash against both channel commits
+            // Only used for IsExternal packages; non-external uses version comparison.
             string gitInstalledHash = null;
             bool hasGitUpdate = false;
-            if (isGitInstall)
+            if (package.IsExternal && isGitInstall)
             {
                 gitInstalledHash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
                 if (gitInstalledHash != null)
@@ -540,7 +542,7 @@ namespace PurrNet.Editor
             GUILayout.Label(package.DisplayName, _detailTitleStyle);
             GUILayout.FlexibleSpace();
 
-            if (isGitInstall)
+            if (package.IsExternal && isGitInstall)
             {
                 if (hasGitUpdate)
                 {
@@ -593,7 +595,7 @@ namespace PurrNet.Editor
             if (!string.IsNullOrEmpty(package.RequiredTier))
                 GUILayout.Label($"Tier: {package.RequiredTier}", _smallLabelStyle);
 
-            if (isGitInstall)
+            if (package.IsExternal && isGitInstall)
             {
                 GUILayout.Label("Installed via git", _smallLabelStyle);
                 if (installedVersion != null && installedVersion != "git")
@@ -616,8 +618,8 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
-            // Frozen notice (non-external, non-git-install only)
-            if (!package.IsExternal && !isGitInstall && package.Frozen)
+            // Frozen notice (non-external only)
+            if (!package.IsExternal && package.Frozen)
             {
                 EditorGUILayout.Space(8);
                 EditorGUILayout.BeginHorizontal();
@@ -675,12 +677,9 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.BeginVertical();
 
-            // Show git install buttons when the package has git URLs
-            bool hasGitUrls = !string.IsNullOrEmpty(package.GitInstallUrlRelease) ||
-                              !string.IsNullOrEmpty(package.GitInstallUrlDev);
-
-            if (hasGitUrls)
+            if (package.IsExternal)
             {
+                // External packages: git URL install buttons
                 EditorGUILayout.BeginHorizontal();
                 DrawExternalInstallButton(package, "Release", package.GitInstallUrlRelease,
                     isInstalled, gitInstalledHash, package.LatestCommitRelease, _installedColor);
@@ -689,21 +688,15 @@ namespace PurrNet.Editor
                     isInstalled, gitInstalledHash, package.LatestCommitDev, _accentColor);
                 EditorGUILayout.EndHorizontal();
             }
-
-            // Show version dropdown for non-external packages (tgz install)
-            if (!package.IsExternal)
+            else
             {
-                if (hasGitUrls)
-                    EditorGUILayout.Space(8);
-
-                if (!hasGitUrls)
-                {
-                    EditorGUILayout.BeginHorizontal();
-                    DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
-                    GUILayout.Space(4);
-                    DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
-                    EditorGUILayout.EndHorizontal();
-                }
+                // Non-external packages: standard version-based buttons
+                // Works the same regardless of whether currently installed via git or tgz.
+                EditorGUILayout.BeginHorizontal();
+                DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
+                GUILayout.Space(4);
+                DrawInstallButton(package, dev, "Dev", isInstalled, installedVersion, _accentColor);
+                EditorGUILayout.EndHorizontal();
 
                 // Version history dropdowns — split by channel, capped at 20 each
                 if (package.Versions != null && package.Versions.Length > 0)
