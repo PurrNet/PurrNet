@@ -1,3 +1,10 @@
+## [1.19.2-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.20...v1.19.2-beta.21) (2026-03-04)
+
+
+### Bug Fixes
+
+* Added callbacks for addressable scene loading ([01a55c9](https://github.com/PurrNet/PurrNet/commit/01a55c94424d88ca43626bf8f54731332b720a21))
+
 ## [1.19.2-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.19...v1.19.2-beta.20) (2026-03-04)
 
 
