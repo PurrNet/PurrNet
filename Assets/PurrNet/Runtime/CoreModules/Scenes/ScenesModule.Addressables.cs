@@ -12,7 +12,7 @@ namespace PurrNet.Modules
 {
     public partial class ScenesModule
     {
-        private struct PendingAddressableSceneOperation
+        public struct PendingAddressableSceneOperation
         {
             public string guid;
             public AsyncOperationHandle<SceneInstance> handle;
@@ -303,6 +303,16 @@ namespace PurrNet.Modules
             }
 
             return handle;
+        }
+        
+        /// <summary>
+        /// Returns the pending addressable operations for this module.
+        /// This allows you to check if a scene is still loading or unloading and the progress of the operation.
+        /// </summary>
+        /// <returns>List of pending operations</returns>
+        public IReadOnlyList<PendingAddressableSceneOperation> GetPendingAddressableOperations()
+        {
+            return _pendingAddressableOperations;
         }
 
         /// <summary>
