@@ -1,3 +1,10 @@
+## [1.19.2-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.14...v1.19.2-beta.15) (2026-03-04)
+
+
+### Bug Fixes
+
+* Addressable scene loading for reconnecting ([120c26e](https://github.com/PurrNet/PurrNet/commit/120c26ec7b32ec64bd22e5fa71060860d6ff7538))
+
 ## [1.19.2-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.13...v1.19.2-beta.14) (2026-03-03)
 
 
