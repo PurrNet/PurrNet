@@ -1,3 +1,10 @@
+## [1.19.2-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.15...v1.19.2-beta.16) (2026-03-04)
+
+
+### Bug Fixes
+
+* rename PurrNet Package Manager to PurrNet Packages and fix some bugs ([a346469](https://github.com/PurrNet/PurrNet/commit/a34646958f183ab4a693226d3d10057766461d40))
+
 ## [1.19.2-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.14...v1.19.2-beta.15) (2026-03-04)
 
 
