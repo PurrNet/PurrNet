@@ -8,6 +8,7 @@ namespace AddressablesTest
 {
     public class AddressableSceneTester : MonoBehaviour
     {
+        [SerializeField] private bool _additive;
         [SerializeField] private AssetReference _sceneToLoadTo;
         
         [PurrButton, ContextMenu("Load scene")]
@@ -25,8 +26,11 @@ namespace AddressablesTest
             var sceneSettings = new PurrSceneSettings
             {
                 isPublic = true,
-                mode = LoadSceneMode.Additive
+                mode = LoadSceneMode.Single
             };
+            
+            if (_additive)
+                sceneSettings.mode = LoadSceneMode.Additive;
 
             NetworkManager.main.sceneModule.LoadAddressableSceneAsync(_sceneToLoadTo, sceneSettings);
         }

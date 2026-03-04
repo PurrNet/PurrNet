@@ -329,6 +329,7 @@ namespace PurrNet.Modules
                 var target = action.type switch
                 {
                     SceneActionType.Load => action.loadSceneAction.sceneID,
+                    SceneActionType.LoadAddressable => action.loadAddressableSceneAction.sceneID,
                     SceneActionType.Unload => action.unloadSceneAction.sceneID,
                     SceneActionType.SetActive => action.setActiveSceneAction.sceneID,
                     _ => default
