@@ -1,3 +1,10 @@
+## [1.19.2-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.21...v1.19.2-beta.22) (2026-03-05)
+
+
+### Bug Fixes
+
+* PurrNet Packages: Implement user authentication and profile management ([02089cd](https://github.com/PurrNet/PurrNet/commit/02089cd937d10148962345903e1c9d82c795281f))
+
 ## [1.19.2-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.20...v1.19.2-beta.21) (2026-03-04)
 
 
