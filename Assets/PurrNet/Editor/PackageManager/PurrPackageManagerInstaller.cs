@@ -48,8 +48,8 @@ namespace PurrNet.Editor
             else
                 nameAndVersion = Path.GetFileName(value);
 
-            if (nameAndVersion != null && nameAndVersion.StartsWith(key + "-"))
-                return nameAndVersion.Substring(key.Length + 1);
+            if (nameAndVersion.StartsWith(key + "-"))
+                return nameAndVersion[(key.Length + 1)..];
             return null;
         }
 
@@ -156,15 +156,15 @@ namespace PurrNet.Editor
                 foreach (var prop in deps.Properties())
                 {
                     var val = prop.Value?.ToString();
-                    if (val == null || !val.Contains(PackagesDir))
+                    if (!val.Contains(PackagesDir))
                         continue;
 
                     // val is "file:../PurrPackages/{key}-{version}.tgz" or "file:../PurrPackages/{key}-{version}"
                     var filename = val.EndsWith(".tgz") ? Path.GetFileNameWithoutExtension(val) : Path.GetFileName(val);
-                    if (filename == null || !filename.StartsWith(prop.Name + "-"))
+                    if (!filename.StartsWith(prop.Name + "-"))
                         continue;
 
-                    var fileVersion = filename.Substring(prop.Name.Length + 1);
+                    var fileVersion = filename[(prop.Name.Length + 1)..];
                     foreach (var v in package.Versions)
                     {
                         if (v.Version == fileVersion)
@@ -187,7 +187,7 @@ namespace PurrNet.Editor
                 foreach (var prop in deps.Properties())
                 {
                     var val = prop.Value?.ToString();
-                    if (val == null || !IsGitUrl(val))
+                    if (!IsGitUrl(val))
                         continue;
 
                     if (knownBaseUrls.Contains(GetBaseGitUrl(val)))
@@ -217,7 +217,10 @@ namespace PurrNet.Editor
                 if (entry != null && (entry.StartsWith("file:") || IsGitUrl(entry)))
                     return false;
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             return true;
         }
@@ -339,7 +342,7 @@ namespace PurrNet.Editor
                     return Result<bool>.Fail("Extracted package does not contain a package.json");
                 }
 
-                var pkgJson = JObject.Parse(File.ReadAllText(pkgJsonPath));
+                var pkgJson = JObject.Parse(await File.ReadAllTextAsync(pkgJsonPath));
                 var upmName = pkgJson["name"]?.ToString();
                 var upmVersion = pkgJson["version"]?.ToString();
 
@@ -543,10 +546,26 @@ namespace PurrNet.Editor
             if (!Directory.Exists(PackagesDir)) return;
             // Old tgz files
             foreach (var f in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
-                try { File.Delete(f); } catch { }
+            {
+                try
+                {
+                    File.Delete(f);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
             // Folder installs
             foreach (var d in Directory.GetDirectories(PackagesDir, upmName + "-*"))
-                try { Directory.Delete(d, true); } catch { }
+            {
+                try { Directory.Delete(d, true); }
+                catch
+                {
+                    // ignored
+                }
+            }
         }
 
         /// <summary>
@@ -640,7 +659,7 @@ namespace PurrNet.Editor
 
             foreach (var filePath in files)
             {
-                var relativePath = filePath.Substring(sourceDir.Length)
+                var relativePath = filePath[sourceDir.Length..]
                     .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                     .Replace('\\', '/');
 
