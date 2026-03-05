@@ -1,3 +1,27 @@
+## [1.19.2-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.20...v1.19.2-beta.21) (2026-03-04)
+
+
+### Bug Fixes
+
+* Added callbacks for addressable scene loading ([01a55c9](https://github.com/PurrNet/PurrNet/commit/01a55c94424d88ca43626bf8f54731332b720a21))
+
+## [1.19.2-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.19...v1.19.2-beta.20) (2026-03-04)
+
+
+### Bug Fixes
+
+* Added server event for addressable loading on player ([adf6ad9](https://github.com/PurrNet/PurrNet/commit/adf6ad97ddc674176917845065b4ecfab28f554c))
+* Getter for pending addressable scene operations ([377e11d](https://github.com/PurrNet/PurrNet/commit/377e11d639ac50bcf72fbdf1e253b1dc4e141209))
+* Helper for addressable loading ([46087e2](https://github.com/PurrNet/PurrNet/commit/46087e25b9adee4f26478abcf6de441100df0d84))
+* More helpers for addressables loading ([b278abc](https://github.com/PurrNet/PurrNet/commit/b278abc6aac6cfc299a45541b77d425d77560061))
+
+## [1.19.2-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.18...v1.19.2-beta.19) (2026-03-04)
+
+
+### Bug Fixes
+
+* Package manager shortcut + prefer git urls ([bdf2fcb](https://github.com/PurrNet/PurrNet/commit/bdf2fcbd5b97adad784a2622a71650b30b69188f))
+
 ## [1.19.2-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.17...v1.19.2-beta.18) (2026-03-04)
 
 

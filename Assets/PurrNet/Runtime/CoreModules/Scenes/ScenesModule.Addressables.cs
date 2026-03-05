@@ -1,4 +1,5 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
+using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Packing;
@@ -12,7 +13,7 @@ namespace PurrNet.Modules
 {
     public partial class ScenesModule
     {
-        private struct PendingAddressableSceneOperation
+        public struct PendingAddressableSceneOperation
         {
             public string guid;
             public AsyncOperationHandle<SceneInstance> handle;
@@ -31,6 +32,18 @@ namespace PurrNet.Modules
 
         private readonly Dictionary<string, List<SceneID>> _addressableSceneGuidToIds =
             new Dictionary<string, List<SceneID>>();
+
+        public delegate void OnAddressableSceneEvent(SceneID sceneId, string guid, bool asServer);
+
+        /// <summary>
+        /// Fired when an Addressable scene begins loading.
+        /// </summary>
+        public event OnAddressableSceneEvent onAddressableSceneStartLoading;
+
+        /// <summary>
+        /// Fired when an Addressable scene has finished loading and is registered.
+        /// </summary>
+        public event OnAddressableSceneEvent onAddressableSceneLoaded;
 
         partial void ProcessCompletedAddressableLoads()
         {
@@ -56,6 +69,8 @@ namespace PurrNet.Modules
                         }
                         list.Add(op.idToAssign);
                     }
+                    
+                    onAddressableSceneLoaded?.Invoke(op.idToAssign, op.guid, _asServer);
                 }
                 else
                 {
@@ -108,6 +123,8 @@ namespace PurrNet.Modules
                     settings = action.parameters
                 });
             }
+            
+            onAddressableSceneStartLoading?.Invoke(action.sceneID, guid, _asServer);
         }
 
         private bool IsScenePendingAddressable(SceneID sceneId)
@@ -303,6 +320,16 @@ namespace PurrNet.Modules
             }
 
             return handle;
+        }
+        
+        /// <summary>
+        /// Returns the pending addressable operations for this module.
+        /// This allows you to check if a scene is still loading or unloading and the progress of the operation.
+        /// </summary>
+        /// <returns>List of pending operations</returns>
+        public IReadOnlyList<PendingAddressableSceneOperation> GetPendingAddressableOperations()
+        {
+            return _pendingAddressableOperations;
         }
 
         /// <summary>
