@@ -19,6 +19,11 @@ namespace PurrNet.Editor
             return await SendRequest<EntitlementsResponse>($"{BaseUrl}/entitlements", apiKey);
         }
 
+        public static async Task<Result<UserInfo>> GetMe(string apiKey)
+        {
+            return await SendRequest<UserInfo>($"{BaseUrl}/me", apiKey);
+        }
+
         public static async Task<Result<DownloadResponse>> GetDownloadUrl(string apiKey, string packageId, string versionId)
         {
             var url = $"{BaseUrl}/packages/{packageId}/download?versionId={versionId}";

@@ -9,7 +9,6 @@ namespace PurrNet.Editor
 {
     public class PurrPackageManagerWindow : EditorWindow
     {
-        private string _apiKeyInput = "";
         private string _errorMessage;
         private bool _isLoading;
 
@@ -28,6 +27,7 @@ namespace PurrNet.Editor
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
+        private PurrUserProfile _userProfile;
 
         // Cached sorted list rebuilt each frame from _packages
         private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
@@ -84,8 +84,25 @@ namespace PurrNet.Editor
         {
             wantsMouseMove = true;
             _logo = Resources.Load<Texture2D>("purricon");
-            _apiKeyInput = PurrPackageManagerAuth.GetApiKey();
+            _userProfile = new PurrUserProfile(Repaint);
+            _userProfile.Refresh();
+            PurrPackageManagerAuth.onAuthChanged += onAuthChanged;
             LoadData();
+        }
+
+        private void OnDisable()
+        {
+            PurrPackageManagerAuth.onAuthChanged -= onAuthChanged;
+        }
+
+        private void onAuthChanged()
+        {
+            PurrPackageManagerCache.Invalidate();
+            _entitlements = null;
+            _errorMessage = null;
+            _userProfile?.Refresh();
+            LoadData();
+            Repaint();
         }
 
         private void InitStyles()
@@ -214,9 +231,6 @@ namespace PurrNet.Editor
             DrawHeader();
             DrawSeparator();
 
-            DrawApiKeySection();
-            DrawSeparator();
-
             if (_isLoading)
             {
                 EditorGUILayout.Space(40);
@@ -304,21 +318,26 @@ namespace PurrNet.Editor
                 GUI.Label(tierRect, tier, _smallLabelStyle);
             }
 
-            // Refresh button
-            var buttonRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
+            // Refresh button (rightmost)
+            var refreshRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
             GUI.enabled = !_isLoading && !_isUpdatingAll;
-            if (GUI.Button(buttonRect, "Refresh"))
+            if (GUI.Button(refreshRect, "Refresh"))
             {
                 PurrPackageManagerCache.Invalidate();
+                _userProfile?.Refresh();
                 LoadData();
             }
             GUI.enabled = true;
 
-            // Update All button (to the left of Refresh)
+            // User profile (avatar + username + login/logout)
+            var profileAnchor = new Rect(headerRect.x, headerRect.y + 10, refreshRect.x - 4 - headerRect.x, 22);
+            float profileWidth = _userProfile.DrawProfileBar(profileAnchor);
+
+            // Update All button (to the left of profile)
             if (_updatableCount > 0)
             {
                 var updateLabel = $"Update All ({_updatableCount})";
-                var updateRect = new Rect(buttonRect.x - 104, headerRect.y + 10, 100, 22);
+                var updateRect = new Rect(profileAnchor.xMax - profileWidth - 104, headerRect.y + 10, 100, 22);
                 GUI.enabled = !_isLoading && !_isUpdatingAll;
                 GUI.color = _updateColor;
                 if (GUI.Button(updateRect, updateLabel))
@@ -328,48 +347,6 @@ namespace PurrNet.Editor
             }
         }
 
-        private void DrawApiKeySection()
-        {
-            EditorGUILayout.Space(6);
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(8);
-
-            GUILayout.Label("API Key", EditorStyles.miniLabel, GUILayout.Width(44));
-            _apiKeyInput = EditorGUILayout.PasswordField(_apiKeyInput, GUILayout.Height(20));
-
-            if (string.IsNullOrEmpty(_apiKeyInput) && !PurrPackageManagerAuth.HasApiKey())
-            {
-                GUI.color = _accentColor;
-                if (GUILayout.Button("Get API Key", GUILayout.Width(80), GUILayout.Height(20)))
-                    Application.OpenURL("https://purrnet.dev/profile?tab=api-keys");
-                GUI.color = Color.white;
-            }
-            else
-            {
-                if (GUILayout.Button("Save", GUILayout.Width(46), GUILayout.Height(20)))
-                {
-                    PurrPackageManagerAuth.SetApiKey(_apiKeyInput);
-                    PurrPackageManagerCache.Invalidate();
-                    LoadData();
-                }
-            }
-
-            GUI.enabled = PurrPackageManagerAuth.HasApiKey();
-            if (GUILayout.Button("Clear", GUILayout.Width(46), GUILayout.Height(20)))
-            {
-                _apiKeyInput = "";
-                PurrPackageManagerAuth.ClearApiKey();
-                PurrPackageManagerCache.Invalidate();
-                _entitlements = null;
-                _errorMessage = null;
-                LoadData();
-            }
-            GUI.enabled = true;
-
-            GUILayout.Space(8);
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.Space(6);
-        }
 
         private void DrawPackageList(Rect areaRect)
         {
