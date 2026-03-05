@@ -50,12 +50,7 @@ namespace PurrNet.Editor
             {
                 var result = await PurrPackageManagerAPI.GetMe(PurrPackageManagerAuth.GetApiKey());
                 if (!result.Success)
-                {
-                    Debug.LogWarning($"[PurrNet] /api/me failed: {result.Error}");
                     return;
-                }
-
-                Debug.Log($"[PurrNet] Logged in as: {result.Value?.Username} (id: {result.Value?.Id}, avatar: {result.Value?.AvatarUrl})");
 
                 _userInfo = result.Value;
                 _repaint?.Invoke();
