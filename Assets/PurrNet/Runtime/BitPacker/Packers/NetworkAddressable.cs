@@ -17,7 +17,18 @@ namespace PurrNet
             this.addressablesReference = addressablesReference;
             GUID = null;
         }
-        
+
+        /// <summary>The loaded asset, or null if not yet resolved.</summary>
+        public Object Asset => addressablesReference != null ? addressablesReference.Asset : null;
+
+        /// <summary>Whether the addressable has been resolved and the asset is loaded.</summary>
+        public bool IsValid => addressablesReference != null && addressablesReference.Asset != null;
+
+        public static implicit operator NetworkAddressable(AssetReference reference) => new(reference);
+
+        public static implicit operator AssetReference(NetworkAddressable networkAddressable) =>
+            networkAddressable.addressablesReference;
+
         public Task<IAsyncPackable> PrepareForPackAsync()
         {
             if (addressablesReference == null)
@@ -38,6 +49,15 @@ namespace PurrNet
             addressablesReference = new AssetReference(GUID);
             await addressablesReference.LoadAssetAsync<Object>().Task;
             return this;
+        }
+
+        public override string ToString()
+        {
+            if (Asset)
+                return Asset.name;
+            if (!string.IsNullOrEmpty(GUID))
+                return $"NetworkAddressable({GUID}, not loaded)";
+            return "NetworkAddressable(empty)";
         }
     }
 }
