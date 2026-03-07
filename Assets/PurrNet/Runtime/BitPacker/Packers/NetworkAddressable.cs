@@ -12,6 +12,12 @@ namespace PurrNet
         [DontPack] public AssetReference addressablesReference;
         private string GUID;
 
+        public NetworkAddressable(AssetReference addressablesReference)
+        {
+            this.addressablesReference = addressablesReference;
+            GUID = null;
+        }
+        
         public Task<IAsyncPackable> PrepareForPackAsync()
         {
             if (addressablesReference == null)
