@@ -31,13 +31,12 @@ namespace PurrNet
         {
             if (string.IsNullOrEmpty(GUID))
             {
-                PurrLogger.LogError($"Failed to unpack network addressable as the GUID is empty", addressablesReference?.Asset);
+                PurrLogger.LogError("Failed to unpack network addressable as the GUID is empty");
                 return this;
             }
 
-            var handle = Addressables.LoadAssetAsync<Object>(GUID);
-            await handle.Task;
             addressablesReference = new AssetReference(GUID);
+            await addressablesReference.LoadAssetAsync<Object>().Task;
             return this;
         }
     }
