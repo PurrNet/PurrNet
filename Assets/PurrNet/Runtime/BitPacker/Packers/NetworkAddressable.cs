@@ -7,7 +7,7 @@ using UnityEngine.AddressableAssets;
 
 namespace PurrNet
 {
-    public struct NetworkAddressables : IPackedAuto, IAsyncPackable
+    public struct NetworkAddressable : IPackedAuto, IAsyncPackable
     {
         [DontPack] public AssetReference addressablesReference;
         private string GUID;
