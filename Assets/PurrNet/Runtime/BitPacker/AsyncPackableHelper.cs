@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using PurrNet.Logging;
 using PurrNet.Modules;
-using UnityEngine;
 
 namespace PurrNet.Packing
 {
@@ -109,13 +109,27 @@ namespace PurrNet.Packing
 
         private static void InvokeOnMain(Task[] tasks, Action<Task[]> callback)
         {
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                if (!tasks[i].IsFaulted) continue;
+
+                PurrLogger.LogError(
+                    $"IAsyncPackable prepare failed for argument {i}; " +
+                    "RPC will not execute. Check your PrepareForPackAsync/PrepareAfterUnpackAsync implementation.");
+
+                if (tasks[i].Exception != null)
+                    PurrLogger.LogException(tasks[i].Exception);
+
+                return;
+            }
+
             try
             {
                 callback(tasks);
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"IAsyncPackable RPC dropped: {ex.Message}");
+                PurrLogger.LogException(ex);
             }
         }
 
@@ -127,7 +141,7 @@ namespace PurrNet.Packing
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"IAsyncPackable RPC dropped: {ex.Message}");
+                PurrLogger.LogException(ex);
             }
         }
     }
