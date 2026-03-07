@@ -1,3 +1,10 @@
+## [1.19.2-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.23...v1.19.2-beta.24) (2026-03-07)
+
+
+### Bug Fixes
+
+* Utilize ValueTask to avoid GC on synchronous completion ([7e552f2](https://github.com/PurrNet/PurrNet/commit/7e552f22f9c53e6b9ea11578091f5395bb4fef07))
+
 ## [1.19.2-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.22...v1.19.2-beta.23) (2026-03-07)
 
 
