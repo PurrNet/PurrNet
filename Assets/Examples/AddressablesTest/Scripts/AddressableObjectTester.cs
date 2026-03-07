@@ -62,13 +62,13 @@ namespace AddressablesTest
         [PurrButton]
         private void SendTestReference()
         {
-            TestSendAddressableReference(new NetworkAddressable(prefabReference));
+            TestSendAddressableReference(prefabReference);
         }
 
         [ObserversRpc]
         private void TestSendAddressableReference(NetworkAddressable addressable)
         {
-            Debug.Log($"Received addressable: {addressable.addressablesReference?.Asset?.name}", addressable.addressablesReference?.Asset);
+            Debug.Log($"Received addressable: {addressable}", addressable.Asset);
         }
 
         [PurrButton]
