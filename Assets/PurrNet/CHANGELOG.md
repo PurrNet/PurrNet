@@ -1,3 +1,10 @@
+## [1.19.2-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.24...v1.19.2-beta.25) (2026-03-07)
+
+
+### Bug Fixes
+
+* Network rigidbody stops acting when disabled ([a44a742](https://github.com/PurrNet/PurrNet/commit/a44a74220313f4cd1872702cd523e8a34c65d736))
+
 ## [1.19.2-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.23...v1.19.2-beta.24) (2026-03-07)
 
 
