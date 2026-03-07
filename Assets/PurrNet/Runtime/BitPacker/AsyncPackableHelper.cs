@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -19,8 +20,11 @@ namespace PurrNet.Packing
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                var result = asyncPackable.PrepareForPackAsync().GetAwaiter().GetResult();
-                value = (T)(object)result;
+                var vt = asyncPackable.PrepareForPackAsync();
+                if (vt.IsCompletedSuccessfully)
+                    value = (T)(object)vt.Result;
+                else
+                    value = (T)(object)vt.AsTask().GetAwaiter().GetResult();
             }
         }
 
@@ -32,8 +36,11 @@ namespace PurrNet.Packing
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                var result = asyncPackable.PrepareAfterUnpackAsync().GetAwaiter().GetResult();
-                value = (T)(object)result;
+                var vt = asyncPackable.PrepareAfterUnpackAsync();
+                if (vt.IsCompletedSuccessfully)
+                    value = (T)(object)vt.Result;
+                else
+                    value = (T)(object)vt.AsTask().GetAwaiter().GetResult();
             }
         }
 
@@ -42,28 +49,38 @@ namespace PurrNet.Packing
         /// Returns Task&lt;T&gt; instead of ref to satisfy "async method cannot have ref parameters".
         /// </summary>
         [UsedByIL]
-        public static async Task<T> PrepareForPackAsync<T>(T value)
+        public static Task<T> PrepareForPackAsync<T>(T value)
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                var result = await asyncPackable.PrepareForPackAsync();
-                return (T)(object)result;
+                var vt = asyncPackable.PrepareForPackAsync();
+                if (vt.IsCompletedSuccessfully)
+                    return Task.FromResult((T)(object)vt.Result);
+                return AwaitAndCast<T>(vt);
             }
-            return value;
+            return Task.FromResult(value);
         }
 
         /// <summary>
         /// Async version: awaits prepare, returns prepared value. Used by codegen when IAsyncPackable params present.
         /// </summary>
         [UsedByIL]
-        public static async Task<T> PrepareAfterUnpackAsync<T>(T value)
+        public static Task<T> PrepareAfterUnpackAsync<T>(T value)
         {
             if (value is IAsyncPackable asyncPackable)
             {
-                var result = await asyncPackable.PrepareAfterUnpackAsync();
-                return (T)(object)result;
+                var vt = asyncPackable.PrepareAfterUnpackAsync();
+                if (vt.IsCompletedSuccessfully)
+                    return Task.FromResult((T)(object)vt.Result);
+                return AwaitAndCast<T>(vt);
             }
-            return value;
+            return Task.FromResult(value);
+        }
+        
+        private static async Task<T> AwaitAndCast<T>(ValueTask<IAsyncPackable> vt)
+        {
+            var result = await vt;
+            return (T)(object)result;
         }
 
         /// <summary>
@@ -83,9 +100,25 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static Task ExecuteAfterPrepareAsync(Task[] prepareTasks, Action<Task[]> storeResultsAndSend)
         {
+            bool allComplete = true;
+            for (int i = 0; i < prepareTasks.Length; i++)
+            {
+                if (!prepareTasks[i].IsCompleted)
+                {
+                    allComplete = false;
+                    break;
+                }
+            }
+
+            if (allComplete)
+            {
+                InvokeOnMain(prepareTasks, storeResultsAndSend);
+                return Task.CompletedTask;
+            }
+
             return Task.WhenAll(prepareTasks).ContinueWith(_ =>
             {
-                if (System.Threading.SynchronizationContext.Current != null)
+                if (SynchronizationContext.Current != null)
                     InvokeOnMain(prepareTasks, storeResultsAndSend);
                 else
                     UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(prepareTasks, storeResultsAndSend));
@@ -98,9 +131,15 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static Task ExecuteAfterPrepareAsync(Task prepareTask, Action sendAction)
         {
+            if (prepareTask.IsCompleted)
+            {
+                InvokeOnMain(sendAction);
+                return Task.CompletedTask;
+            }
+
             return prepareTask.ContinueWith(_ =>
             {
-                if (System.Threading.SynchronizationContext.Current != null)
+                if (SynchronizationContext.Current != null)
                     InvokeOnMain(sendAction);
                 else
                     UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(sendAction));
