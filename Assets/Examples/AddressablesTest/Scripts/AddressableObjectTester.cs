@@ -68,7 +68,7 @@ namespace AddressablesTest
         [ObserversRpc]
         private void TestSendAddressableReference(NetworkAddressable addressable)
         {
-            Debug.Log($"Received addressable {addressable.addressablesReference?.Asset}", addressable.addressablesReference?.Asset);
+            Debug.Log($"Received addressable: {addressable.addressablesReference?.Asset.name}", addressable.addressablesReference?.Asset);
         }
 
         [PurrButton]
