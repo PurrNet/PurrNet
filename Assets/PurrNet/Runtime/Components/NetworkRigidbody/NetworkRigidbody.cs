@@ -162,6 +162,9 @@ namespace PurrNet
 
         public void OnTick(float delta)
         {
+            if (!isActiveAndEnabled)
+                return;
+            
             if (IsController(_ownerAuth))
                 ControllerTick();
             else
