@@ -1,3 +1,10 @@
+## [1.19.2-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.22...v1.19.2-beta.23) (2026-03-07)
+
+
+### Bug Fixes
+
+* Added Network Addressables helper struct ([7ab34ad](https://github.com/PurrNet/PurrNet/commit/7ab34addd2d0f6a737875ed12a3b11f5c2b4b961))
+
 ## [1.19.2-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.21...v1.19.2-beta.22) (2026-03-05)
 
 
