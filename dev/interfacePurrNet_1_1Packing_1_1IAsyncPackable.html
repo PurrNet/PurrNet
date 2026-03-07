@@ -102,14 +102,14 @@ $(document).ready(function(){initNavTree('interfacePurrNet_1_1Packing_1_1IAsyncP
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aacb53a3ff10fd379855b41c929dab12b"><td class="memItemLeft" align="right" valign="top"><a id="aacb53a3ff10fd379855b41c929dab12b" name="aacb53a3ff10fd379855b41c929dab12b"></a>
-Task&lt; <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareForPackAsync</b> ()</td></tr>
-<tr class="memdesc:aacb53a3ff10fd379855b41c929dab12b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepare for sync serialization. Returns the prepared instance (for structs, return this after mutating). <br /></td></tr>
-<tr class="separator:aacb53a3ff10fd379855b41c929dab12b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a292c687ddc4c1acdd375376af791a662"><td class="memItemLeft" align="right" valign="top"><a id="a292c687ddc4c1acdd375376af791a662" name="a292c687ddc4c1acdd375376af791a662"></a>
-Task&lt; <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareAfterUnpackAsync</b> ()</td></tr>
-<tr class="memdesc:a292c687ddc4c1acdd375376af791a662"><td class="mdescLeft">&#160;</td><td class="mdescRight">Hydrate after sync deserialization. Returns the prepared instance (for structs, return this after mutating). <br /></td></tr>
-<tr class="separator:a292c687ddc4c1acdd375376af791a662"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5ce904768c3e0c49f0b9ef540ff92a86"><td class="memItemLeft" align="right" valign="top"><a id="a5ce904768c3e0c49f0b9ef540ff92a86" name="a5ce904768c3e0c49f0b9ef540ff92a86"></a>
+ValueTask&lt; <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareForPackAsync</b> ()</td></tr>
+<tr class="memdesc:a5ce904768c3e0c49f0b9ef540ff92a86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepare for sync serialization. Returns the prepared instance (for structs, return this after mutating). <br /></td></tr>
+<tr class="separator:a5ce904768c3e0c49f0b9ef540ff92a86"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aef90dfb15a32351f3a50e0f25562992c"><td class="memItemLeft" align="right" valign="top"><a id="aef90dfb15a32351f3a50e0f25562992c" name="aef90dfb15a32351f3a50e0f25562992c"></a>
+ValueTask&lt; <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareAfterUnpackAsync</b> ()</td></tr>
+<tr class="memdesc:aef90dfb15a32351f3a50e0f25562992c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Hydrate after sync deserialization. Returns the prepared instance (for structs, return this after mutating). <br /></td></tr>
+<tr class="separator:aef90dfb15a32351f3a50e0f25562992c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Implement on types that need async preparation around sync serialization. PrepareForPackAsync runs before packing (sender); PrepareAfterUnpackAsync runs after unpacking (receiver). Both return the prepared instance (for structs, return this after mutating).  </p>

@@ -1,5 +1,5 @@
 var interfacePurrNet_1_1Packing_1_1IAsyncPackable =
 [
-    [ "PrepareAfterUnpackAsync", "interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#a292c687ddc4c1acdd375376af791a662", null ],
-    [ "PrepareForPackAsync", "interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#aacb53a3ff10fd379855b41c929dab12b", null ]
+    [ "PrepareAfterUnpackAsync", "interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#aef90dfb15a32351f3a50e0f25562992c", null ],
+    [ "PrepareForPackAsync", "interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#a5ce904768c3e0c49f0b9ef540ff92a86", null ]
 ];
