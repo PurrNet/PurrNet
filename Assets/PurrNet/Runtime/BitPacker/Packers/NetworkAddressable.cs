@@ -29,16 +29,16 @@ namespace PurrNet
         public static implicit operator AssetReference(NetworkAddressable networkAddressable) =>
             networkAddressable.addressablesReference;
 
-        public Task<IAsyncPackable> PrepareForPackAsync()
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
         {
             if (addressablesReference == null)
-                return Task.FromResult<IAsyncPackable>(this);
+                return this;
 
             GUID = addressablesReference.AssetGUID;
-            return Task.FromResult<IAsyncPackable>(this);
+            return this;
         }
 
-        public async Task<IAsyncPackable> PrepareAfterUnpackAsync()
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
         {
             if (string.IsNullOrEmpty(GUID))
             {

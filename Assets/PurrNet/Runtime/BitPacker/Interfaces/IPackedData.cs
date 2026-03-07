@@ -13,10 +13,10 @@ namespace PurrNet.Packing
     public interface IAsyncPackable
     {
         /// <summary>Prepare for sync serialization. Returns the prepared instance (for structs, return this after mutating).</summary>
-        Task<IAsyncPackable> PrepareForPackAsync();
+        ValueTask<IAsyncPackable> PrepareForPackAsync();
 
         /// <summary>Hydrate after sync deserialization. Returns the prepared instance (for structs, return this after mutating).</summary>
-        Task<IAsyncPackable> PrepareAfterUnpackAsync();
+        ValueTask<IAsyncPackable> PrepareAfterUnpackAsync();
     }
     public class NetworkRegister
     {

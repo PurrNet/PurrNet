@@ -28,7 +28,7 @@ public class AsyncPackableTest : NetworkIdentity
         public string goName;
         [DontPack] public Renderer renderer;
 
-        public async Task<IAsyncPackable> PrepareForPackAsync()
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
         {
             if (!renderer)
             {
@@ -40,7 +40,7 @@ public class AsyncPackableTest : NetworkIdentity
             return this;
         }
 
-        public async Task<IAsyncPackable> PrepareAfterUnpackAsync()
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
         {
             await Task.Delay(1000);
             var go = string.IsNullOrEmpty(goName) ? null : GameObject.Find(goName);

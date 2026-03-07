@@ -64,7 +64,7 @@ namespace AddressablesTest
         {
             TestSendAddressableReference(prefabReference);
         }
-
+        
         [ObserversRpc]
         private void TestSendAddressableReference(NetworkAddressable addressable)
         {
