@@ -1,3 +1,24 @@
+## [1.19.2-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.24...v1.19.2-beta.25) (2026-03-07)
+
+
+### Bug Fixes
+
+* Network rigidbody stops acting when disabled ([a44a742](https://github.com/PurrNet/PurrNet/commit/a44a74220313f4cd1872702cd523e8a34c65d736))
+
+## [1.19.2-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.23...v1.19.2-beta.24) (2026-03-07)
+
+
+### Bug Fixes
+
+* Utilize ValueTask to avoid GC on synchronous completion ([7e552f2](https://github.com/PurrNet/PurrNet/commit/7e552f22f9c53e6b9ea11578091f5395bb4fef07))
+
+## [1.19.2-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.22...v1.19.2-beta.23) (2026-03-07)
+
+
+### Bug Fixes
+
+* Added Network Addressables helper struct ([7ab34ad](https://github.com/PurrNet/PurrNet/commit/7ab34addd2d0f6a737875ed12a3b11f5c2b4b961))
+
 ## [1.19.2-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.21...v1.19.2-beta.22) (2026-03-05)
 
 

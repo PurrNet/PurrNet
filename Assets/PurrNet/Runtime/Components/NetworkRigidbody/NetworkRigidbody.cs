@@ -162,6 +162,9 @@ namespace PurrNet
 
         public void OnTick(float delta)
         {
+            if (!isActiveAndEnabled)
+                return;
+            
             if (IsController(_ownerAuth))
                 ControllerTick();
             else
@@ -442,7 +445,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.mass = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -454,7 +457,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.linearDamping = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
 #else
@@ -462,7 +465,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.drag = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
 #endif
@@ -475,7 +478,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.angularDamping = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
 #else
@@ -483,7 +486,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.angularDrag = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
 #endif
@@ -495,7 +498,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.useGravity = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -506,7 +509,7 @@ namespace PurrNet
             set
             {
                 _rigidbody.isKinematic = value;
-                if (IsController(_ownerAuth))
+                if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
         }
@@ -521,10 +524,14 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastForceToOthers(appliedForce);
             }
             else
             {
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastForce(appliedForce);
             }
         }
@@ -539,10 +546,14 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForceAtPosition(force, position, mode);
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastForceToOthers(appliedForce);
             }
             else
             {
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastForce(appliedForce);
             }
         }
@@ -557,10 +568,14 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddTorque(torque, mode);
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastForceToOthers(appliedForce);
             }
             else
             {
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastForce(appliedForce);
             }
         }
@@ -570,10 +585,15 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.MovePosition(position);
+                
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastTeleport();
             }
             else
             {
+                if (!isActiveAndEnabled)
+                    return;
                 RequestTeleport(position, _rigidbody.rotation);
             }
         }
@@ -583,10 +603,14 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.MoveRotation(rotation);
+                if (!isActiveAndEnabled)
+                    return;
                 BroadcastTeleport();
             }
             else
             {
+                if (!isActiveAndEnabled)
+                    return;
                 RequestTeleport(_rigidbody.position, rotation);
             }
         }

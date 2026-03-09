@@ -60,6 +60,18 @@ namespace AddressablesTest
         }
 
         [PurrButton]
+        private void SendTestReference()
+        {
+            TestSendAddressableReference(prefabReference);
+        }
+        
+        [ObserversRpc]
+        private void TestSendAddressableReference(NetworkAddressable addressable)
+        {
+            Debug.Log($"Received addressable: {addressable}", addressable.Asset);
+        }
+
+        [PurrButton]
         void DestroyAll()
         {
             foreach (var handle in _handles)
