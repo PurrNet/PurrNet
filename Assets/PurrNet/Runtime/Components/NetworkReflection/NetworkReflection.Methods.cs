@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Reflection;
 using PurrNet.Logging;
-using UnityEngine;
 
 namespace PurrNet
 {
@@ -38,8 +37,9 @@ namespace PurrNet
             _backReferenceField?.SetValue(_trackedBehaviour, value);
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
             SetReflectionBackReference(null);
         }
 
