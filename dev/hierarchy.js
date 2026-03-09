@@ -305,6 +305,7 @@ var hierarchy =
     ] ],
     [ "PurrNet.IProvidePrefabInstantiated", "interfacePurrNet_1_1IProvidePrefabInstantiated.html", null ],
     [ "PurrNet.IProvideSpawnPoints", "interfacePurrNet_1_1IProvideSpawnPoints.html", null ],
+    [ "PurrNet.Packing.IPurrEquatable< T >", "interfacePurrNet_1_1Packing_1_1IPurrEquatable.html", null ],
     [ "PurrNet.IPurrEvents", "interfacePurrNet_1_1IPurrEvents.html", [
       [ "PurrNet.PurrMonoBehaviour", "classPurrNet_1_1PurrMonoBehaviour.html", [
         [ "PurrNet.ColliderRollback", "classPurrNet_1_1ColliderRollback.html", null ],

@@ -23,6 +23,7 @@ var namespacePurrNet_1_1Packing =
     [ "IPacked", "interfacePurrNet_1_1Packing_1_1IPacked.html", null ],
     [ "IPackedAuto", "interfacePurrNet_1_1Packing_1_1IPackedAuto.html", null ],
     [ "IPackedSimple", "interfacePurrNet_1_1Packing_1_1IPackedSimple.html", null ],
+    [ "IPurrEquatable", "interfacePurrNet_1_1Packing_1_1IPurrEquatable.html", null ],
     [ "IStandaloneSerializable", "interfacePurrNet_1_1Packing_1_1IStandaloneSerializable.html", null ],
     [ "NetworkRegister", "classPurrNet_1_1Packing_1_1NetworkRegister.html", null ],
     [ "NormalizedFloat", "structPurrNet_1_1Packing_1_1NormalizedFloat.html", null ],
