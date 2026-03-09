@@ -613,7 +613,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private void AppendToBufferedRPCs<T>(
+        private static void AppendToBufferedRPCs<T>(
             Dictionary<RPC_ID, RPC_DATA_BASE<T>> keys,
             List<RPC_DATA_BASE<T>> datas,
             T header,
