@@ -453,7 +453,34 @@ namespace PurrNet.Editor
         [InitializeOnLoadMethod]
         static void OnEditorLoad()
         {
-            EditorApplication.delayCall += NetworkReflectionInspector.RefreshReflectionTargetsCacheFull;
+            EditorApplication.delayCall += () =>
+            {
+                if (File.Exists(NetworkReflectionInspector.CACHE_FILE))
+                    return;
+
+                var prefabPaths = NetworkReflectionPrefabCache.Read();
+                if (prefabPaths.Count == 0)
+                {
+                    if (!Directory.Exists(NetworkReflectionInspector.CACHE_DIR))
+                        Directory.CreateDirectory(NetworkReflectionInspector.CACHE_DIR);
+                    File.WriteAllText(NetworkReflectionInspector.CACHE_FILE, "");
+                    return;
+                }
+
+                NetworkReflectionInspector.RefreshReflectionTargetsCacheFull();
+            };
+        }
+    }
+
+    static class NetworkReflectionCacheMenu
+    {
+        [MenuItem("Tools/PurrNet/Rebuild Network Reflection Cache", false, 500)]
+        static void RebuildCache()
+        {
+            if (File.Exists(NetworkReflectionPrefabCache.PREFAB_CACHE_FILE))
+                File.Delete(NetworkReflectionPrefabCache.PREFAB_CACHE_FILE);
+
+            NetworkReflectionInspector.RefreshReflectionTargetsCacheFull();
         }
     }
 }
