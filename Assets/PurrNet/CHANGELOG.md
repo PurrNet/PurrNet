@@ -1,3 +1,11 @@
+# [1.20.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.2...v1.20.0-beta.3) (2026-03-09)
+
+
+### Bug Fixes
+
+* Parrelsync clone reflection fix ([14cc0aa](https://github.com/PurrNet/PurrNet/commit/14cc0aab68e9cef082d52505e36dbcdecd3f157c))
+* Warning for Unity namespace ([75cc2f0](https://github.com/PurrNet/PurrNet/commit/75cc2f0756c41021f27891fa051ed486334966b3))
+
 # [1.20.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.1...v1.20.0-beta.2) (2026-03-09)
 
 
