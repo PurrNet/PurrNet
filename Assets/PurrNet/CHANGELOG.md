@@ -1,3 +1,10 @@
+# [1.20.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.1...v1.20.0-beta.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* Utilize caching for network reflection prefabs ([ecbf92d](https://github.com/PurrNet/PurrNet/commit/ecbf92d315910950e64a4ab51821dc25db3d11ed))
+
 # [1.20.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.28...v1.20.0-beta.1) (2026-03-09)
 
 
