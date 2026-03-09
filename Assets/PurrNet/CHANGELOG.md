@@ -1,3 +1,10 @@
+# [1.20.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.28...v1.20.0-beta.1) (2026-03-09)
+
+
+### Features
+
+* enhance authentication version mismatch handling with configurable behavior ([48d222e](https://github.com/PurrNet/PurrNet/commit/48d222e9859275557b56eb9a9d28e382deb00649))
+
 ## [1.19.2-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.27...v1.19.2-beta.28) (2026-03-09)
 
 
