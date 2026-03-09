@@ -59,7 +59,7 @@ namespace PurrNet.Modules
                 return;
 
             _authenticator.onAuthenticationComplete += OnAuthenticationComplete;
-            _authenticator.Subscribe(_broadcastModule, _playersManager);
+            _authenticator.Subscribe(_manager, _broadcastModule, _playersManager);
         }
 
         public void Disable(bool asServer)
@@ -73,7 +73,7 @@ namespace PurrNet.Modules
                 return;
 
             _authenticator.onAuthenticationComplete -= OnAuthenticationComplete;
-            _authenticator.Unsubscribe(_broadcastModule, _playersManager);
+            _authenticator.Unsubscribe(_manager,_broadcastModule, _playersManager);
         }
 
         public void OnConnected(Connection conn, bool asServer)
@@ -124,9 +124,18 @@ namespace PurrNet.Modules
 
             if (!NetworkManager.VerifyVersion(data.version))
             {
-                PurrLogger.LogError($"Client version mismatch. Client version: {data.version}, Server version: {NetworkManager.version}");
-                _manager.CloseConnection(conn);
-                return;
+                var behaviour = _manager.networkRules
+                    ? _manager.networkRules.GetVersionMismatchBehaviour()
+                    : VersionMismatchBehaviour.Warning;
+
+                if (behaviour == VersionMismatchBehaviour.Deny)
+                {
+                    PurrLogger.LogError($"Client version mismatch. Client version: {data.version}, Server version: {NetworkManager.version}");
+                    _manager.CloseConnection(conn);
+                    return;
+                }
+
+                PurrLogger.LogWarning($"Client version mismatch. Client version: {data.version}, Server version: {NetworkManager.version}");
             }
 
             onConnection?.Invoke(conn, new AuthenticationResponse

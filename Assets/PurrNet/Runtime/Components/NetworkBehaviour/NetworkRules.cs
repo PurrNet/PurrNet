@@ -138,10 +138,26 @@ namespace PurrNet
         public ActionAuth changeParentAuth;
     }
 
+    public enum VersionMismatchBehaviour
+    {
+        /// <summary>
+        /// Log a warning but allow the connection.
+        /// </summary>
+        Warning,
+
+        /// <summary>
+        /// Deny the connection on version mismatch.
+        /// </summary>
+        Deny
+    }
+
     [Serializable]
     public struct MiscRules
     {
         [Range(1, 10)] public int syncedTickUpdateInterval;
+
+        [Tooltip("How to handle client/server version mismatches. Warning logs but allows connection; Deny rejects the connection.")]
+        public VersionMismatchBehaviour versionMismatchBehaviour;
     }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
@@ -341,6 +357,11 @@ namespace PurrNet
         public float GetSyncedTickUpdateInterval()
         {
             return _defaultMiscRules.syncedTickUpdateInterval;
+        }
+
+        public VersionMismatchBehaviour GetVersionMismatchBehaviour()
+        {
+            return _defaultMiscRules.versionMismatchBehaviour;
         }
 
         public bool ShouldCleanupSpawnedObjectsOnDisconnect()

@@ -82,9 +82,9 @@ namespace PurrNet.Authentication
 
         public event Action<Connection, AuthenticationResponse> onAuthenticationComplete;
 
-        public abstract void Subscribe(BroadcastModule broadcastModule, PlayersManager players);
+        public abstract void Subscribe(INetworkManager manager, BroadcastModule broadcastModule, PlayersManager players);
 
-        public abstract void Unsubscribe(BroadcastModule broadcastModule, PlayersManager players);
+        public abstract void Unsubscribe(INetworkManager manager, BroadcastModule broadcastModule, PlayersManager players);
 
         public abstract void SendClientPayload(BroadcastModule broadcastModule, CookiesModule cookies);
 
@@ -106,19 +106,22 @@ namespace PurrNet.Authentication
     public abstract class AuthenticationBehaviour<T> : AuthenticationLayer
     {
         private PlayersManager _players;
+        private INetworkManager _networkManager;
 
-        public override void Subscribe(BroadcastModule broadcastModule, PlayersManager players)
+        public override void Subscribe(INetworkManager manager, BroadcastModule broadcastModule, PlayersManager players)
         {
             _players = players;
+            _networkManager = manager;
 
             broadcastModule.Subscribe<AuthenticationRequestData>(OnPayload);
             players.onPrePlayerLeft += UnAuthenticatePlayer;
         }
 
-        public override void Unsubscribe(BroadcastModule broadcastModule, PlayersManager players)
+        public override void Unsubscribe(INetworkManager manager, BroadcastModule broadcastModule, PlayersManager players)
         {
             broadcastModule.Unsubscribe<AuthenticationRequestData>(OnPayload);
             players.onPrePlayerLeft -= UnAuthenticatePlayer;
+            _networkManager = null;
         }
 
         private void UnAuthenticatePlayer(PlayerID player, bool asserver)
@@ -160,7 +163,17 @@ namespace PurrNet.Authentication
                 Packer<T>.Read(packer, ref payload);
 
                 if (!NetworkManager.VerifyVersion(clientVersion))
-                    throw new Exception($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");
+                {
+                    var rules = _networkManager?.networkRules;
+                    var behaviour = rules
+                        ? rules.GetVersionMismatchBehaviour()
+                        : VersionMismatchBehaviour.Warning;
+
+                    if (behaviour == VersionMismatchBehaviour.Deny)
+                        throw new Exception($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");
+
+                    PurrLogger.LogWarning($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");
+                }
 
                 var result = await ValidateClientPayload(conn, payload);
                 if (result.cookie == null && data.cookie != null)
