@@ -1,3 +1,10 @@
+# [1.20.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.3...v1.20.0-beta.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* Made RB sleep optional ([653fbda](https://github.com/PurrNet/PurrNet/commit/653fbdad0b30187ef75581da228ec0732dee84a5))
+
 # [1.20.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.2...v1.20.0-beta.3) (2026-03-09)
 
 
