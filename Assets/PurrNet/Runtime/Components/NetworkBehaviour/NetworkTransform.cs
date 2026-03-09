@@ -24,6 +24,10 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private bool _syncParent = true;
 
+        [Tooltip("Forces any attached Rigidbody to sleep if not the controller, to ensure better syncing when RB is present.")]
+        [SerializeField, PurrLock] 
+        private bool _forceSleepRb = true;
+
         [Header("How to Sync")] [Tooltip("What to interpolate when syncing the transform.")] [SerializeField, PurrLock]
         private TransformSyncMode _interpolateSettings =
             TransformSyncMode.Position | TransformSyncMode.Rotation | TransformSyncMode.Scale;
@@ -412,7 +416,7 @@ namespace PurrNet
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private void FixedUpdate()
         {
-            if (!isSpawned)
+            if (!isSpawned || !_forceSleepRb)
                 return;
 
             bool isNotController = !_cachedIsController;
