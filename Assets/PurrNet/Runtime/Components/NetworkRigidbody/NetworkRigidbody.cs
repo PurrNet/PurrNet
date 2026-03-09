@@ -121,6 +121,7 @@ namespace PurrNet
         private float _correctionTimer;
         private bool _isCorreting;
         private bool _hasPendingTeleport;
+        private int _lastCorrectionFrame = -1;
 
         private void Awake()
         {
@@ -164,11 +165,14 @@ namespace PurrNet
         {
             if (!isActiveAndEnabled)
                 return;
-            
+
             if (IsController(_ownerAuth))
                 ControllerTick();
-            else
+            else if (_lastCorrectionFrame != Time.frameCount)
+            {
+                _lastCorrectionFrame = Time.frameCount;
                 NonControllerTick(delta);
+            }
         }
 
         private void ControllerTick()
@@ -246,6 +250,12 @@ namespace PurrNet
                 HardCorrect();
                 return;
             }
+        }
+
+        private void FixedUpdate()
+        {
+            if (!isSpawned || IsController(_ownerAuth) || !_isCorreting || _hasPendingTeleport)
+                return;
 
             ApplySoftCorrection();
         }
