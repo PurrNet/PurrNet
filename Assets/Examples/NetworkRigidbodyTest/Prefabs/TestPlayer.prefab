@@ -170,6 +170,8 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _moveForce: 8
   _jumpForce: 5
+  _acceleration: 50
+  _velocityChangeBased: 1
   _rb: {fileID: 186609759476557284}
 --- !u!114 &186609759476557284
 MonoBehaviour:
@@ -198,6 +200,8 @@ MonoBehaviour:
   _maxCorrectionTime: -1
   _springConstant: 90
   _dampingConstant: 5
+  _rotationSpringMultiplier: 0.3
+  _minRotationCorrectionAngle: 1
   _uncertaintySpringDampening: 2
   _accelerationDecay: 0.4
   _hardCorrectionAccelerationScale: 0.1
@@ -219,7 +223,7 @@ Rigidbody:
   m_GameObject: {fileID: 3854675144429920152}
   serializedVersion: 5
   m_Mass: 10
-  m_LinearDamping: 0
+  m_LinearDamping: 5
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
