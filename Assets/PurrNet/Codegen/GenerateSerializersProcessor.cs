@@ -272,6 +272,9 @@ namespace PurrNet.Codegen
             if (DuplicateHelpers.HasDuplicateInterface(type))
                 DuplicateHelpers.InjectRegistration(serializerClass, type, il);
 
+            if (EquatableHelpers.HasEquatableInterface(type))
+                EquatableHelpers.InjectRegistration(serializerClass, type, il);
+
             // NetworkRegister.Hash(RuntimeTypeHandle handle);
             il.Emit(OpCodes.Ldtoken, type);
             il.Emit(OpCodes.Call, hashMethod);

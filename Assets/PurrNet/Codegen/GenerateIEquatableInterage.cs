@@ -1,4 +1,4 @@
-﻿#if UNITY_MONO_CECIL
+#if UNITY_MONO_CECIL
 using System;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -54,11 +54,38 @@ namespace PurrNet.Codegen
             return false;
         }
 
-        static bool AlreadyHasEqualFunction(TypeDefinition type)
+        private static bool HasIPurrEquatableT(TypeDefinition def)
+        {
+            var cur = def;
+            var self = MakeSelfRef(def);
+
+            while (cur != null)
+            {
+                foreach (var iface in cur.Interfaces)
+                {
+                    var ifaceType = iface.InterfaceType;
+                    var ifaceDef = ifaceType.Resolve();
+                    if (ifaceDef == null) continue;
+
+                    if (ifaceDef.Namespace == "PurrNet.Packing" &&
+                        ifaceDef.Name == "IPurrEquatable`1" &&
+                        ifaceType is GenericInstanceType git &&
+                        git.GenericArguments.Count == 1)
+                        if (SameType(git.GenericArguments[0], self))
+                            return true;
+                }
+
+                cur = cur.BaseType?.Resolve();
+            }
+
+            return false;
+        }
+
+        static bool AlreadyHasPurrEqualsFunction(TypeDefinition type)
         {
             foreach (var method in type.Methods)
             {
-                if (method.Name != "Equals") continue;
+                if (method.Name != "PurrEquals") continue;
                 if (method.Parameters.Count != 1) continue;
                 if (method.Parameters[0].ParameterType.FullName != type.FullName) continue;
                 if (method.ReturnType != type.Module.TypeSystem.Boolean) continue;
@@ -76,37 +103,38 @@ namespace PurrNet.Codegen
             if (type.Module?.Assembly == null) return;
             if (type.Module.Assembly.MainModule != type.Module) return;
             if (HasIEquatableT(type)) return;
-            if (AlreadyHasEqualFunction(type)) return;
+            if (HasIPurrEquatableT(type)) return;
+            if (AlreadyHasPurrEqualsFunction(type)) return;
 
             var module = type.Module;
-            var iEquatableOpen = new TypeReference("System", "IEquatable`1", module, module.TypeSystem.CoreLibrary);
+            var iPurrEquatableOpen = module.GetTypeDefinition(typeof(IPurrEquatable<>)).Import(module);
             var selfRef = MakeSelfRef(type);
             var importedSelfRef = selfRef?.Import(module);
             if (importedSelfRef == null) return;
 
-            var iEquatableClosed = new GenericInstanceType(iEquatableOpen);
-            iEquatableClosed.GenericArguments.Add(importedSelfRef);
+            var iPurrEquatableClosed = new GenericInstanceType(iPurrEquatableOpen);
+            iPurrEquatableClosed.GenericArguments.Add(importedSelfRef);
 
-            type.Interfaces.Add(new InterfaceImplementation(iEquatableClosed));
+            type.Interfaces.Add(new InterfaceImplementation(iPurrEquatableClosed));
 
-            var equals = new MethodDefinition(
-                "Equals",
+            var purrEquals = new MethodDefinition(
+                "PurrEquals",
                 MethodAttributes.Public | MethodAttributes.Final |
                 MethodAttributes.HideBySig | MethodAttributes.Virtual | MethodAttributes.NewSlot,
                 module.TypeSystem.Boolean
             );
 
-            equals.Parameters.Add(new ParameterDefinition("other", ParameterAttributes.None, importedSelfRef));
+            purrEquals.Parameters.Add(new ParameterDefinition("other", ParameterAttributes.None, importedSelfRef));
 
             try
             {
-                var il = equals.Body.GetILProcessor();
-                ImplementBody(type, equals, il);
-                type.Methods.Add(equals);
+                var il = purrEquals.Body.GetILProcessor();
+                ImplementBody(type, purrEquals, il);
+                type.Methods.Add(purrEquals);
             }
             catch (Exception e)
             {
-                throw new Exception($"Failed IEquatable.ImplementBody for {type.FullName}: {e.Message}", e);
+                throw new Exception($"Failed IPurrEquatable.ImplementBody for {type.FullName}: {e.Message}", e);
             }
         }
 
