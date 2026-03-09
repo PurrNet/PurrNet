@@ -6,6 +6,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
+using PurrNet.Utils;
 
 namespace PurrNet.Editor
 {
@@ -474,6 +475,25 @@ namespace PurrNet.Editor
             {
                 if (File.Exists(NetworkReflectionInspector.CACHE_FILE))
                     return;
+
+                if (ApplicationContext.isClone)
+                {
+                    var parentRoot = ClonesContext.GetOriginalProjectPath();
+                    if (!string.IsNullOrEmpty(parentRoot))
+                    {
+                        var parentCache = Path.Combine(parentRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
+                        var parentPrefabCache = Path.Combine(parentRoot, "Library", "PurrNet", "PrefabsWithNetworkReflection.txt");
+                        if (File.Exists(parentCache))
+                        {
+                            if (!Directory.Exists(NetworkReflectionInspector.CACHE_DIR))
+                                Directory.CreateDirectory(NetworkReflectionInspector.CACHE_DIR);
+                            File.Copy(parentCache, NetworkReflectionInspector.CACHE_FILE, true);
+                            if (File.Exists(parentPrefabCache))
+                                File.Copy(parentPrefabCache, NetworkReflectionPrefabCache.PREFAB_CACHE_FILE, true);
+                            return;
+                        }
+                    }
+                }
 
                 var prefabPaths = NetworkReflectionPrefabCache.Read();
                 if (prefabPaths.Count == 0)

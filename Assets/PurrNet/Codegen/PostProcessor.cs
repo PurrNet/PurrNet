@@ -4637,6 +4637,8 @@ namespace PurrNet.Codegen
             if (File.Exists(relativePath))
                 return relativePath;
 
+            string projectRoot = null;
+
             foreach (var reference in compiledAssembly.References)
             {
                 var normalized = reference.Replace('\\', '/');
@@ -4648,6 +4650,20 @@ namespace PurrNet.Codegen
                 var fullPath = Path.Combine(root, relativePath);
                 if (File.Exists(fullPath))
                     return fullPath;
+
+                if (projectRoot == null)
+                    projectRoot = root;
+            }
+
+            if (ApplicationContext.isClone)
+            {
+                var parentRoot = ClonesContext.GetOriginalProjectPath();
+                if (!string.IsNullOrEmpty(parentRoot))
+                {
+                    var parentCache = Path.Combine(parentRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
+                    if (File.Exists(parentCache))
+                        return parentCache;
+                }
             }
 
             return null;
