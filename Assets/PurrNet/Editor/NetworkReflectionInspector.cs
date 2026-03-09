@@ -209,8 +209,25 @@ namespace PurrNet.Editor
             EditorGUI.EndProperty();
         }
 
+        static bool IsUnityEngineType(Type type)
+        {
+            if (type == null) return false;
+            var ns = type.Namespace ?? "";
+            return ns.StartsWith("UnityEngine", StringComparison.Ordinal) ||
+                   ns.StartsWith("UnityEditor", StringComparison.Ordinal);
+        }
+
         void DrawMethodsSection(NetworkReflection reflection)
         {
+            if (IsUnityEngineType(reflection.trackedType))
+            {
+                EditorGUILayout.LabelField("RPC Methods", EditorStyles.boldLabel);
+                EditorGUILayout.HelpBox(
+                    "RPC methods cannot be used with UnityEngine or UnityEditor components. The IL post-processor cannot modify pre-compiled Unity assemblies. Use a custom MonoBehaviour instead.",
+                    MessageType.Warning);
+                return;
+            }
+
             var allMethods = reflection.trackedType.GetMethods(
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
