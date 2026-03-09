@@ -1,3 +1,10 @@
+## [1.19.2-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.25...v1.19.2-beta.26) (2026-03-09)
+
+
+### Bug Fixes
+
+* bobsi shenanigans ([b68b786](https://github.com/PurrNet/PurrNet/commit/b68b78666d42f1c8184f78cdfcc5c4d54e556cc6))
+
 ## [1.19.2-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.24...v1.19.2-beta.25) (2026-03-07)
 
 
