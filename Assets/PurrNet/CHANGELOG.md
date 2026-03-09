@@ -1,3 +1,10 @@
+## [1.19.2-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.26...v1.19.2-beta.27) (2026-03-09)
+
+
+### Bug Fixes
+
+* correct variable name for RPC key retrieval in RPCModule ([6ac9140](https://github.com/PurrNet/PurrNet/commit/6ac914042aa287561d21b649aff42a1c3a3bd199))
+
 ## [1.19.2-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.25...v1.19.2-beta.26) (2026-03-09)
 
 
