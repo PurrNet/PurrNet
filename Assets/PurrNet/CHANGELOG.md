@@ -1,3 +1,10 @@
+# [1.20.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.4...v1.20.0-beta.5) (2026-03-09)
+
+
+### Bug Fixes
+
+* Improved client interpolation of network rigidbody ([7038ce5](https://github.com/PurrNet/PurrNet/commit/7038ce58c0a9fb818d05055c852bf085da177e66))
+
 # [1.20.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.3...v1.20.0-beta.4) (2026-03-09)
 
 
