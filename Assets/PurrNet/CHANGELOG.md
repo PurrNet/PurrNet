@@ -1,3 +1,10 @@
+## [1.19.2-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.27...v1.19.2-beta.28) (2026-03-09)
+
+
+### Bug Fixes
+
+* implement IPurrEquatable interface and related equality helpers (to avoid breaking packages that rely on default c# equality) ([9b748c7](https://github.com/PurrNet/PurrNet/commit/9b748c7dd0a7f7d8cdb536b0edbec0802b9b960e))
+
 ## [1.19.2-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.26...v1.19.2-beta.27) (2026-03-09)
 
 
