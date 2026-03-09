@@ -623,7 +623,7 @@ namespace PurrNet.Modules
         {
             if (!signature.bufferLast) return;
 
-            if (_bufferedRpcsKeys.TryGetValue(rpcid, out var data))
+            if (keys.TryGetValue(rpcid, out var data))
             {
                 data.stream.ResetPosition();
                 data.stream.WriteBitDataWithoutConsumingIt(bitData);
