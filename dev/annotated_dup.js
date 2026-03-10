@@ -161,6 +161,7 @@ var annotated_dup =
         [ "IListener", "interfacePurrNet_1_1Transports_1_1IListener.html", null ],
         [ "ITransport", "interfacePurrNet_1_1Transports_1_1ITransport.html", null ],
         [ "LocalTransport", "classPurrNet_1_1Transports_1_1LocalTransport.html", null ],
+        [ "NetworkSimulation", "structPurrNet_1_1Transports_1_1NetworkSimulation.html", null ],
         [ "PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
         [ "PurrTransport", "classPurrNet_1_1Transports_1_1PurrTransport.html", null ],
         [ "Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
