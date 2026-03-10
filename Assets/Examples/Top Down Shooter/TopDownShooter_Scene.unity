@@ -1925,6 +1925,7 @@ MonoBehaviour:
   _syncRotation: 2
   _syncScale: 1
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -2462,73 +2463,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.0821252, y: 1, z: 1.0821252}
   m_Center: {x: 0, y: 0.5, z: 0}
---- !u!1 &1075187352
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1075187354}
-  - component: {fileID: 1075187353}
-  - component: {fileID: 1075187355}
-  m_Layer: 0
-  m_Name: GameObject
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1075187353
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1075187352}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f20505c835b1f4945ac3cd8c6809bbc6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SteamManager
---- !u!4 &1075187354
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1075187352}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.9818, y: -3.52184, z: 6.1}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1075187355
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1075187352}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 92060dc0c47e81b4c9ee034e7bd57b8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.Benchmarks::DeltaPackingTests
-  _isSetup: 0
-  _prefabId: -2147483648
-  _componentIndex: -2147483648
-  _shouldBePooled: 0
-  _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
-  _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
-  _so: {fileID: 0}
 --- !u!1001 &1115805413
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2662,6 +2596,7 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 1
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -2913,6 +2848,13 @@ MonoBehaviour:
   _address: 127.0.0.1
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!114 &1216416905
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2998,6 +2940,13 @@ MonoBehaviour:
   _host: purrtransport-france.purrservers.com
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!114 &1216416913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3284,6 +3233,7 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 1
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -3447,6 +3397,80 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
+--- !u!1 &1456073135
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1456073138}
+  - component: {fileID: 1456073137}
+  - component: {fileID: 1456073136}
+  m_Layer: 0
+  m_Name: NetworkReflectionTest
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1456073136
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1456073135}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47bbdc13fc550904da1075f35201bf90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Internal.Examples::ReflectionTest
+--- !u!114 &1456073137
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1456073135}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cb763cfb0fbf2c44b3587223c4aad1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkReflection
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _trackedBehaviour: {fileID: 1456073136}
+  _trackedFields: []
+  _trackedMethods:
+  - name: TestServer
+    rpcType: 0
+  - name: TestObserver
+    rpcType: 1
+  _ownerAuth: 1
+--- !u!4 &1456073138
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1456073135}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1492589980
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4617,13 +4641,13 @@ SceneRoots:
   - {fileID: 550669885}
   - {fileID: 1353588533}
   - {fileID: 634351194}
+  - {fileID: 1456073138}
   - {fileID: 167534151}
   - {fileID: 1831528176}
   - {fileID: 863271037}
   - {fileID: 1129046907}
   - {fileID: 190531792}
   - {fileID: 81412049}
-  - {fileID: 1075187354}
   - {fileID: 1533561943}
   - {fileID: 1185781568}
   - {fileID: 512289498}
