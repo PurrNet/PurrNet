@@ -712,6 +712,7 @@ namespace PurrNet
         [ServerRpc(deltaPacked: true)]
         private void SyncSettings(RigidbodySettingsData data)
         {
+            SyncSettings_Internal(data);
             SyncSettings_Observer(data);
         }
 
