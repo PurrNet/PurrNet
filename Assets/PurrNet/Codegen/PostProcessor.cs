@@ -4630,14 +4630,53 @@ namespace PurrNet.Codegen
             return true;
         }
 
+        private static string ReadCachePathFromSettings(string projectRoot)
+        {
+            const string defaultPath = "Assets/PurrNet/ReflectionRPCTargets.txt";
+            const string settingsFile = "ProjectSettings/PurrNetSettings.asset";
+
+            var settingsPath = string.IsNullOrEmpty(projectRoot)
+                ? settingsFile
+                : Path.Combine(projectRoot, settingsFile);
+
+            if (!File.Exists(settingsPath))
+                return defaultPath;
+
+            try
+            {
+                var json = File.ReadAllText(settingsPath);
+                const string key = "\"reflectionCachePath\"";
+                var idx = json.IndexOf(key, StringComparison.Ordinal);
+                if (idx < 0)
+                    return defaultPath;
+
+                var colonIdx = json.IndexOf(':', idx + key.Length);
+                if (colonIdx < 0)
+                    return defaultPath;
+
+                var quoteStart = json.IndexOf('"', colonIdx + 1);
+                if (quoteStart < 0)
+                    return defaultPath;
+
+                var quoteEnd = json.IndexOf('"', quoteStart + 1);
+                if (quoteEnd < 0)
+                    return defaultPath;
+
+                var value = json.Substring(quoteStart + 1, quoteEnd - quoteStart - 1);
+                return string.IsNullOrEmpty(value) ? defaultPath : value;
+            }
+            catch
+            {
+                return defaultPath;
+            }
+        }
+
         private static string FindReflectionTargetsCache(ICompiledAssembly compiledAssembly)
         {
-            const string relativePath = "Library/PurrNet/ReflectionRPCTargets.txt";
+            var relativePath = ReadCachePathFromSettings(null);
 
             if (File.Exists(relativePath))
                 return relativePath;
-
-            string projectRoot = null;
 
             foreach (var reference in compiledAssembly.References)
             {
@@ -4647,23 +4686,10 @@ namespace PurrNet.Codegen
                     continue;
 
                 var root = reference.Substring(0, idx);
-                var fullPath = Path.Combine(root, relativePath);
+                var cachePath = ReadCachePathFromSettings(root);
+                var fullPath = Path.Combine(root, cachePath);
                 if (File.Exists(fullPath))
                     return fullPath;
-
-                if (projectRoot == null)
-                    projectRoot = root;
-            }
-
-            if (ApplicationContext.isClone)
-            {
-                var parentRoot = ClonesContext.GetOriginalProjectPath();
-                if (!string.IsNullOrEmpty(parentRoot))
-                {
-                    var parentCache = Path.Combine(parentRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
-                    if (File.Exists(parentCache))
-                        return parentCache;
-                }
             }
 
             return null;
