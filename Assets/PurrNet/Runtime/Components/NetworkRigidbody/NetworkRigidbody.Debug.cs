@@ -83,7 +83,7 @@ namespace PurrNet
                           $"Extrapolation: {_lastExtrapolation}\n" +
                           $"---\n" +
                           $"Velocity: {velocityMagnitude:F2}\n" +
-                          $"Correcting: {_isCorreting}\n" +
+                          $"Correcting: {(isController ? "-" : _lastCorrectionReason)}\n" +
                           $"CorrectionTimer: {_correctionTimer:F2}s\n" +
                           $"---\n" +
                           $"<b>Dynamic Scaling</b>\n" +

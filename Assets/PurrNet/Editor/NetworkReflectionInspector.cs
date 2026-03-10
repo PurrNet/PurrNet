@@ -6,6 +6,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
+using PurrNet.Utils;
 
 namespace PurrNet.Editor
 {
@@ -209,8 +210,25 @@ namespace PurrNet.Editor
             EditorGUI.EndProperty();
         }
 
+        static bool IsUnityEngineType(Type type)
+        {
+            if (type == null) return false;
+            var ns = type.Namespace ?? "";
+            return ns.StartsWith("UnityEngine", StringComparison.Ordinal) ||
+                   ns.StartsWith("UnityEditor", StringComparison.Ordinal);
+        }
+
         void DrawMethodsSection(NetworkReflection reflection)
         {
+            if (IsUnityEngineType(reflection.trackedType))
+            {
+                EditorGUILayout.LabelField("RPC Methods", EditorStyles.boldLabel);
+                EditorGUILayout.HelpBox(
+                    "RPC methods cannot be used with UnityEngine or UnityEditor components. The IL post-processor cannot modify pre-compiled Unity assemblies. Use a custom MonoBehaviour instead.",
+                    MessageType.Warning);
+                return;
+            }
+
             var allMethods = reflection.trackedType.GetMethods(
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
@@ -342,6 +360,7 @@ namespace PurrNet.Editor
         internal static void RefreshReflectionTargetsCacheFull()
         {
             var targetTypes = new HashSet<string>();
+            var prefabPaths = NetworkReflectionPrefabCache.Read();
 
             var allReflections = Resources.FindObjectsOfTypeAll<NetworkReflection>();
             foreach (var reflection in allReflections)
@@ -355,45 +374,75 @@ namespace PurrNet.Editor
                     targetTypes.Add(type.FullName);
             }
 
-            var prefabGuids = AssetDatabase.FindAssets("t:Prefab");
-            foreach (var guid in prefabGuids)
+            if (prefabPaths.Count == 0)
             {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-
-                // Only load prefabs that actually contain NetworkReflection to avoid
-                // triggering missing script warnings on unrelated prefabs
-                if (!PrefabContainsNetworkReflection(path))
-                    continue;
-
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab == null) continue;
-
-                var reflections = prefab.GetComponentsInChildren<NetworkReflection>(true);
-                foreach (var reflection in reflections)
+                var prefabGuids = AssetDatabase.FindAssets("t:Prefab");
+                foreach (var guid in prefabGuids)
                 {
-                    if (reflection == null) continue;
-                    if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                    var path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!NetworkReflectionPrefabCache.PrefabContainsNetworkReflection(path))
                         continue;
 
-                    var type = reflection.trackedType;
-                    if (type != null)
-                        targetTypes.Add(type.FullName);
+                    prefabPaths.Add(path);
+                    CollectTargetTypesFromPrefab(path, targetTypes);
+                }
+                NetworkReflectionPrefabCache.Write(prefabPaths);
+            }
+            else
+            {
+                var toRemove = new List<string>();
+                foreach (var path in prefabPaths)
+                {
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (prefab == null)
+                    {
+                        toRemove.Add(path);
+                        continue;
+                    }
+
+                    var hadRelevantReflection = false;
+                    var reflections = prefab.GetComponentsInChildren<NetworkReflection>(true);
+                    foreach (var reflection in reflections)
+                    {
+                        if (reflection == null) continue;
+                        if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                            continue;
+
+                        hadRelevantReflection = true;
+                        var type = reflection.trackedType;
+                        if (type != null)
+                            targetTypes.Add(type.FullName);
+                    }
+
+                    if (!hadRelevantReflection)
+                        toRemove.Add(path);
+                }
+
+                if (toRemove.Count > 0)
+                {
+                    foreach (var path in toRemove)
+                        prefabPaths.Remove(path);
+                    NetworkReflectionPrefabCache.Write(prefabPaths);
                 }
             }
 
             WriteCacheFile(targetTypes);
         }
 
-        static bool PrefabContainsNetworkReflection(string prefabPath)
+        static void CollectTargetTypesFromPrefab(string path, HashSet<string> targetTypes)
         {
-            try
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null) return;
+
+            foreach (var reflection in prefab.GetComponentsInChildren<NetworkReflection>(true))
             {
-                var text = File.ReadAllText(prefabPath);
-                return text.Contains("NetworkReflection");
-            }
-            catch
-            {
-                return false;
+                if (reflection == null) continue;
+                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                    continue;
+
+                var type = reflection.trackedType;
+                if (type != null)
+                    targetTypes.Add(type.FullName);
             }
         }
 
@@ -422,7 +471,53 @@ namespace PurrNet.Editor
         [InitializeOnLoadMethod]
         static void OnEditorLoad()
         {
-            EditorApplication.delayCall += NetworkReflectionInspector.RefreshReflectionTargetsCacheFull;
+            EditorApplication.delayCall += () =>
+            {
+                if (File.Exists(NetworkReflectionInspector.CACHE_FILE))
+                    return;
+
+                if (ApplicationContext.isClone)
+                {
+                    var parentRoot = ClonesContext.GetOriginalProjectPath();
+                    if (!string.IsNullOrEmpty(parentRoot))
+                    {
+                        var parentCache = Path.Combine(parentRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
+                        var parentPrefabCache = Path.Combine(parentRoot, "Library", "PurrNet", "PrefabsWithNetworkReflection.txt");
+                        if (File.Exists(parentCache))
+                        {
+                            if (!Directory.Exists(NetworkReflectionInspector.CACHE_DIR))
+                                Directory.CreateDirectory(NetworkReflectionInspector.CACHE_DIR);
+                            File.Copy(parentCache, NetworkReflectionInspector.CACHE_FILE, true);
+                            if (File.Exists(parentPrefabCache))
+                                File.Copy(parentPrefabCache, NetworkReflectionPrefabCache.PREFAB_CACHE_FILE, true);
+                            return;
+                        }
+                    }
+                }
+
+                var prefabPaths = NetworkReflectionPrefabCache.Read();
+                if (prefabPaths.Count == 0)
+                {
+                    if (!Directory.Exists(NetworkReflectionInspector.CACHE_DIR))
+                        Directory.CreateDirectory(NetworkReflectionInspector.CACHE_DIR);
+                    File.WriteAllText(NetworkReflectionInspector.CACHE_FILE, "");
+                    return;
+                }
+
+                NetworkReflectionInspector.RefreshReflectionTargetsCacheFull();
+            };
+        }
+    }
+
+    static class NetworkReflectionCacheMenu
+    {
+        [MenuItem("Tools/PurrNet/Rebuild Network Reflection Cache", false, 500)]
+        static void RebuildCache()
+        {
+            if (File.Exists(NetworkReflectionPrefabCache.PREFAB_CACHE_FILE))
+                File.Delete(NetworkReflectionPrefabCache.PREFAB_CACHE_FILE);
+
+            NetworkReflectionInspector.RefreshReflectionTargetsCacheFull();
         }
     }
 }

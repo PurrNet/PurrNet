@@ -1,3 +1,46 @@
+# [1.20.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.5...v1.20.0-beta.6) (2026-03-10)
+
+
+### Bug Fixes
+
+* Implemented target smoothing for Network RB ([00c7afd](https://github.com/PurrNet/PurrNet/commit/00c7afdeaae8186c44acad010333ef2a3f93d02a))
+
+# [1.20.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.4...v1.20.0-beta.5) (2026-03-09)
+
+
+### Bug Fixes
+
+* Improved client interpolation of network rigidbody ([7038ce5](https://github.com/PurrNet/PurrNet/commit/7038ce58c0a9fb818d05055c852bf085da177e66))
+
+# [1.20.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.3...v1.20.0-beta.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* Made RB sleep optional ([653fbda](https://github.com/PurrNet/PurrNet/commit/653fbdad0b30187ef75581da228ec0732dee84a5))
+
+# [1.20.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.2...v1.20.0-beta.3) (2026-03-09)
+
+
+### Bug Fixes
+
+* Parrelsync clone reflection fix ([14cc0aa](https://github.com/PurrNet/PurrNet/commit/14cc0aab68e9cef082d52505e36dbcdecd3f157c))
+* Warning for Unity namespace ([75cc2f0](https://github.com/PurrNet/PurrNet/commit/75cc2f0756c41021f27891fa051ed486334966b3))
+
+# [1.20.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.1...v1.20.0-beta.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* Utilize caching for network reflection prefabs ([ecbf92d](https://github.com/PurrNet/PurrNet/commit/ecbf92d315910950e64a4ab51821dc25db3d11ed))
+
+# [1.20.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.28...v1.20.0-beta.1) (2026-03-09)
+
+
+### Features
+
+* enhance authentication version mismatch handling with configurable behavior ([48d222e](https://github.com/PurrNet/PurrNet/commit/48d222e9859275557b56eb9a9d28e382deb00649))
+
 ## [1.19.2-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.19.2-beta.27...v1.19.2-beta.28) (2026-03-09)
 
 

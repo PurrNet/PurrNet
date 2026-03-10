@@ -94,6 +94,9 @@ namespace PurrNet
         [Tooltip("Whether the target position should extrapolate based on local ping")]
         [SerializeField] private bool _extrapolateBasedOnPing;
 
+        [Tooltip("Smooths the received target toward new updates to reduce stutter from network jitter. 0 = no smoothing, 1 = full smoothing (more latency).")]
+        [SerializeField, Range(0f, 1f)] private float _targetSmoothing;
+
         [Header("Sync Settings")]
         [Tooltip("Minimum distance moved required to trigger a network update.")]
         [SerializeField] private float _positionChangeThreshold = 0.001f;
@@ -121,6 +124,8 @@ namespace PurrNet
         private float _correctionTimer;
         private bool _isCorreting;
         private bool _hasPendingTeleport;
+        private int _lastCorrectionFrame = -1;
+        private string _lastCorrectionReason = "No";
 
         private void Awake()
         {
@@ -164,11 +169,14 @@ namespace PurrNet
         {
             if (!isActiveAndEnabled)
                 return;
-            
+
             if (IsController(_ownerAuth))
                 ControllerTick();
-            else
+            else if (_lastCorrectionFrame != Time.frameCount)
+            {
+                _lastCorrectionFrame = Time.frameCount;
                 NonControllerTick(delta);
+            }
         }
 
         private void ControllerTick()
@@ -224,16 +232,19 @@ namespace PurrNet
 
             float error = Vector3.Distance(_rigidbody.position, _targetPosition);
             float dynamicHardThreshold = GetDynamicHardCorrectionThreshold();
+            float rotationAngle = Quaternion.Angle(_rigidbody.rotation, _targetRotation);
 
             if (error < _acceptableError)
             {
                 _isCorreting = false;
                 _correctionTimer = 0f;
+                _lastCorrectionReason = "No";
                 return;
             }
 
             if (error >= dynamicHardThreshold)
             {
+                _lastCorrectionReason = "Hard (Distance)";
                 HardCorrect();
                 return;
             }
@@ -243,9 +254,18 @@ namespace PurrNet
 
             if (_maxCorrectionTime >= 0 && _correctionTimer >= _maxCorrectionTime)
             {
+                _lastCorrectionReason = "Hard (Timeout)";
                 HardCorrect();
                 return;
             }
+
+            _lastCorrectionReason = Mathf.Abs(rotationAngle) > _minRotationCorrectionAngle ? "Distance+Rotation" : "Distance";
+        }
+
+        private void FixedUpdate()
+        {
+            if (!isSpawned || IsController(_ownerAuth) || !_isCorreting || _hasPendingTeleport)
+                return;
 
             ApplySoftCorrection();
         }
@@ -640,10 +660,23 @@ namespace PurrNet
                 }
             }
             _lastExtrapolation = extrapolationTime;
-            _targetPosition = data.position + (data.linearVelocity * extrapolationTime);
-            _targetRotation = data.rotation;
-            _targetLinearVelocity = data.linearVelocity;
-            _targetAngularVelocity = data.angularVelocity;
+            Vector3 newTargetPos = data.position + (data.linearVelocity * extrapolationTime);
+
+            if (_targetSmoothing <= 0.001f)
+            {
+                _targetPosition = newTargetPos;
+                _targetRotation = data.rotation;
+                _targetLinearVelocity = data.linearVelocity;
+                _targetAngularVelocity = data.angularVelocity;
+            }
+            else
+            {
+                float t = Mathf.Lerp(1f, 0.15f, _targetSmoothing);
+                _targetPosition = Vector3.Lerp(_targetPosition, newTargetPos, t);
+                _targetRotation = Quaternion.Slerp(_targetRotation, data.rotation, t);
+                _targetLinearVelocity = Vector3.Lerp(_targetLinearVelocity, data.linearVelocity, t);
+                _targetAngularVelocity = Vector3.Lerp(_targetAngularVelocity, data.angularVelocity, t);
+            }
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
@@ -683,6 +716,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
+            _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
             _rigidbody.MovePosition(data.position);
             _rigidbody.MoveRotation(data.rotation);
@@ -699,8 +733,20 @@ namespace PurrNet
             _hasPendingTeleport = false;
         }
 
-        [ObserversRpc(bufferLast: true, deltaPacked: true)]
+        [ServerRpc(deltaPacked: true)]
         private void SyncSettings(RigidbodySettingsData data)
+        {
+            SyncSettings_Internal(data);
+            SyncSettings_Observer(data);
+        }
+
+        [ObserversRpc(bufferLast: true, deltaPacked: true, excludeSender:true)]
+        private void SyncSettings_Observer(RigidbodySettingsData data)
+        {
+            SyncSettings_Internal(data);
+        }
+
+        private void SyncSettings_Internal(RigidbodySettingsData data)
         {
             if (IsController(_ownerAuth))
                 return;

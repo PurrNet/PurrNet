@@ -254,7 +254,8 @@ namespace PurrNet
                     NetAnimatorAction.SetIKHintPosition or NetAnimatorAction.SetLookAtPosition or
                     NetAnimatorAction.SetBoneLocalRotation or NetAnimatorAction.SetIKHintPositionWeight or
                     NetAnimatorAction.SetIKPositionWeight or NetAnimatorAction.SetIKRotationWeight or
-                    NetAnimatorAction.SetBodyPosition or NetAnimatorAction.SetBodyRotation;
+                    NetAnimatorAction.SetBodyPosition or NetAnimatorAction.SetBodyRotation or
+                    NetAnimatorAction.SetLookAtWeight;
 
                 if (!isIk)
                     actions.actions[i].Apply(_animator);
