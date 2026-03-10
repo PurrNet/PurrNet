@@ -94,6 +94,9 @@ namespace PurrNet
         [Tooltip("Whether the target position should extrapolate based on local ping")]
         [SerializeField] private bool _extrapolateBasedOnPing;
 
+        [Tooltip("Smooths the received target toward new updates to reduce stutter from network jitter. 0 = no smoothing, 1 = full smoothing (more latency).")]
+        [SerializeField, Range(0f, 1f)] private float _targetSmoothing;
+
         [Header("Sync Settings")]
         [Tooltip("Minimum distance moved required to trigger a network update.")]
         [SerializeField] private float _positionChangeThreshold = 0.001f;
@@ -650,10 +653,23 @@ namespace PurrNet
                 }
             }
             _lastExtrapolation = extrapolationTime;
-            _targetPosition = data.position + (data.linearVelocity * extrapolationTime);
-            _targetRotation = data.rotation;
-            _targetLinearVelocity = data.linearVelocity;
-            _targetAngularVelocity = data.angularVelocity;
+            Vector3 newTargetPos = data.position + (data.linearVelocity * extrapolationTime);
+
+            if (_targetSmoothing <= 0.001f)
+            {
+                _targetPosition = newTargetPos;
+                _targetRotation = data.rotation;
+                _targetLinearVelocity = data.linearVelocity;
+                _targetAngularVelocity = data.angularVelocity;
+            }
+            else
+            {
+                float t = Mathf.Lerp(1f, 0.15f, _targetSmoothing);
+                _targetPosition = Vector3.Lerp(_targetPosition, newTargetPos, t);
+                _targetRotation = Quaternion.Slerp(_targetRotation, data.rotation, t);
+                _targetLinearVelocity = Vector3.Lerp(_targetLinearVelocity, data.linearVelocity, t);
+                _targetAngularVelocity = Vector3.Lerp(_targetAngularVelocity, data.angularVelocity, t);
+            }
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
