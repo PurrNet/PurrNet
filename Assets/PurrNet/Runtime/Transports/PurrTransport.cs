@@ -51,6 +51,8 @@ namespace PurrNet.Transports
         [SerializeField, HideInInspector] private float _timeoutInSeconds = 5f;
         [SerializeField, HideInInspector] private bool _pollEventsInUpdate;
 
+        [SerializeField, HideInInspector] private NetworkSimulation _networkSimulation = NetworkSimulation.Default;
+
         public string region
         {
             get => _region;
@@ -78,6 +80,16 @@ namespace PurrNet.Transports
         }
 
         public bool hasRegionAndHost => !string.IsNullOrEmpty(_region) && !string.IsNullOrEmpty(_host);
+
+        public NetworkSimulation networkSimulation
+        {
+            get => _networkSimulation;
+            set
+            {
+                _networkSimulation = value;
+                ApplySimulationSettings();
+            }
+        }
 
         public override bool isSupported => true;
 
@@ -167,6 +179,8 @@ namespace PurrNet.Transports
                 UnityEditor.AssetDatabase.SaveAssets();
                 UnityEditor.AssetDatabase.Refresh();
             }
+
+            ApplySimulationSettings();
         }
 #endif
 
@@ -232,6 +246,31 @@ namespace PurrNet.Transports
             _serverListener.PeerConnectedEvent += OnHostConnectedUDP;
             _serverListener.PeerDisconnectedEvent += OnHostDisconnectedUDP;
             _serverListener.NetworkReceiveEvent += OnHostDataUDP;
+
+            ApplySimulationSettings();
+        }
+
+        private void ApplySimulationSettings()
+        {
+            bool apply = _networkSimulation.ShouldApply();
+
+            if (_udpClient != null)
+            {
+                _udpClient.SimulateLatency = apply && _networkSimulation.simulateLatency;
+                _udpClient.SimulationMinLatency = _networkSimulation.minLatency;
+                _udpClient.SimulationMaxLatency = _networkSimulation.maxLatency;
+                _udpClient.SimulatePacketLoss = apply && _networkSimulation.simulatePacketLoss;
+                _udpClient.SimulationPacketLossChance = _networkSimulation.packetLossChance;
+            }
+
+            if (_udpServer != null)
+            {
+                _udpServer.SimulateLatency = apply && _networkSimulation.simulateLatency;
+                _udpServer.SimulationMinLatency = _networkSimulation.minLatency;
+                _udpServer.SimulationMaxLatency = _networkSimulation.maxLatency;
+                _udpServer.SimulatePacketLoss = apply && _networkSimulation.simulatePacketLoss;
+                _udpServer.SimulationPacketLossChance = _networkSimulation.packetLossChance;
+            }
         }
 
         private void CleanupUdp()

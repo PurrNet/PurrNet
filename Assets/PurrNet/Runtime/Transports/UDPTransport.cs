@@ -34,6 +34,8 @@ namespace PurrNet.Transports
         [SerializeField]
         private bool _pollEventsInUpdate;
 
+        [SerializeField] private NetworkSimulation _networkSimulation = NetworkSimulation.Default;
+
         public event OnConnected onConnected;
         public event OnDisconnected onDisconnected;
         public event OnDataReceived onDataReceived;
@@ -56,6 +58,16 @@ namespace PurrNet.Transports
         {
             get => _maxConnections;
             set => _maxConnections = value;
+        }
+
+        public NetworkSimulation networkSimulation
+        {
+            get => _networkSimulation;
+            set
+            {
+                _networkSimulation = value;
+                ApplySimulationSettings();
+            }
         }
 
         public IReadOnlyList<Connection> connections => _connections;
@@ -154,6 +166,36 @@ namespace PurrNet.Transports
             _serverListener.PeerConnectedEvent += OnServerConnected;
             _serverListener.PeerDisconnectedEvent += OnServerDisconnected;
             _serverListener.NetworkReceiveEvent += OnServerData;
+
+            ApplySimulationSettings();
+        }
+
+        private void ApplySimulationSettings()
+        {
+            bool apply = _networkSimulation.ShouldApply();
+
+            if (_client != null)
+            {
+                _client.SimulateLatency = apply && _networkSimulation.simulateLatency;
+                _client.SimulationMinLatency = _networkSimulation.minLatency;
+                _client.SimulationMaxLatency = _networkSimulation.maxLatency;
+                _client.SimulatePacketLoss = apply && _networkSimulation.simulatePacketLoss;
+                _client.SimulationPacketLossChance = _networkSimulation.packetLossChance;
+            }
+
+            if (_server != null)
+            {
+                _server.SimulateLatency = apply && _networkSimulation.simulateLatency;
+                _server.SimulationMinLatency = _networkSimulation.minLatency;
+                _server.SimulationMaxLatency = _networkSimulation.maxLatency;
+                _server.SimulatePacketLoss = apply && _networkSimulation.simulatePacketLoss;
+                _server.SimulationPacketLossChance = _networkSimulation.packetLossChance;
+            }
+        }
+
+        private void OnValidate()
+        {
+            ApplySimulationSettings();
         }
 
         public void RaiseDataReceived(Connection conn, ByteData data, bool asServer)
