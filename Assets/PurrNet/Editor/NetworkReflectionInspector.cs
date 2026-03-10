@@ -484,26 +484,6 @@ namespace PurrNet.Editor
         }
     }
 
-    static class NetworkReflectionCacheBootstrap
-    {
-        [InitializeOnLoadMethod]
-        static void OnEditorLoad()
-        {
-            EditorApplication.delayCall += () =>
-            {
-                var cachePath = NetworkReflectionInspector.GetCachePath();
-                if (File.Exists(cachePath))
-                    return;
-
-                var cacheDir = Path.GetDirectoryName(cachePath);
-                if (!string.IsNullOrEmpty(cacheDir) && !Directory.Exists(cacheDir))
-                    Directory.CreateDirectory(cacheDir);
-
-                File.WriteAllText(cachePath, "");
-            };
-        }
-    }
-
     static class NetworkReflectionCacheMenu
     {
         [MenuItem("Tools/PurrNet/Rebuild Network Reflection Cache", false, 500)]
