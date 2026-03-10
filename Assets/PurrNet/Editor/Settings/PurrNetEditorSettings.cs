@@ -44,6 +44,16 @@ namespace PurrNet.Editor
             GUILayout.Space(10f);
 #endif
 
+            EditorGUILayout.BeginHorizontal();
+            settings.reflectionCachePath = EditorGUILayout.TextField(
+                new GUIContent("Reflection Cache Path",
+                    "File path for the Network Reflection RPC cache. " +
+                    "This file is tracked in version control so it stays consistent across clones."),
+                settings.reflectionCachePath);
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Space(10f);
+
             var stripCodeModeResult = EditorGUILayout.EnumPopup(
                 new GUIContent("Strip Code Mode",
                     "Defines how PurrNet will handle unused RPCs and SyncVars in builds. " +
