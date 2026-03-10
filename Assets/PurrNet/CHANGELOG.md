@@ -1,3 +1,10 @@
+# [1.20.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.6...v1.20.0-beta.7) (2026-03-10)
+
+
+### Features
+
+* add network simulation settings for UDP transport (LiteNetLib specific) ([ceed9dd](https://github.com/PurrNet/PurrNet/commit/ceed9dd18d3f3c99495a3662575e44848fd0b490))
+
 # [1.20.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.5...v1.20.0-beta.6) (2026-03-10)
 
 
