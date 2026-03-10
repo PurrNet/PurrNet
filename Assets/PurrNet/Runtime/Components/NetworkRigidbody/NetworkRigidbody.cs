@@ -709,8 +709,19 @@ namespace PurrNet
             _hasPendingTeleport = false;
         }
 
-        [ObserversRpc(bufferLast: true, deltaPacked: true)]
+        [ServerRpc(deltaPacked: true)]
         private void SyncSettings(RigidbodySettingsData data)
+        {
+            SyncSettings_Observer(data);
+        }
+
+        [ObserversRpc(bufferLast: true, deltaPacked: true, excludeSender:true)]
+        private void SyncSettings_Observer(RigidbodySettingsData data)
+        {
+            SyncSettings_Internal(data);
+        }
+
+        private void SyncSettings_Internal(RigidbodySettingsData data)
         {
             if (IsController(_ownerAuth))
                 return;
