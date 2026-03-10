@@ -1,3 +1,10 @@
+# [1.20.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.5...v1.20.0-beta.6) (2026-03-10)
+
+
+### Bug Fixes
+
+* Implemented target smoothing for Network RB ([00c7afd](https://github.com/PurrNet/PurrNet/commit/00c7afdeaae8186c44acad010333ef2a3f93d02a))
+
 # [1.20.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.4...v1.20.0-beta.5) (2026-03-09)
 
 
