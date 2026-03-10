@@ -125,6 +125,7 @@ namespace PurrNet
         private bool _isCorreting;
         private bool _hasPendingTeleport;
         private int _lastCorrectionFrame = -1;
+        private string _lastCorrectionReason = "No";
 
         private void Awake()
         {
@@ -231,16 +232,19 @@ namespace PurrNet
 
             float error = Vector3.Distance(_rigidbody.position, _targetPosition);
             float dynamicHardThreshold = GetDynamicHardCorrectionThreshold();
+            float rotationAngle = Quaternion.Angle(_rigidbody.rotation, _targetRotation);
 
             if (error < _acceptableError)
             {
                 _isCorreting = false;
                 _correctionTimer = 0f;
+                _lastCorrectionReason = "No";
                 return;
             }
 
             if (error >= dynamicHardThreshold)
             {
+                _lastCorrectionReason = "Hard (Distance)";
                 HardCorrect();
                 return;
             }
@@ -250,9 +254,12 @@ namespace PurrNet
 
             if (_maxCorrectionTime >= 0 && _correctionTimer >= _maxCorrectionTime)
             {
+                _lastCorrectionReason = "Hard (Timeout)";
                 HardCorrect();
                 return;
             }
+
+            _lastCorrectionReason = Mathf.Abs(rotationAngle) > _minRotationCorrectionAngle ? "Distance+Rotation" : "Distance";
         }
 
         private void FixedUpdate()
@@ -709,6 +716,7 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
+            _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
             _rigidbody.MovePosition(data.position);
             _rigidbody.MoveRotation(data.rotation);
