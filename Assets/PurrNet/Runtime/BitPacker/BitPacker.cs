@@ -203,6 +203,13 @@ namespace PurrNet.Packing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureBitExists()
+        {
+            if ((_positionInBits & 7) == 0)
+                EnsureBitsExist(1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureBitsExist(int bits)
         {
             int targetPos = _positionInBits + bits;
@@ -356,7 +363,7 @@ namespace PurrNet.Packing
 
         public bool WriteBit(bool data)
         {
-            EnsureBitsExist(1);
+            EnsureBitExists();
             var byteIdx = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
 

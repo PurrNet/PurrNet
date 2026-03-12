@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -7,6 +8,8 @@ namespace PurrNet
 {
     public readonly struct ModulesCollection
     {
+        private readonly Dictionary<Type, INetworkModule> _modulesMap;
+
         private readonly List<INetworkModule> _modules;
         private readonly List<IConnectionListener> _connectionListeners;
         private readonly List<IConnectionStateListener> _connectionStateListeners;
@@ -45,12 +48,19 @@ namespace PurrNet
             _IPromoteToServerModule = new List<IPromoteToServerModule>();
             _ITransferToNewServer = new List<ITransferToNewServer>();
             _IPostTransferToNewServer = new List<IPostTransferToNewServer>();
+            _modulesMap = new Dictionary<Type, INetworkModule>();
             _manager = manager;
             _asServer = asServer;
         }
 
         public bool TryGetModule<T>(out T module) where T : INetworkModule
         {
+            if (_modulesMap != null && _modulesMap.TryGetValue(typeof(T), out var moduleResult) && moduleResult is T castedMod)
+            {
+                module = castedMod;
+                return true;
+            }
+
             if (_modules == null)
             {
                 module = default;
@@ -264,6 +274,7 @@ namespace PurrNet
 
         private void Clear()
         {
+            _modulesMap.Clear();
             _modules.Clear();
             _connectionListeners.Clear();
             _connectionStateListeners.Clear();
@@ -284,11 +295,14 @@ namespace PurrNet
 
         public void AddModule(INetworkModule module)
         {
+            _modulesMap[module.GetType()] = module;
             _modules.Add(module);
         }
 
         public void MigrateFrom(ModulesCollection other)
         {
+            foreach (var (key, val) in other._modulesMap)
+                _modulesMap.Add(key, val);
             _modules.AddRange(other._modules);
             _connectionListeners.AddRange(other._connectionListeners);
             _connectionStateListeners.AddRange(other._connectionStateListeners);
