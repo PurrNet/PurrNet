@@ -51,6 +51,7 @@ var annotated_dup =
         [ "NetworkTransformDelta", "structPurrNet_1_1Modules_1_1NetworkTransformDelta.html", null ],
         [ "NetworkTransformFactory", "classPurrNet_1_1Modules_1_1NetworkTransformFactory.html", null ],
         [ "NetworkTransformModule", "classPurrNet_1_1Modules_1_1NetworkTransformModule.html", null ],
+        [ "ObserverFilter", "structPurrNet_1_1Modules_1_1ObserverFilter.html", null ],
         [ "PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
         [ "PlayerJoinedEvent", "structPurrNet_1_1Modules_1_1PlayerJoinedEvent.html", null ],
         [ "PlayerLeftEvent", "structPurrNet_1_1Modules_1_1PlayerLeftEvent.html", null ],
