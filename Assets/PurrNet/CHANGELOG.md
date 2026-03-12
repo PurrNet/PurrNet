@@ -1,3 +1,11 @@
+# [1.20.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.9...v1.20.0-beta.10) (2026-03-12)
+
+
+### Bug Fixes
+
+* avoid reconstructing the targets list every time an RPC is trying to send, instead send instructions to filter the full list ([cf088db](https://github.com/PurrNet/PurrNet/commit/cf088dbb9efca4b06cd2a64a9a0476f957322fb6))
+* same for static RPCs ([0a0b8eb](https://github.com/PurrNet/PurrNet/commit/0a0b8eb08a72c190334f9572d24a807e5b40153e))
+
 # [1.20.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.8...v1.20.0-beta.9) (2026-03-12)
 
 
