@@ -572,45 +572,45 @@ namespace PurrNet.Modules
 
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
         {
-            using (_bufferRPCMarker.Auto())
-            {
-                AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
-                    _bufferedStaticRpcsDatas,
-                    packet.header,
-                    new RPC_ID(packet),
-                    packet.data,
-                    signature
-                );
-            }
+            if (!signature.bufferLast) return;
+            _bufferRPCMarker.Begin();
+            AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
+                _bufferedStaticRpcsDatas,
+                packet.header,
+                new RPC_ID(packet),
+                packet.data,
+                signature
+            );
+            _bufferRPCMarker.End();
         }
 
         public void AppendToBufferedRPCs(ChildRPCPacket packet, RPCSignature signature)
         {
-            using (_bufferRPCMarker.Auto())
-            {
-                AppendToBufferedRPCs(_bufferedChildRpcsKeys,
-                    _bufferedChildRpcsDatas,
-                    packet.header,
-                    new RPC_ID(packet),
-                    packet.data,
-                    signature
-                );
-            }
+            if (!signature.bufferLast) return;
+            _bufferRPCMarker.Begin();
+            AppendToBufferedRPCs(_bufferedChildRpcsKeys,
+                _bufferedChildRpcsDatas,
+                packet.header,
+                new RPC_ID(packet),
+                packet.data,
+                signature
+            );
+            _bufferRPCMarker.End();
         }
 
         public void AppendToBufferedRPCs(RPCPacket packet, RPCSignature signature)
         {
-            using (_bufferRPCMarker.Auto())
-            {
-                AppendToBufferedRPCs(
-                    _bufferedRpcsKeys,
-                    _bufferedRpcsDatas,
-                    packet.header,
-                    new RPC_ID(packet),
-                    packet.data,
-                    signature
-                );
-            }
+            if (!signature.bufferLast) return;
+            _bufferRPCMarker.Begin();
+            AppendToBufferedRPCs(
+                _bufferedRpcsKeys,
+                _bufferedRpcsDatas,
+                packet.header,
+                new RPC_ID(packet),
+                packet.data,
+                signature
+            );
+            _bufferRPCMarker.End();
         }
 
         private static void AppendToBufferedRPCs<T>(
@@ -970,6 +970,18 @@ namespace PurrNet.Modules
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
         {
             _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
         }
