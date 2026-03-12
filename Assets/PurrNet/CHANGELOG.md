@@ -1,3 +1,10 @@
+# [1.20.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.10...v1.20.0-beta.11) (2026-03-12)
+
+
+### Bug Fixes
+
+* shortcut loops and other expenssive lookups early if Statistics.shouldTrack is false ([e6fb515](https://github.com/PurrNet/PurrNet/commit/e6fb515a1f9b73192110e70b11e8faec64cd4807))
+
 # [1.20.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.9...v1.20.0-beta.10) (2026-03-12)
 
 
