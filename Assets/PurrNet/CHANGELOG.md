@@ -1,3 +1,10 @@
+# [1.20.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.8...v1.20.0-beta.9) (2026-03-12)
+
+
+### Bug Fixes
+
+* packer improvements (cpu), and some tests (benchmarks) ([63ca673](https://github.com/PurrNet/PurrNet/commit/63ca673ad01985e683788137fac5ebd5cbbdb8c7))
+
 # [1.20.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.7...v1.20.0-beta.8) (2026-03-10)
 
 
