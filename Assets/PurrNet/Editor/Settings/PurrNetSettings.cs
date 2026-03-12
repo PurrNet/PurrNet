@@ -21,6 +21,8 @@ namespace PurrNet.Editor
         public StripCodeMode stripCodeMode = StripCodeMode.DoNotStrip;
         public GuardFailureAction guardFailureAction = GuardFailureAction.ReturnDefault;
 
+        public string reflectionCachePath = "Assets/PurrNet/ReflectionRPCTargets.txt";
+
         public ToolbarMode toolbarMode = ToolbarMode.Full;
         public bool toolbarTransportDropDown;
 

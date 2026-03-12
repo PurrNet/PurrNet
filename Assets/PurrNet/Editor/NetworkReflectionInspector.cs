@@ -6,7 +6,6 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
-using PurrNet.Utils;
 
 namespace PurrNet.Editor
 {
@@ -18,8 +17,11 @@ namespace PurrNet.Editor
         private SerializedProperty _trackedMethods;
         private SerializedProperty _ownerAuth;
 
-        internal const string CACHE_DIR = "Library/PurrNet";
-        internal const string CACHE_FILE = "Library/PurrNet/ReflectionRPCTargets.txt";
+        internal static string GetCachePath()
+        {
+            var settings = PurrNetSettings.GetOrCreateSettings();
+            return settings.reflectionCachePath;
+        }
 
         protected override void OnEnable()
         {
@@ -116,15 +118,21 @@ namespace PurrNet.Editor
             DrawDefaultInspector();
 
             var reflection = (NetworkReflection)target;
-            var trackedType = reflection.trackedType;
+            var previousType = reflection.trackedType;
 
             EditorGUILayout.PropertyField(_trackedBehaviour);
             EditorGUILayout.PropertyField(_ownerAuth);
 
-            if (trackedType == null)
+            serializedObject.ApplyModifiedProperties();
+
+            var currentType = reflection.trackedType;
+
+            if (previousType != currentType)
+                HandleTrackedBehaviourChanged(previousType, currentType);
+
+            if (currentType == null)
             {
                 EditorGUILayout.HelpBox("Tracked behaviour is null", MessageType.Error);
-                serializedObject.ApplyModifiedProperties();
                 return;
             }
 
@@ -143,6 +151,129 @@ namespace PurrNet.Editor
             DrawIdentityInspector();
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        static void HandleTrackedBehaviourChanged(Type previousType, Type currentType)
+        {
+            bool hadTrackedType = previousType != null && !IsUnityEngineType(previousType);
+            bool hasNewType = currentType != null && !IsUnityEngineType(currentType);
+
+            if (hasNewType)
+                EnsureTypeInCache(currentType.FullName);
+
+            if (hadTrackedType && previousType != currentType)
+                EditorApplication.delayCall += RefreshReflectionTargetsCacheFull;
+        }
+
+        internal static void EnsureTypeInCache(string typeFullName)
+        {
+            var cachePath = GetCachePath();
+
+            var existing = new HashSet<string>();
+            if (File.Exists(cachePath))
+            {
+                foreach (var line in File.ReadAllLines(cachePath))
+                {
+                    var trimmed = line.Trim();
+                    if (!string.IsNullOrEmpty(trimmed))
+                        existing.Add(trimmed);
+                }
+            }
+
+            if (existing.Contains(typeFullName))
+                return;
+
+            existing.Add(typeFullName);
+            WriteCacheFile(existing);
+        }
+
+        internal static void RefreshReflectionTargetsCacheFull()
+        {
+            var targetTypes = new HashSet<string>();
+            var prefabPaths = NetworkReflectionPrefabCache.Read();
+
+            var allReflections = Resources.FindObjectsOfTypeAll<NetworkReflection>();
+            foreach (var reflection in allReflections)
+            {
+                if (reflection == null) continue;
+                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                    continue;
+
+                var type = reflection.trackedType;
+                if (type != null)
+                    targetTypes.Add(type.FullName);
+            }
+
+            if (prefabPaths.Count == 0)
+            {
+                var prefabGuids = AssetDatabase.FindAssets("t:Prefab");
+                foreach (var guid in prefabGuids)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!NetworkReflectionPrefabCache.PrefabContainsNetworkReflection(path))
+                        continue;
+
+                    prefabPaths.Add(path);
+                    CollectTargetTypesFromPrefab(path, targetTypes);
+                }
+                NetworkReflectionPrefabCache.Write(prefabPaths);
+            }
+            else
+            {
+                var toRemove = new List<string>();
+                foreach (var path in prefabPaths)
+                {
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (prefab == null)
+                    {
+                        toRemove.Add(path);
+                        continue;
+                    }
+
+                    var hadRelevantReflection = false;
+                    var reflections = prefab.GetComponentsInChildren<NetworkReflection>(true);
+                    foreach (var reflection in reflections)
+                    {
+                        if (reflection == null) continue;
+                        if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                            continue;
+
+                        hadRelevantReflection = true;
+                        var type = reflection.trackedType;
+                        if (type != null)
+                            targetTypes.Add(type.FullName);
+                    }
+
+                    if (!hadRelevantReflection)
+                        toRemove.Add(path);
+                }
+
+                if (toRemove.Count > 0)
+                {
+                    foreach (var path in toRemove)
+                        prefabPaths.Remove(path);
+                    NetworkReflectionPrefabCache.Write(prefabPaths);
+                }
+            }
+
+            WriteCacheFile(targetTypes);
+        }
+
+        static void CollectTargetTypesFromPrefab(string path, HashSet<string> targetTypes)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null) return;
+
+            foreach (var reflection in prefab.GetComponentsInChildren<NetworkReflection>(true))
+            {
+                if (reflection == null) continue;
+                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
+                    continue;
+
+                var type = reflection.trackedType;
+                if (type != null)
+                    targetTypes.Add(type.FullName);
+            }
         }
 
         void DrawFieldsSection(NetworkReflection reflection)
@@ -268,8 +399,6 @@ namespace PurrNet.Editor
             EditorGUI.BeginProperty(Rect.zero, GUIContent.none, _trackedMethods);
             EditorGUILayout.BeginVertical("helpbox");
 
-            bool methodsChanged = false;
-
             for (var i = 0; i < reflection.trackedMethods.Count; i++)
             {
                 EditorGUILayout.BeginHorizontal();
@@ -286,7 +415,6 @@ namespace PurrNet.Editor
                     data.rpcType = reflection.trackedMethods[i].rpcType;
                     reflection.trackedMethods[i] = data;
                     EditorUtility.SetDirty(reflection);
-                    methodsChanged = true;
                 }
 
                 GUI.color = Color.white;
@@ -308,7 +436,6 @@ namespace PurrNet.Editor
                     Undo.RecordObject(reflection, "Remove method");
                     reflection.trackedMethods.RemoveAt(i);
                     EditorUtility.SetDirty(reflection);
-                    methodsChanged = true;
                     i--;
                 }
 
@@ -325,7 +452,6 @@ namespace PurrNet.Editor
                 Undo.RecordObject(reflection, "Add method");
                 reflection.trackedMethods.Add(new ReflectionMethodData());
                 EditorUtility.SetDirty(reflection);
-                methodsChanged = true;
             }
 
             GUI.backgroundColor = Color.white;
@@ -333,179 +459,28 @@ namespace PurrNet.Editor
 
             EditorGUILayout.EndVertical();
             EditorGUI.EndProperty();
-
-            if (methodsChanged)
-                RefreshReflectionTargetsCacheFull();
-        }
-
-        internal static void RefreshReflectionTargetsCache()
-        {
-            var targetTypes = new HashSet<string>();
-
-            var allReflections = Resources.FindObjectsOfTypeAll<NetworkReflection>();
-            foreach (var reflection in allReflections)
-            {
-                if (reflection == null) continue;
-                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
-                    continue;
-
-                var type = reflection.trackedType;
-                if (type != null)
-                    targetTypes.Add(type.FullName);
-            }
-
-            WriteCacheFile(targetTypes);
-        }
-
-        internal static void RefreshReflectionTargetsCacheFull()
-        {
-            var targetTypes = new HashSet<string>();
-            var prefabPaths = NetworkReflectionPrefabCache.Read();
-
-            var allReflections = Resources.FindObjectsOfTypeAll<NetworkReflection>();
-            foreach (var reflection in allReflections)
-            {
-                if (reflection == null) continue;
-                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
-                    continue;
-
-                var type = reflection.trackedType;
-                if (type != null)
-                    targetTypes.Add(type.FullName);
-            }
-
-            if (prefabPaths.Count == 0)
-            {
-                var prefabGuids = AssetDatabase.FindAssets("t:Prefab");
-                foreach (var guid in prefabGuids)
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guid);
-                    if (!NetworkReflectionPrefabCache.PrefabContainsNetworkReflection(path))
-                        continue;
-
-                    prefabPaths.Add(path);
-                    CollectTargetTypesFromPrefab(path, targetTypes);
-                }
-                NetworkReflectionPrefabCache.Write(prefabPaths);
-            }
-            else
-            {
-                var toRemove = new List<string>();
-                foreach (var path in prefabPaths)
-                {
-                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                    if (prefab == null)
-                    {
-                        toRemove.Add(path);
-                        continue;
-                    }
-
-                    var hadRelevantReflection = false;
-                    var reflections = prefab.GetComponentsInChildren<NetworkReflection>(true);
-                    foreach (var reflection in reflections)
-                    {
-                        if (reflection == null) continue;
-                        if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
-                            continue;
-
-                        hadRelevantReflection = true;
-                        var type = reflection.trackedType;
-                        if (type != null)
-                            targetTypes.Add(type.FullName);
-                    }
-
-                    if (!hadRelevantReflection)
-                        toRemove.Add(path);
-                }
-
-                if (toRemove.Count > 0)
-                {
-                    foreach (var path in toRemove)
-                        prefabPaths.Remove(path);
-                    NetworkReflectionPrefabCache.Write(prefabPaths);
-                }
-            }
-
-            WriteCacheFile(targetTypes);
-        }
-
-        static void CollectTargetTypesFromPrefab(string path, HashSet<string> targetTypes)
-        {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (prefab == null) return;
-
-            foreach (var reflection in prefab.GetComponentsInChildren<NetworkReflection>(true))
-            {
-                if (reflection == null) continue;
-                if (reflection.trackedMethods == null || reflection.trackedMethods.Count == 0)
-                    continue;
-
-                var type = reflection.trackedType;
-                if (type != null)
-                    targetTypes.Add(type.FullName);
-            }
         }
 
         static void WriteCacheFile(HashSet<string> targetTypeNames)
         {
-            if (!Directory.Exists(CACHE_DIR))
-                Directory.CreateDirectory(CACHE_DIR);
+            var cachePath = GetCachePath();
+            var cacheDir = Path.GetDirectoryName(cachePath);
+
+            if (!string.IsNullOrEmpty(cacheDir) && !Directory.Exists(cacheDir))
+                Directory.CreateDirectory(cacheDir);
 
             var sorted = targetTypeNames.OrderBy(n => n).ToArray();
             var newContent = string.Join("\n", sorted);
 
-            if (File.Exists(CACHE_FILE))
+            if (File.Exists(cachePath))
             {
-                var existing = File.ReadAllText(CACHE_FILE);
+                var existing = File.ReadAllText(cachePath);
                 if (existing == newContent)
                     return;
             }
 
-            File.WriteAllText(CACHE_FILE, newContent);
+            File.WriteAllText(cachePath, newContent);
             CompilationPipeline.RequestScriptCompilation();
-        }
-    }
-
-    static class NetworkReflectionCacheBootstrap
-    {
-        [InitializeOnLoadMethod]
-        static void OnEditorLoad()
-        {
-            EditorApplication.delayCall += () =>
-            {
-                if (File.Exists(NetworkReflectionInspector.CACHE_FILE))
-                    return;
-
-                if (ApplicationContext.isClone)
-                {
-                    var parentRoot = ClonesContext.GetOriginalProjectPath();
-                    if (!string.IsNullOrEmpty(parentRoot))
-                    {
-                        var parentCache = Path.Combine(parentRoot, "Library", "PurrNet", "ReflectionRPCTargets.txt");
-                        var parentPrefabCache = Path.Combine(parentRoot, "Library", "PurrNet", "PrefabsWithNetworkReflection.txt");
-                        if (File.Exists(parentCache))
-                        {
-                            if (!Directory.Exists(NetworkReflectionInspector.CACHE_DIR))
-                                Directory.CreateDirectory(NetworkReflectionInspector.CACHE_DIR);
-                            File.Copy(parentCache, NetworkReflectionInspector.CACHE_FILE, true);
-                            if (File.Exists(parentPrefabCache))
-                                File.Copy(parentPrefabCache, NetworkReflectionPrefabCache.PREFAB_CACHE_FILE, true);
-                            return;
-                        }
-                    }
-                }
-
-                var prefabPaths = NetworkReflectionPrefabCache.Read();
-                if (prefabPaths.Count == 0)
-                {
-                    if (!Directory.Exists(NetworkReflectionInspector.CACHE_DIR))
-                        Directory.CreateDirectory(NetworkReflectionInspector.CACHE_DIR);
-                    File.WriteAllText(NetworkReflectionInspector.CACHE_FILE, "");
-                    return;
-                }
-
-                NetworkReflectionInspector.RefreshReflectionTargetsCacheFull();
-            };
         }
     }
 

@@ -1,3 +1,17 @@
+# [1.20.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.7...v1.20.0-beta.8) (2026-03-10)
+
+
+### Bug Fixes
+
+* Improved network reflection method handling ([c2128bd](https://github.com/PurrNet/PurrNet/commit/c2128bdf26fee22834af9430c689c15195c7a61b))
+
+# [1.20.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.6...v1.20.0-beta.7) (2026-03-10)
+
+
+### Features
+
+* add network simulation settings for UDP transport (LiteNetLib specific) ([ceed9dd](https://github.com/PurrNet/PurrNet/commit/ceed9dd18d3f3c99495a3662575e44848fd0b490))
+
 # [1.20.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.5...v1.20.0-beta.6) (2026-03-10)
 
 
