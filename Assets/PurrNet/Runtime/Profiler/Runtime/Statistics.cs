@@ -20,7 +20,7 @@ namespace PurrNet.Profiler
 
         public static int inspecting;
 
-        static bool shouldTrack => !paused && inspecting > 0;
+        public static bool shouldTrack => !paused && inspecting > 0;
 
         public static string GetFriendlyTypeName(this Type type)
         {

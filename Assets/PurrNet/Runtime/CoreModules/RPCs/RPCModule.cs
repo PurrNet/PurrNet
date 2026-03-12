@@ -963,6 +963,18 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTarget(PlayerID player, RPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTarget(PlayerID player, ChildRPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
         {
             _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
@@ -975,15 +987,15 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
