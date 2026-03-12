@@ -257,7 +257,7 @@ namespace PurrNet.Modules
                         break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                    if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                     module.BatchToServer(packet, signature.channel);
@@ -270,7 +270,7 @@ namespace PurrNet.Modules
                         if (signature.targetPlayer != null)
                         {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                            if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                            if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                                 Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                             module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel);
@@ -289,11 +289,14 @@ namespace PurrNet.Modules
                             );
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                            for (var i = all.Count - 1; i >= 0; --i)
+                            if (Statistics.shouldTrack)
                             {
-                                if (!filter.ShouldSkip(all[i]))
-                                    if (Hasher.TryGetType(packet.header.typeHash, out var type))
-                                        Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
+                                for (var i = all.Count - 1; i >= 0; --i)
+                                {
+                                    if (!filter.ShouldSkip(all[i]))
+                                        if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                                            Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
+                                }
                             }
 #endif
 
@@ -303,7 +306,7 @@ namespace PurrNet.Modules
                     else
                     {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                        if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                             Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                         module.BatchToServer(packet, signature.channel);
@@ -313,7 +316,7 @@ namespace PurrNet.Modules
                 case RPCType.TargetRPC:
                 {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                    if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                     if (nm.isServer)

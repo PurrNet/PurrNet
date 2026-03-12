@@ -337,9 +337,12 @@ namespace PurrNet
                             break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData, this);
+                        if (Statistics.shouldTrack)
+                        {
+                            for (var i = players.Count - 1; i >= 0; --i)
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
+                        }
 #endif
                         rpcModule.BatchToTargets(players, packet, signature.channel);
                     }
@@ -445,9 +448,12 @@ namespace PurrNet
                             break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
-                                packet.rpcData, this);
+                        if (Statistics.shouldTrack)
+                        {
+                            for (var i = players.Count - 1; i >= 0; --i)
+                                Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                    packet.rpcData, this);
+                        }
 #endif
                         rpcModule.BatchToTargets(players, packet, signature.channel);
                     }
