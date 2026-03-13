@@ -1,3 +1,10 @@
+# [1.20.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.11...v1.20.0-beta.12) (2026-03-13)
+
+
+### Bug Fixes
+
+* Sync array ownership fixes ([04f2f3d](https://github.com/PurrNet/PurrNet/commit/04f2f3dcf61b7633883fe5aaf69352c0c6584149))
+
 # [1.20.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.10...v1.20.0-beta.11) (2026-03-12)
 
 
