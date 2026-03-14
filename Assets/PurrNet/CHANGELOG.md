@@ -1,3 +1,10 @@
+# [1.20.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.13...v1.20.0-beta.14) (2026-03-14)
+
+
+### Bug Fixes
+
+* do memcmp for unmanaged types when checking equality ([fea1133](https://github.com/PurrNet/PurrNet/commit/fea1133386b821cbe99330aa614de17389e1731d))
+
 # [1.20.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.12...v1.20.0-beta.13) (2026-03-14)
 
 
