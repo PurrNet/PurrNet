@@ -1,3 +1,10 @@
+# [1.20.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.12...v1.20.0-beta.13) (2026-03-14)
+
+
+### Bug Fixes
+
+* improve some UDP delta timings and no need to recycle since AutoRecycle is enabled ([8027850](https://github.com/PurrNet/PurrNet/commit/80278508cee23fb591e52d7b4fad01fcf639af6f))
+
 # [1.20.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.11...v1.20.0-beta.12) (2026-03-13)
 
 
