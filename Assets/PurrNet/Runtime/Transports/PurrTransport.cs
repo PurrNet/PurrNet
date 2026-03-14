@@ -95,6 +95,8 @@ namespace PurrNet.Transports
 
         public override ITransport transport => this;
 
+        private float _lastSendTime;
+
         public event OnConnected onConnected;
         public event OnDisconnected onDisconnected;
         public event OnDataReceived onDataReceived;
@@ -516,6 +518,7 @@ namespace PurrNet.Transports
                     if (Application.platform != RuntimePlatform.WebGLPlayer)
                     {
                         _isUsingUDP = true;
+                        _lastSendTime = Time.unscaledTime;
                         _udpServer.StartInManualMode(0);
                         var addresses = await Dns.GetHostAddressesAsync(_host);
                         var ipv4 = addresses.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork)
@@ -642,6 +645,7 @@ namespace PurrNet.Transports
                 if (Application.platform != RuntimePlatform.WebGLPlayer)
                 {
                     _isUsingUDP = true;
+                    _lastSendTime = Time.unscaledTime;
                     _udpClient.StartInManualMode(0);
 
                     var addresses = await Dns.GetHostAddressesAsync(_clientJoinInfo.host);
@@ -764,8 +768,10 @@ namespace PurrNet.Transports
             {
                 if (_isUsingUDP)
                 {
-                    _udpClient.PollEvents();
-                    _udpServer.PollEvents();
+                    if (_udpClient.IsRunning)
+                        _udpClient.PollEvents();
+                    if (_udpServer.IsRunning)
+                        _udpServer.PollEvents();
                 }
                 else
                 {
@@ -781,8 +787,10 @@ namespace PurrNet.Transports
             {
                 if (_isUsingUDP)
                 {
-                    _udpClient.PollEvents();
-                    _udpServer.PollEvents();
+                    if (_udpClient.IsRunning)
+                        _udpClient.PollEvents();
+                    if (_udpServer.IsRunning)
+                        _udpServer.PollEvents();
                 }
                 else
                 {
@@ -796,10 +804,14 @@ namespace PurrNet.Transports
         {
             if (_isUsingUDP)
             {
-                var dInMs = Mathf.FloorToInt(delta * 1000);
+                var now = Time.unscaledTime;
+                var dInMs = Mathf.Max(0, Mathf.RoundToInt((now - _lastSendTime) * 1000));
+                _lastSendTime = now;
 
-                _udpClient.ManualUpdate(dInMs);
-                _udpServer.ManualUpdate(dInMs);
+                if (_udpClient.IsRunning)
+                    _udpClient.ManualUpdate(dInMs);
+                if (_udpServer.IsRunning)
+                    _udpServer.ManualUpdate(dInMs);
             }
         }
 

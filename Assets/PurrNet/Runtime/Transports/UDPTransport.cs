@@ -92,6 +92,8 @@ namespace PurrNet.Transports
 
         public override ITransport transport => this;
 
+        private float _lastSendTime;
+
         private void Awake()
         {
             NetDebug.Logger = this;
@@ -212,14 +214,12 @@ namespace PurrNet.Transports
         {
             var data = new ByteData(reader.RawData, reader.UserDataOffset, reader.UserDataSize);
             onDataReceived?.Invoke(new Connection(peer.Id), data, true);
-            reader.Recycle();
         }
 
         private void OnClientData(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliverymethod)
         {
             var data = new ByteData(reader.RawData, reader.UserDataOffset, reader.UserDataSize);
             onDataReceived?.Invoke(new Connection(peer.Id), data, false);
-            reader.Recycle();
         }
 
         private void OnServerConnectionRequest(ConnectionRequest request)
@@ -311,7 +311,9 @@ namespace PurrNet.Transports
 
         public void SendMessages(float delta)
         {
-            var dInMs = Mathf.FloorToInt(delta * 1000);
+            var now = Time.unscaledTime;
+            var dInMs = Mathf.Max(0, Mathf.RoundToInt((now - _lastSendTime) * 1000));
+            _lastSendTime = now;
 
             if (_server.IsRunning)
                 _server.ManualUpdate(dInMs);
@@ -338,6 +340,7 @@ namespace PurrNet.Transports
 
             TriggerConnectionStateEvent(false);
 
+            _lastSendTime = Time.unscaledTime;
             _client.StartInManualMode(0);
             _client.Connect(ip, port, "PurrNet");
             TriggerConnectionStateEvent(false);
@@ -367,6 +370,7 @@ namespace PurrNet.Transports
                 listenerState = ConnectionState.Connecting;
                 TriggerConnectionStateEvent(true);
 
+                _lastSendTime = Time.unscaledTime;
                 if (_server.StartInManualMode(port))
                 {
                     listenerState = ConnectionState.Connected;
