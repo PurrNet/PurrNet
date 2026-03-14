@@ -225,10 +225,15 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool AreEqual<T>(T a, T b) => PurrEquality<T>.Default.Equals(a, b);
+        public static bool AreEqual<T>(T a, T b) => PurrEquality<T>.Equals(a, b);
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool AreEqualRef<T>(ref T a, ref T b) => PurrEquality<T>.Default.Equals(a, b);
+        public static bool AreEqualRef<T>(ref T a, ref T b)
+        {
+            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return PurrEquality<T>.MemEquals(ref a, ref b);
+            return PurrEquality<T>.Default.Equals(a, b);
+        }
 
         static readonly Dictionary<Type, MethodInfo> _writeExactMethods = new Dictionary<Type, MethodInfo>();
         static readonly Dictionary<Type, MethodInfo> _writeWrappedMethods = new Dictionary<Type, MethodInfo>();

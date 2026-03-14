@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using PurrNet.Modules;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace PurrNet.Packing
 {
@@ -40,7 +41,22 @@ namespace PurrNet.Packing
             Default = comparer;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static unsafe bool MemEquals(ref T a, ref T b)
+        {
+            return UnsafeUtility.MemCmp(
+                Unsafe.AsPointer(ref a),
+                Unsafe.AsPointer(ref b),
+                Unsafe.SizeOf<T>()
+            ) == 0;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining), UsedByIL]
-        public static bool Equals(T a, T b) => Default.Equals(a, b);
+        public static bool Equals(T a, T b)
+        {
+            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return MemEquals(ref a, ref b);
+            return Default.Equals(a, b);
+        }
     }
 }
