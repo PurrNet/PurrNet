@@ -27,8 +27,9 @@ var searchData=
   ['getnextid_24',['GetNextId',['../classPurrNet_1_1NetworkIdentity.html#a6894228bb2810c322ee8dff28353e7ba',1,'PurrNet::NetworkIdentity']]],
   ['getnextid_3c_20t_20_3e_25',['GetNextId&lt; T &gt;',['../classPurrNet_1_1NetworkIdentity.html#aa9ca1d8499152c7c2a641b0b8783adf6',1,'PurrNet::NetworkIdentity']]],
   ['getpendingoperations_26',['GetPendingOperations',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a3a7f73366d9d53e262795607b3ba6244',1,'PurrNet::Modules::ScenesModule']]],
-  ['gettypecode_27',['GetTypeCode',['../structPurrNet_1_1Packing_1_1Half.html#a68013ae5140b43ecb16d23c22f1928bb',1,'PurrNet::Packing::Half']]],
-  ['giveownership_28',['GiveOwnership',['../classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3',1,'PurrNet::NetworkIdentity']]],
-  ['globalownershipmodule_29',['GlobalOwnershipModule',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html',1,'PurrNet::Modules']]],
-  ['guardfailureactionattribute_30',['GuardFailureActionAttribute',['../classPurrNet_1_1GuardFailureActionAttribute.html',1,'PurrNet']]]
+  ['getstate_3c_20t_20_3e_27',['GetState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#ab970c2f0ea7d01a78584b1f681739dfb',1,'PurrNet::StateMachine::StateMachine']]],
+  ['gettypecode_28',['GetTypeCode',['../structPurrNet_1_1Packing_1_1Half.html#a68013ae5140b43ecb16d23c22f1928bb',1,'PurrNet::Packing::Half']]],
+  ['giveownership_29',['GiveOwnership',['../classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3',1,'PurrNet::NetworkIdentity']]],
+  ['globalownershipmodule_30',['GlobalOwnershipModule',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html',1,'PurrNet::Modules']]],
+  ['guardfailureactionattribute_31',['GuardFailureActionAttribute',['../classPurrNet_1_1GuardFailureActionAttribute.html',1,'PurrNet']]]
 ];

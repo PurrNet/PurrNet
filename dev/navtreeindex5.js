@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"interfacePurrNet_1_1IPurrEvents.html":[1,0,0,43],
+"interfacePurrNet_1_1IPurrEvents.html":[0,0,0,43],
 "interfacePurrNet_1_1IRegisterModules.html":[1,0,0,44],
 "interfacePurrNet_1_1IRegisterModules.html":[0,0,0,44],
 "interfacePurrNet_1_1IRpc.html":[0,0,0,45],
@@ -247,7 +249,5 @@ var NAVTREEINDEX5 =
 "structPurrNet_1_1Packing_1_1Half.html#a7e6faf18e7227b428b48fff04eb5fd3b":[1,0,0,5,14,5],
 "structPurrNet_1_1Packing_1_1Half.html#a93e29076ea4cc859c2f09def3ceba2fa":[0,0,0,5,14,10],
 "structPurrNet_1_1Packing_1_1Half.html#a93e29076ea4cc859c2f09def3ceba2fa":[1,0,0,5,14,10],
-"structPurrNet_1_1Packing_1_1Half.html#a9c18b9eb74460a834996b8ba85269881":[0,0,0,5,14,1],
-"structPurrNet_1_1Packing_1_1Half.html#a9c18b9eb74460a834996b8ba85269881":[1,0,0,5,14,1],
-"structPurrNet_1_1Packing_1_1Half.html#aa7b816218c9e7178dfd7798efc4c69fb":[1,0,0,5,14,4]
+"structPurrNet_1_1Packing_1_1Half.html#a9c18b9eb74460a834996b8ba85269881":[0,0,0,5,14,1]
 };
