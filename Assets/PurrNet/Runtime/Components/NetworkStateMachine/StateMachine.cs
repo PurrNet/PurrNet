@@ -174,6 +174,19 @@ namespace PurrNet.StateMachine
         }
 
         /// <summary>
+        /// Returns the first state of type T in the states list, or null if not found
+        /// </summary>
+        public T GetState<T>() where T : StateNode
+        {
+            for (int i = 0; i < _syncedStates.Count; i++)
+            {
+                if (_syncedStates[i] is T match)
+                    return match;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Checks whether the given type T is the state we are currently in
         /// </summary>
         public bool IsCurrentState<T>() where T : StateNode
