@@ -10,11 +10,12 @@ var searchData=
   ['isdataready_7',['isDataReady',['../classPurrNet_1_1SyncBigData.html#a0eaa7e9f15b41a69274cc2fe5bc2c878',1,'PurrNet::SyncBigData']]],
   ['ishost_8',['isHost',['../classPurrNet_1_1NetworkManager.html#a016732b943d777e1468854b90508b7ac',1,'PurrNet::NetworkManager']]],
   ['isoffline_9',['isOffline',['../classPurrNet_1_1NetworkManager.html#a18d2a60c0719c89b765b8775de3702d9',1,'PurrNet::NetworkManager']]],
-  ['isplannedhost_10',['isPlannedHost',['../classPurrNet_1_1NetworkManager.html#a515f3580fb3a521b95bfebb16668a5ef',1,'PurrNet::NetworkManager']]],
-  ['isplaying_11',['isPlaying',['../classPurrNet_1_1NetworkAudioSource.html#a1c7d9c8d11879d37f06d7331b0c90f7d',1,'PurrNet::NetworkAudioSource']]],
-  ['isreadytospawn_12',['isReadyToSpawn',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#aeb8e18a11c7924834a30a3b0ab39053f',1,'PurrNet::Modules::HierarchyV2']]],
-  ['isserver_13',['isServer',['../classPurrNet_1_1NetworkManager.html#a7a4aefbd024941678ce982439eb38c72',1,'PurrNet::NetworkManager']]],
-  ['isserveronly_14',['isServerOnly',['../classPurrNet_1_1NetworkManager.html#a8240f6a207d30393ff882cbbdde135ad',1,'PurrNet::NetworkManager']]],
-  ['isspawned_15',['isSpawned',['../classPurrNet_1_1NetworkIdentity.html#a1ee60a1c08b4452a59a233dee72059e1',1,'PurrNet::NetworkIdentity']]],
-  ['issupported_16',['isSupported',['../classPurrNet_1_1Transports_1_1GenericTransport.html#a4dc62a7fe67db86b7941ae87fa931160',1,'PurrNet::Transports::GenericTransport']]]
+  ['ispipemode_10',['isPipeMode',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a32a2176f19116026af7b26ae5ac960e6',1,'PurrNet::Transports::PurrTransport']]],
+  ['isplannedhost_11',['isPlannedHost',['../classPurrNet_1_1NetworkManager.html#a515f3580fb3a521b95bfebb16668a5ef',1,'PurrNet::NetworkManager']]],
+  ['isplaying_12',['isPlaying',['../classPurrNet_1_1NetworkAudioSource.html#a1c7d9c8d11879d37f06d7331b0c90f7d',1,'PurrNet::NetworkAudioSource']]],
+  ['isreadytospawn_13',['isReadyToSpawn',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#aeb8e18a11c7924834a30a3b0ab39053f',1,'PurrNet::Modules::HierarchyV2']]],
+  ['isserver_14',['isServer',['../classPurrNet_1_1NetworkManager.html#a7a4aefbd024941678ce982439eb38c72',1,'PurrNet::NetworkManager']]],
+  ['isserveronly_15',['isServerOnly',['../classPurrNet_1_1NetworkManager.html#a8240f6a207d30393ff882cbbdde135ad',1,'PurrNet::NetworkManager']]],
+  ['isspawned_16',['isSpawned',['../classPurrNet_1_1NetworkIdentity.html#a1ee60a1c08b4452a59a233dee72059e1',1,'PurrNet::NetworkIdentity']]],
+  ['issupported_17',['isSupported',['../classPurrNet_1_1Transports_1_1GenericTransport.html#a4dc62a7fe67db86b7941ae87fa931160',1,'PurrNet::Transports::GenericTransport']]]
 ];

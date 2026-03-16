@@ -140,6 +140,18 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetServer</b> (<a cla
 <tr class="separator:af526aac8e57b7e4beb90acceb3143770"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2f9ddfb5a315cc4e40da21c77b2dc9be"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a2f9ddfb5a315cc4e40da21c77b2dc9be">SendToServer</a> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, Channel method=Channel.ReliableOrdered)</td></tr>
 <tr class="separator:a2f9ddfb5a315cc4e40da21c77b2dc9be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3042976559865d9b8b8a9cc7deb57977"><td class="memItemLeft" align="right" valign="top"><a id="a3042976559865d9b8b8a9cc7deb57977" name="a3042976559865d9b8b8a9cc7deb57977"></a>
+async void&#160;</td><td class="memItemRight" valign="bottom"><b>ConnectAsPipe</b> (string relayHost, int udpPort, int wsPort)</td></tr>
+<tr class="memdesc:a3042976559865d9b8b8a9cc7deb57977"><td class="mdescLeft">&#160;</td><td class="mdescRight">Connect to a relay server in pipe mode. No rooms, no host — just connId-based forwarding. Use SendPipeData to send to specific peers.  <br /></td></tr>
+<tr class="separator:a3042976559865d9b8b8a9cc7deb57977"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2b38a6a955020047616a1108a3818058"><td class="memItemLeft" align="right" valign="top"><a id="a2b38a6a955020047616a1108a3818058" name="a2b38a6a955020047616a1108a3818058"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendPipeData</b> (int targetConnId, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, Channel channel=Channel.ReliableOrdered)</td></tr>
+<tr class="memdesc:a2b38a6a955020047616a1108a3818058"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send data to a specific peer via the relay (pipe mode only).  <br /></td></tr>
+<tr class="separator:a2b38a6a955020047616a1108a3818058"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a275628271e951f70e0bca419822cbfe5"><td class="memItemLeft" align="right" valign="top"><a id="a275628271e951f70e0bca419822cbfe5" name="a275628271e951f70e0bca419822cbfe5"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>DisconnectPipe</b> ()</td></tr>
+<tr class="memdesc:a275628271e951f70e0bca419822cbfe5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Disconnect from pipe mode.  <br /></td></tr>
+<tr class="separator:a275628271e951f70e0bca419822cbfe5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aedea6dfd41ac805efab4405ca6369073"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#aedea6dfd41ac805efab4405ca6369073">CloseConnection</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn)</td></tr>
 <tr class="separator:aedea6dfd41ac805efab4405ca6369073"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a22d52276c579eb9aab2a3f796a7622ca"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a22d52276c579eb9aab2a3f796a7622ca">ReceiveMessages</a> (float delta)</td></tr>
@@ -253,6 +265,14 @@ override bool&#160;</td><td class="memItemRight" valign="bottom"><b>isSupported<
 <tr class="memitem:a5f32bdf1a2a568de5355d509c03fa198"><td class="memItemLeft" align="right" valign="top"><a id="a5f32bdf1a2a568de5355d509c03fa198" name="a5f32bdf1a2a568de5355d509c03fa198"></a>
 override <a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><b>transport</b><code> [get]</code></td></tr>
 <tr class="separator:a5f32bdf1a2a568de5355d509c03fa198"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0c47cd871f2e618c438dbc0579685093"><td class="memItemLeft" align="right" valign="top"><a id="a0c47cd871f2e618c438dbc0579685093" name="a0c47cd871f2e618c438dbc0579685093"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>pipeConnId</b><code> [get]</code></td></tr>
+<tr class="memdesc:a0c47cd871f2e618c438dbc0579685093"><td class="mdescLeft">&#160;</td><td class="mdescRight">This client's connection ID on the relay (pipe mode only).  <br /></td></tr>
+<tr class="separator:a0c47cd871f2e618c438dbc0579685093"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a32a2176f19116026af7b26ae5ac960e6"><td class="memItemLeft" align="right" valign="top"><a id="a32a2176f19116026af7b26ae5ac960e6" name="a32a2176f19116026af7b26ae5ac960e6"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isPipeMode</b><code> [get]</code></td></tr>
+<tr class="memdesc:a32a2176f19116026af7b26ae5ac960e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether this transport is connected in pipe mode.  <br /></td></tr>
+<tr class="separator:a32a2176f19116026af7b26ae5ac960e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac30fc11506d5ecc7a9d796685fa0e539"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#ac30fc11506d5ecc7a9d796685fa0e539">shouldServerSendKeepAlive</a><code> [get]</code></td></tr>
 <tr class="separator:ac30fc11506d5ecc7a9d796685fa0e539"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af3bb4cda74c9cedd5562565bfcf005d4"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#af3bb4cda74c9cedd5562565bfcf005d4">shouldClientSendKeepAlive</a><code> [get]</code></td></tr>
@@ -293,6 +313,10 @@ ConnectionState&#160;</td><td class="memItemRight" valign="bottom"><b>clientStat
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
+<tr class="memitem:adb6bca90a8777ce2400c79305c628e22"><td class="memItemLeft" align="right" valign="top"><a id="adb6bca90a8777ce2400c79305c628e22" name="adb6bca90a8777ce2400c79305c628e22"></a>
+Action&lt; int, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onPipeDataReceived</b></td></tr>
+<tr class="memdesc:adb6bca90a8777ce2400c79305c628e22"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data received from a pipe peer. Args: senderConnId, data.  <br /></td></tr>
+<tr class="separator:adb6bca90a8777ce2400c79305c628e22"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a13715cfa23aed4ebd6254be27f7f64ac"><td class="memItemLeft" align="right" valign="top"><a id="a13715cfa23aed4ebd6254be27f7f64ac" name="a13715cfa23aed4ebd6254be27f7f64ac"></a>
 OnConnected&#160;</td><td class="memItemRight" valign="bottom"><b>onConnected</b></td></tr>
 <tr class="separator:a13715cfa23aed4ebd6254be27f7f64ac"><td class="memSeparator" colspan="2">&#160;</td></tr>

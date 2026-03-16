@@ -9,7 +9,8 @@ var searchData=
   ['clearownerships_6',['ClearOwnerships',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html#a8c28e6e5c4d92ea4d447674bacb90d68',1,'PurrNet::Modules::GlobalOwnershipModule']]],
   ['clearpast_7',['ClearPast',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a6084cacf773a7fdf1b40fa522317eaff',1,'PurrNet::Modules::SimpleHistory']]],
   ['compareto_8',['CompareTo',['../structPurrNet_1_1Packing_1_1Half.html#ab8bcf3bc5826881dcd901b701f6ab214',1,'PurrNet.Packing.Half.CompareTo(Half other)'],['../structPurrNet_1_1Packing_1_1Half.html#a565dbedf44864368c1d6386ce47301b9',1,'PurrNet.Packing.Half.CompareTo(object obj)']]],
-  ['contains_9',['Contains',['../interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html#aa87379b63804d381b446d9546ff7b499',1,'PurrNet.Collections.IReadonlyHashSet.Contains()'],['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a65e9c8cae7805721c8655361920456db',1,'PurrNet.Collections.PurrHashSet.Contains()']]],
-  ['createbot_10',['CreateBot',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afcc4d8439d05cb7ed9fca3be12d52429',1,'PurrNet::Modules::PlayersManager']]],
-  ['createprototype_11',['CreatePrototype',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8',1,'PurrNet::Modules::HierarchyV2']]]
+  ['connectaspipe_9',['ConnectAsPipe',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a3042976559865d9b8b8a9cc7deb57977',1,'PurrNet::Transports::PurrTransport']]],
+  ['contains_10',['Contains',['../interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html#aa87379b63804d381b446d9546ff7b499',1,'PurrNet.Collections.IReadonlyHashSet.Contains()'],['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a65e9c8cae7805721c8655361920456db',1,'PurrNet.Collections.PurrHashSet.Contains()']]],
+  ['createbot_11',['CreateBot',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afcc4d8439d05cb7ed9fca3be12d52429',1,'PurrNet::Modules::PlayersManager']]],
+  ['createprototype_12',['CreatePrototype',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8',1,'PurrNet::Modules::HierarchyV2']]]
 ];

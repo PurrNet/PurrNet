@@ -13,7 +13,7 @@ var namespacePurrNet_1_1Transports =
     [ "LocalTransport", "classPurrNet_1_1Transports_1_1LocalTransport.html", null ],
     [ "NetworkSimulation", "structPurrNet_1_1Transports_1_1NetworkSimulation.html", null ],
     [ "PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
-    [ "PurrTransport", "classPurrNet_1_1Transports_1_1PurrTransport.html", null ],
+    [ "PurrTransport", "classPurrNet_1_1Transports_1_1PurrTransport.html", "classPurrNet_1_1Transports_1_1PurrTransport" ],
     [ "Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
     [ "RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", "classPurrNet_1_1Transports_1_1UDPTransport" ],

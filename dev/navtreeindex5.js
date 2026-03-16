@@ -1,5 +1,17 @@
 var NAVTREEINDEX5 =
 {
+"interfacePurrNet_1_1IPlayerAuthenticator.html":[0,0,0,37],
+"interfacePurrNet_1_1IPlayerAuthenticator.html":[1,0,0,37],
+"interfacePurrNet_1_1IPlayerBroadcaster.html":[0,0,0,38],
+"interfacePurrNet_1_1IPlayerBroadcaster.html":[1,0,0,38],
+"interfacePurrNet_1_1IPlayerEvents.html":[1,0,0,39],
+"interfacePurrNet_1_1IPlayerEvents.html":[0,0,0,39],
+"interfacePurrNet_1_1IPrefabProvider.html":[0,0,0,40],
+"interfacePurrNet_1_1IPrefabProvider.html":[1,0,0,40],
+"interfacePurrNet_1_1IProvidePrefabInstantiated.html":[0,0,0,41],
+"interfacePurrNet_1_1IProvidePrefabInstantiated.html":[1,0,0,41],
+"interfacePurrNet_1_1IProvideSpawnPoints.html":[0,0,0,42],
+"interfacePurrNet_1_1IProvideSpawnPoints.html":[1,0,0,42],
 "interfacePurrNet_1_1IPurrEvents.html":[1,0,0,43],
 "interfacePurrNet_1_1IPurrEvents.html":[0,0,0,43],
 "interfacePurrNet_1_1IRegisterModules.html":[1,0,0,44],
@@ -237,17 +249,5 @@ var NAVTREEINDEX5 =
 "structPurrNet_1_1Packing_1_1Half.html#a289e1a385610686b5c892eef510574d8":[1,0,0,5,14,3],
 "structPurrNet_1_1Packing_1_1Half.html#a565dbedf44864368c1d6386ce47301b9":[1,0,0,5,14,8],
 "structPurrNet_1_1Packing_1_1Half.html#a565dbedf44864368c1d6386ce47301b9":[0,0,0,5,14,8],
-"structPurrNet_1_1Packing_1_1Half.html#a56b8b965490a529a81e4c8e934a24dff":[1,0,0,5,14,11],
-"structPurrNet_1_1Packing_1_1Half.html#a56b8b965490a529a81e4c8e934a24dff":[0,0,0,5,14,11],
-"structPurrNet_1_1Packing_1_1Half.html#a5e73f45fee08a95c06806faa3939bf5e":[1,0,0,5,14,2],
-"structPurrNet_1_1Packing_1_1Half.html#a5e73f45fee08a95c06806faa3939bf5e":[0,0,0,5,14,2],
-"structPurrNet_1_1Packing_1_1Half.html#a68013ae5140b43ecb16d23c22f1928bb":[1,0,0,5,14,12],
-"structPurrNet_1_1Packing_1_1Half.html#a68013ae5140b43ecb16d23c22f1928bb":[0,0,0,5,14,12],
-"structPurrNet_1_1Packing_1_1Half.html#a6f8f93c1a567eaa73a71435ee5a781c6":[0,0,0,5,14,13],
-"structPurrNet_1_1Packing_1_1Half.html#a6f8f93c1a567eaa73a71435ee5a781c6":[1,0,0,5,14,13],
-"structPurrNet_1_1Packing_1_1Half.html#a7e6faf18e7227b428b48fff04eb5fd3b":[0,0,0,5,14,5],
-"structPurrNet_1_1Packing_1_1Half.html#a7e6faf18e7227b428b48fff04eb5fd3b":[1,0,0,5,14,5],
-"structPurrNet_1_1Packing_1_1Half.html#a93e29076ea4cc859c2f09def3ceba2fa":[0,0,0,5,14,10],
-"structPurrNet_1_1Packing_1_1Half.html#a93e29076ea4cc859c2f09def3ceba2fa":[1,0,0,5,14,10],
-"structPurrNet_1_1Packing_1_1Half.html#a9c18b9eb74460a834996b8ba85269881":[0,0,0,5,14,1]
+"structPurrNet_1_1Packing_1_1Half.html#a56b8b965490a529a81e4c8e934a24dff":[1,0,0,5,14,11]
 };
