@@ -1,3 +1,10 @@
+# [1.20.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.14...v1.20.0-beta.15) (2026-03-16)
+
+
+### Bug Fixes
+
+* allow PurrTransport to use the new Pipe mode (relay updated) ([2c36c6e](https://github.com/PurrNet/PurrNet/commit/2c36c6ef94eeb97275c37c33debeae556a4f4fdb))
+
 # [1.20.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.13...v1.20.0-beta.14) (2026-03-14)
 
 
