@@ -9,10 +9,11 @@ namespace PurrNet.Modules
         public NetworkID childId;
         public NetworkID? newParentId;
         public int[] path;
+        public bool worldPositionStays;
 
         public override string ToString()
         {
-            return $"ChangeParentPacket: {{ sceneId: {sceneId}, childId: {childId}, newParentId: {newParentId} }}";
+            return $"ChangeParentPacket: {{ sceneId: {sceneId}, childId: {childId}, newParentId: {newParentId}, worldPositionStays: {worldPositionStays} }}";
         }
     }
 }

@@ -460,7 +460,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            ApplyParentChange(identity, parent, data.path, true);
+            ApplyParentChange(identity, parent, data.path, true, data.worldPositionStays);
 
             if (_asServer)
             {
@@ -490,7 +490,7 @@ namespace PurrNet.Modules
             return null;
         }
 
-        void ApplyParentChange(NetworkIdentity identity, NetworkIdentity parent, int[] path, bool refreshVisibility)
+        void ApplyParentChange(NetworkIdentity identity, NetworkIdentity parent, int[] path, bool refreshVisibility, bool worldPositionStays = true)
         {
             var idTrs = identity.transform;
             var oldParent = identity.parent;
@@ -513,9 +513,9 @@ namespace PurrNet.Modules
             if (nt) nt.StartIgnoringParentChanges();
 
             if (parent)
-                HierarchyPool.WalkThePath(parent.transform, idTrs, path, true);
+                HierarchyPool.WalkThePath(parent.transform, idTrs, path, worldPositionStays);
             else
-                idTrs.SetParent(null, true);
+                idTrs.SetParent(null, worldPositionStays);
 
             if (nt) nt.StopIgnoringParentChanges();
 
@@ -537,7 +537,7 @@ namespace PurrNet.Modules
             }
         }
 
-        public void OnParentChanged(NetworkIdentity identity, Transform parent)
+        public void OnParentChanged(NetworkIdentity identity, Transform parent, bool worldPositionStays = true)
         {
             if (!_asServer)
             {
@@ -592,7 +592,8 @@ namespace PurrNet.Modules
                     sceneId = _sceneId,
                     childId = identity.id.Value,
                     newParentId = closestNid?.id,
-                    path = identity.invertedPathToNearestParent
+                    path = identity.invertedPathToNearestParent,
+                    worldPositionStays = worldPositionStays
                 };
 
                 if (_asServer)
