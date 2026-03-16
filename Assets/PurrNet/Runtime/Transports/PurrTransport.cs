@@ -23,7 +23,8 @@ namespace PurrNet.Transports
             SERVER_CLIENT_DISCONNECTED = 1,
             SERVER_CLIENT_DATA = 2,
             SERVER_AUTHENTICATED = 3,
-            SERVER_AUTHENTICATION_FAILED = 4
+            SERVER_AUTHENTICATION_FAILED = 4,
+            SERVER_PIPE_AUTHENTICATED = 5
         }
 
         enum HOST_PACKET_TYPE : byte
@@ -96,6 +97,25 @@ namespace PurrNet.Transports
         public override ITransport transport => this;
 
         private float _lastSendTime;
+
+        // Pipe mode: simple connId-to-connId forwarding, no rooms or hosts
+        private bool _isPipeMode;
+        private int _pipeConnId;
+
+        /// <summary>
+        /// This client's connection ID on the relay (pipe mode only).
+        /// </summary>
+        public int pipeConnId => _pipeConnId;
+
+        /// <summary>
+        /// Whether this transport is connected in pipe mode.
+        /// </summary>
+        public bool isPipeMode => _isPipeMode;
+
+        /// <summary>
+        /// Data received from a pipe peer. Args: senderConnId, data.
+        /// </summary>
+        public event Action<int, ByteData> onPipeDataReceived;
 
         public event OnConnected onConnected;
         public event OnDisconnected onDisconnected;
@@ -241,9 +261,9 @@ namespace PurrNet.Transports
                 DisconnectTimeout = Mathf.RoundToInt(_timeoutInSeconds * 1000)
             };
 
-            _clientListener.PeerConnectedEvent += OnClientConnectedUDP;
-            _clientListener.PeerDisconnectedEvent += OnClientDisconnectedUDP;
-            _clientListener.NetworkReceiveEvent += OnClientDataUDP;
+            _clientListener.PeerConnectedEvent += OnClientOrPipeConnectedUDP;
+            _clientListener.PeerDisconnectedEvent += OnClientOrPipeDisconnectedUDP;
+            _clientListener.NetworkReceiveEvent += OnClientOrPipeDataUDP;
 
             _serverListener.PeerConnectedEvent += OnHostConnectedUDP;
             _serverListener.PeerDisconnectedEvent += OnHostDisconnectedUDP;
@@ -367,10 +387,29 @@ namespace PurrNet.Transports
             }
         }
 
-        private void OnClientDataUDP(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
+        private void OnClientOrPipeConnectedUDP(NetPeer peer)
+        {
+            if (_isPipeMode)
+                OnPipeConnected();
+            else
+                OnClientConnectedUDP(peer);
+        }
+
+        private void OnClientOrPipeDisconnectedUDP(NetPeer peer, DisconnectInfo info)
+        {
+            if (_isPipeMode)
+                OnPipeDisconnectedUDP();
+            else
+                OnClientDisconnectedUDP();
+        }
+
+        private void OnClientOrPipeDataUDP(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
         {
             var data = reader.GetRemainingBytesSegment();
-            OnClientData(data);
+            if (_isPipeMode)
+                OnPipeData(data);
+            else
+                OnClientData(data);
         }
 
         private void OnClientData(ArraySegment<byte> data)
@@ -445,7 +484,7 @@ namespace PurrNet.Transports
             _client.Send(data);
         }
 
-        private void OnClientConnectedUDP(NetPeer peer)
+        private void OnClientConnectedUDP(NetPeer _)
         {
             var authenticate = new ClientAuthenticate
             {
@@ -474,7 +513,7 @@ namespace PurrNet.Transports
             Disconnect();
         }
 
-        private void OnClientDisconnectedUDP(NetPeer peer, DisconnectInfo disconnectinfo)
+        private void OnClientDisconnectedUDP()
         {
             Disconnect();
         }
@@ -745,6 +784,185 @@ namespace PurrNet.Transports
             }
 
             RaiseDataSent(default, data, false);
+        }
+
+        /// <summary>
+        /// Connect to a relay server in pipe mode. No rooms, no host — just
+        /// connId-based forwarding. Use SendPipeData to send to specific peers.
+        /// </summary>
+        public async void ConnectAsPipe(string relayHost, int udpPort, int wsPort)
+        {
+            try
+            {
+                if (_isPipeMode && clientState != ConnectionState.Disconnected)
+                    DisconnectPipe();
+
+                _isPipeMode = true;
+                clientState = ConnectionState.Connecting;
+
+                var token = new CancellationTokenSource();
+                AddCancellation(token, false);
+
+                _client = SimpleWebClient.Create(ushort.MaxValue, 5000, _tcpConfig);
+                _client.onConnect += OnPipeConnected;
+                _client.onData += OnPipeData;
+                _client.onDisconnect += OnPipeDisconnected;
+                _client.onError += OnError;
+
+                if (Application.platform != RuntimePlatform.WebGLPlayer)
+                {
+                    _isUsingUDP = true;
+                    _lastSendTime = Time.unscaledTime;
+                    _udpClient.StartInManualMode(0);
+
+                    var addresses = await Dns.GetHostAddressesAsync(relayHost);
+                    var ipv4 = addresses.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork)
+                               ?? IPAddress.Any;
+
+                    if (token.IsCancellationRequested)
+                        return;
+
+                    _udpClient.Connect(ipv4.ToString(), udpPort, "PurrNet");
+                }
+                else
+                {
+                    _isUsingUDP = false;
+                    var builder = new UriBuilder
+                    {
+                        Scheme = "ws",
+                        Host = relayHost,
+                        Port = wsPort
+                    };
+                    _client.Connect(builder.Uri);
+                }
+            }
+            catch (Exception e)
+            {
+                DisconnectPipe();
+                PurrLogger.LogException(e.Message);
+            }
+        }
+
+        private void OnPipeConnected()
+        {
+            string json = "{\"pipe\":true}";
+            var data = Encoding.UTF8.GetBytes(json);
+
+            if (_isUsingUDP)
+                _udpClient.SendToAll(data, DeliveryMethod.ReliableOrdered);
+            else
+                _client.Send(data);
+        }
+
+        private void OnPipeData(ArraySegment<byte> data)
+        {
+            if (data.Array == null || data.Count == 0)
+                return;
+
+            if (clientState != ConnectionState.Connected)
+            {
+                // Waiting for auth response
+                var type = (SERVER_PACKET_TYPE)data.Array[data.Offset];
+
+                if (type == SERVER_PACKET_TYPE.SERVER_PIPE_AUTHENTICATED && data.Count >= 5)
+                {
+                    _pipeConnId = data.Array[data.Offset + 1]
+                                | data.Array[data.Offset + 2] << 8
+                                | data.Array[data.Offset + 3] << 16
+                                | data.Array[data.Offset + 4] << 24;
+
+                    clientState = ConnectionState.Connected;
+                    onConnected?.Invoke(new Connection(_pipeConnId), false);
+                }
+                else if (type == SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED)
+                {
+                    DisconnectPipe();
+                }
+            }
+            else
+            {
+                // Pipe data: [senderConnId(4)] [payload]
+                if (data.Count < 5) return;
+
+                int senderConnId = data.Array[data.Offset]
+                                 | data.Array[data.Offset + 1] << 8
+                                 | data.Array[data.Offset + 2] << 16
+                                 | data.Array[data.Offset + 3] << 24;
+
+                var payload = new ByteData(data.Array, data.Offset + 4, data.Count - 4);
+                onPipeDataReceived?.Invoke(senderConnId, payload);
+            }
+        }
+
+        private void OnPipeDisconnected()
+        {
+            if (clientState != ConnectionState.Disconnected)
+            {
+                clientState = ConnectionState.Disconnecting;
+                onDisconnected?.Invoke(new Connection(_pipeConnId), DisconnectReason.ServerRequest, false);
+                clientState = ConnectionState.Disconnected;
+            }
+        }
+
+        private void OnPipeDisconnectedUDP()
+        {
+            OnPipeDisconnected();
+        }
+
+        /// <summary>
+        /// Send data to a specific peer via the relay (pipe mode only).
+        /// </summary>
+        public void SendPipeData(int targetConnId, ByteData data, Channel channel = Channel.ReliableOrdered)
+        {
+            if (!_isPipeMode || clientState != ConnectionState.Connected)
+                return;
+
+            _packer.ResetPositionAndMode(false);
+
+            if (_isUsingUDP)
+                Packer<byte>.Write(_packer, (byte)UDPTransport.ToDeliveryMethod(channel));
+
+            Packer<int>.Write(_packer, targetConnId);
+            _packer.WriteBytes(data);
+
+            var byteData = _packer.ToByteData();
+
+            if (_isUsingUDP)
+            {
+                var deliveryMethod = UDPTransport.ToDeliveryMethod(channel);
+                _udpClient.SendToAll(byteData.data, byteData.offset, byteData.length, deliveryMethod);
+            }
+            else
+            {
+                _client.Send(new ArraySegment<byte>(byteData.data, byteData.offset, byteData.length));
+            }
+        }
+
+        /// <summary>
+        /// Disconnect from pipe mode.
+        /// </summary>
+        public void DisconnectPipe()
+        {
+            _isPipeMode = false;
+            _pipeConnId = 0;
+
+            CancelAll(false);
+
+            if (_client != null)
+            {
+                _client.onConnect -= OnPipeConnected;
+                _client.onData -= OnPipeData;
+                _client.onDisconnect -= OnPipeDisconnected;
+                _client.onError -= OnError;
+                _client.Disconnect();
+            }
+
+            _udpClient?.Stop();
+            _client = null;
+
+            if (clientState is ConnectionState.Connecting or ConnectionState.Connected)
+                clientState = ConnectionState.Disconnecting;
+            clientState = ConnectionState.Disconnected;
         }
 
         public void CloseConnection(Connection conn)
