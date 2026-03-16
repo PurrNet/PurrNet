@@ -537,7 +537,7 @@ namespace PurrNet.Modules
             }
         }
 
-        internal void OnParentChanged(NetworkIdentity identity, Transform parent)
+        public void OnParentChanged(NetworkIdentity identity, Transform parent)
         {
             if (!_asServer)
             {
@@ -636,15 +636,15 @@ namespace PurrNet.Modules
                         // if server, refresh visibility for all players in scene
                         case > 0 when list[0] && _asServer &&
                                       _scenePlayers.TryGetPlayersInScene(_sceneId, out var players):
-                        {
-                            for (var i = 0; i < players.Count; i++)
                             {
-                                var playerInScene = players[i];
-                                _visibility.RefreshVisibilityForGameObject(playerInScene, list[0].transform);
+                                for (var i = 0; i < players.Count; i++)
+                                {
+                                    var playerInScene = players[i];
+                                    _visibility.RefreshVisibilityForGameObject(playerInScene, list[0].transform);
+                                }
+                                FlushSpawnPackets();
+                                break;
                             }
-                            FlushSpawnPackets();
-                            break;
-                        }
                     }
 
                     bool isHost = IsServerHost();
@@ -926,7 +926,7 @@ namespace PurrNet.Modules
                         {
                             onObserverAdded?.Invoke(player, nid);
                             nid.TriggerOnPreObserverAdded(player, true);
-                            _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = true});
+                            _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = true });
                         }
                     }
 
@@ -1157,7 +1157,7 @@ namespace PurrNet.Modules
                         var nid = children[i];
                         onObserverAdded?.Invoke(player, nid);
                         nid.TriggerOnPreObserverAdded(player, false);
-                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false});
+                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false });
                     }
                 }
                 else PurrLogger.LogError($"Failed to get prototype for '{scope.name}'.", scope);
@@ -1256,7 +1256,7 @@ namespace PurrNet.Modules
             else
             {
                 if (player.isServer)
-                     _playersManager.SendToServer(packet);
+                    _playersManager.SendToServer(packet);
                 else _playersManager.Send(player, packet);
                 packet.Dispose();
                 _toCompleteNextFrame.Add(spawnId);
@@ -1681,7 +1681,7 @@ namespace PurrNet.Modules
                 {
                     onObserverAdded?.Invoke(playerId, identity);
                     identity.TriggerOnPreObserverAdded(playerId, false);
-                    _triggerLateObserverAdded.Add(new PlayerNid { player = playerId, nid = identity, isSpawner = false});
+                    _triggerLateObserverAdded.Add(new PlayerNid { player = playerId, nid = identity, isSpawner = false });
                 }
 
                 identity.TriggerSpawnEvent(false);
@@ -1902,7 +1902,7 @@ namespace PurrNet.Modules
             {
                 onObserverAdded?.Invoke(player, identity);
                 identity.TriggerOnPreObserverAdded(player, true);
-                _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = identity, isSpawner = true});
+                _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = identity, isSpawner = true });
             }
         }
 
