@@ -141,6 +141,9 @@ namespace PurrNet.Editor
         [JsonProperty("premium-tools")]
         public bool PremiumTools { get; private set; }
 
+        [JsonProperty("studio-tools")]
+        public bool StudioTools { get; private set; }
+
         [JsonProperty("supporter")]
         public bool Supporter { get; private set; }
     }

@@ -43,6 +43,12 @@ namespace PurrNet.Editor
         private static readonly Color _selectedBg = new Color(0.17f, 0.36f, 0.53f, 1f);
         private static readonly Color _hoverBg = new Color(0.26f, 0.26f, 0.26f, 1f);
         private static readonly Color _noAccessColor = new Color(0.95f, 0.45f, 0.45f, 1f);
+        private static readonly Dictionary<string, Color> _tierColors = new()
+        {
+            { "house-cat", new Color(0.4f, 0.7f, 1f, 1f) },
+            { "royal-british", new Color(0.7f, 0.45f, 0.9f, 1f) },
+            { "studio", new Color(0.85f, 0.65f, 0.3f, 1f) },
+        };
         private static readonly Color _categoryBg = new Color(0.16f, 0.16f, 0.16f, 1f);
         private static readonly Color _selectedAccent = new Color(0.35f, 0.65f, 0.95f, 1f);
 
@@ -103,6 +109,19 @@ namespace PurrNet.Editor
             _userProfile?.Refresh();
             LoadData();
             Repaint();
+        }
+
+        private static string FormatTierName(string tier)
+        {
+            if (string.IsNullOrEmpty(tier)) return "Free";
+            switch (tier)
+            {
+                case "house-cat": return "House Cat";
+                case "royal-british": return "Royal British";
+                case "studio": return "Studio";
+                case "free": return "Free";
+                default: return tier;
+            }
         }
 
         private void InitStyles()
@@ -313,7 +332,7 @@ namespace PurrNet.Editor
             // Tier badge
             if (_entitlements != null)
             {
-                var tier = string.IsNullOrEmpty(_entitlements.Tier) ? "Free" : _entitlements.Tier;
+                var tier = FormatTierName(_entitlements.Tier);
                 var tierRect = new Rect(labelRect.x, labelRect.yMax - 2, 100, 16);
                 GUI.Label(tierRect, tier, _smallLabelStyle);
             }
@@ -416,10 +435,21 @@ namespace PurrNet.Editor
             bool isHover = itemRect.Contains(Event.current.mousePosition);
 
             // Background
+            Color tierColor = default;
+            bool hasTierColor = !string.IsNullOrEmpty(package.RequiredTier)
+                                && _tierColors.TryGetValue(package.RequiredTier, out tierColor);
             if (isSelected)
             {
                 EditorGUI.DrawRect(itemRect, _selectedBg);
-                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 3, itemRect.height), _selectedAccent);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 3, itemRect.height),
+                    hasTierColor ? tierColor : _selectedAccent);
+            }
+            else if (hasTierColor)
+            {
+                var bg = new Color(tierColor.r, tierColor.g, tierColor.b, isHover ? 0.12f : 0.06f);
+                EditorGUI.DrawRect(itemRect, bg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 2, itemRect.height),
+                    new Color(tierColor.r, tierColor.g, tierColor.b, isHover ? 0.6f : 0.3f));
             }
             else if (isHover)
             {
@@ -742,7 +772,7 @@ namespace PurrNet.Editor
             EditorGUILayout.BeginVertical();
 
             if (!string.IsNullOrEmpty(package.RequiredTier))
-                GUILayout.Label($"Tier: {package.RequiredTier}", _smallLabelStyle);
+                GUILayout.Label($"Tier: {FormatTierName(package.RequiredTier)}", _smallLabelStyle);
 
             if (package.IsExternal && isGitInstall)
             {
