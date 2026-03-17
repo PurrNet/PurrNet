@@ -1,3 +1,10 @@
+# [1.20.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.15...v1.20.0-beta.16) (2026-03-17)
+
+
+### Bug Fixes
+
+* package manager compiler error and extra UI updates ([6b930b3](https://github.com/PurrNet/PurrNet/commit/6b930b36698986fe7bb9daac199d08e5ed7e5a58))
+
 # [1.20.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.14...v1.20.0-beta.15) (2026-03-16)
 
 
