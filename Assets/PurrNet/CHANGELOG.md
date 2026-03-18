@@ -1,3 +1,10 @@
+# [1.20.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.18...v1.20.0-beta.19) (2026-03-18)
+
+
+### Bug Fixes
+
+* introcude pre/post scene unloaded events ([8c15a55](https://github.com/PurrNet/PurrNet/commit/8c15a55b5746125d8a676da10dab0320b6718b1a))
+
 # [1.20.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.17...v1.20.0-beta.18) (2026-03-18)
 
 
