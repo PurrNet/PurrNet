@@ -78,9 +78,19 @@ namespace PurrNet.Modules
         public event OnSceneActionEvent onPostSceneLoaded;
 
         /// <summary>
+        /// First callback for when a scene is unloaded
+        /// </summary>
+        public event OnSceneActionEvent onPreSceneUnloaded;
+
+        /// <summary>
         /// Callback for when a scene is unloaded
         /// </summary>
         public event OnSceneActionEvent onSceneUnloaded;
+
+        /// <summary>
+        /// Callback for after onSceneUnloaded has been called
+        /// </summary>
+        public event OnSceneActionEvent onPostSceneUnloaded;
 
         /// <summary>
         /// Callback for when a scene's visibility changes
@@ -972,7 +982,12 @@ namespace PurrNet.Modules
             if (_scenesToTriggerUnloadEvent.Count > 0)
             {
                 for (var i = 0; i < _scenesToTriggerUnloadEvent.Count; i++)
-                    onSceneUnloaded?.Invoke(_scenesToTriggerUnloadEvent[i], _asServer);
+                {
+                    var scene = _scenesToTriggerUnloadEvent[i];
+                    onPreSceneUnloaded?.Invoke(scene, _asServer);
+                    onSceneUnloaded?.Invoke(scene, _asServer);
+                    onPostSceneUnloaded?.Invoke(scene, _asServer);
+                }
                 _scenesToTriggerUnloadEvent.Clear();
             }
         }
