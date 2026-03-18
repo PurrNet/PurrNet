@@ -29,6 +29,10 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private int _tickRate = 20;
 
+        [Tooltip("What to do when a packet exceeds the MTU on an unreliable channel.")]
+        [SerializeField]
+        private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Drop;
+
         private ModulesCollection _serverModules;
         private ModulesCollection _clientModules;
 
@@ -66,6 +70,15 @@ namespace PurrNet
         private bool _isCleaningServer;
 
         public ITransport rawTransport => _transport ? _transport.transport : null;
+
+        /// <summary>
+        /// What to do when a packet exceeds the MTU on an unreliable channel.
+        /// </summary>
+        public MTUExceededBehaviour mtuExceededBehaviour
+        {
+            get => _mtuExceededBehaviour;
+            set => _mtuExceededBehaviour = value;
+        }
 
         /// <summary>
         /// The state of the server connection.

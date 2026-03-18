@@ -82,6 +82,10 @@ namespace PurrNet
         [Tooltip("Number of target ticks per second.")] [SerializeField]
         private int _tickRate = 20;
 
+        [Tooltip("What to do when a packet exceeds the MTU on an unreliable channel.")]
+        [SerializeField]
+        private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Drop;
+
         [SerializeField, UsedImplicitly] private bool _patchLingeringProcessBug;
 
         /// <summary>
@@ -105,6 +109,15 @@ namespace PurrNet
                 else
                     PurrLogger.LogError("Failed to update cookie scope since a connection is active.");
             }
+        }
+
+        /// <summary>
+        /// What to do when a packet exceeds the MTU on an unreliable channel.
+        /// </summary>
+        public MTUExceededBehaviour mtuExceededBehaviour
+        {
+            get => _mtuExceededBehaviour;
+            set => _mtuExceededBehaviour = value;
         }
 
         /// <summary>
