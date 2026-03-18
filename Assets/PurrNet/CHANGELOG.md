@@ -1,3 +1,10 @@
+# [1.20.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.16...v1.20.0-beta.17) (2026-03-18)
+
+
+### Features
+
+* configurable MTU exceeded behaviour for unreliable channels ([1f58143](https://github.com/PurrNet/PurrNet/commit/1f581437e6c8ea9f26580a591ec2f5ce57bd1c89))
+
 # [1.20.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.15...v1.20.0-beta.16) (2026-03-17)
 
 
