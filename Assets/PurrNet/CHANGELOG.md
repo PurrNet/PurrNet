@@ -1,3 +1,10 @@
+# [1.20.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.17...v1.20.0-beta.18) (2026-03-18)
+
+
+### Bug Fixes
+
+* animation reconcile when someone becomes an observer ([a3a9d92](https://github.com/PurrNet/PurrNet/commit/a3a9d929d694ae99f1f5e02589f34123fd640f01))
+
 # [1.20.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.16...v1.20.0-beta.17) (2026-03-18)
 
 
