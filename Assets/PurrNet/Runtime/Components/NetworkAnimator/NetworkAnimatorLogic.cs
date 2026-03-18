@@ -13,9 +13,13 @@ namespace PurrNet
 
         readonly List<PlayerID> _reconcilePlayers = new List<PlayerID>();
 
-        protected override void OnObserverAdded(PlayerID player)
+        protected override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
-            Reconcile(player);
+            if (isSpawner)
+                return;
+
+            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, false);
+            ReconcileState(player, data);
             _reconcilePlayers.Add(player);
         }
 
