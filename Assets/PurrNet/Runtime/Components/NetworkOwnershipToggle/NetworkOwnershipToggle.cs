@@ -8,6 +8,8 @@ namespace PurrNet
     [Contributor("RoxDevvv", "https://github.com/RoxDevvv")]
     public sealed class NetworkOwnershipToggle : NetworkIdentity
     {
+        [Tooltip("Invert owner logic so owner-active targets become non-owner-active, and vice versa.")]
+        [SerializeField] private bool _invert;
         [Tooltip("Components to toggle from the owner's perspective")]
         [SerializeField] private OwnershipComponentToggle[] _components;
         [Tooltip("GameObjects to toggle from the owner's perspective")]
@@ -97,13 +99,14 @@ namespace PurrNet
         public void Setup(bool asOwner)
         {
             _lastIsController = asOwner;
+            bool ownerState = _invert ? !asOwner : asOwner;
 
             for (var i = 0; i < _components.Length; i++)
             {
                 var target = _components[i].target;
                 if (!target) continue;
 
-                bool targetState = _components[i].activeAsOwner == asOwner;
+                bool targetState = _components[i].activeAsOwner == ownerState;
                 SetComponentState(target, targetState);
             }
 
@@ -112,7 +115,7 @@ namespace PurrNet
                 var target = _gameObjects[i].target;
                 if (!target) continue;
 
-                bool targetState = _gameObjects[i].activeAsOwner == asOwner;
+                bool targetState = _gameObjects[i].activeAsOwner == ownerState;
                 target.SetActive(targetState);
             }
         }
