@@ -368,10 +368,23 @@ namespace PurrNet
             => Object.Instantiate(original, parent, worldPositionStays);
 
         [UsedByIL]
+
+        // Error: Destroy may not be called from edit mode! Use DestroyImmediate instead. Destroying an object in edit mode destroys it permanently.
         public static void Destroy(Object obj)
         {
-            if (OnDestroy(obj))
-                Object.Destroy(obj);
+            if (!OnDestroy(obj))
+                return;
+
+            if (!Application.isPlaying)
+            {
+#if UNITY_EDITOR
+                if (obj)
+                    Object.DestroyImmediate(obj);
+#endif
+                return;
+            }
+
+            Object.Destroy(obj);
         }
 
         public static void DestroyDirectly(Object obj)
