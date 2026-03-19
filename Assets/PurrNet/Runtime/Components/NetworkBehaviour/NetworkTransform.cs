@@ -14,10 +14,12 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private SyncMode _syncPosition = SyncMode.World;
 
-        [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")] [SerializeField, PurrLock]
+        [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")]
+        [SerializeField, PurrLock]
         private SyncMode _syncRotation = SyncMode.World;
 
-        [Tooltip("Whether to sync the scale of the transform.")] [SerializeField, PurrLock]
+        [Tooltip("Whether to sync the scale of the transform.")]
+        [SerializeField, PurrLock]
         private bool _syncScale = true;
 
         [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.")]
@@ -25,10 +27,12 @@ namespace PurrNet
         private bool _syncParent = true;
 
         [Tooltip("Forces any attached Rigidbody to sleep if not the controller, to ensure better syncing when RB is present.")]
-        [SerializeField, PurrLock] 
+        [SerializeField, PurrLock]
         private bool _forceSleepRb = true;
 
-        [Header("How to Sync")] [Tooltip("What to interpolate when syncing the transform.")] [SerializeField, PurrLock]
+        [Header("How to Sync")]
+        [Tooltip("What to interpolate when syncing the transform.")]
+        [SerializeField, PurrLock]
         private TransformSyncMode _interpolateSettings =
             TransformSyncMode.Position | TransformSyncMode.Rotation | TransformSyncMode.Scale;
         [Tooltip("The minimum amount of buffered ticks to store.\nThis is used for interpolation.")]
@@ -157,7 +161,8 @@ namespace PurrNet
             _lastSentDelta = _currentData;
 
             // Force sync if we're the controller and spawned
-            if (_wasOnSpawnedCalled && isController) {
+            if (_wasOnSpawnedCalled && isController)
+            {
                 ForceSync();
             }
         }
@@ -218,7 +223,8 @@ namespace PurrNet
             _cachedConnectedOwner = hasConnectedOwner;
             _cachedIsController = IsController(_ownerAuth);
 
-            if (!enabled) {
+            if (!enabled)
+            {
                 return;
             }
 
@@ -297,7 +303,8 @@ namespace PurrNet
 
         protected override void OnObserverAdded(PlayerID player)
         {
-            if (!enabled) {
+            if (!enabled)
+            {
                 return;
             }
 
@@ -339,8 +346,7 @@ namespace PurrNet
                 for (var i = 0; i < obCount; i++)
                 {
                     var observer = observers[i];
-
-                    if (owner == observer)
+                    if (_ownerAuth && owner == observer)
                         continue;
 
                     SendLatestState(observer, _currentData, true);
