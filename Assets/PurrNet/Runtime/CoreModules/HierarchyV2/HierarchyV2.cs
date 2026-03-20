@@ -313,6 +313,8 @@ namespace PurrNet.Modules
 
             if (!_manager.isTranferingToNewServer)
                 NetworkPoolManager.RemovePool(_sceneId);
+            
+            _playersNeedingDeferredVisibilityPass.Clear();
         }
 
         public void TransferToNewServer()
@@ -345,6 +347,8 @@ namespace PurrNet.Modules
             Init();
 
             UnityLatestUpdate.TriggerPendingAsaps();
+            
+            _playersNeedingDeferredVisibilityPass.Clear();
         }
 
         private void OnSpawnPacketBatch(PlayerID player, SpawnPacketBatch data, bool asServer)
@@ -367,6 +371,7 @@ namespace PurrNet.Modules
         // UTP transport fix
         private readonly HashSet<Connection> _pendingServerCatchupConnections = new();
         private readonly HashSet<PlayerID> _serverCatchupDone = new();
+        private HashSet<PlayerID> _playersNeedingDeferredVisibilityPass = new();
 
         public void OnConnected(Connection connection, bool asServer)
         {
@@ -1789,6 +1794,9 @@ namespace PurrNet.Modules
                 sentCount++;
             }
 
+            if (deferredCount > 0)
+                _playersNeedingDeferredVisibilityPass.Add(playerId);
+
             LogCatchupTrace($"CatchupClient finished player={playerId} scene={_sceneId} sentSpawnEvents={sentCount} deferredToNormalSpawn={deferredCount} spawnedIdentities={_spawnedIdentities.Count}");
         }
 
@@ -1830,6 +1838,12 @@ namespace PurrNet.Modules
 
                 onIdentityAdded?.Invoke(toSpawn);
             }
+
+            foreach (PlayerID player in _playersNeedingDeferredVisibilityPass)
+            {
+                EvaluateVisibilityForPlayer(player);
+            }
+            _playersNeedingDeferredVisibilityPass.Clear();
 
             actual.Clear();
         }
