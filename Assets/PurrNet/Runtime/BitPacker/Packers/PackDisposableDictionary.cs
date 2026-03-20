@@ -137,6 +137,7 @@ namespace PurrNet.Packing
 
                 if (value.isDisposed)
                     value = DisposableDictionary<TKey, TValue>.Create();
+                else value.Clear();
 
                 foreach (var (k, v) in oldvalue)
                     value.Add(k, v);
