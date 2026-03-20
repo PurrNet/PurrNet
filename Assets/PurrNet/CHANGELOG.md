@@ -1,3 +1,10 @@
+# [1.20.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.21...v1.20.0-beta.22) (2026-03-20)
+
+
+### Bug Fixes
+
+* more resilience to _keys being corrupted ([9376e04](https://github.com/PurrNet/PurrNet/commit/9376e0420fc2ce7650ad6649efe04af2e26285ce))
+
 # [1.20.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.20...v1.20.0-beta.21) (2026-03-20)
 
 
