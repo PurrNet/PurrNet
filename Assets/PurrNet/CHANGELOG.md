@@ -1,3 +1,10 @@
+# [1.20.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.20...v1.20.0-beta.21) (2026-03-20)
+
+
+### Bug Fixes
+
+* deffensively only add keys when .Add is successful ([9781f6c](https://github.com/PurrNet/PurrNet/commit/9781f6ca55666ce9f46b9f4fcf1e3c54268a9f4d))
+
 # [1.20.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.19...v1.20.0-beta.20) (2026-03-20)
 
 
