@@ -1744,6 +1744,7 @@ namespace PurrNet.Modules
         private void CatchupClient(PlayerID playerId)
         {
             var sentCount = 0;
+            var deferredCount = 0;
 
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
@@ -1756,7 +1757,19 @@ namespace PurrNet.Modules
                     continue;
 
                 if (_toSpawnNextFrame.Contains(identity))
+                {
+                    // Identity is queued for delayed spawn. Register observer now so the
+                    // upcoming normal spawn path can deliver it to this player.
+                    if (identity.TryAddObserver(playerId))
+                    {
+                        onObserverAdded?.Invoke(playerId, identity);
+                        identity.TriggerOnPreObserverAdded(playerId, false);
+                        _triggerLateObserverAdded.Add(new PlayerNid { player = playerId, nid = identity, isSpawner = false });
+                    }
+
+                    deferredCount++;
                     continue;
+                }
 
                 identity.SetIsSpawned(true, false);
                 identity.TriggerEarlySpawnEvent(false);
@@ -1775,7 +1788,7 @@ namespace PurrNet.Modules
                 sentCount++;
             }
 
-            LogCatchupTrace($"CatchupClient finished player={playerId} scene={_sceneId} sentSpawnEvents={sentCount} spawnedIdentities={_spawnedIdentities.Count}");
+            LogCatchupTrace($"CatchupClient finished player={playerId} scene={_sceneId} sentSpawnEvents={sentCount} deferredToNormalSpawn={deferredCount} spawnedIdentities={_spawnedIdentities.Count}");
         }
 
         private bool IsServerHost()
