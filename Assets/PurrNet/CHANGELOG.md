@@ -1,3 +1,10 @@
+# [1.20.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.22...v1.20.0-beta.23) (2026-03-20)
+
+
+### Bug Fixes
+
+* Async packing change ([ef12d66](https://github.com/PurrNet/PurrNet/commit/ef12d66eb7348868b06a1912933aca9d63bfd84c))
+
 # [1.20.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.21...v1.20.0-beta.22) (2026-03-20)
 
 
