@@ -163,8 +163,8 @@ namespace PurrNet.Pooling
             if (!_isAllocated)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
-            _keys.Add(key);
             dictionary.Add(key, value);
+            _keys.Add(key);
         }
 
         public bool ContainsKey(TKey key)
