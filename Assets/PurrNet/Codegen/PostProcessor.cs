@@ -733,9 +733,13 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Ldloca, variable));
                 code.Append(Instruction.Create(OpCodes.Call, serialize));
 
-                var prepareAfterUnpack = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
-                code.Append(Instruction.Create(OpCodes.Ldloca, variable));
-                code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
+                var paramDef = param.ParameterType.Resolve();
+                if (paramDef != null && GenerateSerializersProcessor.HasInterface(paramDef, typeof(IAsyncPackable)))
+                {
+                    var prepareAfterUnpack = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
+                }
             }
 
             if (!originalMethod.IsStatic)
@@ -2334,9 +2338,13 @@ namespace PurrNet.Codegen
                     code.Append(Instruction.Create(OpCodes.Ldarg, param));
                     code.Append(Instruction.Create(OpCodes.Stloc, paramLocal));
 
-                    var prepareForPack = CreatePrepareForPackMethod(module, param.ParameterType);
-                    code.Append(Instruction.Create(OpCodes.Ldloca, paramLocal));
-                    code.Append(Instruction.Create(OpCodes.Call, prepareForPack));
+                    var paramDef = param.ParameterType.Resolve();
+                    if (paramDef != null && GenerateSerializersProcessor.HasInterface(paramDef, typeof(IAsyncPackable)))
+                    {
+                        var prepareForPack = CreatePrepareForPackMethod(module, param.ParameterType);
+                        code.Append(Instruction.Create(OpCodes.Ldloca, paramLocal));
+                        code.Append(Instruction.Create(OpCodes.Call, prepareForPack));
+                    }
 
                     MethodReference serializeGenericMethod;
 
