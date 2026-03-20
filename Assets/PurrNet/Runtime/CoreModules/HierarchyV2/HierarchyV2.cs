@@ -372,14 +372,18 @@ namespace PurrNet.Modules
         {
             if (!asServer || !connection.isValid)
                 return;
-            
+
+            LogCatchupTrace($"OnConnected scene={_sceneId} conn={connection.connectionId} valid={connection.isValid} asServer={asServer}");
+
             if (_playersManager.TryGetPlayer(connection, out var playerId))
             {
+                LogCatchupTrace($"OnConnected resolved player={playerId} conn={connection.connectionId} -> TryServerCatchup");
                 TryServerCatchup(playerId);
                 return;
             }
 
             _pendingServerCatchupConnections.Add(connection);
+            LogCatchupTrace($"OnConnected pending add conn={connection.connectionId} pendingCount={_pendingServerCatchupConnections.Count}");
         }
 
         public void OnDisconnected(Connection connection, bool asServer)
@@ -387,27 +391,49 @@ namespace PurrNet.Modules
             if (!asServer)
                 return;
 
-            _pendingServerCatchupConnections.Remove(connection);
+            var removed = _pendingServerCatchupConnections.Remove(connection);
+            LogCatchupTrace($"OnDisconnected scene={_sceneId} conn={connection.connectionId} removedPending={removed} pendingCount={_pendingServerCatchupConnections.Count}");
         }
-        
+
         private void OnServerPostPlayerJoined(PlayerID playerId, bool isReconnect, bool asServer)
         {
             if (!asServer)
                 return;
 
-            if (!_playersManager.TryGetConnection(playerId, out var conn))
-                return;
+            LogCatchupTrace($"OnServerPostPlayerJoined scene={_sceneId} player={playerId} reconnect={isReconnect} asServer={asServer}");
 
-            if (_pendingServerCatchupConnections.Remove(conn))
-                TryServerCatchup(playerId);
+            // If transport connection callbacks were missed/ordered differently,
+            // post-join is still a safe point to perform catchup.
+            if (_playersManager.TryGetConnection(playerId, out var conn))
+            {
+                _pendingServerCatchupConnections.Remove(conn);
+                LogCatchupTrace($"OnServerPostPlayerJoined resolved conn={conn.connectionId} pendingCount={_pendingServerCatchupConnections.Count}");
+            }
+            else
+            {
+                LogCatchupTrace($"OnServerPostPlayerJoined no-connection-for-player player={playerId}");
+            }
+
+            TryServerCatchup(playerId);
         }
-        
+
         private void TryServerCatchup(PlayerID playerId)
         {
             if (!_serverCatchupDone.Add(playerId))
+            {
+                LogCatchupTrace($"TryServerCatchup skipped duplicate player={playerId}");
                 return;
+            }
 
+            LogCatchupTrace($"TryServerCatchup executing player={playerId} scene={_sceneId}");
             CatchupClient(playerId);
+        }
+
+        private static void LogCatchupTrace(string msg)
+        {
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            PurrLogger.Log($"[HierarchyV2 CatchupTrace] {msg}");
+        #endif
         }
 
         bool _isDisposed;
@@ -1717,6 +1743,8 @@ namespace PurrNet.Modules
 
         private void CatchupClient(PlayerID playerId)
         {
+            var sentCount = 0;
+
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
@@ -1744,7 +1772,10 @@ namespace PurrNet.Modules
 
                 identity.TriggerSpawnEvent(false);
                 onIdentityAdded?.Invoke(identity);
+                sentCount++;
             }
+
+            LogCatchupTrace($"CatchupClient finished player={playerId} scene={_sceneId} sentSpawnEvents={sentCount} spawnedIdentities={_spawnedIdentities.Count}");
         }
 
         private bool IsServerHost()
