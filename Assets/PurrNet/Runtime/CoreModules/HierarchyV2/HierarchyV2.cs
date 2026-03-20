@@ -510,7 +510,7 @@ namespace PurrNet.Modules
             if (!_asServer && _manager.TryGetModule<HierarchyFactory>(true, out var factory) &&
                 factory.TryGetHierarchy(_sceneId, out var other))
             {
-                other.CatchupClient(player);
+                other.TryServerCatchup(player);
             }
         }
 
