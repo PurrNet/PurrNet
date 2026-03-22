@@ -1770,8 +1770,6 @@ namespace PurrNet
 
         private void OnNewConnection(Connection conn, bool asServer)
         {
-            LogTransportTrace($"OnNewConnection conn={conn.connectionId} valid={conn.isValid} asServer={asServer}");
-
             if (asServer)
                 _serverModules.OnNewConnection(conn, true);
             else
@@ -1783,8 +1781,6 @@ namespace PurrNet
 
         private void OnLostConnection(Connection conn, DisconnectReason reason, bool asServer)
         {
-            LogTransportTrace($"OnLostConnection conn={conn.connectionId} valid={conn.isValid} reason={reason} asServer={asServer}");
-
             if (asServer)
                 _serverModules.OnLostConnection(conn, true);
             else
@@ -1800,8 +1796,6 @@ namespace PurrNet
 
         private void OnDataReceived(Connection conn, ByteData data, bool asServer)
         {
-            LogTransportTrace($"OnDataReceived conn={conn.connectionId} valid={conn.isValid} len={data.length} asServer={asServer}");
-
             if (asServer)
                 _serverModules.OnDataReceived(conn, data, true);
             else _clientModules.OnDataReceived(conn, data, false);
@@ -1809,8 +1803,6 @@ namespace PurrNet
 
         private void OnConnectionState(ConnectionState state, bool asServer)
         {
-            LogTransportTrace($"OnConnectionState state={state} asServer={asServer}");
-
             if (asServer)
             {
                 isServer = state == ConnectionState.Connected;
@@ -1839,13 +1831,6 @@ namespace PurrNet
                 }
             }
         }
-
-            private void LogTransportTrace(string message)
-            {
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                PurrLogger.Log($"[TransportTrace][NetworkManager] {message}");
-        #endif
-            }
 
         /// <summary>
         /// Tries to get the module of the given type.

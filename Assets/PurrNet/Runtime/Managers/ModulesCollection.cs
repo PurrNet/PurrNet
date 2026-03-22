@@ -155,41 +155,26 @@ namespace PurrNet
 
         public void OnNewConnection(Connection conn, bool asServer)
         {
-            LogTransportTrace($"OnNewConnection conn={conn.connectionId} valid={conn.isValid} asServer={asServer} listeners={_connectionListeners.Count}");
-
             for (int i = 0; i < _connectionListeners.Count; i++)
                 _connectionListeners[i].OnConnected(conn, asServer);
         }
 
         public void OnConnectionState(ConnectionState state, bool asServer)
         {
-            LogTransportTrace($"OnConnectionState state={state} asServer={asServer} listeners={_connectionStateListeners.Count}");
-
             for (int i = 0; i < _connectionStateListeners.Count; i++)
                 _connectionStateListeners[i].OnConnectionState(state, asServer);
         }
 
         public void OnLostConnection(Connection conn, bool asServer)
         {
-            LogTransportTrace($"OnLostConnection conn={conn.connectionId} valid={conn.isValid} asServer={asServer} listeners={_connectionListeners.Count}");
-
             for (int i = 0; i < _connectionListeners.Count; i++)
                 _connectionListeners[i].OnDisconnected(conn, asServer);
         }
 
         public void OnDataReceived(Connection conn, ByteData data, bool asServer)
         {
-            LogTransportTrace($"OnDataReceived conn={conn.connectionId} valid={conn.isValid} len={data.length} asServer={asServer} listeners={_dataListeners.Count}");
-
             for (int i = 0; i < _dataListeners.Count; i++)
                 _dataListeners[i].OnDataReceived(conn, data, asServer);
-        }
-
-        private static void LogTransportTrace(string message)
-        {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            PurrLogger.Log($"[TransportTrace][ModulesCollection] {message}");
-#endif
         }
 
         public void TriggerOnUpdate()

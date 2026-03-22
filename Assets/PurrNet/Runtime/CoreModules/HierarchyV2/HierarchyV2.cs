@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Pooling;
-using PurrNet.Transports;
 using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -98,7 +97,6 @@ namespace PurrNet.Modules
         public event SpawnedAction onSentSpawnPacket;
 
         private bool _isPlayerReady;
-        private readonly HashSet<PlayerID> _serverCatchupDone = new();
 
         public HierarchyV2(NetworkManager manager, SceneID sceneId, Scene scene,
             ScenePlayersModule players, PlayersManager playersManager, bool asServer)
@@ -268,7 +266,6 @@ namespace PurrNet.Modules
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
-            _playersManager.onPostPlayerJoined += OnServerPostPlayerJoined;
 
             Init();
 
@@ -296,15 +293,12 @@ namespace PurrNet.Modules
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             _playersManager.onLocalPlayerReceivedID -= OnPlayerReceivedID;
             _playersManager.onNetworkIDReceived -= OnNetworkIDReceived;
-            _playersManager.onPostPlayerJoined -= OnServerPostPlayerJoined;
 
             _playersManager.Unsubscribe<SpawnPacketBatch>(OnSpawnPacketBatch);
             _playersManager.Unsubscribe<SpawnPacket>(OnSpawnPacket);
             _playersManager.Unsubscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Unsubscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
-
-            _serverCatchupDone.Clear();
 
             if (!_manager.isTranferingToNewServer)
                 NetworkPoolManager.RemovePool(_sceneId);
@@ -346,8 +340,6 @@ namespace PurrNet.Modules
         {
             if (data.sceneId != _sceneId)
                 return;
-
-            LogCatchupTrace($"OnSpawnPacketBatch scene={data.sceneId} player={player} asServer={asServer} spawns={data.spawnPackets.Count} despawns={data.despawnPackets.Count}");
 
             int count = data.spawnPackets.Count;
             for (var i = 0; i < count; ++i)
@@ -439,7 +431,7 @@ namespace PurrNet.Modules
             }
         }
 
-        internal void OnParentChangedPacket(PlayerID player, ChangeParentPacket data, bool asserver)
+        private void OnParentChangedPacket(PlayerID player, ChangeParentPacket data, bool asserver)
         {
             // when in host mode, let the server handle the spawning on their module
             if (!_asServer && _manager.isServer)
@@ -631,8 +623,6 @@ namespace PurrNet.Modules
             if (data.sceneId != _sceneId)
                 return;
 
-            LogCatchupTrace($"OnFinishSpawnPacket packetIdx={data.packetIdx} player={player} asServer={asServer}");
-
             if (_pendingSpawns.Remove(data.packetIdx, out var list))
             {
                 using (list)
@@ -675,7 +665,6 @@ namespace PurrNet.Modules
             }
             else
             {
-                LogCatchupTrace($"OnFinishSpawnPacket buffered packetIdx={data.packetIdx} pendingFinishCount={_pendingFinishSpawns.Count + 1}");
                 _pendingFinishSpawns.Add((data.packetIdx, player, asServer));
             }
         }
@@ -788,7 +777,6 @@ namespace PurrNet.Modules
 
         private void OnSpawnPacket(PlayerID player, SpawnPacket data, bool asServer)
         {
-            LogCatchupTrace($"OnSpawnPacket packetIdx={data.packetIdx} player={player} asServer={asServer} scene={data.sceneId} frameworkCount={data.prototype.framework.Count}");
             HandleSpawn(player, data, true);
         }
 
@@ -1670,22 +1658,6 @@ namespace PurrNet.Modules
             _toCompleteNextFrame.Clear();
         }
 
-        private void OnServerPostPlayerJoined(PlayerID playerId, bool isReconnect, bool asServer)
-        {
-            if (!asServer)
-                return;
-
-            TryServerCatchup(playerId);
-        }
-
-        private void TryServerCatchup(PlayerID playerId)
-        {
-            if (!_serverCatchupDone.Add(playerId))
-                return;
-
-            CatchupClient(playerId);
-        }
-
         private void CatchupClient(PlayerID playerId)
         {
             for (var i = 0; i < _spawnedIdentities.Count; i++)
@@ -2019,14 +1991,5 @@ namespace PurrNet.Modules
 
             return false;
         }
-
-        private void LogCatchupTrace(string message)
-        {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            PurrLogger.Log($"[CatchupTrace][HierarchyV2] {message}");
-#endif
-        }
     }
-
-    
 }
