@@ -68,6 +68,12 @@ namespace PurrNet.Transports
             set => _host = value;
         }
 
+        public string masterServer
+        {
+            get => _masterServer;
+            set => _masterServer = value;
+        }
+
         public string roomName
         {
             get => _roomName;
