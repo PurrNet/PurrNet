@@ -1716,6 +1716,9 @@ namespace PurrNet.Modules
 
         private void CatchupClient(PlayerID playerId)
         {
+            // First, spawn any pending delayed identities so they're ready for catchup
+            SpawnDelayedIdentities();
+
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
@@ -1726,8 +1729,8 @@ namespace PurrNet.Modules
                 if (!identity.id.HasValue)
                     continue;
 
-                // Don't skip pending spawn objects - they're already initialized and need to be sent to catching clients
-                // (Scene objects are added to _toSpawnNextFrame but are fully initialized)
+                if (_toSpawnNextFrame.Contains(identity))
+                    continue;
 
                 identity.SetIsSpawned(true, false);
                 identity.TriggerEarlySpawnEvent(false);
