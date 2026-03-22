@@ -129,6 +129,14 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MovePosition</b> (Vec
 <tr class="memitem:aaedaeed6bc65bb9e1da65fe4c68f22ec"><td class="memItemLeft" align="right" valign="top"><a id="aaedaeed6bc65bb9e1da65fe4c68f22ec" name="aaedaeed6bc65bb9e1da65fe4c68f22ec"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>MoveRotation</b> (Quaternion rotation)</td></tr>
 <tr class="separator:aaedaeed6bc65bb9e1da65fe4c68f22ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a22932505939adb31002b60333856cf60"><td class="memItemLeft" align="right" valign="top"><a id="a22932505939adb31002b60333856cf60" name="a22932505939adb31002b60333856cf60"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>TeleportTo</b> (Vector3 position, Quaternion rotation)</td></tr>
+<tr class="memdesc:a22932505939adb31002b60333856cf60"><td class="mdescLeft">&#160;</td><td class="mdescRight">Instantly teleports the rigidbody to a new position and rotation, clearing the interpolation buffer and syncing to all observers. Use this for respawns, portals, or any instant repositioning. For regular physics movement, use position/rotation setters, MovePosition/MoveRotation, or AddForce instead.  <br /></td></tr>
+<tr class="separator:a22932505939adb31002b60333856cf60"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a812d715d890c285ae57f0d0ddd0ed01f"><td class="memItemLeft" align="right" valign="top"><a id="a812d715d890c285ae57f0d0ddd0ed01f" name="a812d715d890c285ae57f0d0ddd0ed01f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>TeleportTo</b> (Vector3 position)</td></tr>
+<tr class="memdesc:a812d715d890c285ae57f0d0ddd0ed01f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Instantly teleports the rigidbody to a new position, clearing the interpolation buffer and syncing to all observers. Preserves current rotation and velocity.  <br /></td></tr>
+<tr class="separator:a812d715d890c285ae57f0d0ddd0ed01f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:aa9ca1d8499152c7c2a641b0b8783adf6 inherit pub_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="aa9ca1d8499152c7c2a641b0b8783adf6" name="aa9ca1d8499152c7c2a641b0b8783adf6"></a>
 Task&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetNextId&lt; T &gt;</b> (RPCType rpcType, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? target, float timeout, out <a class="el" href="structPurrNet_1_1Modules_1_1RpcRequest.html">RpcRequest</a> request)</td></tr>
@@ -391,6 +399,10 @@ Properties</h2></td></tr>
 <tr class="memitem:a3f0cfd26a848b55cad777ed4de537264"><td class="memItemLeft" align="right" valign="top"><a id="a3f0cfd26a848b55cad777ed4de537264" name="a3f0cfd26a848b55cad777ed4de537264"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>linearVelocity</b><code> [get, set]</code></td></tr>
 <tr class="separator:a3f0cfd26a848b55cad777ed4de537264"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a991b4caed336f1e8cd3e6cb0db4ca2f2"><td class="memItemLeft" align="right" valign="top"><a id="a991b4caed336f1e8cd3e6cb0db4ca2f2" name="a991b4caed336f1e8cd3e6cb0db4ca2f2"></a>
+Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>velocity</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a991b4caed336f1e8cd3e6cb0db4ca2f2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pre-Unity 6 alias for linearVelocity. <br /></td></tr>
+<tr class="separator:a991b4caed336f1e8cd3e6cb0db4ca2f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b07cf9be9bad1b9e3334fd1d89ae8b9"><td class="memItemLeft" align="right" valign="top"><a id="a3b07cf9be9bad1b9e3334fd1d89ae8b9" name="a3b07cf9be9bad1b9e3334fd1d89ae8b9"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>angularVelocity</b><code> [get, set]</code></td></tr>
 <tr class="separator:a3b07cf9be9bad1b9e3334fd1d89ae8b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -406,9 +418,15 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>mass</b><code> [get,
 <tr class="memitem:ab5fff970f6967431bdd006192f93454b"><td class="memItemLeft" align="right" valign="top"><a id="ab5fff970f6967431bdd006192f93454b" name="ab5fff970f6967431bdd006192f93454b"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>drag</b><code> [get, set]</code></td></tr>
 <tr class="separator:ab5fff970f6967431bdd006192f93454b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8ee7fb996d3486a941a3b7a8af2aecb3"><td class="memItemLeft" align="right" valign="top"><a id="a8ee7fb996d3486a941a3b7a8af2aecb3" name="a8ee7fb996d3486a941a3b7a8af2aecb3"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>linearDamping</b><code> [get, set]</code></td></tr>
+<tr class="separator:a8ee7fb996d3486a941a3b7a8af2aecb3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4e80aed31a4de26b1ff4c0962c7610f1"><td class="memItemLeft" align="right" valign="top"><a id="a4e80aed31a4de26b1ff4c0962c7610f1" name="a4e80aed31a4de26b1ff4c0962c7610f1"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>angularDrag</b><code> [get, set]</code></td></tr>
 <tr class="separator:a4e80aed31a4de26b1ff4c0962c7610f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a81fffbfa0b37b95cffc941e3aaf95238"><td class="memItemLeft" align="right" valign="top"><a id="a81fffbfa0b37b95cffc941e3aaf95238" name="a81fffbfa0b37b95cffc941e3aaf95238"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>angularDamping</b><code> [get, set]</code></td></tr>
+<tr class="separator:a81fffbfa0b37b95cffc941e3aaf95238"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af7201228e96111c51d5d84cd599ccfa2"><td class="memItemLeft" align="right" valign="top"><a id="af7201228e96111c51d5d84cd599ccfa2" name="af7201228e96111c51d5d84cd599ccfa2"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>useGravity</b><code> [get, set]</code></td></tr>
 <tr class="separator:af7201228e96111c51d5d84cd599ccfa2"><td class="memSeparator" colspan="2">&#160;</td></tr>
