@@ -1,3 +1,10 @@
+# [1.20.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.24...v1.20.0-beta.25) (2026-03-22)
+
+
+### Bug Fixes
+
+* Stop correction range from utilizing velocity damping ([eff1b2b](https://github.com/PurrNet/PurrNet/commit/eff1b2b5bc95a727dce9a27021ecc4d1056db24e))
+
 # [1.20.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.23...v1.20.0-beta.24) (2026-03-22)
 
 
