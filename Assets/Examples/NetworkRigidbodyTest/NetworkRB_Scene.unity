@@ -211,10 +211,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 0
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
@@ -452,10 +453,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
@@ -1816,10 +1818,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
@@ -1991,10 +1994,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 0
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
@@ -2357,10 +2361,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
@@ -2532,10 +2537,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
@@ -3309,10 +3315,11 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _interpolationDelay: 0.1
+  _predictionFactor: 0
   _positionStrength: 5
-  _rotationStrength: 3
+  _rotationStrength: 0
   _hardSnapDistance: 3
-  _hardSnapAngle: 210
+  _hardSnapAngle: -1
   _acceptablePositionError: 0.05
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
