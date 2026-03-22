@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Pooling;
+using PurrNet.Transports;
 using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -18,7 +19,7 @@ namespace PurrNet.Modules
 
     public delegate void SpawnDelegate(GameObject instance, bool isSceneObject);
 
-    public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer
+    public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer, IConnectionListener
     {
         private bool _asServer;
 
@@ -97,6 +98,8 @@ namespace PurrNet.Modules
         public event SpawnedAction onSentSpawnPacket;
 
         private bool _isPlayerReady;
+        private readonly HashSet<Connection> _pendingServerCatchupConnections = new();
+        private readonly HashSet<PlayerID> _serverCatchupDone = new();
 
         public HierarchyV2(NetworkManager manager, SceneID sceneId, Scene scene,
             ScenePlayersModule players, PlayersManager playersManager, bool asServer)
@@ -266,6 +269,7 @@ namespace PurrNet.Modules
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
+            _playersManager.onPostPlayerJoined += OnServerPostPlayerJoined;
 
             Init();
 
@@ -293,12 +297,16 @@ namespace PurrNet.Modules
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             _playersManager.onLocalPlayerReceivedID -= OnPlayerReceivedID;
             _playersManager.onNetworkIDReceived -= OnNetworkIDReceived;
+            _playersManager.onPostPlayerJoined -= OnServerPostPlayerJoined;
 
             _playersManager.Unsubscribe<SpawnPacketBatch>(OnSpawnPacketBatch);
             _playersManager.Unsubscribe<SpawnPacket>(OnSpawnPacket);
             _playersManager.Unsubscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Unsubscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
+
+            _pendingServerCatchupConnections.Clear();
+            _serverCatchupDone.Clear();
 
             if (!_manager.isTranferingToNewServer)
                 NetworkPoolManager.RemovePool(_sceneId);
@@ -431,6 +439,28 @@ namespace PurrNet.Modules
             {
                 other.CatchupClient(player);
             }
+        }
+
+        public void OnConnected(Connection connection, bool asServer)
+        {
+            if (!asServer || !connection.isValid)
+                return;
+
+            if (_playersManager.TryGetPlayer(connection, out var playerId))
+            {
+                TryServerCatchup(playerId);
+                return;
+            }
+
+            _pendingServerCatchupConnections.Add(connection);
+        }
+
+        public void OnDisconnected(Connection connection, bool asServer)
+        {
+            if (!asServer)
+                return;
+
+            _pendingServerCatchupConnections.Remove(connection);
         }
 
         private void OnParentChangedPacket(PlayerID player, ChangeParentPacket data, bool asserver)
@@ -1662,6 +1692,26 @@ namespace PurrNet.Modules
             }
 
             _toCompleteNextFrame.Clear();
+        }
+
+        private void OnServerPostPlayerJoined(PlayerID playerId, bool isReconnect, bool asServer)
+        {
+            if (!asServer)
+                return;
+
+            if (!_playersManager.TryGetConnection(playerId, out var conn))
+                return;
+
+            if (_pendingServerCatchupConnections.Remove(conn))
+                TryServerCatchup(playerId);
+        }
+
+        private void TryServerCatchup(PlayerID playerId)
+        {
+            if (!_serverCatchupDone.Add(playerId))
+                return;
+
+            CatchupClient(playerId);
         }
 
         private void CatchupClient(PlayerID playerId)
