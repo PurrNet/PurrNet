@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Pooling;
-using PurrNet.Transports;
 using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -19,7 +18,7 @@ namespace PurrNet.Modules
 
     public delegate void SpawnDelegate(GameObject instance, bool isSceneObject);
 
-    public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer, IConnectionListener
+    public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer
     {
         private bool _asServer;
 
@@ -268,9 +267,6 @@ namespace PurrNet.Modules
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
 
-            // Subscribe before Init to avoid missing a very early join event.
-            _playersManager.onPostPlayerJoined += OnServerPostPlayerJoined;
-
             Init();
 
             _playersManager.Subscribe<SpawnPacketBatch>(OnSpawnPacketBatch);
@@ -284,11 +280,9 @@ namespace PurrNet.Modules
         {
             if (_playersManager.lastNid.HasValue)
                 OnNetworkIDReceived(_playersManager.lastNid.Value);
-
             if (_playersManager.localPlayerId.HasValue)
                 OnPlayerReceivedID(_playersManager.localPlayerId.Value);
-            else
-                _playersManager.onLocalPlayerReceivedID += OnPlayerReceivedID;
+            else _playersManager.onLocalPlayerReceivedID += OnPlayerReceivedID;
         }
 
         public void Disable()
@@ -297,8 +291,6 @@ namespace PurrNet.Modules
             _visibility.visibilityChanged -= OnVisibilityChanged;
             _scenePlayers.onPrePlayerLoadedScene -= OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
-
-            _playersManager.onPostPlayerJoined -= OnServerPostPlayerJoined;
             _playersManager.onLocalPlayerReceivedID -= OnPlayerReceivedID;
             _playersManager.onNetworkIDReceived -= OnNetworkIDReceived;
 
@@ -307,9 +299,6 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Unsubscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
-
-            _pendingServerCatchupConnections.Clear();
-            _serverCatchupDone.Clear();
 
             if (!_manager.isTranferingToNewServer)
                 NetworkPoolManager.RemovePool(_sceneId);
@@ -362,52 +351,6 @@ namespace PurrNet.Modules
 
             FlushSpawnPackets();
             data.Dispose();
-        }
-        
-        // UTP transport fix
-        private readonly HashSet<Connection> _pendingServerCatchupConnections = new();
-        private readonly HashSet<PlayerID> _serverCatchupDone = new();
-
-        public void OnConnected(Connection connection, bool asServer)
-        {
-            if (!asServer || !connection.isValid)
-                return;
-            
-            if (_playersManager.TryGetPlayer(connection, out var playerId))
-            {
-                TryServerCatchup(playerId);
-                return;
-            }
-
-            _pendingServerCatchupConnections.Add(connection);
-        }
-
-        public void OnDisconnected(Connection connection, bool asServer)
-        {
-            if (!asServer)
-                return;
-
-            _pendingServerCatchupConnections.Remove(connection);
-        }
-        
-        private void OnServerPostPlayerJoined(PlayerID playerId, bool isReconnect, bool asServer)
-        {
-            if (!asServer)
-                return;
-
-            if (!_playersManager.TryGetConnection(playerId, out var conn))
-                return;
-
-            if (_pendingServerCatchupConnections.Remove(conn))
-                TryServerCatchup(playerId);
-        }
-        
-        private void TryServerCatchup(PlayerID playerId)
-        {
-            if (!_serverCatchupDone.Add(playerId))
-                return;
-
-            CatchupClient(playerId);
         }
 
         bool _isDisposed;
