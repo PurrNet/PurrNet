@@ -58,8 +58,14 @@ namespace PurrNet
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
         [SerializeField] private float _interpolationDelay = 0.1f;
 
+        [Tooltip("How much to extrapolate position toward the present using velocity and estimated acceleration from recent snapshots. 0 = no prediction, 1 = predict to present time, >1 = predict into the future.")]
+        [SerializeField] private float _predictionFactor;
+
         [Tooltip("How aggressively the rigidbody chases the target position. Acts as the natural frequency of a critically-damped spring.")]
         [SerializeField] private float _positionStrength = 5f;
+
+        [Tooltip("The distance over which position correction ramps from zero to full strength. Larger values give softer correction, letting local physics like collisions take effect before being pulled back.")]
+        [SerializeField] private float _correctionRange = 1f;
 
         [Tooltip("How aggressively the rigidbody corrects rotation. Lower than position strength to avoid jitter after collisions.")]
         [SerializeField] private float _rotationStrength = 3f;
@@ -201,6 +207,17 @@ namespace PurrNet
                 return;
 
             SampleBuffer();
+
+            if (_predictionFactor > 0f && _bufferCount >= 1)
+            {
+                var newest = GetSnapshot(_bufferCount - 1);
+                float timeBehind = (float)(Time.unscaledTimeAsDouble - newest.time);
+                float extrapolationTime = timeBehind * _predictionFactor;
+
+                Vector3 acceleration = EstimateAcceleration();
+                _targetPosition += _targetLinearVelocity * extrapolationTime
+                                 + 0.5f * acceleration * (extrapolationTime * extrapolationTime);
+            }
         }
 
         private void FixedUpdate()
@@ -218,7 +235,7 @@ namespace PurrNet
                 return;
             }
 
-            bool hardSnapRotation = rotationError > _hardSnapAngle;
+            bool hardSnapRotation = _hardSnapAngle >= 0 && _acceptableRotationError >= 0 && rotationError > _hardSnapAngle;
             if (hardSnapRotation)
             {
                 _lastCorrectionReason = "Hard (Rotation)";
@@ -258,7 +275,11 @@ namespace PurrNet
                 float w = _positionStrength;
                 Vector3 posError = _targetPosition - _rigidbody.position;
                 Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
-                _rigidbody.AddForce((posError * (w * w) + velError * (2f * w)) * m);
+
+                float range = Mathf.Max(_correctionRange, 0.01f);
+                float ratio = Mathf.Clamp01(posError.magnitude / range);
+
+                _rigidbody.AddForce((posError * (w * w) + velError * (2f * w)) * (m * ratio));
             }
 
             if (correctRotation)
@@ -272,7 +293,7 @@ namespace PurrNet
 
                 if (angle > 180f) angle -= 360f;
 
-                if (Mathf.Abs(angle) > _acceptableRotationError)
+                if (_acceptableRotationError >= 0 && Mathf.Abs(angle) > _acceptableRotationError)
                 {
                     Vector3 angError = axis * (angle * Mathf.Deg2Rad);
                     Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
@@ -350,6 +371,21 @@ namespace PurrNet
             int start = (_bufferHead - _bufferCount + BUFFER_SIZE) % BUFFER_SIZE;
             int actual = (start + logicalIndex) % BUFFER_SIZE;
             return _snapshotBuffer[actual];
+        }
+
+        private Vector3 EstimateAcceleration()
+        {
+            if (_bufferCount < 2)
+                return Vector3.zero;
+
+            var newest = GetSnapshot(_bufferCount - 1);
+            var previous = GetSnapshot(_bufferCount - 2);
+            float dt = (float)(newest.time - previous.time);
+
+            if (dt < 0.0001f)
+                return Vector3.zero;
+
+            return (newest.linearVelocity - previous.linearVelocity) / dt;
         }
 
         private void SampleBuffer()
