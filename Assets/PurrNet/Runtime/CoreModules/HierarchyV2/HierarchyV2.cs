@@ -98,7 +98,6 @@ namespace PurrNet.Modules
         public event SpawnedAction onSentSpawnPacket;
 
         private bool _isPlayerReady;
-        private readonly HashSet<Connection> _pendingServerCatchupConnections = new();
         private readonly HashSet<PlayerID> _serverCatchupDone = new();
 
         public HierarchyV2(NetworkManager manager, SceneID sceneId, Scene scene,
@@ -305,7 +304,6 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
 
-            _pendingServerCatchupConnections.Clear();
             _serverCatchupDone.Clear();
 
             if (!_manager.isTranferingToNewServer)
@@ -441,29 +439,7 @@ namespace PurrNet.Modules
             }
         }
 
-        internal void OnConnected(Connection connection, bool asServer)
-        {
-            if (!asServer || !connection.isValid)
-                return;
-
-            if (_playersManager.TryGetPlayer(connection, out var playerId))
-            {
-                TryServerCatchup(playerId);
-                return;
-            }
-
-            _pendingServerCatchupConnections.Add(connection);
-        }
-
-        internal void OnDisconnected(Connection connection, bool asServer)
-        {
-            if (!asServer)
-                return;
-
-            _pendingServerCatchupConnections.Remove(connection);
-        }
-
-        private void OnParentChangedPacket(PlayerID player, ChangeParentPacket data, bool asserver)
+        internal void OnParentChangedPacket(PlayerID player, ChangeParentPacket data, bool asserver)
         {
             // when in host mode, let the server handle the spawning on their module
             if (!_asServer && _manager.isServer)
@@ -1699,11 +1675,7 @@ namespace PurrNet.Modules
             if (!asServer)
                 return;
 
-            if (!_playersManager.TryGetConnection(playerId, out var conn))
-                return;
-
-            if (_pendingServerCatchupConnections.Remove(conn))
-                TryServerCatchup(playerId);
+            TryServerCatchup(playerId);
         }
 
         private void TryServerCatchup(PlayerID playerId)
@@ -1714,15 +1686,8 @@ namespace PurrNet.Modules
             CatchupClient(playerId);
         }
 
-        private void  CatchupClient(PlayerID playerId)
+        private void CatchupClient(PlayerID playerId)
         {
-            // Process any deferred spawns first to ensure they're ready for catchup
-            // This handles the case where a player joins before FixedUpdate has processed deferred spawns
-            if (_toSpawnNextFrame.Count > 0)
-            {
-                SpawnDelayedIdentities();
-            }
-
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];

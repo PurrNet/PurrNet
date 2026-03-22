@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
-    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer, IConnectionListener
+    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer
     {
         readonly ScenesModule _scenes;
 
@@ -225,18 +225,6 @@ namespace PurrNet.Modules
         {
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].EvaluateVisibilityForPlayer(player);
-        }
-
-        public void OnConnected(Connection connection, bool asServer)
-        {
-            for (var i = 0; i < _rawHierarchies.Count; i++)
-                _rawHierarchies[i].OnConnected(connection, asServer);
-        }
-
-        public void OnDisconnected(Connection connection, bool asServer)
-        {
-            for (var i = 0; i < _rawHierarchies.Count; i++)
-                _rawHierarchies[i].OnDisconnected(connection, asServer);
         }
     }
 }
