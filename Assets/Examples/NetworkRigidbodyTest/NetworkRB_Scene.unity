@@ -210,15 +210,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 0
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 80
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -453,15 +451,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 90
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -1819,15 +1815,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 90
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -1996,15 +1990,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 0
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 80
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -2364,15 +2356,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 90
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -2541,15 +2531,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 90
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -2670,11 +2658,13 @@ MonoBehaviour:
   _dontDestroyOnLoad: 1
   _transport: {fileID: 1216416902}
   _networkPrefabs: {fileID: 11400000, guid: 13754d80eb790cf4aba25fbab87b9ea3, type: 2}
+  _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: 993e21bbc8166b644a58e83b902aafe9, type: 2}
   _networkRules: {fileID: 11400000, guid: cec797726b965cc4ea3b8f11692310ca, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 0}
   _tickRate: 20
+  _mtuExceededBehaviour: 1
   _patchLingeringProcessBug: 1
 --- !u!4 &1216416898
 Transform:
@@ -2710,6 +2700,13 @@ MonoBehaviour:
   _address: 127.0.0.1
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!114 &1216416905
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2795,6 +2792,13 @@ MonoBehaviour:
   _host: purrtransport-france.purrservers.com
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!114 &1216416913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3304,15 +3308,13 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 90
-  _dampingConstant: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 0
-  _maxForcesPerTick: 8
+  _interpolationDelay: 0.1
+  _positionStrength: 5
+  _rotationStrength: 3
+  _hardSnapDistance: 3
+  _hardSnapAngle: 210
+  _acceptablePositionError: 0.05
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
