@@ -67,6 +67,12 @@ namespace PurrNet
         [Tooltip("The distance over which position correction ramps from zero to full strength. Larger values give softer correction, letting local physics like collisions take effect before being pulled back.")]
         [SerializeField] private float _correctionRange = 1f;
 
+        [Tooltip("How much local collisions temporarily reduce correction strength on non-controller bodies. 0 = collisions don't affect correction, 1 = full collision softening.")]
+        [SerializeField, Range(0f, 1f)] private float _collisionSoftening = 0.8f;
+
+        [Tooltip("How quickly correction strength recovers after a collision stops. Higher = faster recovery.")]
+        [SerializeField] private float _collisionRecoverySpeed = 5f;
+
         [Tooltip("How aggressively the rigidbody corrects rotation. Lower than position strength to avoid jitter after collisions.")]
         [SerializeField] private float _rotationStrength = 3f;
 
@@ -113,6 +119,7 @@ namespace PurrNet
         private bool _receivedFirstSnapshot;
         private string _lastCorrectionReason = "No";
         private Vector3 _latestRawSnapshotPos;
+        private float _collisionIntensity;
 
         private void Awake()
         {
@@ -225,6 +232,8 @@ namespace PurrNet
             if (!isSpawned || IsController(_ownerAuth) || _hasPendingTeleport || !_receivedFirstSnapshot)
                 return;
 
+            _collisionIntensity = Mathf.MoveTowards(_collisionIntensity, 0f, _collisionRecoverySpeed * Time.fixedDeltaTime);
+
             float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
             float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
 
@@ -269,6 +278,7 @@ namespace PurrNet
         private void ApplyCorrection(bool correctPosition, bool correctRotation)
         {
             float m = _rigidbody.mass;
+            float collisionScale = 1f - _collisionIntensity;
 
             if (correctPosition)
             {
@@ -281,7 +291,7 @@ namespace PurrNet
 
                 Vector3 positionalPull = posError * (w * w) * ratio;
                 Vector3 velocityDamping = velError * (2f * w);
-                _rigidbody.AddForce((positionalPull + velocityDamping) * m);
+                _rigidbody.AddForce((positionalPull + velocityDamping) * (m * collisionScale));
             }
 
             if (correctRotation)
@@ -299,9 +309,9 @@ namespace PurrNet
                 {
                     Vector3 angError = axis * (angle * Mathf.Deg2Rad);
                     Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                    Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
+                    Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * (m * collisionScale);
 
-                    float maxTorque = w * w * m;
+                    float maxTorque = w * w * m * collisionScale;
                     float torqueMag = torque.magnitude;
                     if (torqueMag > maxTorque)
                         torque *= maxTorque / torqueMag;
@@ -314,14 +324,15 @@ namespace PurrNet
         private void MatchVelocity()
         {
             float m = _rigidbody.mass;
+            float collisionScale = 1f - _collisionIntensity;
 
             Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
             if (velError.sqrMagnitude > 0.001f)
-                _rigidbody.AddForce(velError * (_positionStrength * m));
+                _rigidbody.AddForce(velError * (_positionStrength * m * collisionScale));
 
             Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
             if (angVelError.sqrMagnitude > 0.001f)
-                _rigidbody.AddTorque(angVelError * (_rotationStrength * m));
+                _rigidbody.AddTorque(angVelError * (_rotationStrength * m * collisionScale));
         }
 
         private void HardCorrect()
@@ -480,6 +491,16 @@ namespace PurrNet
         }
 
         #endregion
+
+        private void OnCollisionStay(Collision collision)
+        {
+            if (!isSpawned || IsController(_ownerAuth))
+                return;
+
+            float impulse = collision.impulse.magnitude;
+            float normalized = Mathf.Clamp01(impulse / Mathf.Max(_rigidbody.mass, 0.01f));
+            _collisionIntensity = Mathf.Max(_collisionIntensity, normalized * _collisionSoftening);
+        }
 
         #region Helpers
 
