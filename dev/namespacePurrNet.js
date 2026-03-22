@@ -153,6 +153,7 @@ var namespacePurrNet =
     [ "SyncTimer", "classPurrNet_1_1SyncTimer.html", "classPurrNet_1_1SyncTimer" ],
     [ "SyncVar", "classPurrNet_1_1SyncVar.html", "classPurrNet_1_1SyncVar" ],
     [ "TargetRpcAttribute", "classPurrNet_1_1TargetRpcAttribute.html", null ],
+    [ "TimestampedSnapshot", "structPurrNet_1_1TimestampedSnapshot.html", null ],
     [ "UnionRPCHeader", "structPurrNet_1_1UnionRPCHeader.html", null ],
     [ "UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
     [ "ValidatedSyncVar", "classPurrNet_1_1ValidatedSyncVar.html", "classPurrNet_1_1ValidatedSyncVar" ],
