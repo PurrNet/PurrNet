@@ -101,31 +101,19 @@ namespace PurrNet.UTP
         {
             try
             {
-                // Try to query actual MTU from the underlying transport
-                var transport = asServer ? _server?.transport : _client?.transport;
-                if (transport.HasValue)
+                // Safe default MTU values based on channel type
+                return channel switch
                 {
-                    var mtu = transport.Value.GetMaximumPayloadSize();
-                    // Reduce by channel overhead
-                    return channel switch
-                    {
-                        Channel.Unreliable => (int)(mtu * 0.9f), // Leave 10% headroom for protocol overhead
-                        _ => (int)(mtu * 0.95f)
-                    };
-                }
+                    Channel.Unreliable => 8192,
+                    Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
+                    _ => 8192
+                };
             }
             catch
             {
-                // Fallback to safe defaults if query fails
+                // Fallback to minimum safe size if any error occurs
+                return 1024;
             }
-
-            // Safe default MTU values
-            return channel switch
-            {
-                Channel.Unreliable => 8192,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
-            };
         }
 
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
