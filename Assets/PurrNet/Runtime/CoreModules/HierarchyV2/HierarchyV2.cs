@@ -427,7 +427,6 @@ namespace PurrNet.Modules
 
             LogCatchupTrace($"TryServerCatchup executing player={playerId} scene={_sceneId}");
             CatchupClient(playerId);
-            EvaluateVisibilityForPlayer(playerId);
         }
 
         private static void LogCatchupTrace(string msg)
