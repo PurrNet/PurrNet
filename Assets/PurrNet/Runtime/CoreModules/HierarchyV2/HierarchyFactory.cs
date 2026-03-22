@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using PurrNet.Logging;
+using PurrNet.Transports;
 using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
@@ -224,6 +225,18 @@ namespace PurrNet.Modules
         {
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].EvaluateVisibilityForPlayer(player);
+        }
+
+        public void OnConnected(Connection connection, bool asServer)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].OnConnected(connection, asServer);
+        }
+
+        public void OnDisconnected(Connection connection, bool asServer)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].OnDisconnected(connection, asServer);
         }
     }
 }
