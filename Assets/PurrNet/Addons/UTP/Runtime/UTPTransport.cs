@@ -389,7 +389,7 @@ namespace PurrNet.UTP
         private void OnClientDataReceived(ByteData data)
         {
             LogTransportTrace($"Client data received len={data.length}");
-            onDataReceived?.Invoke(new Connection(-1), data, false);
+            onDataReceived?.Invoke(new Connection(0), data, false);
         }
 
         private void OnClientStateChanged(ConnectionState state)
