@@ -1,3 +1,10 @@
+# [1.20.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.28...v1.20.0-beta.29) (2026-03-22)
+
+
+### Bug Fixes
+
+* Improved NetworkRB Support for Unity 5 & 6 ([79b09c8](https://github.com/PurrNet/PurrNet/commit/79b09c8bf8a851ebfb0cda8f2296f02401dc8be2))
+
 # [1.20.0-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.27...v1.20.0-beta.28) (2026-03-22)
 
 
