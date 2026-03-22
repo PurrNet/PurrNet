@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Transports;
 using UnityEngine;
@@ -19,7 +18,6 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
-        public float? senderPing;
     }
 
     public struct RigidbodyTeleportData
@@ -39,6 +37,15 @@ namespace PurrNet
         public bool isKinematic;
     }
 
+    struct TimestampedSnapshot
+    {
+        public double time;
+        public Vector3 position;
+        public Quaternion rotation;
+        public Vector3 linearVelocity;
+        public Vector3 angularVelocity;
+    }
+
     [RequireComponent(typeof(Rigidbody))]
     [AddComponentMenu("PurrNet/Network Rigidbody")]
     public partial class NetworkRigidbody : NetworkIdentity, ITick
@@ -47,57 +54,29 @@ namespace PurrNet
         [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
         [SerializeField] private bool _ownerAuth;
 
-        [Header("Correction Settings")]
-        [Tooltip("The distance error below which we stop applying correction forces. Prevents micro-jitter when very close to target.")]
-        [SerializeField] private float _acceptableError = 0.05f;
+        [Header("Correction")]
+        [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
+        [SerializeField] private float _interpolationDelay = 0.1f;
 
-        [Tooltip("If the distance error exceeds this threshold, the object will immediately teleport (snap) to the target.")]
-        [SerializeField] private float _hardCorrectionThreshold = 2f;
+        [Tooltip("How aggressively the rigidbody chases the target position. Acts as the natural frequency of a critically-damped spring.")]
+        [SerializeField] private float _positionStrength = 5f;
 
-        [Tooltip("Maximum duration (in seconds) to attempt soft correction forces before forcing a hard teleport. Set to -1 to disable.")]
-        [SerializeField] private float _maxCorrectionTime = -1f;
+        [Tooltip("How aggressively the rigidbody corrects rotation. Lower than position strength to avoid jitter after collisions.")]
+        [SerializeField] private float _rotationStrength = 3f;
 
-        [Tooltip("The stiffness of the force pulling the object towards the target position. Higher values mean a tighter sync but more potential for jitter.")]
-        [SerializeField] private float _springConstant = 80f;
+        [Tooltip("If the position error exceeds this distance, teleport instead of using forces.")]
+        [SerializeField] private float _hardSnapDistance = 3f;
 
-        [Tooltip("The resistance applied to smooth out the movement and match the target's velocity. Helps prevent oscillation.")]
-        [SerializeField] private float _dampingConstant = 5f;
-        
-        [Header("Rotation Correction")]
-        [Tooltip("Multiplier for rotation correction strength relative to position correction.")]
-        [SerializeField] private float _rotationSpringMultiplier = 0.3f;
+        [Tooltip("If the rotation error (degrees) exceeds this threshold, snap rotation instead of using torque.")]
+        [SerializeField] private float _hardSnapAngle = 210f;
 
-        [Tooltip("Minimum angle error (degrees) before applying rotation correction.")]
-        [SerializeField] private float _minRotationCorrectionAngle = 1f;
-        
-        [Header("Dynamic Spring Scaling")]
-        [Tooltip("How much to reduce spring strength based on recent acceleration. Higher = more reduction during collisions.")]
-        [SerializeField] private float _uncertaintySpringDampening = 0.5f;
+        [Tooltip("Position error below which correction forces stop. Prevents micro-jitter at rest.")]
+        [SerializeField] private float _acceptablePositionError = 0.05f;
 
-        [Tooltip("How quickly the tracked acceleration decays back to zero.")]
-        [SerializeField] private float _accelerationDecay = 0.85f;
+        [Tooltip("Rotation error (degrees) below which rotation correction stops.")]
+        [SerializeField] private float _acceptableRotationError = 1f;
 
-        [Header("Dynamic Hard Correction")]
-        [Tooltip("How much to increase hard correction threshold based on recent acceleration.")]
-        [SerializeField] private float _hardCorrectionAccelerationScale = 0.1f;
-
-        [Tooltip("Maximum multiplier for the hard correction threshold.")]
-        [SerializeField] private float _maxHardCorrectionMultiplier = 5f;
-
-        [Header("Stabilization & Prediction")]
-        [Tooltip("Speed under which we relax the spring to prevent jitter while rolling slowly.")]
-        [SerializeField] private float _lowSpeedThreshold = 1.5f;
-
-        [Tooltip("How much to weaken the spring at low speeds (0.1 = 10% strength). helps smoother stops.")]
-        [SerializeField] private float _lowSpeedSpringMultiplier = 0.1f;
-
-        [Tooltip("Whether the target position should extrapolate based on local ping")]
-        [SerializeField] private bool _extrapolateBasedOnPing;
-
-        [Tooltip("Smooths the received target toward new updates to reduce stutter from network jitter. 0 = no smoothing, 1 = full smoothing (more latency).")]
-        [SerializeField, Range(0f, 1f)] private float _targetSmoothing;
-
-        [Header("Sync Settings")]
+        [Header("Sync")]
         [Tooltip("Minimum distance moved required to trigger a network update.")]
         [SerializeField] private float _positionChangeThreshold = 0.001f;
 
@@ -108,24 +87,26 @@ namespace PurrNet
         [SerializeField] private float _velocityStopThreshold = 0.001f;
 
         private Rigidbody _rigidbody;
-        
+
+        private const int BUFFER_SIZE = 32;
+        private readonly TimestampedSnapshot[] _snapshotBuffer = new TimestampedSnapshot[BUFFER_SIZE];
+        private int _bufferHead;
+        private int _bufferCount;
+
         private Vector3 _targetPosition;
-        private Quaternion _targetRotation;
+        private Quaternion _targetRotation = Quaternion.identity;
         private Vector3 _targetLinearVelocity;
         private Vector3 _targetAngularVelocity;
+
         private Vector3 _lastSyncedPosition;
         private Quaternion _lastSyncedRotation;
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
-        private float _lastExtrapolation;
-        private Vector3 _previousVelocity;
-        private float _recentAccelerationMagnitude;
-        
-        private float _correctionTimer;
-        private bool _isCorreting;
+
         private bool _hasPendingTeleport;
-        private int _lastCorrectionFrame = -1;
+        private bool _receivedFirstSnapshot;
         private string _lastCorrectionReason = "No";
+        private Vector3 _latestRawSnapshotPos;
 
         private void Awake()
         {
@@ -141,28 +122,37 @@ namespace PurrNet
         {
             base.OnSpawned();
 
-            _targetPosition = _rigidbody.position;
-            _targetRotation = _rigidbody.rotation;
-#if UNITY_6000_0_OR_NEWER
-            _targetLinearVelocity = _rigidbody.linearVelocity;
-#else
-            _targetLinearVelocity = _rigidbody.velocity;
-#endif
-            _targetAngularVelocity = _rigidbody.angularVelocity;
-            
-            _lastSyncedPosition = _rigidbody.position;
-            _lastSyncedRotation = _rigidbody.rotation;
-            
-#if UNITY_6000_0_OR_NEWER
-            _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
-#else
-            _lastSyncedLinearVelocity = _rigidbody.velocity;
-#endif
-            
-            _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
+            var pos = _rigidbody.position;
+            var rot = _rigidbody.rotation;
+            var linVel = GetLinearVelocity();
+            var angVel = _rigidbody.angularVelocity;
+
+            _targetPosition = pos;
+            _targetRotation = rot;
+            _targetLinearVelocity = linVel;
+            _targetAngularVelocity = angVel;
+
+            _lastSyncedPosition = pos;
+            _lastSyncedRotation = rot;
+            _lastSyncedLinearVelocity = linVel;
+            _lastSyncedAngularVelocity = angVel;
+
+            _latestRawSnapshotPos = pos;
+            _receivedFirstSnapshot = IsController(_ownerAuth);
+
+            ClearBuffer();
 
             if (IsController(_ownerAuth))
+            {
                 SyncSettings(GetCurrentSettings());
+                SyncInitialState(new RigidbodyStateData
+                {
+                    position = pos,
+                    rotation = rot,
+                    linearVelocity = linVel,
+                    angularVelocity = angVel
+                });
+            }
         }
 
         public void OnTick(float delta)
@@ -172,39 +162,26 @@ namespace PurrNet
 
             if (IsController(_ownerAuth))
                 ControllerTick();
-            else if (_lastCorrectionFrame != Time.frameCount)
-            {
-                _lastCorrectionFrame = Time.frameCount;
-                NonControllerTick(delta);
-            }
+            else
+                NonControllerTick();
         }
 
         private void ControllerTick()
         {
             if (!HasStateChanged() && !ShouldSyncWhenStopped())
                 return;
-            float? myPing = (!isServer && _extrapolateBasedOnPing) ? (float)NetworkManager.main.tickModule.rtt : null;
+
             var stateData = new RigidbodyStateData
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
-#if UNITY_6000_0_OR_NEWER
-                linearVelocity = _rigidbody.linearVelocity,
-#else
-                linearVelocity = _rigidbody.velocity,
-#endif
-                angularVelocity = _rigidbody.angularVelocity,
-                senderPing = myPing
+                linearVelocity = GetLinearVelocity(),
+                angularVelocity = _rigidbody.angularVelocity
             };
 
             _targetPosition = _rigidbody.position;
             _targetRotation = _rigidbody.rotation;
-            
-#if UNITY_6000_0_OR_NEWER
-            _targetLinearVelocity = _rigidbody.linearVelocity;
-#else
-            _targetLinearVelocity = _rigidbody.velocity;
-#endif
+            _targetLinearVelocity = GetLinearVelocity();
             _targetAngularVelocity = _rigidbody.angularVelocity;
 
             if (isServer)
@@ -214,188 +191,296 @@ namespace PurrNet
 
             _lastSyncedPosition = _rigidbody.position;
             _lastSyncedRotation = _rigidbody.rotation;
-            
-#if UNITY_6000_0_OR_NEWER
-            _lastSyncedLinearVelocity = _rigidbody.linearVelocity;
-#else
-            _lastSyncedLinearVelocity = _rigidbody.velocity;
-#endif
+            _lastSyncedLinearVelocity = GetLinearVelocity();
             _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
         }
 
-        private void NonControllerTick(float delta)
+        private void NonControllerTick()
         {
             if (_hasPendingTeleport)
                 return;
 
-            TrackAcceleration(delta);
+            SampleBuffer();
+        }
 
-            float error = Vector3.Distance(_rigidbody.position, _targetPosition);
-            float dynamicHardThreshold = GetDynamicHardCorrectionThreshold();
-            float rotationAngle = Quaternion.Angle(_rigidbody.rotation, _targetRotation);
-
-            if (error < _acceptableError)
-            {
-                _isCorreting = false;
-                _correctionTimer = 0f;
-                _lastCorrectionReason = "No";
+        private void FixedUpdate()
+        {
+            if (!isSpawned || IsController(_ownerAuth) || _hasPendingTeleport || !_receivedFirstSnapshot)
                 return;
-            }
 
-            if (error >= dynamicHardThreshold)
+            float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
+            float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
+
+            if (positionError >= _hardSnapDistance)
             {
                 _lastCorrectionReason = "Hard (Distance)";
                 HardCorrect();
                 return;
             }
 
-            _isCorreting = true;
-            _correctionTimer += delta;
-
-            if (_maxCorrectionTime >= 0 && _correctionTimer >= _maxCorrectionTime)
+            bool hardSnapRotation = rotationError > _hardSnapAngle;
+            if (hardSnapRotation)
             {
-                _lastCorrectionReason = "Hard (Timeout)";
-                HardCorrect();
+                _lastCorrectionReason = "Hard (Rotation)";
+                _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
+                _rigidbody.angularVelocity = _targetAngularVelocity;
+            }
+
+            bool correctPosition = positionError > _acceptablePositionError;
+            bool correctRotation = !hardSnapRotation && rotationError > _acceptableRotationError;
+
+            if (!correctPosition && !correctRotation)
+            {
+                if (!hardSnapRotation)
+                    _lastCorrectionReason = "No";
+                MatchVelocity();
                 return;
             }
 
-            _lastCorrectionReason = Mathf.Abs(rotationAngle) > _minRotationCorrectionAngle ? "Distance+Rotation" : "Distance";
-        }
-
-        private void FixedUpdate()
-        {
-            if (!isSpawned || IsController(_ownerAuth) || !_isCorreting || _hasPendingTeleport)
-                return;
-
-            ApplySoftCorrection();
-        }
-
-        private float GetDynamicHardCorrectionThreshold()
-        {
-            float scale = 1f + _recentAccelerationMagnitude * _hardCorrectionAccelerationScale;
-            scale = Mathf.Min(scale, _maxHardCorrectionMultiplier);
-            return _hardCorrectionThreshold * scale;
-        }
-
-        private void ApplySoftCorrection()
-        {
-#if UNITY_6000_0_OR_NEWER
-            float currentSpeed = _rigidbody.linearVelocity.magnitude;
-#else
-            float currentSpeed = _rigidbody.velocity.magnitude;
-#endif
-            float springScale = GetDynamicSpringScale();
-            float baseSpring = _springConstant;
-            float dynamicDamping = _dampingConstant;
-
-            if (currentSpeed < _lowSpeedThreshold)
-            {
-                float factor = Mathf.Clamp01(currentSpeed / _lowSpeedThreshold);
-                baseSpring = Mathf.Lerp(_springConstant * _lowSpeedSpringMultiplier, _springConstant, factor);
-            }
+            if (hardSnapRotation)
+                _lastCorrectionReason = correctPosition ? "Hard (Rotation) + Position" : "Hard (Rotation)";
+            else if (correctPosition && correctRotation)
+                _lastCorrectionReason = "Position+Rotation";
+            else if (correctPosition)
+                _lastCorrectionReason = "Position";
             else
-            {
-                baseSpring = _springConstant * springScale;
-                dynamicDamping = _dampingConstant * springScale;
-            }
+                _lastCorrectionReason = "Rotation";
 
-            Vector3 positionError = _targetPosition - _rigidbody.position;
-            Vector3 springForce = positionError * (baseSpring * _rigidbody.mass);
-    
-#if UNITY_6000_0_OR_NEWER
-            Vector3 velocityError = _targetLinearVelocity - _rigidbody.linearVelocity;
-#else
-            Vector3 velocityError = _targetLinearVelocity - _rigidbody.velocity;
-#endif
-            Vector3 dampingForce = velocityError * (dynamicDamping * _rigidbody.mass);
-    
-            _rigidbody.AddForce(springForce + dampingForce);
-
-            Quaternion rotationError = _targetRotation * Quaternion.Inverse(_rigidbody.rotation);
-            rotationError.ToAngleAxis(out float angle, out Vector3 axis);
-            if (angle > 180f) angle -= 360f;
-    
-            if (Mathf.Abs(angle) > _minRotationCorrectionAngle)
-            {
-                float angularVelocityDiff = Vector3.Distance(_targetAngularVelocity, _rigidbody.angularVelocity);
-                float rotationUrgency = Mathf.Clamp01(angularVelocityDiff / 5f);
-    
-                float rotationSpring = baseSpring * _rotationSpringMultiplier * (0.2f + 0.8f * rotationUrgency);
-                Vector3 torque = axis * (angle * Mathf.Deg2Rad * rotationSpring * _rigidbody.mass);
-    
-                Vector3 angularVelocityError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                Vector3 angularDamping = angularVelocityError * (dynamicDamping * _rotationSpringMultiplier * _rigidbody.mass);
-    
-                _rigidbody.AddTorque(torque + angularDamping);
-            }
-        }
-        
-        private float GetDynamicSpringScale()
-        {
-            float uncertainty = _recentAccelerationMagnitude;
-            return 1f / (1f + uncertainty * _uncertaintySpringDampening);
+            ApplyCorrection(correctPosition, correctRotation);
         }
 
-        private float GetDynamicSpringConstant()
+        private void ApplyCorrection(bool correctPosition, bool correctRotation)
         {
-            return _springConstant * GetDynamicSpringScale();
+            float m = _rigidbody.mass;
+
+            if (correctPosition)
+            {
+                float w = _positionStrength;
+                Vector3 posError = _targetPosition - _rigidbody.position;
+                Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
+                _rigidbody.AddForce((posError * (w * w) + velError * (2f * w)) * m);
+            }
+
+            if (correctRotation)
+            {
+                float w = _rotationStrength;
+                Quaternion rotError = NormalizeQuaternion(_targetRotation) * Quaternion.Inverse(_rigidbody.rotation);
+                rotError.ToAngleAxis(out float angle, out Vector3 axis);
+
+                if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
+                    return;
+
+                if (angle > 180f) angle -= 360f;
+
+                if (Mathf.Abs(angle) > _acceptableRotationError)
+                {
+                    Vector3 angError = axis * (angle * Mathf.Deg2Rad);
+                    Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
+                    Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
+
+                    float maxTorque = w * w * m;
+                    float torqueMag = torque.magnitude;
+                    if (torqueMag > maxTorque)
+                        torque *= maxTorque / torqueMag;
+
+                    _rigidbody.AddTorque(torque);
+                }
+            }
+        }
+
+        private void MatchVelocity()
+        {
+            float m = _rigidbody.mass;
+
+            Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
+            if (velError.sqrMagnitude > 0.001f)
+                _rigidbody.AddForce(velError * (_positionStrength * m));
+
+            Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
+            if (angVelError.sqrMagnitude > 0.001f)
+                _rigidbody.AddTorque(angVelError * (_rotationStrength * m));
         }
 
         private void HardCorrect()
         {
             _rigidbody.MovePosition(_targetPosition);
-            _rigidbody.MoveRotation(_targetRotation);
-            _isCorreting = false;
-            _correctionTimer = 0f;
+            _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
+            SetLinearVelocity(_targetLinearVelocity);
+            _rigidbody.angularVelocity = _targetAngularVelocity;
         }
-        
-        private void TrackAcceleration(float delta)
+
+        private static Quaternion NormalizeQuaternion(Quaternion q)
         {
-            if (delta <= 0) return;
-    
+            float dot = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+            if (dot < 0.0001f)
+                return Quaternion.identity;
+            float inv = 1f / Mathf.Sqrt(dot);
+            return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
+        }
+
+        #region Snapshot Buffer
+
+        private void ClearBuffer()
+        {
+            _bufferHead = 0;
+            _bufferCount = 0;
+        }
+
+        private void PushSnapshot(RigidbodyStateData data)
+        {
+            _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
+            {
+                time = Time.unscaledTimeAsDouble,
+                position = data.position,
+                rotation = data.rotation,
+                linearVelocity = data.linearVelocity,
+                angularVelocity = data.angularVelocity
+            };
+
+            _bufferHead = (_bufferHead + 1) % BUFFER_SIZE;
+            if (_bufferCount < BUFFER_SIZE)
+                _bufferCount++;
+
+            _receivedFirstSnapshot = true;
+            _latestRawSnapshotPos = data.position;
+        }
+
+        private TimestampedSnapshot GetSnapshot(int logicalIndex)
+        {
+            int start = (_bufferHead - _bufferCount + BUFFER_SIZE) % BUFFER_SIZE;
+            int actual = (start + logicalIndex) % BUFFER_SIZE;
+            return _snapshotBuffer[actual];
+        }
+
+        private void SampleBuffer()
+        {
+            if (_bufferCount == 0)
+                return;
+
+            if (_bufferCount == 1)
+            {
+                var only = GetSnapshot(0);
+                _targetPosition = only.position;
+                _targetRotation = only.rotation;
+                _targetLinearVelocity = only.linearVelocity;
+                _targetAngularVelocity = only.angularVelocity;
+                return;
+            }
+
+            double renderTime = Time.unscaledTimeAsDouble - _interpolationDelay;
+
+            var oldest = GetSnapshot(0);
+            var newest = GetSnapshot(_bufferCount - 1);
+
+            if (renderTime <= oldest.time)
+            {
+                _targetPosition = oldest.position;
+                _targetRotation = oldest.rotation;
+                _targetLinearVelocity = oldest.linearVelocity;
+                _targetAngularVelocity = oldest.angularVelocity;
+                return;
+            }
+
+            if (renderTime >= newest.time)
+            {
+                float overshoot = (float)(renderTime - newest.time);
+                float decay = Mathf.Exp(-2f * overshoot);
+                _targetPosition = newest.position + newest.linearVelocity * overshoot * decay;
+                _targetRotation = newest.rotation;
+                _targetLinearVelocity = newest.linearVelocity * decay;
+                _targetAngularVelocity = newest.angularVelocity * decay;
+                return;
+            }
+
+            for (int i = 0; i < _bufferCount - 1; i++)
+            {
+                var a = GetSnapshot(i);
+                var b = GetSnapshot(i + 1);
+
+                if (renderTime >= a.time && renderTime <= b.time)
+                {
+                    float span = (float)(b.time - a.time);
+                    if (span < 0.0001f)
+                    {
+                        _targetPosition = b.position;
+                        _targetRotation = b.rotation;
+                        _targetLinearVelocity = b.linearVelocity;
+                        _targetAngularVelocity = b.angularVelocity;
+                        return;
+                    }
+
+                    float t = (float)(renderTime - a.time) / span;
+                    HermiteInterpolate(a, b, span, t);
+                    return;
+                }
+            }
+
+            _targetPosition = newest.position;
+            _targetRotation = newest.rotation;
+            _targetLinearVelocity = newest.linearVelocity;
+            _targetAngularVelocity = newest.angularVelocity;
+        }
+
+        private void HermiteInterpolate(TimestampedSnapshot a, TimestampedSnapshot b, float dt, float t)
+        {
+            float t2 = t * t;
+            float t3 = t2 * t;
+
+            float h00 = 2f * t3 - 3f * t2 + 1f;
+            float h10 = t3 - 2f * t2 + t;
+            float h01 = -2f * t3 + 3f * t2;
+            float h11 = t3 - t2;
+
+            _targetPosition = h00 * a.position
+                            + h10 * a.linearVelocity * dt
+                            + h01 * b.position
+                            + h11 * b.linearVelocity * dt;
+
+            _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
+            _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
+            _targetAngularVelocity = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private Vector3 GetLinearVelocity()
+        {
 #if UNITY_6000_0_OR_NEWER
-            Vector3 currentAccel = (_rigidbody.linearVelocity - _previousVelocity) / delta;
+            return _rigidbody.linearVelocity;
 #else
-            Vector3 currentAccel = (_rigidbody.velocity - _previousVelocity) / delta;
-#endif
-            float decay = Mathf.Pow(_accelerationDecay, delta / 0.05f);
-            _recentAccelerationMagnitude = Mathf.Max(
-                _recentAccelerationMagnitude * decay, 
-                currentAccel.magnitude
-            );
-#if UNITY_6000_0_OR_NEWER
-            _previousVelocity = _rigidbody.linearVelocity;
-#else
-            _previousVelocity = _rigidbody.velocity;
+            return _rigidbody.velocity;
 #endif
         }
-        
+
+        private void SetLinearVelocity(Vector3 value)
+        {
+#if UNITY_6000_0_OR_NEWER
+            _rigidbody.linearVelocity = value;
+#else
+            _rigidbody.velocity = value;
+#endif
+        }
+
         private bool HasStateChanged()
         {
             float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
             float rotationDelta = Quaternion.Angle(_rigidbody.rotation, _lastSyncedRotation);
-            
-#if UNITY_6000_0_OR_NEWER
-            float linearVelocityDelta = Vector3.Distance(_rigidbody.linearVelocity, _lastSyncedLinearVelocity);
-#else
-            float linearVelocityDelta = Vector3.Distance(_rigidbody.velocity, _lastSyncedLinearVelocity);
-#endif
+            float linearVelocityDelta = Vector3.Distance(GetLinearVelocity(), _lastSyncedLinearVelocity);
             float angularVelocityDelta = Vector3.Distance(_rigidbody.angularVelocity, _lastSyncedAngularVelocity);
 
-            return positionDelta > _positionChangeThreshold || rotationDelta > _rotationChangeThreshold || linearVelocityDelta > _velocityStopThreshold || angularVelocityDelta > _velocityStopThreshold;
+            return positionDelta > _positionChangeThreshold
+                || rotationDelta > _rotationChangeThreshold
+                || linearVelocityDelta > _velocityStopThreshold
+                || angularVelocityDelta > _velocityStopThreshold;
         }
 
         private bool ShouldSyncWhenStopped()
         {
-#if UNITY_6000_0_OR_NEWER
-            float magnitude = _rigidbody.linearVelocity.magnitude;
-#else
-            float magnitude = _rigidbody.velocity.magnitude;
-#endif
-            
-            return magnitude < _velocityStopThreshold &&
-                   _rigidbody.angularVelocity.magnitude < _velocityStopThreshold &&
-                   !_rigidbody.IsSleeping();
+            return GetLinearVelocity().magnitude < _velocityStopThreshold
+                && _rigidbody.angularVelocity.magnitude < _velocityStopThreshold
+                && !_rigidbody.IsSleeping();
         }
 
         private RigidbodySettingsData GetCurrentSettings()
@@ -405,12 +490,9 @@ namespace PurrNet
                 mass = _rigidbody.mass,
 #if UNITY_6000_0_OR_NEWER
                 drag = _rigidbody.linearDamping,
-#else
-                drag = _rigidbody.drag,
-#endif
-#if UNITY_6000_0_OR_NEWER
                 angularDrag = _rigidbody.angularDamping,
 #else
+                drag = _rigidbody.drag,
                 angularDrag = _rigidbody.angularDrag,
 #endif
                 useGravity = _rigidbody.useGravity,
@@ -428,17 +510,14 @@ namespace PurrNet
                 _rigidbody.AddForce(force.force, force.mode);
         }
 
+        #endregion
+
         #region Public API
 
         public Vector3 linearVelocity
         {
-#if UNITY_6000_0_OR_NEWER
-            get => _rigidbody.linearVelocity;
-            set => _rigidbody.linearVelocity = value;
-#else
-            get => _rigidbody.velocity;
-            set => _rigidbody.velocity = value;
-#endif
+            get => GetLinearVelocity();
+            set => SetLinearVelocity(value);
         }
 
         public Vector3 angularVelocity
@@ -538,20 +617,17 @@ namespace PurrNet
         {
             if (!isSpawned)
                 return;
-    
+
             var appliedForce = new AppliedForce { force = force, mode = mode };
-    
+
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
-                if (!isActiveAndEnabled)
-                    return;
-                BroadcastForceToOthers(appliedForce);
+                if (isActiveAndEnabled)
+                    BroadcastForceToOthers(appliedForce);
             }
-            else
+            else if (isActiveAndEnabled)
             {
-                if (!isActiveAndEnabled)
-                    return;
                 BroadcastForce(appliedForce);
             }
         }
@@ -566,14 +642,11 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForceAtPosition(force, position, mode);
-                if (!isActiveAndEnabled)
-                    return;
-                BroadcastForceToOthers(appliedForce);
+                if (isActiveAndEnabled)
+                    BroadcastForceToOthers(appliedForce);
             }
-            else
+            else if (isActiveAndEnabled)
             {
-                if (!isActiveAndEnabled)
-                    return;
                 BroadcastForce(appliedForce);
             }
         }
@@ -588,14 +661,11 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddTorque(torque, mode);
-                if (!isActiveAndEnabled)
-                    return;
-                BroadcastForceToOthers(appliedForce);
+                if (isActiveAndEnabled)
+                    BroadcastForceToOthers(appliedForce);
             }
-            else
+            else if (isActiveAndEnabled)
             {
-                if (!isActiveAndEnabled)
-                    return;
                 BroadcastForce(appliedForce);
             }
         }
@@ -605,15 +675,11 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.MovePosition(position);
-                
-                if (!isActiveAndEnabled)
-                    return;
-                BroadcastTeleport();
+                if (isActiveAndEnabled)
+                    BroadcastTeleport();
             }
-            else
+            else if (isActiveAndEnabled)
             {
-                if (!isActiveAndEnabled)
-                    return;
                 RequestTeleport(position, _rigidbody.rotation);
             }
         }
@@ -623,14 +689,11 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.MoveRotation(rotation);
-                if (!isActiveAndEnabled)
-                    return;
-                BroadcastTeleport();
+                if (isActiveAndEnabled)
+                    BroadcastTeleport();
             }
-            else
+            else if (isActiveAndEnabled)
             {
-                if (!isActiveAndEnabled)
-                    return;
                 RequestTeleport(_rigidbody.position, rotation);
             }
         }
@@ -639,62 +702,38 @@ namespace PurrNet
 
         #region RPCs
 
+        [ObserversRpc(channel: Channel.ReliableOrdered, bufferLast: true, deltaPacked: true)]
+        private void SyncInitialState(RigidbodyStateData data)
+        {
+            if (IsController(_ownerAuth))
+                return;
+
+            PushSnapshot(data);
+
+            _rigidbody.MovePosition(data.position);
+            _rigidbody.MoveRotation(NormalizeQuaternion(data.rotation));
+            SetLinearVelocity(data.linearVelocity);
+            _rigidbody.angularVelocity = data.angularVelocity;
+
+            _targetPosition = data.position;
+            _targetRotation = data.rotation;
+            _targetLinearVelocity = data.linearVelocity;
+            _targetAngularVelocity = data.angularVelocity;
+        }
+
         [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SyncState(RigidbodyStateData data)
         {
             if (IsController(_ownerAuth))
                 return;
 
-            float extrapolationTime = 0f;
-
-            if (_extrapolateBasedOnPing)
-            {
-                if (isServer)
-                {
-                    if (data.senderPing.HasValue)
-                        extrapolationTime = data.senderPing.Value / 2f;
-                }
-                else
-                {
-                    extrapolationTime = (float)NetworkManager.main.tickModule.rtt / 2f;
-                }
-            }
-            _lastExtrapolation = extrapolationTime;
-            Vector3 newTargetPos = data.position + (data.linearVelocity * extrapolationTime);
-
-            if (_targetSmoothing <= 0.001f)
-            {
-                _targetPosition = newTargetPos;
-                _targetRotation = data.rotation;
-                _targetLinearVelocity = data.linearVelocity;
-                _targetAngularVelocity = data.angularVelocity;
-            }
-            else
-            {
-                float t = Mathf.Lerp(1f, 0.15f, _targetSmoothing);
-                _targetPosition = Vector3.Lerp(_targetPosition, newTargetPos, t);
-                _targetRotation = Quaternion.Slerp(_targetRotation, data.rotation, t);
-                _targetLinearVelocity = Vector3.Lerp(_targetLinearVelocity, data.linearVelocity, t);
-                _targetAngularVelocity = Vector3.Lerp(_targetAngularVelocity, data.angularVelocity, t);
-            }
+            PushSnapshot(data);
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SendStateToServer(RigidbodyStateData data)
         {
-            float extrapolationTime = 0f;
-
-            if (_extrapolateBasedOnPing)
-            {
-                if (data.senderPing.HasValue)
-                    extrapolationTime = data.senderPing.Value / 2f;
-            }
-            _lastExtrapolation = extrapolationTime;
-            _targetPosition = data.position + (data.linearVelocity * extrapolationTime);
-            _targetRotation = data.rotation;
-            _targetLinearVelocity = data.linearVelocity;
-            _targetAngularVelocity = data.angularVelocity;
-
+            PushSnapshot(data);
             SyncState(data);
         }
 
@@ -703,7 +742,7 @@ namespace PurrNet
         {
             ApplyForce(force);
         }
-        
+
         [ObserversRpc(excludeOwner: true, channel: Channel.Unreliable)]
         private void BroadcastForceToOthers(AppliedForce force)
         {
@@ -718,18 +757,18 @@ namespace PurrNet
 
             _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
+
             _rigidbody.MovePosition(data.position);
-            _rigidbody.MoveRotation(data.rotation);
-#if UNITY_6000_0_OR_NEWER
-            _rigidbody.linearVelocity = data.linearVelocity;
-#else
-            _rigidbody.velocity = data.linearVelocity;
-#endif
+            _rigidbody.MoveRotation(NormalizeQuaternion(data.rotation));
+            SetLinearVelocity(data.linearVelocity);
             _rigidbody.angularVelocity = data.angularVelocity;
+
             _targetPosition = data.position;
             _targetRotation = data.rotation;
-            _isCorreting = false;
-            _correctionTimer = 0f;
+            _targetLinearVelocity = data.linearVelocity;
+            _targetAngularVelocity = data.angularVelocity;
+
+            ClearBuffer();
             _hasPendingTeleport = false;
         }
 
@@ -740,7 +779,7 @@ namespace PurrNet
             SyncSettings_Observer(data);
         }
 
-        [ObserversRpc(bufferLast: true, deltaPacked: true, excludeSender:true)]
+        [ObserversRpc(bufferLast: true, deltaPacked: true, excludeSender: true)]
         private void SyncSettings_Observer(RigidbodySettingsData data)
         {
             SyncSettings_Internal(data);
@@ -754,12 +793,9 @@ namespace PurrNet
             _rigidbody.mass = data.mass;
 #if UNITY_6000_0_OR_NEWER
             _rigidbody.linearDamping = data.drag;
-#else
-            _rigidbody.drag = data.drag;
-#endif
-#if UNITY_6000_0_OR_NEWER
             _rigidbody.angularDamping = data.angularDrag;
 #else
+            _rigidbody.drag = data.drag;
             _rigidbody.angularDrag = data.angularDrag;
 #endif
             _rigidbody.useGravity = data.useGravity;
@@ -790,18 +826,13 @@ namespace PurrNet
 
         private void BroadcastTeleport()
         {
-            var teleportData = new RigidbodyTeleportData
+            Teleport(new RigidbodyTeleportData
             {
                 position = _rigidbody.position,
                 rotation = _rigidbody.rotation,
-#if UNITY_6000_0_OR_NEWER
-                linearVelocity = _rigidbody.linearVelocity,
-#else
-                linearVelocity = _rigidbody.velocity,
-#endif
+                linearVelocity = GetLinearVelocity(),
                 angularVelocity = _rigidbody.angularVelocity
-            };
-            Teleport(teleportData);
+            });
         }
 
         #endregion
