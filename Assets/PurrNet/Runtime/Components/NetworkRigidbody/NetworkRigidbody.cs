@@ -561,13 +561,13 @@ namespace PurrNet
         public Vector3 position
         {
             get => _rigidbody.position;
-            set => MovePosition(value);
+            set => _rigidbody.position = value;
         }
 
         public Quaternion rotation
         {
             get => _rigidbody.rotation;
-            set => MoveRotation(value);
+            set => _rigidbody.rotation = value;
         }
 
         public float mass
@@ -698,30 +698,45 @@ namespace PurrNet
 
         public void MovePosition(Vector3 position)
         {
-            if (IsController(_ownerAuth))
-            {
-                _rigidbody.MovePosition(position);
-                if (isActiveAndEnabled)
-                    BroadcastTeleport();
-            }
-            else if (isActiveAndEnabled)
-            {
-                RequestTeleport(position, _rigidbody.rotation);
-            }
+            _rigidbody.MovePosition(position);
         }
 
         public void MoveRotation(Quaternion rotation)
         {
+            _rigidbody.MoveRotation(rotation);
+        }
+
+        /// <summary>
+        /// Instantly teleports the rigidbody to a new position and rotation, clearing the
+        /// interpolation buffer and syncing to all observers. Use this for respawns, portals,
+        /// or any instant repositioning. For regular physics movement, use position/rotation
+        /// setters, MovePosition/MoveRotation, or AddForce instead.
+        /// </summary>
+        public void TeleportTo(Vector3 position, Quaternion rotation)
+        {
+            _rigidbody.MovePosition(position);
+            _rigidbody.MoveRotation(rotation);
+            SetLinearVelocity(Vector3.zero);
+            _rigidbody.angularVelocity = Vector3.zero;
+
             if (IsController(_ownerAuth))
             {
-                _rigidbody.MoveRotation(rotation);
                 if (isActiveAndEnabled)
                     BroadcastTeleport();
             }
             else if (isActiveAndEnabled)
             {
-                RequestTeleport(_rigidbody.position, rotation);
+                RequestTeleport(position, rotation);
             }
+        }
+
+        /// <summary>
+        /// Instantly teleports the rigidbody to a new position, clearing the interpolation
+        /// buffer and syncing to all observers. Preserves current rotation and velocity.
+        /// </summary>
+        public void TeleportTo(Vector3 position)
+        {
+            TeleportTo(position, _rigidbody.rotation);
         }
 
         #endregion
