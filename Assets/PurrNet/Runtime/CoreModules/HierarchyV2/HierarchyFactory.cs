@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using PurrNet.Logging;
-using PurrNet.Transports;
 using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
-    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer, IConnectionListener
+    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer
     {
         readonly ScenesModule _scenes;
 
@@ -225,30 +224,6 @@ namespace PurrNet.Modules
         {
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].EvaluateVisibilityForPlayer(player);
-        }
-        
-        // Try fix UTP Transport
-        public void OnConnected(Connection conn, bool asServer)
-        {
-            LogCatchupTrace($"Factory OnConnected conn={conn.connectionId} valid={conn.isValid} asServer={asServer} hierarchies={_rawHierarchies.Count}");
-
-            for (var i = 0; i < _rawHierarchies.Count; i++)
-                _rawHierarchies[i].OnConnected(conn, asServer);
-        }
-
-        public void OnDisconnected(Connection conn, bool asServer)
-        {
-            LogCatchupTrace($"Factory OnDisconnected conn={conn.connectionId} valid={conn.isValid} asServer={asServer} hierarchies={_rawHierarchies.Count}");
-
-            for (var i = 0; i < _rawHierarchies.Count; i++)
-                _rawHierarchies[i].OnDisconnected(conn, asServer);
-        }
-        
-        private static void LogCatchupTrace(string msg)
-        {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            PurrLogger.Log($"[HierarchyV2 CatchupTrace] {msg}");
-#endif
         }
     }
 }
