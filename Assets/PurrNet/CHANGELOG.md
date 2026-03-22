@@ -1,3 +1,10 @@
+# [1.20.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.25...v1.20.0-beta.26) (2026-03-22)
+
+
+### Bug Fixes
+
+* make the masterServer of PurrTransport.cs editable through a property ([4b609da](https://github.com/PurrNet/PurrNet/commit/4b609da14be11ba8d7559eaf4dda907fff5189a9))
+
 # [1.20.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.24...v1.20.0-beta.25) (2026-03-22)
 
 
