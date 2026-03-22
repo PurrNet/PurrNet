@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
-    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer
+    public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer, IConnectionListener
     {
         readonly ScenesModule _scenes;
 

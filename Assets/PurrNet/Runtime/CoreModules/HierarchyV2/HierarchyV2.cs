@@ -19,7 +19,7 @@ namespace PurrNet.Modules
 
     public delegate void SpawnDelegate(GameObject instance, bool isSceneObject);
 
-    public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer, IConnectionListener
+    public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer
     {
         private bool _asServer;
 
@@ -441,7 +441,7 @@ namespace PurrNet.Modules
             }
         }
 
-        public void OnConnected(Connection connection, bool asServer)
+        internal void OnConnected(Connection connection, bool asServer)
         {
             if (!asServer || !connection.isValid)
                 return;
@@ -455,7 +455,7 @@ namespace PurrNet.Modules
             _pendingServerCatchupConnections.Add(connection);
         }
 
-        public void OnDisconnected(Connection connection, bool asServer)
+        internal void OnDisconnected(Connection connection, bool asServer)
         {
             if (!asServer)
                 return;
