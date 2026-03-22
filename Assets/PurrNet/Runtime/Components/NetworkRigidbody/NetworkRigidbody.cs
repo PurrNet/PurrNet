@@ -273,12 +273,7 @@ namespace PurrNet
                 Vector3 positionalPull = posError * (w * w) * ratio;
                 Vector3 velocityDamping = velError * (2f * w);
 
-#if UNITY_6000_0_OR_NEWER
-                float drag = _rigidbody.linearDamping;
-#else
-                float drag = _rigidbody.drag;
-#endif
-                Vector3 dragCompensation = GetLinearVelocity() * drag;
+                Vector3 dragCompensation = GetLinearVelocity() * GetDrag();
 
                 _rigidbody.AddForce((positionalPull + velocityDamping + dragCompensation) * m);
             }
@@ -495,6 +490,42 @@ namespace PurrNet
 #endif
         }
 
+        private float GetDrag()
+        {
+#if UNITY_6000_0_OR_NEWER
+            return _rigidbody.linearDamping;
+#else
+            return _rigidbody.drag;
+#endif
+        }
+
+        private void SetDrag(float value)
+        {
+#if UNITY_6000_0_OR_NEWER
+            _rigidbody.linearDamping = value;
+#else
+            _rigidbody.drag = value;
+#endif
+        }
+
+        private float GetAngularDrag()
+        {
+#if UNITY_6000_0_OR_NEWER
+            return _rigidbody.angularDamping;
+#else
+            return _rigidbody.angularDrag;
+#endif
+        }
+
+        private void SetAngularDrag(float value)
+        {
+#if UNITY_6000_0_OR_NEWER
+            _rigidbody.angularDamping = value;
+#else
+            _rigidbody.angularDrag = value;
+#endif
+        }
+
         private bool HasStateChanged()
         {
             float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
@@ -520,13 +551,8 @@ namespace PurrNet
             return new RigidbodySettingsData
             {
                 mass = _rigidbody.mass,
-#if UNITY_6000_0_OR_NEWER
-                drag = _rigidbody.linearDamping,
-                angularDrag = _rigidbody.angularDamping,
-#else
-                drag = _rigidbody.drag,
-                angularDrag = _rigidbody.angularDrag,
-#endif
+                drag = GetDrag(),
+                angularDrag = GetAngularDrag(),
                 useGravity = _rigidbody.useGravity,
                 isKinematic = _rigidbody.isKinematic
             };
@@ -547,6 +573,13 @@ namespace PurrNet
         #region Public API
 
         public Vector3 linearVelocity
+        {
+            get => GetLinearVelocity();
+            set => SetLinearVelocity(value);
+        }
+
+        /// <summary>Pre-Unity 6 alias for linearVelocity.</summary>
+        public Vector3 velocity
         {
             get => GetLinearVelocity();
             set => SetLinearVelocity(value);
@@ -583,44 +616,36 @@ namespace PurrNet
 
         public float drag
         {
-#if UNITY_6000_0_OR_NEWER
-            get => _rigidbody.linearDamping;
+            get => GetDrag();
             set
             {
-                _rigidbody.linearDamping = value;
+                SetDrag(value);
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
-#else
-            get => _rigidbody.drag;
-            set
-            {
-                _rigidbody.drag = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
-            }
-#endif
+        }
+
+        public float linearDamping
+        {
+            get => drag;
+            set => drag = value;
         }
 
         public float angularDrag
         {
-#if UNITY_6000_0_OR_NEWER
-            get => _rigidbody.angularDamping;
+            get => GetAngularDrag();
             set
             {
-                _rigidbody.angularDamping = value;
+                SetAngularDrag(value);
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
             }
-#else
-            get => _rigidbody.angularDrag;
-            set
-            {
-                _rigidbody.angularDrag = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
-            }
-#endif
+        }
+
+        public float angularDamping
+        {
+            get => angularDrag;
+            set => angularDrag = value;
         }
 
         public bool useGravity
@@ -831,13 +856,8 @@ namespace PurrNet
                 return;
 
             _rigidbody.mass = data.mass;
-#if UNITY_6000_0_OR_NEWER
-            _rigidbody.linearDamping = data.drag;
-            _rigidbody.angularDamping = data.angularDrag;
-#else
-            _rigidbody.drag = data.drag;
-            _rigidbody.angularDrag = data.angularDrag;
-#endif
+            SetDrag(data.drag);
+            SetAngularDrag(data.angularDrag);
             _rigidbody.useGravity = data.useGravity;
             _rigidbody.isKinematic = data.isKinematic;
         }
