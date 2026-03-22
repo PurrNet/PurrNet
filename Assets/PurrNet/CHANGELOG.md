@@ -1,3 +1,10 @@
+# [1.20.0-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.26...v1.20.0-beta.27) (2026-03-22)
+
+
+### Bug Fixes
+
+* potential collision fix ([f5f346a](https://github.com/PurrNet/PurrNet/commit/f5f346ab1cd63caa5dc55a373178b92fc5e92075))
+
 # [1.20.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.25...v1.20.0-beta.26) (2026-03-22)
 
 
