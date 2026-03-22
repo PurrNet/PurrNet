@@ -1998,4 +1998,11 @@ namespace PurrNet.Modules
             return false;
         }
     }
+
+    private void LogCatchupTrace(string message)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            PurrLogger.Log($"[CatchupTrace][HierarchyV2] {message}");
+#endif
+        }
 }
