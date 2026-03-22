@@ -56,7 +56,7 @@ namespace PurrNet
 
         [Header("Correction")]
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
-        [SerializeField] private float _interpolationDelay = 0.1f;
+        [SerializeField] private float _interpolationDelay = 0.05f;
 
         [Tooltip("How much to extrapolate position toward the present using velocity and estimated acceleration from recent snapshots. 0 = no prediction, 1 = predict to present time, >1 = predict into the future.")]
         [SerializeField] private float _predictionFactor;
@@ -279,7 +279,9 @@ namespace PurrNet
                 float range = Mathf.Max(_correctionRange, 0.01f);
                 float ratio = Mathf.Clamp01(posError.magnitude / range);
 
-                _rigidbody.AddForce((posError * (w * w) + velError * (2f * w)) * (m * ratio));
+                Vector3 positionalPull = posError * (w * w) * ratio;
+                Vector3 velocityDamping = velError * (2f * w);
+                _rigidbody.AddForce((positionalPull + velocityDamping) * m);
             }
 
             if (correctRotation)
