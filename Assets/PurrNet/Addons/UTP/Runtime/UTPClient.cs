@@ -174,7 +174,14 @@ namespace PurrNet.UTP
                 return;
             }
 
-            MakeSureBufferCanFit(data.length);
+            // Validate payload size to prevent silent failures
+            const int MAX_SAFE_PAYLOAD = 4096;
+            if (data.length > MAX_SAFE_PAYLOAD)
+            {
+                PurrLogger.LogError($"Send payload exceeds safe limit: {data.length} > {MAX_SAFE_PAYLOAD}. Message will not be sent properly.");
+                LogTransportTrace($"Send rejected payload_size={data.length} exceeds_max={MAX_SAFE_PAYLOAD}");
+                return;
+            }
 
             NetworkPipeline pipeline = channel switch {
                 Channel.Unreliable => _unreliablePipeline,

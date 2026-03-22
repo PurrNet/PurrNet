@@ -101,12 +101,17 @@ namespace PurrNet.UTP
         {
             try
             {
-                // Safe default MTU values based on channel type
+                // Conservative MTU values accounting for ReliableSequencedPipelineStage overhead
+                // The ReliableSequencedPipelineStage adds sequence numbers and headers
+                // We use 4KB as a safe limit that accounts for pipeline overhead and fragmentation
+                // This prevents packets from being silently dropped or corrupted
                 return channel switch
                 {
-                    Channel.Unreliable => 8192,
-                    Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                    _ => 8192
+                    Channel.Unreliable => 4096,
+                    Channel.UnreliableSequenced => 4096,
+                    Channel.ReliableOrdered => 4096,
+                    Channel.ReliableUnordered => 4096,
+                    _ => 1024
                 };
             }
             catch
