@@ -1,3 +1,32 @@
+# [1.20.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.24...v1.20.0-beta.25) (2026-03-22)
+
+
+### Bug Fixes
+
+* Stop correction range from utilizing velocity damping ([eff1b2b](https://github.com/PurrNet/PurrNet/commit/eff1b2b5bc95a727dce9a27021ecc4d1056db24e))
+
+# [1.20.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.23...v1.20.0-beta.24) (2026-03-22)
+
+
+### Bug Fixes
+
+* Add prediction factor + more correction settings ([072b368](https://github.com/PurrNet/PurrNet/commit/072b3688d3b5569aecb9fef33e582d91f3fc7335))
+* NetworkRigidbody ring buffer rework ([b55cd60](https://github.com/PurrNet/PurrNet/commit/b55cd60137e250568bc9bfa5569b2dc95779108f))
+
+# [1.20.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.22...v1.20.0-beta.23) (2026-03-20)
+
+
+### Bug Fixes
+
+* Async packing change ([ef12d66](https://github.com/PurrNet/PurrNet/commit/ef12d66eb7348868b06a1912933aca9d63bfd84c))
+
+# [1.20.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.21...v1.20.0-beta.22) (2026-03-20)
+
+
+### Bug Fixes
+
+* more resilience to _keys being corrupted ([9376e04](https://github.com/PurrNet/PurrNet/commit/9376e0420fc2ce7650ad6649efe04af2e26285ce))
+
 # [1.20.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.20...v1.20.0-beta.21) (2026-03-20)
 
 

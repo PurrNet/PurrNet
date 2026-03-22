@@ -22,23 +22,21 @@ namespace PurrNet
             {
                 Gizmos.color = Color.yellow;
                 Gizmos.DrawWireSphere(_targetPosition, 0.15f);
-                
+
                 Gizmos.color = Color.red;
                 Gizmos.DrawLine(_rigidbody.position, _targetPosition);
 
+                Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
+                Gizmos.DrawWireSphere(_latestRawSnapshotPos, 0.1f);
+
                 Gizmos.color = new Color(1f, 0.5f, 0f);
-                Gizmos.matrix = Matrix4x4.TRS(_targetPosition, _targetRotation, Vector3.one * 0.3f);
+                Gizmos.matrix = Matrix4x4.TRS(_targetPosition, NormalizeQuaternion(_targetRotation), Vector3.one * 0.3f);
                 Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
                 Gizmos.matrix = Matrix4x4.identity;
             }
 
-#if UNITY_6000_0_OR_NEWER
             Gizmos.color = Color.blue;
-            Gizmos.DrawRay(_rigidbody.position, _rigidbody.linearVelocity * 0.5f);
-#else
-            Gizmos.color = Color.blue;
-            Gizmos.DrawRay(_rigidbody.position, _rigidbody.velocity * 0.5f);
-#endif
+            Gizmos.DrawRay(_rigidbody.position, GetLinearVelocity() * 0.5f);
         }
 
         private void OnGUI()
@@ -59,38 +57,33 @@ namespace PurrNet
             screenPos.y = Screen.height - screenPos.y;
 
             bool isController = IsController(_ownerAuth);
-            float error = Vector3.Distance(_rigidbody.position, _targetPosition);
-            float springScale = GetDynamicSpringScale();
-            float effectiveSpring = _springConstant * springScale;
-            float effectiveDamping = _dampingConstant * springScale;
+            float posError = Vector3.Distance(_rigidbody.position, _targetPosition);
+            float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
+            float velocityMagnitude = GetLinearVelocity().magnitude;
+            float angVelMagnitude = _rigidbody.angularVelocity.magnitude;
 
-#if UNITY_6000_0_OR_NEWER
-            float velocityMagnitude = _rigidbody.linearVelocity.magnitude;
-#else
-            float velocityMagnitude = _rigidbody.velocity.magnitude;
-#endif
+            double bufferSpan = 0;
+            if (_bufferCount >= 2)
+            {
+                var oldest = GetSnapshot(0);
+                var newest = GetSnapshot(_bufferCount - 1);
+                bufferSpan = newest.time - oldest.time;
+            }
 
             string info = $"<b>NetworkRigidbody</b>\n" +
                           $"Controller: {isController}\n" +
                           $"OwnerAuth: {_ownerAuth}\n" +
                           $"Owner: {(owner.HasValue ? owner.Value.ToString() : "none")}\n" +
-                          $"isServer: {isServer}\n" +
-                          $"isClient: {isClient}\n" +
                           $"---\n" +
-                          $"Position: {_rigidbody.position:F2}\n" +
-                          $"Target: {_targetPosition:F2}\n" +
-                          $"Error: {error:F3}m\n" +
-                          $"Extrapolation: {_lastExtrapolation}\n" +
-                          $"---\n" +
+                          $"Pos Error: {posError:F3}m\n" +
+                          $"Rot Error: {rotError:F1}deg\n" +
                           $"Velocity: {velocityMagnitude:F2}\n" +
+                          $"AngVel: {angVelMagnitude:F2}\n" +
                           $"Correcting: {(isController ? "-" : _lastCorrectionReason)}\n" +
-                          $"CorrectionTimer: {_correctionTimer:F2}s\n" +
                           $"---\n" +
-                          $"<b>Dynamic Scaling</b>\n" +
-                          $"Accel: {_recentAccelerationMagnitude:F2}\n" +
-                          $"Scale: {springScale:P1}\n" +
-                          $"Spring: {_springConstant:F1} → {effectiveSpring:F2}\n" +
-                          $"Damping: {_dampingConstant:F1} → {effectiveDamping:F2}";
+                          $"Buffer: {_bufferCount}/{BUFFER_SIZE}\n" +
+                          $"Span: {bufferSpan:F3}s\n" +
+                          $"Delay: {_interpolationDelay:F3}s";
 
             GUIStyle style = new GUIStyle(GUI.skin.label)
             {
@@ -101,11 +94,11 @@ namespace PurrNet
 
             Vector2 size = style.CalcSize(new GUIContent(info));
             Rect bgRect = new Rect(screenPos.x - size.x / 2 - 5, screenPos.y, size.x + 10, size.y + 10);
-            
+
             GUI.color = new Color(0, 0, 0, 0.7f);
             GUI.DrawTexture(bgRect, Texture2D.whiteTexture);
             GUI.color = Color.white;
-            
+
             GUI.Label(new Rect(screenPos.x - size.x / 2, screenPos.y + 5, size.x, size.y), info, style);
         }
     }
