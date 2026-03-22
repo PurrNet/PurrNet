@@ -1,3 +1,11 @@
+# [1.20.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.23...v1.20.0-beta.24) (2026-03-22)
+
+
+### Bug Fixes
+
+* Add prediction factor + more correction settings ([072b368](https://github.com/PurrNet/PurrNet/commit/072b3688d3b5569aecb9fef33e582d91f3fc7335))
+* NetworkRigidbody ring buffer rework ([b55cd60](https://github.com/PurrNet/PurrNet/commit/b55cd60137e250568bc9bfa5569b2dc95779108f))
+
 # [1.20.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.22...v1.20.0-beta.23) (2026-03-20)
 
 
