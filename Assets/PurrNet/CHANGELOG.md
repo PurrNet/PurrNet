@@ -1,3 +1,10 @@
+# [1.20.0-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.27...v1.20.0-beta.28) (2026-03-22)
+
+
+### Bug Fixes
+
+* Improve host consistency for Network Rigidbody ([6bfef4b](https://github.com/PurrNet/PurrNet/commit/6bfef4b44e6d4f50b35b6fc91a70a5f37c92c49c))
+
 # [1.20.0-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.26...v1.20.0-beta.27) (2026-03-22)
 
 
