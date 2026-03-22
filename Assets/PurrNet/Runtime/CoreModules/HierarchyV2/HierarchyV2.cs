@@ -1714,10 +1714,14 @@ namespace PurrNet.Modules
             CatchupClient(playerId);
         }
 
-        private void CatchupClient(PlayerID playerId)
+        private void  CatchupClient(PlayerID playerId)
         {
-            // First, spawn any pending delayed identities so they're ready for catchup
-            SpawnDelayedIdentities();
+            // Process any deferred spawns first to ensure they're ready for catchup
+            // This handles the case where a player joins before FixedUpdate has processed deferred spawns
+            if (_toSpawnNextFrame.Count > 0)
+            {
+                SpawnDelayedIdentities();
+            }
 
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
