@@ -37,7 +37,8 @@ namespace NetworkRigidbodyTest
 
             if (_isGrounded != _wasGrounded)
             {
-                _rb.drag = _isGrounded ? _groundDrag : _airDrag;
+                if(_velocityChangeBased)
+                    _rb.drag = _isGrounded ? _groundDrag : _airDrag;
                 _wasGrounded = _isGrounded;
             }
 
