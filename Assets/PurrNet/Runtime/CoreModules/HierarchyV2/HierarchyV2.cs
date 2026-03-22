@@ -341,6 +341,8 @@ namespace PurrNet.Modules
             if (data.sceneId != _sceneId)
                 return;
 
+            LogCatchupTrace($"OnSpawnPacketBatch scene={data.sceneId} player={player} asServer={asServer} spawns={data.spawnPackets.Count} despawns={data.despawnPackets.Count}");
+
             int count = data.spawnPackets.Count;
             for (var i = 0; i < count; ++i)
                 HandleSpawn(player, data.spawnPackets[i], false);
@@ -623,6 +625,8 @@ namespace PurrNet.Modules
             if (data.sceneId != _sceneId)
                 return;
 
+            LogCatchupTrace($"OnFinishSpawnPacket packetIdx={data.packetIdx} player={player} asServer={asServer}");
+
             if (_pendingSpawns.Remove(data.packetIdx, out var list))
             {
                 using (list)
@@ -665,6 +669,7 @@ namespace PurrNet.Modules
             }
             else
             {
+                LogCatchupTrace($"OnFinishSpawnPacket buffered packetIdx={data.packetIdx} pendingFinishCount={_pendingFinishSpawns.Count + 1}");
                 _pendingFinishSpawns.Add((data.packetIdx, player, asServer));
             }
         }
@@ -777,6 +782,7 @@ namespace PurrNet.Modules
 
         private void OnSpawnPacket(PlayerID player, SpawnPacket data, bool asServer)
         {
+            LogCatchupTrace($"OnSpawnPacket packetIdx={data.packetIdx} player={player} asServer={asServer} scene={data.sceneId} frameworkCount={data.prototype.framework.Count}");
             HandleSpawn(player, data, true);
         }
 
