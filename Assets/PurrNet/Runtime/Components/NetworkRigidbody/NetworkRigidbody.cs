@@ -272,7 +272,15 @@ namespace PurrNet
 
                 Vector3 positionalPull = posError * (w * w) * ratio;
                 Vector3 velocityDamping = velError * (2f * w);
-                _rigidbody.AddForce((positionalPull + velocityDamping) * m);
+
+#if UNITY_6000_0_OR_NEWER
+                float drag = _rigidbody.linearDamping;
+#else
+                float drag = _rigidbody.drag;
+#endif
+                Vector3 dragCompensation = GetLinearVelocity() * drag;
+
+                _rigidbody.AddForce((positionalPull + velocityDamping + dragCompensation) * m);
             }
 
             if (correctRotation)
@@ -647,8 +655,6 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForce(force, mode);
-                if (isActiveAndEnabled)
-                    BroadcastForceToOthers(appliedForce);
             }
             else if (isActiveAndEnabled)
             {
@@ -666,8 +672,6 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddForceAtPosition(force, position, mode);
-                if (isActiveAndEnabled)
-                    BroadcastForceToOthers(appliedForce);
             }
             else if (isActiveAndEnabled)
             {
@@ -685,8 +689,6 @@ namespace PurrNet
             if (IsController(_ownerAuth))
             {
                 _rigidbody.AddTorque(torque, mode);
-                if (isActiveAndEnabled)
-                    BroadcastForceToOthers(appliedForce);
             }
             else if (isActiveAndEnabled)
             {
