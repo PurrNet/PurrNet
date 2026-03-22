@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using LiteNetLib.Utils;
@@ -19,18 +20,15 @@ namespace LiteNetLib
 
     public class EventBasedNatPunchListener : INatPunchListener
     {
-        public delegate void OnNatIntroductionRequest(IPEndPoint localEndPoint, IPEndPoint remoteEndPoint,
-            string token);
-
+        public delegate void OnNatIntroductionRequest(IPEndPoint localEndPoint, IPEndPoint remoteEndPoint, string token);
         public delegate void OnNatIntroductionSuccess(IPEndPoint targetEndPoint, NatAddressType type, string token);
 
         public event OnNatIntroductionRequest NatIntroductionRequest;
         public event OnNatIntroductionSuccess NatIntroductionSuccess;
 
-        void INatPunchListener.OnNatIntroductionRequest(IPEndPoint localEndPoint, IPEndPoint remoteEndPoint,
-            string token)
+        void INatPunchListener.OnNatIntroductionRequest(IPEndPoint localEndPoint, IPEndPoint remoteEndPoint, string token)
         {
-            if (NatIntroductionRequest != null)
+            if(NatIntroductionRequest != null)
                 NatIntroductionRequest(localEndPoint, remoteEndPoint, token);
         }
 
@@ -79,7 +77,7 @@ namespace LiteNetLib
             public bool IsExternal { [Preserve] get; [Preserve] set; }
         }
 
-        private readonly NetManager _socket;
+        private readonly LiteNetManager _socket;
         private readonly ConcurrentQueue<RequestEventData> _requestEvents = new ConcurrentQueue<RequestEventData>();
         private readonly ConcurrentQueue<SuccessEventData> _successEvents = new ConcurrentQueue<SuccessEventData>();
         private readonly NetDataReader _cacheReader = new NetDataReader();
@@ -93,7 +91,7 @@ namespace LiteNetLib
         /// </summary>
         public bool UnsyncedEvents = false;
 
-        internal NatPunchModule(NetManager socket)
+        internal NatPunchModule(LiteNetManager socket)
         {
             _socket = socket;
             _netPacketProcessor.SubscribeReusable<NatIntroduceResponsePacket>(OnNatIntroductionResponse);
@@ -119,7 +117,7 @@ namespace LiteNetLib
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(Trimming.SerializerMemberTypes)]
 #endif
-            T>(T packet, IPEndPoint target) where T : class, new()
+        T>(T packet, IPEndPoint target) where T : class, new()
         {
             _cacheWriter.Reset();
             _cacheWriter.Put((byte)PacketProperty.NatMessage);
@@ -222,7 +220,7 @@ namespace LiteNetLib
             NetDebug.Write(NetLogLevel.Trace, "[NAT] introduction received");
 
             // send internal punch
-            var punchPacket = new NatPunchPacket { Token = req.Token };
+            var punchPacket = new NatPunchPacket {Token = req.Token};
             Send(punchPacket, req.Internal);
             NetDebug.Write(NetLogLevel.Trace, $"[NAT] internal punch sent to {req.Internal}");
 
@@ -241,17 +239,16 @@ namespace LiteNetLib
         private void OnNatPunch(NatPunchPacket req, IPEndPoint senderEndPoint)
         {
             //Read info
-            NetDebug.Write(NetLogLevel.Trace,
-                $"[NAT] punch received from {senderEndPoint} - additional info: {req.Token}");
+            NetDebug.Write(NetLogLevel.Trace, $"[NAT] punch received from {senderEndPoint} - additional info: {req.Token}");
 
             //Release punch success to client; enabling him to Connect() to Sender if token is ok
-            if (UnsyncedEvents)
+            if(UnsyncedEvents)
             {
                 _natPunchListener.OnNatIntroductionSuccess(
                     senderEndPoint,
                     req.IsExternal ? NatAddressType.External : NatAddressType.Internal,
                     req.Token
-                );
+                    );
             }
             else
             {

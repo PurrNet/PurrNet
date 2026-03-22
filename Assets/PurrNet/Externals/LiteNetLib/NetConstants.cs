@@ -53,19 +53,22 @@
         internal const int ProtocolId = 13;
         internal const int MaxUdpHeaderSize = 68;
         internal const int ChannelTypeCount = 4;
+        internal const int FragmentedChannelsCount = 2;
+        internal const int MaxFragmentsInWindow = DefaultWindowSize / 2;
 
         internal static readonly int[] PossibleMtu =
         {
-            576 - MaxUdpHeaderSize, //minimal (RFC 1191)
-            1024, //most games standard
+            //576  - MaxUdpHeaderSize minimal (RFC 1191)
+            1024,                    //most games standard
             1232 - MaxUdpHeaderSize,
             1460 - MaxUdpHeaderSize, //google cloud
             1472 - MaxUdpHeaderSize, //VPN
             1492 - MaxUdpHeaderSize, //Ethernet with LLC and SNAP, PPPoE (RFC 1042)
-            1500 - MaxUdpHeaderSize //Ethernet II (RFC 1191)
+            1500 - MaxUdpHeaderSize  //Ethernet II (RFC 1191)
         };
 
         //Max possible single packet size
+        public static readonly int InitialMtu = PossibleMtu[0];
         public static readonly int MaxPacketSize = PossibleMtu[PossibleMtu.Length - 1];
         public static readonly int MaxUnreliableDataSize = MaxPacketSize - HeaderSize;
 

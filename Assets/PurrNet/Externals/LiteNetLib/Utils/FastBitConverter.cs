@@ -1,11 +1,12 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace LiteNetLib.Utils
 {
     public static class FastBitConverter
     {
-#if (LITENETLIB_UNSAFE || NETCOREAPP3_1 || NET5_0 || NETCOREAPP3_0_OR_GREATER) && !BIGENDIAN
+#if (LITENETLIB_UNSAFE || UNITY_2017_1_OR_NEWER || NETCOREAPP3_1 || NET5_0 || NETCOREAPP3_0_OR_GREATER) && !BIGENDIAN
 #if LITENETLIB_UNSAFE
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void GetBytes<T>(byte[] bytes, int startIndex, T value) where T : unmanaged
@@ -13,7 +14,9 @@ namespace LiteNetLib.Utils
             int size = sizeof(T);
             if (bytes.Length < startIndex + size)
                 ThrowIndexOutOfRangeException();
-#if NETCOREAPP3_1 || NET5_0 || NETCOREAPP3_0_OR_GREATER
+#if NET8_0_OR_GREATER
+            Unsafe.WriteUnaligned(ref bytes[startIndex], value);
+#elif NETCOREAPP3_1 || NET5_0 || NETCOREAPP3_0_OR_GREATER
             Unsafe.As<byte, T>(ref bytes[startIndex]) = value;
 #else
             fixed (byte* ptr = &bytes[startIndex])
@@ -51,17 +54,21 @@ namespace LiteNetLib.Utils
         [StructLayout(LayoutKind.Explicit)]
         private struct ConverterHelperDouble
         {
-            [FieldOffset(0)] public ulong Along;
+            [FieldOffset(0)]
+            public ulong Along;
 
-            [FieldOffset(0)] public double Adouble;
+            [FieldOffset(0)]
+            public double Adouble;
         }
 
         [StructLayout(LayoutKind.Explicit)]
         private struct ConverterHelperFloat
         {
-            [FieldOffset(0)] public int Aint;
+            [FieldOffset(0)]
+            public int Aint;
 
-            [FieldOffset(0)] public float Afloat;
+            [FieldOffset(0)]
+            public float Afloat;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

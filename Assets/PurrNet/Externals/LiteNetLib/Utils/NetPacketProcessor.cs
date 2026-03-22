@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteNetLib.Utils
 {
@@ -19,13 +20,11 @@ namespace LiteNetLib.Utils
                     hash ^= typeName[i];
                     hash *= 1099511628211UL; //prime
                 }
-
                 Id = hash;
             }
         }
 
         protected delegate void SubscribeDelegate(NetDataReader reader, object userData);
-
         private readonly NetSerializer _netSerializer;
         private readonly Dictionary<ulong, SubscribeDelegate> _callbacks = new Dictionary<ulong, SubscribeDelegate>();
 
@@ -51,7 +50,6 @@ namespace LiteNetLib.Utils
             {
                 throw new ParseException("Undefined packet in NetDataReader");
             }
-
             return action;
         }
 
@@ -124,7 +122,7 @@ namespace LiteNetLib.Utils
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(Trimming.SerializerMemberTypes)]
 #endif
-            T>(NetDataWriter writer, T packet) where T : class, new()
+        T>(NetDataWriter writer, T packet) where T : class, new()
         {
             WriteHash<T>(writer);
             _netSerializer.Serialize(writer, packet);
@@ -157,7 +155,7 @@ namespace LiteNetLib.Utils
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(Trimming.SerializerMemberTypes)]
 #endif
-            T>(Action<T> onReceive, Func<T> packetConstructor) where T : class, new()
+        T>(Action<T> onReceive, Func<T> packetConstructor) where T : class, new()
         {
             _netSerializer.Register<T>();
             _callbacks[GetHash<T>()] = (reader, userData) =>
@@ -178,7 +176,7 @@ namespace LiteNetLib.Utils
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(Trimming.SerializerMemberTypes)]
 #endif
-            T, TUserData>(Action<T, TUserData> onReceive, Func<T> packetConstructor) where T : class, new()
+        T, TUserData>(Action<T, TUserData> onReceive, Func<T> packetConstructor) where T : class, new()
         {
             _netSerializer.Register<T>();
             _callbacks[GetHash<T>()] = (reader, userData) =>
@@ -199,7 +197,7 @@ namespace LiteNetLib.Utils
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(Trimming.SerializerMemberTypes)]
 #endif
-            T>(Action<T> onReceive) where T : class, new()
+        T>(Action<T> onReceive) where T : class, new()
         {
             _netSerializer.Register<T>();
             var reference = new T();
@@ -220,7 +218,7 @@ namespace LiteNetLib.Utils
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(Trimming.SerializerMemberTypes)]
 #endif
-            T, TUserData>(Action<T, TUserData> onReceive) where T : class, new()
+        T, TUserData>(Action<T, TUserData> onReceive) where T : class, new()
         {
             _netSerializer.Register<T>();
             var reference = new T();

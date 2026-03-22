@@ -5,12 +5,11 @@ using System.Threading;
 namespace LiteNetLib
 {
     //minimal hashset class from dotnet with some optimizations
-    public partial class NetManager
+    public partial class LiteNetManager
     {
         private const int MaxPrimeArrayLength = 0x7FFFFFC3;
         private const int HashPrime = 101;
         private const int Lower31BitMask = 0x7FFFFFFF;
-
         private static readonly int[] Primes =
         {
             3, 7, 11, 17, 23, 29, 37, 47, 59, 71, 89, 107, 131, 163, 197, 239, 293, 353, 431, 521, 631, 761, 919,
@@ -34,7 +33,6 @@ namespace LiteNetLib
                 if (IsPrime(i) && ((i - 1) % HashPrime != 0))
                     return i;
             }
-
             return min;
 
             bool IsPrime(int candidate)
@@ -47,10 +45,8 @@ namespace LiteNetLib
                         if (candidate % divisor == 0)
                             return false;
                     }
-
                     return true;
                 }
-
                 return candidate == 2;
             }
         }
@@ -59,7 +55,7 @@ namespace LiteNetLib
         {
             internal int HashCode;
             internal int Next;
-            internal NetPeer Value;
+            internal LiteNetPeer Value;
         }
 
         private int[] _buckets;
@@ -67,9 +63,10 @@ namespace LiteNetLib
         private int _count;
         private int _lastIndex;
         private int _freeList = -1;
-        private NetPeer[] _peersArray = new NetPeer[32];
-        private readonly ReaderWriterLockSlim _peersLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
-        private volatile NetPeer _headPeer;
+        private LiteNetPeer[] _peersArray = new LiteNetPeer[32];
+
+        protected readonly ReaderWriterLockSlim _peersLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
+        protected volatile LiteNetPeer _headPeer;
 
         private void ClearPeerSet()
         {
@@ -83,13 +80,17 @@ namespace LiteNetLib
                 _count = 0;
                 _freeList = -1;
             }
-
-            _peersArray = new NetPeer[32];
+            _peersArray = new LiteNetPeer[32];
             _peersLock.ExitWriteLock();
         }
 
-        private bool ContainsPeer(NetPeer item)
+        protected bool ContainsPeer(LiteNetPeer item)
         {
+            if (item == null)
+            {
+                NetDebug.WriteError($"Contains peer null: {item}");
+                return false;
+            }
             if (_buckets != null)
             {
                 int hashCode = item.GetHashCode() & Lower31BitMask;
@@ -99,7 +100,6 @@ namespace LiteNetLib
                         return true;
                 }
             }
-
             return false;
         }
 
@@ -108,7 +108,7 @@ namespace LiteNetLib
         /// </summary>
         /// <param name="id">id of peer</param>
         /// <returns>Peer if peer with id exist, otherwise null</returns>
-        public NetPeer GetPeerById(int id)
+        public LiteNetPeer GetPeerById(int id)
         {
             return id >= 0 && id < _peersArray.Length ? _peersArray[id] : null;
         }
@@ -119,21 +119,25 @@ namespace LiteNetLib
         /// <param name="id">id of peer</param>
         /// <param name="peer">resulting peer</param>
         /// <returns>True if peer with id exist, otherwise false</returns>
-        public bool TryGetPeerById(int id, out NetPeer peer)
+        public bool TryGetPeerById(int id, out LiteNetPeer peer)
         {
             peer = GetPeerById(id);
             return peer != null;
         }
 
-        private void AddPeer(NetPeer peer)
+        private void AddPeer(LiteNetPeer peer)
         {
+            if (peer == null)
+            {
+                NetDebug.WriteError($"Add peer null: {peer}");
+                return;
+            }
             _peersLock.EnterWriteLock();
             if (_headPeer != null)
             {
                 peer.NextPeer = _headPeer;
                 _headPeer.PrevPeer = peer;
             }
-
             _headPeer = peer;
             AddPeerToSet(peer);
             if (peer.Id >= _peersArray.Length)
@@ -143,22 +147,20 @@ namespace LiteNetLib
                     newSize *= 2;
                 Array.Resize(ref _peersArray, newSize);
             }
-
             _peersArray[peer.Id] = peer;
             _peersLock.ExitWriteLock();
         }
 
-        private void RemovePeer(NetPeer peer)
+        private void RemovePeer(LiteNetPeer peer, bool enableWriteLock)
         {
-            _peersLock.EnterWriteLock();
-            RemovePeerInternal(peer);
-            _peersLock.ExitWriteLock();
-        }
-
-        private void RemovePeerInternal(NetPeer peer)
-        {
+            if(enableWriteLock)
+                _peersLock.EnterWriteLock();
             if (!RemovePeerFromSet(peer))
+            {
+                if(enableWriteLock)
+                    _peersLock.ExitWriteLock();
                 return;
+            }
             if (peer == _headPeer)
                 _headPeer = peer.NextPeer;
 
@@ -170,11 +172,14 @@ namespace LiteNetLib
 
             _peersArray[peer.Id] = null;
             _peerIds.Enqueue(peer.Id);
+
+            if(enableWriteLock)
+                _peersLock.ExitWriteLock();
         }
 
-        private bool RemovePeerFromSet(NetPeer peer)
+        protected bool RemovePeerFromSet(LiteNetPeer peer)
         {
-            if (_buckets == null)
+            if (_buckets == null || peer == null)
                 return false;
             int hashCode = peer.GetHashCode() & Lower31BitMask;
             int bucket = hashCode % _buckets.Length;
@@ -201,22 +206,19 @@ namespace LiteNetLib
                     {
                         _freeList = i;
                     }
-
                     return true;
                 }
             }
-
             return false;
         }
 
-        private bool TryGetPeer(IPEndPoint endPoint, out NetPeer actualValue)
+        private bool TryGetPeer(IPEndPoint endPoint, out LiteNetPeer actualValue)
         {
             if (_buckets != null)
             {
 #if NET8_0_OR_GREATER
                 //can be NetPeer or IPEndPoint
-                int hashCode =
- (UseNativeSockets ? endPoint.GetHashCode() : endPoint.Serialize().GetHashCode()) & Lower31BitMask;
+                int hashCode = (UseNativeSockets ? endPoint.GetHashCode() : endPoint.Serialize().GetHashCode()) & Lower31BitMask;
 #else
                 int hashCode = endPoint.GetHashCode() & Lower31BitMask;
 #endif
@@ -230,16 +232,14 @@ namespace LiteNetLib
                         return true;
                     }
                 }
-
                 _peersLock.ExitReadLock();
             }
-
             actualValue = null;
             return false;
         }
 
         //only used for NET8
-        private bool TryGetPeer(SocketAddress saddr, out NetPeer actualValue)
+        private bool TryGetPeer(SocketAddress saddr, out LiteNetPeer actualValue)
         {
             if (_buckets != null)
             {
@@ -254,15 +254,13 @@ namespace LiteNetLib
                         return true;
                     }
                 }
-
                 _peersLock.ExitReadLock();
             }
-
             actualValue = null;
             return false;
         }
 
-        private bool AddPeerToSet(NetPeer value)
+        protected bool AddPeerToSet(LiteNetPeer value)
         {
             if (_buckets == null)
             {
@@ -305,16 +303,13 @@ namespace LiteNetLib
                         newSlots[i].Next = _buckets[b] - 1;
                         _buckets[b] = i + 1;
                     }
-
                     _slots = newSlots;
                     // this will change during resize
                     bucket = hashCode % _buckets.Length;
                 }
-
                 index = _lastIndex;
                 _lastIndex++;
             }
-
             _slots[index].HashCode = hashCode;
             _slots[index].Value = value;
             _slots[index].Next = _buckets[bucket] - 1;
@@ -324,4 +319,5 @@ namespace LiteNetLib
             return true;
         }
     }
+
 }
