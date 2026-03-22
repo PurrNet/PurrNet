@@ -8,6 +8,8 @@ namespace PurrNet
         [SerializeField] private bool _debugGizmos;
         [SerializeField] private float _debugTextOffset = 2f;
 
+        private Vector3 _prePredictionTarget;
+
         private void OnDrawGizmos()
         {
             if (!_debugGizmos || _rigidbody == null)
@@ -20,14 +22,11 @@ namespace PurrNet
 
             if (!isController && isSpawned)
             {
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawWireSphere(_targetPosition, 0.15f);
+                Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
+                Gizmos.DrawWireSphere(_latestRawSnapshotPos, 0.1f);
 
                 Gizmos.color = Color.red;
                 Gizmos.DrawLine(_rigidbody.position, _targetPosition);
-
-                Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
-                Gizmos.DrawWireSphere(_latestRawSnapshotPos, 0.1f);
 
                 Gizmos.color = new Color(1f, 0.5f, 0f);
                 Gizmos.matrix = Matrix4x4.TRS(_targetPosition, NormalizeQuaternion(_targetRotation), Vector3.one * 0.3f);
@@ -37,6 +36,24 @@ namespace PurrNet
 
             Gizmos.color = Color.blue;
             Gizmos.DrawRay(_rigidbody.position, GetLinearVelocity() * 0.5f);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (_rigidbody == null || !isSpawned || IsController(_ownerAuth))
+                return;
+
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(_prePredictionTarget, 0.15f);
+
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawWireSphere(_targetPosition, 0.15f);
+
+            if (_predictionFactor > 0f)
+            {
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawLine(_prePredictionTarget, _targetPosition);
+            }
         }
 
         private void OnGUI()
@@ -70,20 +87,30 @@ namespace PurrNet
                 bufferSpan = newest.time - oldest.time;
             }
 
+            float ratio = 0f;
+            if (!isController)
+            {
+                float range = Mathf.Max(_correctionRange, 0.01f);
+                ratio = Mathf.Clamp01(posError / range);
+            }
+
             string info = $"<b>NetworkRigidbody</b>\n" +
-                          $"Controller: {isController}\n" +
+                          $"Server: {isServer} | Controller: {isController}\n" +
                           $"OwnerAuth: {_ownerAuth}\n" +
                           $"Owner: {(owner.HasValue ? owner.Value.ToString() : "none")}\n" +
                           $"---\n" +
                           $"Pos Error: {posError:F3}m\n" +
                           $"Rot Error: {rotError:F1}deg\n" +
+                          $"Ratio: {ratio:F3}\n" +
                           $"Velocity: {velocityMagnitude:F2}\n" +
-                          $"AngVel: {angVelMagnitude:F2}\n" +
                           $"Correcting: {(isController ? "-" : _lastCorrectionReason)}\n" +
                           $"---\n" +
                           $"Buffer: {_bufferCount}/{BUFFER_SIZE}\n" +
+                          $"Sample: {_bufferSampleMode}\n" +
                           $"Span: {bufferSpan:F3}s\n" +
-                          $"Delay: {_interpolationDelay:F3}s";
+                          $"Delay: {_interpolationDelay:F3}s\n" +
+                          $"Predict: {_predictionFactor:F2}\n" +
+                          $"PredOffset: {_predictionOffset:F3}m";
 
             GUIStyle style = new GUIStyle(GUI.skin.label)
             {

@@ -58,34 +58,25 @@ namespace PurrNet
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
         [SerializeField] private float _interpolationDelay = 0.05f;
 
-        [Tooltip("How much to extrapolate position toward the present using velocity and estimated acceleration from recent snapshots. 0 = no prediction, 1 = predict to present time, >1 = predict into the future.")]
+        [Tooltip("Pushes the target position forward using velocity and estimated acceleration. The offset is interpolationDelay * predictionFactor, making it identical on all machines regardless of network role. 0 = no prediction, 1 = compensate for interpolation delay, >1 = predict further ahead.")]
         [SerializeField] private float _predictionFactor;
 
         [Tooltip("How aggressively the rigidbody chases the target position. Acts as the natural frequency of a critically-damped spring.")]
         [SerializeField] private float _positionStrength = 5f;
 
-        [Tooltip("The distance over which position correction ramps from zero to full strength. Larger values give softer correction, letting local physics like collisions take effect before being pulled back.")]
-        [SerializeField] private float _correctionRange = 1f;
+        [Tooltip("The distance over which position correction ramps from zero to full strength. Larger values give softer correction, letting local collisions play out before being pulled back.")]
+        [SerializeField] private float _correctionRange = 2f;
 
-        [Tooltip("How much local collisions temporarily reduce correction strength on non-controller bodies. 0 = collisions don't affect correction, 1 = full collision softening.")]
-        [SerializeField, Range(0f, 1f)] private float _collisionSoftening = 0.8f;
-
-        [Tooltip("How quickly correction strength recovers after a collision stops. Higher = faster recovery.")]
-        [SerializeField] private float _collisionRecoverySpeed = 5f;
-
-        [Tooltip("How aggressively the rigidbody corrects rotation. Lower than position strength to avoid jitter after collisions.")]
+        [Tooltip("How aggressively the rigidbody corrects rotation.")]
         [SerializeField] private float _rotationStrength = 3f;
 
         [Tooltip("If the position error exceeds this distance, teleport instead of using forces.")]
         [SerializeField] private float _hardSnapDistance = 3f;
 
-        [Tooltip("If the rotation error (degrees) exceeds this threshold, snap rotation instead of using torque.")]
+        [Tooltip("If the rotation error (degrees) exceeds this threshold, snap rotation instead of using torque. Negative to disable.")]
         [SerializeField] private float _hardSnapAngle = 210f;
 
-        [Tooltip("Position error below which correction forces stop. Prevents micro-jitter at rest.")]
-        [SerializeField] private float _acceptablePositionError = 0.05f;
-
-        [Tooltip("Rotation error (degrees) below which rotation correction stops.")]
+        [Tooltip("Rotation error (degrees) below which rotation correction stops. Negative to disable rotation correction entirely.")]
         [SerializeField] private float _acceptableRotationError = 1f;
 
         [Header("Sync")]
@@ -119,7 +110,11 @@ namespace PurrNet
         private bool _receivedFirstSnapshot;
         private string _lastCorrectionReason = "No";
         private Vector3 _latestRawSnapshotPos;
-        private float _collisionIntensity;
+        private string _bufferSampleMode = "None";
+        private float _lastOvershoot;
+        private double _lastLogTime;
+        private int _pushCount;
+        private float _predictionOffset;
 
         private void Awake()
         {
@@ -214,16 +209,17 @@ namespace PurrNet
                 return;
 
             SampleBuffer();
+            _prePredictionTarget = _targetPosition;
 
-            if (_predictionFactor > 0f && _bufferCount >= 1)
+            if (_predictionFactor > 0f)
             {
-                var newest = GetSnapshot(_bufferCount - 1);
-                float timeBehind = (float)(Time.unscaledTimeAsDouble - newest.time);
-                float extrapolationTime = timeBehind * _predictionFactor;
-
-                Vector3 acceleration = EstimateAcceleration();
-                _targetPosition += _targetLinearVelocity * extrapolationTime
-                                 + 0.5f * acceleration * (extrapolationTime * extrapolationTime);
+                float compensation = _interpolationDelay * _predictionFactor;
+                _targetPosition += _targetLinearVelocity * compensation;
+                _predictionOffset = compensation;
+            }
+            else
+            {
+                _predictionOffset = 0f;
             }
         }
 
@@ -231,8 +227,6 @@ namespace PurrNet
         {
             if (!isSpawned || IsController(_ownerAuth) || _hasPendingTeleport || !_receivedFirstSnapshot)
                 return;
-
-            _collisionIntensity = Mathf.MoveTowards(_collisionIntensity, 0f, _collisionRecoverySpeed * Time.fixedDeltaTime);
 
             float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
             float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
@@ -252,46 +246,33 @@ namespace PurrNet
                 _rigidbody.angularVelocity = _targetAngularVelocity;
             }
 
-            bool correctPosition = positionError > _acceptablePositionError;
-            bool correctRotation = !hardSnapRotation && rotationError > _acceptableRotationError;
+            bool correctRotation = !hardSnapRotation
+                                 && _acceptableRotationError >= 0
+                                 && rotationError > _acceptableRotationError;
 
-            if (!correctPosition && !correctRotation)
-            {
-                if (!hardSnapRotation)
-                    _lastCorrectionReason = "No";
-                MatchVelocity();
-                return;
-            }
+            _lastCorrectionReason = hardSnapRotation
+                ? (positionError > 0.001f ? "Hard (Rotation) + Position" : "Hard (Rotation)")
+                : correctRotation
+                    ? "Position+Rotation"
+                    : positionError > 0.001f ? "Position" : "No";
 
-            if (hardSnapRotation)
-                _lastCorrectionReason = correctPosition ? "Hard (Rotation) + Position" : "Hard (Rotation)";
-            else if (correctPosition && correctRotation)
-                _lastCorrectionReason = "Position+Rotation";
-            else if (correctPosition)
-                _lastCorrectionReason = "Position";
-            else
-                _lastCorrectionReason = "Rotation";
-
-            ApplyCorrection(correctPosition, correctRotation);
+            ApplyCorrection(positionError, correctRotation);
         }
 
-        private void ApplyCorrection(bool correctPosition, bool correctRotation)
+        private void ApplyCorrection(float positionError, bool correctRotation)
         {
             float m = _rigidbody.mass;
-            float collisionScale = 1f - _collisionIntensity;
+            float range = Mathf.Max(_correctionRange, 0.01f);
+            float ratio = Mathf.Clamp01(positionError / range);
 
-            if (correctPosition)
             {
                 float w = _positionStrength;
                 Vector3 posError = _targetPosition - _rigidbody.position;
                 Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
 
-                float range = Mathf.Max(_correctionRange, 0.01f);
-                float ratio = Mathf.Clamp01(posError.magnitude / range);
-
                 Vector3 positionalPull = posError * (w * w) * ratio;
                 Vector3 velocityDamping = velError * (2f * w);
-                _rigidbody.AddForce((positionalPull + velocityDamping) * (m * collisionScale));
+                _rigidbody.AddForce((positionalPull + velocityDamping) * m);
             }
 
             if (correctRotation)
@@ -305,34 +286,17 @@ namespace PurrNet
 
                 if (angle > 180f) angle -= 360f;
 
-                if (_acceptableRotationError >= 0 && Mathf.Abs(angle) > _acceptableRotationError)
-                {
-                    Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-                    Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                    Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * (m * collisionScale);
+                Vector3 angError = axis * (angle * Mathf.Deg2Rad);
+                Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
+                Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
 
-                    float maxTorque = w * w * m * collisionScale;
-                    float torqueMag = torque.magnitude;
-                    if (torqueMag > maxTorque)
-                        torque *= maxTorque / torqueMag;
+                float maxTorque = w * w * m;
+                float torqueMag = torque.magnitude;
+                if (torqueMag > maxTorque)
+                    torque *= maxTorque / torqueMag;
 
-                    _rigidbody.AddTorque(torque);
-                }
+                _rigidbody.AddTorque(torque);
             }
-        }
-
-        private void MatchVelocity()
-        {
-            float m = _rigidbody.mass;
-            float collisionScale = 1f - _collisionIntensity;
-
-            Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
-            if (velError.sqrMagnitude > 0.001f)
-                _rigidbody.AddForce(velError * (_positionStrength * m * collisionScale));
-
-            Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
-            if (angVelError.sqrMagnitude > 0.001f)
-                _rigidbody.AddTorque(angVelError * (_rotationStrength * m * collisionScale));
         }
 
         private void HardCorrect()
@@ -362,6 +326,8 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
+            _pushCount++;
+
             _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
             {
                 time = Time.unscaledTimeAsDouble,
@@ -413,6 +379,8 @@ namespace PurrNet
                 _targetRotation = only.rotation;
                 _targetLinearVelocity = only.linearVelocity;
                 _targetAngularVelocity = only.angularVelocity;
+                _bufferSampleMode = "Single";
+                _lastOvershoot = 0f;
                 return;
             }
 
@@ -427,17 +395,21 @@ namespace PurrNet
                 _targetRotation = oldest.rotation;
                 _targetLinearVelocity = oldest.linearVelocity;
                 _targetAngularVelocity = oldest.angularVelocity;
+                _bufferSampleMode = "Clamp-Old";
+                _lastOvershoot = (float)(oldest.time - renderTime);
                 return;
             }
 
             if (renderTime >= newest.time)
             {
                 float overshoot = (float)(renderTime - newest.time);
-                float decay = Mathf.Exp(-2f * overshoot);
-                _targetPosition = newest.position + newest.linearVelocity * overshoot * decay;
+                _targetPosition = newest.position + newest.linearVelocity * overshoot;
                 _targetRotation = newest.rotation;
-                _targetLinearVelocity = newest.linearVelocity * decay;
-                _targetAngularVelocity = newest.angularVelocity * decay;
+                _targetLinearVelocity = newest.linearVelocity;
+                _targetAngularVelocity = newest.angularVelocity;
+                _bufferSampleMode = $"Extrap ({overshoot:F3}s)";
+                _predictionOffset = overshoot;
+                _lastOvershoot = overshoot;
                 return;
             }
 
@@ -460,6 +432,9 @@ namespace PurrNet
 
                     float t = (float)(renderTime - a.time) / span;
                     HermiteInterpolate(a, b, span, t);
+                    _bufferSampleMode = $"Interp ({t:F2})";
+                    _predictionOffset = 0f;
+                    _lastOvershoot = 0f;
                     return;
                 }
             }
@@ -491,16 +466,6 @@ namespace PurrNet
         }
 
         #endregion
-
-        private void OnCollisionStay(Collision collision)
-        {
-            if (!isSpawned || IsController(_ownerAuth))
-                return;
-
-            float impulse = collision.impulse.magnitude;
-            float normalized = Mathf.Clamp01(impulse / Mathf.Max(_rigidbody.mass, 0.01f));
-            _collisionIntensity = Mathf.Max(_collisionIntensity, normalized * _collisionSoftening);
-        }
 
         #region Helpers
 
@@ -792,7 +757,6 @@ namespace PurrNet
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SendStateToServer(RigidbodyStateData data)
         {
-            PushSnapshot(data);
             SyncState(data);
         }
 
