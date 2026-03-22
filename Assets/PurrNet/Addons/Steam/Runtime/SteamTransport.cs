@@ -59,9 +59,43 @@ namespace PurrNet.Steam
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
+            try
+            {
+                // Try to query actual MTU from the underlying transport
+                if (asServer && _server != null)
+                {
+                    var mtu = _server.GetMaxMessageSize(target.connectionId);
+                    if (mtu > 0)
+                    {
+                        return channel switch
+                        {
+                            Channel.Unreliable => (int)(mtu * 0.9f), // Leave 10% headroom for protocol overhead
+                            _ => (int)(mtu * 0.95f)
+                        };
+                    }
+                }
+                else if (!asServer && _client != null)
+                {
+                    var mtu = _client.GetMaxMessageSize();
+                    if (mtu > 0)
+                    {
+                        return channel switch
+                        {
+                            Channel.Unreliable => (int)(mtu * 0.9f), // Leave 10% headroom for protocol overhead
+                            _ => (int)(mtu * 0.95f)
+                        };
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to safe defaults if query fails
+            }
+
+            // Safe default MTU values
             return channel switch
             {
-                Channel.Unreliable => 1024,
+                Channel.Unreliable => 8192,
                 Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
                 _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
             };

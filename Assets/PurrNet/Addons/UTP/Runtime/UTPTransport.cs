@@ -99,9 +99,30 @@ namespace PurrNet.UTP
         /// <returns>The MTU size in bytes.</returns>
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
+            try
+            {
+                // Try to query actual MTU from the underlying transport
+                var transport = asServer ? _server?.transport : _client?.transport;
+                if (transport.HasValue)
+                {
+                    var mtu = transport.Value.GetMaximumPayloadSize();
+                    // Reduce by channel overhead
+                    return channel switch
+                    {
+                        Channel.Unreliable => (int)(mtu * 0.9f), // Leave 10% headroom for protocol overhead
+                        _ => (int)(mtu * 0.95f)
+                    };
+                }
+            }
+            catch
+            {
+                // Fallback to safe defaults if query fails
+            }
+
+            // Safe default MTU values
             return channel switch
             {
-                Channel.Unreliable => 1024,
+                Channel.Unreliable => 8192,
                 Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
                 _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
             };
