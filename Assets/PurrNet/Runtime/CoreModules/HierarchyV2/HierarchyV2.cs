@@ -1131,6 +1131,7 @@ namespace PurrNet.Modules
 
         private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
+        private readonly Dictionary<SpawnID, List<PlayerID>> _spawnPacketsTargets = new();
 
         private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
         {
@@ -1260,6 +1261,15 @@ namespace PurrNet.Modules
                     _playersManager.SendToServer(packet);
                 else _playersManager.Send(player, packet);
                 packet.Dispose();
+                
+                // Track player for FinishSpawnPacket routing
+                if (!_spawnPacketsTargets.TryGetValue(spawnId, out var targets))
+                {
+                    targets = new List<PlayerID>();
+                    _spawnPacketsTargets[spawnId] = targets;
+                }
+                targets.Add(player);
+                
                 _toCompleteNextFrame.Add(spawnId);
             }
         }
@@ -1581,8 +1591,18 @@ namespace PurrNet.Modules
                         }
                     }
 
+                    // Track which players received each spawn packet for later FinishSpawnPacket routing
                     for (var i = 0; i < count; i++)
-                        _toCompleteNextFrame.Add(batch.spawnPackets[i].packetIdx);
+                    {
+                        var packetIdx = batch.spawnPackets[i].packetIdx;
+                        if (!_spawnPacketsTargets.TryGetValue(packetIdx, out var targets))
+                        {
+                            targets = new List<PlayerID>();
+                            _spawnPacketsTargets[packetIdx] = targets;
+                        }
+                        targets.Add(player);
+                        _toCompleteNextFrame.Add(packetIdx);
+                    }
                 }
             }
 
@@ -1651,11 +1671,29 @@ namespace PurrNet.Modules
                 };
 
                 if (_asServer)
-                    _playersManager.Send(toComplete.target, packet);
-                else _playersManager.SendToServer(packet);
+                {
+                    // Send FinishSpawnPacket to all players who received the corresponding spawn packets
+                    if (_spawnPacketsTargets.TryGetValue(toComplete, out var targets))
+                    {
+                        for (var j = 0; j < targets.Count; j++)
+                        {
+                            _playersManager.Send(targets[j], packet);
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: no tracking found, send to owner
+                        _playersManager.Send(toComplete.target, packet);
+                    }
+                }
+                else
+                {
+                    _playersManager.SendToServer(packet);
+                }
             }
 
             _toCompleteNextFrame.Clear();
+            _spawnPacketsTargets.Clear();
         }
 
         private void CatchupClient(PlayerID playerId)
