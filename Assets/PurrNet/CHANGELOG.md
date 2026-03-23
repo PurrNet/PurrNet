@@ -1,3 +1,12 @@
+# [1.20.0-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.30...v1.20.0-beta.31) (2026-03-23)
+
+
+### Bug Fixes
+
+* Convert network assets to new unified setup ([1e149b2](https://github.com/PurrNet/PurrNet/commit/1e149b2cfcf2697d9b99d958264969ef782c44e9))
+* Convert network prefabs + addressables to new unified setup ([cad954a](https://github.com/PurrNet/PurrNet/commit/cad954ab69a927cd70bbbdd5fa9f116563e66f32))
+* Improved addressable network prefabs design unification ([d2c0b01](https://github.com/PurrNet/PurrNet/commit/d2c0b01546df3679c56f76e0bd74d59a449ae1c0))
+
 # [1.20.0-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.29...v1.20.0-beta.30) (2026-03-23)
 
 
