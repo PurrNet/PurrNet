@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using PurrNet.Logging;
 using PurrNet.Transports;
 using UnityEngine;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
