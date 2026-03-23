@@ -431,6 +431,7 @@ var hierarchy =
     [ "PurrNet.OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
     [ "PurrNet.Transports.PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
     [ "PurrNet.Modules.PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
+    [ "PurrNet.PoolingConfig", "structPurrNet_1_1PoolingConfig.html", null ],
     [ "PurrNet.Modules.PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", null ],
     [ "PurrNet.PrefabData", "structPurrNet_1_1PrefabData.html", null ],
     [ "PreserveAttribute", null, [

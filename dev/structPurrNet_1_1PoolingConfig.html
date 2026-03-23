@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: PurrNet.PrefabData Struct Reference</title>
+<title>PurrNet: PurrNet.PoolingConfig Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -64,7 +64,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('structPurrNet_1_1PrefabData.html',''); initResizable(); });
+$(document).ready(function(){initNavTree('structPurrNet_1_1PoolingConfig.html',''); initResizable(); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -91,45 +91,42 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1PrefabData.html','');
 
 <div class="header">
   <div class="summary">
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
-<a href="#properties">Properties</a> &#124;
-<a href="structPurrNet_1_1PrefabData-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">PurrNet.PrefabData Struct Reference</div></div>
+<a href="structPurrNet_1_1PoolingConfig-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">PurrNet.PoolingConfig Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Shared pooling configuration used across all prefab provider entry types. Compose this into any entry struct that needs pooling support.   
+ <a href="structPurrNet_1_1PoolingConfig.html#details">More...</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:acc8eacdcddf530f69cf630e2ca4698a0"><td class="memItemLeft" align="right" valign="top"><a id="acc8eacdcddf530f69cf630e2ca4698a0" name="acc8eacdcddf530f69cf630e2ca4698a0"></a>
+static <a class="el" href="structPurrNet_1_1PoolingConfig.html">PoolingConfig</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Default</b> (bool poolByDefault=false)</td></tr>
+<tr class="separator:acc8eacdcddf530f69cf630e2ca4698a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a4feccd51fcb8a76ec12dd574287bb784"><td class="memItemLeft" align="right" valign="top"><a id="a4feccd51fcb8a76ec12dd574287bb784" name="a4feccd51fcb8a76ec12dd574287bb784"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>prefabId</b></td></tr>
-<tr class="separator:a4feccd51fcb8a76ec12dd574287bb784"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1dbbba30a0869bddfbe250df4cc0a112"><td class="memItemLeft" align="right" valign="top"><a id="a1dbbba30a0869bddfbe250df4cc0a112" name="a1dbbba30a0869bddfbe250df4cc0a112"></a>
-GameObject&#160;</td><td class="memItemRight" valign="bottom"><b>prefab</b></td></tr>
-<tr class="separator:a1dbbba30a0869bddfbe250df4cc0a112"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5f1cd99bd68e78a9f2103fa2ad825946"><td class="memItemLeft" align="right" valign="top"><a id="a5f1cd99bd68e78a9f2103fa2ad825946" name="a5f1cd99bd68e78a9f2103fa2ad825946"></a>
-<a class="el" href="structPurrNet_1_1PoolingConfig.html">PoolingConfig</a>&#160;</td><td class="memItemRight" valign="bottom"><b>pooling</b></td></tr>
-<tr class="separator:a5f1cd99bd68e78a9f2103fa2ad825946"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
-Properties</h2></td></tr>
-<tr class="memitem:a66cf031bc481ffd1edbd38661595fd07"><td class="memItemLeft" align="right" valign="top"><a id="a66cf031bc481ffd1edbd38661595fd07" name="a66cf031bc481ffd1edbd38661595fd07"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>pooled</b><code> [get, set]</code></td></tr>
-<tr class="memdesc:a66cf031bc481ffd1edbd38661595fd07"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shim for backwards compatibility. Use pooling.pooled instead. <br /></td></tr>
-<tr class="separator:a66cf031bc481ffd1edbd38661595fd07"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad803f4349268715bc5f39ec429d8beee"><td class="memItemLeft" align="right" valign="top"><a id="ad803f4349268715bc5f39ec429d8beee" name="ad803f4349268715bc5f39ec429d8beee"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>warmupCount</b><code> [get, set]</code></td></tr>
-<tr class="memdesc:ad803f4349268715bc5f39ec429d8beee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shim for backwards compatibility. Use pooling.warmupCount instead. <br /></td></tr>
-<tr class="separator:ad803f4349268715bc5f39ec429d8beee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bfc1fb24ece46313440b02a5d59026a"><td class="memItemLeft" align="right" valign="top"><a id="a8bfc1fb24ece46313440b02a5d59026a" name="a8bfc1fb24ece46313440b02a5d59026a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>pooled</b></td></tr>
+<tr class="separator:a8bfc1fb24ece46313440b02a5d59026a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedc297067b0a9ef9d07a0438d1c2963d"><td class="memItemLeft" align="right" valign="top"><a id="aedc297067b0a9ef9d07a0438d1c2963d" name="aedc297067b0a9ef9d07a0438d1c2963d"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>warmupCount</b></td></tr>
+<tr class="separator:aedc297067b0a9ef9d07a0438d1c2963d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this struct was generated from the following file:<ul>
-<li>Assets/PurrNet/Runtime/Components/NetworkPrefabs/IPrefabProvider.cs</li>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p >Shared pooling configuration used across all prefab provider entry types. Compose this into any entry struct that needs pooling support.  </p>
+</div><hr/>The documentation for this struct was generated from the following file:<ul>
+<li>Assets/PurrNet/Runtime/Components/NetworkPrefabs/PoolingConfig.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a></li>
+    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="structPurrNet_1_1PoolingConfig.html">PoolingConfig</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
   </ul>
 </div>
