@@ -575,7 +575,7 @@ namespace PurrNet.Modules
                     prevHash = entry.keyHash;
                     prevVal = entry.valueId;
 
-                    if (packer.positionInBytes + 10 >= mtu)
+                    if (packer.positionInBytes + 20 >= mtu)
                     {
                         var batchData = new DeltaBatch
                         {
