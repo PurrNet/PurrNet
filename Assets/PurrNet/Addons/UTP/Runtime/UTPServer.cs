@@ -456,7 +456,7 @@ namespace PurrNet.UTP
                 return;
             }
 
-            SendSinglePacketToConnection(connId, conn, data, channel);
+            SendSinglePacketToConnection(conn, data, channel);
 #endif
         }
 
