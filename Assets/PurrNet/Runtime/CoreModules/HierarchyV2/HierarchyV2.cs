@@ -1220,7 +1220,36 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    batch.despawnPackets.Add(packet);
+                    // Check if batch is getting too large
+                    // Limit to prevent UTP transmission issues
+                    const int MAX_PACKETS_PER_BATCH = 10; // Despawn packets are smaller, allow more
+                    
+                    bool batchFull = (batch.spawnPackets.Count + batch.despawnPackets.Count >= MAX_PACKETS_PER_BATCH);
+                    
+                    if (batchFull)
+                    {
+                        // Batch is full, flush it
+                        using (batch)
+                        {
+                            if (player.isServer)
+                                _playersManager.SendToServer(batch);
+                            else
+                                _playersManager.Send(player, batch);
+                        }
+                        
+                        // Create new batch with current packet
+                        batch = new SpawnPacketBatch(
+                            _sceneId,
+                            DisposableList<SpawnPacket>.Create(),
+                            DisposableList<DespawnPacket>.Create()
+                        );
+                        batch.despawnPackets.Add(packet);
+                        _spawnPackets[player] = batch;
+                    }
+                    else
+                    {
+                        batch.despawnPackets.Add(packet);
+                    }
                 }
             }
             else
@@ -1258,7 +1287,48 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    batch.spawnPackets.Add(packet);
+                    // CRITICAL: Check if batch is getting too large for UTP transmission
+                    // UTP's ReliableSequencedPipelineStage has hard limits (~1000-1200 bytes)
+                    // To stay safe, limit batch to 5 packets OR 15 total objects, whichever comes first
+                    const int MAX_PACKETS_PER_BATCH = 5;
+                    const int MAX_OBJECTS_PER_BATCH = 15;
+                    
+                    int currentObjectCount = 0;
+                    for (int i = 0; i < batch.spawnPackets.Count; i++)
+                    {
+                        currentObjectCount += batch.spawnPackets[i].prototype.framework.Count;
+                    }
+                    
+                    int newObjectCount = currentObjectCount + prototype.framework.Count;
+                    bool batchFull = (batch.spawnPackets.Count >= MAX_PACKETS_PER_BATCH) || 
+                                    (newObjectCount > MAX_OBJECTS_PER_BATCH);
+                    
+                    if (batchFull)
+                    {
+                        // Batch is full, flush it and create a new one
+                        PurrLogger.LogError($"[SPAWN DEBUG] Batch full for player:{player}, flushing {batch.spawnPackets.Count} packets ({currentObjectCount} objects)");
+                        using (batch)
+                        {
+                            if (player.isServer)
+                                _playersManager.SendToServer(batch);
+                            else
+                                _playersManager.Send(player, batch);
+                        }
+                        
+                        // Create new batch with current packet
+                        batch = new SpawnPacketBatch(
+                            _sceneId,
+                            DisposableList<SpawnPacket>.Create(),
+                            DisposableList<DespawnPacket>.Create()
+                        );
+                        batch.spawnPackets.Add(packet);
+                        _spawnPackets[player] = batch;
+                    }
+                    else
+                    {
+                        // Batch has room, add packet to it
+                        batch.spawnPackets.Add(packet);
+                    }
                 }
             }
             else
