@@ -78,12 +78,11 @@ namespace PurrNet.UTP
         {
             yield return null;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"Connect requested address={address} port={port} dedicated={dedicated} relay={relayData.HasValue}");
 
             if (relayData.HasValue)
             {
-                var relayDataValue = relayData.Value;
-                var settings = new NetworkSettings();
+                RelayServerData relayDataValue = relayData.Value;
+                NetworkSettings settings = new NetworkSettings();
                 settings.WithRelayParameters(ref relayDataValue);
                 _driver = NetworkDriver.Create(settings);
             }
@@ -104,7 +103,6 @@ namespace PurrNet.UTP
             {
                 if (!NetworkEndpoint.TryParse(address, port, out endpoint))
                 {
-                    LogTransportTrace($"Connect failed: invalid endpoint {address}:{port}");
                     PurrLogger.LogError($"Failed to parse address: {address}:{port}");
                     connectionState = ConnectionState.Disconnected;
 					if (_driver.IsCreated)
@@ -114,7 +112,6 @@ namespace PurrNet.UTP
             }
 
             _connection = _driver.Connect(endpoint);
-            LogTransportTrace("Connect request sent to driver");
 
             PostConnect();
 #endif
@@ -132,17 +129,15 @@ namespace PurrNet.UTP
         {
             yield return null;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"ConnectP2P requested lobbyId={lobbyId} dedicated={dedicated} relay={relayData.HasValue}");
 
             if (!relayData.HasValue)
             {
-                LogTransportTrace("ConnectP2P failed: relay data missing");
                 PurrLogger.LogError("Relay data is required for P2P connection");
                 yield break;
             }
 
-            var relayDataValue = relayData.Value;
-            var settings = new NetworkSettings();
+            RelayServerData relayDataValue = relayData.Value;
+            NetworkSettings settings = new NetworkSettings();
             settings.WithRelayParameters(ref relayDataValue);
             _driver = NetworkDriver.Create(settings);
 
@@ -150,7 +145,6 @@ namespace PurrNet.UTP
             _unreliablePipeline = NetworkPipeline.Null;
 
             _connection = _driver.Connect(relayData.Value.Endpoint);
-            LogTransportTrace("ConnectP2P request sent to relay endpoint");
 
             PostConnect();
 #endif
@@ -166,11 +160,10 @@ namespace PurrNet.UTP
         public void Send(ByteData data, Channel channel)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"Send attempt len={data.length} channel={channel} state={connectionState}");
+            // LogTransportTrace($"Send attempt len={data.length} channel={channel} state={connectionState}");
 
             if (!_connection.IsCreated || _driver.GetConnectionState(_connection) != NetworkConnection.State.Connected)
             {
-                LogTransportTrace("Send skipped: connection is not connected");
                 return;
             }
 
@@ -186,7 +179,7 @@ namespace PurrNet.UTP
 
             try
             {
-                var beginResult = _driver.BeginSend(pipeline, _connection, out var writer);
+                int beginResult = _driver.BeginSend(pipeline, _connection, out var writer);
                 if (beginResult == (int)StatusCode.Success)
                 {
                     unsafe
@@ -198,17 +191,17 @@ namespace PurrNet.UTP
                         }
                     }
                     _driver.EndSend(writer);
-                    LogTransportTrace($"Send success len={data.length} channel={channel}");
+                    // LogTransportTrace($"Send success len={data.length} channel={channel}");
                 }
                 else
                 {
-                    LogTransportTrace($"Send failed beginResult={(StatusCode)beginResult}");
+                    // LogTransportTrace($"Send failed beginResult={(StatusCode)beginResult}");
                     PurrLogger.LogError($"Failed to begin send: {(StatusCode)beginResult}");
                 }
             }
             catch (Exception e)
             {
-                LogTransportTrace($"Send exception: {e.GetType().Name}: {e.Message}");
+                // LogTransportTrace($"Send exception: {e.GetType().Name}: {e.Message}");
                 PurrLogger.LogException(e);
             }
 #endif
@@ -242,34 +235,40 @@ namespace PurrNet.UTP
             NetworkEvent.Type cmd;
             while ((cmd = _driver.PopEventForConnection(_connection, out var stream)) != NetworkEvent.Type.Empty)
             {
-                if (cmd == NetworkEvent.Type.Data)
+                switch (cmd)
                 {
-                    int packetLength = stream.Length;
-                    MakeSureBufferCanFit(packetLength);
-
-                    unsafe
+                    case NetworkEvent.Type.Data:
                     {
-                        fixed (byte* bufferPtr = _buffer)
-                        {
-                            var span = new Span<byte>(bufferPtr, packetLength);
-                            stream.ReadBytes(span);
-                        }
-                    }
+                        int packetLength = stream.Length;
+                        MakeSureBufferCanFit(packetLength);
 
-                    var byteData = new ByteData(_buffer, 0, packetLength);
-                    LogTransportTrace($"Receive data len={packetLength}");
-                    onDataReceived?.Invoke(byteData);
-                }
-                else if (cmd == NetworkEvent.Type.Connect)
-                {
-                    LogTransportTrace("Receive connect event");
-                    connectionState = ConnectionState.Connected;
-                }
-                else if (cmd == NetworkEvent.Type.Disconnect)
-                {
-                    LogTransportTrace("Receive disconnect event");
-                    connectionState = ConnectionState.Disconnecting;
-                    connectionState = ConnectionState.Disconnected;
+                        unsafe
+                        {
+                            fixed (byte* bufferPtr = _buffer)
+                            {
+                                var span = new Span<byte>(bufferPtr, packetLength);
+                                stream.ReadBytes(span);
+                            }
+                        }
+
+                        ByteData byteData = new ByteData(_buffer, 0, packetLength);
+                        // LogTransportTrace($"Receive data len={packetLength}");
+                        onDataReceived?.Invoke(byteData);
+                        break;
+                    }
+                    case NetworkEvent.Type.Connect:
+                        // LogTransportTrace("Receive connect event");
+                        connectionState = ConnectionState.Connected;
+                        break;
+                    case NetworkEvent.Type.Disconnect:
+                        // LogTransportTrace("Receive disconnect event");
+                        connectionState = ConnectionState.Disconnecting;
+                        connectionState = ConnectionState.Disconnected;
+                        break;
+                    case NetworkEvent.Type.Empty:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
             }
 #endif
@@ -286,14 +285,12 @@ namespace PurrNet.UTP
         {
             if (!_connection.IsCreated)
             {
-                LogTransportTrace("PostConnect failed: connection was not created");
                 connectionState = ConnectionState.Disconnecting;
                 connectionState = ConnectionState.Disconnected;
                 PurrLogger.LogError("Failed to connect to host");
                 return;
             }
-
-            LogTransportTrace("PostConnect: transitioning to Connecting");
+            
             connectionState = ConnectionState.Connecting;
         }
 
@@ -313,27 +310,23 @@ namespace PurrNet.UTP
 
         void Disconnect()
         {
-            if (_connection.IsCreated)
+            if (!_connection.IsCreated) 
+                return;
+            
+            if (connectionState != ConnectionState.Disconnected)
+                connectionState = ConnectionState.Disconnecting;
+
+            try
             {
-                LogTransportTrace($"Disconnect requested currentState={connectionState}");
-
-                if (connectionState != ConnectionState.Disconnected)
-                    connectionState = ConnectionState.Disconnecting;
-
-                try
-                {
-                    _driver.Disconnect(_connection);
-                }
-                catch
-                {
-                    // ignored
-                }
-
-                connectionState = ConnectionState.Disconnected;
-                _connection = default;
-
-                LogTransportTrace("Disconnect completed");
+                _driver.Disconnect(_connection);
             }
+            catch
+            {
+                // ignored
+            }
+
+            connectionState = ConnectionState.Disconnected;
+            _connection = default;
         }
 #endif
 
@@ -343,13 +336,10 @@ namespace PurrNet.UTP
         public void Stop()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace("Stop requested");
             Disconnect();
 
             if (_driver.IsCreated)
                 _driver.Dispose();
-
-            LogTransportTrace("Stop completed");
 #endif
         }
 

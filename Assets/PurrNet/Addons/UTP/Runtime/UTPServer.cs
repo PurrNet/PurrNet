@@ -76,7 +76,7 @@ namespace PurrNet.UTP
         public void Listen(ushort port, bool dedicated = false, RelayServerData? relayData = null)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"Listen requested port={port} dedicated={dedicated} relay={relayData.HasValue}");
+            // LogTransportTrace($"Listen requested port={port} dedicated={dedicated} relay={relayData.HasValue}");
 
             if (relayData.HasValue)
             {
@@ -106,7 +106,7 @@ namespace PurrNet.UTP
 
             if (_driver.Bind(endpoint) != 0)
             {
-                LogTransportTrace("Listen failed: bind failed");
+                // LogTransportTrace("Listen failed: bind failed");
                 PurrLogger.LogError("Failed to bind to endpoint");
                 _driver.Dispose();
                 return;
@@ -114,14 +114,14 @@ namespace PurrNet.UTP
 
             if (_driver.Listen() != 0)
             {
-                LogTransportTrace("Listen failed: listen call failed");
+                // LogTransportTrace("Listen failed: listen call failed");
                 PurrLogger.LogError("Failed to listen on endpoint");
                 _driver.Dispose();
                 return;
             }
 
             PostListen();
-            LogTransportTrace("Listen succeeded");
+            // LogTransportTrace("Listen succeeded");
 #endif
         }
 
@@ -134,11 +134,11 @@ namespace PurrNet.UTP
         public void ListenP2P(bool dedicated = false, RelayServerData? relayData = null)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"ListenP2P requested dedicated={dedicated} relay={relayData.HasValue}");
+            // LogTransportTrace($"ListenP2P requested dedicated={dedicated} relay={relayData.HasValue}");
 
             if (!relayData.HasValue)
             {
-                LogTransportTrace("ListenP2P failed: relay data missing");
+                // LogTransportTrace("ListenP2P failed: relay data missing");
                 PurrLogger.LogError("Relay data is required for P2P listen");
                 return;
             }
@@ -154,7 +154,7 @@ namespace PurrNet.UTP
             // When using Unity Relay, bind to 0.0.0.0:0 (AnyIpv4) as required by Unity Transport
             if (_driver.Bind(NetworkEndpoint.AnyIpv4) != 0)
             {
-                LogTransportTrace("ListenP2P failed: bind failed");
+                // LogTransportTrace("ListenP2P failed: bind failed");
                 PurrLogger.LogError("Failed to bind to relay endpoint");
                 _driver.Dispose();
                 return;
@@ -162,14 +162,14 @@ namespace PurrNet.UTP
 
             if (_driver.Listen() != 0)
             {
-                LogTransportTrace("ListenP2P failed: listen call failed");
+                // LogTransportTrace("ListenP2P failed: listen call failed");
                 PurrLogger.LogError("Failed to listen on relay endpoint");
                 _driver.Dispose();
                 return;
             }
 
             PostListen();
-            LogTransportTrace("ListenP2P succeeded");
+            // LogTransportTrace("ListenP2P succeeded");
 #endif
         }
 #endif
@@ -179,12 +179,12 @@ namespace PurrNet.UTP
         {
             if (!_driver.IsCreated || !_driver.Bound)
             {
-                LogTransportTrace("PostListen failed: driver not created or not bound");
+                // LogTransportTrace("PostListen failed: driver not created or not bound");
                 PurrLogger.LogError("Failed to create listen socket.");
             }
             else
             {
-                LogTransportTrace("PostListen: driver ready and bound");
+                // LogTransportTrace("PostListen: driver ready and bound");
             }
         }
 #endif
@@ -210,7 +210,7 @@ namespace PurrNet.UTP
             NetworkConnection connection;
             while ((connection = _driver.Accept()) != default)
             {
-                LogTransportTrace("ReceiveMessages accepted new connection");
+                // LogTransportTrace("ReceiveMessages accepted new connection");
                 AddConnection(connection);
             }
 
@@ -240,12 +240,12 @@ namespace PurrNet.UTP
                         }
 
                         var byteData = new ByteData(_buffer, 0, packetLength);
-                        LogTransportTrace($"Receive data conn={connId} len={packetLength}");
+                        // LogTransportTrace($"Receive data conn={connId} len={packetLength}");
                         onDataReceived?.Invoke(connId, byteData);
                     }
                     else if (cmd == NetworkEvent.Type.Disconnect)
                     {
-                        LogTransportTrace($"Receive disconnect event conn={connId}");
+                        // LogTransportTrace($"Receive disconnect event conn={connId}");
                         RemoveConnection(conn);
                     }
                 }
@@ -260,7 +260,7 @@ namespace PurrNet.UTP
         public void Kick(int id)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"Kick requested conn={id}");
+            // LogTransportTrace($"Kick requested conn={id}");
 
             if (!_connectionById.TryGetValue(id, out var conn))
                 return;
@@ -280,11 +280,11 @@ namespace PurrNet.UTP
         public void SendToConnection(int connId, ByteData data, Channel channel)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"SendToConnection attempt conn={connId} len={data.length} channel={channel}");
+            // LogTransportTrace($"SendToConnection attempt conn={connId} len={data.length} channel={channel}");
 
             if (!_connectionById.TryGetValue(connId, out var conn))
             {
-                LogTransportTrace($"SendToConnection skipped: conn={connId} not found");
+                // LogTransportTrace($"SendToConnection skipped: conn={connId} not found");
                 return;
             }
 
@@ -312,17 +312,17 @@ namespace PurrNet.UTP
                         }
                     }
                     _driver.EndSend(writer);
-                    LogTransportTrace($"SendToConnection success conn={connId} len={data.length} channel={channel}");
+                    // LogTransportTrace($"SendToConnection success conn={connId} len={data.length} channel={channel}");
                 }
                 else
                 {
-                    LogTransportTrace($"SendToConnection failed conn={connId} status={(StatusCode)result}");
+                    // LogTransportTrace($"SendToConnection failed conn={connId} status={(StatusCode)result}");
                     PurrLogger.LogError($"SendToConnection failed: {(StatusCode)result}");
                 }
             }
             catch (Exception e)
             {
-                LogTransportTrace($"SendToConnection exception conn={connId}: {e.GetType().Name}: {e.Message}");
+                // LogTransportTrace($"SendToConnection exception conn={connId}: {e.GetType().Name}: {e.Message}");
                 PurrLogger.LogException(e);
             }
 #endif
@@ -339,7 +339,7 @@ namespace PurrNet.UTP
             _connectionById.Add(id, connection);
             _idByConnection.Add(connection, id);
 
-            LogTransportTrace($"AddConnection conn={id} total={_connections.Count}");
+            // LogTransportTrace($"AddConnection conn={id} total={_connections.Count}");
 
             onRemoteConnected?.Invoke(id);
         }
@@ -349,7 +349,7 @@ namespace PurrNet.UTP
             if (_connections.Remove(connection) && _idByConnection.Remove(connection, out var _id))
             {
                 _connectionById.Remove(_id);
-                LogTransportTrace($"RemoveConnection conn={_id} total={_connections.Count}");
+                // LogTransportTrace($"RemoveConnection conn={_id} total={_connections.Count}");
                 onRemoteDisconnected?.Invoke(_id);
             }
         }
@@ -361,7 +361,7 @@ namespace PurrNet.UTP
         public void Stop()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            LogTransportTrace($"Stop requested activeConnections={_connections.Count}");
+            // LogTransportTrace($"Stop requested activeConnections={_connections.Count}");
 
             if (!_driver.IsCreated)
                 return;
@@ -392,7 +392,7 @@ namespace PurrNet.UTP
                 // ignored
             }
 
-            LogTransportTrace("Stop completed");
+            // LogTransportTrace("Stop completed");
 #endif
         }
 

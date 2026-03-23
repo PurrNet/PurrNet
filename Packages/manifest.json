@@ -17,6 +17,7 @@
     "com.unity.scriptablebuildpipeline": "2.5.2",
     "com.unity.test-framework": "1.6.0",
     "com.unity.timeline": "1.8.10",
+    "com.unity.transport": "2.7.2",
     "com.unity.ugui": "2.0.0",
     "com.unity.visualscripting": "1.9.10",
     "com.unity.modules.accessibility": "1.0.0",
