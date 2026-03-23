@@ -16,12 +16,19 @@ namespace PurrNet
         public struct Entry
         {
             public AssetReferenceGameObject asset;
-            public bool pooled;
-            public int warmupCount;
         }
         
         [SerializeField] private bool _preloadAtStartup = true;
         [SerializeField] private List<Entry> _entries = new();
+
+        [Tooltip("Will also get entries from these linked AddressableNetworkPrefabs.")]
+        public List<AddressableNetworkPrefabs> linkedAddressablePrefabs = new();
+
+        public bool autoGenerate;
+        public UnityEngine.Object folder;
+
+        [Tooltip("When no folder is set, search all of Assets/ instead of doing nothing.")]
+        public bool searchAllIfNoFolder;
 
         /// <summary>
         /// Whether all registered Addressable prefabs have been loaded and are ready for use.
@@ -142,6 +149,7 @@ namespace PurrNet
         /// <summary>
         /// Rebuilds the internal lookup tables from the entry list.
         /// Assigns deterministic IDs sorted by asset GUID.
+        /// Includes entries from linked AddressableNetworkPrefabs (deduped by GUID).
         /// Note: PrefabData.prefab will be null until LoadAllAsync is called.
         /// The IDs assigned here are local to this provider and will be
         /// offset by the CompositePrefabProvider when combined with other providers.
@@ -152,27 +160,42 @@ namespace PurrNet
             _guidToId.Clear();
             _idToGuid.Clear();
 
-            var sorted = new List<(string guid, int originalIndex)>();
+            var seenGuids = new HashSet<string>();
+            var sorted = new List<(string guid, Entry entry)>();
+            var visited = new HashSet<AddressableNetworkPrefabs>();
 
-            for (int i = 0; i < _entries.Count; i++)
+            void CollectEntries(AddressableNetworkPrefabs provider)
             {
-                var entry = _entries[i];
-                if (entry.asset == null || !entry.asset.RuntimeKeyIsValid())
-                    continue;
+                if (!provider || !visited.Add(provider)) return;
 
-                var guid = entry.asset.AssetGUID;
-                if (string.IsNullOrEmpty(guid))
-                    continue;
+                for (int i = 0; i < provider._entries.Count; i++)
+                {
+                    var entry = provider._entries[i];
+                    if (entry.asset == null || !entry.asset.RuntimeKeyIsValid())
+                        continue;
 
-                sorted.Add((guid, i));
+                    var guid = entry.asset.AssetGUID;
+                    if (string.IsNullOrEmpty(guid) || !seenGuids.Add(guid))
+                        continue;
+
+                    sorted.Add((guid, entry));
+                }
+
+                if (provider.linkedAddressablePrefabs == null) return;
+                for (int i = 0; i < provider.linkedAddressablePrefabs.Count; i++)
+                {
+                    var link = provider.linkedAddressablePrefabs[i];
+                    if (link) CollectEntries(link);
+                }
             }
+
+            CollectEntries(this);
 
             sorted.Sort((a, b) => string.CompareOrdinal(a.guid, b.guid));
 
             for (int i = 0; i < sorted.Count; i++)
             {
-                var (guid, originalIndex) = sorted[i];
-                var entry = _entries[originalIndex];
+                var (guid, entry) = sorted[i];
 
                 _guidToId[guid] = i;
                 _idToGuid[i] = guid;
@@ -180,8 +203,8 @@ namespace PurrNet
                 {
                     prefabId = i,
                     prefab = null,
-                    pooled = entry.pooled,
-                    warmupCount = entry.warmupCount
+                    pooled = false,
+                    warmupCount = 0
                 };
             }
         }
@@ -329,6 +352,56 @@ namespace PurrNet
         {
             ReleaseAll();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (autoGenerate)
+                UnityEditor.EditorApplication.delayCall += OnAutoGenerate;
+        }
+
+        private void OnAutoGenerate()
+        {
+            // Actual generation is handled by the editor (AddressableNetworkPrefabsEditor)
+            // because it requires UnityEditor.AddressableAssets which is in a separate editor assembly.
+            // This triggers via onAutoGenerateRequested event.
+            if (!this) return;
+            onAutoGenerateRequested?.Invoke(this);
+        }
+
+        /// <summary>
+        /// Event fired when auto-generation is triggered via OnValidate.
+        /// The editor subscribes to this to perform the actual generation.
+        /// </summary>
+        public static event Action<AddressableNetworkPrefabs> onAutoGenerateRequested;
+
+        /// <summary>
+        /// Gets the set of GUIDs already registered as entries.
+        /// Used by the editor during generation to avoid duplicates.
+        /// </summary>
+        public HashSet<string> GetExistingGuids()
+        {
+            var guids = new HashSet<string>();
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                var entry = _entries[i];
+                if (entry.asset != null && entry.asset.RuntimeKeyIsValid())
+                    guids.Add(entry.asset.AssetGUID);
+            }
+            return guids;
+        }
+
+        /// <summary>
+        /// Adds an entry by asset reference. Used by the editor during generation.
+        /// </summary>
+        public void AddEntry(AssetReferenceGameObject assetRef)
+        {
+            _entries.Add(new Entry
+            {
+                asset = assetRef
+            });
+        }
+#endif
     }
 }
 #endif

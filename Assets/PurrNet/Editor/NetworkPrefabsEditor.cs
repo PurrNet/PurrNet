@@ -57,8 +57,13 @@ namespace PurrNet
                 float fullWidth = rect.width - REORDERABLE_LIST_BUTTON_WIDTH;
                 CalculateWidths(fullWidth, out float prefabWidth, out float poolWidth, out float warmupWidth);
 
+                // Disable the prefab field when auto-generate is on (it manages prefabs),
+                // but always allow editing pool and warmup settings.
+                EditorGUI.BeginDisabledGroup(networkPrefabs.autoGenerate);
                 EditorGUI.PropertyField(new Rect(rect.x, rect.y, prefabWidth, rect.height), prefabProp,
                     GUIContent.none);
+                EditorGUI.EndDisabledGroup();
+
                 poolProp.boolValue =
                     EditorGUI.Toggle(new Rect(rect.x + prefabWidth + SPACING, rect.y, poolWidth, rect.height),
                         poolProp.boolValue);
@@ -152,7 +157,7 @@ namespace PurrNet
                                        "You can add prefabs to this asset manually or auto generate the references. " +
                                        "This list is used by the NetworkManager to spawn network prefabs.";
 
-            GUILayout.Label(description, DescriptionStyle());
+            GUILayout.Label(description, SharedAssetEditorUI.DescriptionStyle());
 
             GUILayout.Space(10);
 
@@ -187,9 +192,12 @@ namespace PurrNet
 
             GUILayout.Space(10);
 
-            EditorGUI.BeginDisabledGroup(networkPrefabs.autoGenerate);
+            // When auto-generate is on, disable adding/removing/reordering entries
+            // but still allow editing pool and warmup settings on each entry.
+            reorderableList.displayAdd = !networkPrefabs.autoGenerate;
+            reorderableList.displayRemove = !networkPrefabs.autoGenerate;
+            reorderableList.draggable = !networkPrefabs.autoGenerate;
             reorderableList.DoLayoutList();
-            EditorGUI.EndDisabledGroup();
 
             serializedObject.ApplyModifiedProperties();
 
@@ -201,10 +209,8 @@ namespace PurrNet
 
         private void DrawToggleButton(string label, ref bool value)
         {
-            GUI.color = value ? Color.green : Color.white;
-            if (GUILayout.Button(label, GUILayout.Width(1), GUILayout.ExpandWidth(true)))
+            value = SharedAssetEditorUI.DrawToggleButton(label, value, networkPrefabs, () =>
             {
-                value = !value;
                 if (networkPrefabs.autoGenerate)
                 {
                     networkPrefabs.Generate();
@@ -212,19 +218,7 @@ namespace PurrNet
                     prefabs = serializedObject.FindProperty("prefabs");
                     UpdateAllPoolingState();
                 }
-
-                EditorUtility.SetDirty(networkPrefabs);
-            }
-
-            GUI.color = Color.white;
-        }
-
-        private static GUIStyle DescriptionStyle()
-        {
-            return new GUIStyle(GUI.skin.label)
-            {
-                wordWrap = true
-            };
+            });
         }
     }
 }
