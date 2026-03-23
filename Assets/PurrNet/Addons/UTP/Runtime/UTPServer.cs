@@ -6,8 +6,7 @@ using System;
 using System.Collections.Generic;
 using PurrNet.Transports;
 using UnityEngine;
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-using System.Collections.Generic;
+`#if` UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using PurrNet.Logging;
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Error;
