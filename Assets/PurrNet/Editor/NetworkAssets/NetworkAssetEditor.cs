@@ -16,6 +16,7 @@ namespace PurrNet
         [UsedImplicitly]
         private SerializedProperty _autoGenerateProp;
         private SerializedProperty _assetsProp;
+        private SerializedProperty _linkedProp;
 
         private bool _showTypeList;
         private string _typeSearch = "";
@@ -28,13 +29,7 @@ namespace PurrNet
         [UsedImplicitly]
         private int _assetPage;
 
-        private static GUIStyle DescriptionStyle()
-        {
-            return new GUIStyle(GUI.skin.label)
-            {
-                wordWrap = true
-            };
-        }
+        private static GUIStyle DescriptionStyle() => SharedAssetEditorUI.DescriptionStyle();
 
         private void OnEnable()
         {
@@ -43,6 +38,7 @@ namespace PurrNet
             _folderProp = serializedObject.FindProperty("folder");
             _autoGenerateProp = serializedObject.FindProperty("autoGenerate");
             _assetsProp = serializedObject.FindProperty("assets");
+            _linkedProp = serializedObject.FindProperty("linkedNetworkAssets");
 
             _cachedTypes = _target.AvailableTypeNames
                 .Select(Type.GetType)
@@ -68,7 +64,8 @@ namespace PurrNet
             DrawToggleButton("Auto generate", ref _target.autoGenerate);
             if (GUILayout.Button("Generate", GUILayout.Width(1), GUILayout.ExpandWidth(true)))
             {
-                Generate();
+                _target.GenerateAssets();
+                serializedObject.Update();
             }
 
             GUILayout.EndHorizontal();
@@ -80,6 +77,9 @@ namespace PurrNet
             }
 
             DrawTypeToggleFoldout();
+            GUILayout.Space(10);
+
+            EditorGUILayout.PropertyField(_linkedProp, true);
             GUILayout.Space(10);
 
             DrawAssetList();
@@ -95,13 +95,7 @@ namespace PurrNet
 
         private void DrawToggleButton(string label, ref bool value)
         {
-            GUI.color = value ? Color.green : Color.white;
-            if (GUILayout.Button(label, GUILayout.Width(1), GUILayout.ExpandWidth(true)))
-            {
-                value = !value;
-                EditorUtility.SetDirty(_target);
-            }
-            GUI.color = Color.white;
+            value = SharedAssetEditorUI.DrawToggleButton(label, value, _target);
         }
 
         private void DrawAssetList()
@@ -182,64 +176,6 @@ namespace PurrNet
                 Debug.LogException(e);
                 throw;
             }
-        }
-
-        private void Generate()
-        {
-            if (!_target.folder) return;
-
-            var enabledTypes = _target.enabledTypeNames
-                .Select(Type.GetType)
-                .Where(t => t != null)
-                .ToArray();
-
-            string path = AssetDatabase.GetAssetPath(_target.folder);
-            string[] guids = AssetDatabase.FindAssets("", new[] { path });
-
-            var found = new HashSet<UnityEngine.Object>();
-            foreach (var guid in guids)
-            {
-                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-
-                if (assetPath.EndsWith(".unity"))
-                    continue;
-
-                var all = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                foreach (var obj in all)
-                {
-                    if (!obj) continue;
-
-                    var ns = obj.GetType().Namespace;
-                    if (ns != null && ns.Contains("UnityEditor"))
-                        continue;
-
-                    if (obj && enabledTypes.Any(t => t.IsAssignableFrom(obj.GetType())) && !_target.assets.Contains(obj))
-                        _target.assets.Add(obj);
-                }
-            }
-
-            bool changed = false;
-
-            foreach (var obj in found)
-            {
-                if (!_target.assets.Contains(obj))
-                {
-                    _target.assets.Add(obj);
-                    changed = true;
-                }
-            }
-
-            if (changed)
-            {
-                _target.Refresh();
-                EditorUtility.SetDirty(_target);
-                AssetDatabase.SaveAssets();
-            }
-
-            _target.Refresh();
-
-            EditorUtility.SetDirty(_target);
-            AssetDatabase.SaveAssets();
         }
 
         private static List<Type> GetTypesWithAssetsSorted(NetworkAssets target)
