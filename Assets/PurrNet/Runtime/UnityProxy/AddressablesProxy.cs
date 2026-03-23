@@ -1,7 +1,9 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
+using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Pooling;
+using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -189,13 +191,19 @@ namespace PurrNet
 
         #region Internal
 
+        private static readonly Dictionary<AsyncOperationHandle<GameObject>, object> _pendingKeys = new();
+
         private static void RegisterAutoSpawn(AsyncOperationHandle<GameObject> handle, object key)
         {
-            handle.Completed += op => OnInstantiateCompleted(op, key);
+            _pendingKeys[handle] = key;
+            handle.Completed += OnInstantiateCompleted;
         }
 
-        private static void OnInstantiateCompleted(AsyncOperationHandle<GameObject> op, object key)
+        private static void OnInstantiateCompleted(AsyncOperationHandle<GameObject> op)
         {
+            if (!_pendingKeys.Remove(op, out var key))
+                return;
+
             if (op.Status != AsyncOperationStatus.Succeeded)
                 return;
 
@@ -238,7 +246,6 @@ namespace PurrNet
             else if (key is IResourceLocation location)
                 guid = location.PrimaryKey;
 
-            // Try resolving via AddressableNetworkPrefabs using the GUID
             var addrPrefabs = manager.addressableNetworkPrefabs;
 
             if (guid != null && addrPrefabs &&
@@ -248,8 +255,6 @@ namespace PurrNet
                 return data.prefab;
             }
 
-            // Fallback: if the key is an AssetReference with a loaded asset,
-            // try matching it against the general prefab provider
             var provider = manager.prefabProvider;
 
             if (provider != null && key is AssetReference loadedRef &&
@@ -267,14 +272,14 @@ namespace PurrNet
             if (!instance || ApplicationContext.isQuitting)
                 return;
 
-            if (!instance.GetComponentInChildren<NetworkIdentity>())
-                return;
-
             var identities = ListPool<NetworkIdentity>.Instantiate();
             instance.GetComponentsInChildren(true, identities);
 
-            for (int i = 0; i < identities.Count; i++)
-                identities[i].Despawn();
+            if (identities.Count > 0)
+            {
+                for (int i = 0; i < identities.Count; i++)
+                    identities[i].Despawn();
+            }
 
             ListPool<NetworkIdentity>.Destroy(identities);
         }
