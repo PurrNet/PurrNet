@@ -620,13 +620,11 @@ namespace PurrNet.Modules
 
         private void OnFinishSpawnPacket(PlayerID player, FinishSpawnPacket data, bool asServer)
         {
-            PurrLogger.LogError($"[SPAWN DEBUG] OnFinishSpawnPacket received - player:{player}, packetIdx:{data.packetIdx}, asServer:{asServer}");
             if (data.sceneId != _sceneId)
                 return;
 
             if (_pendingSpawns.Remove(data.packetIdx, out var list))
             {
-                PurrLogger.LogError($"[SPAWN DEBUG] OnFinishSpawnPacket FOUND in pending - spawned objects count:{list.Count}");
                 using (list)
                 {
                     int count = list.Count;
@@ -779,7 +777,6 @@ namespace PurrNet.Modules
 
         private void OnSpawnPacket(PlayerID player, SpawnPacket data, bool asServer)
         {
-            PurrLogger.LogError($"[SPAWN DEBUG] OnSpawnPacket received - player:{player}, asServer:{asServer}, sceneId:{data.sceneId}, objects:{data.prototype.framework.Count}");
             HandleSpawn(player, data, true);
         }
 
@@ -902,7 +899,6 @@ namespace PurrNet.Modules
 
         private void CompleteSpawn(PlayerID player, SpawnPacket data, bool flushData)
         {
-            PurrLogger.LogError($"[SPAWN DEBUG] CompleteSpawn - player:{player}, packetIdx:{data.packetIdx}, objectCount:{data.prototype.framework.Count}");
             var createdNids = DisposableList<NetworkIdentity>.Create(16);
             var go = CreatePrototype(data.prototype, createdNids.list);
 
@@ -1271,8 +1267,6 @@ namespace PurrNet.Modules
                 localcache = spawned
             };
 
-            PurrLogger.LogError($"[SPAWN DEBUG] SendSpawnPacket - player:{player}, batched:{batched}, objects:{prototype.framework.Count}");
-
             if (batched)
             {
                 if (!_spawnPackets.TryGetValue(player, out var batch))
@@ -1306,7 +1300,6 @@ namespace PurrNet.Modules
                     if (batchFull)
                     {
                         // Batch is full, flush it and create a new one
-                        PurrLogger.LogError($"[SPAWN DEBUG] Batch full for player:{player}, flushing {batch.spawnPackets.Count} packets ({currentObjectCount} objects)");
                         using (batch)
                         {
                             if (player.isServer)
@@ -1630,7 +1623,6 @@ namespace PurrNet.Modules
 
     private void FlushSpawnPackets()
         {
-            PurrLogger.LogError($"[SPAWN DEBUG] FlushSpawnPackets - batches to send:{_spawnPackets.Count}");
             foreach (var (player, batch) in _spawnPackets)
             {
                 using (batch)
@@ -1641,7 +1633,6 @@ namespace PurrNet.Modules
                     {
                         totalObjects += batch.spawnPackets[i].prototype.framework.Count;
                     }
-                    PurrLogger.LogError($"[SPAWN DEBUG] Flushing {count} spawn packets to player:{player}, isServer:{player.isServer}, total objects:{totalObjects}");
                     
                     if (player.isServer)
                         _playersManager.SendToServer(batch);
@@ -1745,7 +1736,6 @@ namespace PurrNet.Modules
 
         private void SendDelayedCompleteSpawns()
         {
-            PurrLogger.LogError($"[SPAWN DEBUG] SendDelayedCompleteSpawns - packets to complete:{_toCompleteNextFrame.Count}, tracked targets:{_spawnPacketsTargets.Count}");
             for (var i = 0; i < _toCompleteNextFrame.Count; i++)
             {
                 var toComplete = _toCompleteNextFrame[i];
@@ -1760,7 +1750,6 @@ namespace PurrNet.Modules
                     // Send FinishSpawnPacket to all players who received the corresponding spawn packets
                     if (_spawnPacketsTargets.TryGetValue(toComplete, out var targets))
                     {
-                        PurrLogger.LogError($"[SPAWN DEBUG] Sending FinishSpawnPacket for {toComplete} to {targets.Count} players");
                         for (var j = 0; j < targets.Count; j++)
                         {
                             _playersManager.Send(targets[j], packet);
@@ -1769,13 +1758,11 @@ namespace PurrNet.Modules
                     else
                     {
                         // Fallback: no tracking found, send to owner
-                        PurrLogger.LogError($"[SPAWN DEBUG] No targets found for {toComplete}, fallback to owner:{toComplete.target}");
                         _playersManager.Send(toComplete.target, packet);
                     }
                 }
                 else
                 {
-                    PurrLogger.LogError($"[SPAWN DEBUG] Sending FinishSpawnPacket to server");
                     _playersManager.SendToServer(packet);
                 }
             }
