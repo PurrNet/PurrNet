@@ -101,30 +101,23 @@ namespace PurrNet.UTP
         {
             try
             {
-                // Return safe default MTU values accounting for ReliableSequencedPipelineStage overhead
-                // 
-                // CRITICAL: The ReliableSequencedPipelineStage has internal buffer limits that cause
-                // silent data corruption when exceeded. Messages larger than ~1200 bytes get corrupted
-                // on the wire, resulting in completely missing networked objects on the client side.
-                //
-                // Safe limit calculation:
-                // - Ethernet MTU: 1500 bytes
-                // - IP header: 20 bytes
-                // - UDP header: 8 bytes
-                // - UTP overhead: ~20-40 bytes
-                // - ReliableSequencedPipelineStage overhead: ~10-20 bytes
-                // - Safety margin: ~50 bytes
-                // = Safe payload: ~1352 bytes
-                //
-                // However, to account for variance and ensure reliability across all network conditions,
-                // we use 1024 bytes. This is a conservative limit that ensures spawn packets (typically 300-500 bytes)
-                // are delivered without corruption and forces PurrNet to batch them properly.
+                if (asServer)
+                {
+                    if (_server != null)
+                        return _server.GetMTU(target.connectionId, channel);
+                }
+                else
+                {
+                    if (_client != null)
+                        return _client.GetMTU(channel);
+                }
+
                 return 1024;
             }
             catch
             {
                 // Fallback to minimum safe size if any error occurs
-                return 512;
+                return 1024;
             }
         }
 

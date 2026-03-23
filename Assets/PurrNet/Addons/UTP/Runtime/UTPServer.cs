@@ -277,6 +277,42 @@ namespace PurrNet.UTP
                 Array.Resize(ref _buffer, packetLength);
         }
 #endif
+        /// <summary>
+        /// Gets the Maximum Transmission Unit (MTU) size for the specified connection and channel.
+        /// </summary>
+        /// <param name="connId">The connection ID.</param>
+        /// <param name="channel">The network channel.</param>
+        /// <returns>The MTU size in bytes.</returns>
+        public int GetMTU(int connId, Channel channel)
+        {
+#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
+            try
+            {
+                if (!_connectionById.TryGetValue(connId, out NetworkConnection connection))
+                    return 1024; // Fallback if can't find connection.
+
+                NetworkPipeline pipeline = channel switch {
+                    Channel.Unreliable => _unreliablePipeline,
+                    Channel.UnreliableSequenced => _unreliablePipeline,
+                    Channel.ReliableOrdered => _reliablePipeline,
+                    Channel.ReliableUnordered => _reliablePipeline,
+                    _ => NetworkPipeline.Null
+                };
+
+                if (pipeline == NetworkPipeline.Null || !_driver.IsCreated)
+                    return 1024;
+
+                return _driver.GetMaxSupportedPayloadSize(connection, pipeline);
+            }
+            catch
+            {
+                return 1024;
+            }
+#else
+            return 1024;
+#endif
+        }
+
         public void SendToConnection(int connId, ByteData data, Channel channel)
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
