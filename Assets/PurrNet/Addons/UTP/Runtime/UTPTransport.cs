@@ -405,7 +405,7 @@ namespace PurrNet.UTP
             // LogTransportTrace($"Client data received len={data.length}");
             if (data.length > 100)
             {
-                PurrLogger.LogError($"[UTP DEBUG] OnClientDataReceived - packet size: {data.length} bytes");
+                // PurrLogger.LogError($"[UTP DEBUG] OnClientDataReceived - packet size: {data.length} bytes");
             }
             onDataReceived?.Invoke(new Connection(0), data, false);
         }
