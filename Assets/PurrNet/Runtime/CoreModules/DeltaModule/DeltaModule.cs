@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using K4os.Compression.LZ4;
 using PurrNet.Logging;
 using PurrNet.Packing;
 using PurrNet.Pooling;
@@ -578,12 +577,10 @@ namespace PurrNet.Modules
 
                     if (packer.positionInBytes + 10 >= mtu)
                     {
-                        using var pickled = packer.Pickle(LZ4Level.L12_MAX);
                         var batchData = new DeltaBatch
                         {
-                            data = pickled,
-                            ogBitCount = packer.positionInBits,
-                            dataBitCount = pickled.positionInBits
+                            data = packer,
+                            bitCount = packer.positionInBits
                         };
 
                         if (_asServer)
@@ -598,12 +595,10 @@ namespace PurrNet.Modules
 
                 if (packer.positionInBytes > 0)
                 {
-                    using var pickled = packer.Pickle(LZ4Level.L12_MAX);
                     var batchData = new DeltaBatch
                     {
-                        data = pickled,
-                        ogBitCount = packer.positionInBits,
-                        dataBitCount = pickled.positionInBits
+                        data = packer,
+                        bitCount = packer.positionInBits
                     };
 
                     if (_asServer)
@@ -621,24 +616,19 @@ namespace PurrNet.Modules
         {
             using (data.data)
             {
-                using var packer = BitPackerPool.Get();
-                data.data.SetBitPosition(data.dataBitCount);
-                packer.UnpickleFrom(data.data);
-                packer.ResetPositionAndMode(false);
-
                 PackedUInt prevType = default;
                 PackedUInt prevHash = default;
                 PackedUInt prevVal = default;
 
-                while (packer.positionInBits < data.ogBitCount)
+                while (data.data.positionInBits < data.bitCount)
                 {
-                    DeltaPacker<PackedUInt>.Read(packer, prevType, ref prevType);
-                    DeltaPacker<PackedUInt>.Read(packer, prevHash, ref prevHash);
-                    DeltaPacker<PackedUInt>.Read(packer, prevVal, ref prevVal);
+                    DeltaPacker<PackedUInt>.Read(data.data, prevType, ref prevType);
+                    DeltaPacker<PackedUInt>.Read(data.data, prevHash, ref prevHash);
+                    DeltaPacker<PackedUInt>.Read(data.data, prevVal, ref prevVal);
 
                     var acknowledge = new DeltaAcknowledge
                     {
-                        keyType =  prevType,
+                        keyType = prevType,
                         keyHash = prevHash,
                         valueId = prevVal
                     };
