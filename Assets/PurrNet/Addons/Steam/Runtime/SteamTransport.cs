@@ -59,21 +59,12 @@ namespace PurrNet.Steam
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
-            try
+            return channel switch
             {
-                // Safe default MTU values based on channel type
-                return channel switch
-                {
-                    Channel.Unreliable => 8192,
-                    Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                    _ => 8192
-                };
-            }
-            catch
-            {
-                // Fallback to minimum safe size if any error occurs
-                return 1024;
-            }
+                Channel.Unreliable => 1024,
+                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
+                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
+            };
         }
 
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
