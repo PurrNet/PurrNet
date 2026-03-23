@@ -270,12 +270,12 @@ namespace PurrNet.Pooling
             if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>() ||
                 RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
             {
-                foreach (var pair in dictionary)
+                foreach (var pair in this)
                     res.Add(Packer.Copy(pair.Key), Packer.Copy(pair.Value));
             }
             else
             {
-                foreach (var kvp in dictionary)
+                foreach (var kvp in this)
                     res.Add(kvp.Key, kvp.Value);
             }
 
