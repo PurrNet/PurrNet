@@ -21,10 +21,10 @@ namespace PurrNet.Utils
                     return _cachedIsClone.Value;
 
                 var assetsFolder = new DirectoryInfo("Assets");
-                var isClone = assetsFolder.Attributes.HasFlag(FileAttributes.ReparsePoint);
+                var isCloneEditor = assetsFolder.Attributes.HasFlag(FileAttributes.ReparsePoint);
 
-                _cachedIsClone = isClone;
-                return isClone;
+                _cachedIsClone = isCloneEditor;
+                return isCloneEditor;
 #endif
             }
         }
@@ -51,7 +51,10 @@ namespace PurrNet.Utils
                 }
 #endif
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
             return null;
         }
 #endif
