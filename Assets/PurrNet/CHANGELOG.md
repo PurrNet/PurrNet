@@ -1,3 +1,20 @@
+# [1.20.0-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.29...v1.20.0-beta.30) (2026-03-23)
+
+
+### Bug Fixes
+
+* Added addressables proxy ([8ddc200](https://github.com/PurrNet/PurrNet/commit/8ddc20058cfa3b13690d5486cbb94d061692c845))
+* Added purrlogger support ([07a2cb4](https://github.com/PurrNet/PurrNet/commit/07a2cb41ecb9ea364672b90e94c8d377496ba7fd))
+* Allocation optimization of addressables setup ([78108f1](https://github.com/PurrNet/PurrNet/commit/78108f16a2e4a9ee94fc1932fe7ec2cdbfe89fdb))
+* avoid spamming editor with patch attempts; only do it for clone editors. ([1912c8d](https://github.com/PurrNet/PurrNet/commit/1912c8d7692d2e8ea15b44a8b63cdfd3bf66b711))
+* Delete Assets/PurrNet/Externals/LiteNetLib/LiteNetLib.csproj.meta ([ad616c9](https://github.com/PurrNet/PurrNet/commit/ad616c92e0d7944c2d3e7134b16b6d3d0f78f04e))
+* increase MTU margin for delta module ([ceb45c7](https://github.com/PurrNet/PurrNet/commit/ceb45c78378a6f535ab9c218903f007165c829ea))
+* Potential addressables spawning fix ([0de22ac](https://github.com/PurrNet/PurrNet/commit/0de22ac008deef3a747f6a405ee47eea4b1cfc28))
+* remove compression for the delta packet, mixed with delta compression it tends to create bigger packets due to high entropy already ([052a222](https://github.com/PurrNet/PurrNet/commit/052a222249662eb45fcff4965a43f39c5ccd0bad))
+* update LiteNetLib ([7f1f348](https://github.com/PurrNet/PurrNet/commit/7f1f3488ab0d97573dae7673bc333bbe6a02ee74))
+* use our enumerator for DisposableDictionary for determinism reasons ([7dda783](https://github.com/PurrNet/PurrNet/commit/7dda783e522f2d6e986172daf624b07154ccddc1))
+* UTP server odd symbols ([1991e0c](https://github.com/PurrNet/PurrNet/commit/1991e0cd0cf99193b64456ae75831299ec05a9ce))
+
 # [1.20.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.28...v1.20.0-beta.29) (2026-03-22)
 
 
