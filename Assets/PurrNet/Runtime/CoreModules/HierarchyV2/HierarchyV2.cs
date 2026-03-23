@@ -1558,7 +1558,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private void FlushSpawnPackets()
+    private void FlushSpawnPackets()
         {
             PurrLogger.LogError($"[SPAWN DEBUG] FlushSpawnPackets - batches to send:{_spawnPackets.Count}");
             foreach (var (player, batch) in _spawnPackets)
@@ -1566,7 +1566,13 @@ namespace PurrNet.Modules
                 using (batch)
                 {
                     int count = batch.spawnPackets.Count;
-                    PurrLogger.LogError($"[SPAWN DEBUG] Flushing {count} spawn packets to player:{player}, isServer:{player.isServer}");
+                    int totalObjects = 0;
+                    for (int i = 0; i < count; i++)
+                    {
+                        totalObjects += batch.spawnPackets[i].prototype.framework.Count;
+                    }
+                    PurrLogger.LogError($"[SPAWN DEBUG] Flushing {count} spawn packets to player:{player}, isServer:{player.isServer}, total objects:{totalObjects}");
+                    
                     if (player.isServer)
                         _playersManager.SendToServer(batch);
                     else
