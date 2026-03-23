@@ -12,6 +12,12 @@ namespace PurrNet
         public bool autoGenerate;
         public Object folder;
 
+        [Tooltip("When no folder is set, search all of Assets/ instead of doing nothing.")]
+        public bool searchAllIfNoFolder = true;
+
+        [Tooltip("Will also get assets from these linked NetworkAssets. This is to allow further organization.")]
+        public List<NetworkAssets> linkedNetworkAssets = new();
+
         [Serializable]
         public class TypeToggle
         {
@@ -35,6 +41,12 @@ namespace PurrNet
         [SerializeField, HideInInspector]
         private List<string> _availableTypeNames = new();
         public IReadOnlyList<string> AvailableTypeNames => _availableTypeNames;
+
+        /// <summary>
+        /// GUIDs for each asset in the assets list, used for deterministic ID assignment.
+        /// Populated during GenerateAssets() in editor.
+        /// </summary>
+        [SerializeField, HideInInspector] private List<string> _assetGuids = new();
 
         private readonly Dictionary<int, Object> idToAsset = new();
         private readonly Dictionary<Object, int> assetToId = new();
@@ -83,10 +95,58 @@ namespace PurrNet
             _bakedIds.Clear();
             _bakedAssets.Clear();
 
-            for (int i = 0; i < assets.Count; i++)
+            // Collect all assets including from linked instances
+            var visited = new HashSet<NetworkAssets>();
+            var seenObjects = new HashSet<Object>();
+            var buffer = new List<(Object asset, string guid)>();
+
+            void Collect(NetworkAssets na)
             {
-                var obj = assets[i];
-                if (!obj || assetToId.ContainsKey(obj)) continue;
+                if (!na || !visited.Add(na)) return;
+
+                for (int i = 0; i < na.assets.Count; i++)
+                {
+                    var obj = na.assets[i];
+                    if (!obj || !seenObjects.Add(obj)) continue;
+
+                    string guid = (i < na._assetGuids.Count) ? na._assetGuids[i] : null;
+                    buffer.Add((obj, guid));
+                }
+
+                if (na.linkedNetworkAssets == null) return;
+                for (int i = 0; i < na.linkedNetworkAssets.Count; i++)
+                {
+                    var link = na.linkedNetworkAssets[i];
+                    if (link) Collect(link);
+                }
+            }
+
+            Collect(this);
+
+            // Sort by GUID for deterministic ID assignment (same algorithm as NetworkPrefabs)
+            bool hasGuids = buffer.Any(b => !string.IsNullOrEmpty(b.guid));
+
+            if (hasGuids)
+            {
+                buffer.Sort((a, b) =>
+                {
+                    var ga = string.IsNullOrEmpty(a.guid) ? null : a.guid;
+                    var gb = string.IsNullOrEmpty(b.guid) ? null : b.guid;
+                    if (ga != null && gb != null) return string.CompareOrdinal(ga, gb);
+                    if (ga != null) return -1;
+                    if (gb != null) return 1;
+                    var na2 = a.asset ? a.asset.name : string.Empty;
+                    var nb = b.asset ? b.asset.name : string.Empty;
+                    int c = string.CompareOrdinal(na2, nb);
+                    if (c != 0) return c;
+                    return a.asset.GetInstanceID().CompareTo(b.asset.GetInstanceID());
+                });
+            }
+
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                var obj = buffer[i].asset;
+                if (assetToId.ContainsKey(obj)) continue;
 
                 idToAsset[i] = obj;
                 assetToId[obj] = i;
@@ -130,35 +190,33 @@ namespace PurrNet
 
             _enabledTypeLookup = null;
         }
-        
+
 #if UNITY_EDITOR
         public void GenerateAssets()
         {
-            if (!folder) return;
+            var enabledTypes = enabledTypeNames.Select(Type.GetType).Where(t => t != null).ToArray();
+            var found = AssetScannerUtility.ScanAssets(folder, enabledTypes, searchAllIfNoFolder);
 
-            var enabledTypes = enabledTypeNames.Select(System.Type.GetType).Where(t => t != null).ToArray();
-            string path = UnityEditor.AssetDatabase.GetAssetPath(folder);
-            string[] guids = UnityEditor.AssetDatabase.FindAssets("", new[] { path });
+            if (found.Count == 0 && folder == null && !searchAllIfNoFolder)
+                return;
 
-            var found = new HashSet<UnityEngine.Object>();
-            foreach (var guid in guids)
+            // Add newly found assets not already in the list
+            var existingSet = new HashSet<Object>(assets);
+            bool changed = false;
+
+            foreach (var scan in found)
             {
-                string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-                if (assetPath.EndsWith(".unity")) continue;
-
-                var all = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                foreach (var obj in all)
+                if (existingSet.Add(scan.asset))
                 {
-                    if (!obj || obj.GetType().Namespace?.Contains("UnityEditor") == true) continue;
-                    if (enabledTypes.Any(t => t.IsAssignableFrom(obj.GetType())) && !assets.Contains(obj))
-                        found.Add(obj);
+                    assets.Add(scan.asset);
+                    changed = true;
                 }
             }
 
-            foreach (var obj in found)
-                assets.Add(obj);
+            // Update GUIDs list to match assets list
+            RebuildGuids();
 
-            if (found.Count > 0)
+            if (changed)
             {
                 Refresh();
                 UnityEditor.EditorUtility.SetDirty(this);
@@ -168,10 +226,44 @@ namespace PurrNet
             CleanupNullEntries();
         }
 
+        /// <summary>
+        /// Rebuilds the _assetGuids list from the current assets list using AssetDatabase.
+        /// </summary>
+        private void RebuildGuids()
+        {
+            _assetGuids.Clear();
+            for (int i = 0; i < assets.Count; i++)
+            {
+                var obj = assets[i];
+                if (!obj)
+                {
+                    _assetGuids.Add(null);
+                    continue;
+                }
+
+                string path = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                string guid = UnityEditor.AssetDatabase.AssetPathToGUID(path);
+
+                // For sub-assets, append local file ID to make GUID unique
+                if (UnityEditor.AssetDatabase.IsSubAsset(obj))
+                {
+                    if (UnityEditor.AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out string _, out long localId))
+                        guid = $"{guid}_{localId}";
+                }
+
+                _assetGuids.Add(guid);
+            }
+        }
+
         private void CleanupNullEntries()
         {
+            int count = assets.Count;
             assets.RemoveAll(a => a == null);
-            Refresh();
+            if (assets.Count != count)
+            {
+                RebuildGuids();
+                Refresh();
+            }
         }
 #endif
 
