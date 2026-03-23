@@ -284,6 +284,12 @@ namespace PurrNet.UTP
             uint fragmentId = _nextFragmentId++;
             int totalFragments = (int)Math.Ceiling(data.length / (float)maxPayloadSize);
 
+            if (totalFragments > 255)
+            {
+                PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max 255). Dropping packet.");
+                return;
+            }
+
             for (int i = 0; i < totalFragments; i++)
             {
                 int offset = i * maxPayloadSize;
