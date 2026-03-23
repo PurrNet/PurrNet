@@ -12,7 +12,6 @@ namespace PurrNet
     public class AddressableNetworkPrefabsEditor : UnityEditor.Editor
     {
         private AddressableNetworkPrefabs _target;
-        private SerializedProperty _preloadAtStartupProp;
         private SerializedProperty _entriesProp;
         private SerializedProperty _linkedProp;
         private SerializedProperty _folderProp;
@@ -35,7 +34,6 @@ namespace PurrNet
         private void OnEnable()
         {
             _target = (AddressableNetworkPrefabs)target;
-            _preloadAtStartupProp = serializedObject.FindProperty("_preloadAtStartup");
             _entriesProp = serializedObject.FindProperty("_entries");
             _linkedProp = serializedObject.FindProperty("linkedAddressablePrefabs");
             _folderProp = serializedObject.FindProperty("folder");
@@ -53,22 +51,23 @@ namespace PurrNet
 
             _reorderableList.drawHeaderCallback = (Rect rect) =>
             {
-                EditorGUI.LabelField(rect, "Asset Reference");
+                EditorGUI.LabelField(rect, "Prefab");
             };
 
             _reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
             {
                 var element = _entriesProp.GetArrayElementAtIndex(index);
                 var assetProp = element.FindPropertyRelative("asset");
+
+                EditorGUI.BeginDisabledGroup(_target.autoGenerate);
                 EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, rect.height), assetProp, GUIContent.none);
+                EditorGUI.EndDisabledGroup();
             };
 
             _reorderableList.onAddCallback = (ReorderableList list) =>
             {
                 int index = list.count;
                 list.serializedProperty.arraySize++;
-                var element = list.serializedProperty.GetArrayElementAtIndex(index);
-                element.FindPropertyRelative("asset").boxedValue = null;
                 serializedObject.ApplyModifiedProperties();
             };
         }
@@ -77,48 +76,34 @@ namespace PurrNet
         {
             serializedObject.Update();
 
-            GUILayout.Label("Addressable Network Prefabs", EditorStyles.boldLabel, GUILayout.ExpandWidth(true));
-            GUILayout.Label(
+            // 1. Header
+            SharedAssetEditorUI.DrawHeader(
+                "Addressable Network Prefabs",
                 "This asset stores Addressable prefab references for network spawning. " +
-                "Prefabs can be added manually or auto-generated from a folder containing Addressable assets.",
-                SharedAssetEditorUI.DescriptionStyle());
+                "Prefabs can be added manually or auto-generated from a folder containing Addressable assets.");
 
-            GUILayout.Space(10);
+            // 2. Generation Settings
+            SharedAssetEditorUI.DrawGenerationSettingsTop(_folderProp, _target);
 
-            EditorGUILayout.PropertyField(_preloadAtStartupProp, new GUIContent("Preload At Startup"));
-
-            GUILayout.Space(5);
-
-            // Generation Settings
-            EditorGUILayout.LabelField("Generation Settings", EditorStyles.boldLabel);
-            EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(_folderProp, new GUIContent("Folder"));
-            if (EditorGUI.EndChangeCheck())
-            {
-                EditorUtility.SetDirty(_target);
-            }
-
-            // Toggle buttons row
+            // 3. Toggle buttons row
             GUILayout.BeginHorizontal();
-
             DrawToggleButton("Auto generate", ref _target.autoGenerate);
+            _target.preloadAtStartup = SharedAssetEditorUI.DrawToggleButton("Preload at startup", _target.preloadAtStartup, _target);
+            GUILayout.EndHorizontal();
 
-            if (GUILayout.Button("Generate", GUILayout.Width(1), GUILayout.ExpandWidth(true)))
+            // 4. Generate button (full-width, own row)
+            SharedAssetEditorUI.DrawGenerateButton(() =>
             {
                 Generate(_target);
                 serializedObject.Update();
-            }
+                _entriesProp = serializedObject.FindProperty("_entries");
+            });
 
-            GUILayout.EndHorizontal();
+            // 5. Linked prefabs
+            SharedAssetEditorUI.DrawLinkedField(_linkedProp);
 
-            GUILayout.Space(10);
-            EditorGUILayout.PropertyField(_linkedProp, true);
-
-            GUILayout.Space(10);
-
-            EditorGUI.BeginDisabledGroup(_target.autoGenerate);
-            _reorderableList.DoLayoutList();
-            EditorGUI.EndDisabledGroup();
+            // 6. Entry list
+            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate);
 
             serializedObject.ApplyModifiedProperties();
 
@@ -137,6 +122,7 @@ namespace PurrNet
                 {
                     Generate(_target);
                     serializedObject.Update();
+                    _entriesProp = serializedObject.FindProperty("_entries");
                 }
             });
         }
@@ -165,7 +151,6 @@ namespace PurrNet
                 {
                     if (existingGuids.Contains(scan.guid)) continue;
 
-                    // Only add if the asset is actually an Addressable
                     var settings = AddressableAssetSettingsDefaultObject.Settings;
                     if (settings == null) continue;
 

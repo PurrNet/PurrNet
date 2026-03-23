@@ -4,7 +4,6 @@ using UnityEngine;
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using JetBrains.Annotations;
 
 namespace PurrNet
 {
@@ -13,8 +12,6 @@ namespace PurrNet
     {
         private NetworkAssets _target;
         private SerializedProperty _folderProp;
-        [UsedImplicitly]
-        private SerializedProperty _autoGenerateProp;
         private SerializedProperty _assetsProp;
         private SerializedProperty _linkedProp;
 
@@ -24,19 +21,11 @@ namespace PurrNet
         private int _typePage = 0;
         private const int TypesPerPage = 10;
 
-        [UsedImplicitly]
-        private const int AssetsPerPage = 20;
-        [UsedImplicitly]
-        private int _assetPage;
-
-        private static GUIStyle DescriptionStyle() => SharedAssetEditorUI.DescriptionStyle();
-
         private void OnEnable()
         {
             _cachedTypes = null;
             _target = (NetworkAssets)target;
             _folderProp = serializedObject.FindProperty("folder");
-            _autoGenerateProp = serializedObject.FindProperty("autoGenerate");
             _assetsProp = serializedObject.FindProperty("assets");
             _linkedProp = serializedObject.FindProperty("linkedNetworkAssets");
 
@@ -51,25 +40,23 @@ namespace PurrNet
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            GUILayout.Label("Network Assets", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField(
-                "This asset is used to store Unity objects (e.g., Materials, Sprites, Scriptables) to reference them by index for efficient networking.",
-                DescriptionStyle());
-            GUILayout.Space(10);
 
-            EditorGUILayout.PropertyField(_folderProp);
+            SharedAssetEditorUI.DrawHeader(
+                "Network Assets",
+                "This asset is used to store Unity objects (e.g., Materials, Sprites, Scriptables) " +
+                "to reference them by index for efficient networking.");
+
+            SharedAssetEditorUI.DrawGenerationSettingsTop(_folderProp, _target);
 
             GUILayout.BeginHorizontal();
-
             DrawToggleButton("Auto generate", ref _target.autoGenerate);
-            if (GUILayout.Button("Generate", GUILayout.Width(1), GUILayout.ExpandWidth(true)))
+            GUILayout.EndHorizontal();
+
+            SharedAssetEditorUI.DrawGenerateButton(() =>
             {
                 _target.GenerateAssets();
                 serializedObject.Update();
-            }
-
-            GUILayout.EndHorizontal();
-
+            });
 
             if (GUILayout.Button("Refresh Type List"))
             {
@@ -77,12 +64,11 @@ namespace PurrNet
             }
 
             DrawTypeToggleFoldout();
-            GUILayout.Space(10);
 
-            EditorGUILayout.PropertyField(_linkedProp, true);
-            GUILayout.Space(10);
+            SharedAssetEditorUI.DrawLinkedField(_linkedProp);
 
-            DrawAssetList();
+            GUILayout.Space(10);
+            EditorGUILayout.PropertyField(_assetsProp, true);
 
             serializedObject.ApplyModifiedProperties();
 
@@ -96,11 +82,6 @@ namespace PurrNet
         private void DrawToggleButton(string label, ref bool value)
         {
             value = SharedAssetEditorUI.DrawToggleButton(label, value, _target);
-        }
-
-        private void DrawAssetList()
-        {
-            EditorGUILayout.PropertyField(_assetsProp, true);
         }
 
         private void DrawTypeToggleFoldout()

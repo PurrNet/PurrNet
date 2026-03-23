@@ -50,7 +50,11 @@ namespace PurrNet
         /// </summary>
         public int count => _entries.Count;
 
-        public bool preloadAtStartup => _preloadAtStartup;
+        public bool preloadAtStartup
+        {
+            get => _preloadAtStartup;
+            set => _preloadAtStartup = value;
+        }
 
         public override IEnumerable<PrefabData> allPrefabs => _prefabLookup.Values;
 

@@ -11,11 +11,10 @@ namespace PurrNet
         private NetworkPrefabs networkPrefabs;
         private SerializedProperty linkedNetworkPrefabs;
         private SerializedProperty prefabs;
+        private SerializedProperty folderProp;
         private bool? allPoolingState = null;
         private ReorderableList reorderableList;
 
-        private const float POOL_TOGGLE_WIDTH = 45f;
-        const float WARMUP_COUNT_WIDTH = 60f;
         private const float SPACING = 8f;
         private const float REORDERABLE_LIST_BUTTON_WIDTH = 25f;
 
@@ -24,6 +23,7 @@ namespace PurrNet
             networkPrefabs = (NetworkPrefabs)target;
             linkedNetworkPrefabs = serializedObject.FindProperty("linkedNetworkPrefabs");
             prefabs = serializedObject.FindProperty("prefabs");
+            folderProp = serializedObject.FindProperty("folder");
 
             if (networkPrefabs.autoGenerate)
                 networkPrefabs.Generate();
@@ -121,10 +121,9 @@ namespace PurrNet
 
         private void CalculateWidths(float fullWidth, out float prefabWidth, out float poolWidth, out float warmupWidth)
         {
-            float spacing = SPACING;
             poolWidth = 20f;
             warmupWidth = 60f;
-            prefabWidth = fullWidth - poolWidth - warmupWidth - (spacing * 2);
+            prefabWidth = fullWidth - poolWidth - warmupWidth - (SPACING * 2);
         }
 
         private void UpdateAllPoolingState()
@@ -152,52 +151,31 @@ namespace PurrNet
         {
             serializedObject.Update();
 
-            GUILayout.Label("Network Prefabs", EditorStyles.boldLabel, GUILayout.ExpandWidth(true));
-            const string description = "This asset is used to store any prefabs containing a Network Behaviour. " +
-                                       "You can add prefabs to this asset manually or auto generate the references. " +
-                                       "This list is used by the NetworkManager to spawn network prefabs.";
+            SharedAssetEditorUI.DrawHeader(
+                "Network Prefabs",
+                "This asset is used to store any prefabs containing a Network Behaviour. " +
+                "You can add prefabs to this asset manually or auto generate the references. " +
+                "This list is used by the NetworkManager to spawn network prefabs.");
 
-            GUILayout.Label(description, SharedAssetEditorUI.DescriptionStyle());
+            SharedAssetEditorUI.DrawGenerationSettingsTop(folderProp, networkPrefabs);
 
-            GUILayout.Space(10);
-
-            // Generation Settings
-            EditorGUILayout.LabelField("Generation Settings", EditorStyles.boldLabel);
-            EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("folder"), new GUIContent("Folder"));
-            if (EditorGUI.EndChangeCheck())
-            {
-                EditorUtility.SetDirty(networkPrefabs);
-            }
-
-            // Toggle buttons row
             GUILayout.BeginHorizontal();
-
             DrawToggleButton("Auto generate", ref networkPrefabs.autoGenerate);
             DrawToggleButton("Networked only", ref networkPrefabs.networkOnly);
             DrawToggleButton("Default pooling", ref networkPrefabs.poolByDefault);
-
             GUILayout.EndHorizontal();
 
-            if (GUILayout.Button("Generate", GUILayout.Width(1), GUILayout.ExpandWidth(true)))
+            SharedAssetEditorUI.DrawGenerateButton(() =>
             {
                 networkPrefabs.Generate();
                 serializedObject.ApplyModifiedProperties();
                 prefabs = serializedObject.FindProperty("prefabs");
                 UpdateAllPoolingState();
-            }
-            
-            GUILayout.Space(10);
-            EditorGUILayout.PropertyField(linkedNetworkPrefabs, true);
+            });
 
-            GUILayout.Space(10);
+            SharedAssetEditorUI.DrawLinkedField(linkedNetworkPrefabs);
 
-            // When auto-generate is on, disable adding/removing/reordering entries
-            // but still allow editing pool and warmup settings on each entry.
-            reorderableList.displayAdd = !networkPrefabs.autoGenerate;
-            reorderableList.displayRemove = !networkPrefabs.autoGenerate;
-            reorderableList.draggable = !networkPrefabs.autoGenerate;
-            reorderableList.DoLayoutList();
+            SharedAssetEditorUI.DrawEntryList(reorderableList, networkPrefabs.autoGenerate);
 
             serializedObject.ApplyModifiedProperties();
 
