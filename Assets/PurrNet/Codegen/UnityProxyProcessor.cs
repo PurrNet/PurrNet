@@ -49,7 +49,6 @@ namespace PurrNet.Codegen
 
                         var declaringTypeName = methodReference.DeclaringType.FullName;
 
-                        // --- UnityEngine.Object interception (Instantiate / Destroy / DontDestroyOnLoad) ---
                         if (declaringTypeName == objectClassFullName)
                         {
                             if (methodReference.Name != "Instantiate" &&
@@ -91,7 +90,6 @@ namespace PurrNet.Codegen
                             continue;
                         }
 
-                        // --- Addressables interception (InstantiateAsync / ReleaseInstance) ---
                         if (methodReference.Name != "InstantiateAsync" &&
                             methodReference.Name != "ReleaseInstance")
                             continue;
@@ -140,11 +138,6 @@ namespace PurrNet.Codegen
             }
         }
 
-        /// <summary>
-        /// Finds a matching method definition in the proxy type for the given original method.
-        /// For instance methods (isInstanceToStatic = true), the proxy method has one extra
-        /// parameter at position 0 representing the original 'this' reference.
-        /// </summary>
         static MethodDefinition GetMatchingDefinition(
             MethodReference originalMethod,
             TypeDefinition proxyType,
@@ -161,7 +154,6 @@ namespace PurrNet.Codegen
                 if (method.Parameters.Count != expectedParamCount)
                     continue;
 
-                // Check for matching generic parameters
                 if (method.HasGenericParameters != originalMethod.HasGenericParameters)
                     continue;
 
@@ -175,7 +167,6 @@ namespace PurrNet.Codegen
                         var originalParam = originalMethod.GenericParameters[i];
                         var candidateParam = method.GenericParameters[i];
 
-                        // Compare names and constraints
                         if (originalParam.Name != candidateParam.Name)
                             goto NextMethod;
 
@@ -191,7 +182,6 @@ namespace PurrNet.Codegen
                     }
                 }
 
-                // For instance-to-static, verify the first proxy param accepts the declaring type
                 if (isInstanceToStatic)
                 {
                     if (!IsAssignableFrom(method.Parameters[0].ParameterType,
@@ -199,7 +189,6 @@ namespace PurrNet.Codegen
                         continue;
                 }
 
-                // Check remaining parameters
                 bool match = true;
                 for (int i = 0; i < originalMethod.Parameters.Count; i++)
                 {
@@ -229,7 +218,6 @@ namespace PurrNet.Codegen
             if (original.FullName != candidate.FullName)
                 return false;
 
-            // If either type is generic, check their arguments
             if (original is GenericInstanceType originalGeneric && candidate is GenericInstanceType candidateGeneric)
             {
                 if (originalGeneric.GenericArguments.Count != candidateGeneric.GenericArguments.Count)
@@ -245,10 +233,6 @@ namespace PurrNet.Codegen
             return true;
         }
 
-        /// <summary>
-        /// Checks whether typeRef is, or derives from, a type with the given full name.
-        /// Used to match AssetReferenceGameObject → AssetReference hierarchy.
-        /// </summary>
         static bool IsOrDerivedFrom(TypeReference typeRef, string baseFullName)
         {
             var current = typeRef;
@@ -270,29 +254,19 @@ namespace PurrNet.Codegen
             return false;
         }
 
-        /// <summary>
-        /// Checks whether the declaring type is assignable to the parameter type.
-        /// i.e. declaringType == paramType or declaringType derives from paramType.
-        /// </summary>
         static bool IsAssignableFrom(TypeReference paramType, TypeReference declaringType)
         {
             return IsOrDerivedFrom(declaringType, paramType.FullName);
         }
 
-        /// <summary>
-        /// Finds a type definition by full name across the module and its referenced assemblies.
-        /// Used for string-based lookup when typeof() is not available (e.g. conditional compilation).
-        /// </summary>
         static TypeDefinition ResolveTypeByName(ModuleDefinition module, string fullName)
         {
-            // Check the module's own types
             foreach (var t in module.Types)
             {
                 if (t.FullName == fullName)
                     return t;
             }
 
-            // Check referenced assemblies
             foreach (var asmRef in module.AssemblyReferences)
             {
                 try
@@ -308,7 +282,6 @@ namespace PurrNet.Codegen
                 }
                 catch
                 {
-                    // Skip unresolvable assemblies
                 }
             }
 
