@@ -1131,7 +1131,6 @@ namespace PurrNet.Modules
 
         private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
-        private readonly Dictionary<SpawnID, List<PlayerID>> _spawnPacketsTargets = new();
 
         private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
         {
@@ -1216,36 +1215,7 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    // Check if batch is getting too large
-                    // Limit to prevent UTP transmission issues
-                    const int MAX_PACKETS_PER_BATCH = 10; // Despawn packets are smaller, allow more
-                    
-                    bool batchFull = (batch.spawnPackets.Count + batch.despawnPackets.Count >= MAX_PACKETS_PER_BATCH);
-                    
-                    if (batchFull)
-                    {
-                        // Batch is full, flush it
-                        using (batch)
-                        {
-                            if (player.isServer)
-                                _playersManager.SendToServer(batch);
-                            else
-                                _playersManager.Send(player, batch);
-                        }
-                        
-                        // Create new batch with current packet
-                        batch = new SpawnPacketBatch(
-                            _sceneId,
-                            DisposableList<SpawnPacket>.Create(),
-                            DisposableList<DespawnPacket>.Create()
-                        );
-                        batch.despawnPackets.Add(packet);
-                        _spawnPackets[player] = batch;
-                    }
-                    else
-                    {
-                        batch.despawnPackets.Add(packet);
-                    }
+                    batch.despawnPackets.Add(packet);
                 }
             }
             else
@@ -1281,47 +1251,7 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    // CRITICAL: Check if batch is getting too large for UTP transmission
-                    // UTP's ReliableSequencedPipelineStage has hard limits (~1000-1200 bytes)
-                    // To stay safe, limit batch to 5 packets OR 15 total objects, whichever comes first
-                    const int MAX_PACKETS_PER_BATCH = 5;
-                    const int MAX_OBJECTS_PER_BATCH = 15;
-                    
-                    int currentObjectCount = 0;
-                    for (int i = 0; i < batch.spawnPackets.Count; i++)
-                    {
-                        currentObjectCount += batch.spawnPackets[i].prototype.framework.Count;
-                    }
-                    
-                    int newObjectCount = currentObjectCount + prototype.framework.Count;
-                    bool batchFull = (batch.spawnPackets.Count >= MAX_PACKETS_PER_BATCH) || 
-                                    (newObjectCount > MAX_OBJECTS_PER_BATCH);
-                    
-                    if (batchFull)
-                    {
-                        // Batch is full, flush it and create a new one
-                        using (batch)
-                        {
-                            if (player.isServer)
-                                _playersManager.SendToServer(batch);
-                            else
-                                _playersManager.Send(player, batch);
-                        }
-                        
-                        // Create new batch with current packet
-                        batch = new SpawnPacketBatch(
-                            _sceneId,
-                            DisposableList<SpawnPacket>.Create(),
-                            DisposableList<DespawnPacket>.Create()
-                        );
-                        batch.spawnPackets.Add(packet);
-                        _spawnPackets[player] = batch;
-                    }
-                    else
-                    {
-                        // Batch has room, add packet to it
-                        batch.spawnPackets.Add(packet);
-                    }
+                    batch.spawnPackets.Add(packet);
                 }
             }
             else
@@ -1330,15 +1260,6 @@ namespace PurrNet.Modules
                     _playersManager.SendToServer(packet);
                 else _playersManager.Send(player, packet);
                 packet.Dispose();
-                
-                // Track player for FinishSpawnPacket routing
-                if (!_spawnPacketsTargets.TryGetValue(spawnId, out var targets))
-                {
-                    targets = new List<PlayerID>();
-                    _spawnPacketsTargets[spawnId] = targets;
-                }
-                targets.Add(player);
-                
                 _toCompleteNextFrame.Add(spawnId);
             }
         }
@@ -1621,19 +1542,13 @@ namespace PurrNet.Modules
             }
         }
 
-    private void FlushSpawnPackets()
+        private void FlushSpawnPackets()
         {
             foreach (var (player, batch) in _spawnPackets)
             {
                 using (batch)
                 {
                     int count = batch.spawnPackets.Count;
-                    int totalObjects = 0;
-                    for (int i = 0; i < count; i++)
-                    {
-                        totalObjects += batch.spawnPackets[i].prototype.framework.Count;
-                    }
-                    
                     if (player.isServer)
                         _playersManager.SendToServer(batch);
                     else
@@ -1666,18 +1581,8 @@ namespace PurrNet.Modules
                         }
                     }
 
-                    // Track which players received each spawn packet for later FinishSpawnPacket routing
                     for (var i = 0; i < count; i++)
-                    {
-                        var packetIdx = batch.spawnPackets[i].packetIdx;
-                        if (!_spawnPacketsTargets.TryGetValue(packetIdx, out var targets))
-                        {
-                            targets = new List<PlayerID>();
-                            _spawnPacketsTargets[packetIdx] = targets;
-                        }
-                        targets.Add(player);
-                        _toCompleteNextFrame.Add(packetIdx);
-                    }
+                        _toCompleteNextFrame.Add(batch.spawnPackets[i].packetIdx);
                 }
             }
 
@@ -1746,29 +1651,11 @@ namespace PurrNet.Modules
                 };
 
                 if (_asServer)
-                {
-                    // Send FinishSpawnPacket to all players who received the corresponding spawn packets
-                    if (_spawnPacketsTargets.TryGetValue(toComplete, out var targets))
-                    {
-                        for (var j = 0; j < targets.Count; j++)
-                        {
-                            _playersManager.Send(targets[j], packet);
-                        }
-                    }
-                    else
-                    {
-                        // Fallback: no tracking found, send to owner
-                        _playersManager.Send(toComplete.target, packet);
-                    }
-                }
-                else
-                {
-                    _playersManager.SendToServer(packet);
-                }
+                    _playersManager.Send(toComplete.target, packet);
+                else _playersManager.SendToServer(packet);
             }
 
             _toCompleteNextFrame.Clear();
-            _spawnPacketsTargets.Clear();
         }
 
         private void CatchupClient(PlayerID playerId)
