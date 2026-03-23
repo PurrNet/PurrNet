@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using PurrNet.Utils;
 using UnityEditor;
 using UnityEngine;
 
@@ -27,10 +28,12 @@ namespace PurrNet.Editor
         private static FieldInfo _parentField;
         private static FieldInfo _onGUIField;
         private static MethodInfo _originalOnGUIMethod;
+        private static double _nextSearchTime;
 
         [InitializeOnLoadMethod]
         private static void Init()
         {
+            _nextSearchTime = 0;
 
             _topViewType = AppDomain.CurrentDomain.GetAssemblies()
 #if UNITY_6000_3_OR_NEWER
@@ -51,12 +54,22 @@ namespace PurrNet.Editor
             if (_topViewType == null || _wrappedGUIMethod == null || _editorWindowDelegateType == null)
                 return;
 
+            // TopView only exists on clone instances, skip on main editor
+            if (!ApplicationContext.isClone)
+                return;
+
             EditorApplication.update -= TryPatchTopViewGUI;
             EditorApplication.update += TryPatchTopViewGUI;
         }
 
         private static void TryPatchTopViewGUI()
         {
+            // Throttle: only search once per second to avoid burning CPU on FindObjectsOfTypeAll every frame
+            var time = EditorApplication.timeSinceStartup;
+            if (time < _nextSearchTime)
+                return;
+            _nextSearchTime = time + 1.0;
+
             var window = Resources.FindObjectsOfTypeAll(_topViewType).FirstOrDefault() as EditorWindow;
             if (window == null)
                 return;
