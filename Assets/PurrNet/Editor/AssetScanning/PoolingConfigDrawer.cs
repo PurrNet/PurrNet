@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace PurrNet
+namespace PurrNet.Editor
 {
     [CustomPropertyDrawer(typeof(PoolingConfig))]
     public class PoolingConfigDrawer : PropertyDrawer
