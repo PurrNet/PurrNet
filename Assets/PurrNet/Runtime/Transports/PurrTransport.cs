@@ -568,7 +568,7 @@ namespace PurrNet.Transports
                         var addresses = await Dns.GetHostAddressesAsync(_host);
                         var ipv4 = addresses.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork)
                                    ?? IPAddress.Any;
-                        _udpServer.Connect(ipv4.ToString(), _hostJoinInfo.udpPort, "PurrNet");
+                        _udpServer.Connect(ipv4.ToString(), _hostJoinInfo.udpPortV2, "PurrNet");
                     }
                     else
                     {
@@ -697,7 +697,7 @@ namespace PurrNet.Transports
                     var ipv4 = addresses.FirstOrDefault(ipArd => ipArd.AddressFamily == AddressFamily.InterNetwork)
                                ?? IPAddress.Any;
 
-                    _udpClient.Connect(ipv4.ToString(), _clientJoinInfo.udpPort, "PurrNet");
+                    _udpClient.Connect(ipv4.ToString(), _clientJoinInfo.udpPortV2, "PurrNet");
                 }
                 else
                 {
