@@ -1,3 +1,10 @@
+# [1.20.0-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.31...v1.20.0-beta.32) (2026-03-24)
+
+
+### Bug Fixes
+
+* rename namespace for PoolingConfigDrawer to reflect it's editor only ([434bb86](https://github.com/PurrNet/PurrNet/commit/434bb86d26bd5caa286e2c5d2c19b06ac87e6073))
+
 # [1.20.0-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.30...v1.20.0-beta.31) (2026-03-23)
 
 
