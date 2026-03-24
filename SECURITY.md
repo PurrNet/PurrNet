@@ -4,9 +4,9 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 6.X | :white_check_mark: |
-| 2022 | :white_check_mark: |
-| < 2022.x.x | :x: |
+| 6.x | :white_check_mark: |
+| 2022.x | :white_check_mark: |
+| < 2022.x | :x: |
 
 ## Reporting a Vulnerability
 
