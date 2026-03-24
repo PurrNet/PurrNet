@@ -37,7 +37,9 @@ namespace PurrNet.Transports
         public bool ssl;
         public string secret;
         public int port;
+        [Obsolete]
         public int udpPort;
+        public int udpPortV2;
     }
 
     [UsedImplicitly]
@@ -48,7 +50,9 @@ namespace PurrNet.Transports
         public string secret;
         public string host;
         public int port;
+        [Obsolete]
         public int udpPort;
+        public int udpPortV2;
     }
 
     public static class PurrTransportUtils
