@@ -236,6 +236,7 @@ var annotated_dup =
       [ "NetworkPrefabs", "classPurrNet_1_1NetworkPrefabs.html", "classPurrNet_1_1NetworkPrefabs" ],
       [ "NetworkReflection", "classPurrNet_1_1NetworkReflection.html", "classPurrNet_1_1NetworkReflection" ],
       [ "NetworkRigidbody", "classPurrNet_1_1NetworkRigidbody.html", "classPurrNet_1_1NetworkRigidbody" ],
+      [ "NetworkRigidbodySettings", "classPurrNet_1_1NetworkRigidbodySettings.html", null ],
       [ "NetworkRules", "classPurrNet_1_1NetworkRules.html", null ],
       [ "NetworkSceneRules", "structPurrNet_1_1NetworkSceneRules.html", null ],
       [ "NetworkServerToggle", "classPurrNet_1_1NetworkServerToggle.html", "classPurrNet_1_1NetworkServerToggle" ],
