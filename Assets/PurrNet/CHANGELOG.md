@@ -1,3 +1,17 @@
+# [1.20.0-beta.34](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.33...v1.20.0-beta.34) (2026-03-24)
+
+
+### Bug Fixes
+
+* Added advanced settings for Network Rigidbody ([96dd6fc](https://github.com/PurrNet/PurrNet/commit/96dd6fc954d22b13302741ce061185114745d386))
+
+# [1.20.0-beta.33](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.32...v1.20.0-beta.33) (2026-03-24)
+
+
+### Bug Fixes
+
+* update litenetlib on relay too ([16071d4](https://github.com/PurrNet/PurrNet/commit/16071d4c68d16b9bfdf1bbae34222ae6b5640b48))
+
 # [1.20.0-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.31...v1.20.0-beta.32) (2026-03-24)
 
 

@@ -198,8 +198,9 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
+  _advancedSettings: {fileID: 11400000, guid: cd15aa9b4ac4ddb489f350e4a05037d8, type: 2}
   _interpolationDelay: 0.05
-  _predictionFactor: 1
+  _predictionFactor: 4
   _positionStrength: 5
   _correctionRange: 2
   _rotationStrength: 0
