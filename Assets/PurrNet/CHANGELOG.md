@@ -1,3 +1,10 @@
+# [1.20.0-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.35...v1.20.0-beta.36) (2026-03-25)
+
+
+### Bug Fixes
+
+* Statistics manager consistency improvements ([471c569](https://github.com/PurrNet/PurrNet/commit/471c56919c2b69d45a1ebd8d6171fe8a2495c091))
+
 # [1.20.0-beta.35](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.34...v1.20.0-beta.35) (2026-03-25)
 
 
