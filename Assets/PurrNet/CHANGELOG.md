@@ -1,3 +1,10 @@
+# [1.20.0-beta.35](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.34...v1.20.0-beta.35) (2026-03-25)
+
+
+### Bug Fixes
+
+* include `udpPortV2` in RelayServer and obsolete the old `udpPort` ([f655009](https://github.com/PurrNet/PurrNet/commit/f655009df270b2fb394233dce54da99bb227c65a))
+
 # [1.20.0-beta.34](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.33...v1.20.0-beta.34) (2026-03-24)
 
 
