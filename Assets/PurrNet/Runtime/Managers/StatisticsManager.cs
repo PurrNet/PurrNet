@@ -34,7 +34,7 @@ namespace PurrNet
         public bool connectedClient { get; private set; }
 
         private const float PING_EMA_RISE_ALPHA = 0.5f;
-        private const float PING_EMA_FALL_ALPHA = 0.15f;
+        private const float PING_EMA_FALL_ALPHA = 0.25f;
         private float _emaPing;
         private bool _hasPingSample;
 
@@ -515,10 +515,10 @@ namespace PurrNet
 
             float sentTime = msg.realSendTime;
             int currentPing = Mathf.Max(0, Mathf.FloorToInt((Time.time - sentTime) * 1000));
-            var multiplier = 2f;
-            if (_networkManager.isServer)
-                multiplier = 3f;
-            currentPing -= Mathf.Min(currentPing, Mathf.RoundToInt((_tickManager.tickDelta * multiplier) * 1000));
+            // Compensate for tick-aligned processing overhead:
+            // ~0.5 tick wait on server side before flush, +0.5 tick for host local loopback
+            var compensation = _tickManager.tickDelta * (_networkManager.isServer ? 1f : 0.5f);
+            currentPing -= Mathf.Min(currentPing, Mathf.RoundToInt(compensation * 1000));
 
             if (!_hasPingSample)
             {
