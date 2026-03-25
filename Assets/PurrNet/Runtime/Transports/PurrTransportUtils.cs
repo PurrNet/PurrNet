@@ -18,7 +18,9 @@ namespace PurrNet.Transports
         public string apiEndpoint;
         public string host;
         public int restPort;
+        [Obsolete("Use `udpPortV2` instead.")]
         public int udpPort;
+        public int udpPortV2;
         public int webSocketsPort;
         public string region;
     }
