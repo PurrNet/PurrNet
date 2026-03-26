@@ -1,3 +1,10 @@
+# [1.20.0-beta.40](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.39...v1.20.0-beta.40) (2026-03-26)
+
+
+### Bug Fixes
+
+* dont use build index for scenes, use path hash instead ([66dfbf0](https://github.com/PurrNet/PurrNet/commit/66dfbf064dde0ef5e9624be9a2d67aeb4b0d1279))
+
 # [1.20.0-beta.39](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.38...v1.20.0-beta.39) (2026-03-26)
 
 
