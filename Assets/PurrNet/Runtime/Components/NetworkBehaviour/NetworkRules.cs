@@ -75,6 +75,9 @@ namespace PurrNet
 
         [Tooltip("On disconnect, despawn all objects that were spawned during the session")]
         public bool cleanupSpawnedObjects;
+
+        [Tooltip("Include runtime-instantiated scene objects when collecting scene identities")]
+        public bool includeInstantiatedSceneObjects;
     }
 
     [Serializable]
@@ -195,7 +198,8 @@ namespace PurrNet
             defaultOwner = DefaultOwner.SpawnerIfClientOnly,
             propagateOwnershipByDefault = true,
             despawnIfOwnerDisconnects = true,
-            cleanupSpawnedObjects = true
+            cleanupSpawnedObjects = true,
+            includeInstantiatedSceneObjects = false
         };
 
         [SerializeField]
@@ -407,6 +411,11 @@ namespace PurrNet
         public bool ShouldMigrateAsHost()
         {
             return _hostMigrationRules.migrateAsHost;
+        }
+
+        public bool ShouldIncludeInstantiatedSceneObjects()
+        {
+            return _defaultSpawnRules.includeInstantiatedSceneObjects;
         }
     }
 }

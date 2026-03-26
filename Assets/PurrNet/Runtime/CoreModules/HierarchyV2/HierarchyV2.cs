@@ -200,7 +200,7 @@ namespace PurrNet.Modules
             _defaultPrototypes.Clear();
 
             var allSceneIdentities = ListPool<NetworkIdentity>.Instantiate();
-            SceneObjectsModule.GetSceneIdentities(scene, allSceneIdentities);
+            SceneObjectsModule.GetSceneIdentities(scene, allSceneIdentities, _manager.networkRules.ShouldIncludeInstantiatedSceneObjects());
 
             var roots = HashSetPool<NetworkIdentity>.Instantiate();
 
