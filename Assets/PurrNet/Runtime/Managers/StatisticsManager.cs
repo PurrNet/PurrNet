@@ -33,17 +33,15 @@ namespace PurrNet
         public bool connectedServer { get; private set; }
         public bool connectedClient { get; private set; }
 
-        private const float PING_EMA_RISE_ALPHA = 0.5f;
-        private const float PING_EMA_FALL_ALPHA = 0.25f;
+        private const float PING_EMA_RISE_ALPHA = 0.15f;
+        private const float PING_EMA_FALL_ALPHA = 0.1f;
+        private const float JITTER_EMA_ALPHA = 0.0625f;
+        private const float WARMUP_DURATION = 1.0f;
         private float _emaPing;
         private bool _hasPingSample;
-
-        private const float JITTER_WINDOW_TIME = 2.5f;
-        private const int MAX_JITTER_SAMPLES = 64;
-        private readonly float[] _jitterSampleTimes = new float[MAX_JITTER_SAMPLES];
-        private readonly int[] _jitterSampleValues = new int[MAX_JITTER_SAMPLES];
-        private int _jitterHead;
-        private int _jitterCount;
+        private float _connectionTime;
+        private int _lastRawPing;
+        private float _emaJitter;
 
         private const int MAX_SEQUENCE_TRACKING = 256;
         private const float PACKET_LOSS_WINDOW = 5f;
@@ -445,17 +443,12 @@ namespace PurrNet
             packetLoss = 0;
             _emaPing = 0;
             _hasPingSample = false;
-            _jitterHead = 0;
-            _jitterCount = 0;
+            _connectionTime = Time.time;
+            _lastRawPing = 0;
+            _emaJitter = 0;
             _seqHead = 0;
             _seqCount = 0;
             _packetSequence = 0;
-
-            for (int i = 0; i < MAX_JITTER_SAMPLES; i++)
-            {
-                _jitterSampleTimes[i] = 0;
-                _jitterSampleValues[i] = 0;
-            }
 
             for (int i = 0; i < MAX_SEQUENCE_TRACKING; i++)
             {
@@ -513,12 +506,21 @@ namespace PurrNet
                 return;
             }
 
+            if (Time.time - _connectionTime < WARMUP_DURATION)
+                return;
+
             float sentTime = msg.realSendTime;
             int currentPing = Mathf.Max(0, Mathf.FloorToInt((Time.time - sentTime) * 1000));
-            // Compensate for tick-aligned processing overhead:
-            // ~0.5 tick wait on server side before flush, +0.5 tick for host local loopback
-            var compensation = _tickManager.tickDelta * (_networkManager.isServer ? 1f : 0.5f);
+
+            var compensation = _tickManager.tickDelta * (_networkManager.isServer ? 3f : 2f);
             currentPing -= Mathf.Min(currentPing, Mathf.RoundToInt(compensation * 1000));
+
+            if (_hasPingSample)
+            {
+                int diff = Mathf.Abs(currentPing - _lastRawPing);
+                _emaJitter += JITTER_EMA_ALPHA * (diff - _emaJitter);
+            }
+            _lastRawPing = currentPing;
 
             if (!_hasPingSample)
             {
@@ -532,35 +534,7 @@ namespace PurrNet
             }
 
             ping = Mathf.RoundToInt(_emaPing);
-
-            _jitterSampleTimes[_jitterHead] = Time.time;
-            _jitterSampleValues[_jitterHead] = currentPing;
-            _jitterHead = (_jitterHead + 1) % MAX_JITTER_SAMPLES;
-            if (_jitterCount < MAX_JITTER_SAMPLES)
-                _jitterCount++;
-
-            CalculateJitter();
-        }
-
-        private void CalculateJitter()
-        {
-            float cutoff = Time.time - JITTER_WINDOW_TIME;
-            int min = int.MaxValue;
-            int max = int.MinValue;
-            int validCount = 0;
-
-            for (int i = 0; i < _jitterCount; i++)
-            {
-                if (_jitterSampleTimes[i] >= cutoff)
-                {
-                    int val = _jitterSampleValues[i];
-                    if (val < min) min = val;
-                    if (val > max) max = val;
-                    validCount++;
-                }
-            }
-
-            jitter = validCount > 1 ? max - min : 0;
+            jitter = Mathf.RoundToInt(_emaJitter);
         }
 
         private void HandlePacketCheck()
