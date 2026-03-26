@@ -1,3 +1,10 @@
+# [1.20.0-beta.39](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.38...v1.20.0-beta.39) (2026-03-26)
+
+
+### Bug Fixes
+
+* Ensure rigidbody getter ([1a58f57](https://github.com/PurrNet/PurrNet/commit/1a58f57aa75997a157a79d3c73d6756461ac0258))
+
 # [1.20.0-beta.38](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.37...v1.20.0-beta.38) (2026-03-26)
 
 
