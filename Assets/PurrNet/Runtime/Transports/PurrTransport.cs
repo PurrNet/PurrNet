@@ -102,8 +102,6 @@ namespace PurrNet.Transports
 
         public override ITransport transport => this;
 
-        private float _lastSendTime;
-
         // Pipe mode: simple connId-to-connId forwarding, no rooms or hosts
         private bool _isPipeMode;
         private int _pipeConnId;
@@ -563,7 +561,7 @@ namespace PurrNet.Transports
                     if (Application.platform != RuntimePlatform.WebGLPlayer)
                     {
                         _isUsingUDP = true;
-                        _lastSendTime = Time.unscaledTime;
+
                         _udpServer.StartInManualMode(0);
                         var addresses = await Dns.GetHostAddressesAsync(_host);
                         var ipv4 = addresses.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork)
@@ -690,7 +688,6 @@ namespace PurrNet.Transports
                 if (Application.platform != RuntimePlatform.WebGLPlayer)
                 {
                     _isUsingUDP = true;
-                    _lastSendTime = Time.unscaledTime;
                     _udpClient.StartInManualMode(0);
 
                     var addresses = await Dns.GetHostAddressesAsync(_clientJoinInfo.host);
@@ -818,7 +815,6 @@ namespace PurrNet.Transports
                 if (Application.platform != RuntimePlatform.WebGLPlayer)
                 {
                     _isUsingUDP = true;
-                    _lastSendTime = Time.unscaledTime;
                     _udpClient.StartInManualMode(0);
 
                     var addresses = await Dns.GetHostAddressesAsync(relayHost);
@@ -1028,9 +1024,7 @@ namespace PurrNet.Transports
         {
             if (_isUsingUDP)
             {
-                var now = Time.unscaledTime;
-                var dInMs = Mathf.Max(0, Mathf.RoundToInt((now - _lastSendTime) * 1000));
-                _lastSendTime = now;
+                var dInMs = delta * 1000f;
 
                 if (_udpClient.IsRunning)
                     _udpClient.ManualUpdate(dInMs);
