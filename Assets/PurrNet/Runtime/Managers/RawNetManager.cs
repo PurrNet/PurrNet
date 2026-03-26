@@ -422,6 +422,8 @@ namespace PurrNet
             }
         }
 
+        private double _lastSendTime;
+
         private void OnTick()
         {
             bool serverConnected = serverState == ConnectionState.Connected;
@@ -449,7 +451,12 @@ namespace PurrNet
                 _clientModules.TriggerOnPostFixedUpdate();
 
             if (_transport)
-                _transport.transport.SendMessages(tickModule.tickDelta);
+            {
+                var now = UnityEngine.Time.unscaledTimeAsDouble;
+                var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : tickModule.tickDelta;
+                _lastSendTime = now;
+                _transport.transport.SendMessages(sendDelta);
+            }
 
             if (_isCleaningClient && _clientModules.Cleanup())
             {
