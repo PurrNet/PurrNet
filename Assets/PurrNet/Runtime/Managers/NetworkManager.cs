@@ -856,7 +856,20 @@ namespace PurrNet
 
         public bool isLocalPlayerReady => _clientPlayersManager?.localPlayerId.HasValue == true;
 
-        public AuthenticationLayer authenticator => _authenticator;
+        public AuthenticationLayer authenticator
+        {
+            get { return _authenticator; }
+            set
+            {
+                if (!isOffline)
+                {
+                    PurrLogger.LogError("Failed to update authenticator since a connection is active");
+                    return;
+                }
+
+                _authenticator = value;
+            }
+        }
 
         private ScenesModule _clientSceneModule;
         private ScenesModule _serverSceneModule;
