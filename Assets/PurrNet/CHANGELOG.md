@@ -1,3 +1,10 @@
+# [1.20.0-beta.38](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.37...v1.20.0-beta.38) (2026-03-26)
+
+
+### Features
+
+* allow to discover instantiated network identities based on NetworkRules ([ce50f45](https://github.com/PurrNet/PurrNet/commit/ce50f459dbc22c0373702d21a7b4198f76c0e4f0))
+
 # [1.20.0-beta.37](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.36...v1.20.0-beta.37) (2026-03-26)
 
 
