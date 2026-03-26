@@ -1,3 +1,10 @@
+# [1.20.0-beta.41](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.40...v1.20.0-beta.41) (2026-03-26)
+
+
+### Bug Fixes
+
+* Statistics manager consistency issues ([bbf883c](https://github.com/PurrNet/PurrNet/commit/bbf883c869788a496ca39c9dd83595826254e21a))
+
 # [1.20.0-beta.40](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.39...v1.20.0-beta.40) (2026-03-26)
 
 
