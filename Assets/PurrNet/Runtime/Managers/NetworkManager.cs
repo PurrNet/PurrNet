@@ -1315,6 +1315,8 @@ namespace PurrNet
         static readonly ProfilerMarker _onPostBatchMarker = new ProfilerMarker($"NetworkManager.OnPostBatch");
         static readonly ProfilerMarker _onSendMessagesMarker = new ProfilerMarker($"NetworkManager.SendMessages");
 
+        private double _lastSendTime;
+
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
@@ -1375,7 +1377,12 @@ namespace PurrNet
             using (_onSendMessagesMarker.Auto())
             {
                 if (_transport)
-                    _transport.transport.SendMessages(delta);
+                {
+                    var now = Time.unscaledTimeAsDouble;
+                    var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : delta;
+                    _lastSendTime = now;
+                    _transport.transport.SendMessages(sendDelta);
+                }
             }
 
             if (_isCleaningClient)
