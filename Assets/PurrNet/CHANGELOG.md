@@ -1,3 +1,10 @@
+# [1.20.0-beta.37](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.36...v1.20.0-beta.37) (2026-03-26)
+
+
+### Bug Fixes
+
+* update LiteNetLib to latest (2.1.2) ([1db1f76](https://github.com/PurrNet/PurrNet/commit/1db1f766426c2f75ee46f24c2c299ea40aa766fe))
+
 # [1.20.0-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.35...v1.20.0-beta.36) (2026-03-25)
 
 
