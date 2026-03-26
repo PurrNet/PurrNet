@@ -93,7 +93,8 @@ namespace PurrNet
         [Tooltip("If linear and angular velocities are below this value, the object is considered stopped and will stop sending updates.")]
         [SerializeField] private float _velocityStopThreshold = 0.001f;
 
-        private Rigidbody _rigidbody;
+        private Rigidbody _cachedRigidbody;
+        private Rigidbody _rigidbody => _cachedRigidbody ? _cachedRigidbody : (_cachedRigidbody = GetComponent<Rigidbody>());
 
         private const int BUFFER_SIZE = 32;
         private readonly TimestampedSnapshot[] _snapshotBuffer = new TimestampedSnapshot[BUFFER_SIZE];
@@ -122,8 +123,8 @@ namespace PurrNet
 
         private void Awake()
         {
-            _rigidbody = GetComponent<Rigidbody>();
-            if (_rigidbody == null)
+            _cachedRigidbody = GetComponent<Rigidbody>();
+            if (!_cachedRigidbody)
             {
                 PurrLogger.LogError($"NetworkRigidbody requires a Rigidbody component on {gameObject.name}", this);
                 enabled = false;
