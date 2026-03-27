@@ -1,3 +1,10 @@
+# [1.20.0-beta.46](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.45...v1.20.0-beta.46) (2026-03-27)
+
+
+### Bug Fixes
+
+* use Packages folder instead such that clones respect it, also dont include version in the folder name ([9185c9c](https://github.com/PurrNet/PurrNet/commit/9185c9c423bc325c8d7129ea90f9656e56bac2b5))
+
 # [1.20.0-beta.45](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.44...v1.20.0-beta.45) (2026-03-27)
 
 
