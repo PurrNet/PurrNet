@@ -1,3 +1,10 @@
+# [1.20.0-beta.48](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.47...v1.20.0-beta.48) (2026-03-27)
+
+
+### Bug Fixes
+
+* SafeRemoveDirectory(folderPath) now runs before CleanupLegacyPackageFiles ([9a99877](https://github.com/PurrNet/PurrNet/commit/9a9987724b22cdc37da033fba190a9ac2a113df2))
+
 # [1.20.0-beta.47](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.46...v1.20.0-beta.47) (2026-03-27)
 
 
