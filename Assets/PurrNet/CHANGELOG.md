@@ -1,3 +1,10 @@
+# [1.20.0-beta.44](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.43...v1.20.0-beta.44) (2026-03-27)
+
+
+### Bug Fixes
+
+* replace previous LiteNetLib code with just Unsafe.WriteUnaligned ([28164b7](https://github.com/PurrNet/PurrNet/commit/28164b7a9a00a98afc2a61e939d6f6cb5e0d9a2d))
+
 # [1.20.0-beta.43](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.42...v1.20.0-beta.43) (2026-03-27)
 
 
