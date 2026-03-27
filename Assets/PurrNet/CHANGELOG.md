@@ -1,3 +1,10 @@
+# [1.20.0-beta.43](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.42...v1.20.0-beta.43) (2026-03-27)
+
+
+### Bug Fixes
+
+* LiteNetLib use safe path for all systems ([73b3493](https://github.com/PurrNet/PurrNet/commit/73b3493a5bad9ed3fab6985c766d5a01cac106d8))
+
 # [1.20.0-beta.42](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.41...v1.20.0-beta.42) (2026-03-26)
 
 
