@@ -385,9 +385,25 @@ namespace PurrNet.Editor
                 // Clean up any legacy PurrPackages/ files
                 CleanupLegacyPackageFiles(upmName);
 
-                // Move extracted content to final location
+                // Move old version out of the way first (handles locked native DLLs)
                 if (Directory.Exists(folderPath))
-                    Directory.Delete(folderPath, true);
+                {
+                    try
+                    {
+                        var tempDest = Path.Combine("Temp", "PurrNet_old_" + DateTime.Now.Ticks);
+                        Directory.Move(folderPath, tempDest);
+                    }
+                    catch
+                    {
+                        try { Directory.Delete(folderPath, true); }
+                        catch (Exception e)
+                        {
+                            Debug.LogWarning($"[PurrNet] Could not remove old package at {folderPath}: {e.Message}");
+                        }
+                    }
+                }
+
+                // Move extracted content to final location
                 Directory.Move(tempExtractDir, folderPath);
 
                 // Embedded packages are auto-discovered by Unity — remove any stale manifest entry
@@ -554,13 +570,21 @@ namespace PurrNet.Editor
                 }
             }
 
-            // Folder installs
+            // Folder installs — move to Temp first to handle locked native DLLs
             foreach (var d in Directory.GetDirectories(LegacyPackagesDir, upmName + "-*"))
             {
-                try { Directory.Delete(d, true); }
+                try
+                {
+                    var tempDest = Path.Combine("Temp", "PurrNet_legacy_" + DateTime.Now.Ticks);
+                    Directory.Move(d, tempDest);
+                }
                 catch
                 {
-                    // ignored
+                    try { Directory.Delete(d, true); }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
             }
 
