@@ -1,3 +1,10 @@
+# [1.20.0-beta.42](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.41...v1.20.0-beta.42) (2026-03-26)
+
+
+### Features
+
+* add _authenticator setter ([96d975f](https://github.com/PurrNet/PurrNet/commit/96d975fee284229f1f58452535c44d0b3b8e4923))
+
 # [1.20.0-beta.41](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.40...v1.20.0-beta.41) (2026-03-26)
 
 
