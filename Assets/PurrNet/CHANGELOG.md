@@ -1,3 +1,10 @@
+# [1.20.0-beta.47](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.46...v1.20.0-beta.47) (2026-03-27)
+
+
+### Bug Fixes
+
+* delete should first move, then attempt to delete due to native libraries or opened files ([0206edc](https://github.com/PurrNet/PurrNet/commit/0206edc213886b5282b18dd2e94be28068bee46b))
+
 # [1.20.0-beta.46](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.45...v1.20.0-beta.46) (2026-03-27)
 
 
