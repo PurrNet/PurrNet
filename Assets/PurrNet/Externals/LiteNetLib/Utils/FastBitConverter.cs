@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace LiteNetLib.Utils
 {
@@ -12,12 +11,7 @@ namespace LiteNetLib.Utils
             int size = sizeof(T);
             if (bytes.Length < startIndex + size)
                 ThrowIndexOutOfRangeException();
-
-            fixed (byte* ptr = &bytes[startIndex])
-            {
-                var valueBuffer = stackalloc T[1] { value };
-                UnsafeUtility.MemCpy(ptr, valueBuffer, size);
-            }
+            Unsafe.WriteUnaligned(ref bytes[startIndex], value);
         }
 
         private static void ThrowIndexOutOfRangeException() => throw new IndexOutOfRangeException();
