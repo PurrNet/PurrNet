@@ -101,9 +101,8 @@ namespace LiteNetLib
             //Reading data
             try
             {
-                int available = socket.Available;
-                while (available > 0)
-                    available -= ReceiveFrom(socket, ref bufferEndPoint);
+                while (socket.Available > 0)
+                    ReceiveFrom(socket, ref bufferEndPoint);
             }
             catch (SocketException ex)
             {
