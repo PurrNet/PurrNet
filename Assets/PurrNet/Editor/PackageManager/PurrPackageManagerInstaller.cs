@@ -438,6 +438,7 @@ namespace PurrNet.Editor
             }
             catch (Exception e)
             {
+                Debug.LogError($"[PurrNet] Install failed: {e}");
                 EditorUtility.ClearProgressBar();
                 return Result<bool>.Fail(e.Message);
             }
