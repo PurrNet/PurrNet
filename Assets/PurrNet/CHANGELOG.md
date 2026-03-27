@@ -1,3 +1,10 @@
+# [1.20.0-beta.45](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.44...v1.20.0-beta.45) (2026-03-27)
+
+
+### Bug Fixes
+
+* LiteNetLib dont cache the available count ([40b44a3](https://github.com/PurrNet/PurrNet/commit/40b44a32be344f91adda783cd2bee6286bf372a1))
+
 # [1.20.0-beta.44](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.43...v1.20.0-beta.44) (2026-03-27)
 
 
