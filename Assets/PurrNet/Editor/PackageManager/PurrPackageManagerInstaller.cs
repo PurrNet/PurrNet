@@ -13,7 +13,7 @@ namespace PurrNet.Editor
 {
     public static class PurrPackageManagerInstaller
     {
-        private const string PackagesDir = "PurrPackages";
+        private const string LegacyPackagesDir = "PurrPackages";
         private const string ManifestPath = "Packages/manifest.json";
         private const string LockFilePath = "Packages/packages-lock.json";
 
@@ -39,7 +39,7 @@ namespace PurrNet.Editor
             }
 
             // Parse version from the entry value
-            // Format: "file:../PurrPackages/{name}-{version}.tgz", "file:../PurrPackages/{name}-{version}", or "embedded:{name}-{version}"
+            // Format: "embedded:{name}-{version}" (current), or legacy "file:../PurrPackages/{name}-{version}.tgz" / "file:../PurrPackages/{name}-{version}"
             string nameAndVersion;
             if (value.StartsWith("embedded:"))
                 nameAndVersion = value.Substring("embedded:".Length);
@@ -100,8 +100,8 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Finds the manifest dependency entry for a package installed via PurrPackages.
-        /// Also detects embedded packages in Packages/{name}/.
+        /// Finds the installed entry for a package. Checks embedded packages in Packages/{name}/,
+        /// manifest entries (git URLs), and legacy PurrPackages/ file: references.
         /// </summary>
         private static (string key, string value)? FindInstalledEntry(PackageInfo package)
         {
@@ -141,7 +141,7 @@ namespace PurrNet.Editor
 
             // Try direct lookup with API-provided name
             var directEntry = deps[apiName]?.ToString();
-            if (directEntry != null && directEntry.Contains(PackagesDir))
+            if (directEntry != null && directEntry.Contains(LegacyPackagesDir))
                 return (apiName, directEntry);
 
             // Check for git URL entries (external packages)
@@ -149,17 +149,17 @@ namespace PurrNet.Editor
                 return (apiName, directEntry);
 
             // API name may differ from the real name in package.json.
-            // Scan entries pointing to PurrPackages/ — this is safe because only our
+            // Scan legacy entries pointing to PurrPackages/ — this is safe because only our
             // installer puts tarballs there, unlike Packages/ which has unrelated packages.
             if (package.Versions != null && package.Versions.Length > 0)
             {
                 foreach (var prop in deps.Properties())
                 {
                     var val = prop.Value?.ToString();
-                    if (!val.Contains(PackagesDir))
+                    if (!val.Contains(LegacyPackagesDir))
                         continue;
 
-                    // val is "file:../PurrPackages/{key}-{version}.tgz" or "file:../PurrPackages/{key}-{version}"
+                    // Legacy: val is "file:../PurrPackages/{key}-{version}.tgz" or "file:../PurrPackages/{key}-{version}"
                     var filename = val.EndsWith(".tgz") ? Path.GetFileNameWithoutExtension(val) : Path.GetFileName(val);
                     if (!filename.StartsWith(prop.Name + "-"))
                         continue;
@@ -270,11 +270,11 @@ namespace PurrNet.Editor
                         if (gitOldMatch != null)
                         {
                             RemoveManifestEntry(gitOldMatch.Value.key);
-                            CleanupPackageFiles(gitOldMatch.Value.key);
+                            CleanupLegacyPackageFiles(gitOldMatch.Value.key);
                         }
 
                         // Clean up old package files under the canonical name too
-                        CleanupPackageFiles(gitUpmName);
+                        CleanupLegacyPackageFiles(gitUpmName);
 
                         // Remove embedded packages if they exist
                         if (HasEmbeddedPackage(gitUpmName))
@@ -376,24 +376,22 @@ namespace PurrNet.Editor
                 if (oldMatch != null)
                 {
                     RemoveManifestEntry(oldMatch.Value.key);
-                    CleanupPackageFiles(oldMatch.Value.key);
+                    CleanupLegacyPackageFiles(oldMatch.Value.key);
                 }
 
-                // Move extracted folder to PurrPackages/{name}-{version}/
-                Directory.CreateDirectory(PackagesDir);
-                var folderName = $"{upmName}-{upmVersion}";
-                var folderPath = Path.Combine(PackagesDir, folderName);
+                // Install as embedded package at Packages/{name}/
+                var folderPath = Path.Combine("Packages", upmName);
 
-                // Clean up any old package files under the canonical name too
-                CleanupPackageFiles(upmName);
+                // Clean up any legacy PurrPackages/ files
+                CleanupLegacyPackageFiles(upmName);
 
                 // Move extracted content to final location
                 if (Directory.Exists(folderPath))
                     Directory.Delete(folderPath, true);
                 Directory.Move(tempExtractDir, folderPath);
 
-                // Add file: reference to manifest.json
-                SetManifestEntry(upmName, "file:../" + PackagesDir + "/" + folderName);
+                // Embedded packages are auto-discovered by Unity — remove any stale manifest entry
+                RemoveManifestEntry(upmName);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
@@ -441,8 +439,8 @@ namespace PurrNet.Editor
                 if (apiName != upmName)
                     RemoveEmbeddedPackage(apiName);
 
-                // Delete old package files (tgz or folders)
-                CleanupPackageFiles(upmName);
+                // Delete old package files (legacy PurrPackages/ tgz or folders)
+                CleanupLegacyPackageFiles(upmName);
 
                 RemoveManifestEntry(upmName);
 
@@ -473,7 +471,7 @@ namespace PurrNet.Editor
                     RemoveManifestEntry(oldMatch.Value.key);
 
                     // Clean up old package files if switching install method
-                    CleanupPackageFiles(oldMatch.Value.key);
+                    CleanupLegacyPackageFiles(oldMatch.Value.key);
                 }
 
                 // Remove embedded packages if they exist
@@ -538,19 +536,18 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Cleans up old package files in PurrPackages/ for a given UPM name.
+        /// Cleans up old package files in the legacy PurrPackages/ directory for a given UPM name.
         /// Handles both legacy .tgz files and folder-based installs.
+        /// Also removes the PurrPackages/ directory itself if it becomes empty.
         /// </summary>
-        private static void CleanupPackageFiles(string upmName)
+        private static void CleanupLegacyPackageFiles(string upmName)
         {
-            if (!Directory.Exists(PackagesDir)) return;
+            if (!Directory.Exists(LegacyPackagesDir)) return;
+
             // Old tgz files
-            foreach (var f in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
+            foreach (var f in Directory.GetFiles(LegacyPackagesDir, upmName + "-*.tgz"))
             {
-                try
-                {
-                    File.Delete(f);
-                }
+                try { File.Delete(f); }
                 catch
                 {
                     // ignored
@@ -558,13 +555,24 @@ namespace PurrNet.Editor
             }
 
             // Folder installs
-            foreach (var d in Directory.GetDirectories(PackagesDir, upmName + "-*"))
+            foreach (var d in Directory.GetDirectories(LegacyPackagesDir, upmName + "-*"))
             {
                 try { Directory.Delete(d, true); }
                 catch
                 {
                     // ignored
                 }
+            }
+
+            // Remove PurrPackages/ itself if now empty
+            try
+            {
+                if (Directory.GetFileSystemEntries(LegacyPackagesDir).Length == 0)
+                    Directory.Delete(LegacyPackagesDir);
+            }
+            catch
+            {
+                // ignored
             }
         }
 

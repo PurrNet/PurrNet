@@ -113,13 +113,13 @@ namespace PurrNet.Editor
 
         private static string FormatTierName(string tier)
         {
-            if (string.IsNullOrEmpty(tier)) return "Free";
+            if (string.IsNullOrEmpty(tier)) return null;
             switch (tier)
             {
                 case "house-cat": return "House Cat";
                 case "royal-british": return "Royal British";
                 case "studio": return "Studio";
-                case "free": return "Free";
+                case "free": return null;
                 default: return tier;
             }
         }
@@ -329,12 +329,15 @@ namespace PurrNet.Editor
             var headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
             GUI.Label(labelRect, "PurrNet Packages", headerStyle);
 
-            // Tier badge
+            // Tier badge (only shown for paid memberships)
             if (_entitlements != null)
             {
                 var tier = FormatTierName(_entitlements.Tier);
-                var tierRect = new Rect(labelRect.x, labelRect.yMax - 2, 100, 16);
-                GUI.Label(tierRect, tier, _smallLabelStyle);
+                if (tier != null)
+                {
+                    var tierRect = new Rect(labelRect.x, labelRect.yMax - 2, 100, 16);
+                    GUI.Label(tierRect, tier, _smallLabelStyle);
+                }
             }
 
             // Refresh button (rightmost)
