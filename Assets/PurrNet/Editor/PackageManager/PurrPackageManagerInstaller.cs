@@ -227,27 +227,43 @@ namespace PurrNet.Editor
 
         /// <summary>
         /// Removes an embedded package folder at Packages/{upmName}/ if it exists.
-        /// Moves to Temp first to handle locked native DLLs.
         /// </summary>
         private static void RemoveEmbeddedPackage(string upmName)
         {
-            var embeddedPath = Path.Combine("Packages", upmName);
-            if (!Directory.Exists(embeddedPath))
-                return;
+            SafeRemoveDirectory(Path.Combine("Packages", upmName));
+        }
 
-            try
+        /// <summary>
+        /// Safely removes a directory by moving it to Temp/ first (handles locked native DLLs).
+        /// Also handles dangling junctions/symlinks that Unity may leave behind.
+        /// </summary>
+        private static void SafeRemoveDirectory(string path)
+        {
+            if (Directory.Exists(path))
             {
-                var tempDest = Path.Combine("Temp", "PurrNet_embedded_" + DateTime.Now.Ticks);
-                Directory.Move(embeddedPath, tempDest);
+                try
+                {
+                    var tempDest = Path.Combine("Temp", "PurrNet_cleanup_" + DateTime.Now.Ticks);
+                    Directory.Move(path, tempDest);
+                    return;
+                }
+                catch
+                {
+                    try { Directory.Delete(path, true); }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"[PurrNet] Could not remove directory at {path}: {e.Message}");
+                    }
+                }
             }
+
+            // Handle dangling junctions/symlinks that Directory.Exists doesn't detect.
+            // Unity creates junctions in Packages/ for file: manifest entries — if the
+            // target in PurrPackages/ was already removed, the junction is dangling.
+            try { Directory.Delete(path); }
             catch
             {
-                // Fallback: try direct delete
-                try { Directory.Delete(embeddedPath, true); }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[PurrNet] Could not remove embedded package at {embeddedPath}: {e.Message}");
-                }
+                // Path doesn't exist at all — nothing to do
             }
         }
 
@@ -382,26 +398,13 @@ namespace PurrNet.Editor
                 // Install as embedded package at Packages/{name}/
                 var folderPath = Path.Combine("Packages", upmName);
 
+                // Remove existing directory/junction BEFORE cleaning legacy files,
+                // because Unity creates junctions in Packages/{name}/ pointing to
+                // PurrPackages/ for file: manifest entries — must remove while target still exists
+                SafeRemoveDirectory(folderPath);
+
                 // Clean up any legacy PurrPackages/ files
                 CleanupLegacyPackageFiles(upmName);
-
-                // Move old version out of the way first (handles locked native DLLs)
-                if (Directory.Exists(folderPath))
-                {
-                    try
-                    {
-                        var tempDest = Path.Combine("Temp", "PurrNet_old_" + DateTime.Now.Ticks);
-                        Directory.Move(folderPath, tempDest);
-                    }
-                    catch
-                    {
-                        try { Directory.Delete(folderPath, true); }
-                        catch (Exception e)
-                        {
-                            Debug.LogWarning($"[PurrNet] Could not remove old package at {folderPath}: {e.Message}");
-                        }
-                    }
-                }
 
                 // Move extracted content to final location
                 Directory.Move(tempExtractDir, folderPath);
@@ -570,22 +573,10 @@ namespace PurrNet.Editor
                 }
             }
 
-            // Folder installs — move to Temp first to handle locked native DLLs
+            // Folder installs
             foreach (var d in Directory.GetDirectories(LegacyPackagesDir, upmName + "-*"))
             {
-                try
-                {
-                    var tempDest = Path.Combine("Temp", "PurrNet_legacy_" + DateTime.Now.Ticks);
-                    Directory.Move(d, tempDest);
-                }
-                catch
-                {
-                    try { Directory.Delete(d, true); }
-                    catch
-                    {
-                        // ignored
-                    }
-                }
+                SafeRemoveDirectory(d);
             }
 
             // Remove PurrPackages/ itself if now empty
