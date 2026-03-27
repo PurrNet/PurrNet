@@ -1,3 +1,10 @@
+# [1.20.0-beta.49](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.48...v1.20.0-beta.49) (2026-03-27)
+
+
+### Bug Fixes
+
+* more ordering issues and better logging ([7b1b44b](https://github.com/PurrNet/PurrNet/commit/7b1b44b71b48c5568ff8fc7c16b3e9056fad684c))
+
 # [1.20.0-beta.48](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.47...v1.20.0-beta.48) (2026-03-27)
 
 
