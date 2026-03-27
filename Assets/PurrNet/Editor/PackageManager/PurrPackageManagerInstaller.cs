@@ -247,23 +247,29 @@ namespace PurrNet.Editor
                     Directory.Move(path, tempDest);
                     return;
                 }
-                catch
+                catch (Exception moveEx)
                 {
+                    Debug.LogWarning($"[PurrNet] Could not move directory '{path}' to Temp, attempting delete: {moveEx}");
                     try { Directory.Delete(path, true); }
-                    catch (Exception e)
+                    catch (Exception deleteEx)
                     {
-                        Debug.LogWarning($"[PurrNet] Could not remove directory at {path}: {e.Message}");
+                        Debug.LogError($"[PurrNet] Could not remove directory at '{path}': {deleteEx}");
                     }
                 }
+
+                return;
             }
 
             // Handle dangling junctions/symlinks that Directory.Exists doesn't detect.
             // Unity creates junctions in Packages/ for file: manifest entries — if the
             // target in PurrPackages/ was already removed, the junction is dangling.
             try { Directory.Delete(path); }
-            catch
+            catch (Exception ex)
             {
-                // Path doesn't exist at all — nothing to do
+                // Only log if the path actually exists as a junction/symlink —
+                // DirectoryNotFoundException just means nothing to clean up
+                if (ex is not DirectoryNotFoundException && ex is not FileNotFoundException)
+                    Debug.LogWarning($"[PurrNet] Could not remove dangling junction at '{path}': {ex}");
             }
         }
 
@@ -390,20 +396,20 @@ namespace PurrNet.Editor
                 // Remove old version before installing new one
                 var oldMatch = FindInstalledEntry(package);
                 if (oldMatch != null)
-                {
                     RemoveManifestEntry(oldMatch.Value.key);
-                    CleanupLegacyPackageFiles(oldMatch.Value.key);
-                }
 
                 // Install as embedded package at Packages/{name}/
                 var folderPath = Path.Combine("Packages", upmName);
 
-                // Remove existing directory/junction BEFORE cleaning legacy files,
-                // because Unity creates junctions in Packages/{name}/ pointing to
-                // PurrPackages/ for file: manifest entries — must remove while target still exists
+                // Remove the directory/junction BEFORE cleaning legacy PurrPackages/ files.
+                // Unity creates junctions in Packages/{name}/ pointing to PurrPackages/ for
+                // file: manifest entries — the junction must be removed while its target still
+                // exists, otherwise it becomes dangling and Directory.Exists returns false.
                 SafeRemoveDirectory(folderPath);
 
-                // Clean up any legacy PurrPackages/ files
+                // Now safe to clean up legacy PurrPackages/ files
+                if (oldMatch != null)
+                    CleanupLegacyPackageFiles(oldMatch.Value.key);
                 CleanupLegacyPackageFiles(upmName);
 
                 // Move extracted content to final location
