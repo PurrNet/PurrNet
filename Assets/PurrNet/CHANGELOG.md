@@ -1,3 +1,10 @@
+# [1.20.0-beta.51](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.50...v1.20.0-beta.51) (2026-03-28)
+
+
+### Bug Fixes
+
+* Fragmentation corruption fix ([0f12c24](https://github.com/PurrNet/PurrNet/commit/0f12c24f93cda1334c58fbd650dfbd9e7bb31b9e))
+
 # [1.20.0-beta.50](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.49...v1.20.0-beta.50) (2026-03-28)
 
 
