@@ -156,6 +156,7 @@ var annotated_dup =
         [ "ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
         [ "CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", null ],
         [ "Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ],
+        [ "FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", "classPurrNet_1_1Transports_1_1FragmentationLayer" ],
         [ "GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", "classPurrNet_1_1Transports_1_1GenericTransport" ],
         [ "HostJoinInfo", "structPurrNet_1_1Transports_1_1HostJoinInfo.html", null ],
         [ "IConnectable", "interfacePurrNet_1_1Transports_1_1IConnectable.html", null ],
