@@ -60,11 +60,10 @@ namespace PurrNet.Transports
         {
             if (data.length + UNFRAGMENTED_OVERHEAD <= mtu)
             {
-                var packer = BitPackerPool.Get();
-                packer.WriteBits(FLAG_UNFRAGMENTED, 8);
-                packer.WriteBytes(data);
-                sendFragment(packer.ToByteData());
-                BitPackerPool.Free(packer);
+                var packet = new byte[UNFRAGMENTED_OVERHEAD + data.length];
+                packet[0] = FLAG_UNFRAGMENTED;
+                Buffer.BlockCopy(data.data, data.offset, packet, UNFRAGMENTED_OVERHEAD, data.length);
+                sendFragment(new ByteData(packet, 0, packet.Length));
                 return;
             }
 
@@ -88,14 +87,14 @@ namespace PurrNet.Transports
                 int payloadOffset = i * maxPayload;
                 int payloadLen = Math.Min(maxPayload, data.length - payloadOffset);
 
-                var packer = BitPackerPool.Get();
-                packer.WriteBits(FLAG_FRAGMENTED, 8);
-                packer.WriteBits(msgId, 16);
-                packer.WriteBits((ulong)i, 8);
-                packer.WriteBits((ulong)totalFragments, 8);
-                packer.WriteBytes(new ByteData(data.data, data.offset + payloadOffset, payloadLen));
-                sendFragment(packer.ToByteData());
-                BitPackerPool.Free(packer);
+                var packet = new byte[FRAGMENT_OVERHEAD + payloadLen];
+                packet[0] = FLAG_FRAGMENTED;
+                packet[1] = (byte)(msgId & 0xFF);
+                packet[2] = (byte)(msgId >> 8);
+                packet[3] = (byte)i;
+                packet[4] = (byte)totalFragments;
+                Buffer.BlockCopy(data.data, data.offset + payloadOffset, packet, FRAGMENT_OVERHEAD, payloadLen);
+                sendFragment(new ByteData(packet, 0, packet.Length));
             }
         }
 
