@@ -237,7 +237,7 @@ namespace PurrNet.Transports
 
         public void Dispose()
         {
-            Reset();
+            Reset(); 
         }
 
         void FreeEntry(ref ReassemblyEntry entry)
