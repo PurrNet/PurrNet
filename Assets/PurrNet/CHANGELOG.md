@@ -1,3 +1,10 @@
+# [1.20.0-beta.50](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.49...v1.20.0-beta.50) (2026-03-28)
+
+
+### Bug Fixes
+
+* Push for version change ([8bdc25f](https://github.com/PurrNet/PurrNet/commit/8bdc25f5c71ee154f94403e3558aada5985207b9))
+
 # [1.20.0-beta.49](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.48...v1.20.0-beta.49) (2026-03-27)
 
 
