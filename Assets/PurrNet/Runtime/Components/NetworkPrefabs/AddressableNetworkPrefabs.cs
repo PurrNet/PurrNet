@@ -195,8 +195,6 @@ namespace PurrNet
 
             CollectEntries(this);
 
-            sorted.Sort((a, b) => string.CompareOrdinal(a.guid, b.guid));
-
             for (int i = 0; i < sorted.Count; i++)
             {
                 var (guid, entry) = sorted[i];

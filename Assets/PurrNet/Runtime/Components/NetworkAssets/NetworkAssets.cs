@@ -123,26 +123,6 @@ namespace PurrNet
 
             Collect(this);
 
-            // Sort by GUID for deterministic ID assignment (same algorithm as NetworkPrefabs)
-            bool hasGuids = buffer.Any(b => !string.IsNullOrEmpty(b.guid));
-
-            if (hasGuids)
-            {
-                buffer.Sort((a, b) =>
-                {
-                    var ga = string.IsNullOrEmpty(a.guid) ? null : a.guid;
-                    var gb = string.IsNullOrEmpty(b.guid) ? null : b.guid;
-                    if (ga != null && gb != null) return string.CompareOrdinal(ga, gb);
-                    if (ga != null) return -1;
-                    if (gb != null) return 1;
-                    var na2 = a.asset ? a.asset.name : string.Empty;
-                    var nb = b.asset ? b.asset.name : string.Empty;
-                    int c = string.CompareOrdinal(na2, nb);
-                    if (c != 0) return c;
-                    return a.asset.GetInstanceID().CompareTo(b.asset.GetInstanceID());
-                });
-            }
-
             for (int i = 0; i < buffer.Count; i++)
             {
                 var obj = buffer[i].asset;
