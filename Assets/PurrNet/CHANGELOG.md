@@ -1,3 +1,10 @@
+# [1.20.0-beta.52](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.51...v1.20.0-beta.52) (2026-03-29)
+
+
+### Bug Fixes
+
+* Utilize collection index for asset management sorting ([6195823](https://github.com/PurrNet/PurrNet/commit/6195823cadea7a869784b2cd6f051440156ab266))
+
 # [1.20.0-beta.51](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.50...v1.20.0-beta.51) (2026-03-28)
 
 
