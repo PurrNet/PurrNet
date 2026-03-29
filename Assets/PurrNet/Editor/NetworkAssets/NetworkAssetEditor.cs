@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 using System;
 using System.Linq;
@@ -14,6 +15,10 @@ namespace PurrNet
         private SerializedProperty _folderProp;
         private SerializedProperty _assetsProp;
         private SerializedProperty _linkedProp;
+        private ReorderableList _reorderableList;
+
+        private const float SPACING = 8f;
+        private const float INDEX_WIDTH = 30f;
 
         private bool _showTypeList;
         private string _typeSearch = "";
@@ -35,6 +40,33 @@ namespace PurrNet
                 .OrderByDescending(t => _target.enabledTypeNames.Contains(t.AssemblyQualifiedName))
                 .ThenBy(t => t.Name)
                 .ToList();
+
+            SetupReorderableList();
+        }
+
+        private void SetupReorderableList()
+        {
+            _reorderableList = new ReorderableList(serializedObject, _assetsProp, true, true, true, true);
+            _reorderableList.elementHeight = EditorGUIUtility.singleLineHeight;
+
+            _reorderableList.drawHeaderCallback = (Rect rect) =>
+            {
+                EditorGUI.LabelField(new Rect(rect.x, rect.y, INDEX_WIDTH, rect.height), "ID");
+                EditorGUI.LabelField(new Rect(rect.x + INDEX_WIDTH + SPACING, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), "Asset");
+            };
+
+            _reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
+            {
+                var element = _assetsProp.GetArrayElementAtIndex(index);
+
+                float x = rect.x;
+                EditorGUI.LabelField(new Rect(x, rect.y, INDEX_WIDTH, rect.height), index.ToString());
+                x += INDEX_WIDTH + SPACING;
+
+                EditorGUI.BeginDisabledGroup(_target.autoGenerate);
+                EditorGUI.PropertyField(new Rect(x, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), element, GUIContent.none);
+                EditorGUI.EndDisabledGroup();
+            };
         }
 
         public override void OnInspectorGUI()
@@ -56,6 +88,7 @@ namespace PurrNet
             {
                 _target.GenerateAssets();
                 serializedObject.Update();
+                _assetsProp = serializedObject.FindProperty("assets");
             });
 
             if (GUILayout.Button("Refresh Type List"))
@@ -67,8 +100,7 @@ namespace PurrNet
 
             SharedAssetEditorUI.DrawLinkedField(_linkedProp);
 
-            GUILayout.Space(10);
-            EditorGUILayout.PropertyField(_assetsProp, true);
+            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate);
 
             serializedObject.ApplyModifiedProperties();
 

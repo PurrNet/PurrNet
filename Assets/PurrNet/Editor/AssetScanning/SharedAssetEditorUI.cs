@@ -97,7 +97,7 @@ namespace PurrNet
             GUILayout.Space(10);
             list.displayAdd = !autoGenerate;
             list.displayRemove = !autoGenerate;
-            list.draggable = !autoGenerate;
+            list.draggable = true;
             list.DoLayoutList();
         }
 

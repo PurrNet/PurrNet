@@ -17,6 +17,9 @@ namespace PurrNet
         private SerializedProperty _folderProp;
         private ReorderableList _reorderableList;
 
+        private const float SPACING = 8f;
+        private const float INDEX_WIDTH = 30f;
+
         private static bool _generating;
 
         [InitializeOnLoadMethod]
@@ -51,7 +54,8 @@ namespace PurrNet
 
             _reorderableList.drawHeaderCallback = (Rect rect) =>
             {
-                EditorGUI.LabelField(rect, "Prefab");
+                EditorGUI.LabelField(new Rect(rect.x, rect.y, INDEX_WIDTH, rect.height), "ID");
+                EditorGUI.LabelField(new Rect(rect.x + INDEX_WIDTH + SPACING, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), "Prefab");
             };
 
             _reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
@@ -59,8 +63,12 @@ namespace PurrNet
                 var element = _entriesProp.GetArrayElementAtIndex(index);
                 var assetProp = element.FindPropertyRelative("asset");
 
+                float x = rect.x;
+                EditorGUI.LabelField(new Rect(x, rect.y, INDEX_WIDTH, rect.height), index.ToString());
+                x += INDEX_WIDTH + SPACING;
+
                 EditorGUI.BeginDisabledGroup(_target.autoGenerate);
-                EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, rect.height), assetProp, GUIContent.none);
+                EditorGUI.PropertyField(new Rect(x, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), assetProp, GUIContent.none);
                 EditorGUI.EndDisabledGroup();
             };
 
