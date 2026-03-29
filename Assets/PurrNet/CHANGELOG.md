@@ -1,3 +1,11 @@
+# [1.20.0-beta.53](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.52...v1.20.0-beta.53) (2026-03-29)
+
+
+### Bug Fixes
+
+* Improved asset editors ([0a48f07](https://github.com/PurrNet/PurrNet/commit/0a48f075e74ed81a2c9d1300acc46e0ce1ad5a33))
+* Searching added to asset management ([571c30d](https://github.com/PurrNet/PurrNet/commit/571c30dad31890a49c427dd79f9278f5c0915373))
+
 # [1.20.0-beta.52](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.51...v1.20.0-beta.52) (2026-03-29)
 
 
