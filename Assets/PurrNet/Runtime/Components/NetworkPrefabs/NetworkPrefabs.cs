@@ -35,17 +35,6 @@ namespace PurrNet
         public override IEnumerable<PrefabData> allPrefabs => prefabLookup.Values;
 
         private readonly Dictionary<int, PrefabData> prefabLookup = new();
-
-        [ContextMenu("Print to JSON")]
-        void PrintToJSON()
-        {
-            string data = "";
-            foreach (var p in prefabLookup)
-            {
-                data += $"{p.Key} : {p.Value.prefabId} : {p.Value.prefab.name}\n";
-            }
-            Debug.Log(data);
-        }
         
         public override bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
         {
