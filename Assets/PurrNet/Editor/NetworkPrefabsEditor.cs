@@ -14,6 +14,7 @@ namespace PurrNet
         private SerializedProperty folderProp;
         private bool? allPoolingState = null;
         private ReorderableList reorderableList;
+        private string _searchFilter = "";
 
         private const float SPACING = 8f;
         private const float REORDERABLE_LIST_BUTTON_WIDTH = 25f;
@@ -183,7 +184,13 @@ namespace PurrNet
 
             SharedAssetEditorUI.DrawLinkedField(linkedNetworkPrefabs);
 
-            SharedAssetEditorUI.DrawEntryList(reorderableList, networkPrefabs.autoGenerate);
+            SharedAssetEditorUI.DrawEntryList(reorderableList, networkPrefabs.autoGenerate,
+                ref _searchFilter, i =>
+                {
+                    if (i >= prefabs.arraySize) return null;
+                    var obj = prefabs.GetArrayElementAtIndex(i).FindPropertyRelative("prefab").objectReferenceValue;
+                    return obj ? obj.name : null;
+                });
 
             serializedObject.ApplyModifiedProperties();
 

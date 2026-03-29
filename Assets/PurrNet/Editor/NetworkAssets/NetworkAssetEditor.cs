@@ -16,6 +16,7 @@ namespace PurrNet
         private SerializedProperty _assetsProp;
         private SerializedProperty _linkedProp;
         private ReorderableList _reorderableList;
+        private string _searchFilter = "";
 
         private const float SPACING = 8f;
         private const float INDEX_WIDTH = 30f;
@@ -100,7 +101,13 @@ namespace PurrNet
 
             SharedAssetEditorUI.DrawLinkedField(_linkedProp);
 
-            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate);
+            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate,
+                ref _searchFilter, i =>
+                {
+                    if (i >= _assetsProp.arraySize) return null;
+                    var obj = _assetsProp.GetArrayElementAtIndex(i).objectReferenceValue;
+                    return obj ? obj.name : null;
+                });
 
             serializedObject.ApplyModifiedProperties();
 

@@ -16,6 +16,7 @@ namespace PurrNet
         private SerializedProperty _linkedProp;
         private SerializedProperty _folderProp;
         private ReorderableList _reorderableList;
+        private string _searchFilter = "";
 
         private const float SPACING = 8f;
         private const float INDEX_WIDTH = 30f;
@@ -111,7 +112,18 @@ namespace PurrNet
             SharedAssetEditorUI.DrawLinkedField(_linkedProp);
 
             // 6. Entry list
-            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate);
+            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate,
+                ref _searchFilter, i =>
+                {
+                    if (i >= _entriesProp.arraySize) return null;
+                    var assetProp = _entriesProp.GetArrayElementAtIndex(i).FindPropertyRelative("asset");
+                    string guid = assetProp.FindPropertyRelative("m_AssetGUID")?.stringValue;
+                    if (string.IsNullOrEmpty(guid)) return null;
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (string.IsNullOrEmpty(path)) return null;
+                    var obj = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    return obj ? obj.name : System.IO.Path.GetFileNameWithoutExtension(path);
+                });
 
             serializedObject.ApplyModifiedProperties();
 
