@@ -35,7 +35,7 @@ namespace PurrNet
         public override IEnumerable<PrefabData> allPrefabs => prefabLookup.Values;
 
         private readonly Dictionary<int, PrefabData> prefabLookup = new();
-
+        
         public override bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
         {
             return this.prefabLookup.TryGetValue(prefabId, out prefabData);
@@ -149,20 +149,6 @@ namespace PurrNet
             }
 
             Collect(this);
-
-            buffer.Sort((a, b) =>
-            {
-                var ga = string.IsNullOrEmpty(a.guid) ? null : a.guid;
-                var gb = string.IsNullOrEmpty(b.guid) ? null : b.guid;
-                if (ga != null && gb != null) return string.CompareOrdinal(ga, gb);
-                if (ga != null) return -1;
-                if (gb != null) return 1;
-                var na = a.prefab ? a.prefab.name : string.Empty;
-                var nb = b.prefab ? b.prefab.name : string.Empty;
-                var c = string.CompareOrdinal(na, nb);
-                if (c != 0) return c;
-                return a.prefab.GetInstanceID().CompareTo(b.prefab.GetInstanceID());
-            });
 
             for (int i = 0; i < buffer.Count; i++)
             {

@@ -88,16 +88,65 @@ namespace PurrNet
         }
 
         /// <summary>
-        /// Draws a ReorderableList, disabling add/remove/reorder when auto-generate is on.
-        /// The list itself is never fully disabled so per-entry fields (like pool toggles)
-        /// remain editable.
+        /// Draws a ReorderableList with an optional search bar.
+        /// Disables add/remove when auto-generate is on, but always allows reordering.
+        /// When a search filter is active, non-matching entries are hidden via zero-height elements.
+        /// </summary>
+        public static void DrawEntryList(ReorderableList list, bool autoGenerate,
+            ref string searchFilter, Func<int, string> getElementName)
+        {
+            GUILayout.Space(10);
+
+            searchFilter = EditorGUILayout.TextField("Search", searchFilter ?? "");
+            bool hasFilter = !string.IsNullOrEmpty(searchFilter);
+
+            list.displayAdd = !autoGenerate && !hasFilter;
+            list.displayRemove = !autoGenerate && !hasFilter;
+            list.draggable = !hasFilter;
+
+            if (hasFilter)
+            {
+                var filter = searchFilter;
+                var originalDraw = list.drawElementCallback;
+
+                list.elementHeightCallback = index =>
+                {
+                    string name = getElementName(index);
+                    if (name != null && name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return EditorGUIUtility.singleLineHeight;
+                    return -EditorGUIUtility.standardVerticalSpacing;
+                };
+
+                list.drawElementCallback = (rect, index, isActive, isFocused) =>
+                {
+                    string name = getElementName(index);
+                    if (name == null || name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0)
+                        return;
+                    originalDraw?.Invoke(rect, index, isActive, isFocused);
+                };
+
+                list.DoLayoutList();
+
+                list.elementHeightCallback = null;
+                list.drawElementCallback = originalDraw;
+            }
+            else
+            {
+                list.elementHeightCallback = null;
+                list.DoLayoutList();
+            }
+        }
+
+        /// <summary>
+        /// Draws a ReorderableList, disabling add/remove when auto-generate is on.
+        /// Overload without search support for backwards compatibility.
         /// </summary>
         public static void DrawEntryList(ReorderableList list, bool autoGenerate)
         {
             GUILayout.Space(10);
             list.displayAdd = !autoGenerate;
             list.displayRemove = !autoGenerate;
-            list.draggable = !autoGenerate;
+            list.draggable = true;
             list.DoLayoutList();
         }
 

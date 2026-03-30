@@ -1,3 +1,32 @@
+# [1.20.0-beta.53](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.52...v1.20.0-beta.53) (2026-03-29)
+
+
+### Bug Fixes
+
+* Improved asset editors ([0a48f07](https://github.com/PurrNet/PurrNet/commit/0a48f075e74ed81a2c9d1300acc46e0ce1ad5a33))
+* Searching added to asset management ([571c30d](https://github.com/PurrNet/PurrNet/commit/571c30dad31890a49c427dd79f9278f5c0915373))
+
+# [1.20.0-beta.52](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.51...v1.20.0-beta.52) (2026-03-29)
+
+
+### Bug Fixes
+
+* Utilize collection index for asset management sorting ([6195823](https://github.com/PurrNet/PurrNet/commit/6195823cadea7a869784b2cd6f051440156ab266))
+
+# [1.20.0-beta.51](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.50...v1.20.0-beta.51) (2026-03-28)
+
+
+### Bug Fixes
+
+* Fragmentation corruption fix ([0f12c24](https://github.com/PurrNet/PurrNet/commit/0f12c24f93cda1334c58fbd650dfbd9e7bb31b9e))
+
+# [1.20.0-beta.50](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.49...v1.20.0-beta.50) (2026-03-28)
+
+
+### Bug Fixes
+
+* Push for version change ([8bdc25f](https://github.com/PurrNet/PurrNet/commit/8bdc25f5c71ee154f94403e3558aada5985207b9))
+
 # [1.20.0-beta.49](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.48...v1.20.0-beta.49) (2026-03-27)
 
 

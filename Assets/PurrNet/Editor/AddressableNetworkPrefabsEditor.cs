@@ -16,6 +16,10 @@ namespace PurrNet
         private SerializedProperty _linkedProp;
         private SerializedProperty _folderProp;
         private ReorderableList _reorderableList;
+        private string _searchFilter = "";
+
+        private const float SPACING = 8f;
+        private const float INDEX_WIDTH = 30f;
 
         private static bool _generating;
 
@@ -51,7 +55,8 @@ namespace PurrNet
 
             _reorderableList.drawHeaderCallback = (Rect rect) =>
             {
-                EditorGUI.LabelField(rect, "Prefab");
+                EditorGUI.LabelField(new Rect(rect.x, rect.y, INDEX_WIDTH, rect.height), "ID");
+                EditorGUI.LabelField(new Rect(rect.x + INDEX_WIDTH + SPACING, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), "Prefab");
             };
 
             _reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
@@ -59,8 +64,12 @@ namespace PurrNet
                 var element = _entriesProp.GetArrayElementAtIndex(index);
                 var assetProp = element.FindPropertyRelative("asset");
 
+                float x = rect.x;
+                EditorGUI.LabelField(new Rect(x, rect.y, INDEX_WIDTH, rect.height), index.ToString());
+                x += INDEX_WIDTH + SPACING;
+
                 EditorGUI.BeginDisabledGroup(_target.autoGenerate);
-                EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, rect.height), assetProp, GUIContent.none);
+                EditorGUI.PropertyField(new Rect(x, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), assetProp, GUIContent.none);
                 EditorGUI.EndDisabledGroup();
             };
 
@@ -103,7 +112,18 @@ namespace PurrNet
             SharedAssetEditorUI.DrawLinkedField(_linkedProp);
 
             // 6. Entry list
-            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate);
+            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate,
+                ref _searchFilter, i =>
+                {
+                    if (i >= _entriesProp.arraySize) return null;
+                    var assetProp = _entriesProp.GetArrayElementAtIndex(i).FindPropertyRelative("asset");
+                    string guid = assetProp.FindPropertyRelative("m_AssetGUID")?.stringValue;
+                    if (string.IsNullOrEmpty(guid)) return null;
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (string.IsNullOrEmpty(path)) return null;
+                    var obj = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    return obj ? obj.name : System.IO.Path.GetFileNameWithoutExtension(path);
+                });
 
             serializedObject.ApplyModifiedProperties();
 
