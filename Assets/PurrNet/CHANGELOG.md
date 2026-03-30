@@ -1,3 +1,10 @@
+# [1.20.0-beta.54](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.53...v1.20.0-beta.54) (2026-03-30)
+
+
+### Bug Fixes
+
+* make sure NetworkRigidbody is fully spawned before we correct position and stuff ([415c061](https://github.com/PurrNet/PurrNet/commit/415c061b7e54b552a5459345d73f2bed18618e85))
+
 # [1.20.0-beta.53](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.52...v1.20.0-beta.53) (2026-03-29)
 
 
