@@ -230,7 +230,7 @@ namespace PurrNet
 
         private void FixedUpdate()
         {
-            if (!isSpawned || IsController(_ownerAuth) || _hasPendingTeleport || !_receivedFirstSnapshot)
+            if (!isFullySpawned || IsController(_ownerAuth) || _hasPendingTeleport || !_receivedFirstSnapshot)
                 return;
 
             float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
