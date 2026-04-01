@@ -1,3 +1,10 @@
+# [1.20.0-beta.56](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.55...v1.20.0-beta.56) (2026-04-01)
+
+
+### Bug Fixes
+
+* rework DisposableHashSet, it's packers and add some tests to verify future changes ([334bc47](https://github.com/PurrNet/PurrNet/commit/334bc47a2ca7f8ab37afef3edd41bd70f9a86025))
+
 # [1.20.0-beta.55](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.54...v1.20.0-beta.55) (2026-03-30)
 
 
