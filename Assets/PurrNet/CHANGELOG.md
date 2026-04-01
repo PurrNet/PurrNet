@@ -1,3 +1,10 @@
+# [1.20.0-beta.55](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.54...v1.20.0-beta.55) (2026-03-30)
+
+
+### Bug Fixes
+
+* missing meta file for LICENSE.txt ([0ca58c1](https://github.com/PurrNet/PurrNet/commit/0ca58c1dc6b83e0f4c512842a9b0f878d788c87f))
+
 # [1.20.0-beta.54](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.53...v1.20.0-beta.54) (2026-03-30)
 
 
