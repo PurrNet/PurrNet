@@ -1,3 +1,10 @@
+# [1.20.0-beta.57](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.56...v1.20.0-beta.57) (2026-04-07)
+
+
+### Bug Fixes
+
+* added abstract settings override to NetworkRigidbody ([3735323](https://github.com/PurrNet/PurrNet/commit/3735323ece8a6f8507c0c1fc11ea59caa9b990bc))
+
 # [1.20.0-beta.56](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.55...v1.20.0-beta.56) (2026-04-01)
 
 
