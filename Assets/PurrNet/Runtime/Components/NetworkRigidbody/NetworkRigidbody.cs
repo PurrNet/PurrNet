@@ -54,9 +54,9 @@ namespace PurrNet
         [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
         [SerializeField] private bool _ownerAuth;
 
-        [Header("Advanced Settings")]
-        [Tooltip("Optional. When assigned, per-axis correction settings from this asset override the scalar correction fields below.")]
-        [SerializeField] private NetworkRigidbodySettings _advancedSettings;
+        [Header("Settings Override")]
+        [Tooltip("Optional. When assigned, this asset's virtual methods control all correction decisions. The fields below are passed as defaults via the correction context.")]
+        [SerializeField] private NetworkRigidbodySettings _settingsOverride;
 
         [Header("Correction")]
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
@@ -236,33 +236,59 @@ namespace PurrNet
             float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
             float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
 
-            if (positionError >= _hardSnapDistance)
+            if (_settingsOverride)
             {
-                _lastCorrectionReason = "Hard (Distance)";
-                HardCorrect();
-                return;
-            }
+                var ctx = BuildCorrectionContext(positionError, rotationError);
 
-            bool hardSnapRotation = _hardSnapAngle >= 0 && _acceptableRotationError >= 0 && rotationError > _hardSnapAngle;
-            if (hardSnapRotation)
-            {
-                _lastCorrectionReason = "Hard (Rotation)";
-                _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
-                _rigidbody.angularVelocity = _targetAngularVelocity;
-            }
+                if (_settingsOverride.ShouldTeleport(in ctx))
+                {
+                    _lastCorrectionReason = "Hard (Distance)";
+                    _settingsOverride.ApplyHardCorrection(in ctx);
+                    return;
+                }
 
-            if (_advancedSettings)
-            {
-                _lastCorrectionReason = hardSnapRotation
-                    ? (positionError > 0.001f ? "Hard (Rotation) + Position" : "Hard (Rotation)")
-                    : rotationError > 0.001f
-                        ? "Position+Rotation (Advanced)"
-                        : positionError > 0.001f ? "Position (Advanced)" : "No";
+                bool hardSnapRotation = _settingsOverride.ShouldSnapRotation(in ctx);
+                if (hardSnapRotation)
+                {
+                    _lastCorrectionReason = "Hard (Rotation)";
+                    _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
+                    _rigidbody.angularVelocity = _targetAngularVelocity;
+                }
 
-                ApplyCorrectionAdvanced(hardSnapRotation);
+                _settingsOverride.ApplyPositionCorrection(in ctx);
+
+                if (!hardSnapRotation && _settingsOverride.ShouldCorrectRotation(in ctx))
+                    _settingsOverride.ApplyRotationCorrection(in ctx);
+
+                if (!hardSnapRotation)
+                {
+                    bool correctingRot = _settingsOverride.ShouldCorrectRotation(in ctx);
+                    _lastCorrectionReason = correctingRot
+                        ? "Position+Rotation (Override)"
+                        : positionError > 0.001f ? "Position (Override)" : "No";
+                }
+                else if (positionError > 0.001f)
+                {
+                    _lastCorrectionReason = "Hard (Rotation) + Position";
+                }
             }
             else
             {
+                if (positionError >= _hardSnapDistance)
+                {
+                    _lastCorrectionReason = "Hard (Distance)";
+                    HardCorrect();
+                    return;
+                }
+
+                bool hardSnapRotation = _hardSnapAngle >= 0 && _acceptableRotationError >= 0 && rotationError > _hardSnapAngle;
+                if (hardSnapRotation)
+                {
+                    _lastCorrectionReason = "Hard (Rotation)";
+                    _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
+                    _rigidbody.angularVelocity = _targetAngularVelocity;
+                }
+
                 bool correctRotation = !hardSnapRotation
                                      && _acceptableRotationError >= 0
                                      && rotationError > _acceptableRotationError;
@@ -320,70 +346,25 @@ namespace PurrNet
             }
         }
 
-        private void ApplyCorrectionAdvanced(bool skipRotation)
+        private RigidbodyCorrectionContext BuildCorrectionContext(float positionError, float rotationError)
         {
-            var s = _advancedSettings;
-            float m = _rigidbody.mass;
-
-            // --- Per-axis position correction ---
+            return new RigidbodyCorrectionContext
             {
-                Vector3 posError = _targetPosition - _rigidbody.position;
-                Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
-                Vector3 force = Vector3.zero;
-
-                for (int i = 0; i < 3; i++)
-                {
-                    float axisError = Mathf.Abs(posError[i]);
-
-                    if (axisError < s.positionAcceptableError[i])
-                        continue;
-
-                    float range = Mathf.Max(s.positionCorrectionRange[i], 0.01f);
-                    float ratio = Mathf.Clamp01(axisError / range);
-                    float w = s.positionStrength[i];
-
-                    force[i] = posError[i] * (w * w) * ratio + velError[i] * (2f * w);
-                }
-
-                Vector3 dragCompensation = GetLinearVelocity() * GetDrag();
-                _rigidbody.AddForce((force + dragCompensation) * m);
-            }
-
-            // --- Per-axis rotation correction ---
-            if (!skipRotation)
-            {
-                Quaternion rotError = NormalizeQuaternion(_targetRotation) * Quaternion.Inverse(_rigidbody.rotation);
-                rotError.ToAngleAxis(out float angle, out Vector3 axis);
-
-                if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
-                    return;
-
-                if (angle > 180f) angle -= 360f;
-
-                Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-                Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
-                Vector3 torque = Vector3.zero;
-
-                for (int i = 0; i < 3; i++)
-                {
-                    float axisAngErrorDeg = Mathf.Abs(angError[i]) * Mathf.Rad2Deg;
-
-                    if (s.rotationAcceptableError[i] >= 0 && axisAngErrorDeg < s.rotationAcceptableError[i])
-                        continue;
-
-                    float range = Mathf.Max(s.rotationCorrectionRange[i], 0.01f);
-                    float ratio = Mathf.Clamp01(axisAngErrorDeg / range);
-                    float w = s.rotationStrength[i];
-
-                    torque[i] = (angError[i] * (w * w) * ratio + angVelError[i] * (2f * w)) * m;
-
-                    float maxTorque = w * w * m;
-                    if (Mathf.Abs(torque[i]) > maxTorque)
-                        torque[i] = Mathf.Sign(torque[i]) * maxTorque;
-                }
-
-                _rigidbody.AddTorque(torque);
-            }
+                rigidbody = _rigidbody,
+                targetPosition = _targetPosition,
+                targetRotation = _targetRotation,
+                targetLinearVelocity = _targetLinearVelocity,
+                targetAngularVelocity = _targetAngularVelocity,
+                positionError = positionError,
+                rotationError = rotationError,
+                drag = GetDrag(),
+                positionStrength = _positionStrength,
+                correctionRange = _correctionRange,
+                rotationStrength = _rotationStrength,
+                hardSnapDistance = _hardSnapDistance,
+                hardSnapAngle = _hardSnapAngle,
+                acceptableRotationError = _acceptableRotationError
+            };
         }
 
         private void HardCorrect()
@@ -656,10 +637,10 @@ namespace PurrNet
 
         #region Public API
 
-        public NetworkRigidbodySettings advancedSettings
+        public NetworkRigidbodySettings settingsOverride
         {
-            get => _advancedSettings;
-            set => _advancedSettings = value;
+            get => _settingsOverride;
+            set => _settingsOverride = value;
         }
 
         public Vector3 linearVelocity
