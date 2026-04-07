@@ -91,11 +91,15 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1NetworkRigidbodySettin
 
 <div class="header">
   <div class="summary">
-<a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pro-static-methods">Static Protected Member Functions</a> &#124;
 <a href="classPurrNet_1_1NetworkRigidbodySettings-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.NetworkRigidbodySettings Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Abstract settings layer for <a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a>. Subclass this ScriptableObject and override any virtual method to customize correction behavior. Call <code>base</code> for any method you don't need to override — the default implementations reproduce the standard critically-damped spring correction using the component's serialized values.   
+ <a href="classPurrNet_1_1NetworkRigidbodySettings.html#details">More...</a></p>
 <div class="dynheader">
 Inheritance diagram for PurrNet.NetworkRigidbodySettings:</div>
 <div class="dyncontent">
@@ -103,28 +107,51 @@ Inheritance diagram for PurrNet.NetworkRigidbodySettings:</div>
   <img src="classPurrNet_1_1NetworkRigidbodySettings.png" alt=""/>
  </div></div>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
-Public Attributes</h2></td></tr>
-<tr class="memitem:a9e583a5d149e09292d364a3013b731fa"><td class="memItemLeft" align="right" valign="top"><a id="a9e583a5d149e09292d364a3013b731fa" name="a9e583a5d149e09292d364a3013b731fa"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>positionStrength</b> = Vector3.one * 5f</td></tr>
-<tr class="separator:a9e583a5d149e09292d364a3013b731fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac0eaf6ec08b16ecda2217d8ca61a393a"><td class="memItemLeft" align="right" valign="top"><a id="ac0eaf6ec08b16ecda2217d8ca61a393a" name="ac0eaf6ec08b16ecda2217d8ca61a393a"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>positionCorrectionRange</b> = Vector3.one * 2f</td></tr>
-<tr class="separator:ac0eaf6ec08b16ecda2217d8ca61a393a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abbb81e7504a8b6d2c37dcc7b6f3bd4d2"><td class="memItemLeft" align="right" valign="top"><a id="abbb81e7504a8b6d2c37dcc7b6f3bd4d2" name="abbb81e7504a8b6d2c37dcc7b6f3bd4d2"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>positionAcceptableError</b> = Vector3.zero</td></tr>
-<tr class="separator:abbb81e7504a8b6d2c37dcc7b6f3bd4d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa930f018146837de585e837163a746c6"><td class="memItemLeft" align="right" valign="top"><a id="aa930f018146837de585e837163a746c6" name="aa930f018146837de585e837163a746c6"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>rotationStrength</b> = Vector3.one * 3f</td></tr>
-<tr class="separator:aa930f018146837de585e837163a746c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8eb6a534abdc8fee830577ba78d158b4"><td class="memItemLeft" align="right" valign="top"><a id="a8eb6a534abdc8fee830577ba78d158b4" name="a8eb6a534abdc8fee830577ba78d158b4"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>rotationCorrectionRange</b> = Vector3.one * 90f</td></tr>
-<tr class="separator:a8eb6a534abdc8fee830577ba78d158b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a801e1f0c4540d5f3a3c7a1243c85c147"><td class="memItemLeft" align="right" valign="top"><a id="a801e1f0c4540d5f3a3c7a1243c85c147" name="a801e1f0c4540d5f3a3c7a1243c85c147"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>rotationAcceptableError</b> = Vector3.one</td></tr>
-<tr class="separator:a801e1f0c4540d5f3a3c7a1243c85c147"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:ab9432750646497bd8acb32bf070e0c11"><td class="memItemLeft" align="right" valign="top"><a id="ab9432750646497bd8acb32bf070e0c11" name="ab9432750646497bd8acb32bf070e0c11"></a>
+virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>ShouldTeleport</b> (in <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html">RigidbodyCorrectionContext</a> ctx)</td></tr>
+<tr class="memdesc:ab9432750646497bd8acb32bf070e0c11"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the position error is large enough to warrant a full teleport (hard snap). Default: teleport when <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html#a2b1990637fe5d8d3076eb0ed7473abe8" title="Euclidean distance between current and target position.">RigidbodyCorrectionContext.positionError</a> &gt;= <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html#a6e136c02068d8c737a58444daefe3dc5" title="Default distance threshold for teleport (hard position snap).">RigidbodyCorrectionContext.hardSnapDistance</a>.  <br /></td></tr>
+<tr class="separator:ab9432750646497bd8acb32bf070e0c11"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5a31b28161cdb4828e0986e95ea9998e"><td class="memItemLeft" align="right" valign="top"><a id="a5a31b28161cdb4828e0986e95ea9998e" name="a5a31b28161cdb4828e0986e95ea9998e"></a>
+virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>ShouldSnapRotation</b> (in <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html">RigidbodyCorrectionContext</a> ctx)</td></tr>
+<tr class="memdesc:a5a31b28161cdb4828e0986e95ea9998e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the rotation error is large enough to warrant an instant rotation snap. Default: snap when hardSnapAngle &gt;= 0, acceptableRotationError &gt;= 0, and rotationError &gt; hardSnapAngle.  <br /></td></tr>
+<tr class="separator:a5a31b28161cdb4828e0986e95ea9998e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a829adc25d7f2615c07dd961ee6f4a6b2"><td class="memItemLeft" align="right" valign="top"><a id="a829adc25d7f2615c07dd961ee6f4a6b2" name="a829adc25d7f2615c07dd961ee6f4a6b2"></a>
+virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>ShouldCorrectRotation</b> (in <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html">RigidbodyCorrectionContext</a> ctx)</td></tr>
+<tr class="memdesc:a829adc25d7f2615c07dd961ee6f4a6b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether to apply soft rotation correction via torque. Default: correct when acceptableRotationError &gt;= 0 and rotationError &gt; acceptableRotationError.  <br /></td></tr>
+<tr class="separator:a829adc25d7f2615c07dd961ee6f4a6b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa776e705580851f74e5a942899de523b"><td class="memItemLeft" align="right" valign="top"><a id="aa776e705580851f74e5a942899de523b" name="aa776e705580851f74e5a942899de523b"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>ApplyHardCorrection</b> (in <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html">RigidbodyCorrectionContext</a> ctx)</td></tr>
+<tr class="memdesc:aa776e705580851f74e5a942899de523b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when <a class="el" href="classPurrNet_1_1NetworkRigidbodySettings.html#ab9432750646497bd8acb32bf070e0c11" title="Whether the position error is large enough to warrant a full teleport (hard snap)....">ShouldTeleport</a> returns true. Instantly snaps position, rotation, and velocities to the target.  <br /></td></tr>
+<tr class="separator:aa776e705580851f74e5a942899de523b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6641e3e5046c1eeffc1d73b8ab088a7d"><td class="memItemLeft" align="right" valign="top"><a id="a6641e3e5046c1eeffc1d73b8ab088a7d" name="a6641e3e5046c1eeffc1d73b8ab088a7d"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>ApplyPositionCorrection</b> (in <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html">RigidbodyCorrectionContext</a> ctx)</td></tr>
+<tr class="memdesc:a6641e3e5046c1eeffc1d73b8ab088a7d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies soft position correction forces using a critically-damped spring model. Override to implement per-axis control, custom ramp curves, or any other strategy.  <br /></td></tr>
+<tr class="separator:a6641e3e5046c1eeffc1d73b8ab088a7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a340cf28e938c88baf3bfef94ee4c9bf0"><td class="memItemLeft" align="right" valign="top"><a id="a340cf28e938c88baf3bfef94ee4c9bf0" name="a340cf28e938c88baf3bfef94ee4c9bf0"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>ApplyRotationCorrection</b> (in <a class="el" href="structPurrNet_1_1RigidbodyCorrectionContext.html">RigidbodyCorrectionContext</a> ctx)</td></tr>
+<tr class="memdesc:a340cf28e938c88baf3bfef94ee4c9bf0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies soft rotation correction torque using a critically-damped spring model. Override to implement per-axis control, custom thresholds, or any other strategy.  <br /></td></tr>
+<tr class="separator:a340cf28e938c88baf3bfef94ee4c9bf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-static-methods" name="pro-static-methods"></a>
+Static Protected Member Functions</h2></td></tr>
+<tr class="memitem:ad7c732c76e32e02c895bd1ee5061bb06"><td class="memItemLeft" align="right" valign="top"><a id="ad7c732c76e32e02c895bd1ee5061bb06" name="ad7c732c76e32e02c895bd1ee5061bb06"></a>
+static Quaternion&#160;</td><td class="memItemRight" valign="bottom"><b>NormalizeQuaternion</b> (Quaternion q)</td></tr>
+<tr class="separator:ad7c732c76e32e02c895bd1ee5061bb06"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a616d6b4e648ab7a43b2c51de1b04be11"><td class="memItemLeft" align="right" valign="top"><a id="a616d6b4e648ab7a43b2c51de1b04be11" name="a616d6b4e648ab7a43b2c51de1b04be11"></a>
+static Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>GetLinearVelocity</b> (Rigidbody rb)</td></tr>
+<tr class="separator:a616d6b4e648ab7a43b2c51de1b04be11"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6017d7dbbbf9b2240903f4c4656d197a"><td class="memItemLeft" align="right" valign="top"><a id="a6017d7dbbbf9b2240903f4c4656d197a" name="a6017d7dbbbf9b2240903f4c4656d197a"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetLinearVelocity</b> (Rigidbody rb, Vector3 value)</td></tr>
+<tr class="separator:a6017d7dbbbf9b2240903f4c4656d197a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a048a0e5063bcc759f070257c0fe977af"><td class="memItemLeft" align="right" valign="top"><a id="a048a0e5063bcc759f070257c0fe977af" name="a048a0e5063bcc759f070257c0fe977af"></a>
+static float&#160;</td><td class="memItemRight" valign="bottom"><b>GetDrag</b> (Rigidbody rb)</td></tr>
+<tr class="separator:a048a0e5063bcc759f070257c0fe977af"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this class was generated from the following file:<ul>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p >Abstract settings layer for <a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a>. Subclass this ScriptableObject and override any virtual method to customize correction behavior. Call <code>base</code> for any method you don't need to override — the default implementations reproduce the standard critically-damped spring correction using the component's serialized values.  </p>
+</div><hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbodySettings.cs</li>
 </ul>
 </div><!-- contents -->

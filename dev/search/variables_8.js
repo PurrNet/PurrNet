@@ -1,4 +1,7 @@
 var searchData=
 [
-  ['unfragmented_5foverhead_0',['UNFRAGMENTED_OVERHEAD',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae9a82772968d3bf5fd32dada806f042f',1,'PurrNet::Transports::FragmentationLayer']]]
+  ['payload_0',['payload',['../structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html#a6fd921a043bd88ab0c0e4458ff7d9951',1,'PurrNet.Authentication.AuthenticationRequestData.payload()'],['../structPurrNet_1_1Authentication_1_1AuthenticationRequest.html#ae9dffcd9ea8686508331908c4fd12a54',1,'PurrNet.Authentication.AuthenticationRequest.payload()']]],
+  ['positionerror_1',['positionError',['../structPurrNet_1_1RigidbodyCorrectionContext.html#a2b1990637fe5d8d3076eb0ed7473abe8',1,'PurrNet::RigidbodyCorrectionContext']]],
+  ['positionstrength_2',['positionStrength',['../structPurrNet_1_1RigidbodyCorrectionContext.html#a88100d5ab22f5b8993c9145178ff8e4f',1,'PurrNet::RigidbodyCorrectionContext']]],
+  ['positiveinfinity_3',['PositiveInfinity',['../structPurrNet_1_1Packing_1_1Half.html#acb50d7590924fa38aa606d74e667e9a3',1,'PurrNet::Packing::Half']]]
 ];
