@@ -1,3 +1,10 @@
+# [1.20.0-beta.58](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.57...v1.20.0-beta.58) (2026-04-08)
+
+
+### Bug Fixes
+
+* FieldAccessException for generic classes with NetworkModules under inheritance ([c648c35](https://github.com/PurrNet/PurrNet/commit/c648c350f168766b38e611392eee339e65077c2f))
+
 # [1.20.0-beta.57](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.56...v1.20.0-beta.57) (2026-04-07)
 
 
