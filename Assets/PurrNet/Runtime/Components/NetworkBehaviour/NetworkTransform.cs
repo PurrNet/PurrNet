@@ -121,9 +121,11 @@ namespace PurrNet
         private Transform _trs;
 #if UNITY_PHYSICS_3D
         private Rigidbody _rb;
+        private bool _hasRigidbody;
 #endif
 #if UNITY_PHYSICS_2D
         private Rigidbody2D _rb2d;
+        private bool _hasRigidbody2D;
 #endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
@@ -140,10 +142,12 @@ namespace PurrNet
             _trs = transform;
 #if UNITY_PHYSICS_3D
             _rb = GetComponent<Rigidbody>();
+            _hasRigidbody = _rb;
             _controller = GetComponent<CharacterController>();
 #endif
 #if UNITY_PHYSICS_2D
             _rb2d = GetComponent<Rigidbody2D>();
+            _hasRigidbody2D = _rb2d;
 #endif
         }
 
@@ -430,10 +434,10 @@ namespace PurrNet
             if (isNotController)
             {
 #if UNITY_PHYSICS_3D
-                if (_rb) _rb.Sleep();
+                if (_hasRigidbody) _rb.Sleep();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_rb2d) _rb2d.Sleep();
+                if (_hasRigidbody2D) _rb2d.Sleep();
 #endif
             }
         }
