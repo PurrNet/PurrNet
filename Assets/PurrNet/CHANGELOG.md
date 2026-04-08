@@ -1,3 +1,10 @@
+# [1.20.0-beta.59](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.58...v1.20.0-beta.59) (2026-04-08)
+
+
+### Bug Fixes
+
+* IL codegen for async RPCs ([8532f95](https://github.com/PurrNet/PurrNet/commit/8532f9570a55755ca33a4df76cc4abaf23cae1ee))
+
 # [1.20.0-beta.58](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.57...v1.20.0-beta.58) (2026-04-08)
 
 
