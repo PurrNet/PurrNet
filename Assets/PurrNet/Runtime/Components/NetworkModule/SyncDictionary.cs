@@ -338,6 +338,9 @@ namespace PurrNet
         }
         public void OnTick(float delta)
         {
+            if (!_isDirty && !_wasLastDirty)
+                return;
+
             if (!IsController(_ownerAuth))
                 return;
 
@@ -399,7 +402,7 @@ namespace PurrNet
             _wasLastDirty = true;
             _isDirty = false;
         }
-        
+
         #region RPCs
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
