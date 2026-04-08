@@ -4365,6 +4365,18 @@ namespace PurrNet.Codegen
 
             var code = newMethod.Body.GetILProcessor();
 
+            // For generic types, field references must go through a GenericInstanceType
+            // so that the runtime sees them as belonging to the same type context as the method.
+            // Without this, private fields cause FieldAccessException.
+            TypeReference selfType = type;
+            if (type.HasGenericParameters)
+            {
+                var git = new GenericInstanceType(type);
+                foreach (var gp in type.GenericParameters)
+                    git.GenericArguments.Add(gp);
+                selfType = git;
+            }
+
             var parentType =
                 (isNetworkIdentity
                     ? module.GetTypeDefinition<NetworkIdentity>()
@@ -4382,11 +4394,16 @@ namespace PurrNet.Codegen
                 if (field.CustomAttributes.All(x => x.AttributeType.FullName != typeof(PreserveAttribute).FullName))
                     type.CustomAttributes.Add(new CustomAttribute(constructor));
 
+                // For generic types, construct a FieldReference through the GenericInstanceType
+                FieldReference fieldRef = type.HasGenericParameters
+                    ? new FieldReference(field.Name, field.FieldType, selfType)
+                    : field;
+
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
                 code.Append(Instruction.Create(OpCodes.Ldstr, field.Name));
                 code.Append(Instruction.Create(OpCodes.Ldstr, field.FieldType.Name));
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Ldc_I4, isNetworkIdentity ? 1 : 0));
                 code.Append(Instruction.Create(OpCodes.Call, registerModule));
 
@@ -4394,7 +4411,7 @@ namespace PurrNet.Codegen
 
                 // if not null
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Brfalse, endInstruction));
 
                 // call init method
@@ -4408,7 +4425,7 @@ namespace PurrNet.Codegen
                 codeGenInitRef.Parameters.Add(parentStr);
 
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 if (isNetworkIdentity)
                 {
                     code.Append(Instruction.Create(OpCodes.Ldstr, field.Name));
@@ -4428,7 +4445,7 @@ namespace PurrNet.Codegen
                     // if null
                     var endInstruction2 = Instruction.Create(OpCodes.Nop);
                     code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                    code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                    code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                     code.Append(Instruction.Create(OpCodes.Brtrue, endInstruction2));
 
                     // call error
