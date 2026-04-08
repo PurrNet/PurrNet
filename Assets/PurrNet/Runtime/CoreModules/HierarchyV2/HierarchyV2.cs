@@ -1903,7 +1903,18 @@ namespace PurrNet.Modules
             {
                 onObserverAdded?.Invoke(player, identity);
                 identity.TriggerOnPreObserverAdded(player, true);
-                _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = identity, isSpawner = true });
+                
+                // Process observer events immediately instead of deferring to PreNetworkMessages.
+                // This ensures SyncVar.OnObserverAdded → SendLatestState queues state data
+                // BEFORE the calling ServerRpc response, so predicted spawn clients receive
+                // SyncVar values before ManualFinalizeSpawn fires OnSpawned.
+                identity.TriggerOnObserverAdded(player, true);
+                onLateObserverAdded?.Invoke(player, identity);
+
+                // Fire onSentSpawnPacket so RPCModule replays buffered RPCs
+                // (e.g., ObserversRpc with bufferLast: true) for this observer.
+                if (identity.id.HasValue)
+                    onSentSpawnPacket?.Invoke(player, _sceneId, identity.id.Value);
             }
         }
 
