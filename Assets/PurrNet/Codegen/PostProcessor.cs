@@ -2137,15 +2137,6 @@ namespace PurrNet.Codegen
                     PutIsServerOnStack(module, methodRpc, isNetworkClass, code, moduleType, identityType);
                     code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
                     break;
-                case RPCType.TargetRPC when GetArgType(newMethod.Parameters[0].ParameterType) == TargetArgType.Player:
-                {
-                    PushLocalPlayerProp(module, code, isNetworkClass, methodRpc.Signature.isStatic);
-                    code.Append(Instruction.Create(OpCodes.Ldarg_S, newMethod.Parameters[0]));
-                    var areEqualMethod = rpcType.GetMethod("ArePlayersEqual", false).Import(module);
-                    code.Append(Instruction.Create(OpCodes.Call, areEqualMethod));
-                    code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
-                    break;
-                }
             }
 
             if (returnMode != ReturnMode.Void)
