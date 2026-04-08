@@ -1,3 +1,10 @@
+# [1.20.0-beta.62](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.61...v1.20.0-beta.62) (2026-04-08)
+
+
+### Bug Fixes
+
+* cache "has rigidbody" check for `NetworkTransform` ([b0c4081](https://github.com/PurrNet/PurrNet/commit/b0c4081711343520b95053da155af8db3d453473))
+
 # [1.20.0-beta.61](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.60...v1.20.0-beta.61) (2026-04-08)
 
 
