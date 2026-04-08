@@ -1,3 +1,10 @@
+# [1.20.0-beta.60](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.59...v1.20.0-beta.60) (2026-04-08)
+
+
+### Bug Fixes
+
+* remove TargetRpc fast path since it breaks ordering ([c701535](https://github.com/PurrNet/PurrNet/commit/c70153563a21ce3548a98d0332c496521ad5b5d4))
+
 # [1.20.0-beta.59](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.58...v1.20.0-beta.59) (2026-04-08)
 
 
