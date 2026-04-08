@@ -963,12 +963,19 @@ namespace PurrNet.Codegen
                     originalMethod.ReturnType is GenericInstanceType genericInstance &&
                     genericInstance.GenericArguments.Count == 1)
                 {
-                    var genericResponse = new GenericInstanceMethod(responder) { GenericArguments = { genericInstance.GenericArguments[0] } };
+                    var genericResponse = new GenericInstanceMethod(returnMode is ReturnMode.Task ? responder : responderUniTask);
+                    genericResponse.GenericArguments.Add(genericInstance.GenericArguments[0]);
                     invokeIl.Append(Instruction.Create(OpCodes.Call, genericResponse.Import(module)));
                 }
                 else
                 {
-                    invokeIl.Append(Instruction.Create(OpCodes.Call, responderWithoutResponse));
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, returnMode switch
+                    {
+                        ReturnMode.IEnumerator => responderCoroutine,
+                        ReturnMode.UniTask => responderUniTaskWithoutResponse,
+                        ReturnMode.Task => responderWithoutResponse,
+                        _ => responderWithoutResponse
+                    }));
                 }
             }
             invokeIl.Append(Instruction.Create(OpCodes.Ret));
