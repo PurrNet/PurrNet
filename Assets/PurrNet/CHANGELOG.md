@@ -1,3 +1,10 @@
+# [1.20.0-beta.61](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.60...v1.20.0-beta.61) (2026-04-08)
+
+
+### Bug Fixes
+
+* quick patch to SyncList/SyncDic/SyncArray to early exit from the OnTick event; ideally it should follow the SyncVar patern though ([19ce4b8](https://github.com/PurrNet/PurrNet/commit/19ce4b8d4c69a580be4ff0e146db544cff23a640))
+
 # [1.20.0-beta.60](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.59...v1.20.0-beta.60) (2026-04-08)
 
 
