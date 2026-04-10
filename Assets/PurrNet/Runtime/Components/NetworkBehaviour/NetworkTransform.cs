@@ -434,10 +434,10 @@ namespace PurrNet
             if (isNotController)
             {
 #if UNITY_PHYSICS_3D
-                if (_hasRigidbody) _rb.Sleep();
+                if (_hasRigidbody && _rb) _rb.Sleep();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_hasRigidbody2D) _rb2d.Sleep();
+                if (_hasRigidbody2D && _rb) _rb2d.Sleep();
 #endif
             }
         }
