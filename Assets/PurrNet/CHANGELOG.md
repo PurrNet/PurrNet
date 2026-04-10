@@ -1,3 +1,10 @@
+# [1.20.0-beta.63](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.62...v1.20.0-beta.63) (2026-04-10)
+
+
+### Bug Fixes
+
+* RB issue ([e58dc40](https://github.com/PurrNet/PurrNet/commit/e58dc40cdf50367d37726e705447f212d362305f))
+
 # [1.20.0-beta.62](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.61...v1.20.0-beta.62) (2026-04-08)
 
 
