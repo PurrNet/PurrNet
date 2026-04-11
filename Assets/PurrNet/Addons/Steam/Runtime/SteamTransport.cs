@@ -120,11 +120,13 @@ namespace PurrNet.Steam
 
         protected override void StartClientInternal()
         {
+            SetTelemetryAppId();
             Connect(_address, _serverPort);
         }
 
         protected override void StartServerInternal()
         {
+            SetTelemetryAppId();
             Listen(_serverPort);
         }
 
@@ -285,5 +287,22 @@ namespace PurrNet.Steam
         {
             return _server?.GetSteamID(conn.connectionId) ?? 0;
         }
+
+#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+        void SetTelemetryAppId()
+        {
+            try
+            {
+                var appId = Steamworks.SteamUtils.GetAppID();
+                PurrTelemetry.TransportMetadata["steam_app_id"] = appId.m_AppId.ToString();
+            }
+            catch
+            {
+                // Steamworks may not be initialized
+            }
+        }
+#else
+        void SetTelemetryAppId() { }
+#endif
     }
 }
