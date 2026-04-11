@@ -1838,6 +1838,12 @@ namespace PurrNet
                 onAnyClientConnectionState?.Invoke(state);
             }
 
+            if (state == ConnectionState.Connected)
+            {
+                if (asServer || !isServer)
+                    PurrTelemetry.SendConnectionEvent(this);
+            }
+
             if (state == ConnectionState.Disconnected)
             {
                 switch (asServer)
