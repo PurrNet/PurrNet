@@ -1,3 +1,10 @@
+# [1.20.0-beta.75](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.74...v1.20.0-beta.75) (2026-04-11)
+
+
+### Bug Fixes
+
+* add exception handling for player event invocations to avoid breaking connection/disconnection flow ([a9b4e0e](https://github.com/PurrNet/PurrNet/commit/a9b4e0e2592f9ff8e087c4e2b7bc5779b409d7b5))
+
 # [1.20.0-beta.74](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.73...v1.20.0-beta.74) (2026-04-11)
 
 
