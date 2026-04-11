@@ -15,7 +15,10 @@ namespace PurrNet
         const string ENDPOINT = "https://purrnet.dev/api/telemetry/event";
         const string INSTALL_ID_KEY = "PurrNet_InstallId";
 
+        const string PROJECT_ID_RESOURCE = "PurrTelemetryProjectId";
+
         static string _installationId;
+        static bool _projectIdLoaded;
 
         public static string ProjectId { get; set; }
 
@@ -64,10 +67,17 @@ namespace PurrNet
 
             try
             {
+                LoadProjectIdFromResources();
+
                 var payload = new Dictionary<string, object>
                 {
                     ["installation_id"] = GetInstallationId(),
                     ["event_type"] = eventType,
+#if UNITY_EDITOR
+                    ["source"] = "editor",
+#else
+                    ["source"] = "build",
+#endif
                     ["metadata"] = metadata
                 };
 
@@ -92,6 +102,25 @@ namespace PurrNet
             catch
             {
                 // Silent failure, we don't want to disrupt Unity because of telemetry :-)
+            }
+        }
+
+        static void LoadProjectIdFromResources()
+        {
+            if (_projectIdLoaded || !string.IsNullOrEmpty(ProjectId))
+                return;
+
+            _projectIdLoaded = true;
+
+            try
+            {
+                var asset = Resources.Load<TextAsset>(PROJECT_ID_RESOURCE);
+                if (asset)
+                    ProjectId = asset.text.Trim();
+            }
+            catch
+            {
+                // Not critical
             }
         }
 
