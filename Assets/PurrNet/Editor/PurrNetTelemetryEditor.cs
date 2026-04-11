@@ -10,8 +10,6 @@ namespace PurrNet.Editor
 {
     public static class PurrNetTelemetryEditor
     {
-        const string OPT_OUT_KEY = "PurrNet_Telemetry_OptOut";
-
         [InitializeOnLoadMethod]
         static void Init()
         {
@@ -124,31 +122,18 @@ namespace PurrNet.Editor
             PurrTelemetry.SendEvent("steam_session", metadata);
         }
 
-        const string MENU_DISABLE = "Tools/PurrNet/Misc/Disable Telemetry";
-        const string MENU_ENABLE = "Tools/PurrNet/Misc/Enable Telemetry";
-
-        [MenuItem(MENU_DISABLE, false, 200)]
-        static void DisableTelemetry()
-        {
-            EditorPrefs.SetBool(OPT_OUT_KEY, true);
-        }
-
-        [MenuItem(MENU_DISABLE, true)]
-        static bool ValidateDisableTelemetry()
-        {
-            return !EditorPrefs.GetBool(OPT_OUT_KEY, false);
-        }
-
-        [MenuItem(MENU_ENABLE, false, 200)]
+#if PURRNET_NO_TELEMETRY
+        [MenuItem("Tools/PurrNet/Misc/Enable Telemetry", false, 200)]
         static void EnableTelemetry()
         {
-            EditorPrefs.SetBool(OPT_OUT_KEY, false);
+            SymbolsHelper.RemoveSymbol("PURRNET_NO_TELEMETRY");
         }
-
-        [MenuItem(MENU_ENABLE, true)]
-        static bool ValidateEnableTelemetry()
+#else
+        [MenuItem("Tools/PurrNet/Misc/Disable Telemetry", false, 200)]
+        static void DisableTelemetry()
         {
-            return EditorPrefs.GetBool(OPT_OUT_KEY, false);
+            SymbolsHelper.AddSymbol("PURRNET_NO_TELEMETRY");
         }
+#endif
     }
 }

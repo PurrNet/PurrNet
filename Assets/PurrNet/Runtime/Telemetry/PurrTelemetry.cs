@@ -7,9 +7,6 @@ using PurrNet.Logging;
 using PurrNet.Transports;
 using UnityEngine;
 using UnityEngine.Networking;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace PurrNet
 {
@@ -17,7 +14,6 @@ namespace PurrNet
     {
         const string ENDPOINT = "https://purrnet.dev/api/telemetry/event";
         const string INSTALL_ID_KEY = "PurrNet_InstallId";
-        const string OPT_OUT_KEY = "PurrNet_Telemetry_OptOut";
 
         static string _installationId;
 
@@ -27,6 +23,9 @@ namespace PurrNet
         {
             get
             {
+#if PURRNET_NO_TELEMETRY
+                return false;
+#else
                 if (Application.isBatchMode)
                     return false;
 
@@ -34,11 +33,8 @@ namespace PurrNet
                         StringComparison.OrdinalIgnoreCase))
                     return false;
 
-#if UNITY_EDITOR
-                if (EditorPrefs.GetBool(OPT_OUT_KEY, false))
-                    return false;
-#endif
                 return true;
+#endif
             }
         }
 
