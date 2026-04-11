@@ -155,7 +155,7 @@ namespace PurrNet.Editor
             {
                 foreach (var prop in deps.Properties())
                 {
-                    var val = prop.Value?.ToString();
+                    var val = prop.Value.ToString();
                     if (!val.Contains(LegacyPackagesDir))
                         continue;
 
@@ -186,7 +186,7 @@ namespace PurrNet.Editor
 
                 foreach (var prop in deps.Properties())
                 {
-                    var val = prop.Value?.ToString();
+                    var val = prop.Value.ToString();
                     if (!IsGitUrl(val))
                         continue;
 
@@ -777,96 +777,6 @@ namespace PurrNet.Editor
             {
                 Debug.LogError($"[PurrNet] Failed to update manifest.json: {e.Message}");
             }
-        }
-
-        private static void CreateTarGz(string sourceDir, string outputPath)
-        {
-            using var fileStream = File.Create(outputPath);
-            using var gzipStream = new GZipStream(fileStream, CompressionMode.Compress);
-
-            var files = Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories);
-
-            foreach (var filePath in files)
-            {
-                var relativePath = filePath[sourceDir.Length..]
-                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                    .Replace('\\', '/');
-
-                // npm/Unity tgz convention: all files under a "package/" root
-                var tarPath = "package/" + relativePath;
-                var content = File.ReadAllBytes(filePath);
-                var header = CreateTarHeader(tarPath, content.Length);
-
-                gzipStream.Write(header, 0, 512);
-                gzipStream.Write(content, 0, content.Length);
-
-                // Pad to 512-byte boundary
-                int remainder = content.Length % 512;
-                if (remainder > 0)
-                {
-                    var padding = new byte[512 - remainder];
-                    gzipStream.Write(padding, 0, padding.Length);
-                }
-            }
-
-            // End of archive: two 512-byte zero blocks
-            var endBlock = new byte[1024];
-            gzipStream.Write(endBlock, 0, 1024);
-        }
-
-        private static byte[] CreateTarHeader(string entryPath, long size)
-        {
-            var header = new byte[512];
-
-            // Split path into prefix (max 155) and name (max 100) for ustar
-            string name = entryPath;
-            string prefix = "";
-
-            if (Encoding.ASCII.GetByteCount(name) > 100)
-            {
-                var lastSlash = name.LastIndexOf('/', Math.Min(name.Length - 1, 155));
-                if (lastSlash > 0)
-                {
-                    prefix = name.Substring(0, lastSlash);
-                    name = name.Substring(lastSlash + 1);
-                }
-            }
-
-            WriteAscii(header, 0, name, 100);
-            WriteAscii(header, 100, "0100644\0", 8);   // File mode
-            WriteAscii(header, 108, "0000000\0", 8);   // Owner ID
-            WriteAscii(header, 116, "0000000\0", 8);   // Group ID
-
-            var sizeStr = Convert.ToString(size, 8).PadLeft(11, '0');
-            WriteAscii(header, 124, sizeStr + "\0", 12);
-
-            var unixTime = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
-            var timeStr = Convert.ToString(unixTime, 8).PadLeft(11, '0');
-            WriteAscii(header, 136, timeStr + "\0", 12);
-
-            header[156] = (byte)'0'; // Regular file
-
-            WriteAscii(header, 257, "ustar\0", 6);     // Magic
-            WriteAscii(header, 263, "00", 2);           // Version
-
-            if (prefix.Length > 0)
-                WriteAscii(header, 345, prefix, 155);
-
-            // Compute checksum (fill checksum field with spaces first)
-            for (int i = 148; i < 156; i++) header[i] = (byte)' ';
-            int checksum = 0;
-            for (int i = 0; i < 512; i++) checksum += header[i];
-            var checksumStr = Convert.ToString(checksum, 8).PadLeft(6, '0') + "\0 ";
-            WriteAscii(header, 148, checksumStr, 8);
-
-            return header;
-        }
-
-        private static void WriteAscii(byte[] buffer, int offset, string value, int fieldLength)
-        {
-            var bytes = Encoding.ASCII.GetBytes(value);
-            var len = Math.Min(bytes.Length, fieldLength);
-            Array.Copy(bytes, 0, buffer, offset, len);
         }
 
         private static void ExtractUnityPackage(string packagePath, string targetDir)
