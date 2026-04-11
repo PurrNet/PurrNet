@@ -1,3 +1,10 @@
+# [1.20.0-beta.74](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.73...v1.20.0-beta.74) (2026-04-11)
+
+
+### Bug Fixes
+
+* purr package manager cleanup patches ([64565ac](https://github.com/PurrNet/PurrNet/commit/64565ac70a474dc1fd64e6a44310bb54651f8920))
+
 # [1.20.0-beta.73](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.72...v1.20.0-beta.73) (2026-04-11)
 
 
