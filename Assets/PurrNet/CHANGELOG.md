@@ -1,3 +1,10 @@
+# [1.20.0-beta.69](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.68...v1.20.0-beta.69) (2026-04-11)
+
+
+### Bug Fixes
+
+* Allow compilation of PurrOnGUI outside editor defines ([c70deb2](https://github.com/PurrNet/PurrNet/commit/c70deb2b514d5b3257f3655548290ffded6488e0))
+
 # [1.20.0-beta.68](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.67...v1.20.0-beta.68) (2026-04-11)
 
 
