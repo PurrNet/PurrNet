@@ -1797,7 +1797,16 @@ namespace PurrNet.Modules
                 else
                 {
                     if (result.scene != _scene)
-                        SceneManager.MoveGameObjectToScene(result, _scene);
+                    {
+                        try
+                        {
+                            SceneManager.MoveGameObjectToScene(result, _scene);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
                     PurrLogger.LogError($"Failed to find parent for '{result.name}' with id '{prototype.parentID}'.",
                         result);
                 }
@@ -1812,7 +1821,16 @@ namespace PurrNet.Modules
             else
             {
                 if (result.scene != _scene)
-                    SceneManager.MoveGameObjectToScene(result, _scene);
+                {
+                    try
+                    {
+                        SceneManager.MoveGameObjectToScene(result, _scene);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
                 SetLocalPosAndRot(resultTrs, prototype.position, prototype.rotation, prototype.scale);
             }
 
