@@ -1,3 +1,10 @@
+# [1.20.0-beta.66](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.65...v1.20.0-beta.66) (2026-04-11)
+
+
+### Bug Fixes
+
+* Utilize type caching avoiding async packable boxing ([5264cf7](https://github.com/PurrNet/PurrNet/commit/5264cf74cd6d27c593dc3334b9773c54611844da))
+
 # [1.20.0-beta.65](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.64...v1.20.0-beta.65) (2026-04-11)
 
 
