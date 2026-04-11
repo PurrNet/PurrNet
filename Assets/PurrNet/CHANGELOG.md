@@ -1,3 +1,10 @@
+# [1.20.0-beta.79](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.78...v1.20.0-beta.79) (2026-04-11)
+
+
+### Bug Fixes
+
+* Improved telemetry for builds ([594d198](https://github.com/PurrNet/PurrNet/commit/594d198bdf0a4287e9849c00e4b66ae4757e8637))
+
 # [1.20.0-beta.78](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.77...v1.20.0-beta.78) (2026-04-11)
 
 
