@@ -236,40 +236,115 @@ namespace PurrNet.Editor
         /// <summary>
         /// Safely removes a directory by moving it to Temp/ first (handles locked native DLLs).
         /// Also handles dangling junctions/symlinks that Unity may leave behind.
+        /// Falls back to file-by-file deletion to avoid hanging on locked native libraries.
         /// </summary>
         private static void SafeRemoveDirectory(string path)
         {
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
+                return;
+
+            // Try atomic move first — fastest and avoids issues with locked files.
+            // Directory.Move within the same volume is a rename, not a copy.
+            try
             {
-                try
+                var tempDest = Path.Combine("Temp", "PurrNet_cleanup_" + DateTime.Now.Ticks);
+                Directory.Move(path, tempDest);
+                return;
+            }
+            catch
+            {
+                // Move failed (likely locked native libraries) — fall through to file-by-file cleanup
+            }
+
+            // Fallback: delete file-by-file, gracefully skipping locked files.
+            // Avoids Directory.Delete(path, true) which can hang on Windows when files
+            // are locked by Unity's native library loader (LoadLibrary without FILE_SHARE_DELETE).
+            TryDeleteDirectoryContents(path);
+
+            // Remove the directory itself only if it's now fully empty
+            try
+            {
+                if (Directory.GetFileSystemEntries(path).Length == 0)
+                    Directory.Delete(path, false);
+            }
+            catch
+            {
+                // Directory still has locked files — will be cleaned up on next restart
+            }
+        }
+
+        /// <summary>
+        /// Deletes directory contents file-by-file, gracefully skipping locked files.
+        /// This avoids the hang that Directory.Delete(path, true) can cause on Windows
+        /// when native libraries are loaded by Unity.
+        /// </summary>
+        private static void TryDeleteDirectoryContents(string path)
+        {
+            try
+            {
+                // Delete files first
+                foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
                 {
-                    var tempDest = Path.Combine("Temp", "PurrNet_cleanup_" + DateTime.Now.Ticks);
-                    Directory.Move(path, tempDest);
-                    return;
-                }
-                catch (Exception moveEx)
-                {
-                    Debug.LogWarning($"[PurrNet] Could not move directory '{path}' to Temp, attempting delete: {moveEx}");
-                    try { Directory.Delete(path, true); }
-                    catch (Exception deleteEx)
+                    try
                     {
-                        Debug.LogError($"[PurrNet] Could not remove directory at '{path}': {deleteEx}");
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                    }
+                    catch
+                    {
+                        // File is locked (likely a loaded native library) — skip it
                     }
                 }
 
-                return;
+                // Remove empty subdirectories bottom-up (longest paths first)
+                var dirs = Directory.GetDirectories(path, "*", SearchOption.AllDirectories);
+                Array.Sort(dirs, (a, b) => b.Length.CompareTo(a.Length));
+                foreach (var dir in dirs)
+                {
+                    try
+                    {
+                        if (Directory.GetFileSystemEntries(dir).Length == 0)
+                            Directory.Delete(dir, false);
+                    }
+                    catch
+                    {
+                        // Not empty or locked — skip
+                    }
+                }
             }
-
-            // Handle dangling junctions/symlinks that Directory.Exists doesn't detect.
-            // Unity creates junctions in Packages/ for file: manifest entries — if the
-            // target in PurrPackages/ was already removed, the junction is dangling.
-            try { Directory.Delete(path); }
             catch (Exception ex)
             {
-                // Only log if the path actually exists as a junction/symlink —
-                // DirectoryNotFoundException just means nothing to clean up
-                if (ex is not DirectoryNotFoundException && ex is not FileNotFoundException)
-                    Debug.LogWarning($"[PurrNet] Could not remove dangling junction at '{path}': {ex}");
+                Debug.LogWarning($"[PurrNet] Error during directory cleanup of '{path}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Copies all files from source into destination, creating subdirectories as needed.
+        /// Overwrites existing files where possible, skips files that are locked.
+        /// Used as a fallback when Directory.Move fails due to the destination still existing.
+        /// </summary>
+        private static void CopyDirectoryContents(string source, string destination)
+        {
+            foreach (var dir in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+            {
+                var relative = dir.Substring(source.Length + 1);
+                var destDir = Path.Combine(destination, relative);
+                if (!Directory.Exists(destDir))
+                    Directory.CreateDirectory(destDir);
+            }
+
+            foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            {
+                var relative = file.Substring(source.Length + 1);
+                var destFile = Path.Combine(destination, relative);
+                try
+                {
+                    File.Copy(file, destFile, true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PurrNet] Could not overwrite '{relative}': {ex.Message}");
+                }
             }
         }
 
@@ -412,8 +487,21 @@ namespace PurrNet.Editor
                     CleanupLegacyPackageFiles(oldMatch.Value.key);
                 CleanupLegacyPackageFiles(upmName);
 
-                // Move extracted content to final location
-                Directory.Move(tempExtractDir, folderPath);
+                // Move extracted content to final location.
+                // If the old directory couldn't be fully removed (locked native DLLs),
+                // fall back to copying new files over the remnants.
+                if (Directory.Exists(folderPath))
+                {
+                    CopyDirectoryContents(tempExtractDir, folderPath);
+                    try { Directory.Delete(tempExtractDir, true); } catch { }
+                    Debug.LogWarning("[PurrNet] Some old files could not be removed (likely locked native libraries). " +
+                                     "The new version has been installed over the old files. " +
+                                     "A Unity restart is recommended for a clean state.");
+                }
+                else
+                {
+                    Directory.Move(tempExtractDir, folderPath);
+                }
 
                 // Embedded packages are auto-discovered by Unity — remove any stale manifest entry
                 RemoveManifestEntry(upmName);

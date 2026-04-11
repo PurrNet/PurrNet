@@ -52,7 +52,6 @@ namespace PurrNet.Editor
         private static readonly Color _categoryBg = new Color(0.16f, 0.16f, 0.16f, 1f);
         private static readonly Color _selectedAccent = new Color(0.35f, 0.65f, 0.95f, 1f);
 
-        [NonSerialized] private GUIStyle _titleStyle;
         [NonSerialized] private GUIStyle _descStyle;
         [NonSerialized] private GUIStyle _badgeStyle;
         [NonSerialized] private GUIStyle _smallLabelStyle;
@@ -128,12 +127,6 @@ namespace PurrNet.Editor
         {
             if (_detailTitleStyle != null && _listItemDetailStyle != null && _releaseNotesStyle != null)
                 return;
-
-            _titleStyle = new GUIStyle(EditorStyles.boldLabel)
-            {
-                fontSize = 13,
-                margin = new RectOffset(0, 0, 0, 0)
-            };
 
             _descStyle = new GUIStyle(EditorStyles.label)
             {
@@ -353,19 +346,22 @@ namespace PurrNet.Editor
 
             // User profile (avatar + username + login/logout)
             var profileAnchor = new Rect(headerRect.x, headerRect.y + 10, refreshRect.x - 4 - headerRect.x, 22);
-            float profileWidth = _userProfile.DrawProfileBar(profileAnchor);
-
-            // Update All button (to the left of profile)
-            if (_updatableCount > 0)
+            if (_userProfile != null)
             {
-                var updateLabel = $"Update All ({_updatableCount})";
-                var updateRect = new Rect(profileAnchor.xMax - profileWidth - 104, headerRect.y + 10, 100, 22);
-                GUI.enabled = !_isLoading && !_isUpdatingAll;
-                GUI.color = _updateColor;
-                if (GUI.Button(updateRect, updateLabel))
-                    UpdateAllPackages();
-                GUI.color = Color.white;
-                GUI.enabled = true;
+                float profileWidth = _userProfile.DrawProfileBar(profileAnchor);
+
+                // Update All button (to the left of profile)
+                if (_updatableCount > 0)
+                {
+                    var updateLabel = $"Update All ({_updatableCount})";
+                    var updateRect = new Rect(profileAnchor.xMax - profileWidth - 104, headerRect.y + 10, 100, 22);
+                    GUI.enabled = !_isLoading && !_isUpdatingAll;
+                    GUI.color = _updateColor;
+                    if (GUI.Button(updateRect, updateLabel))
+                        UpdateAllPackages();
+                    GUI.color = Color.white;
+                    GUI.enabled = true;
+                }
             }
         }
 
@@ -961,10 +957,10 @@ namespace PurrNet.Editor
                     DrawSeparator();
                     EditorGUILayout.Space(4);
 
-                    var title = isInstalled && hasUpdate
+                    var ptitle = isInstalled && hasUpdate
                         ? $"What's New ({relevantVersions.Count} update{(relevantVersions.Count > 1 ? "s" : "")})"
                         : "Release Notes";
-                    GUILayout.Label(title, _detailTitleStyle);
+                    GUILayout.Label(ptitle, _detailTitleStyle);
                     EditorGUILayout.Space(4);
 
                     foreach (var v in relevantVersions)
@@ -1451,65 +1447,69 @@ namespace PurrNet.Editor
 
         private async void LoadData()
         {
-            _isLoading = true;
-            _errorMessage = null;
-            Repaint();
-
             try
             {
-                var apiKey = PurrPackageManagerAuth.GetApiKey();
-                bool hasKey = !string.IsNullOrEmpty(apiKey);
+                _isLoading = true;
+                _errorMessage = null;
+                Repaint();
 
-                if (hasKey)
+                try
                 {
-                    if (PurrPackageManagerCache.TryGetEntitlements(out var cachedEntitlements))
+                    var apiKey = PurrPackageManagerAuth.GetApiKey();
+                    bool hasKey = !string.IsNullOrEmpty(apiKey);
+
+                    if (hasKey)
                     {
-                        _entitlements = cachedEntitlements;
-                    }
-                    else
-                    {
-                        var entitlementsResult = await PurrPackageManagerAPI.GetEntitlements(apiKey);
-                        if (entitlementsResult.Success)
+                        if (PurrPackageManagerCache.TryGetEntitlements(out var cachedEntitlements))
                         {
-                            _entitlements = entitlementsResult.Value;
-                            PurrPackageManagerCache.SetEntitlements(_entitlements);
+                            _entitlements = cachedEntitlements;
+                        }
+                        else
+                        {
+                            var entitlementsResult = await PurrPackageManagerAPI.GetEntitlements(apiKey);
+                            if (entitlementsResult.Success)
+                            {
+                                _entitlements = entitlementsResult.Value;
+                                PurrPackageManagerCache.SetEntitlements(_entitlements);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    _entitlements = null;
-                }
-
-                if (PurrPackageManagerCache.TryGetPackages(out var cachedPackages))
-                {
-                    _packages = cachedPackages;
-                }
-                else
-                {
-                    var packagesResult = await PurrPackageManagerAPI.GetPackages(apiKey);
-                    if (packagesResult.Success)
+                    else
                     {
-                        _packages = packagesResult.Value;
-                        PurrPackageManagerCache.SetPackages(_packages);
+                        _entitlements = null;
+                    }
+
+                    if (PurrPackageManagerCache.TryGetPackages(out var cachedPackages))
+                    {
+                        _packages = cachedPackages;
                     }
                     else
                     {
-                        _errorMessage = packagesResult.Error;
-                        _isLoading = false;
-                        Repaint();
-                        return;
+                        var packagesResult = await PurrPackageManagerAPI.GetPackages(apiKey);
+                        if (packagesResult.Success)
+                        {
+                            _packages = packagesResult.Value;
+                            PurrPackageManagerCache.SetPackages(_packages);
+                        }
+                        else
+                        {
+                            _errorMessage = packagesResult.Error;
+                        }
                     }
-                }
 
-                _isLoading = false;
-                Repaint();
+                    _isLoading = false;
+                    Repaint();
+                }
+                catch (Exception e)
+                {
+                    _errorMessage = e.Message;
+                    _isLoading = false;
+                    Repaint();
+                }
             }
             catch (Exception e)
             {
-                _errorMessage = e.Message;
-                _isLoading = false;
-                Repaint();
+                Debug.LogException(e);
             }
         }
 
