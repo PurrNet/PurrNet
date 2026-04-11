@@ -1,3 +1,10 @@
+# [1.20.0-beta.71](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.70...v1.20.0-beta.71) (2026-04-11)
+
+
+### Bug Fixes
+
+* impove Equality check for `NetworkTransformData` ([1f0a118](https://github.com/PurrNet/PurrNet/commit/1f0a118e9f26dcf8266b5696a8749a9eaf59e9a0))
+
 # [1.20.0-beta.70](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.69...v1.20.0-beta.70) (2026-04-11)
 
 
