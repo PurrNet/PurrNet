@@ -19,6 +19,8 @@ namespace PurrNet
 
         public static string ProjectId { get; set; }
 
+        public static Dictionary<string, string> TransportMetadata { get; } = new();
+
         public static bool IsEnabled
         {
             get
@@ -98,12 +100,20 @@ namespace PurrNet
             if (!IsEnabled)
                 return;
 
+            var transportName = manager.transport ? manager.transport.GetType().Name : "Unknown";
+
+            if (transportName == nameof(LocalTransport))
+                return;
+
             var metadata = new Dictionary<string, object>
             {
                 ["purrnet_version"] = NetworkManager.version,
                 ["player_count"] = manager.playerCount,
-                ["transport"] = manager.transport ? manager.transport.GetType().Name : "Unknown"
+                ["transport"] = transportName
             };
+
+            foreach (var kvp in TransportMetadata)
+                metadata[kvp.Key] = kvp.Value;
 
             SendEvent("connection", metadata);
         }
