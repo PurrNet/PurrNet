@@ -1,3 +1,10 @@
+# [1.20.0-beta.73](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.72...v1.20.0-beta.73) (2026-04-11)
+
+
+### Bug Fixes
+
+* NetworkTransform performance improvements ([481d6ec](https://github.com/PurrNet/PurrNet/commit/481d6ecbd8a5c02c742cd24760758d958524245b))
+
 # [1.20.0-beta.72](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.71...v1.20.0-beta.72) (2026-04-11)
 
 
