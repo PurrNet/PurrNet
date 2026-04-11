@@ -1,3 +1,10 @@
+# [1.20.0-beta.70](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.69...v1.20.0-beta.70) (2026-04-11)
+
+
+### Bug Fixes
+
+* redundant interpolation patches in GatherState from the NetworkTransform.cs ([e47ccad](https://github.com/PurrNet/PurrNet/commit/e47ccadad5d377b06c3012bf52bcaa39f4df7f27))
+
 # [1.20.0-beta.69](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.68...v1.20.0-beta.69) (2026-04-11)
 
 
