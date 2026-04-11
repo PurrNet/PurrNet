@@ -1,3 +1,10 @@
+# [1.20.0-beta.80](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.79...v1.20.0-beta.80) (2026-04-11)
+
+
+### Bug Fixes
+
+* Take project ID to purrversion json ([140cee2](https://github.com/PurrNet/PurrNet/commit/140cee244b76092cd0ac5efc36a76a0941ed6e78))
+
 # [1.20.0-beta.79](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.78...v1.20.0-beta.79) (2026-04-11)
 
 
