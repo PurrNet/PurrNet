@@ -1,4 +1,6 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Newtonsoft.Json.Linq;
 using PurrNet.Pooling;
 using UnityEditor;
@@ -22,12 +24,19 @@ namespace PurrNet.Editor
         private static void Cleanup()
         {
             const string VERSION = "Assets/Resources/PurrVersion.json";
+            const string PROJECT_ID = "Assets/Resources/PurrTelemetryProjectId.txt";
 
             if (File.Exists(VERSION))
                 File.Delete(VERSION);
 
             if (File.Exists(VERSION + ".meta"))
                 File.Delete(VERSION + ".meta");
+
+            if (File.Exists(PROJECT_ID))
+                File.Delete(PROJECT_ID);
+
+            if (File.Exists(PROJECT_ID + ".meta"))
+                File.Delete(PROJECT_ID + ".meta");
 
             if (Directory.Exists("Assets/Resources"))
             {
@@ -67,11 +76,55 @@ namespace PurrNet.Editor
         public void OnPreprocessBuild(BuildReport report)
         {
             const string VERSION = "Assets/Resources/PurrVersion.json";
+            const string PROJECT_ID = "Assets/Resources/PurrTelemetryProjectId.txt";
 
             Directory.CreateDirectory(Path.GetDirectoryName(VERSION) ?? string.Empty);
             File.WriteAllText(VERSION, TryFindVersion());
 
+            var projectId = ComputeProjectId();
+            if (!string.IsNullOrEmpty(projectId))
+                File.WriteAllText(PROJECT_ID, projectId);
+
             AssetDatabase.Refresh();
+        }
+
+        static string ComputeProjectId()
+        {
+            try
+            {
+                var path = Path.Combine(Application.dataPath, "..", "ProjectSettings", "ProjectSettings.asset");
+
+                if (!File.Exists(path))
+                    return null;
+
+                foreach (var line in File.ReadLines(path))
+                {
+                    var trimmed = line.TrimStart();
+
+                    if (!trimmed.StartsWith("productGUID:"))
+                        continue;
+
+                    var guid = trimmed.Substring("productGUID:".Length).Trim();
+
+                    if (string.IsNullOrEmpty(guid))
+                        break;
+
+                    using var sha = SHA256.Create();
+                    var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(guid));
+
+                    var sb = new StringBuilder(hash.Length * 2);
+                    foreach (var b in hash)
+                        sb.Append(b.ToString("x2"));
+
+                    return sb.ToString();
+                }
+            }
+            catch
+            {
+                // Not critical
+            }
+
+            return null;
         }
 
         public void OnProcessScene(Scene scene, BuildReport report)
