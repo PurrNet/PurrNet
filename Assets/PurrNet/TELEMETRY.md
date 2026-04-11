@@ -10,7 +10,7 @@ PurrNet collects anonymous usage data to help us understand how the library is u
 - **PurrNet version** - e.g. `v1.20.0`
 - **Unity version** - e.g. `2022.3.20f1`
 - **Operating system** - e.g. `Windows 11`
-- **Player count** - number of connected players when a session starts
+- **Player count** - number of connected players when the client joins a session
 - **Transport** - which transport is in use (e.g. `UDPTransport`, `SteamTransport`)
 - **Steam App ID** - only if you're using the Steam transport (this is a public app ID)
 

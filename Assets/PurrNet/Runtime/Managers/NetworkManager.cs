@@ -919,8 +919,24 @@ namespace PurrNet
         /// </summary>
         public event OnPlayerJoinedEvent onPlayerJoined;
 
-        void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer) =>
+        private bool _telemetrySentClient;
+
+        void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer)
+        {
             onPlayerJoined?.Invoke(player, isReconnect, asServer);
+
+            if (!asServer && !_telemetrySentClient)
+            {
+                _telemetrySentClient = true;
+                StartCoroutine(SendConnectionTelemetryDelayed());
+            }
+        }
+
+        private System.Collections.IEnumerator SendConnectionTelemetryDelayed()
+        {
+            yield return null;
+            PurrTelemetry.SendConnectionEvent(this);
+        }
 
         /// <summary>
         /// This event is triggered when a player leaves.
@@ -1838,14 +1854,11 @@ namespace PurrNet
                 onAnyClientConnectionState?.Invoke(state);
             }
 
-            if (state == ConnectionState.Connected)
-            {
-                if (asServer || !isServer)
-                    PurrTelemetry.SendConnectionEvent(this);
-            }
-
             if (state == ConnectionState.Disconnected)
             {
+                if (!asServer)
+                    _telemetrySentClient = false;
+
                 switch (asServer)
                 {
                     case false:
