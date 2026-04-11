@@ -674,8 +674,6 @@ namespace PurrNet
         public void GatherState()
         {
             _currentData = _latestData;
-            if (_cachedIsController)
-                TeleportToData(_currentData);
         }
 
         public void DeltaSave()
