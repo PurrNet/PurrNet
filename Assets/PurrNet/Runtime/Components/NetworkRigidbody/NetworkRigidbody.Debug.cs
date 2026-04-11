@@ -57,7 +57,17 @@ namespace PurrNet
         }
 
 #if UNITY_EDITOR
-        private void OnGUI()
+        private void OnEnable()
+        {
+            PurrOnGUI.Subscribe(DrawDebugGUI);
+        }
+
+        private void OnDisable()
+        {
+            PurrOnGUI.Unsubscribe(DrawDebugGUI);
+        }
+
+        private void DrawDebugGUI()
         {
             if (!_debugGizmos || !isSpawned || _rigidbody == null)
                 return;
