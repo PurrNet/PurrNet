@@ -1,3 +1,10 @@
+# [1.20.0-beta.64](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.63...v1.20.0-beta.64) (2026-04-11)
+
+
+### Bug Fixes
+
+* refactor how and when moving scenes happens when spawning objects ([fa1224b](https://github.com/PurrNet/PurrNet/commit/fa1224b2805a90259e6fab9d672e943a66a505b8))
+
 # [1.20.0-beta.63](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.62...v1.20.0-beta.63) (2026-04-10)
 
 
