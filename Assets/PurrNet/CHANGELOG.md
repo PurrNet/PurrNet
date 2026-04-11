@@ -1,3 +1,38 @@
+# [1.20.0-beta.69](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.68...v1.20.0-beta.69) (2026-04-11)
+
+
+### Bug Fixes
+
+* Allow compilation of PurrOnGUI outside editor defines ([c70deb2](https://github.com/PurrNet/PurrNet/commit/c70deb2b514d5b3257f3655548290ffded6488e0))
+
+# [1.20.0-beta.68](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.67...v1.20.0-beta.68) (2026-04-11)
+
+
+### Bug Fixes
+
+* Move to singular dispatch OnGUI ([c787c49](https://github.com/PurrNet/PurrNet/commit/c787c49fb5f3588bc923f368a4dfd0035eda9ffa))
+
+# [1.20.0-beta.67](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.66...v1.20.0-beta.67) (2026-04-11)
+
+
+### Bug Fixes
+
+* NetworkRigidbody OnGUI strip from builds ([ed4cff9](https://github.com/PurrNet/PurrNet/commit/ed4cff9de70e5dc5ec5e49491c5e66c87a23e832))
+
+# [1.20.0-beta.66](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.65...v1.20.0-beta.66) (2026-04-11)
+
+
+### Bug Fixes
+
+* Utilize type caching avoiding async packable boxing ([5264cf7](https://github.com/PurrNet/PurrNet/commit/5264cf74cd6d27c593dc3334b9773c54611844da))
+
+# [1.20.0-beta.65](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.64...v1.20.0-beta.65) (2026-04-11)
+
+
+### Bug Fixes
+
+* re-introduce the safety measures around scene switching, unity is volatile here ([46433f2](https://github.com/PurrNet/PurrNet/commit/46433f2663cd28dee4fad82ec7b1bd47988aaff2))
+
 # [1.20.0-beta.64](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.63...v1.20.0-beta.64) (2026-04-11)
 
 

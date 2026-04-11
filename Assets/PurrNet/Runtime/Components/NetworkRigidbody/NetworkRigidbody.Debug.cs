@@ -56,7 +56,18 @@ namespace PurrNet
             }
         }
 
-        private void OnGUI()
+#if UNITY_EDITOR
+        private void OnEnable()
+        {
+            PurrOnGUI.Subscribe(DrawDebugGUI);
+        }
+
+        private void OnDisable()
+        {
+            PurrOnGUI.Unsubscribe(DrawDebugGUI);
+        }
+
+        private void DrawDebugGUI()
         {
             if (!_debugGizmos || !isSpawned || _rigidbody == null)
                 return;
@@ -128,5 +139,6 @@ namespace PurrNet
 
             GUI.Label(new Rect(screenPos.x - size.x / 2, screenPos.y + 5, size.x, size.y), info, style);
         }
+#endif
     }
 }

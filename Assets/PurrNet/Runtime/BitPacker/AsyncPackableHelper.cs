@@ -13,11 +13,21 @@ namespace PurrNet.Packing
     public static class AsyncPackableHelper
     {
         /// <summary>
+        /// Static generic cache to check IAsyncPackable at the type level, avoiding boxing value types.
+        /// </summary>
+        private static class Cache<T>
+        {
+            public static readonly bool isAsyncPackable = typeof(IAsyncPackable).IsAssignableFrom(typeof(T));
+        }
+
+        /// <summary>
         /// Sync version: blocks on prepare. Only used when no IAsyncPackable params (no-op for non-implementers).
         /// </summary>
         [UsedByIL]
         public static void PrepareForPack<T>(ref T value)
         {
+            if (!Cache<T>.isAsyncPackable) return;
+
             if (value is IAsyncPackable asyncPackable)
             {
                 var vt = asyncPackable.PrepareForPackAsync();
@@ -34,6 +44,8 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void PrepareAfterUnpack<T>(ref T value)
         {
+            if (!Cache<T>.isAsyncPackable) return;
+
             if (value is IAsyncPackable asyncPackable)
             {
                 var vt = asyncPackable.PrepareAfterUnpackAsync();
@@ -51,6 +63,8 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static Task<T> PrepareForPackAsync<T>(T value)
         {
+            if (!Cache<T>.isAsyncPackable) return Task.FromResult(value);
+
             if (value is IAsyncPackable asyncPackable)
             {
                 var vt = asyncPackable.PrepareForPackAsync();
@@ -67,6 +81,8 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static Task<T> PrepareAfterUnpackAsync<T>(T value)
         {
+            if (!Cache<T>.isAsyncPackable) return Task.FromResult(value);
+
             if (value is IAsyncPackable asyncPackable)
             {
                 var vt = asyncPackable.PrepareAfterUnpackAsync();
