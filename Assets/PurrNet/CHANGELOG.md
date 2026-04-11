@@ -1,3 +1,10 @@
+# [1.20.0-beta.78](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.77...v1.20.0-beta.78) (2026-04-11)
+
+
+### Bug Fixes
+
+* app ID included with steam connection ([f315ce1](https://github.com/PurrNet/PurrNet/commit/f315ce15c081139967d9ee94733a3dc1075dc201))
+
 # [1.20.0-beta.77](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.76...v1.20.0-beta.77) (2026-04-11)
 
 
