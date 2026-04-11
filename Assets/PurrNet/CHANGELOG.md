@@ -1,3 +1,10 @@
+# [1.20.0-beta.68](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.67...v1.20.0-beta.68) (2026-04-11)
+
+
+### Bug Fixes
+
+* Move to singular dispatch OnGUI ([c787c49](https://github.com/PurrNet/PurrNet/commit/c787c49fb5f3588bc923f368a4dfd0035eda9ffa))
+
 # [1.20.0-beta.67](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.66...v1.20.0-beta.67) (2026-04-11)
 
 
