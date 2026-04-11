@@ -1,3 +1,10 @@
+# [1.20.0-beta.77](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.76...v1.20.0-beta.77) (2026-04-11)
+
+
+### Bug Fixes
+
+* update MTU retrieval logic for server and client transports ([8f837a4](https://github.com/PurrNet/PurrNet/commit/8f837a4ac6bf265135cceb5f0ce6e684c10693ee))
+
 # [1.20.0-beta.76](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.75...v1.20.0-beta.76) (2026-04-11)
 
 
