@@ -1,3 +1,10 @@
+# [1.20.0-beta.72](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.71...v1.20.0-beta.72) (2026-04-11)
+
+
+### Bug Fixes
+
+* Move away from GetInstanceID for asset handling ([763b9fb](https://github.com/PurrNet/PurrNet/commit/763b9fb5a42333e1783b6e1444c3ed4500a7ff6b))
+
 # [1.20.0-beta.71](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.70...v1.20.0-beta.71) (2026-04-11)
 
 
