@@ -1,3 +1,12 @@
+# [1.20.0-beta.76](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.75...v1.20.0-beta.76) (2026-04-11)
+
+
+### Bug Fixes
+
+* Implement anonymous telemetry ([9ede7cf](https://github.com/PurrNet/PurrNet/commit/9ede7cf3e0804a9cae556cbd2a1f5d643d16bba7))
+* improve connection telemetry timing ([29ffe65](https://github.com/PurrNet/PurrNet/commit/29ffe6557ce00dd882fca902cb685bd08565bb6c))
+* Telemetry project ID improved handling ([49e52bf](https://github.com/PurrNet/PurrNet/commit/49e52bf2e127a8eb5b038f5b4b0471b3856ce64e))
+
 # [1.20.0-beta.75](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.74...v1.20.0-beta.75) (2026-04-11)
 
 
