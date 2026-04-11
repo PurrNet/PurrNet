@@ -1,3 +1,10 @@
+# [1.20.0-beta.65](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.64...v1.20.0-beta.65) (2026-04-11)
+
+
+### Bug Fixes
+
+* re-introduce the safety measures around scene switching, unity is volatile here ([46433f2](https://github.com/PurrNet/PurrNet/commit/46433f2663cd28dee4fad82ec7b1bd47988aaff2))
+
 # [1.20.0-beta.64](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.63...v1.20.0-beta.64) (2026-04-11)
 
 
