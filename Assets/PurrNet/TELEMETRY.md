@@ -5,6 +5,7 @@ PurrNet collects anonymous usage data to help us understand how the library is u
 ## What we collect
 
 - **Installation ID** - a random UUID generated per machine, not tied to any identity
+- **Project ID** - a SHA256 hash of Unity's internal project GUID (editor only)
 - **Event type** - one of: `project_start`, `connection`, `steam_session`
 - **PurrNet version** - e.g. `v1.20.0`
 - **Unity version** - e.g. `2022.3.20f1`
@@ -24,6 +25,8 @@ PurrNet collects anonymous usage data to help us understand how the library is u
 ## How to opt out
 
 In the Unity Editor: **Tools > PurrNet > Misc > Disable Telemetry**
+
+You can also add the scripting define `PURRNET_NO_TELEMETRY` to strip telemetry at compile time, including in builds.
 
 ## Auto-disable
 
