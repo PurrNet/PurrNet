@@ -157,7 +157,7 @@ namespace PurrNet
             c = string.CompareOrdinal(na, nb);
             if (c != 0) return c;
 
-            return a.asset.GetInstanceID().CompareTo(b.asset.GetInstanceID());
+            return string.CompareOrdinal(a.assetPath, b.assetPath);
         }
 
         /// <summary>
