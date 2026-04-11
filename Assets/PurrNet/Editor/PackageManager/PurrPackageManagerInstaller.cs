@@ -249,6 +249,17 @@ namespace PurrNet.Editor
             {
                 var tempDest = Path.Combine("Temp", "PurrNet_cleanup_" + DateTime.Now.Ticks);
                 Directory.Move(path, tempDest);
+                TryDeleteDirectoryContents(tempDest);
+
+                try
+                {
+                    if (Directory.GetFileSystemEntries(tempDest).Length == 0)
+                        Directory.Delete(tempDest, false);
+                }
+                catch
+                {
+                    // ignore
+                }
                 return;
             }
             catch
@@ -493,7 +504,7 @@ namespace PurrNet.Editor
                 if (Directory.Exists(folderPath))
                 {
                     CopyDirectoryContents(tempExtractDir, folderPath);
-                    try { Directory.Delete(tempExtractDir, true); } catch { }
+                    SafeRemoveDirectory(tempExtractDir);
                     Debug.LogWarning("[PurrNet] Some old files could not be removed (likely locked native libraries). " +
                                      "The new version has been installed over the old files. " +
                                      "A Unity restart is recommended for a clean state.");
