@@ -1,3 +1,10 @@
+# [1.20.0-beta.67](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.66...v1.20.0-beta.67) (2026-04-11)
+
+
+### Bug Fixes
+
+* NetworkRigidbody OnGUI strip from builds ([ed4cff9](https://github.com/PurrNet/PurrNet/commit/ed4cff9de70e5dc5ec5e49491c5e66c87a23e832))
+
 # [1.20.0-beta.66](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.65...v1.20.0-beta.66) (2026-04-11)
 
 
