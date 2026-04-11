@@ -56,6 +56,7 @@ namespace PurrNet
             }
         }
 
+#if UNITY_EDITOR
         private void OnGUI()
         {
             if (!_debugGizmos || !isSpawned || _rigidbody == null)
@@ -128,5 +129,6 @@ namespace PurrNet
 
             GUI.Label(new Rect(screenPos.x - size.x / 2, screenPos.y + 5, size.x, size.y), info, style);
         }
+#endif
     }
 }
