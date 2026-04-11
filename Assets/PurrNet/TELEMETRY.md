@@ -23,7 +23,7 @@ PurrNet collects anonymous usage data to help us understand how the library is u
 
 ## How to opt out
 
-In the Unity Editor: **Tools > PurrNet > Disable Telemetry**
+In the Unity Editor: **Tools > PurrNet > Misc > Disable Telemetry**
 
 ## Auto-disable
 

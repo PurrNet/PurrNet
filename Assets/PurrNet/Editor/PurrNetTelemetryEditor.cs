@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using PurrNet.Utils;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,9 +18,52 @@ namespace PurrNet.Editor
             if (!PurrTelemetry.IsEnabled)
                 return;
 
+            InitProjectId();
+
+            if (ApplicationContext.isClone)
+                return;
+
             ShowFirstRunNotice();
             SendProjectStart();
             SendSteamSession();
+        }
+
+        static void InitProjectId()
+        {
+            try
+            {
+                var path = Path.Combine(Application.dataPath, "..", "ProjectSettings", "ProjectSettings.asset");
+
+                if (!File.Exists(path))
+                    return;
+
+                foreach (var line in File.ReadLines(path))
+                {
+                    var trimmed = line.TrimStart();
+
+                    if (!trimmed.StartsWith("productGUID:"))
+                        continue;
+
+                    var guid = trimmed.Substring("productGUID:".Length).Trim();
+
+                    if (string.IsNullOrEmpty(guid))
+                        break;
+
+                    using var sha = SHA256.Create();
+                    var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(guid));
+
+                    var sb = new StringBuilder(hash.Length * 2);
+                    foreach (var b in hash)
+                        sb.Append(b.ToString("x2"));
+
+                    PurrTelemetry.ProjectId = sb.ToString();
+                    break;
+                }
+            }
+            catch
+            {
+                // Not critical
+            }
         }
 
         static void ShowFirstRunNotice()
@@ -31,7 +77,7 @@ namespace PurrNet.Editor
 
             Debug.Log(
                 "[PurrNet] Anonymous telemetry is enabled to help improve PurrNet. " +
-                "No personal data is collected. Disable via Tools > PurrNet > Disable Telemetry. " +
+                "No personal data is collected. Disable via Tools > PurrNet > Misc > Disable Telemetry. " +
                 "See TELEMETRY.md for details.");
         }
 
@@ -78,25 +124,28 @@ namespace PurrNet.Editor
             PurrTelemetry.SendEvent("steam_session", metadata);
         }
 
-        [MenuItem("Tools/PurrNet/Disable Telemetry", priority = 200)]
+        const string MENU_DISABLE = "Tools/PurrNet/Misc/Disable Telemetry";
+        const string MENU_ENABLE = "Tools/PurrNet/Misc/Enable Telemetry";
+
+        [MenuItem(MENU_DISABLE, false, 200)]
         static void DisableTelemetry()
         {
             EditorPrefs.SetBool(OPT_OUT_KEY, true);
         }
 
-        [MenuItem("Tools/PurrNet/Disable Telemetry", true)]
+        [MenuItem(MENU_DISABLE, true)]
         static bool ValidateDisableTelemetry()
         {
             return !EditorPrefs.GetBool(OPT_OUT_KEY, false);
         }
 
-        [MenuItem("Tools/PurrNet/Enable Telemetry", priority = 200)]
+        [MenuItem(MENU_ENABLE, false, 200)]
         static void EnableTelemetry()
         {
             EditorPrefs.SetBool(OPT_OUT_KEY, false);
         }
 
-        [MenuItem("Tools/PurrNet/Enable Telemetry", true)]
+        [MenuItem(MENU_ENABLE, true)]
         static bool ValidateEnableTelemetry()
         {
             return EditorPrefs.GetBool(OPT_OUT_KEY, false);

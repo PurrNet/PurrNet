@@ -21,6 +21,8 @@ namespace PurrNet
 
         static string _installationId;
 
+        public static string ProjectId { get; set; }
+
         public static bool IsEnabled
         {
             get
@@ -70,6 +72,9 @@ namespace PurrNet
                     ["event_type"] = eventType,
                     ["metadata"] = metadata
                 };
+
+                if (!string.IsNullOrEmpty(ProjectId))
+                    payload["project_id"] = ProjectId;
 
                 var json = JsonConvert.SerializeObject(payload);
                 var bodyRaw = Encoding.UTF8.GetBytes(json);
