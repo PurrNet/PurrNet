@@ -75,8 +75,7 @@ namespace PurrNet.Editor
 
             Debug.Log(
                 "[PurrNet] Anonymous telemetry is enabled to help improve PurrNet. " +
-                "No personal data is collected. Disable via Tools > PurrNet > Misc > Disable Telemetry. " +
-                "See TELEMETRY.md for details.");
+                "No personal data is collected. See TELEMETRY.md for details.");
         }
 
         static void SendProjectStart()
