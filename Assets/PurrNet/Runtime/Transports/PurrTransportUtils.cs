@@ -79,7 +79,7 @@ namespace PurrNet.Transports
             for (var i = 0; i < count; i++)
             {
                 if (cts is { IsCancellationRequested: true })
-                    return Task.FromCanceled<T>(cts.Token).Result;
+                    throw new OperationCanceledException(cts.Token);
 
                 if (i > 0)
                     await UnityLatestUpdate.WaitSeconds(1f);

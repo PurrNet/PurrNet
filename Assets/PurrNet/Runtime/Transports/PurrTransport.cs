@@ -708,6 +708,10 @@ namespace PurrNet.Transports
                     _client.Connect(builder.Uri);
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Disconnect();
+            }
             catch (Exception e)
             {
                 Disconnect();
