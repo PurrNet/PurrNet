@@ -1,3 +1,10 @@
+# [1.20.0-beta.81](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.80...v1.20.0-beta.81) (2026-04-13)
+
+
+### Bug Fixes
+
+* handle operation cancellation in transport connection logic (silence log) ([eb7ecce](https://github.com/PurrNet/PurrNet/commit/eb7eccec845326631ce409734a36d036026161b7))
+
 # [1.20.0-beta.80](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.79...v1.20.0-beta.80) (2026-04-11)
 
 
