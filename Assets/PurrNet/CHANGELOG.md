@@ -1,3 +1,10 @@
+# [1.20.0-beta.82](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.81...v1.20.0-beta.82) (2026-04-13)
+
+
+### Features
+
+* implement global control for auto start flags in NetworkManager ([745525e](https://github.com/PurrNet/PurrNet/commit/745525e600a9d7fa021e848fc95df2adaf6fc46f))
+
 # [1.20.0-beta.81](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.80...v1.20.0-beta.81) (2026-04-13)
 
 
