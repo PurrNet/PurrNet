@@ -1222,8 +1222,49 @@ namespace PurrNet
 
         private void OnClientPostTick() => onPostTick?.Invoke(false);
 
+        private static int _flagsDisableCount;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetFlagsDisableCount()
+        {
+            _flagsDisableCount = 0;
+        }
+
+        /// <summary>
+        /// Whether auto start flags are currently globally disabled.
+        /// While disabled, <see cref="ShouldStart"/> always returns false regardless of the provided flags.
+        /// </summary>
+        public static bool areFlagsDisabled => _flagsDisableCount > 0;
+
+        /// <summary>
+        /// Globally disables auto start flags from working. Each call increments a counter;
+        /// a matching number of <see cref="EnableFlags"/> calls is required to re-enable.
+        /// </summary>
+        public static void DisableFlags()
+        {
+            _flagsDisableCount++;
+        }
+
+        /// <summary>
+        /// Decrements the global auto start flags disable counter. Flags are only re-enabled
+        /// once the counter reaches zero (matching every <see cref="DisableFlags"/> call).
+        /// </summary>
+        public static void EnableFlags()
+        {
+            if (_flagsDisableCount <= 0)
+            {
+                PurrLogger.LogWarning($"{nameof(EnableFlags)} called without a matching {nameof(DisableFlags)}; ignoring.");
+                return;
+            }
+
+            _flagsDisableCount--;
+        }
+
         public static bool ShouldStart(StartFlags flags)
         {
+            if (_flagsDisableCount > 0)
+                return false;
+
             return (flags.HasFlag(StartFlags.Editor) && ApplicationContext.isMainEditor) ||
                    (flags.HasFlag(StartFlags.Clone) && ApplicationContext.isClone) ||
                    (flags.HasFlag(StartFlags.ClientBuild) && ApplicationContext.isClientBuild) ||

@@ -178,6 +178,14 @@ namespace PurrNet.Editor
         {
             EditorGUILayout.PropertyField(_startServerFlags);
             EditorGUILayout.PropertyField(_startClientFlags);
+
+            if (NetworkManager.areFlagsDisabled)
+            {
+                EditorGUILayout.HelpBox(
+                    "Auto start flags are globally disabled via NetworkManager.DisableFlags(). " +
+                    "The server/client will NOT auto start until a matching number of EnableFlags() calls are made.",
+                    MessageType.Warning);
+            }
             EditorGUILayout.PropertyField(_cookieScope);
 
             bool isRunning = _networkManager && (_networkManager.isClient || _networkManager.isServer);
