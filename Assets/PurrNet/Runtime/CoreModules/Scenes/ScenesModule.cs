@@ -11,6 +11,7 @@ namespace PurrNet.Modules
 {
     public struct PendingSceneOperation
     {
+        public int buildIndex;
         public uint scenePathHash;
         public SceneID idToAssign;
         public PurrSceneSettings settings;
@@ -513,6 +514,7 @@ namespace PurrNet.Modules
 
                         _pendingOperations.Add(new PendingSceneOperation
                         {
+                            buildIndex = localBuildIndex,
                             scenePathHash = loadAction.scenePathHash,
                             settings = loadAction.parameters,
                             idToAssign = loadAction.sceneID,
@@ -847,6 +849,7 @@ namespace PurrNet.Modules
             var op = SceneManager.LoadSceneAsync(sceneIndex, parameters);
             var operation = new PendingSceneOperation
             {
+                buildIndex = sceneIndex,
                 scenePathHash = scenePathHash,
                 settings = settings,
                 idToAssign = idToAssign,
