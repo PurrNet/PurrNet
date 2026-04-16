@@ -77,8 +77,14 @@ namespace PurrNet
         [Tooltip("If the position error exceeds this distance, teleport instead of using forces.")]
         [SerializeField] private float _hardSnapDistance = 3f;
 
+        [Tooltip("If true, resets the rigidbody linear velocity once the hard snap distance is exceeded.")]
+        [SerializeField] private bool _resetLinearVelocityOnSnap = false;
+
         [Tooltip("If the rotation error (degrees) exceeds this threshold, snap rotation instead of using torque. Negative to disable.")]
         [SerializeField] private float _hardSnapAngle = 210f;
+
+        [Tooltip("If true, resets the rigidbody angular velocity once the hard snap angle is exceeded.")]
+        [SerializeField] private bool _resetAngularVelocityOnSnap = false;
 
         [Tooltip("Rotation error (degrees) below which rotation correction stops. Negative to disable rotation correction entirely.")]
         [SerializeField] private float _acceptableRotationError = 1f;
@@ -286,7 +292,7 @@ namespace PurrNet
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
                     _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
-                    _rigidbody.angularVelocity = _targetAngularVelocity;
+                    _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : _targetAngularVelocity;
                 }
 
                 bool correctRotation = !hardSnapRotation
@@ -371,8 +377,8 @@ namespace PurrNet
         {
             _rigidbody.MovePosition(_targetPosition);
             _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
-            SetLinearVelocity(_targetLinearVelocity);
-            _rigidbody.angularVelocity = _targetAngularVelocity;
+            SetLinearVelocity(_resetLinearVelocityOnSnap ? Vector3.zero : _targetLinearVelocity);
+            _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : _targetAngularVelocity;
         }
 
         private static Quaternion NormalizeQuaternion(Quaternion q)
