@@ -176,8 +176,6 @@ namespace PurrNet
             _generating = true;
             try
             {
-                EditorUtility.DisplayProgressBar("Getting Network Prefabs", "Scanning...", 0.1f);
-
                 string resolvedPath = AssetScannerUtility.ResolveFolderPath(folder, searchAllIfNoFolder);
 
                 if (string.IsNullOrEmpty(resolvedPath))
@@ -192,8 +190,6 @@ namespace PurrNet
                 }
 
                 var found = AssetScannerUtility.ScanPrefabs(folder, networkOnly, searchAllIfNoFolder);
-
-                EditorUtility.DisplayProgressBar("Getting Network Prefabs", "Syncing...", 0.8f);
 
                 // Update GUIDs on existing entries
                 for (int i = 0; i < prefabs.Count; i++)
@@ -236,7 +232,6 @@ namespace PurrNet
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
                 _generating = false;
             }
         #endif

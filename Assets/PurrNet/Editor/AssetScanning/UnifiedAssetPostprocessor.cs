@@ -27,12 +27,14 @@ namespace PurrNet
         }
 
         private static bool HasRelevantChange(string folderPath, string[] importedAssets, string[] deletedAssets,
-            string[] movedAssets, string[] movedFromAssetPaths)
+            string[] movedAssets, string[] movedFromAssetPaths, string extension = null)
         {
-            return importedAssets.Any(p => p.StartsWith(folderPath)) ||
-                   deletedAssets.Any(p => p.StartsWith(folderPath)) ||
-                   movedAssets.Any(p => p.StartsWith(folderPath)) ||
-                   movedFromAssetPaths.Any(p => p.StartsWith(folderPath));
+            bool Match(string p) => p.StartsWith(folderPath) && (extension == null || p.EndsWith(extension));
+
+            return importedAssets.Any(Match) ||
+                   deletedAssets.Any(Match) ||
+                   movedAssets.Any(Match) ||
+                   movedFromAssetPaths.Any(Match);
         }
 
         private static void ProcessNetworkPrefabs(string[] importedAssets, string[] deletedAssets,
@@ -46,7 +48,7 @@ namespace PurrNet
             foreach (var networkPrefabs in all)
             {
                 string folderPath = AssetDatabase.GetAssetPath(networkPrefabs.folder);
-                if (HasRelevantChange(folderPath, importedAssets, deletedAssets, movedAssets, movedFromAssetPaths))
+                if (HasRelevantChange(folderPath, importedAssets, deletedAssets, movedAssets, movedFromAssetPaths, ".prefab"))
                     networkPrefabs.Generate();
             }
         }
@@ -79,7 +81,7 @@ namespace PurrNet
             foreach (var addressable in all)
             {
                 string folderPath = AssetDatabase.GetAssetPath(addressable.folder);
-                if (HasRelevantChange(folderPath, importedAssets, deletedAssets, movedAssets, movedFromAssetPaths))
+                if (HasRelevantChange(folderPath, importedAssets, deletedAssets, movedAssets, movedFromAssetPaths, ".prefab"))
                     AddressableNetworkPrefabsEditor.Generate(addressable);
             }
         }
