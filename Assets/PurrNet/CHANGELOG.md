@@ -1,3 +1,10 @@
+# [1.20.0-beta.87](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.86...v1.20.0-beta.87) (2026-04-16)
+
+
+### Bug Fixes
+
+* Make asset processing more efficient ([7a9112a](https://github.com/PurrNet/PurrNet/commit/7a9112af285cf45333b6ed32ac5c0fa56860ad54))
+
 # [1.20.0-beta.86](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.85...v1.20.0-beta.86) (2026-04-16)
 
 
