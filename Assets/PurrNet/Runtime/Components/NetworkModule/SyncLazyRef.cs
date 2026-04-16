@@ -20,7 +20,7 @@ namespace PurrNet
 
         private SyncVar<GlobalNetworkID> _networkID;
 
-        public event Action<T, T> onValueChanged;
+        public event Action<T, T> onChanged;
 
         public T value
         {
@@ -44,7 +44,7 @@ namespace PurrNet
                 var old = _value;
                 _value = value;
 
-                onValueChanged?.Invoke(old, _value);
+                onChanged?.Invoke(old, _value);
             }
         }
 
@@ -65,7 +65,7 @@ namespace PurrNet
             {
                 var old = _value;
                 _value = null;
-                onValueChanged?.Invoke(old, null);
+                onChanged?.Invoke(old, null);
             }
             else if (_hierarchy.TryGetIdentity(globalId.scene, globalId.id, out var identity))
             {
@@ -119,7 +119,7 @@ namespace PurrNet
 
             var old = _value;
             _value = null;
-            onValueChanged?.Invoke(old, null);
+            onChanged?.Invoke(old, null);
         }
 
         private void SetFromBaseIdentity(SceneID scene, NetworkIdentity identity)
@@ -128,7 +128,7 @@ namespace PurrNet
             {
                 var old  = _value;
                 _value = cast;
-                onValueChanged?.Invoke(old, _value);
+                onChanged?.Invoke(old, _value);
                 return;
             }
 
@@ -136,7 +136,7 @@ namespace PurrNet
             {
                 var old  = _value;
                 _value = null;
-                onValueChanged?.Invoke(old, _value);
+                onChanged?.Invoke(old, _value);
             }
 
             PurrLogger.LogError(
