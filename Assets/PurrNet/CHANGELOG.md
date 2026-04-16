@@ -1,3 +1,10 @@
+# [1.20.0-beta.84](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.83...v1.20.0-beta.84) (2026-04-16)
+
+
+### Bug Fixes
+
+* prefer syncvar naming for SyncLazyRef ([5fe9837](https://github.com/PurrNet/PurrNet/commit/5fe983797efe2505b082fe02fb6be6b62d49e25b))
+
 # [1.20.0-beta.83](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.82...v1.20.0-beta.83) (2026-04-16)
 
 
