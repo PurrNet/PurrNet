@@ -121,6 +121,30 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// Number of target ticks per second.
+        /// </summary>
+        public int tickRate
+        {
+            get => _tickRate;
+            set
+            {
+                if (value < 1)
+                {
+                    PurrLogger.LogError("Failed to update tick rate since it must be greater than zero.");
+                    return;
+                }
+
+                if (_serverTickManager != null || _clientTickManager != null)
+                {
+                    PurrLogger.LogError("Failed to update tick rate since a tick manager is already running.");
+                    return;
+                }
+
+                _tickRate = value;
+            }
+        }
+
+        /// <summary>
         /// The start flags of the server.
         /// This is used to determine when the server should automatically start.
         /// </summary>
