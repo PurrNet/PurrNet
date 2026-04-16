@@ -118,7 +118,7 @@ namespace PurrNet
         private Vector3 _lastSyncedAngularVelocity;
 
         private bool _hasPendingTeleport;
-        private bool _receivedFirstSnapshot;
+
         private string _lastCorrectionReason = "No";
         private Vector3 _latestRawSnapshotPos;
         private string _bufferSampleMode = "None";
@@ -157,8 +157,6 @@ namespace PurrNet
             _lastSyncedAngularVelocity = angVel;
 
             _latestRawSnapshotPos = pos;
-            _receivedFirstSnapshot = IsController(_ownerAuth);
-
             ClearBuffer();
 
             if (IsController(_ownerAuth))
@@ -236,7 +234,7 @@ namespace PurrNet
 
         private void FixedUpdate()
         {
-            if (!isFullySpawned || IsController(_ownerAuth) || _hasPendingTeleport || !_receivedFirstSnapshot)
+            if (!isFullySpawned || IsController(_ownerAuth) || _hasPendingTeleport)
                 return;
 
             float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
@@ -415,7 +413,6 @@ namespace PurrNet
             if (_bufferCount < BUFFER_SIZE)
                 _bufferCount++;
 
-            _receivedFirstSnapshot = true;
             _latestRawSnapshotPos = data.position;
         }
 
