@@ -65,6 +65,7 @@ var classPurrNet_1_1NetworkManager =
     [ "startClientFlags", "classPurrNet_1_1NetworkManager.html#a1ade609f395b02e599eec909fee4e081", null ],
     [ "startServerFlags", "classPurrNet_1_1NetworkManager.html#a76e0c18a472d5675aeeddda8d4dfae4f", null ],
     [ "tickModule", "classPurrNet_1_1NetworkManager.html#a08cb53b2724efa55863f4972a08bee7a", null ],
+    [ "tickRate", "classPurrNet_1_1NetworkManager.html#ac2f0860cabe80123ea095c0e4966d48b", null ],
     [ "transport", "classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908", null ],
     [ "visibilityRules", "classPurrNet_1_1NetworkManager.html#a3d02f1808663d7c208d2300f8955d8de", null ],
     [ "onClientConnectionState", "classPurrNet_1_1NetworkManager.html#af107336749b67361d07c646814c9771b", null ],

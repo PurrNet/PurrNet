@@ -13,7 +13,7 @@ var searchData=
   ['tickmanagerrequestlocaltick_10',['TickManagerRequestLocalTick',['../structPurrNet_1_1Modules_1_1TickManagerRequestLocalTick.html',1,'PurrNet::Modules']]],
   ['tickmanagerresponselocaltick_11',['TickManagerResponseLocalTick',['../structPurrNet_1_1Modules_1_1TickManagerResponseLocalTick.html',1,'PurrNet::Modules']]],
   ['tickmodule_12',['tickModule',['../classPurrNet_1_1NetworkManager.html#a08cb53b2724efa55863f4972a08bee7a',1,'PurrNet::NetworkManager']]],
-  ['tickrate_13',['tickRate',['../classPurrNet_1_1Modules_1_1TickManager.html#af5c5d812bf4da892d3ad579ac80b1c5e',1,'PurrNet::Modules::TickManager']]],
+  ['tickrate_13',['tickRate',['../classPurrNet_1_1Modules_1_1TickManager.html#af5c5d812bf4da892d3ad579ac80b1c5e',1,'PurrNet.Modules.TickManager.tickRate()'],['../classPurrNet_1_1NetworkManager.html#ac2f0860cabe80123ea095c0e4966d48b',1,'PurrNet.NetworkManager.tickRate()']]],
   ['ticksample_14',['TickSample',['../classPurrNet_1_1Profiler_1_1TickSample.html',1,'PurrNet::Profiler']]],
   ['ticktotime_15',['TickToTime',['../classPurrNet_1_1Modules_1_1TickManager.html#af8bdc417d9e6d2ed0ef75b9f4f718897',1,'PurrNet::Modules::TickManager']]],
   ['time_16',['time',['../classPurrNet_1_1NetworkAudioSource.html#a6a054983053fdb2247b1e52aeeaeb7db',1,'PurrNet::NetworkAudioSource']]],
