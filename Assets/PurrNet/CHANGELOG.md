@@ -1,3 +1,10 @@
+# [1.20.0-beta.86](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.85...v1.20.0-beta.86) (2026-04-16)
+
+
+### Bug Fixes
+
+* Network Rigidbody snapshot fix for server only ([7afa796](https://github.com/PurrNet/PurrNet/commit/7afa7962309a4b3e1174c53e01906c45653411be))
+
 # [1.20.0-beta.85](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.84...v1.20.0-beta.85) (2026-04-16)
 
 
