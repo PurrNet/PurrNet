@@ -140,6 +140,7 @@ var hierarchy =
       [ "PurrNet.Packing.QuaternionEqualityComparer", "structPurrNet_1_1Packing_1_1QuaternionEqualityComparer.html", null ]
     ] ],
     [ "IEquatable", null, [
+      [ "PurrNet.GlobalNetworkID", "structPurrNet_1_1GlobalNetworkID.html", null ],
       [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
       [ "PurrNet.MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
       [ "PurrNet.MinimalModuleHeader", "structPurrNet_1_1MinimalModuleHeader.html", null ],
@@ -417,6 +418,7 @@ var hierarchy =
       ] ],
       [ "PurrNet.SyncHashSet< T >", "classPurrNet_1_1SyncHashSet.html", null ],
       [ "PurrNet.SyncInput< T >", "classPurrNet_1_1SyncInput.html", null ],
+      [ "PurrNet.SyncLazyRef< T >", "classPurrNet_1_1SyncLazyRef.html", null ],
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ],
       [ "PurrNet.SyncQueue< T >", "classPurrNet_1_1SyncQueue.html", null ],
       [ "PurrNet.SyncTimer", "classPurrNet_1_1SyncTimer.html", null ],
@@ -529,6 +531,7 @@ var hierarchy =
     [ "PurrNet.SyncListChange< T >", "structPurrNet_1_1SyncListChange.html", null ],
     [ "PurrNet.SyncQueueChange< T >", "structPurrNet_1_1SyncQueueChange.html", null ],
     [ "PurrNet.SyncStatus", "structPurrNet_1_1SyncStatus.html", null ],
+    [ "PurrNet.SyncVar< PurrNet.GlobalNetworkID >", "classPurrNet_1_1SyncVar.html", null ],
     [ "PurrNet.TimestampedSnapshot", "structPurrNet_1_1TimestampedSnapshot.html", null ],
     [ "PurrNet.Modules.TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
     [ "PurrNet.NetworkAssets.TypeToggle", "classPurrNet_1_1NetworkAssets_1_1TypeToggle.html", null ],

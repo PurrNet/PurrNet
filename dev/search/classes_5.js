@@ -13,6 +13,7 @@ var searchData=
   ['genericpool_3c_20stack_3c_20t_20_3e_20_3e_10',['GenericPool&lt; Stack&lt; T &gt; &gt;',['../classPurrNet_1_1Pooling_1_1GenericPool.html',1,'PurrNet::Pooling']]],
   ['genericrpcheader_11',['GenericRPCHeader',['../structPurrNet_1_1GenericRPCHeader.html',1,'PurrNet']]],
   ['generictransport_12',['GenericTransport',['../classPurrNet_1_1Transports_1_1GenericTransport.html',1,'PurrNet::Transports']]],
-  ['globalownershipmodule_13',['GlobalOwnershipModule',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html',1,'PurrNet::Modules']]],
-  ['guardfailureactionattribute_14',['GuardFailureActionAttribute',['../classPurrNet_1_1GuardFailureActionAttribute.html',1,'PurrNet']]]
+  ['globalnetworkid_13',['GlobalNetworkID',['../structPurrNet_1_1GlobalNetworkID.html',1,'PurrNet']]],
+  ['globalownershipmodule_14',['GlobalOwnershipModule',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html',1,'PurrNet::Modules']]],
+  ['guardfailureactionattribute_15',['GuardFailureActionAttribute',['../classPurrNet_1_1GuardFailureActionAttribute.html',1,'PurrNet']]]
 ];

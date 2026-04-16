@@ -138,6 +138,8 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1GlobalNetworkID.html">GlobalNetworkID</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1GuardFailureActionAttribute.html">GuardFailureActionAttribute</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1HalfQuaternion.html">HalfQuaternion</a></td></tr>
@@ -425,6 +427,9 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncInput.html">SyncInput</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Will automatically sync a value from client to server, so the server can utilize it. Automatically filters away multiple entries of the same value.   <a href="classPurrNet_1_1SyncInput.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncLazyRef.html">SyncLazyRef</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Syncs a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> reference lazily, resolving the target when (or after) its scene is loaded. Unlike a regular <a class="el" href="classPurrNet_1_1SyncVar.html">SyncVar</a>&lt;<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&gt;, this does not require the target to be registered at the moment the ID arrives — useful for cross-scene references where the target's scene may not yet be loaded on the receiving client.   <a href="classPurrNet_1_1SyncLazyRef.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncList.html">SyncList</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
