@@ -1,3 +1,10 @@
+# [1.20.0-beta.83](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.82...v1.20.0-beta.83) (2026-04-16)
+
+
+### Features
+
+* add GlobalNetworkID and SyncLazyRef classes for lazy network identity synchronization ([aed8940](https://github.com/PurrNet/PurrNet/commit/aed8940cf47c936bcf3e774dcda90904c498dd47))
+
 # [1.20.0-beta.82](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.81...v1.20.0-beta.82) (2026-04-13)
 
 
