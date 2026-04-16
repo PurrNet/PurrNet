@@ -1,3 +1,10 @@
+# [1.20.0-beta.85](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.84...v1.20.0-beta.85) (2026-04-16)
+
+
+### Bug Fixes
+
+* add reset of velocity on hard correction ([8f52be6](https://github.com/PurrNet/PurrNet/commit/8f52be6d3772fd21de97ec5eebe2bce520bae0d7))
+
 # [1.20.0-beta.84](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.83...v1.20.0-beta.84) (2026-04-16)
 
 
