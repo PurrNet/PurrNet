@@ -48,9 +48,10 @@ namespace PurrNet.UTP
 
         private readonly Dictionary<uint, FragmentedMessage> _fragmentBuffer = new Dictionary<uint, FragmentedMessage>();
         private uint _nextFragmentId = 1;
-        private const float FRAGMENT_TIMEOUT = 30f;
+        private const float FRAGMENT_TIMEOUT = 60f;
         private const byte FRAGMENT_MAGIC = 0xFF;
         private const int FRAGMENT_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
+        private const int MAX_FRAGMENTS_PER_PACKET = 255; // uint8 limit for fragment count
 #endif
 
 #pragma warning disable CS0067 // Event is never used
@@ -284,12 +285,14 @@ namespace PurrNet.UTP
             uint fragmentId = _nextFragmentId++;
             int totalFragments = (int)Math.Ceiling(data.length / (float)maxPayloadSize);
 
-            if (totalFragments > 255)
+            // Validate fragment count doesn't exceed uint8 max
+            if (totalFragments > MAX_FRAGMENTS_PER_PACKET)
             {
-                PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max 255). Dropping packet.");
+                PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max {MAX_FRAGMENTS_PER_PACKET}). Dropping packet.");
                 return;
             }
 
+            int failedFragments = 0;
             for (int i = 0; i < totalFragments; i++)
             {
                 int offset = i * maxPayloadSize;
@@ -307,7 +310,53 @@ namespace PurrNet.UTP
 
                 Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_HEADER_SIZE, payloadSize);
 
-                SendSinglePacket(new ByteData(packet, 0, packetSize), channel);
+                bool sendSuccess = SendSinglePacketWithValidation(new ByteData(packet, 0, packetSize), channel);
+                if (!sendSuccess)
+                    failedFragments++;
+            }
+
+            if (failedFragments > 0)
+            {
+                PurrLogger.LogWarning($"[UTP] Failed to send {failedFragments}/{totalFragments} fragments (Fragment ID: {fragmentId}). Reassembly may timeout.");
+            }
+        }
+
+        private bool SendSinglePacketWithValidation(ByteData data, Channel channel)
+        {
+            MakeSureBufferCanFit(data.length);
+
+            NetworkPipeline pipeline = channel switch {
+                Channel.Unreliable => _unreliablePipeline,
+                Channel.UnreliableSequenced => _unreliablePipeline,
+                Channel.ReliableOrdered => _reliablePipeline,
+                Channel.ReliableUnordered => _reliablePipeline,
+                _ => NetworkPipeline.Null
+            };
+
+            try
+            {
+                int beginResult = _driver.BeginSend(pipeline, _connection, out var writer);
+                if (beginResult == (int)StatusCode.Success)
+                {
+                    unsafe
+                    {
+                        fixed (byte* dataPtr = &data.data[data.offset])
+                        {
+                            var span = new Span<byte>(dataPtr, data.length);
+                            writer.WriteBytes(span);
+                        }
+                    }
+                    _driver.EndSend(writer);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 #endif
@@ -452,13 +501,17 @@ namespace PurrNet.UTP
             foreach (var kvp in _fragmentBuffer)
             {
                 if (currentTime - kvp.Value.creationTime > FRAGMENT_TIMEOUT)
+                {
                     expiredIds.Add(kvp.Key);
+                    int receivedCount = kvp.Value.receivedCount;
+                    int totalCount = kvp.Value.fragments.Length;
+                    PurrLogger.LogWarning($"[UTP] Fragment assembly timeout (ID: {kvp.Key}). Received {receivedCount}/{totalCount} fragments. Incomplete fragments discarded.");
+                }
             }
 
             foreach (var id in expiredIds)
             {
                 _fragmentBuffer.Remove(id);
-                PurrLogger.LogWarning($"[UTP] Fragment assembly timeout (ID: {id}). Incomplete fragments discarded.");
             }
         }
 #endif
