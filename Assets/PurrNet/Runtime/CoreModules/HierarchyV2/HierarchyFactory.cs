@@ -18,6 +18,34 @@ namespace PurrNet.Modules
 
         readonly PlayersManager _playersManager;
 
+        private ulong _nextId;
+
+        public NetworkID AllocateNextId(PlayerID scope)
+        {
+            return new NetworkID(_nextId++, scope);
+        }
+
+        public NetworkID PeekNextId(PlayerID scope)
+        {
+            return new NetworkID(_nextId, scope);
+        }
+
+        public void AdvanceNextId(ulong count)
+        {
+            _nextId += count;
+        }
+
+        public void CatchupNextId(NetworkID nid)
+        {
+            if (nid.id >= _nextId)
+                _nextId = nid.id.value + 1;
+        }
+
+        public void ResetNextId()
+        {
+            _nextId = default;
+        }
+
         public HierarchyFactory(NetworkManager manager, ScenesModule scenes, ScenePlayersModule scenePlayersModule,
             PlayersManager playersManager)
         {
@@ -91,7 +119,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            var hierarchy = new HierarchyV2(_manager, scene, sceneState.scene, _scenePlayersModule, _playersManager,
+            var hierarchy = new HierarchyV2(_manager, this, scene, sceneState.scene, _scenePlayersModule, _playersManager,
                 asServer);
 
             hierarchy.onEarlyIdentityAdded += OnEarlyIdentityAdded;
@@ -204,6 +232,8 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            ResetNextId();
+
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].PromoteToServerModule();
         }
@@ -216,6 +246,8 @@ namespace PurrNet.Modules
 
         public void TransferToNewServer()
         {
+            ResetNextId();
+
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].TransferToNewServer();
         }

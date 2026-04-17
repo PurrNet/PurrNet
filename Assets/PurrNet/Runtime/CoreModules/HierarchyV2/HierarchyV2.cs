@@ -23,6 +23,7 @@ namespace PurrNet.Modules
         private bool _asServer;
 
         private readonly NetworkManager _manager;
+        private readonly HierarchyFactory _factory;
         private readonly SceneID _sceneId;
         private readonly Scene _scene;
         private readonly ScenePlayersModule _scenePlayers;
@@ -34,8 +35,6 @@ namespace PurrNet.Modules
 
         private readonly List<NetworkIdentity> _spawnedIdentities = new();
         private readonly Dictionary<NetworkID, NetworkIdentity> _spawnedIdentitiesMap = new();
-
-        private ulong _nextId;
 
         private bool _areSceneObjectsReady;
 
@@ -98,11 +97,12 @@ namespace PurrNet.Modules
 
         private bool _isPlayerReady;
 
-        public HierarchyV2(NetworkManager manager, SceneID sceneId, Scene scene,
+        public HierarchyV2(NetworkManager manager, HierarchyFactory factory, SceneID sceneId, Scene scene,
             ScenePlayersModule players, PlayersManager playersManager, bool asServer)
         {
             isReadyToSpawn = asServer;
             _manager = manager;
+            _factory = factory;
             _sceneId = sceneId;
             _scene = scene;
             _scenePlayers = players;
@@ -121,15 +121,14 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
-            _nextId = default;
             _isDisposed = false;
 
             // catch up with the server's next id
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
-                if (identity.id.HasValue && identity.id.Value.id.value >= _nextId)
-                    _nextId = identity.id.Value.id.value + 1;
+                if (identity.id.HasValue)
+                    _factory.CatchupNextId(identity.id.Value);
 
                 identity.ClearObservers();
             }
@@ -307,7 +306,6 @@ namespace PurrNet.Modules
         public void TransferToNewServer()
         {
             isReadyToSpawn = false;
-            _nextId = default;
             _isPlayerReady = false;
 
             var hash = HashSetPool<NetworkIdentity>.Instantiate();
@@ -414,8 +412,7 @@ namespace PurrNet.Modules
 
         private void OnNetworkIDReceived(NetworkID nid)
         {
-            if (nid.id >= _nextId)
-                _nextId = nid.id.value + 1;
+            _factory.CatchupNextId(nid);
 
             isReadyToSpawn = true;
         }
@@ -1334,7 +1331,7 @@ namespace PurrNet.Modules
 
             onPreSpawn?.Invoke(gameObject, false);
 
-            var baseNid = new NetworkID(_nextId++, scope);
+            var baseNid = _factory.AllocateNextId(scope);
             SetupIdsLocally(id, ref baseNid);
             ApplyParentChange(id, id.parent, id.invertedPathToNearestParent, false);
 
@@ -1502,8 +1499,8 @@ namespace PurrNet.Modules
             }
 
             // update next id
-            _nextId += (uint)siblings.list.Count;
-            baseNid = new NetworkID(_nextId, baseNid.scope);
+            _factory.AdvanceNextId((ulong)siblings.list.Count);
+            baseNid = _factory.PeekNextId(baseNid.scope);
 
             // handle children
             if (root.directChildren == null)
@@ -1518,8 +1515,8 @@ namespace PurrNet.Modules
         public NetworkID ReserveNetworkID()
         {
             if (_asServer)
-                return new NetworkID(_nextId++, default);
-            return new NetworkID(_nextId++, _playersManager.localPlayerId ?? default);
+                return _factory.AllocateNextId(default);
+            return _factory.AllocateNextId(_playersManager.localPlayerId ?? default);
         }
 
         private void SpawnSceneObject(List<NetworkIdentity> children)
@@ -1531,7 +1528,7 @@ namespace PurrNet.Modules
                 var child = children[i];
                 if (child.isSceneObject)
                 {
-                    var id = new NetworkID(default, _nextId++);
+                    var id = _factory.AllocateNextId(default);
                     child.SetID(id);
                     if (_asServer)
                     {
