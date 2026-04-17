@@ -1,3 +1,10 @@
+# [1.20.0-beta.88](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.87...v1.20.0-beta.88) (2026-04-17)
+
+
+### Bug Fixes
+
+* observers not updating `_latestData` properly ([65dd9d4](https://github.com/PurrNet/PurrNet/commit/65dd9d4937ecc73c34e87279a114565cea3cfe09))
+
 # [1.20.0-beta.87](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.86...v1.20.0-beta.87) (2026-04-16)
 
 
