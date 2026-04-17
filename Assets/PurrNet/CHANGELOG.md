@@ -1,3 +1,10 @@
+# [1.20.0-beta.89](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.88...v1.20.0-beta.89) (2026-04-17)
+
+
+### Bug Fixes
+
+* improve ownership handling to prevent stale snapshots during observer updates ([2ddefa2](https://github.com/PurrNet/PurrNet/commit/2ddefa2e3dc818ab4b75f0bb94e7ce1d4211a6e7))
+
 # [1.20.0-beta.88](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.87...v1.20.0-beta.88) (2026-04-17)
 
 
