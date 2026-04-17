@@ -492,7 +492,7 @@ namespace PurrNet
 
             if (!isLocalController)
                 ApplyLerpedPosition();
-            else _latestData = GetCurrentTransformData();
+            _latestData = GetCurrentTransformData();
         }
 
         private void ApplyLerpedPosition()
