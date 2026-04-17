@@ -249,13 +249,16 @@ namespace PurrNet.Modules
             if (!_asServer)
                 return;
 
-            if (!ownerships.TryGetOwner(target, out var owner))
+            if (!ownerships.TryGetOwner(target, out _))
                 return;
 
+            // Owner is intentionally not captured here; it is re-queried at flush time
+            // (HandlePendingChanges) to avoid sending a stale snapshot when ownership
+            // mutates between OnObserverAdded and the flush (e.g. user code calling
+            // GiveOwnership from inside OnObserverAdded).
             var info = new OwnershipInfo
             {
-                identity = target.id.Value,
-                player = owner
+                identity = target.id.Value
             };
 
             var key = new PlayerSceneID
@@ -699,13 +702,34 @@ namespace PurrNet.Modules
             {
                 // TODO: ACTUAL RLE HERE
 
+                if (!_sceneOwnerships.TryGetValue(player.scene, out var ownerships))
+                {
+                    changes.Dispose();
+                    continue;
+                }
+
+                using var resolved = DisposableList<OwnershipInfo>.Create(changes.Count);
+
+                for (var i = 0; i < changes.Count; i++)
+                {
+                    var id = changes[i].identity;
+                    if (!_hierarchy.TryGetIdentity(player.scene, id, out var identity))
+                        continue;
+                    if (!ownerships.TryGetOwner(identity, out var currentOwner))
+                        continue;
+                    resolved.Add(new OwnershipInfo { identity = id, player = currentOwner });
+                }
+
+                changes.Dispose();
+
+                if (resolved.Count == 0)
+                    continue;
+
                 _playersManager.Send(player.player, new OwnershipChangeBatch
                 {
                     scene = player.scene,
-                    state = changes
+                    state = resolved
                 });
-
-                changes.Dispose();
             }
 
             _pendingOwnershipChanges.Clear();
