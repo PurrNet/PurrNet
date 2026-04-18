@@ -652,8 +652,9 @@ namespace PurrNet.UTP
             for (int i = 0; i < missingIndices.Count; i++)
                 packet[FRAGMENT_NACK_HEADER_SIZE + i] = missingIndices[i];
 
-            SendSinglePacketWithValidation(new ByteData(packet, 0, packetSize), Channel.ReliableOrdered);
-            message.lastNackTime = now;
+            bool sent = SendSinglePacketWithValidation(new ByteData(packet, 0, packetSize), Channel.ReliableOrdered);
+            if (sent)
+                message.lastNackTime = now;
         }
 
         private void SendFragmentAck(uint fragmentId)
@@ -673,15 +674,27 @@ namespace PurrNet.UTP
         {
             float currentTime = UnityEngine.Time.realtimeSinceStartup;
             var expiredIds = new List<uint>();
+            var keys = new List<uint>(_fragmentBuffer.Keys);
 
-            foreach (var kvp in _fragmentBuffer)
+            foreach (var key in keys)
             {
-                if (currentTime - kvp.Value.creationTime > FRAGMENT_TIMEOUT)
+                if (!_fragmentBuffer.TryGetValue(key, out var message))
+                    continue;
+
+                // Keep requesting missing fragments for incomplete assemblies while waiting for timeout.
+                if (message.receivedCount > 0 && message.receivedCount < message.fragments.Length)
                 {
-                    expiredIds.Add(kvp.Key);
-                    int receivedCount = kvp.Value.receivedCount;
-                    int totalCount = kvp.Value.fragments.Length;
-                    PurrLogger.LogWarning($"[UTP] Fragment assembly timeout (ID: {kvp.Key}). Received {receivedCount}/{totalCount} fragments. Incomplete fragments discarded.");
+                    byte totalFragments = (byte)message.fragments.Length;
+                    RequestMissingFragments(key, totalFragments, ref message);
+                    _fragmentBuffer[key] = message;
+                }
+
+                if (currentTime - message.creationTime > FRAGMENT_TIMEOUT)
+                {
+                    expiredIds.Add(key);
+                    int receivedCount = message.receivedCount;
+                    int totalCount = message.fragments.Length;
+                    PurrLogger.LogWarning($"[UTP] Fragment assembly timeout (ID: {key}). Received {receivedCount}/{totalCount} fragments. Incomplete fragments discarded.");
                 }
             }
 
