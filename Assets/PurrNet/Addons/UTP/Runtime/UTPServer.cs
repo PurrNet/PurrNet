@@ -6,8 +6,8 @@ using System;
 using System.Collections.Generic;
 using PurrNet.Transports;
 using UnityEngine;
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using PurrNet.Logging;
+#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Error;
 #endif
@@ -66,6 +66,25 @@ namespace PurrNet.UTP
         private const byte FRAGMENT_MAGIC = 0xFF;
         private const int FRAGMENT_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
         private const int MAX_FRAGMENTS_PER_PACKET = 255; // uint8 limit for fragment count
+        private const int MAX_FRAGMENT_SENDS_PER_UPDATE = 16;
+
+        private struct PendingFragmentSend
+        {
+            public int connectionId;
+            public NetworkConnection connection;
+            public ByteData data;
+            public Channel channel;
+
+            public PendingFragmentSend(int connectionId, NetworkConnection connection, ByteData data, Channel channel)
+            {
+                this.connectionId = connectionId;
+                this.connection = connection;
+                this.data = data;
+                this.channel = channel;
+            }
+        }
+
+        private readonly Queue<PendingFragmentSend> _pendingFragmentSends = new Queue<PendingFragmentSend>();
 #endif
 
 #pragma warning disable CS0067 // Event is never used
@@ -224,9 +243,7 @@ namespace PurrNet.UTP
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            // if (_driver.IsCreated)
-            //    _driver.ScheduleUpdate().Complete();
-            // Update is handled in ReceiveMessages
+            FlushPendingFragmentSends();
 #endif
         }
 
@@ -237,6 +254,7 @@ namespace PurrNet.UTP
                 return;
 
             _driver.ScheduleUpdate().Complete();
+            FlushPendingFragmentSends();
 
             CleanupExpiredFragments();
 
@@ -523,7 +541,6 @@ namespace PurrNet.UTP
                 return;
             }
 
-            int failedFragments = 0;
             for (int i = 0; i < totalFragments; i++)
             {
                 int offset = i * maxPayloadSize;
@@ -541,15 +558,10 @@ namespace PurrNet.UTP
 
                 Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_HEADER_SIZE, payloadSize);
 
-                bool sendSuccess = SendSinglePacketToConnectionWithValidation(conn, new ByteData(packet, 0, packetSize), channel);
-                if (!sendSuccess)
-                    failedFragments++;
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packetSize), channel));
             }
 
-            if (failedFragments > 0)
-            {
-                PurrLogger.LogWarning($"[UTP] Failed to send {failedFragments}/{totalFragments} fragments for connection {connId} (Fragment ID: {fragmentId}). Reassembly may timeout.");
-            }
+            FlushPendingFragmentSends();
         }
 
         private bool SendSinglePacketToConnectionWithValidation(NetworkConnection conn, ByteData data, Channel channel)
@@ -590,6 +602,52 @@ namespace PurrNet.UTP
                 return false;
             }
         }
+
+        private void FlushPendingFragmentSends()
+        {
+            if (!_driver.IsCreated)
+                return;
+
+            int sends = 0;
+            while (sends < MAX_FRAGMENT_SENDS_PER_UPDATE && _pendingFragmentSends.Count > 0)
+            {
+                var pending = _pendingFragmentSends.Peek();
+
+                if (!_connectionById.TryGetValue(pending.connectionId, out var activeConn) || activeConn != pending.connection)
+                {
+                    _pendingFragmentSends.Dequeue();
+                    continue;
+                }
+
+                if (!SendSinglePacketToConnectionWithValidation(pending.connection, pending.data, pending.channel))
+                    break;
+
+                _pendingFragmentSends.Dequeue();
+                sends++;
+            }
+        }
+
+        private void RemovePendingFragmentsForConnection(int connId)
+        {
+            if (_pendingFragmentSends.Count == 0)
+                return;
+
+            var remaining = new Queue<PendingFragmentSend>();
+            while (_pendingFragmentSends.Count > 0)
+            {
+                var pending = _pendingFragmentSends.Dequeue();
+                if (pending.connectionId != connId)
+                    remaining.Enqueue(pending);
+            }
+
+            while (remaining.Count > 0)
+                _pendingFragmentSends.Enqueue(remaining.Dequeue());
+        }
+
+        private void ClearPendingFragments()
+        {
+            _pendingFragmentSends.Clear();
+        }
 #endif
 
 
@@ -615,6 +673,7 @@ namespace PurrNet.UTP
             {
                 _connectionById.Remove(_id);
                 _nextFragmentIdByConnection.Remove(_id);
+                RemovePendingFragmentsForConnection(_id);
 
                 // Clean up any pending fragments for this connection
                 var keysToRemove = new List<FragmentKey>();
@@ -659,6 +718,7 @@ namespace PurrNet.UTP
             _connections.Clear();
             _connectionById.Clear();
             _idByConnection.Clear();
+            ClearPendingFragments();
 
             try
             {

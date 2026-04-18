@@ -9,8 +9,8 @@ using System.Collections;
 #endif
 using PurrNet.Transports;
 using UnityEngine;
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using PurrNet.Logging;
+#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Networking.Transport.Error;
@@ -52,6 +52,21 @@ namespace PurrNet.UTP
         private const byte FRAGMENT_MAGIC = 0xFF;
         private const int FRAGMENT_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
         private const int MAX_FRAGMENTS_PER_PACKET = 255; // uint8 limit for fragment count
+        private const int MAX_FRAGMENT_SENDS_PER_UPDATE = 16;
+
+        private struct PendingFragmentSend
+        {
+            public ByteData data;
+            public Channel channel;
+
+            public PendingFragmentSend(ByteData data, Channel channel)
+            {
+                this.data = data;
+                this.channel = channel;
+            }
+        }
+
+        private readonly Queue<PendingFragmentSend> _pendingFragmentSends = new Queue<PendingFragmentSend>();
 #endif
 
 #pragma warning disable CS0067 // Event is never used
@@ -292,7 +307,6 @@ namespace PurrNet.UTP
                 return;
             }
 
-            int failedFragments = 0;
             for (int i = 0; i < totalFragments; i++)
             {
                 int offset = i * maxPayloadSize;
@@ -310,15 +324,10 @@ namespace PurrNet.UTP
 
                 Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_HEADER_SIZE, payloadSize);
 
-                bool sendSuccess = SendSinglePacketWithValidation(new ByteData(packet, 0, packetSize), channel);
-                if (!sendSuccess)
-                    failedFragments++;
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packetSize), channel));
             }
 
-            if (failedFragments > 0)
-            {
-                PurrLogger.LogWarning($"[UTP] Failed to send {failedFragments}/{totalFragments} fragments (Fragment ID: {fragmentId}). Reassembly may timeout.");
-            }
+            FlushPendingFragmentSends();
         }
 
         private bool SendSinglePacketWithValidation(ByteData data, Channel channel)
@@ -359,6 +368,31 @@ namespace PurrNet.UTP
                 return false;
             }
         }
+
+        private void FlushPendingFragmentSends()
+        {
+            if (!_driver.IsCreated || !_connection.IsCreated)
+                return;
+
+            if (_driver.GetConnectionState(_connection) != NetworkConnection.State.Connected)
+                return;
+
+            int sends = 0;
+            while (sends < MAX_FRAGMENT_SENDS_PER_UPDATE && _pendingFragmentSends.Count > 0)
+            {
+                var pending = _pendingFragmentSends.Peek();
+                if (!SendSinglePacketWithValidation(pending.data, pending.channel))
+                    break;
+
+                _pendingFragmentSends.Dequeue();
+                sends++;
+            }
+        }
+
+        private void ClearPendingFragments()
+        {
+            _pendingFragmentSends.Clear();
+        }
 #endif
 
         /// <summary>
@@ -368,9 +402,7 @@ namespace PurrNet.UTP
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            //if (_driver.IsCreated)
-            //    _driver.ScheduleUpdate().Complete();
-            // Update is handled in ReceiveMessages
+            FlushPendingFragmentSends();
 #endif
         }
 
@@ -385,6 +417,7 @@ namespace PurrNet.UTP
                 return;
 
             _driver.ScheduleUpdate().Complete();
+            FlushPendingFragmentSends();
 
             CleanupExpiredFragments();
 
@@ -426,6 +459,7 @@ namespace PurrNet.UTP
                         break;
                     case NetworkEvent.Type.Disconnect:
                         // LogTransportTrace("Receive disconnect event");
+                        ClearPendingFragments();
                         connectionState = ConnectionState.Disconnecting;
                         connectionState = ConnectionState.Disconnected;
                         break;
@@ -554,6 +588,8 @@ namespace PurrNet.UTP
         {
             if (!_connection.IsCreated) 
                 return;
+
+            ClearPendingFragments();
             
             if (connectionState != ConnectionState.Disconnected)
                 connectionState = ConnectionState.Disconnecting;
@@ -578,6 +614,7 @@ namespace PurrNet.UTP
         public void Stop()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
+            ClearPendingFragments();
             Disconnect();
 
             if (_driver.IsCreated)
