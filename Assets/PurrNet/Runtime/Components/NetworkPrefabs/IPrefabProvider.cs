@@ -14,8 +14,21 @@ namespace PurrNet
     {
         public int prefabId;
         public GameObject prefab;
-        public bool pooled;
-        public int warmupCount;
+        public PoolingConfig pooling;
+
+        /// <summary>Shim for backwards compatibility. Use pooling.pooled instead.</summary>
+        public bool pooled
+        {
+            get => pooling.pooled;
+            set => pooling.pooled = value;
+        }
+
+        /// <summary>Shim for backwards compatibility. Use pooling.warmupCount instead.</summary>
+        public int warmupCount
+        {
+            get => pooling.warmupCount;
+            set => pooling.warmupCount = value;
+        }
     }
 
     public interface IPrefabProvider

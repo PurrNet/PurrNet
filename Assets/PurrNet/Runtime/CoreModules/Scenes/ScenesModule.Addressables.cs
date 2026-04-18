@@ -45,6 +45,17 @@ namespace PurrNet.Modules
         /// </summary>
         public event OnAddressableSceneEvent onAddressableSceneLoaded;
 
+        /// <summary>
+        /// Registers a completion callback on the addressable scene handle so that the
+        /// scene is processed as soon as it loads, rather than waiting for the next
+        /// FixedUpdate. This prevents a race condition where scene objects' Start()
+        /// fires before PurrNet has processed the loaded scene.
+        /// </summary>
+        private void RegisterAddressableCompletionCallback(AsyncOperationHandle<SceneInstance> handle)
+        {
+            handle.Completed += _ => ProcessCompletedAddressableLoads();
+        }
+
         partial void ProcessCompletedAddressableLoads()
         {
             for (var i = _pendingAddressableOperations.Count - 1; i >= 0; i--)
@@ -112,6 +123,8 @@ namespace PurrNet.Modules
                 settings = action.parameters
             });
 
+            RegisterAddressableCompletionCallback(handle);
+
             if (_asServer && _networkManager.isHost)
             {
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
@@ -122,8 +135,9 @@ namespace PurrNet.Modules
                     idToAssign = action.sceneID,
                     settings = action.parameters
                 });
+                clientModule.RegisterAddressableCompletionCallback(handle);
             }
-            
+
             onAddressableSceneStartLoading?.Invoke(action.sceneID, guid, _asServer);
         }
 
@@ -229,6 +243,8 @@ namespace PurrNet.Modules
                 settings = settings
             });
 
+            RegisterAddressableCompletionCallback(handle);
+
             if (_networkManager.isHost)
             {
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
@@ -239,6 +255,7 @@ namespace PurrNet.Modules
                     idToAssign = idToAssign,
                     settings = settings
                 });
+                clientModule.RegisterAddressableCompletionCallback(handle);
             }
 
             return handle;
@@ -307,6 +324,8 @@ namespace PurrNet.Modules
                 settings = settings
             });
 
+            RegisterAddressableCompletionCallback(handle);
+
             if (_networkManager.isHost)
             {
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
@@ -317,11 +336,12 @@ namespace PurrNet.Modules
                     idToAssign = idToAssign,
                     settings = settings
                 });
+                clientModule.RegisterAddressableCompletionCallback(handle);
             }
 
             return handle;
         }
-        
+
         /// <summary>
         /// Returns the pending addressable operations for this module.
         /// This allows you to check if a scene is still loading or unloading and the progress of the operation.

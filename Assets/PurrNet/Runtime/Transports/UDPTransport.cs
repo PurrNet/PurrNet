@@ -92,8 +92,6 @@ namespace PurrNet.Transports
 
         public override ITransport transport => this;
 
-        private float _lastSendTime;
-
         private void Awake()
         {
             NetDebug.Logger = this;
@@ -299,21 +297,16 @@ namespace PurrNet.Transports
         /// and ManualUpdate(...) for update and send packets
         public void ReceiveMessages(float delta)
         {
-            if (!_pollEventsInUpdate)
-            {
-                if (_server.IsRunning)
-                    _server.PollEvents();
+            if (_server.IsRunning)
+                _server.PollEvents();
 
-                if (_client.IsRunning)
-                    _client.PollEvents();
-            }
+            if (_client.IsRunning)
+                _client.PollEvents();
         }
 
         public void SendMessages(float delta)
         {
-            var now = Time.unscaledTime;
-            var dInMs = Mathf.Max(0, Mathf.RoundToInt((now - _lastSendTime) * 1000));
-            _lastSendTime = now;
+            var dInMs = delta * 1000f;
 
             if (_server.IsRunning)
                 _server.ManualUpdate(dInMs);
@@ -340,7 +333,6 @@ namespace PurrNet.Transports
 
             TriggerConnectionStateEvent(false);
 
-            _lastSendTime = Time.unscaledTime;
             _client.StartInManualMode(0);
             _client.Connect(ip, port, "PurrNet");
             TriggerConnectionStateEvent(false);
@@ -370,7 +362,6 @@ namespace PurrNet.Transports
                 listenerState = ConnectionState.Connecting;
                 TriggerConnectionStateEvent(true);
 
-                _lastSendTime = Time.unscaledTime;
                 if (_server.StartInManualMode(port))
                 {
                     listenerState = ConnectionState.Connected;

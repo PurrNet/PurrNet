@@ -118,6 +118,8 @@ namespace PurrNet.Modules
             for (var i = 0; i < count; i++)
             {
                 var nt = controlled[i];
+                if (!nt.HasChanges())
+                    continue;
                 nt.DeltaWrite(tmp);
                 anyWritten = true;
 

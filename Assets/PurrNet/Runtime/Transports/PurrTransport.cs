@@ -68,6 +68,12 @@ namespace PurrNet.Transports
             set => _host = value;
         }
 
+        public string masterServer
+        {
+            get => _masterServer;
+            set => _masterServer = value;
+        }
+
         public string roomName
         {
             get => _roomName;
@@ -95,8 +101,6 @@ namespace PurrNet.Transports
         public override bool isSupported => true;
 
         public override ITransport transport => this;
-
-        private float _lastSendTime;
 
         // Pipe mode: simple connId-to-connId forwarding, no rooms or hosts
         private bool _isPipeMode;
@@ -557,12 +561,12 @@ namespace PurrNet.Transports
                     if (Application.platform != RuntimePlatform.WebGLPlayer)
                     {
                         _isUsingUDP = true;
-                        _lastSendTime = Time.unscaledTime;
+
                         _udpServer.StartInManualMode(0);
                         var addresses = await Dns.GetHostAddressesAsync(_host);
                         var ipv4 = addresses.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork)
                                    ?? IPAddress.Any;
-                        _udpServer.Connect(ipv4.ToString(), _hostJoinInfo.udpPort, "PurrNet");
+                        _udpServer.Connect(ipv4.ToString(), _hostJoinInfo.udpPortV2, "PurrNet");
                     }
                     else
                     {
@@ -684,14 +688,13 @@ namespace PurrNet.Transports
                 if (Application.platform != RuntimePlatform.WebGLPlayer)
                 {
                     _isUsingUDP = true;
-                    _lastSendTime = Time.unscaledTime;
                     _udpClient.StartInManualMode(0);
 
                     var addresses = await Dns.GetHostAddressesAsync(_clientJoinInfo.host);
                     var ipv4 = addresses.FirstOrDefault(ipArd => ipArd.AddressFamily == AddressFamily.InterNetwork)
                                ?? IPAddress.Any;
 
-                    _udpClient.Connect(ipv4.ToString(), _clientJoinInfo.udpPort, "PurrNet");
+                    _udpClient.Connect(ipv4.ToString(), _clientJoinInfo.udpPortV2, "PurrNet");
                 }
                 else
                 {
@@ -704,6 +707,10 @@ namespace PurrNet.Transports
 
                     _client.Connect(builder.Uri);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Disconnect();
             }
             catch (Exception e)
             {
@@ -812,7 +819,6 @@ namespace PurrNet.Transports
                 if (Application.platform != RuntimePlatform.WebGLPlayer)
                 {
                     _isUsingUDP = true;
-                    _lastSendTime = Time.unscaledTime;
                     _udpClient.StartInManualMode(0);
 
                     var addresses = await Dns.GetHostAddressesAsync(relayHost);
@@ -1022,9 +1028,7 @@ namespace PurrNet.Transports
         {
             if (_isUsingUDP)
             {
-                var now = Time.unscaledTime;
-                var dInMs = Mathf.Max(0, Mathf.RoundToInt((now - _lastSendTime) * 1000));
-                _lastSendTime = now;
+                var dInMs = delta * 1000f;
 
                 if (_udpClient.IsRunning)
                     _udpClient.ManualUpdate(dInMs);

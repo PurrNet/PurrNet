@@ -486,7 +486,7 @@ namespace PurrNet.Editor
 
     static class NetworkReflectionCacheMenu
     {
-        [MenuItem("Tools/PurrNet/Rebuild Network Reflection Cache", false, 500)]
+        [MenuItem("Tools/PurrNet/Misc/Rebuild Network Reflection Cache", false, 500)]
         static void RebuildCache()
         {
             if (File.Exists(NetworkReflectionPrefabCache.PREFAB_CACHE_FILE))

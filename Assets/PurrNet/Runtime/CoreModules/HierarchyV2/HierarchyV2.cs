@@ -200,7 +200,7 @@ namespace PurrNet.Modules
             _defaultPrototypes.Clear();
 
             var allSceneIdentities = ListPool<NetworkIdentity>.Instantiate();
-            SceneObjectsModule.GetSceneIdentities(scene, allSceneIdentities);
+            SceneObjectsModule.GetSceneIdentities(scene, allSceneIdentities, _manager.networkRules.ShouldIncludeInstantiatedSceneObjects());
 
             var roots = HashSetPool<NetworkIdentity>.Instantiate();
 
@@ -1785,16 +1785,6 @@ namespace PurrNet.Modules
             var resultTrs = result.transform;
             result.transform.SetParent(null, false);
 
-            try
-            {
-                SceneManager.MoveGameObjectToScene(result, _scene);
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-                return null;
-            }
-
             if (prototype.parentID.HasValue)
             {
                 if (TryGetIdentity(prototype.parentID.Value, out var parent))
@@ -1806,6 +1796,17 @@ namespace PurrNet.Modules
                 }
                 else
                 {
+                    if (result.scene != _scene)
+                    {
+                        try
+                        {
+                            SceneManager.MoveGameObjectToScene(result, _scene);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
                     PurrLogger.LogError($"Failed to find parent for '{result.name}' with id '{prototype.parentID}'.",
                         result);
                 }
@@ -1819,6 +1820,17 @@ namespace PurrNet.Modules
             }
             else
             {
+                if (result.scene != _scene)
+                {
+                    try
+                    {
+                        SceneManager.MoveGameObjectToScene(result, _scene);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
                 SetLocalPosAndRot(resultTrs, prototype.position, prototype.rotation, prototype.scale);
             }
 

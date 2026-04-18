@@ -121,6 +121,30 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// Number of target ticks per second.
+        /// </summary>
+        public int tickRate
+        {
+            get => _tickRate;
+            set
+            {
+                if (value < 1)
+                {
+                    PurrLogger.LogError("Failed to update tick rate since it must be greater than zero.");
+                    return;
+                }
+
+                if (_serverTickManager != null || _clientTickManager != null)
+                {
+                    PurrLogger.LogError("Failed to update tick rate since a tick manager is already running.");
+                    return;
+                }
+
+                _tickRate = value;
+            }
+        }
+
+        /// <summary>
         /// The start flags of the server.
         /// This is used to determine when the server should automatically start.
         /// </summary>
@@ -856,7 +880,20 @@ namespace PurrNet
 
         public bool isLocalPlayerReady => _clientPlayersManager?.localPlayerId.HasValue == true;
 
-        public AuthenticationLayer authenticator => _authenticator;
+        public AuthenticationLayer authenticator
+        {
+            get { return _authenticator; }
+            set
+            {
+                if (!isOffline)
+                {
+                    PurrLogger.LogError("Failed to update authenticator since a connection is active");
+                    return;
+                }
+
+                _authenticator = value;
+            }
+        }
 
         private ScenesModule _clientSceneModule;
         private ScenesModule _serverSceneModule;
@@ -906,8 +943,24 @@ namespace PurrNet
         /// </summary>
         public event OnPlayerJoinedEvent onPlayerJoined;
 
-        void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer) =>
+        private bool _telemetrySentClient;
+
+        void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer)
+        {
             onPlayerJoined?.Invoke(player, isReconnect, asServer);
+
+            if (!asServer && !_telemetrySentClient)
+            {
+                _telemetrySentClient = true;
+                StartCoroutine(SendConnectionTelemetryDelayed());
+            }
+        }
+
+        private System.Collections.IEnumerator SendConnectionTelemetryDelayed()
+        {
+            yield return null;
+            PurrTelemetry.SendConnectionEvent(this);
+        }
 
         /// <summary>
         /// This event is triggered when a player leaves.
@@ -1193,8 +1246,49 @@ namespace PurrNet
 
         private void OnClientPostTick() => onPostTick?.Invoke(false);
 
+        private static int _flagsDisableCount;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetFlagsDisableCount()
+        {
+            _flagsDisableCount = 0;
+        }
+
+        /// <summary>
+        /// Whether auto start flags are currently globally disabled.
+        /// While disabled, <see cref="ShouldStart"/> always returns false regardless of the provided flags.
+        /// </summary>
+        public static bool areFlagsDisabled => _flagsDisableCount > 0;
+
+        /// <summary>
+        /// Globally disables auto start flags from working. Each call increments a counter;
+        /// a matching number of <see cref="EnableFlags"/> calls is required to re-enable.
+        /// </summary>
+        public static void DisableFlags()
+        {
+            _flagsDisableCount++;
+        }
+
+        /// <summary>
+        /// Decrements the global auto start flags disable counter. Flags are only re-enabled
+        /// once the counter reaches zero (matching every <see cref="DisableFlags"/> call).
+        /// </summary>
+        public static void EnableFlags()
+        {
+            if (_flagsDisableCount <= 0)
+            {
+                PurrLogger.LogWarning($"{nameof(EnableFlags)} called without a matching {nameof(DisableFlags)}; ignoring.");
+                return;
+            }
+
+            _flagsDisableCount--;
+        }
+
         public static bool ShouldStart(StartFlags flags)
         {
+            if (_flagsDisableCount > 0)
+                return false;
+
             return (flags.HasFlag(StartFlags.Editor) && ApplicationContext.isMainEditor) ||
                    (flags.HasFlag(StartFlags.Clone) && ApplicationContext.isClone) ||
                    (flags.HasFlag(StartFlags.ClientBuild) && ApplicationContext.isClientBuild) ||
@@ -1315,6 +1409,8 @@ namespace PurrNet
         static readonly ProfilerMarker _onPostBatchMarker = new ProfilerMarker($"NetworkManager.OnPostBatch");
         static readonly ProfilerMarker _onSendMessagesMarker = new ProfilerMarker($"NetworkManager.SendMessages");
 
+        private double _lastSendTime;
+
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
@@ -1375,7 +1471,12 @@ namespace PurrNet
             using (_onSendMessagesMarker.Auto())
             {
                 if (_transport)
-                    _transport.transport.SendMessages(delta);
+                {
+                    var now = Time.unscaledTimeAsDouble;
+                    var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : delta;
+                    _lastSendTime = now;
+                    _transport.transport.SendMessages(sendDelta);
+                }
             }
 
             if (_isCleaningClient)
@@ -1820,6 +1921,9 @@ namespace PurrNet
 
             if (state == ConnectionState.Disconnected)
             {
+                if (!asServer)
+                    _telemetrySentClient = false;
+
                 switch (asServer)
                 {
                     case false:

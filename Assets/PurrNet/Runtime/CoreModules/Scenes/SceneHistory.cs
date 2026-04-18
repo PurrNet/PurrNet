@@ -70,7 +70,7 @@ namespace PurrNet.Modules
 
     internal struct LoadSceneAction
     {
-        public int buildIndex;
+        public uint scenePathHash;
         public SceneID sceneID;
         public PurrSceneSettings parameters;
 
@@ -85,7 +85,7 @@ namespace PurrNet.Modules
 
         public override string ToString()
         {
-            return $"LoadSceneAction: {{ buildIndex: {buildIndex}, sceneID: {sceneID}, parameters: {parameters} }}";
+            return $"LoadSceneAction: {{ scenePathHash: {scenePathHash}, sceneID: {sceneID}, parameters: {parameters} }}";
         }
     }
 

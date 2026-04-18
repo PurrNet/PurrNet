@@ -55,57 +55,75 @@ namespace LiteNetLib
                 [In] int socketAddressSize);
         }
 
+        /// <summary>
+        /// Indicates whether the native socket optimizations are supported on the current platform.
+        /// </summary>
         public static readonly bool IsSupported = false;
+        /// <summary>
+        /// Indicates whether the current environment requires Unix-style native socket calls.
+        /// </summary>
         public static readonly bool UnixMode = false;
 
+        /// <summary>
+        /// The size of the native sockaddr_in structure for IPv4.
+        /// </summary>
         public const int IPv4AddrSize = 16;
+        /// <summary>
+        /// The size of the native sockaddr_in6 structure for IPv6.
+        /// </summary>
         public const int IPv6AddrSize = 28;
+        /// <summary>
+        /// Native Address Family constant for IPv4 (AF_INET).
+        /// </summary>
         public const int AF_INET = 2;
+        /// <summary>
+        /// Native Address Family constant for IPv6 (AF_INET6).
+        /// </summary>
         public const int AF_INET6 = 10;
 
         private static readonly Dictionary<int, SocketError> NativeErrorToSocketError = new Dictionary<int, SocketError>
         {
-            { 13, SocketError.AccessDenied }, //EACCES
-            { 98, SocketError.AddressAlreadyInUse }, //EADDRINUSE
-            { 99, SocketError.AddressNotAvailable }, //EADDRNOTAVAIL
-            { 97, SocketError.AddressFamilyNotSupported }, //EAFNOSUPPORT
-            { 11, SocketError.WouldBlock }, //EAGAIN
-            { 114, SocketError.AlreadyInProgress }, //EALREADY
-            { 9, SocketError.OperationAborted }, //EBADF
-            { 125, SocketError.OperationAborted }, //ECANCELED
-            { 103, SocketError.ConnectionAborted }, //ECONNABORTED
-            { 111, SocketError.ConnectionRefused }, //ECONNREFUSED
-            { 104, SocketError.ConnectionReset }, //ECONNRESET
+            { 13, SocketError.AccessDenied },               //EACCES
+            { 98, SocketError.AddressAlreadyInUse },        //EADDRINUSE
+            { 99, SocketError.AddressNotAvailable },        //EADDRNOTAVAIL
+            { 97, SocketError.AddressFamilyNotSupported },  //EAFNOSUPPORT
+            { 11, SocketError.WouldBlock },                 //EAGAIN
+            { 114, SocketError.AlreadyInProgress },         //EALREADY
+            { 9, SocketError.OperationAborted },            //EBADF
+            { 125, SocketError.OperationAborted },          //ECANCELED
+            { 103, SocketError.ConnectionAborted },         //ECONNABORTED
+            { 111, SocketError.ConnectionRefused },         //ECONNREFUSED
+            { 104, SocketError.ConnectionReset },           //ECONNRESET
             { 89, SocketError.DestinationAddressRequired }, //EDESTADDRREQ
-            { 14, SocketError.Fault }, //EFAULT
-            { 112, SocketError.HostDown }, //EHOSTDOWN
-            { 6, SocketError.HostNotFound }, //ENXIO
-            { 113, SocketError.HostUnreachable }, //EHOSTUNREACH
-            { 115, SocketError.InProgress }, //EINPROGRESS
-            { 4, SocketError.Interrupted }, //EINTR
-            { 22, SocketError.InvalidArgument }, //EINVAL
-            { 106, SocketError.IsConnected }, //EISCONN
-            { 24, SocketError.TooManyOpenSockets }, //EMFILE
-            { 90, SocketError.MessageSize }, //EMSGSIZE
-            { 100, SocketError.NetworkDown }, //ENETDOWN
-            { 102, SocketError.NetworkReset }, //ENETRESET
-            { 101, SocketError.NetworkUnreachable }, //ENETUNREACH
-            { 23, SocketError.TooManyOpenSockets }, //ENFILE
-            { 105, SocketError.NoBufferSpaceAvailable }, //ENOBUFS
-            { 61, SocketError.NoData }, //ENODATA
-            { 2, SocketError.AddressNotAvailable }, //ENOENT
-            { 92, SocketError.ProtocolOption }, //ENOPROTOOPT
-            { 107, SocketError.NotConnected }, //ENOTCONN
-            { 88, SocketError.NotSocket }, //ENOTSOCK
-            { 3440, SocketError.OperationNotSupported }, //ENOTSUP
-            { 1, SocketError.AccessDenied }, //EPERM
-            { 32, SocketError.Shutdown }, //EPIPE
+            { 14, SocketError.Fault },                      //EFAULT
+            { 112, SocketError.HostDown },                  //EHOSTDOWN
+            { 6, SocketError.HostNotFound },                //ENXIO
+            { 113, SocketError.HostUnreachable },           //EHOSTUNREACH
+            { 115, SocketError.InProgress },                //EINPROGRESS
+            { 4, SocketError.Interrupted },                 //EINTR
+            { 22, SocketError.InvalidArgument },            //EINVAL
+            { 106, SocketError.IsConnected },               //EISCONN
+            { 24, SocketError.TooManyOpenSockets },         //EMFILE
+            { 90, SocketError.MessageSize },                //EMSGSIZE
+            { 100, SocketError.NetworkDown },               //ENETDOWN
+            { 102, SocketError.NetworkReset },              //ENETRESET
+            { 101, SocketError.NetworkUnreachable },        //ENETUNREACH
+            { 23, SocketError.TooManyOpenSockets },         //ENFILE
+            { 105, SocketError.NoBufferSpaceAvailable },    //ENOBUFS
+            { 61, SocketError.NoData },                     //ENODATA
+            { 2, SocketError.AddressNotAvailable },         //ENOENT
+            { 92, SocketError.ProtocolOption },             //ENOPROTOOPT
+            { 107, SocketError.NotConnected },              //ENOTCONN
+            { 88, SocketError.NotSocket },                  //ENOTSOCK
+            { 3440, SocketError.OperationNotSupported },    //ENOTSUP
+            { 1, SocketError.AccessDenied },                //EPERM
+            { 32, SocketError.Shutdown },                   //EPIPE
             { 96, SocketError.ProtocolFamilyNotSupported }, //EPFNOSUPPORT
-            { 93, SocketError.ProtocolNotSupported }, //EPROTONOSUPPORT
-            { 91, SocketError.ProtocolType }, //EPROTOTYPE
-            { 94, SocketError.SocketNotSupported }, //ESOCKTNOSUPPORT
-            { 108, SocketError.Disconnecting }, //ESHUTDOWN
-            { 110, SocketError.TimedOut }, //ETIMEDOUT
+            { 93, SocketError.ProtocolNotSupported },       //EPROTONOSUPPORT
+            { 91, SocketError.ProtocolType },               //EPROTOTYPE
+            { 94, SocketError.SocketNotSupported },         //ESOCKTNOSUPPORT
+            { 108, SocketError.Disconnecting },             //ESHUTDOWN
+            { 110, SocketError.TimedOut },                  //ETIMEDOUT
             { 0, SocketError.Success }
         };
 
@@ -122,32 +140,50 @@ namespace LiteNetLib
             }
         }
 
+        /// <summary>
+        /// Receives a datagram from the specified socket handle using native OS calls.
+        /// </summary>
+        /// <param name="socketHandle">The OS handle for the socket.</param>
+        /// <param name="pinnedBuffer">A pinned byte array to receive the data.</param>
+        /// <param name="len">The number of <see cref="byte"/>s to receive.</param>
+        /// <param name="socketAddress">A pinned byte array to store the source address (sockaddr).</param>
+        /// <param name="socketAddressSize">The size of the <paramref name="socketAddress"/> structure.</param>
+        /// <returns>The number of <see cref="byte"/>s received, or a negative value on error.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int RecvFrom(
             IntPtr socketHandle,
             byte[] pinnedBuffer,
             int len,
             byte[] socketAddress,
-            ref int socketAddressSize)
-        {
-            return UnixMode
+            ref int socketAddressSize) =>
+            UnixMode
                 ? UnixSock.recvfrom(socketHandle, pinnedBuffer, len, 0, socketAddress, ref socketAddressSize)
                 : WinSock.recvfrom(socketHandle, pinnedBuffer, len, 0, socketAddress, ref socketAddressSize);
-        }
 
+        /// <summary>
+        /// Sends a datagram to the specified socket handle using native OS calls.
+        /// </summary>
+        /// <param name="socketHandle">The OS handle for the socket.</param>
+        /// <param name="pinnedBuffer">A pointer to the pinned memory containing data to send.</param>
+        /// <param name="len">The number of <see cref="byte"/>s to send.</param>
+        /// <param name="socketAddress">A pinned byte array containing the destination address (sockaddr).</param>
+        /// <param name="socketAddressSize">The size of the <paramref name="socketAddress"/> structure.</param>
+        /// <returns>The number of <see cref="byte"/>s sent, or a negative value on error.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int SendTo(
             IntPtr socketHandle,
             byte* pinnedBuffer,
             int len,
             byte[] socketAddress,
-            int socketAddressSize)
-        {
-            return UnixMode
+            int socketAddressSize) =>
+            UnixMode
                 ? UnixSock.sendto(socketHandle, pinnedBuffer, len, 0, socketAddress, socketAddressSize)
                 : WinSock.sendto(socketHandle, pinnedBuffer, len, 0, socketAddress, socketAddressSize);
-        }
 
+        /// <summary>
+        /// Retrieves the last OS-specific socket error and translates it to <see cref="SocketError"/>.
+        /// </summary>
+        /// <returns>The translated <see cref="SocketError"/>.</returns>
         public static SocketError GetSocketError()
         {
             int error = Marshal.GetLastWin32Error();
@@ -158,6 +194,10 @@ namespace LiteNetLib
             return (SocketError)error;
         }
 
+        /// <summary>
+        /// Retrieves the last OS-specific socket error and encapsulates it in a <see cref="SocketException"/>.
+        /// </summary>
+        /// <returns>A <see cref="SocketException"/> representing the last native error.</returns>
         public static SocketException GetSocketException()
         {
             int error = Marshal.GetLastWin32Error();
@@ -168,12 +208,15 @@ namespace LiteNetLib
             return new SocketException(error);
         }
 
+        /// <summary>
+        /// Converts the <see cref="AddressFamily"/> of an endpoint to the corresponding native constant.
+        /// </summary>
+        /// <param name="remoteEndPoint">The endpoint to evaluate.</param>
+        /// <returns>The native address family identifier.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static short GetNativeAddressFamily(IPEndPoint remoteEndPoint)
-        {
-            return UnixMode
+        public static short GetNativeAddressFamily(IPEndPoint remoteEndPoint) =>
+            UnixMode
                 ? (short)(remoteEndPoint.AddressFamily == AddressFamily.InterNetwork ? AF_INET : AF_INET6)
                 : (short)remoteEndPoint.AddressFamily;
-        }
     }
 }

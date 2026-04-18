@@ -8,20 +8,19 @@ namespace PurrNet.Editor
     [InitializeOnLoad]
     public class CustomDragAndDropHandler
     {
-        private static readonly HashSet<int> _beforeObjects = new();
-        private static readonly HashSet<int> _afterObjects = new();
-        private static readonly HashSet<int> _newObjects = new();
+        private static readonly HashSet<GameObject> _beforeObjects = new();
+        private static readonly HashSet<GameObject> _afterObjects = new();
+        private static readonly HashSet<GameObject> _newObjects = new();
 
         static int _lastDragDropEventFrame = -1;
 
-        private static void TakeSnapShotOfHierarchy(HashSet<int> set)
+        private static void TakeSnapShotOfHierarchy(HashSet<GameObject> set)
         {
             set.Clear();
             var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (var i = 0; i < allObjects.Length; i++)
             {
-                var obj = allObjects[i];
-                set.Add(obj.GetInstanceID());
+                set.Add(allObjects[i]);
             }
         }
 
@@ -106,10 +105,10 @@ namespace PurrNet.Editor
             TakeSnapShotOfHierarchy(_afterObjects);
             _newObjects.Clear();
 
-            foreach (var id in _afterObjects)
+            foreach (var obj in _afterObjects)
             {
-                if (!_beforeObjects.Contains(id))
-                    _newObjects.Add(id);
+                if (!_beforeObjects.Contains(obj))
+                    _newObjects.Add(obj);
             }
 
             if (_newObjects.Count > 0)
@@ -118,13 +117,8 @@ namespace PurrNet.Editor
                 FillPrefabListWithDrapDropReferences(_dragDropReferences);
 
                 int idx = 0;
-                foreach (var id in _newObjects)
+                foreach (var go in _newObjects)
                 {
-#if UNITY_6000_3_OR_NEWER
-                    var go = EditorUtility.EntityIdToObject(id) as GameObject;
-#else
-                    var go = EditorUtility.InstanceIDToObject(id) as GameObject;
-#endif
                     if (go)
                     {
                         bool isAnyParentInNewObjects = false;
@@ -133,7 +127,7 @@ namespace PurrNet.Editor
 
                         while (trs)
                         {
-                            if (_newObjects.Contains(trs.gameObject.GetInstanceID()))
+                            if (_newObjects.Contains(trs.gameObject))
                             {
                                 isAnyParentInNewObjects = true;
                                 break;

@@ -5,12 +5,14 @@ using PurrNet.Transports;
 using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Hash = PurrNet.Utils.Hasher;
 
 namespace PurrNet.Modules
 {
     public struct PendingSceneOperation
     {
         public int buildIndex;
+        public uint scenePathHash;
         public SceneID idToAssign;
         public PurrSceneSettings settings;
         [UsedImplicitly]
@@ -49,6 +51,10 @@ namespace PurrNet.Modules
 
     public partial class ScenesModule : INetworkModule, IFixedUpdate, ICleanup, IConnectionStateListener, ITransferToNewServer, IPromoteToServerModule
     {
+        private static readonly Dictionary<int, uint> _buildIndexToHash = new Dictionary<int, uint>();
+        private static readonly Dictionary<uint, int> _hashToBuildIndex = new Dictionary<uint, int>();
+        private static bool _sceneHashCacheBuilt;
+
         private readonly NetworkManager _networkManager;
         private readonly PlayersManager _players;
 
@@ -104,6 +110,14 @@ namespace PurrNet.Modules
         public IReadOnlyDictionary<SceneID, SceneState> sceneStates => _scenes;
 
         private SceneID GetNextID() => new(_nextSceneID++);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetSceneHashCache()
+        {
+            _buildIndexToHash.Clear();
+            _hashToBuildIndex.Clear();
+            _sceneHashCacheBuilt = false;
+        }
 
         public ScenesModule(NetworkManager manager, PlayersManager players)
         {
@@ -404,11 +418,13 @@ namespace PurrNet.Modules
 
         private void SceneManagerOnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            var loadedHash = Hash.Hash(scene.path);
+
             for (int i = 0; i < _pendingOperations.Count; i++)
             {
                 var operation = _pendingOperations[i];
 
-                if (operation.buildIndex == scene.buildIndex && operation.settings.mode == mode)
+                if (operation.scenePathHash == loadedHash && operation.settings.mode == mode)
                 {
                     AddScene(scene, operation.settings, operation.idToAssign);
                     _pendingOperations.RemoveAt(i);
@@ -466,11 +482,20 @@ namespace PurrNet.Modules
                         }
 
                         var loadAction = action.loadSceneAction;
+                        var localBuildIndex = BuildIndexFromScenePathHash(loadAction.scenePathHash);
+
+                        if (localBuildIndex == -1)
+                        {
+                            PurrLogger.LogError($"Scene with path hash '{loadAction.scenePathHash}' not found in build settings");
+                            _actionsQueue.Dequeue();
+                            break;
+                        }
+
                         AsyncOperation operation;
 
                         try
                         {
-                            operation = SceneManager.LoadSceneAsync(loadAction.buildIndex, loadAction.GetLoadSceneParameters());
+                            operation = SceneManager.LoadSceneAsync(localBuildIndex, loadAction.GetLoadSceneParameters());
                         }
                         catch (System.Exception e)
                         {
@@ -489,7 +514,8 @@ namespace PurrNet.Modules
 
                         _pendingOperations.Add(new PendingSceneOperation
                         {
-                            buildIndex = loadAction.buildIndex,
+                            buildIndex = localBuildIndex,
+                            scenePathHash = loadAction.scenePathHash,
                             settings = loadAction.parameters,
                             idToAssign = loadAction.sceneID,
                             operation = operation
@@ -652,6 +678,36 @@ namespace PurrNet.Modules
             return -1;
         }
 
+        private static void EnsureSceneHashCacheBuilt()
+        {
+            if (_sceneHashCacheBuilt)
+                return;
+
+            _sceneHashCacheBuilt = true;
+
+            var count = SceneManager.sceneCountInBuildSettings;
+
+            for (int i = 0; i < count; i++)
+            {
+                var path = SceneUtility.GetScenePathByBuildIndex(i);
+                var hash = Hash.Hash(path);
+                _buildIndexToHash[i] = hash;
+                _hashToBuildIndex[hash] = i;
+            }
+        }
+
+        private static uint ScenePathHashFromBuildIndex(int buildIndex)
+        {
+            EnsureSceneHashCacheBuilt();
+            return _buildIndexToHash[buildIndex];
+        }
+
+        private static int BuildIndexFromScenePathHash(uint scenePathHash)
+        {
+            EnsureSceneHashCacheBuilt();
+            return _hashToBuildIndex.GetValueOrDefault(scenePathHash, -1);
+        }
+
         /// <summary>
         /// Loads a scene asynchronously by its build index - Must be in build settings
         /// </summary>
@@ -781,9 +837,11 @@ namespace PurrNet.Modules
                 }
             }
 
+            var scenePathHash = ScenePathHashFromBuildIndex(sceneIndex);
+
             _history.AddLoadAction(new LoadSceneAction
             {
-                buildIndex = sceneIndex,
+                scenePathHash = scenePathHash,
                 sceneID = idToAssign,
                 parameters = settings
             });
@@ -792,6 +850,7 @@ namespace PurrNet.Modules
             var operation = new PendingSceneOperation
             {
                 buildIndex = sceneIndex,
+                scenePathHash = scenePathHash,
                 settings = settings,
                 idToAssign = idToAssign,
                 operation = op

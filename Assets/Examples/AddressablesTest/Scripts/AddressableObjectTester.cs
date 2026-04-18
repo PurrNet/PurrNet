@@ -43,12 +43,25 @@ namespace AddressablesTest
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
                 _handles.Add(handle);
-                Debug.Log($"Instantiate by reference. Total: {_handles.Count}");
+                Debug.Log($"[{handle.Result.name}] InstantiateAsync by reference. Total: {_handles.Count}", handle.Result);
             }
         }
 
         [PurrButton]
-        void DestroyLast()
+        async void InstantiateByGuid()
+        {
+            var handle = Addressables.InstantiateAsync(prefabReference.AssetGUID, Random.insideUnitSphere * 3f, Quaternion.identity);
+            await handle.Task;
+
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _handles.Add(handle);
+                Debug.Log($"[{handle.Result.name}] InstantiateAsync by GUID. Total: {_handles.Count}", handle.Result);
+            }
+        }
+
+        [PurrButton]
+        void ReleaseLast()
         {
             if (_handles.Count == 0) return;
 
@@ -56,7 +69,7 @@ namespace AddressablesTest
             _handles.RemoveAt(_handles.Count - 1);
 
             Addressables.ReleaseInstance(handle);
-            Debug.Log($"Destroyed last. Remaining: {_handles.Count}");
+            Debug.Log($"Released last. Remaining: {_handles.Count}");
         }
 
         [PurrButton]
@@ -64,7 +77,7 @@ namespace AddressablesTest
         {
             TestSendAddressableReference(prefabReference);
         }
-        
+
         [ObserversRpc]
         private void TestSendAddressableReference(NetworkAddressable addressable)
         {
@@ -72,19 +85,19 @@ namespace AddressablesTest
         }
 
         [PurrButton]
-        void DestroyAll()
+        void ReleaseAll()
         {
             foreach (var handle in _handles)
                 Addressables.ReleaseInstance(handle);
 
             _handles.Clear();
-            Debug.Log("Destroyed all");
+            Debug.Log("Released all");
         }
 
         protected override void OnDestroy()
         {
             base.OnDestroy();
-            DestroyAll();
+            ReleaseAll();
         }
     }
 }

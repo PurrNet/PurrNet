@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using PurrNet.Logging;
 #if UTP_NET_PACKAGE
 using System.Collections;
 #endif

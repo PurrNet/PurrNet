@@ -18,7 +18,9 @@ namespace PurrNet.Transports
         public string apiEndpoint;
         public string host;
         public int restPort;
+        [Obsolete("Use `udpPortV2` instead.")]
         public int udpPort;
+        public int udpPortV2;
         public int webSocketsPort;
         public string region;
     }
@@ -37,7 +39,9 @@ namespace PurrNet.Transports
         public bool ssl;
         public string secret;
         public int port;
+        [Obsolete]
         public int udpPort;
+        public int udpPortV2;
     }
 
     [UsedImplicitly]
@@ -48,7 +52,9 @@ namespace PurrNet.Transports
         public string secret;
         public string host;
         public int port;
+        [Obsolete]
         public int udpPort;
+        public int udpPortV2;
     }
 
     public static class PurrTransportUtils
@@ -73,7 +79,7 @@ namespace PurrNet.Transports
             for (var i = 0; i < count; i++)
             {
                 if (cts is { IsCancellationRequested: true })
-                    return Task.FromCanceled<T>(cts.Token).Result;
+                    throw new OperationCanceledException(cts.Token);
 
                 if (i > 0)
                     await UnityLatestUpdate.WaitSeconds(1f);

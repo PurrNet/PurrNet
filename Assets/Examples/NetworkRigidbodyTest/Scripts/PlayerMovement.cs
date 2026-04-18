@@ -37,7 +37,8 @@ namespace NetworkRigidbodyTest
 
             if (_isGrounded != _wasGrounded)
             {
-                _rb.drag = _isGrounded ? _groundDrag : _airDrag;
+                if(_velocityChangeBased)
+                    _rb.drag = _isGrounded ? _groundDrag : _airDrag;
                 _wasGrounded = _isGrounded;
             }
 
@@ -48,7 +49,6 @@ namespace NetworkRigidbodyTest
         private void FixedUpdate()
         {
             var input = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical")).normalized;
-            var direction = transform.TransformDirection(input);
 
             if (_velocityChangeBased)
             {
@@ -56,13 +56,13 @@ namespace NetworkRigidbodyTest
                     return;
 
                 var currentHoriz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
-                var velocityDelta = direction * _moveSpeed - currentHoriz;
+                var velocityDelta = input * _moveSpeed - currentHoriz;
                 var maxDelta = _acceleration * Time.fixedDeltaTime;
                 _rb.AddForce(Vector3.ClampMagnitude(velocityDelta, maxDelta), ForceMode.VelocityChange);
             }
             else
             {
-                _rb.AddForce(direction * (_moveSpeed * _rb.mass));
+                _rb.AddForce(input * (_moveSpeed * _rb.mass));
             }
         }
     }

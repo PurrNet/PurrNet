@@ -121,15 +121,15 @@ namespace PurrNet
         private Transform _trs;
 #if UNITY_PHYSICS_3D
         private Rigidbody _rb;
+        private bool _hasRigidbody;
 #endif
 #if UNITY_PHYSICS_2D
         private Rigidbody2D _rb2d;
+        private bool _hasRigidbody2D;
 #endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
 #endif
-
-        private bool _prevWasController;
 
         public Vector3 position { get; private set; }
         public Quaternion rotation { get; private set; }
@@ -140,10 +140,12 @@ namespace PurrNet
             _trs = transform;
 #if UNITY_PHYSICS_3D
             _rb = GetComponent<Rigidbody>();
+            _hasRigidbody = _rb;
             _controller = GetComponent<CharacterController>();
 #endif
 #if UNITY_PHYSICS_2D
             _rb2d = GetComponent<Rigidbody2D>();
+            _hasRigidbody2D = _rb2d;
 #endif
         }
 
@@ -221,7 +223,10 @@ namespace PurrNet
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
         {
             _cachedConnectedOwner = hasConnectedOwner;
+            var wasController = _cachedIsController;
             _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
 
             if (!enabled)
             {
@@ -255,7 +260,10 @@ namespace PurrNet
 
         protected override void OnSpawned(bool asServer)
         {
+            var wasController = _cachedIsController;
             _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
             _wasOnSpawnedCalled = true;
 
             if (!networkManager.TryGetModule<NetworkTransformFactory>(asServer, out var factory))
@@ -430,10 +438,10 @@ namespace PurrNet
             if (isNotController)
             {
 #if UNITY_PHYSICS_3D
-                if (_rb) _rb.Sleep();
+                if (_hasRigidbody && _rb) _rb.Sleep();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_rb2d) _rb2d.Sleep();
+                if (_hasRigidbody2D && _rb) _rb2d.Sleep();
 #endif
             }
         }
@@ -457,6 +465,24 @@ namespace PurrNet
                 UpdateNT();
         }
 
+        private void OnIsControlledChanged(bool isController)
+        {
+            if (!isController)
+            {
+                _latestData = GetCurrentTransformData();
+                TeleportToData(_latestData);
+            }
+            else
+            {
+#if UNITY_PHYSICS_3D
+                if (_rb) _rb.WakeUp();
+#endif
+#if UNITY_PHYSICS_2D
+                if (_rb2d) _rb2d.WakeUp();
+#endif
+            }
+        }
+
         private void UpdateNT()
         {
             if (!isSpawned)
@@ -466,27 +492,7 @@ namespace PurrNet
 
             if (!isLocalController)
                 ApplyLerpedPosition();
-
             _latestData = GetCurrentTransformData();
-            if (isLocalController)
-                TeleportToData(_latestData);
-
-#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-            if (_prevWasController != isLocalController)
-            {
-#if UNITY_PHYSICS_3D
-                if (isLocalController && _rb)
-                    _rb.WakeUp();
-#endif
-
-#if UNITY_PHYSICS_2D
-                if (isLocalController && _rb2d)
-                    _rb2d.WakeUp();
-#endif
-
-                _prevWasController = isLocalController;
-            }
-#endif
         }
 
         private void ApplyLerpedPosition()
@@ -529,20 +535,42 @@ namespace PurrNet
 
         private NetworkTransformData GetCurrentTransformData()
         {
-            var pos = _syncPosition switch
-            {
-                SyncMode.World => _trs.position,
-                SyncMode.Local => _trs.localPosition,
-                _ => Vector3.zero
-            };
+            Vector3 pos;
+            Quaternion rot;
 
-            var rot = _syncRotation switch
+            if (_syncPosition == _syncRotation)
             {
-                SyncMode.World => _trs.rotation,
-                SyncMode.Local => _trs.localRotation,
-                _ => Quaternion.identity
-            };
+                switch (_syncPosition)
+                {
+                    case SyncMode.World:
+                        _trs.GetPositionAndRotation(out pos, out rot);
+                        break;
+                    case SyncMode.Local:
+                        _trs.GetLocalPositionAndRotation(out pos, out rot);
+                        break;
+                    case SyncMode.No:
+                    default:
+                        pos = Vector3.zero;
+                        rot = Quaternion.identity;
+                        break;
+                }
+            }
+            else
+            {
+                pos = _syncPosition switch
+                {
+                    SyncMode.World => _trs.position,
+                    SyncMode.Local => _trs.localPosition,
+                    _ => Vector3.zero
+                };
 
+                rot = _syncRotation switch
+                {
+                    SyncMode.World => _trs.rotation,
+                    SyncMode.Local => _trs.localRotation,
+                    _ => Quaternion.identity
+                };
+            }
 
             var ntScale = _syncScale ? _trs.localScale : default;
             return new NetworkTransformData(pos, rot, ntScale);
@@ -621,26 +649,16 @@ namespace PurrNet
             return !_currentData.Equals(_lastSentDelta);
         }
 
-        public bool DeltaWrite(BitPacker packer)
+        public void DeltaWrite(BitPacker packer)
         {
-            bool hasChanged = false;
-
             if (syncPosition)
-                hasChanged = DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position, _currentData.position);
+                DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position, _currentData.position);
 
             if (syncRotation)
-            {
-                hasChanged = DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation) ||
-                          hasChanged;
-            }
+                DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation);
 
             if (syncScale)
-            {
-                hasChanged = DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale) ||
-                          hasChanged;
-            }
-
-            return hasChanged;
+                DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale);
         }
 
         public void DeltaRead(BitPacker packet)
@@ -670,8 +688,6 @@ namespace PurrNet
         public void GatherState()
         {
             _currentData = _latestData;
-            if (_cachedIsController)
-                TeleportToData(_currentData);
         }
 
         public void DeltaSave()

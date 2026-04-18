@@ -203,12 +203,17 @@ namespace PurrNet.Transports
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
-            return channel switch
+            if (asServer)
             {
-                Channel.Unreliable => 1024,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
-            };
+                var pair = _rawConnections[target.connectionId];
+                var protocol = _transports[pair.transportIdx];
+                return protocol.transport.GetMTU(pair.originalConnection, channel, true);
+            }
+
+            if (_clientTransport)
+                return _clientTransport.transport.GetMTU(target, channel, false);
+
+            throw new NotSupportedException("No supported transport found for client.");
         }
 
         private void Awake()
@@ -218,7 +223,7 @@ namespace PurrNet.Transports
 
             _wasAwakeCalled = true;
 
-            if (_clientTransport == null)
+            if (!_clientTransport)
             {
                 for (int i = 0; i < _transports.Length; i++)
                 {

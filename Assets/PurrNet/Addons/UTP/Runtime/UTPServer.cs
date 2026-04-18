@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using PurrNet.Logging;
 using PurrNet.Transports;
 using UnityEngine;
 using PurrNet.Logging;

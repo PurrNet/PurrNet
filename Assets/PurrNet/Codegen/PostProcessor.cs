@@ -733,9 +733,13 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Ldloca, variable));
                 code.Append(Instruction.Create(OpCodes.Call, serialize));
 
-                var prepareAfterUnpack = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
-                code.Append(Instruction.Create(OpCodes.Ldloca, variable));
-                code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
+                var paramDef = param.ParameterType.Resolve();
+                if (paramDef != null && GenerateSerializersProcessor.HasInterface(paramDef, typeof(IAsyncPackable)))
+                {
+                    var prepareAfterUnpack = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
+                }
             }
 
             if (!originalMethod.IsStatic)
@@ -959,12 +963,19 @@ namespace PurrNet.Codegen
                     originalMethod.ReturnType is GenericInstanceType genericInstance &&
                     genericInstance.GenericArguments.Count == 1)
                 {
-                    var genericResponse = new GenericInstanceMethod(responder) { GenericArguments = { genericInstance.GenericArguments[0] } };
+                    var genericResponse = new GenericInstanceMethod(returnMode is ReturnMode.Task ? responder : responderUniTask);
+                    genericResponse.GenericArguments.Add(genericInstance.GenericArguments[0]);
                     invokeIl.Append(Instruction.Create(OpCodes.Call, genericResponse.Import(module)));
                 }
                 else
                 {
-                    invokeIl.Append(Instruction.Create(OpCodes.Call, responderWithoutResponse));
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, returnMode switch
+                    {
+                        ReturnMode.IEnumerator => responderCoroutine,
+                        ReturnMode.UniTask => responderUniTaskWithoutResponse,
+                        ReturnMode.Task => responderWithoutResponse,
+                        _ => responderWithoutResponse
+                    }));
                 }
             }
             invokeIl.Append(Instruction.Create(OpCodes.Ret));
@@ -2126,15 +2137,6 @@ namespace PurrNet.Codegen
                     PutIsServerOnStack(module, methodRpc, isNetworkClass, code, moduleType, identityType);
                     code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
                     break;
-                case RPCType.TargetRPC when GetArgType(newMethod.Parameters[0].ParameterType) == TargetArgType.Player:
-                {
-                    PushLocalPlayerProp(module, code, isNetworkClass, methodRpc.Signature.isStatic);
-                    code.Append(Instruction.Create(OpCodes.Ldarg_S, newMethod.Parameters[0]));
-                    var areEqualMethod = rpcType.GetMethod("ArePlayersEqual", false).Import(module);
-                    code.Append(Instruction.Create(OpCodes.Call, areEqualMethod));
-                    code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
-                    break;
-                }
             }
 
             if (returnMode != ReturnMode.Void)
@@ -2334,9 +2336,13 @@ namespace PurrNet.Codegen
                     code.Append(Instruction.Create(OpCodes.Ldarg, param));
                     code.Append(Instruction.Create(OpCodes.Stloc, paramLocal));
 
-                    var prepareForPack = CreatePrepareForPackMethod(module, param.ParameterType);
-                    code.Append(Instruction.Create(OpCodes.Ldloca, paramLocal));
-                    code.Append(Instruction.Create(OpCodes.Call, prepareForPack));
+                    var paramDef = param.ParameterType.Resolve();
+                    if (paramDef != null && GenerateSerializersProcessor.HasInterface(paramDef, typeof(IAsyncPackable)))
+                    {
+                        var prepareForPack = CreatePrepareForPackMethod(module, param.ParameterType);
+                        code.Append(Instruction.Create(OpCodes.Ldloca, paramLocal));
+                        code.Append(Instruction.Create(OpCodes.Call, prepareForPack));
+                    }
 
                     MethodReference serializeGenericMethod;
 
@@ -4357,6 +4363,18 @@ namespace PurrNet.Codegen
 
             var code = newMethod.Body.GetILProcessor();
 
+            // For generic types, field references must go through a GenericInstanceType
+            // so that the runtime sees them as belonging to the same type context as the method.
+            // Without this, private fields cause FieldAccessException.
+            TypeReference selfType = type;
+            if (type.HasGenericParameters)
+            {
+                var git = new GenericInstanceType(type);
+                foreach (var gp in type.GenericParameters)
+                    git.GenericArguments.Add(gp);
+                selfType = git;
+            }
+
             var parentType =
                 (isNetworkIdentity
                     ? module.GetTypeDefinition<NetworkIdentity>()
@@ -4374,11 +4392,16 @@ namespace PurrNet.Codegen
                 if (field.CustomAttributes.All(x => x.AttributeType.FullName != typeof(PreserveAttribute).FullName))
                     type.CustomAttributes.Add(new CustomAttribute(constructor));
 
+                // For generic types, construct a FieldReference through the GenericInstanceType
+                FieldReference fieldRef = type.HasGenericParameters
+                    ? new FieldReference(field.Name, field.FieldType, selfType)
+                    : field;
+
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
                 code.Append(Instruction.Create(OpCodes.Ldstr, field.Name));
                 code.Append(Instruction.Create(OpCodes.Ldstr, field.FieldType.Name));
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Ldc_I4, isNetworkIdentity ? 1 : 0));
                 code.Append(Instruction.Create(OpCodes.Call, registerModule));
 
@@ -4386,7 +4409,7 @@ namespace PurrNet.Codegen
 
                 // if not null
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Brfalse, endInstruction));
 
                 // call init method
@@ -4400,7 +4423,7 @@ namespace PurrNet.Codegen
                 codeGenInitRef.Parameters.Add(parentStr);
 
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 if (isNetworkIdentity)
                 {
                     code.Append(Instruction.Create(OpCodes.Ldstr, field.Name));
@@ -4420,7 +4443,7 @@ namespace PurrNet.Codegen
                     // if null
                     var endInstruction2 = Instruction.Create(OpCodes.Nop);
                     code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                    code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                    code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                     code.Append(Instruction.Create(OpCodes.Brtrue, endInstruction2));
 
                     // call error

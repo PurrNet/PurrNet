@@ -11,6 +11,7 @@ namespace PurrNet
         private readonly List<int> _offsets = new();
         private readonly List<int> _counts = new();
         private readonly Dictionary<int, PrefabData> _unified = new();
+        private readonly Dictionary<GameObject, PrefabData> _prefabCache = new();
 
         public IEnumerable<PrefabData> allPrefabs => _unified.Values;
 
@@ -32,6 +33,7 @@ namespace PurrNet
             _unified.Clear();
             _offsets.Clear();
             _counts.Clear();
+            _prefabCache.Clear();
 
             int offset = 0;
 
@@ -122,6 +124,12 @@ namespace PurrNet
 
         public bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData)
         {
+            if (prefab)
+            {
+                if (_prefabCache.TryGetValue(prefab, out prefabData))
+                    return true;
+            }
+
             foreach (var data in _unified.Values)
             {
                 if (data.prefab == prefab)
@@ -144,6 +152,10 @@ namespace PurrNet
                         warmupCount = pd.warmupCount
                     };
                     _unified[unifiedId] = prefabData;
+
+                    if (prefab)
+                        _prefabCache[prefab] = prefabData;
+
                     return true;
                 }
             }
