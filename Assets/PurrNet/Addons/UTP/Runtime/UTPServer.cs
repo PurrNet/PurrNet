@@ -509,7 +509,7 @@ namespace PurrNet.UTP
                 if (packet == null)
                     continue;
 
-                _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), Channel.ReliableOrdered));
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), sentMessage.channel));
             }
 
             sentMessage.lastResendTime = UnityEngine.Time.realtimeSinceStartup;
