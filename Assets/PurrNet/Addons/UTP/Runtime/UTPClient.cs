@@ -524,7 +524,7 @@ namespace PurrNet.UTP
                     fragmentSizes = new int[totalFragments],
                     receivedCount = 0,
                     creationTime = UnityEngine.Time.realtimeSinceStartup,
-                    lastNackTime = 0f
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
 
@@ -587,7 +587,7 @@ namespace PurrNet.UTP
                     fragmentSizes = new int[totalFragments],
                     receivedCount = 0,
                     creationTime = UnityEngine.Time.realtimeSinceStartup,
-                    lastNackTime = 0f
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
 
