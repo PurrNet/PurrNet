@@ -390,6 +390,10 @@ namespace PurrNet.UTP
                     creationTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
+			else if (message.fragments.Length != totalFragments)
+			{
+				return;
+			}
 
             // Store fragment if not already received
             if (message.fragments[fragmentIndex] == null)
@@ -446,6 +450,10 @@ namespace PurrNet.UTP
                     creationTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
+			else if (message.fragments.Length != totalFragments)
+			{
+				return;
+			}
 
             if (message.fragments[fragmentIndex] == null)
             {
