@@ -1,3 +1,10 @@
+# [1.20.0-beta.90](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.89...v1.20.0-beta.90) (2026-04-20)
+
+
+### Bug Fixes
+
+* process ManualAddObserver events immediately for SyncVar parity ([9ba4759](https://github.com/PurrNet/PurrNet/commit/9ba475912f8eef60bd7fcd1d97d2a8778e4133fe))
+
 # [1.20.0-beta.89](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.88...v1.20.0-beta.89) (2026-04-17)
 
 
