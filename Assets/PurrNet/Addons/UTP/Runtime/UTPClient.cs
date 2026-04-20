@@ -10,8 +10,8 @@ using System.Collections;
 #endif
 using PurrNet.Transports;
 using UnityEngine;
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using PurrNet.Logging;
+#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Networking.Transport.Error;
@@ -45,13 +45,38 @@ namespace PurrNet.UTP
             public int[] fragmentSizes;
             public int receivedCount;
             public float creationTime;
+            public float lastNackTime;
         }
 
         private readonly Dictionary<uint, FragmentedMessage> _fragmentBuffer = new Dictionary<uint, FragmentedMessage>();
         private uint _nextFragmentId = 1;
-        private const float FRAGMENT_TIMEOUT = 30f;
+        private const float FRAGMENT_TIMEOUT = 60f;
+        private const float FRAGMENT_REQUEST_INTERVAL = 0.25f;
+        private const int MAX_MISSING_INDICES_PER_REQUEST = 64;
         private const byte FRAGMENT_MAGIC = 0xFF;
-        private const int FRAGMENT_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
+        private const byte FRAGMENT_TYPE_DATA = 0;
+        private const byte FRAGMENT_TYPE_NACK = 1;
+        private const byte FRAGMENT_TYPE_ACK = 2;
+        private const int FRAGMENT_CONTROL_HEADER_SIZE = 6; // 1 (magic) + 1 (type) + 4 (id)
+        private const int FRAGMENT_NACK_HEADER_SIZE = 7; // control header + 1 missing-count byte
+        private const int FRAGMENT_DATA_HEADER_SIZE = 8; // control header + 1 (count) + 1 (index)
+        private const int FRAGMENT_LEGACY_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
+        private const int MAX_FRAGMENTS_PER_PACKET = 255; // uint8 limit for fragment count
+        private const int MAX_FRAGMENT_SENDS_PER_UPDATE = 16;
+
+        private struct PendingFragmentSend
+        {
+            public ByteData data;
+            public Channel channel;
+
+            public PendingFragmentSend(ByteData data, Channel channel)
+            {
+                this.data = data;
+                this.channel = channel;
+            }
+        }
+
+        private readonly Queue<PendingFragmentSend> _pendingFragmentSends = new Queue<PendingFragmentSend>();
 #endif
 
 #pragma warning disable CS0067 // Event is never used
@@ -221,7 +246,7 @@ namespace PurrNet.UTP
             }
 
             int mtu = GetMTU(channel);
-            int maxPayloadSize = mtu - FRAGMENT_HEADER_SIZE;
+            int maxPayloadSize = mtu - FRAGMENT_DATA_HEADER_SIZE;
 
             // Warn if packet is larger than MTU (will be fragmented)
             if (data.length > mtu)
@@ -231,6 +256,16 @@ namespace PurrNet.UTP
                     $"Consider splitting large packets in application code for better performance.");
 
                 SendFragmented(data, channel, maxPayloadSize);
+                return;
+            }
+
+            // If there are pending fragments queued and this is an ordered channel, enqueue this packet
+            // to preserve ordering instead of sending it immediately
+            if (_pendingFragmentSends.Count > 0 && (channel == Channel.ReliableOrdered || channel == Channel.UnreliableSequenced))
+            {
+                byte[] packet = new byte[data.length];
+                Buffer.BlockCopy(data.data, data.offset, packet, 0, data.length);
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packet.Length), channel));
                 return;
             }
 
@@ -285,9 +320,10 @@ namespace PurrNet.UTP
             uint fragmentId = _nextFragmentId++;
             int totalFragments = (int)Math.Ceiling(data.length / (float)maxPayloadSize);
 
-            if (totalFragments > 255)
+            // Validate fragment count doesn't exceed uint8 max
+            if (totalFragments > MAX_FRAGMENTS_PER_PACKET)
             {
-                PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max 255). Dropping packet.");
+                PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max {MAX_FRAGMENTS_PER_PACKET}). Dropping packet.");
                 return;
             }
 
@@ -295,21 +331,89 @@ namespace PurrNet.UTP
             {
                 int offset = i * maxPayloadSize;
                 int payloadSize = Math.Min(maxPayloadSize, data.length - offset);
-                int packetSize = FRAGMENT_HEADER_SIZE + payloadSize;
+                int packetSize = FRAGMENT_DATA_HEADER_SIZE + payloadSize;
 
                 byte[] packet = new byte[packetSize];
                 packet[0] = FRAGMENT_MAGIC;
-                packet[1] = (byte)totalFragments;
-                packet[2] = (byte)i;
-                packet[3] = (byte)(fragmentId & 0xFF);
-                packet[4] = (byte)((fragmentId >> 8) & 0xFF);
-                packet[5] = (byte)((fragmentId >> 16) & 0xFF);
-                packet[6] = (byte)((fragmentId >> 24) & 0xFF);
+                packet[1] = FRAGMENT_TYPE_DATA;
+                packet[2] = (byte)(fragmentId & 0xFF);
+                packet[3] = (byte)((fragmentId >> 8) & 0xFF);
+                packet[4] = (byte)((fragmentId >> 16) & 0xFF);
+                packet[5] = (byte)((fragmentId >> 24) & 0xFF);
+                packet[6] = (byte)totalFragments;
+                packet[7] = (byte)i;
 
-                Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_HEADER_SIZE, payloadSize);
+                Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_DATA_HEADER_SIZE, payloadSize);
 
-                SendSinglePacket(new ByteData(packet, 0, packetSize), channel);
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packetSize), channel));
             }
+
+            FlushPendingFragmentSends();
+        }
+
+        private bool SendSinglePacketWithValidation(ByteData data, Channel channel)
+        {
+            MakeSureBufferCanFit(data.length);
+
+            NetworkPipeline pipeline = channel switch {
+                Channel.Unreliable => _unreliablePipeline,
+                Channel.UnreliableSequenced => _unreliablePipeline,
+                Channel.ReliableOrdered => _reliablePipeline,
+                Channel.ReliableUnordered => _reliablePipeline,
+                _ => NetworkPipeline.Null
+            };
+
+            try
+            {
+                int beginResult = _driver.BeginSend(pipeline, _connection, out var writer);
+                if (beginResult == (int)StatusCode.Success)
+                {
+                    unsafe
+                    {
+                        fixed (byte* dataPtr = &data.data[data.offset])
+                        {
+                            var span = new Span<byte>(dataPtr, data.length);
+                            writer.WriteBytes(span);
+                        }
+                    }
+                    _driver.EndSend(writer);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void FlushPendingFragmentSends()
+        {
+            if (!_driver.IsCreated || !_connection.IsCreated)
+                return;
+
+            if (_driver.GetConnectionState(_connection) != NetworkConnection.State.Connected)
+                return;
+
+            int sends = 0;
+            while (sends < MAX_FRAGMENT_SENDS_PER_UPDATE && _pendingFragmentSends.Count > 0)
+            {
+                var pending = _pendingFragmentSends.Peek();
+                if (!SendSinglePacketWithValidation(pending.data, pending.channel))
+                    break;
+
+                _pendingFragmentSends.Dequeue();
+                sends++;
+            }
+        }
+
+        private void ClearPendingFragments()
+        {
+            _pendingFragmentSends.Clear();
+            _fragmentBuffer.Clear();
         }
 #endif
 
@@ -320,9 +424,7 @@ namespace PurrNet.UTP
         public void SendMessages()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-            //if (_driver.IsCreated)
-            //    _driver.ScheduleUpdate().Complete();
-            // Update is handled in ReceiveMessages
+            FlushPendingFragmentSends();
 #endif
         }
 
@@ -337,6 +439,7 @@ namespace PurrNet.UTP
                 return;
 
             _driver.ScheduleUpdate().Complete();
+            FlushPendingFragmentSends();
 
             CleanupExpiredFragments();
 
@@ -362,7 +465,7 @@ namespace PurrNet.UTP
                         // Check if this is a fragmented packet
                         if (packetLength > 0 && _buffer[0] == FRAGMENT_MAGIC)
                         {
-                            ProcessFragment(_buffer, packetLength);
+                            ProcessFragmentPacket(_buffer, packetLength);
                         }
                         else
                         {
@@ -378,6 +481,7 @@ namespace PurrNet.UTP
                         break;
                     case NetworkEvent.Type.Disconnect:
                         // LogTransportTrace("Receive disconnect event");
+                        ClearPendingFragments();
                         connectionState = ConnectionState.Disconnecting;
                         connectionState = ConnectionState.Disconnected;
                         break;
@@ -391,15 +495,37 @@ namespace PurrNet.UTP
         }
 
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-        private void ProcessFragment(byte[] packetData, int packetLength)
+        private void ProcessFragmentPacket(byte[] packetData, int packetLength)
         {
-            if (packetLength < FRAGMENT_HEADER_SIZE)
+            if (packetLength < 2)
                 return;
 
-            byte totalFragments = packetData[1];
-            byte fragmentIndex = packetData[2];
-            uint fragmentId = (uint)packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
-            int payloadSize = packetLength - FRAGMENT_HEADER_SIZE;
+            byte fragmentType = packetData[1];
+            if (fragmentType == FRAGMENT_TYPE_DATA)
+            {
+                ProcessFragmentData(packetData, packetLength);
+                return;
+            }
+
+            if (packetLength >= FRAGMENT_LEGACY_HEADER_SIZE)
+            {
+                // Compatibility path for old header format from older peers.
+                ProcessLegacyFragmentData(packetData, packetLength);
+            }
+        }
+
+        private void ProcessFragmentData(byte[] packetData, int packetLength)
+        {
+            if (packetLength < FRAGMENT_DATA_HEADER_SIZE)
+                return;
+
+            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            byte totalFragments = packetData[6];
+            byte fragmentIndex = packetData[7];
+            int payloadSize = packetLength - FRAGMENT_DATA_HEADER_SIZE;
+
+            if (totalFragments == 0 || fragmentIndex >= totalFragments)
+                return;
 
             if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
             {
@@ -408,7 +534,20 @@ namespace PurrNet.UTP
                     fragments = new byte[totalFragments][],
                     fragmentSizes = new int[totalFragments],
                     receivedCount = 0,
-                    creationTime = UnityEngine.Time.realtimeSinceStartup
+                    creationTime = UnityEngine.Time.realtimeSinceStartup,
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
+                };
+            }
+            else if (message.fragments.Length != totalFragments)
+            {
+                // FragmentId reused with different totalFragments; rebuild the FragmentedMessage
+                message = new FragmentedMessage
+                {
+                    fragments = new byte[totalFragments][],
+                    fragmentSizes = new int[totalFragments],
+                    receivedCount = 0,
+                    creationTime = UnityEngine.Time.realtimeSinceStartup,
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
 
@@ -416,12 +555,18 @@ namespace PurrNet.UTP
             if (message.fragments[fragmentIndex] == null)
             {
                 message.fragments[fragmentIndex] = new byte[payloadSize];
-                Buffer.BlockCopy(packetData, FRAGMENT_HEADER_SIZE, message.fragments[fragmentIndex], 0, payloadSize);
+                Buffer.BlockCopy(packetData, FRAGMENT_DATA_HEADER_SIZE, message.fragments[fragmentIndex], 0, payloadSize);
                 message.fragmentSizes[fragmentIndex] = payloadSize;
                 message.receivedCount++;
             }
 
             _fragmentBuffer[fragmentId] = message;
+
+            if (message.receivedCount < totalFragments)
+            {
+                RequestMissingFragments(fragmentId, totalFragments, ref message);
+                _fragmentBuffer[fragmentId] = message;
+            }
 
             // If all fragments received, reassemble and pass to application
             if (message.receivedCount == totalFragments)
@@ -441,25 +586,157 @@ namespace PurrNet.UTP
                 ByteData byteData = new ByteData(_buffer, 0, totalSize);
                 onDataReceived?.Invoke(byteData);
 
+                SendFragmentAck(fragmentId);
+
                 _fragmentBuffer.Remove(fragmentId);
             }
+        }
+
+        private void ProcessLegacyFragmentData(byte[] packetData, int packetLength)
+        {
+            byte totalFragments = packetData[1];
+            byte fragmentIndex = packetData[2];
+            uint fragmentId = (uint)packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
+            int payloadSize = packetLength - FRAGMENT_LEGACY_HEADER_SIZE;
+
+            if (totalFragments == 0 || fragmentIndex >= totalFragments)
+                return;
+
+            if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
+            {
+                message = new FragmentedMessage
+                {
+                    fragments = new byte[totalFragments][],
+                    fragmentSizes = new int[totalFragments],
+                    receivedCount = 0,
+                    creationTime = UnityEngine.Time.realtimeSinceStartup,
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
+                };
+            }
+            else if (message.fragments.Length != totalFragments)
+            {
+                // FragmentId reused with different totalFragments; rebuild the FragmentedMessage
+                message = new FragmentedMessage
+                {
+                    fragments = new byte[totalFragments][],
+                    fragmentSizes = new int[totalFragments],
+                    receivedCount = 0,
+                    creationTime = UnityEngine.Time.realtimeSinceStartup,
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
+                };
+            }
+
+            if (message.fragments[fragmentIndex] == null)
+            {
+                message.fragments[fragmentIndex] = new byte[payloadSize];
+                Buffer.BlockCopy(packetData, FRAGMENT_LEGACY_HEADER_SIZE, message.fragments[fragmentIndex], 0, payloadSize);
+                message.fragmentSizes[fragmentIndex] = payloadSize;
+                message.receivedCount++;
+            }
+
+            _fragmentBuffer[fragmentId] = message;
+
+            if (message.receivedCount == totalFragments)
+            {
+                int totalSize = 0;
+                for (int i = 0; i < totalFragments; i++)
+                    totalSize += message.fragmentSizes[i];
+
+                MakeSureBufferCanFit(totalSize);
+                int offset = 0;
+                for (int i = 0; i < totalFragments; i++)
+                {
+                    Buffer.BlockCopy(message.fragments[i], 0, _buffer, offset, message.fragmentSizes[i]);
+                    offset += message.fragmentSizes[i];
+                }
+
+                ByteData byteData = new ByteData(_buffer, 0, totalSize);
+                onDataReceived?.Invoke(byteData);
+                _fragmentBuffer.Remove(fragmentId);
+            }
+        }
+
+        private void RequestMissingFragments(uint fragmentId, byte totalFragments, ref FragmentedMessage message)
+        {
+            float now = UnityEngine.Time.realtimeSinceStartup;
+            if (now - message.lastNackTime < FRAGMENT_REQUEST_INTERVAL)
+                return;
+
+            var missingIndices = new List<byte>();
+            for (byte i = 0; i < totalFragments; i++)
+            {
+                if (message.fragments[i] == null)
+                    missingIndices.Add(i);
+
+                if (missingIndices.Count >= MAX_MISSING_INDICES_PER_REQUEST)
+                    break;
+            }
+
+            if (missingIndices.Count == 0)
+                return;
+
+            int packetSize = FRAGMENT_NACK_HEADER_SIZE + missingIndices.Count;
+            byte[] packet = new byte[packetSize];
+            packet[0] = FRAGMENT_MAGIC;
+            packet[1] = FRAGMENT_TYPE_NACK;
+            packet[2] = (byte)(fragmentId & 0xFF);
+            packet[3] = (byte)((fragmentId >> 8) & 0xFF);
+            packet[4] = (byte)((fragmentId >> 16) & 0xFF);
+            packet[5] = (byte)((fragmentId >> 24) & 0xFF);
+            packet[6] = (byte)missingIndices.Count;
+
+            for (int i = 0; i < missingIndices.Count; i++)
+                packet[FRAGMENT_NACK_HEADER_SIZE + i] = missingIndices[i];
+
+            bool sent = SendSinglePacketWithValidation(new ByteData(packet, 0, packetSize), Channel.ReliableOrdered);
+            if (sent)
+                message.lastNackTime = now;
+        }
+
+        private void SendFragmentAck(uint fragmentId)
+        {
+            byte[] packet = new byte[FRAGMENT_CONTROL_HEADER_SIZE];
+            packet[0] = FRAGMENT_MAGIC;
+            packet[1] = FRAGMENT_TYPE_ACK;
+            packet[2] = (byte)(fragmentId & 0xFF);
+            packet[3] = (byte)((fragmentId >> 8) & 0xFF);
+            packet[4] = (byte)((fragmentId >> 16) & 0xFF);
+            packet[5] = (byte)((fragmentId >> 24) & 0xFF);
+
+            SendSinglePacketWithValidation(new ByteData(packet, 0, packet.Length), Channel.ReliableOrdered);
         }
 
         private void CleanupExpiredFragments()
         {
             float currentTime = UnityEngine.Time.realtimeSinceStartup;
             var expiredIds = new List<uint>();
+            var keys = new List<uint>(_fragmentBuffer.Keys);
 
-            foreach (var kvp in _fragmentBuffer)
+            foreach (var key in keys)
             {
-                if (currentTime - kvp.Value.creationTime > FRAGMENT_TIMEOUT)
-                    expiredIds.Add(kvp.Key);
+                if (!_fragmentBuffer.TryGetValue(key, out var message))
+                    continue;
+
+                // Keep requesting missing fragments for incomplete assemblies while waiting for timeout.
+                if (message.receivedCount > 0 && message.receivedCount < message.fragments.Length)
+                {
+                    byte totalFragments = (byte)message.fragments.Length;
+                    RequestMissingFragments(key, totalFragments, ref message);
+                    _fragmentBuffer[key] = message;
+                }
+
+                if (currentTime - message.creationTime > FRAGMENT_TIMEOUT)
+                {
+                    expiredIds.Add(key);
+                    int receivedCount = message.receivedCount;
+                    int totalCount = message.fragments.Length;
+                    PurrLogger.LogWarning($"[UTP] Fragment assembly timeout (ID: {key}). Received {receivedCount}/{totalCount} fragments. Incomplete fragments discarded.");
+                }
             }
 
             foreach (var id in expiredIds)
             {
                 _fragmentBuffer.Remove(id);
-                PurrLogger.LogWarning($"[UTP] Fragment assembly timeout (ID: {id}). Incomplete fragments discarded.");
             }
         }
 #endif
@@ -502,6 +779,8 @@ namespace PurrNet.UTP
         {
             if (!_connection.IsCreated) 
                 return;
+
+            ClearPendingFragments();
             
             if (connectionState != ConnectionState.Disconnected)
                 connectionState = ConnectionState.Disconnecting;
@@ -526,6 +805,7 @@ namespace PurrNet.UTP
         public void Stop()
         {
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
+            ClearPendingFragments();
             Disconnect();
 
             if (_driver.IsCreated)
