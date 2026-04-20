@@ -391,7 +391,7 @@ namespace PurrNet.UTP
                     creationTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
-			else if (message.fragments.Length != totalFragments)
+			else if (message.fragments.Length != totalFragments || message.fragmentSizes.Length != totalFragments)
 			{
 				return;
 			}
@@ -425,6 +425,8 @@ namespace PurrNet.UTP
                 var byteData = new ByteData(_buffer, 0, totalSize);
                 onDataReceived?.Invoke(connId, byteData);
 
+                SendFragmentAck(connId, fragmentId);
+
                 _fragmentBuffer.Remove(key);
             }
         }
@@ -451,7 +453,7 @@ namespace PurrNet.UTP
                     creationTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
-			else if (message.fragments.Length != totalFragments)
+			else if (message.fragments.Length != totalFragments || message.fragmentSizes.Length != totalFragments)
 			{
 				return;
 			}
@@ -483,6 +485,8 @@ namespace PurrNet.UTP
                 var byteData = new ByteData(_buffer, 0, totalSize);
                 onDataReceived?.Invoke(connId, byteData);
 
+                SendFragmentAck(connId, fragmentId);
+
                 _fragmentBuffer.Remove(key);
             }
         }
@@ -512,7 +516,9 @@ namespace PurrNet.UTP
 			if (sentMessage.lastResendTime > 0f && now - sentMessage.lastResendTime < FRAGMENT_RESEND_COOLDOWN)
 				return;
 
-            for (int i = 0; i < missingCount; i++)
+            int enqueuedCount = 0;
+            int resendLimit = Math.Min(missingCount, MAX_FRAGMENT_SENDS_PER_UPDATE);
+            for (int i = 0; i < resendLimit; i++)
             {
                 byte fragmentIndex = packetData[FRAGMENT_NACK_HEADER_SIZE + i];
                 if (fragmentIndex >= sentMessage.totalFragments)
@@ -523,11 +529,15 @@ namespace PurrNet.UTP
                     continue;
 
                 _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), sentMessage.channel));
+                enqueuedCount++;
             }
 
-            sentMessage.lastResendTime = now;
-            _outboundFragmentBuffer[key] = sentMessage;
-            FlushPendingFragmentSends();
+            if (enqueuedCount > 0)
+            {
+                sentMessage.lastResendTime = now;
+                _outboundFragmentBuffer[key] = sentMessage;
+                FlushPendingFragmentSends();
+            }
         }
 
         private void ProcessFragmentAck(int connId, byte[] packetData, int packetLength)
@@ -804,6 +814,22 @@ namespace PurrNet.UTP
             }
         }
 
+        private void SendFragmentAck(int connId, uint fragmentId)
+        {
+            if (!_connectionById.TryGetValue(connId, out var conn))
+                return;
+
+            byte[] packet = new byte[FRAGMENT_CONTROL_HEADER_SIZE];
+            packet[0] = FRAGMENT_MAGIC;
+            packet[1] = FRAGMENT_TYPE_ACK;
+            packet[2] = (byte)(fragmentId & 0xFF);
+            packet[3] = (byte)((fragmentId >> 8) & 0xFF);
+            packet[4] = (byte)((fragmentId >> 16) & 0xFF);
+            packet[5] = (byte)((fragmentId >> 24) & 0xFF);
+
+            SendSinglePacketToConnectionWithValidation(conn, new ByteData(packet, 0, packet.Length), Channel.ReliableOrdered);
+        }
+
         private void FlushPendingFragmentSends()
         {
             if (!_driver.IsCreated)
@@ -929,6 +955,8 @@ namespace PurrNet.UTP
             _connectionById.Clear();
             _idByConnection.Clear();
             ClearPendingFragments();
+            _fragmentBuffer.Clear();
+            _nextFragmentIdByConnection.Clear();
             _outboundFragmentBuffer.Clear();
 
             try
