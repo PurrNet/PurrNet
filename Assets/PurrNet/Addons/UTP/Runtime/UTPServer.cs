@@ -707,7 +707,6 @@ namespace PurrNet.UTP
             _nextFragmentIdByConnection[connId] = nextId;
 
             int totalFragments = (int)Math.Ceiling(data.length / (float)maxPayloadSize);
-            byte[][] sentPackets = new byte[totalFragments][];
 
             // Validate fragment count doesn't exceed uint8 max
             if (totalFragments > MAX_FRAGMENTS_PER_PACKET)
@@ -715,6 +714,8 @@ namespace PurrNet.UTP
                 PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max {MAX_FRAGMENTS_PER_PACKET}). Dropping packet.");
                 return;
             }
+			
+            byte[][] sentPackets = new byte[totalFragments][];
 
             for (int i = 0; i < totalFragments; i++)
             {
