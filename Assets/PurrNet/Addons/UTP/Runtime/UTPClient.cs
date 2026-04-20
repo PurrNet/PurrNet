@@ -259,6 +259,16 @@ namespace PurrNet.UTP
                 return;
             }
 
+            // If there are pending fragments queued and this is an ordered channel, enqueue this packet
+            // to preserve ordering instead of sending it immediately
+            if (_pendingFragmentSends.Count > 0 && (channel == Channel.ReliableOrdered || channel == Channel.UnreliableSequenced))
+            {
+                byte[] packet = new byte[data.length];
+                Buffer.BlockCopy(data.data, data.offset, packet, 0, data.length);
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packet.Length), channel));
+                return;
+            }
+
             SendSinglePacket(data, channel);
 #endif
         }
@@ -403,6 +413,7 @@ namespace PurrNet.UTP
         private void ClearPendingFragments()
         {
             _pendingFragmentSends.Clear();
+            _fragmentBuffer.Clear();
         }
 #endif
 
@@ -527,6 +538,18 @@ namespace PurrNet.UTP
                     lastNackTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
+            else if (message.fragments.Length != totalFragments)
+            {
+                // FragmentId reused with different totalFragments; rebuild the FragmentedMessage
+                message = new FragmentedMessage
+                {
+                    fragments = new byte[totalFragments][],
+                    fragmentSizes = new int[totalFragments],
+                    receivedCount = 0,
+                    creationTime = UnityEngine.Time.realtimeSinceStartup,
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
+                };
+            }
 
             // Store fragment if not already received
             if (message.fragments[fragmentIndex] == null)
@@ -581,6 +604,18 @@ namespace PurrNet.UTP
 
             if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
             {
+                message = new FragmentedMessage
+                {
+                    fragments = new byte[totalFragments][],
+                    fragmentSizes = new int[totalFragments],
+                    receivedCount = 0,
+                    creationTime = UnityEngine.Time.realtimeSinceStartup,
+                    lastNackTime = UnityEngine.Time.realtimeSinceStartup
+                };
+            }
+            else if (message.fragments.Length != totalFragments)
+            {
+                // FragmentId reused with different totalFragments; rebuild the FragmentedMessage
                 message = new FragmentedMessage
                 {
                     fragments = new byte[totalFragments][],

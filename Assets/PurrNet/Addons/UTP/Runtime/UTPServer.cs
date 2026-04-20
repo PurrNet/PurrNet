@@ -391,7 +391,7 @@ namespace PurrNet.UTP
                     creationTime = UnityEngine.Time.realtimeSinceStartup
                 };
             }
-			else if (message.fragments.Length != totalFragments || message.fragmentSizes.Length != totalFragments)
+			else if (message.fragments.Length != totalFragments)
 			{
 				return;
 			}
