@@ -75,6 +75,7 @@ namespace PurrNet.UTP
         private const int FRAGMENT_LEGACY_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
         private const int MAX_FRAGMENTS_PER_PACKET = 255; // uint8 limit for fragment count
         private const int MAX_FRAGMENT_SENDS_PER_UPDATE = 16;
+		private const float FRAGMENT_RESEND_COOLDOWN = 0.05f;
 
         private class OutboundFragmentedMessage
         {
@@ -507,6 +508,10 @@ namespace PurrNet.UTP
             if (!_outboundFragmentBuffer.TryGetValue(key, out var sentMessage))
                 return;
 
+			float now = UnityEngine.Time.realtimeSinceStartup;
+			if (sentMessage.lastResendTime > 0f && now - sentMessage.lastResendTime < FRAGMENT_RESEND_COOLDOWN)
+				return;
+
             for (int i = 0; i < missingCount; i++)
             {
                 byte fragmentIndex = packetData[FRAGMENT_NACK_HEADER_SIZE + i];
@@ -520,7 +525,7 @@ namespace PurrNet.UTP
                 _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), sentMessage.channel));
             }
 
-            sentMessage.lastResendTime = UnityEngine.Time.realtimeSinceStartup;
+            sentMessage.lastResendTime = now;
             _outboundFragmentBuffer[key] = sentMessage;
             FlushPendingFragmentSends();
         }
@@ -754,7 +759,7 @@ namespace PurrNet.UTP
                 packets = sentPackets,
                 channel = channel,
                 creationTime = UnityEngine.Time.realtimeSinceStartup,
-                lastResendTime = UnityEngine.Time.realtimeSinceStartup
+                lastResendTime = 0f
             };
 
             FlushPendingFragmentSends();
