@@ -226,14 +226,6 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Removes an embedded package folder at Packages/{upmName}/ if it exists.
-        /// </summary>
-        private static void RemoveEmbeddedPackage(string upmName)
-        {
-            SafeRemoveDirectory(Path.Combine("Packages", upmName));
-        }
-
-        /// <summary>
         /// Removes a directory by moving it to Temp/ first, then best-effort deleting it.
         /// Directory.Move within the same volume is a rename, so the original path is
         /// freed up immediately — locked files (e.g. loaded native DLLs) stay in Temp/
@@ -258,6 +250,35 @@ namespace PurrNet.Editor
             }
         }
 
+        /// <summary>
+        /// Clears any existing install of <paramref name="package"/> so a new version can be written.
+        /// Removes manifest entries, legacy PurrPackages/ files, and embedded Packages/{name}/ folders
+        /// for both the detected install key and the canonical name (needed when api name ≠ upm name,
+        /// or when a rename crossed versions).
+        /// </summary>
+        /// <remarks>
+        /// Ordering within each name: SafeRemoveDirectory BEFORE CleanupLegacyPackageFiles.
+        /// Packages/{name}/ may be a Unity-created junction pointing at PurrPackages/{name}-{version}/.
+        /// Deleting the target first leaves the junction dangling and Directory.Exists returns false,
+        /// orphaning the junction forever.
+        /// </remarks>
+        private static void ClearExistingInstall(PackageInfo package, string canonicalName)
+        {
+            var match = FindInstalledEntry(package);
+            if (match != null)
+                ClearByName(match.Value.key);
+
+            if (!string.IsNullOrEmpty(canonicalName) && (match == null || match.Value.key != canonicalName))
+                ClearByName(canonicalName);
+
+            static void ClearByName(string name)
+            {
+                RemoveManifestEntry(name);
+                SafeRemoveDirectory(Path.Combine("Packages", name));
+                CleanupLegacyPackageFiles(name);
+            }
+        }
+
         public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
             try
@@ -272,24 +293,11 @@ namespace PurrNet.Editor
 
                         var gitUpmName = package.GetUpmPackageName();
 
-                        // Remove old entry (tgz, folder, or git)
-                        var gitOldMatch = FindInstalledEntry(package);
-                        if (gitOldMatch != null)
-                        {
-                            RemoveManifestEntry(gitOldMatch.Value.key);
-                            CleanupLegacyPackageFiles(gitOldMatch.Value.key);
-                        }
+                        ClearExistingInstall(package, gitUpmName);
 
-                        // Clean up old package files under the canonical name too
-                        CleanupLegacyPackageFiles(gitUpmName);
-
-                        // Remove embedded packages if they exist
-                        if (HasEmbeddedPackage(gitUpmName))
-                            RemoveEmbeddedPackage(gitUpmName);
-
-                        // Set manifest to git URL with tag
                         SetManifestEntry(gitUpmName, StripGitRef(gitUrl) + "#" + version.TagName);
 
+                        EditorUtility.ClearProgressBar();
                         if (resolve)
                         {
                             PurrPackageManagerCache.Invalidate();
@@ -297,7 +305,6 @@ namespace PurrNet.Editor
                             AssetDatabase.Refresh();
                         }
 
-                        EditorUtility.ClearProgressBar();
                         return Result<bool>.Ok(true);
                     }
                 }
@@ -374,49 +381,25 @@ namespace PurrNet.Editor
                         return Result<bool>.Fail("Installation cancelled by user.");
                     }
                     EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Removing embedded package...", 0.7f);
-                    RemoveEmbeddedPackage(apiName);
-                    RemoveEmbeddedPackage(upmName);
                 }
 
-                // Remove old version before installing new one
-                var oldMatch = FindInstalledEntry(package);
-                if (oldMatch != null)
-                    RemoveManifestEntry(oldMatch.Value.key);
-
-                // Install as embedded package at Packages/{name}/
                 var folderPath = Path.Combine("Packages", upmName);
-
-                // Remove the directory/junction BEFORE cleaning legacy PurrPackages/ files.
-                // Unity creates junctions in Packages/{name}/ pointing to PurrPackages/ for
-                // file: manifest entries — the junction must be removed while its target still
-                // exists, otherwise it becomes dangling and Directory.Exists returns false.
-                SafeRemoveDirectory(folderPath);
-
-                // Now safe to clean up legacy PurrPackages/ files
-                if (oldMatch != null)
-                    CleanupLegacyPackageFiles(oldMatch.Value.key);
-                CleanupLegacyPackageFiles(upmName);
+                ClearExistingInstall(package, upmName);
 
                 Directory.Move(tempExtractDir, folderPath);
-
-                // Embedded packages are auto-discovered by Unity — remove any stale manifest entry
-                RemoveManifestEntry(upmName);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
                 if (File.Exists(tempPath))
                     File.Delete(tempPath);
 
-                if (Directory.Exists(tempExtractDir))
-                    Directory.Delete(tempExtractDir, true);
-
+                EditorUtility.ClearProgressBar();
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
                     UnityEditor.PackageManager.Client.Resolve();
                     AssetDatabase.Refresh();
                 }
-                EditorUtility.ClearProgressBar();
 
                 return Result<bool>.Ok(true);
             }
@@ -441,18 +424,7 @@ namespace PurrNet.Editor
 
             try
             {
-                var upmName = match.Value.key;
-                var apiName = package.GetUpmPackageName();
-
-                // Remove embedded packages if they exist
-                RemoveEmbeddedPackage(upmName);
-                if (apiName != upmName)
-                    RemoveEmbeddedPackage(apiName);
-
-                // Delete old package files (legacy PurrPackages/ tgz or folders)
-                CleanupLegacyPackageFiles(upmName);
-
-                RemoveManifestEntry(upmName);
+                ClearExistingInstall(package, package.GetUpmPackageName());
 
                 PurrPackageManagerCache.Invalidate();
                 UnityEditor.PackageManager.Client.Resolve();
@@ -474,29 +446,17 @@ namespace PurrNet.Editor
 
                 var upmName = package.GetUpmPackageName();
 
-                // Remove old entry if present
-                var oldMatch = FindInstalledEntry(package);
-                if (oldMatch != null)
-                {
-                    RemoveManifestEntry(oldMatch.Value.key);
-
-                    // Clean up old package files if switching install method
-                    CleanupLegacyPackageFiles(oldMatch.Value.key);
-                }
-
-                // Remove embedded packages if they exist
-                if (HasEmbeddedPackage(upmName))
-                    RemoveEmbeddedPackage(upmName);
+                ClearExistingInstall(package, upmName);
 
                 SetManifestEntry(upmName, gitUrl);
 
+                EditorUtility.ClearProgressBar();
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
                     UnityEditor.PackageManager.Client.Resolve();
                     AssetDatabase.Refresh();
                 }
-                EditorUtility.ClearProgressBar();
             }
             catch (Exception e)
             {
