@@ -1,3 +1,10 @@
+# [1.20.0-beta.92](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.91...v1.20.0-beta.92) (2026-04-21)
+
+
+### Bug Fixes
+
+* refactor package installation process to improve clarity and efficiency ([2c8b3bd](https://github.com/PurrNet/PurrNet/commit/2c8b3bd0e11747d5723d509880301d8e9e9a6809))
+
 # [1.20.0-beta.91](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.90...v1.20.0-beta.91) (2026-04-21)
 
 
