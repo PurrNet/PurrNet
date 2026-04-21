@@ -1,3 +1,10 @@
+# [1.20.0-beta.91](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.90...v1.20.0-beta.91) (2026-04-21)
+
+
+### Bug Fixes
+
+* streamline SafeRemoveDirectory implementation for improved clarity and efficiency ([90f3200](https://github.com/PurrNet/PurrNet/commit/90f320085c55bac0da9cc76494bafd74492d69ee))
+
 # [1.20.0-beta.90](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.89...v1.20.0-beta.90) (2026-04-20)
 
 
