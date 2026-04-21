@@ -1,3 +1,10 @@
+# [1.20.0-beta.93](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.92...v1.20.0-beta.93) (2026-04-21)
+
+
+### Bug Fixes
+
+* only install changed files with Purr Packages ([069037c](https://github.com/PurrNet/PurrNet/commit/069037c87cf1246e29fc9b78ee90c3b70a9b380a))
+
 # [1.20.0-beta.92](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.91...v1.20.0-beta.92) (2026-04-21)
 
 
