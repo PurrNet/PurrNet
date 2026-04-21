@@ -279,6 +279,165 @@ namespace PurrNet.Editor
             }
         }
 
+        /// <summary>
+        /// Installs files from <paramref name="sourceDir"/> into Packages/{canonicalName}/ by
+        /// per-file sync: unchanged files are left untouched (critical — prevents Unity from
+        /// re-importing / reloading locked native DLLs that didn't actually change), new files
+        /// are copied in, and files absent from the source are removed. Also clears manifest
+        /// entries and legacy PurrPackages/ files for both the detected install key and the
+        /// canonical name so the install is auto-discovered as embedded.
+        /// </summary>
+        private static void InstallFilesSynced(PackageInfo package, string canonicalName, string sourceDir)
+        {
+            var targetFolder = Path.Combine("Packages", canonicalName);
+            var match = FindInstalledEntry(package);
+
+            RemoveManifestEntry(canonicalName);
+            CleanupLegacyPackageFiles(canonicalName);
+
+            // Different-name install (rename or api/upm mismatch) — can't sync across names, full wipe.
+            if (match != null && !string.Equals(match.Value.key, canonicalName, StringComparison.OrdinalIgnoreCase))
+            {
+                RemoveManifestEntry(match.Value.key);
+                SafeRemoveDirectory(Path.Combine("Packages", match.Value.key));
+                CleanupLegacyPackageFiles(match.Value.key);
+            }
+
+            // Unlink junction at target without following it — else sync would write into the
+            // legacy PurrPackages/ target rather than replacing the junction with a real folder.
+            if (Directory.Exists(targetFolder)
+                && (File.GetAttributes(targetFolder) & FileAttributes.ReparsePoint) != 0)
+            {
+                Directory.Delete(targetFolder, false);
+            }
+
+            SyncDirectory(sourceDir, targetFolder);
+        }
+
+        /// <summary>
+        /// Syncs <paramref name="destination"/> to match <paramref name="source"/>:
+        /// copies files that are new or have different content, deletes files not present in source,
+        /// and leaves byte-identical files completely untouched. Logs a warning if any file could
+        /// not be written or deleted (usually a locked native library — caller should advise a restart).
+        /// </summary>
+        private static void SyncDirectory(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+
+            var sourceRelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int failed = 0;
+
+            foreach (var srcFile in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(source, srcFile);
+                sourceRelPaths.Add(rel);
+
+                var dstFile = Path.Combine(destination, rel);
+
+                if (File.Exists(dstFile) && FilesEqual(srcFile, dstFile))
+                    continue;
+
+                var dstDir = Path.GetDirectoryName(dstFile);
+                if (!string.IsNullOrEmpty(dstDir))
+                    Directory.CreateDirectory(dstDir);
+
+                try
+                {
+                    if (File.Exists(dstFile))
+                        File.SetAttributes(dstFile, FileAttributes.Normal);
+                    File.Copy(srcFile, dstFile, overwrite: true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PurrNet] Could not write '{rel}' (may be a locked native library): {ex.Message}");
+                    failed++;
+                }
+            }
+
+            // Remove files that exist in destination but not in source
+            foreach (var dstFile in Directory.GetFiles(destination, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(destination, dstFile);
+                if (sourceRelPaths.Contains(rel))
+                    continue;
+
+                try
+                {
+                    File.SetAttributes(dstFile, FileAttributes.Normal);
+                    File.Delete(dstFile);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PurrNet] Could not remove orphaned '{rel}' (may be locked): {ex.Message}");
+                    failed++;
+                }
+            }
+
+            // Prune empty subdirectories bottom-up
+            var dirs = Directory.GetDirectories(destination, "*", SearchOption.AllDirectories);
+            Array.Sort(dirs, (a, b) => b.Length.CompareTo(a.Length));
+            foreach (var dir in dirs)
+            {
+                try
+                {
+                    if (Directory.GetFileSystemEntries(dir).Length == 0)
+                        Directory.Delete(dir, false);
+                }
+                catch
+                {
+                    // not empty or locked — skip
+                }
+            }
+
+            if (failed > 0)
+                Debug.LogWarning($"[PurrNet] Install completed with {failed} file(s) that could not be updated. A Unity restart may be required for native plugin changes to take effect.");
+        }
+
+        /// <summary>
+        /// Byte-compares two files after a size short-circuit. Chunked read avoids loading
+        /// large native DLLs fully into memory.
+        /// </summary>
+        private static bool FilesEqual(string a, string b)
+        {
+            var infoA = new FileInfo(a);
+            var infoB = new FileInfo(b);
+            if (infoA.Length != infoB.Length)
+                return false;
+            if (infoA.Length == 0)
+                return true;
+
+            const int bufSize = 64 * 1024;
+            var bufA = new byte[bufSize];
+            var bufB = new byte[bufSize];
+
+            using var streamA = new FileStream(a, FileMode.Open, FileAccess.Read, FileShare.Read, bufSize);
+            using var streamB = new FileStream(b, FileMode.Open, FileAccess.Read, FileShare.Read, bufSize);
+
+            while (true)
+            {
+                int readA = ReadFully(streamA, bufA);
+                int readB = ReadFully(streamB, bufB);
+                if (readA != readB)
+                    return false;
+                if (readA == 0)
+                    return true;
+                if (!bufA.AsSpan(0, readA).SequenceEqual(bufB.AsSpan(0, readB)))
+                    return false;
+            }
+
+            static int ReadFully(FileStream s, byte[] buf)
+            {
+                int total = 0;
+                while (total < buf.Length)
+                {
+                    int n = s.Read(buf, total, buf.Length - total);
+                    if (n == 0) break;
+                    total += n;
+                }
+                return total;
+            }
+        }
+
         public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
             try
@@ -383,15 +542,15 @@ namespace PurrNet.Editor
                     EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Removing embedded package...", 0.7f);
                 }
 
-                var folderPath = Path.Combine("Packages", upmName);
-                ClearExistingInstall(package, upmName);
-
-                Directory.Move(tempExtractDir, folderPath);
+                InstallFilesSynced(package, upmName, tempExtractDir);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
                 if (File.Exists(tempPath))
                     File.Delete(tempPath);
+
+                if (Directory.Exists(tempExtractDir))
+                    Directory.Delete(tempExtractDir, true);
 
                 EditorUtility.ClearProgressBar();
                 if (resolve)
