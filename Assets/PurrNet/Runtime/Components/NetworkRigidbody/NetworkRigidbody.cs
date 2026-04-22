@@ -7,15 +7,7 @@ namespace PurrNet
 {
     public enum RigidbodyTransformSpace : byte
     {
-        /// <summary>
-        /// Sync position and rotation relative to the current parent transform. Use when the rigidbody
-        /// may be parented to a moving object, but also perfectly valid for world sync when not parented.
-        /// </summary>
         Local = 0,
-
-        /// <summary>
-        /// Sync raw world-space position and rotation, regardless of parent.
-        /// </summary>
         World = 1
     }
 
@@ -61,7 +53,6 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
-        /// <summary>Parent transform this snapshot's values are relative to. Null means world-space.</summary>
         public Transform parent;
     }
 
@@ -73,7 +64,7 @@ namespace PurrNet
         [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
         [SerializeField] private bool _ownerAuth;
 
-        [Tooltip("Space used to sync position and rotation. Local aligns relative to the current parent (recommended, catches parenting cases). World syncs raw world coordinates.")]
+        [Tooltip("Space used to sync position and rotation. Local is relative to the current parent, World is absolute.")]
         [SerializeField] private RigidbodyTransformSpace _space = RigidbodyTransformSpace.Local;
 
         [Tooltip("Whether to sync parent changes (SetParent) through the hierarchy. Only works when the new parent has a NetworkIdentity.")]
@@ -618,26 +609,15 @@ namespace PurrNet
 
         #region Parent sync
 
-        /// <summary>Whether parent changes are synced through the hierarchy.</summary>
         public bool syncParent => _syncParent;
-
-        /// <summary>Whether the owning client has authority over this rigidbody (client auth).</summary>
         public bool ownerAuth => _ownerAuth;
-
-        /// <summary>True on the peer that currently controls this rigidbody (owner in client-auth, server in server-auth).</summary>
         public bool isController => IsController(_ownerAuth);
 
-        /// <summary>
-        /// Suspends <see cref="OnTransformParentChanged"/> from forwarding local parent changes
-        /// to the hierarchy. Called by the hierarchy module around applying a remote parent
-        /// change so we don't echo it back as our own outgoing change.
-        /// </summary>
         public void StartIgnoringParentChanges()
         {
             _isIgnoringParentChanges = true;
         }
 
-        /// <summary>Re-enables <see cref="OnTransformParentChanged"/> forwarding.</summary>
         public void StopIgnoringParentChanges()
         {
             _isIgnoringParentChanges = false;
@@ -665,12 +645,6 @@ namespace PurrNet
 
         #region Helpers
 
-        /// <summary>
-        /// Returns the parent this controller will tag outgoing snapshots with, or null if the
-        /// outgoing data should be world-space. Only returns non-null when <see cref="_space"/>
-        /// is Local AND the immediate parent transform has a NetworkIdentity. otherwise the
-        /// receiver cannot reliably resolve the same reference frame.
-        /// </summary>
         private NetworkIdentity GetSyncParentIdentity()
         {
             if (_space != RigidbodyTransformSpace.Local)
@@ -694,7 +668,7 @@ namespace PurrNet
         private Vector3 ReadLinearVelocity(Transform parent)
         {
             var v = GetLinearVelocity();
-            return parent ? Quaternion.Inverse(parent.rotation) * v : v;
+            return parent ? parent.InverseTransformVector(v) : v;
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
@@ -715,7 +689,7 @@ namespace PurrNet
 
         private static Vector3 ToWorldLinearVelocity(Vector3 v, Transform parent)
         {
-            return parent ? parent.rotation * v : v;
+            return parent ? parent.TransformVector(v) : v;
         }
 
         private static Vector3 ToWorldAngularVelocity(Vector3 v, Transform parent)

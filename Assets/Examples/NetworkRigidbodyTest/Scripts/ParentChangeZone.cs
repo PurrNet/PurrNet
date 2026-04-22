@@ -9,7 +9,7 @@ namespace NetworkRigidbodyTest
         [Tooltip("Parent to assign to entering networked rigidbodies on trigger enter. Leave null to detach.")]
         [SerializeField] private Transform _newParent;
 
-        [Tooltip("Optional local-Y spin speed (deg/s). Use to test reparenting onto a moving transform — leave 0 for a static parent.")]
+        [Tooltip("Optional local-Y spin speed (deg/s). Use to test reparenting onto a moving transform.")]
         [SerializeField] private float _spinDegreesPerSecond;
 
         private void Update()
