@@ -35,6 +35,11 @@ namespace PurrNet.Pooling
 
         public override string ToString()
         {
+            if (list == null)
+            {
+                return "null";
+            }
+
             return string.Concat("[", string.Join(", ", list), "]");
         }
 
