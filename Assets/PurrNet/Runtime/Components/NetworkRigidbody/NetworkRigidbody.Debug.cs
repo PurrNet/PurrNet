@@ -22,11 +22,11 @@ namespace PurrNet
 
             if (!isController && isSpawned)
             {
-                Vector3 worldTargetPos = TargetPosToWorld(_targetPosition);
-                Quaternion worldTargetRot = TargetRotToWorld(_targetRotation);
+                Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
+                Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
 
                 Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
-                Gizmos.DrawWireSphere(TargetPosToWorld(_latestRawSnapshotPos), 0.1f);
+                Gizmos.DrawWireSphere(ToWorldPosition(_latestRawSnapshotPos, _latestRawSnapshotParent), 0.1f);
 
                 Gizmos.color = Color.red;
                 Gizmos.DrawLine(_rigidbody.position, worldTargetPos);
@@ -46,8 +46,8 @@ namespace PurrNet
             if (_rigidbody == null || !isSpawned || IsController(_ownerAuth))
                 return;
 
-            Vector3 worldPrePred = TargetPosToWorld(_prePredictionTarget);
-            Vector3 worldTargetPos = TargetPosToWorld(_targetPosition);
+            Vector3 worldPrePred = ToWorldPosition(_prePredictionTarget, _targetParent);
+            Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
 
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(worldPrePred, 0.15f);
@@ -91,8 +91,8 @@ namespace PurrNet
             screenPos.y = Screen.height - screenPos.y;
 
             bool isController = IsController(_ownerAuth);
-            float posError = Vector3.Distance(_rigidbody.position, TargetPosToWorld(_targetPosition));
-            float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(TargetRotToWorld(_targetRotation)));
+            float posError = Vector3.Distance(_rigidbody.position, ToWorldPosition(_targetPosition, _targetParent));
+            float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(ToWorldRotation(_targetRotation, _targetParent)));
             float velocityMagnitude = GetLinearVelocity().magnitude;
             float angVelMagnitude = _rigidbody.angularVelocity.magnitude;
 

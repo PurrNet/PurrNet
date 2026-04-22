@@ -1,4 +1,5 @@
 using PurrNet.Logging;
+using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -32,6 +33,7 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
+        public NetworkIdentity parent;
     }
 
     public struct RigidbodyTeleportData
@@ -40,6 +42,7 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
+        public NetworkIdentity parent;
     }
 
     public struct RigidbodySettingsData
@@ -58,6 +61,8 @@ namespace PurrNet
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
+        /// <summary>Parent transform this snapshot's values are relative to. Null means world-space.</summary>
+        public Transform parent;
     }
 
     [RequireComponent(typeof(Rigidbody))]
@@ -70,6 +75,9 @@ namespace PurrNet
 
         [Tooltip("Space used to sync position and rotation. Local aligns relative to the current parent (recommended, catches parenting cases). World syncs raw world coordinates.")]
         [SerializeField] private RigidbodyTransformSpace _space = RigidbodyTransformSpace.Local;
+
+        [Tooltip("Whether to sync parent changes (SetParent) through the hierarchy. Only works when the new parent has a NetworkIdentity.")]
+        [SerializeField] private bool _syncParent = true;
 
         [Header("Settings Override")]
         [Tooltip("Optional. When assigned, this asset's virtual methods control all correction decisions. The fields below are passed as defaults via the correction context.")]
@@ -128,16 +136,21 @@ namespace PurrNet
         private Quaternion _targetRotation = Quaternion.identity;
         private Vector3 _targetLinearVelocity;
         private Vector3 _targetAngularVelocity;
+        /// <summary>Reference frame for _target* values. Null means world-space.</summary>
+        private Transform _targetParent;
 
         private Vector3 _lastSyncedPosition;
         private Quaternion _lastSyncedRotation;
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
+        private Transform _lastSyncedParent;
 
         private bool _hasPendingTeleport;
+        private bool _isIgnoringParentChanges;
 
         private string _lastCorrectionReason = "No";
         private Vector3 _latestRawSnapshotPos;
+        private Transform _latestRawSnapshotParent;
         private string _bufferSampleMode = "None";
         private float _lastOvershoot;
         private double _lastLogTime;
@@ -158,22 +171,28 @@ namespace PurrNet
         {
             base.OnSpawned();
 
-            var pos = ReadPosition();
-            var rot = ReadRotation();
-            var linVel = ReadLinearVelocity();
-            var angVel = ReadAngularVelocity();
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            var pos = ReadPosition(parentTrs);
+            var rot = ReadRotation(parentTrs);
+            var linVel = ReadLinearVelocity(parentTrs);
+            var angVel = ReadAngularVelocity(parentTrs);
 
             _targetPosition = pos;
             _targetRotation = rot;
             _targetLinearVelocity = linVel;
             _targetAngularVelocity = angVel;
+            _targetParent = parentTrs;
 
             _lastSyncedPosition = pos;
             _lastSyncedRotation = rot;
             _lastSyncedLinearVelocity = linVel;
             _lastSyncedAngularVelocity = angVel;
+            _lastSyncedParent = parentTrs;
 
             _latestRawSnapshotPos = pos;
+            _latestRawSnapshotParent = parentTrs;
             ClearBuffer();
 
             if (IsController(_ownerAuth))
@@ -184,7 +203,8 @@ namespace PurrNet
                     position = pos,
                     rotation = rot,
                     linearVelocity = linVel,
-                    angularVelocity = angVel
+                    angularVelocity = angVel,
+                    parent = parentIdentity
                 });
             }
         }
@@ -202,26 +222,31 @@ namespace PurrNet
 
         private void ControllerTick()
         {
-            if (!HasStateChanged() && !ShouldSyncWhenStopped())
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            if (!HasStateChanged(parentTrs) && !ShouldSyncWhenStopped())
                 return;
 
-            var pos = ReadPosition();
-            var rot = ReadRotation();
-            var linVel = ReadLinearVelocity();
-            var angVel = ReadAngularVelocity();
+            var pos = ReadPosition(parentTrs);
+            var rot = ReadRotation(parentTrs);
+            var linVel = ReadLinearVelocity(parentTrs);
+            var angVel = ReadAngularVelocity(parentTrs);
 
             var stateData = new RigidbodyStateData
             {
                 position = pos,
                 rotation = rot,
                 linearVelocity = linVel,
-                angularVelocity = angVel
+                angularVelocity = angVel,
+                parent = parentIdentity
             };
 
             _targetPosition = pos;
             _targetRotation = rot;
             _targetLinearVelocity = linVel;
             _targetAngularVelocity = angVel;
+            _targetParent = parentTrs;
 
             if (isServer)
                 SyncState(stateData);
@@ -232,6 +257,7 @@ namespace PurrNet
             _lastSyncedRotation = rot;
             _lastSyncedLinearVelocity = linVel;
             _lastSyncedAngularVelocity = angVel;
+            _lastSyncedParent = parentTrs;
         }
 
         private void NonControllerTick()
@@ -259,10 +285,10 @@ namespace PurrNet
             if (!isFullySpawned || IsController(_ownerAuth) || _hasPendingTeleport)
                 return;
 
-            Vector3 worldTargetPos = TargetPosToWorld(_targetPosition);
-            Quaternion worldTargetRot = TargetRotToWorld(_targetRotation);
-            Vector3 worldTargetLinVel = TargetLinVelToWorld(_targetLinearVelocity);
-            Vector3 worldTargetAngVel = TargetAngVelToWorld(_targetAngularVelocity);
+            Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
+            Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
+            Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent);
+            Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
 
             float positionError = Vector3.Distance(_rigidbody.position, worldTargetPos);
             float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(worldTargetRot));
@@ -433,7 +459,8 @@ namespace PurrNet
                 position = data.position,
                 rotation = data.rotation,
                 linearVelocity = data.linearVelocity,
-                angularVelocity = data.angularVelocity
+                angularVelocity = data.angularVelocity,
+                parent = data.parent ? data.parent.transform : null
             };
 
             _bufferHead = (_bufferHead + 1) % BUFFER_SIZE;
@@ -441,6 +468,7 @@ namespace PurrNet
                 _bufferCount++;
 
             _latestRawSnapshotPos = data.position;
+            _latestRawSnapshotParent = data.parent ? data.parent.transform : null;
         }
 
         private TimestampedSnapshot GetSnapshot(int logicalIndex)
@@ -473,10 +501,7 @@ namespace PurrNet
             if (_bufferCount == 1)
             {
                 var only = GetSnapshot(0);
-                _targetPosition = only.position;
-                _targetRotation = only.rotation;
-                _targetLinearVelocity = only.linearVelocity;
-                _targetAngularVelocity = only.angularVelocity;
+                AdoptSnapshot(only);
                 _bufferSampleMode = "Single";
                 _lastOvershoot = 0f;
                 return;
@@ -489,10 +514,7 @@ namespace PurrNet
 
             if (renderTime <= oldest.time)
             {
-                _targetPosition = oldest.position;
-                _targetRotation = oldest.rotation;
-                _targetLinearVelocity = oldest.linearVelocity;
-                _targetAngularVelocity = oldest.angularVelocity;
+                AdoptSnapshot(oldest);
                 _bufferSampleMode = "Clamp-Old";
                 _lastOvershoot = (float)(oldest.time - renderTime);
                 return;
@@ -505,6 +527,7 @@ namespace PurrNet
                 _targetRotation = newest.rotation;
                 _targetLinearVelocity = newest.linearVelocity;
                 _targetAngularVelocity = newest.angularVelocity;
+                _targetParent = newest.parent;
                 _bufferSampleMode = $"Extrap ({overshoot:F3}s)";
                 _predictionOffset = overshoot;
                 _lastOvershoot = overshoot;
@@ -521,26 +544,29 @@ namespace PurrNet
                     float span = (float)(b.time - a.time);
                     if (span < 0.0001f)
                     {
-                        _targetPosition = b.position;
-                        _targetRotation = b.rotation;
-                        _targetLinearVelocity = b.linearVelocity;
-                        _targetAngularVelocity = b.angularVelocity;
+                        AdoptSnapshot(b);
                         return;
                     }
 
                     float t = (float)(renderTime - a.time) / span;
                     HermiteInterpolate(a, b, span, t);
-                    _bufferSampleMode = $"Interp ({t:F2})";
+                    _bufferSampleMode = a.parent == b.parent ? $"Interp ({t:F2})" : $"Interp-Reparent ({t:F2})";
                     _predictionOffset = 0f;
                     _lastOvershoot = 0f;
                     return;
                 }
             }
 
-            _targetPosition = newest.position;
-            _targetRotation = newest.rotation;
-            _targetLinearVelocity = newest.linearVelocity;
-            _targetAngularVelocity = newest.angularVelocity;
+            AdoptSnapshot(newest);
+        }
+
+        private void AdoptSnapshot(TimestampedSnapshot snap)
+        {
+            _targetPosition = snap.position;
+            _targetRotation = snap.rotation;
+            _targetLinearVelocity = snap.linearVelocity;
+            _targetAngularVelocity = snap.angularVelocity;
+            _targetParent = snap.parent;
         }
 
         private void HermiteInterpolate(TimestampedSnapshot a, TimestampedSnapshot b, float dt, float t)
@@ -552,79 +578,149 @@ namespace PurrNet
             float h10 = t3 - 2f * t2 + t;
             float h01 = -2f * t3 + 3f * t2;
             float h11 = t3 - t2;
+            
+            if (a.parent == b.parent)
+            {
+                _targetPosition = h00 * a.position
+                                + h10 * a.linearVelocity * dt
+                                + h01 * b.position
+                                + h11 * b.linearVelocity * dt;
 
-            _targetPosition = h00 * a.position
-                            + h10 * a.linearVelocity * dt
-                            + h01 * b.position
-                            + h11 * b.linearVelocity * dt;
+                _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
+                _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
+                _targetAngularVelocity = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+                _targetParent = a.parent;
+            }
+            else
+            {
+                Vector3 aWorldPos = ToWorldPosition(a.position, a.parent);
+                Vector3 bWorldPos = ToWorldPosition(b.position, b.parent);
+                Vector3 aWorldLinVel = ToWorldLinearVelocity(a.linearVelocity, a.parent);
+                Vector3 bWorldLinVel = ToWorldLinearVelocity(b.linearVelocity, b.parent);
+                Quaternion aWorldRot = ToWorldRotation(a.rotation, a.parent);
+                Quaternion bWorldRot = ToWorldRotation(b.rotation, b.parent);
+                Vector3 aWorldAngVel = ToWorldAngularVelocity(a.angularVelocity, a.parent);
+                Vector3 bWorldAngVel = ToWorldAngularVelocity(b.angularVelocity, b.parent);
 
-            _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
-            _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
-            _targetAngularVelocity = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+                _targetPosition = h00 * aWorldPos
+                                + h10 * aWorldLinVel * dt
+                                + h01 * bWorldPos
+                                + h11 * bWorldLinVel * dt;
+
+                _targetLinearVelocity = Vector3.Lerp(aWorldLinVel, bWorldLinVel, t);
+                _targetRotation = Quaternion.Slerp(aWorldRot, bWorldRot, t);
+                _targetAngularVelocity = Vector3.Lerp(aWorldAngVel, bWorldAngVel, t);
+                _targetParent = null;
+            }
+        }
+
+        #endregion
+
+        #region Parent sync
+
+        /// <summary>Whether parent changes are synced through the hierarchy.</summary>
+        public bool syncParent => _syncParent;
+
+        /// <summary>Whether the owning client has authority over this rigidbody (client auth).</summary>
+        public bool ownerAuth => _ownerAuth;
+
+        /// <summary>True on the peer that currently controls this rigidbody (owner in client-auth, server in server-auth).</summary>
+        public bool isController => IsController(_ownerAuth);
+
+        /// <summary>
+        /// Suspends <see cref="OnTransformParentChanged"/> from forwarding local parent changes
+        /// to the hierarchy. Called by the hierarchy module around applying a remote parent
+        /// change so we don't echo it back as our own outgoing change.
+        /// </summary>
+        public void StartIgnoringParentChanges()
+        {
+            _isIgnoringParentChanges = true;
+        }
+
+        /// <summary>Re-enables <see cref="OnTransformParentChanged"/> forwarding.</summary>
+        public void StopIgnoringParentChanges()
+        {
+            _isIgnoringParentChanges = false;
+        }
+
+        private void OnTransformParentChanged()
+        {
+            if (!isSpawned)
+                return;
+
+            if (_isIgnoringParentChanges)
+                return;
+
+            if (!_syncParent)
+                return;
+
+            if (networkManager.TryGetModule<HierarchyFactory>(isServer, out var factory) &&
+                factory.TryGetHierarchy(sceneId, out var hierarchy))
+            {
+                hierarchy.OnParentChanged(this, transform.parent);
+            }
         }
 
         #endregion
 
         #region Helpers
 
-        private Transform _syncParent
+        /// <summary>
+        /// Returns the parent this controller will tag outgoing snapshots with, or null if the
+        /// outgoing data should be world-space. Only returns non-null when <see cref="_space"/>
+        /// is Local AND the immediate parent transform has a NetworkIdentity. otherwise the
+        /// receiver cannot reliably resolve the same reference frame.
+        /// </summary>
+        private NetworkIdentity GetSyncParentIdentity()
         {
-            get
-            {
-                if (_space != RigidbodyTransformSpace.Local)
-                    return null;
-                return transform.parent;
-            }
+            if (_space != RigidbodyTransformSpace.Local)
+                return null;
+            var parentTrs = transform.parent;
+            if (!parentTrs)
+                return null;
+            return parentTrs.GetComponent<NetworkIdentity>();
         }
 
-        private Vector3 ReadPosition()
+        private Vector3 ReadPosition(Transform parent)
         {
-            var p = _syncParent;
-            return p ? p.InverseTransformPoint(_rigidbody.position) : _rigidbody.position;
+            return parent ? parent.InverseTransformPoint(_rigidbody.position) : _rigidbody.position;
         }
 
-        private Quaternion ReadRotation()
+        private Quaternion ReadRotation(Transform parent)
         {
-            var p = _syncParent;
-            return p ? Quaternion.Inverse(p.rotation) * _rigidbody.rotation : _rigidbody.rotation;
+            return parent ? Quaternion.Inverse(parent.rotation) * _rigidbody.rotation : _rigidbody.rotation;
         }
 
-        private Vector3 ReadLinearVelocity()
+        private Vector3 ReadLinearVelocity(Transform parent)
         {
             var v = GetLinearVelocity();
-            var p = _syncParent;
-            return p ? Quaternion.Inverse(p.rotation) * v : v;
+            return parent ? Quaternion.Inverse(parent.rotation) * v : v;
         }
 
-        private Vector3 ReadAngularVelocity()
+        private Vector3 ReadAngularVelocity(Transform parent)
         {
             var v = _rigidbody.angularVelocity;
-            var p = _syncParent;
-            return p ? Quaternion.Inverse(p.rotation) * v : v;
+            return parent ? Quaternion.Inverse(parent.rotation) * v : v;
         }
 
-        private Vector3 TargetPosToWorld(Vector3 pos)
+        private static Vector3 ToWorldPosition(Vector3 pos, Transform parent)
         {
-            var p = _syncParent;
-            return p ? p.TransformPoint(pos) : pos;
+            return parent ? parent.TransformPoint(pos) : pos;
         }
 
-        private Quaternion TargetRotToWorld(Quaternion rot)
+        private static Quaternion ToWorldRotation(Quaternion rot, Transform parent)
         {
-            var p = _syncParent;
-            return p ? p.rotation * rot : rot;
+            return parent ? parent.rotation * rot : rot;
         }
 
-        private Vector3 TargetLinVelToWorld(Vector3 v)
+        private static Vector3 ToWorldLinearVelocity(Vector3 v, Transform parent)
         {
-            var p = _syncParent;
-            return p ? p.rotation * v : v;
+            return parent ? parent.rotation * v : v;
         }
 
-        private Vector3 TargetAngVelToWorld(Vector3 v)
+        private static Vector3 ToWorldAngularVelocity(Vector3 v, Transform parent)
         {
-            var p = _syncParent;
-            return p ? p.rotation * v : v;
+            return parent ? parent.rotation * v : v;
         }
 
         private Vector3 GetLinearVelocity()
@@ -681,12 +777,15 @@ namespace PurrNet
 #endif
         }
 
-        private bool HasStateChanged()
+        private bool HasStateChanged(Transform parent)
         {
-            float positionDelta = Vector3.Distance(ReadPosition(), _lastSyncedPosition);
-            float rotationDelta = Quaternion.Angle(ReadRotation(), _lastSyncedRotation);
-            float linearVelocityDelta = Vector3.Distance(ReadLinearVelocity(), _lastSyncedLinearVelocity);
-            float angularVelocityDelta = Vector3.Distance(ReadAngularVelocity(), _lastSyncedAngularVelocity);
+            if (parent != _lastSyncedParent)
+                return true;
+
+            float positionDelta = Vector3.Distance(ReadPosition(parent), _lastSyncedPosition);
+            float rotationDelta = Quaternion.Angle(ReadRotation(parent), _lastSyncedRotation);
+            float linearVelocityDelta = Vector3.Distance(ReadLinearVelocity(parent), _lastSyncedLinearVelocity);
+            float angularVelocityDelta = Vector3.Distance(ReadAngularVelocity(parent), _lastSyncedAngularVelocity);
 
             return positionDelta > _positionChangeThreshold
                 || rotationDelta > _rotationChangeThreshold
@@ -937,15 +1036,18 @@ namespace PurrNet
 
             PushSnapshot(data);
 
-            _rigidbody.MovePosition(TargetPosToWorld(data.position));
-            _rigidbody.MoveRotation(NormalizeQuaternion(TargetRotToWorld(data.rotation)));
-            SetLinearVelocity(TargetLinVelToWorld(data.linearVelocity));
-            _rigidbody.angularVelocity = TargetAngVelToWorld(data.angularVelocity);
+            var parentTrs = data.parent ? data.parent.transform : null;
+
+            _rigidbody.MovePosition(ToWorldPosition(data.position, parentTrs));
+            _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
+            SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
+            _rigidbody.angularVelocity = ToWorldAngularVelocity(data.angularVelocity, parentTrs);
 
             _targetPosition = data.position;
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
+            _targetParent = parentTrs;
         }
 
         [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true)]
@@ -984,15 +1086,18 @@ namespace PurrNet
             _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
 
-            _rigidbody.MovePosition(TargetPosToWorld(data.position));
-            _rigidbody.MoveRotation(NormalizeQuaternion(TargetRotToWorld(data.rotation)));
-            SetLinearVelocity(TargetLinVelToWorld(data.linearVelocity));
-            _rigidbody.angularVelocity = TargetAngVelToWorld(data.angularVelocity);
+            var parentTrs = data.parent ? data.parent.transform : null;
+
+            _rigidbody.MovePosition(ToWorldPosition(data.position, parentTrs));
+            _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
+            SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
+            _rigidbody.angularVelocity = ToWorldAngularVelocity(data.angularVelocity, parentTrs);
 
             _targetPosition = data.position;
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
+            _targetParent = parentTrs;
 
             ClearBuffer();
             _hasPendingTeleport = false;
@@ -1047,12 +1152,16 @@ namespace PurrNet
 
         private void BroadcastTeleport()
         {
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
             Teleport(new RigidbodyTeleportData
             {
-                position = ReadPosition(),
-                rotation = ReadRotation(),
-                linearVelocity = ReadLinearVelocity(),
-                angularVelocity = ReadAngularVelocity()
+                position = ReadPosition(parentTrs),
+                rotation = ReadRotation(parentTrs),
+                linearVelocity = ReadLinearVelocity(parentTrs),
+                angularVelocity = ReadAngularVelocity(parentTrs),
+                parent = parentIdentity
             });
         }
 

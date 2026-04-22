@@ -512,12 +512,16 @@ namespace PurrNet.Modules
             var nt = identity.GetComponent<NetworkTransform>();
             if (nt) nt.StartIgnoringParentChanges();
 
+            var nrb = identity.GetComponent<NetworkRigidbody>();
+            if (nrb) nrb.StartIgnoringParentChanges();
+
             if (parent)
                 HierarchyPool.WalkThePath(parent.transform, idTrs, path, worldPositionStays);
             else
                 idTrs.SetParent(null, worldPositionStays);
 
             if (nt) nt.StopIgnoringParentChanges();
+            if (nrb) nrb.StopIgnoringParentChanges();
 
             if (parent)
                 parent.AddDirectChild(first);
