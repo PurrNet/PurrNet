@@ -89,18 +89,6 @@ namespace PurrNet
             }
         }
 
-        void OnEnable()
-        {
-            if (_animator && !_animator.enabled)
-                _animator.enabled = true;
-        }
-
-        void OnDisable()
-        {
-            if (_animator && _animator.enabled)
-                _animator.enabled = false;
-        }
-
         private void Reset()
         {
             _animator = GetComponent<Animator>();
