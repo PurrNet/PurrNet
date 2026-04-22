@@ -1,3 +1,10 @@
+# [1.20.0-beta.94](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.93...v1.20.0-beta.94) (2026-04-22)
+
+
+### Bug Fixes
+
+* cache the TickModule when subscribing inside the SyncVar and use it for unsubscribing for consistency ([7e14941](https://github.com/PurrNet/PurrNet/commit/7e14941bbd4019f0090e500373a456e97fdfdf0c))
+
 # [1.20.0-beta.93](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.92...v1.20.0-beta.93) (2026-04-21)
 
 
