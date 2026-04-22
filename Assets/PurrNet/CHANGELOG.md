@@ -1,3 +1,10 @@
+# [1.20.0-beta.96](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.95...v1.20.0-beta.96) (2026-04-22)
+
+
+### Bug Fixes
+
+* DisposableList ToString null exception ([ed7de11](https://github.com/PurrNet/PurrNet/commit/ed7de11fc7b760487ee987688ba1c7f43e9f81bf))
+
 # [1.20.0-beta.95](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.94...v1.20.0-beta.95) (2026-04-22)
 
 
