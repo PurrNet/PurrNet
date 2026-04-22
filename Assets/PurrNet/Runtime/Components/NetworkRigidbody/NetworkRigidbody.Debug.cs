@@ -22,14 +22,17 @@ namespace PurrNet
 
             if (!isController && isSpawned)
             {
+                Vector3 worldTargetPos = TargetPosToWorld(_targetPosition);
+                Quaternion worldTargetRot = TargetRotToWorld(_targetRotation);
+
                 Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
-                Gizmos.DrawWireSphere(_latestRawSnapshotPos, 0.1f);
+                Gizmos.DrawWireSphere(TargetPosToWorld(_latestRawSnapshotPos), 0.1f);
 
                 Gizmos.color = Color.red;
-                Gizmos.DrawLine(_rigidbody.position, _targetPosition);
+                Gizmos.DrawLine(_rigidbody.position, worldTargetPos);
 
                 Gizmos.color = new Color(1f, 0.5f, 0f);
-                Gizmos.matrix = Matrix4x4.TRS(_targetPosition, NormalizeQuaternion(_targetRotation), Vector3.one * 0.3f);
+                Gizmos.matrix = Matrix4x4.TRS(worldTargetPos, NormalizeQuaternion(worldTargetRot), Vector3.one * 0.3f);
                 Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
                 Gizmos.matrix = Matrix4x4.identity;
             }
@@ -43,16 +46,19 @@ namespace PurrNet
             if (_rigidbody == null || !isSpawned || IsController(_ownerAuth))
                 return;
 
+            Vector3 worldPrePred = TargetPosToWorld(_prePredictionTarget);
+            Vector3 worldTargetPos = TargetPosToWorld(_targetPosition);
+
             Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(_prePredictionTarget, 0.15f);
+            Gizmos.DrawWireSphere(worldPrePred, 0.15f);
 
             Gizmos.color = Color.magenta;
-            Gizmos.DrawWireSphere(_targetPosition, 0.15f);
+            Gizmos.DrawWireSphere(worldTargetPos, 0.15f);
 
             if (_predictionFactor > 0f)
             {
                 Gizmos.color = Color.magenta;
-                Gizmos.DrawLine(_prePredictionTarget, _targetPosition);
+                Gizmos.DrawLine(worldPrePred, worldTargetPos);
             }
         }
 
@@ -85,8 +91,8 @@ namespace PurrNet
             screenPos.y = Screen.height - screenPos.y;
 
             bool isController = IsController(_ownerAuth);
-            float posError = Vector3.Distance(_rigidbody.position, _targetPosition);
-            float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
+            float posError = Vector3.Distance(_rigidbody.position, TargetPosToWorld(_targetPosition));
+            float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(TargetRotToWorld(_targetRotation)));
             float velocityMagnitude = GetLinearVelocity().magnitude;
             float angVelMagnitude = _rigidbody.angularVelocity.magnitude;
 

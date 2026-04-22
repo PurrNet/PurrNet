@@ -4,6 +4,20 @@ using UnityEngine;
 
 namespace PurrNet
 {
+    public enum RigidbodyTransformSpace : byte
+    {
+        /// <summary>
+        /// Sync position and rotation relative to the current parent transform. Use when the rigidbody
+        /// may be parented to a moving object, but also perfectly valid for world sync when not parented.
+        /// </summary>
+        Local = 0,
+
+        /// <summary>
+        /// Sync raw world-space position and rotation, regardless of parent.
+        /// </summary>
+        World = 1
+    }
+
     public struct AppliedForce
     {
         public Vector3 force;
@@ -53,6 +67,9 @@ namespace PurrNet
         [Header("Authority")]
         [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
         [SerializeField] private bool _ownerAuth;
+
+        [Tooltip("Space used to sync position and rotation. Local aligns relative to the current parent (recommended, catches parenting cases). World syncs raw world coordinates.")]
+        [SerializeField] private RigidbodyTransformSpace _space = RigidbodyTransformSpace.Local;
 
         [Header("Settings Override")]
         [Tooltip("Optional. When assigned, this asset's virtual methods control all correction decisions. The fields below are passed as defaults via the correction context.")]
@@ -141,10 +158,10 @@ namespace PurrNet
         {
             base.OnSpawned();
 
-            var pos = _rigidbody.position;
-            var rot = _rigidbody.rotation;
-            var linVel = GetLinearVelocity();
-            var angVel = _rigidbody.angularVelocity;
+            var pos = ReadPosition();
+            var rot = ReadRotation();
+            var linVel = ReadLinearVelocity();
+            var angVel = ReadAngularVelocity();
 
             _targetPosition = pos;
             _targetRotation = rot;
@@ -188,28 +205,33 @@ namespace PurrNet
             if (!HasStateChanged() && !ShouldSyncWhenStopped())
                 return;
 
+            var pos = ReadPosition();
+            var rot = ReadRotation();
+            var linVel = ReadLinearVelocity();
+            var angVel = ReadAngularVelocity();
+
             var stateData = new RigidbodyStateData
             {
-                position = _rigidbody.position,
-                rotation = _rigidbody.rotation,
-                linearVelocity = GetLinearVelocity(),
-                angularVelocity = _rigidbody.angularVelocity
+                position = pos,
+                rotation = rot,
+                linearVelocity = linVel,
+                angularVelocity = angVel
             };
 
-            _targetPosition = _rigidbody.position;
-            _targetRotation = _rigidbody.rotation;
-            _targetLinearVelocity = GetLinearVelocity();
-            _targetAngularVelocity = _rigidbody.angularVelocity;
+            _targetPosition = pos;
+            _targetRotation = rot;
+            _targetLinearVelocity = linVel;
+            _targetAngularVelocity = angVel;
 
             if (isServer)
                 SyncState(stateData);
             else
                 SendStateToServer(stateData);
 
-            _lastSyncedPosition = _rigidbody.position;
-            _lastSyncedRotation = _rigidbody.rotation;
-            _lastSyncedLinearVelocity = GetLinearVelocity();
-            _lastSyncedAngularVelocity = _rigidbody.angularVelocity;
+            _lastSyncedPosition = pos;
+            _lastSyncedRotation = rot;
+            _lastSyncedLinearVelocity = linVel;
+            _lastSyncedAngularVelocity = angVel;
         }
 
         private void NonControllerTick()
@@ -237,12 +259,17 @@ namespace PurrNet
             if (!isFullySpawned || IsController(_ownerAuth) || _hasPendingTeleport)
                 return;
 
-            float positionError = Vector3.Distance(_rigidbody.position, _targetPosition);
-            float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(_targetRotation));
+            Vector3 worldTargetPos = TargetPosToWorld(_targetPosition);
+            Quaternion worldTargetRot = TargetRotToWorld(_targetRotation);
+            Vector3 worldTargetLinVel = TargetLinVelToWorld(_targetLinearVelocity);
+            Vector3 worldTargetAngVel = TargetAngVelToWorld(_targetAngularVelocity);
+
+            float positionError = Vector3.Distance(_rigidbody.position, worldTargetPos);
+            float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(worldTargetRot));
 
             if (_settingsOverride)
             {
-                var ctx = BuildCorrectionContext(positionError, rotationError);
+                var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, rotationError);
 
                 if (_settingsOverride.ShouldTeleport(in ctx))
                 {
@@ -255,8 +282,8 @@ namespace PurrNet
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
-                    _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
-                    _rigidbody.angularVelocity = _targetAngularVelocity;
+                    _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
+                    _rigidbody.angularVelocity = worldTargetAngVel;
                 }
 
                 _settingsOverride.ApplyPositionCorrection(in ctx);
@@ -281,7 +308,7 @@ namespace PurrNet
                 if (positionError >= _hardSnapDistance)
                 {
                     _lastCorrectionReason = "Hard (Distance)";
-                    HardCorrect();
+                    HardCorrect(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel);
                     return;
                 }
 
@@ -289,8 +316,8 @@ namespace PurrNet
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
-                    _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
-                    _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : _targetAngularVelocity;
+                    _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
+                    _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel;
                 }
 
                 bool correctRotation = !hardSnapRotation
@@ -303,11 +330,11 @@ namespace PurrNet
                         ? "Position+Rotation"
                         : positionError > 0.001f ? "Position" : "No";
 
-                ApplyCorrection(positionError, correctRotation);
+                ApplyCorrection(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, correctRotation);
             }
         }
 
-        private void ApplyCorrection(float positionError, bool correctRotation)
+        private void ApplyCorrection(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel, float positionError, bool correctRotation)
         {
             float m = _rigidbody.mass;
             float range = Mathf.Max(_correctionRange, 0.01f);
@@ -315,8 +342,8 @@ namespace PurrNet
 
             {
                 float w = _positionStrength;
-                Vector3 posError = _targetPosition - _rigidbody.position;
-                Vector3 velError = _targetLinearVelocity - GetLinearVelocity();
+                Vector3 posError = worldTargetPos - _rigidbody.position;
+                Vector3 velError = worldTargetLinVel - GetLinearVelocity();
 
                 Vector3 positionalPull = posError * (w * w) * ratio;
                 Vector3 velocityDamping = velError * (2f * w);
@@ -329,7 +356,7 @@ namespace PurrNet
             if (correctRotation)
             {
                 float w = _rotationStrength;
-                Quaternion rotError = NormalizeQuaternion(_targetRotation) * Quaternion.Inverse(_rigidbody.rotation);
+                Quaternion rotError = NormalizeQuaternion(worldTargetRot) * Quaternion.Inverse(_rigidbody.rotation);
                 rotError.ToAngleAxis(out float angle, out Vector3 axis);
 
                 if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
@@ -338,7 +365,7 @@ namespace PurrNet
                 if (angle > 180f) angle -= 360f;
 
                 Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-                Vector3 angVelError = _targetAngularVelocity - _rigidbody.angularVelocity;
+                Vector3 angVelError = worldTargetAngVel - _rigidbody.angularVelocity;
                 Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
 
                 float maxTorque = w * w * m;
@@ -350,15 +377,15 @@ namespace PurrNet
             }
         }
 
-        private RigidbodyCorrectionContext BuildCorrectionContext(float positionError, float rotationError)
+        private RigidbodyCorrectionContext BuildCorrectionContext(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel, float positionError, float rotationError)
         {
             return new RigidbodyCorrectionContext
             {
                 rigidbody = _rigidbody,
-                targetPosition = _targetPosition,
-                targetRotation = _targetRotation,
-                targetLinearVelocity = _targetLinearVelocity,
-                targetAngularVelocity = _targetAngularVelocity,
+                targetPosition = worldTargetPos,
+                targetRotation = worldTargetRot,
+                targetLinearVelocity = worldTargetLinVel,
+                targetAngularVelocity = worldTargetAngVel,
                 positionError = positionError,
                 rotationError = rotationError,
                 drag = GetDrag(),
@@ -371,12 +398,12 @@ namespace PurrNet
             };
         }
 
-        private void HardCorrect()
+        private void HardCorrect(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel)
         {
-            _rigidbody.MovePosition(_targetPosition);
-            _rigidbody.MoveRotation(NormalizeQuaternion(_targetRotation));
-            SetLinearVelocity(_resetLinearVelocityOnSnap ? Vector3.zero : _targetLinearVelocity);
-            _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : _targetAngularVelocity;
+            _rigidbody.MovePosition(worldTargetPos);
+            _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
+            SetLinearVelocity(_resetLinearVelocityOnSnap ? Vector3.zero : worldTargetLinVel);
+            _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel;
         }
 
         private static Quaternion NormalizeQuaternion(Quaternion q)
@@ -540,6 +567,66 @@ namespace PurrNet
 
         #region Helpers
 
+        private Transform _syncParent
+        {
+            get
+            {
+                if (_space != RigidbodyTransformSpace.Local)
+                    return null;
+                return transform.parent;
+            }
+        }
+
+        private Vector3 ReadPosition()
+        {
+            var p = _syncParent;
+            return p ? p.InverseTransformPoint(_rigidbody.position) : _rigidbody.position;
+        }
+
+        private Quaternion ReadRotation()
+        {
+            var p = _syncParent;
+            return p ? Quaternion.Inverse(p.rotation) * _rigidbody.rotation : _rigidbody.rotation;
+        }
+
+        private Vector3 ReadLinearVelocity()
+        {
+            var v = GetLinearVelocity();
+            var p = _syncParent;
+            return p ? Quaternion.Inverse(p.rotation) * v : v;
+        }
+
+        private Vector3 ReadAngularVelocity()
+        {
+            var v = _rigidbody.angularVelocity;
+            var p = _syncParent;
+            return p ? Quaternion.Inverse(p.rotation) * v : v;
+        }
+
+        private Vector3 TargetPosToWorld(Vector3 pos)
+        {
+            var p = _syncParent;
+            return p ? p.TransformPoint(pos) : pos;
+        }
+
+        private Quaternion TargetRotToWorld(Quaternion rot)
+        {
+            var p = _syncParent;
+            return p ? p.rotation * rot : rot;
+        }
+
+        private Vector3 TargetLinVelToWorld(Vector3 v)
+        {
+            var p = _syncParent;
+            return p ? p.rotation * v : v;
+        }
+
+        private Vector3 TargetAngVelToWorld(Vector3 v)
+        {
+            var p = _syncParent;
+            return p ? p.rotation * v : v;
+        }
+
         private Vector3 GetLinearVelocity()
         {
 #if UNITY_6000_0_OR_NEWER
@@ -596,10 +683,10 @@ namespace PurrNet
 
         private bool HasStateChanged()
         {
-            float positionDelta = Vector3.Distance(_rigidbody.position, _lastSyncedPosition);
-            float rotationDelta = Quaternion.Angle(_rigidbody.rotation, _lastSyncedRotation);
-            float linearVelocityDelta = Vector3.Distance(GetLinearVelocity(), _lastSyncedLinearVelocity);
-            float angularVelocityDelta = Vector3.Distance(_rigidbody.angularVelocity, _lastSyncedAngularVelocity);
+            float positionDelta = Vector3.Distance(ReadPosition(), _lastSyncedPosition);
+            float rotationDelta = Quaternion.Angle(ReadRotation(), _lastSyncedRotation);
+            float linearVelocityDelta = Vector3.Distance(ReadLinearVelocity(), _lastSyncedLinearVelocity);
+            float angularVelocityDelta = Vector3.Distance(ReadAngularVelocity(), _lastSyncedAngularVelocity);
 
             return positionDelta > _positionChangeThreshold
                 || rotationDelta > _rotationChangeThreshold
@@ -850,10 +937,10 @@ namespace PurrNet
 
             PushSnapshot(data);
 
-            _rigidbody.MovePosition(data.position);
-            _rigidbody.MoveRotation(NormalizeQuaternion(data.rotation));
-            SetLinearVelocity(data.linearVelocity);
-            _rigidbody.angularVelocity = data.angularVelocity;
+            _rigidbody.MovePosition(TargetPosToWorld(data.position));
+            _rigidbody.MoveRotation(NormalizeQuaternion(TargetRotToWorld(data.rotation)));
+            SetLinearVelocity(TargetLinVelToWorld(data.linearVelocity));
+            _rigidbody.angularVelocity = TargetAngVelToWorld(data.angularVelocity);
 
             _targetPosition = data.position;
             _targetRotation = data.rotation;
@@ -897,10 +984,10 @@ namespace PurrNet
             _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
 
-            _rigidbody.MovePosition(data.position);
-            _rigidbody.MoveRotation(NormalizeQuaternion(data.rotation));
-            SetLinearVelocity(data.linearVelocity);
-            _rigidbody.angularVelocity = data.angularVelocity;
+            _rigidbody.MovePosition(TargetPosToWorld(data.position));
+            _rigidbody.MoveRotation(NormalizeQuaternion(TargetRotToWorld(data.rotation)));
+            SetLinearVelocity(TargetLinVelToWorld(data.linearVelocity));
+            _rigidbody.angularVelocity = TargetAngVelToWorld(data.angularVelocity);
 
             _targetPosition = data.position;
             _targetRotation = data.rotation;
@@ -962,10 +1049,10 @@ namespace PurrNet
         {
             Teleport(new RigidbodyTeleportData
             {
-                position = _rigidbody.position,
-                rotation = _rigidbody.rotation,
-                linearVelocity = GetLinearVelocity(),
-                angularVelocity = _rigidbody.angularVelocity
+                position = ReadPosition(),
+                rotation = ReadRotation(),
+                linearVelocity = ReadLinearVelocity(),
+                angularVelocity = ReadAngularVelocity()
             });
         }
 
