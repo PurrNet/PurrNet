@@ -108,13 +108,16 @@ namespace PurrNet
             }
         }
 
+        private TickManager _subscribedTicker;
+
         private void SubscribeToTickManager()
         {
             if (_isSubscribedToTickManager)
                 return;
 
             _isSubscribedToTickManager = true;
-            networkManager.tickModule.onTick += OnTick;
+            _subscribedTicker = networkManager.tickModule;
+            _subscribedTicker.onTick += OnTick;
         }
 
         private void UnsubscribeFromTickManager()
@@ -123,7 +126,7 @@ namespace PurrNet
                 return;
 
             _isSubscribedToTickManager = false;
-            networkManager.tickModule.onTick -= OnTick;
+            _subscribedTicker.onTick -= OnTick;
         }
 
         public override void OnObserverAdded(PlayerID player, bool isSpawner)
