@@ -1,3 +1,12 @@
+# [1.20.0-beta.95](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.94...v1.20.0-beta.95) (2026-04-22)
+
+
+### Bug Fixes
+
+* Add local syncing to network RB ([8c2faf1](https://github.com/PurrNet/PurrNet/commit/8c2faf12b8b39f4daa9d4e571be99c99cf672251))
+* Network rigidbody local space scale issue ([2c9ed3b](https://github.com/PurrNet/PurrNet/commit/2c9ed3b59c45c852dca5248595e08f6874b06cbb))
+* Parent syncing added to Network Rigidbody ([c4a0a89](https://github.com/PurrNet/PurrNet/commit/c4a0a890b4ce862248941f7d902c3d5ba835df5b))
+
 # [1.20.0-beta.94](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.93...v1.20.0-beta.94) (2026-04-22)
 
 
