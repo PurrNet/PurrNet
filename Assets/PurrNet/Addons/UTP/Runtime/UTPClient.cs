@@ -497,13 +497,22 @@ namespace PurrNet.UTP
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
         private void ProcessFragmentPacket(byte[] packetData, int packetLength)
         {
-            if (packetLength < 2)
+            if (packetData == null)
+                return;
+
+            if (packetLength < 2 || packetLength > packetData.Length)
                 return;
 
             byte fragmentType = packetData[1];
             if (fragmentType == FRAGMENT_TYPE_DATA)
             {
                 ProcessFragmentData(packetData, packetLength);
+                return;
+            }
+
+            if (fragmentType == FRAGMENT_TYPE_NACK || fragmentType == FRAGMENT_TYPE_ACK)
+            {
+                // NACK/ACK are sender control packets, not payload data to reassemble.
                 return;
             }
 
@@ -524,7 +533,7 @@ namespace PurrNet.UTP
             byte fragmentIndex = packetData[7];
             int payloadSize = packetLength - FRAGMENT_DATA_HEADER_SIZE;
 
-            if (totalFragments == 0 || fragmentIndex >= totalFragments)
+            if (totalFragments == 0 || totalFragments > MAX_FRAGMENTS_PER_PACKET || fragmentIndex >= totalFragments)
                 return;
 
             if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
@@ -551,12 +560,16 @@ namespace PurrNet.UTP
                 };
             }
 
+            int fragmentIdx = fragmentIndex;
+            if (fragmentIdx < 0 || fragmentIdx >= message.fragments.Length || fragmentIdx >= message.fragmentSizes.Length)
+                return;
+
             // Store fragment if not already received
-            if (message.fragments[fragmentIndex] == null)
+            if (message.fragments[fragmentIdx] == null)
             {
-                message.fragments[fragmentIndex] = new byte[payloadSize];
-                Buffer.BlockCopy(packetData, FRAGMENT_DATA_HEADER_SIZE, message.fragments[fragmentIndex], 0, payloadSize);
-                message.fragmentSizes[fragmentIndex] = payloadSize;
+                message.fragments[fragmentIdx] = new byte[payloadSize];
+                Buffer.BlockCopy(packetData, FRAGMENT_DATA_HEADER_SIZE, message.fragments[fragmentIdx], 0, payloadSize);
+                message.fragmentSizes[fragmentIdx] = payloadSize;
                 message.receivedCount++;
             }
 
@@ -573,7 +586,12 @@ namespace PurrNet.UTP
             {
                 int totalSize = 0;
                 for (int i = 0; i < totalFragments; i++)
+                {
+                    if (message.fragments[i] == null)
+                        return;
+
                     totalSize += message.fragmentSizes[i];
+                }
 
                 MakeSureBufferCanFit(totalSize);
                 int offset = 0;
@@ -599,7 +617,7 @@ namespace PurrNet.UTP
             uint fragmentId = (uint)packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
             int payloadSize = packetLength - FRAGMENT_LEGACY_HEADER_SIZE;
 
-            if (totalFragments == 0 || fragmentIndex >= totalFragments)
+            if (totalFragments == 0 || totalFragments > MAX_FRAGMENTS_PER_PACKET || fragmentIndex >= totalFragments)
                 return;
 
             if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
@@ -626,11 +644,15 @@ namespace PurrNet.UTP
                 };
             }
 
-            if (message.fragments[fragmentIndex] == null)
+            int fragmentIdx = fragmentIndex;
+            if (fragmentIdx < 0 || fragmentIdx >= message.fragments.Length || fragmentIdx >= message.fragmentSizes.Length)
+                return;
+
+            if (message.fragments[fragmentIdx] == null)
             {
-                message.fragments[fragmentIndex] = new byte[payloadSize];
-                Buffer.BlockCopy(packetData, FRAGMENT_LEGACY_HEADER_SIZE, message.fragments[fragmentIndex], 0, payloadSize);
-                message.fragmentSizes[fragmentIndex] = payloadSize;
+                message.fragments[fragmentIdx] = new byte[payloadSize];
+                Buffer.BlockCopy(packetData, FRAGMENT_LEGACY_HEADER_SIZE, message.fragments[fragmentIdx], 0, payloadSize);
+                message.fragmentSizes[fragmentIdx] = payloadSize;
                 message.receivedCount++;
             }
 
@@ -640,7 +662,12 @@ namespace PurrNet.UTP
             {
                 int totalSize = 0;
                 for (int i = 0; i < totalFragments; i++)
+                {
+                    if (message.fragments[i] == null)
+                        return;
+
                     totalSize += message.fragmentSizes[i];
+                }
 
                 MakeSureBufferCanFit(totalSize);
                 int offset = 0;
@@ -662,8 +689,15 @@ namespace PurrNet.UTP
             if (now - message.lastNackTime < FRAGMENT_REQUEST_INTERVAL)
                 return;
 
+            if (message.fragments == null || message.fragments.Length == 0)
+                return;
+
+            int fragmentCount = Math.Min((int)totalFragments, message.fragments.Length);
+            if (fragmentCount <= 0)
+                return;
+
             var missingIndices = new List<byte>();
-            for (byte i = 0; i < totalFragments; i++)
+            for (byte i = 0; i < fragmentCount; i++)
             {
                 if (message.fragments[i] == null)
                     missingIndices.Add(i);
