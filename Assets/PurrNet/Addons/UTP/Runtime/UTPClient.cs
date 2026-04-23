@@ -70,9 +70,9 @@ namespace PurrNet.UTP
         {
             public byte totalFragments;
             public byte[][] packets;
+            public float[] fragmentLastResendTimes;
             public Channel channel;
             public float creationTime;
-            public float lastResendTime;
         }
 
         private readonly Dictionary<uint, OutboundFragmentedMessage> _outboundFragmentBuffer = new Dictionary<uint, OutboundFragmentedMessage>();
@@ -368,9 +368,9 @@ namespace PurrNet.UTP
             {
                 totalFragments = (byte)totalFragments,
                 packets = sentPackets,
+                fragmentLastResendTimes = new float[totalFragments],
                 channel = channel,
                 creationTime = UnityEngine.Time.realtimeSinceStartup,
-                lastResendTime = 0f
             };
 
             FlushPendingFragmentSends();
@@ -734,8 +734,6 @@ namespace PurrNet.UTP
                 return;
 
             float now = UnityEngine.Time.realtimeSinceStartup;
-            if (sentMessage.lastResendTime > 0f && now - sentMessage.lastResendTime < FRAGMENT_RESEND_COOLDOWN)
-                return;
 
             int enqueuedCount = 0;
             int resendLimit = Math.Min(missingCount, MAX_FRAGMENT_SENDS_PER_UPDATE);
@@ -745,17 +743,23 @@ namespace PurrNet.UTP
                 if (fragmentIndex >= sentMessage.totalFragments)
                     continue;
 
+                if (sentMessage.fragmentLastResendTimes == null || fragmentIndex >= sentMessage.fragmentLastResendTimes.Length)
+                    continue;
+
+                if (sentMessage.fragmentLastResendTimes[fragmentIndex] > 0f && now - sentMessage.fragmentLastResendTimes[fragmentIndex] < FRAGMENT_RESEND_COOLDOWN)
+                    continue;
+
                 byte[] packet = sentMessage.packets[fragmentIndex];
                 if (packet == null)
                     continue;
 
                 _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packet.Length), sentMessage.channel));
+                sentMessage.fragmentLastResendTimes[fragmentIndex] = now;
                 enqueuedCount++;
             }
 
             if (enqueuedCount > 0)
             {
-                sentMessage.lastResendTime = now;
                 _outboundFragmentBuffer[fragmentId] = sentMessage;
                 FlushPendingFragmentSends();
             }
