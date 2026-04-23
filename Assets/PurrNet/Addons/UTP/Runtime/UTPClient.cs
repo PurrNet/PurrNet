@@ -51,6 +51,7 @@ namespace PurrNet.UTP
         private readonly Dictionary<uint, FragmentedMessage> _fragmentBuffer = new Dictionary<uint, FragmentedMessage>();
         private uint _nextFragmentId = 1;
         private const float FRAGMENT_TIMEOUT = 60f;
+        private const float OUTBOUND_FRAGMENT_TIMEOUT = 60f;
         private const float FRAGMENT_REQUEST_INTERVAL = 0.25f;
         private const int MAX_MISSING_INDICES_PER_REQUEST = 64;
         private const byte FRAGMENT_MAGIC = 0xFF;
@@ -63,6 +64,18 @@ namespace PurrNet.UTP
         private const int FRAGMENT_LEGACY_HEADER_SIZE = 7; // 1 (magic) + 1 (count) + 1 (index) + 4 (id)
         private const int MAX_FRAGMENTS_PER_PACKET = 255; // uint8 limit for fragment count
         private const int MAX_FRAGMENT_SENDS_PER_UPDATE = 16;
+        private const float FRAGMENT_RESEND_COOLDOWN = 0.05f;
+
+        private class OutboundFragmentedMessage
+        {
+            public byte totalFragments;
+            public byte[][] packets;
+            public Channel channel;
+            public float creationTime;
+            public float lastResendTime;
+        }
+
+        private readonly Dictionary<uint, OutboundFragmentedMessage> _outboundFragmentBuffer = new Dictionary<uint, OutboundFragmentedMessage>();
 
         private struct PendingFragmentSend
         {
@@ -327,6 +340,8 @@ namespace PurrNet.UTP
                 return;
             }
 
+            byte[][] sentPackets = new byte[totalFragments][];
+
             for (int i = 0; i < totalFragments; i++)
             {
                 int offset = i * maxPayloadSize;
@@ -344,9 +359,19 @@ namespace PurrNet.UTP
                 packet[7] = (byte)i;
 
                 Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_DATA_HEADER_SIZE, payloadSize);
+                sentPackets[i] = packet;
 
                 _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packetSize), channel));
             }
+
+            _outboundFragmentBuffer[fragmentId] = new OutboundFragmentedMessage
+            {
+                totalFragments = (byte)totalFragments,
+                packets = sentPackets,
+                channel = channel,
+                creationTime = UnityEngine.Time.realtimeSinceStartup,
+                lastResendTime = 0f
+            };
 
             FlushPendingFragmentSends();
         }
@@ -414,6 +439,7 @@ namespace PurrNet.UTP
         {
             _pendingFragmentSends.Clear();
             _fragmentBuffer.Clear();
+            _outboundFragmentBuffer.Clear();
         }
 #endif
 
@@ -442,6 +468,7 @@ namespace PurrNet.UTP
             FlushPendingFragmentSends();
 
             CleanupExpiredFragments();
+            CleanupExpiredOutboundFragments();
 
             NetworkEvent.Type cmd;
             while ((cmd = _driver.PopEventForConnection(_connection, out var stream)) != NetworkEvent.Type.Empty)
@@ -510,9 +537,15 @@ namespace PurrNet.UTP
                 return;
             }
 
-            if (fragmentType == FRAGMENT_TYPE_NACK || fragmentType == FRAGMENT_TYPE_ACK)
+            if (fragmentType == FRAGMENT_TYPE_NACK)
             {
-                // NACK/ACK are sender control packets, not payload data to reassemble.
+                ProcessFragmentResendRequest(packetData, packetLength);
+                return;
+            }
+
+            if (fragmentType == FRAGMENT_TYPE_ACK)
+            {
+                ProcessFragmentAck(packetData, packetLength);
                 return;
             }
 
@@ -683,6 +716,60 @@ namespace PurrNet.UTP
             }
         }
 
+        private void ProcessFragmentResendRequest(byte[] packetData, int packetLength)
+        {
+            if (packetLength < FRAGMENT_NACK_HEADER_SIZE)
+                return;
+
+            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            int missingCount = packetData[6];
+
+            if (missingCount <= 0)
+                return;
+
+            if (packetLength < FRAGMENT_NACK_HEADER_SIZE + missingCount)
+                return;
+
+            if (!_outboundFragmentBuffer.TryGetValue(fragmentId, out var sentMessage))
+                return;
+
+            float now = UnityEngine.Time.realtimeSinceStartup;
+            if (sentMessage.lastResendTime > 0f && now - sentMessage.lastResendTime < FRAGMENT_RESEND_COOLDOWN)
+                return;
+
+            int enqueuedCount = 0;
+            int resendLimit = Math.Min(missingCount, MAX_FRAGMENT_SENDS_PER_UPDATE);
+            for (int i = 0; i < resendLimit; i++)
+            {
+                byte fragmentIndex = packetData[FRAGMENT_NACK_HEADER_SIZE + i];
+                if (fragmentIndex >= sentMessage.totalFragments)
+                    continue;
+
+                byte[] packet = sentMessage.packets[fragmentIndex];
+                if (packet == null)
+                    continue;
+
+                _pendingFragmentSends.Enqueue(new PendingFragmentSend(new ByteData(packet, 0, packet.Length), sentMessage.channel));
+                enqueuedCount++;
+            }
+
+            if (enqueuedCount > 0)
+            {
+                sentMessage.lastResendTime = now;
+                _outboundFragmentBuffer[fragmentId] = sentMessage;
+                FlushPendingFragmentSends();
+            }
+        }
+
+        private void ProcessFragmentAck(byte[] packetData, int packetLength)
+        {
+            if (packetLength < FRAGMENT_CONTROL_HEADER_SIZE)
+                return;
+
+            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            _outboundFragmentBuffer.Remove(fragmentId);
+        }
+
         private void RequestMissingFragments(uint fragmentId, byte totalFragments, ref FragmentedMessage message)
         {
             float now = UnityEngine.Time.realtimeSinceStartup;
@@ -771,6 +858,23 @@ namespace PurrNet.UTP
             foreach (var id in expiredIds)
             {
                 _fragmentBuffer.Remove(id);
+            }
+        }
+
+        private void CleanupExpiredOutboundFragments()
+        {
+            float currentTime = UnityEngine.Time.realtimeSinceStartup;
+            var expiredIds = new List<uint>();
+
+            foreach (var kvp in _outboundFragmentBuffer)
+            {
+                if (currentTime - kvp.Value.creationTime > OUTBOUND_FRAGMENT_TIMEOUT)
+                    expiredIds.Add(kvp.Key);
+            }
+
+            foreach (var id in expiredIds)
+            {
+                _outboundFragmentBuffer.Remove(id);
             }
         }
 #endif
