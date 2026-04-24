@@ -1085,7 +1085,7 @@ namespace PurrNet
         {
             if (!player.HasValue)
             {
-                RemoveOwnership();
+                RemoveOwnership(propagateToChildren);
                 return;
             }
 
