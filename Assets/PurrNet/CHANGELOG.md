@@ -1,3 +1,10 @@
+# [1.20.0-beta.99](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.98...v1.20.0-beta.99) (2026-04-25)
+
+
+### Features
+
+* add support for runtime animator controller and avatar in NetAnimator ([97524cf](https://github.com/PurrNet/PurrNet/commit/97524cf47ac1ce6eb95371522706273d3c49c3e9))
+
 # [1.20.0-beta.98](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.97...v1.20.0-beta.98) (2026-04-25)
 
 
