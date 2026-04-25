@@ -3,14 +3,14 @@
 #endif
 
 using System;
-using PurrNet.Logging;
 using PurrNet.Transports;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using System.Collections.Generic;
-using UnityEngine;
 using PurrNet.Logging;
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Error;
+#endif
+#if UTP_NET_PACKAGE
 using Unity.Networking.Transport.Relay;
 #endif
 
@@ -43,10 +43,10 @@ namespace PurrNet.UTP
             public float creationTime;
         }
 
-        private struct FragmentKey
+        private readonly struct FragmentKey : IEquatable<FragmentKey>
         {
-            public int connectionId;
-            public uint fragmentId;
+            public readonly int connectionId;
+            public readonly uint fragmentId;
 
             public FragmentKey(int connId, uint fragId)
             {
@@ -56,6 +56,11 @@ namespace PurrNet.UTP
 
             public override bool Equals(object obj) => obj is FragmentKey key && key.connectionId == connectionId && key.fragmentId == fragmentId;
             public override int GetHashCode() => connectionId.GetHashCode() ^ fragmentId.GetHashCode();
+
+            public bool Equals(FragmentKey other)
+            {
+                return connectionId == other.connectionId && fragmentId == other.fragmentId;
+            }
         }
 
         private readonly Dictionary<FragmentKey, FragmentedMessage> _fragmentBuffer = new Dictionary<FragmentKey, FragmentedMessage>();
@@ -368,7 +373,7 @@ namespace PurrNet.UTP
             if (packetLength < FRAGMENT_DATA_HEADER_SIZE)
                 return;
 
-            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            uint fragmentId = packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
             byte totalFragments = packetData[6];
             byte fragmentIndex = packetData[7];
             int payloadSize = packetLength - FRAGMENT_DATA_HEADER_SIZE;
@@ -432,7 +437,7 @@ namespace PurrNet.UTP
         {
             byte totalFragments = packetData[1];
             byte fragmentIndex = packetData[2];
-            uint fragmentId = (uint)packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
+            uint fragmentId = packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
             int payloadSize = packetLength - FRAGMENT_LEGACY_HEADER_SIZE;
 
             if (totalFragments == 0 || fragmentIndex >= totalFragments)
@@ -493,7 +498,7 @@ namespace PurrNet.UTP
             if (packetLength < FRAGMENT_NACK_HEADER_SIZE)
                 return;
 
-            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            uint fragmentId = packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
             int missingCount = packetData[6];
 
             if (missingCount <= 0)
@@ -542,7 +547,7 @@ namespace PurrNet.UTP
             if (packetLength < FRAGMENT_CONTROL_HEADER_SIZE)
                 return;
 
-            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            uint fragmentId = packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
             var key = new FragmentKey(connId, fragmentId);
             _outboundFragmentBuffer.Remove(key);
         }
@@ -966,13 +971,6 @@ namespace PurrNet.UTP
             }
 
             // LogTransportTrace("Stop completed");
-#endif
-        }
-
-        private void LogTransportTrace(string message)
-        {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            PurrLogger.Log($"[TransportTrace][UTPServer] {message}");
 #endif
         }
     }

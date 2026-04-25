@@ -6,11 +6,13 @@ using System;
 using PurrNet.Transports;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using System.Collections.Generic;
-using System.Collections;
 using PurrNet.Logging;
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Error;
+#endif
+#if UTP_NET_PACKAGE
 using Unity.Networking.Transport.Relay;
+using System.Collections;
 #endif
 
 namespace PurrNet.UTP
@@ -553,12 +555,12 @@ namespace PurrNet.UTP
             if (packetLength < FRAGMENT_DATA_HEADER_SIZE)
                 return;
 
-            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            uint fragmentId = packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
             byte totalFragments = packetData[6];
             byte fragmentIndex = packetData[7];
             int payloadSize = packetLength - FRAGMENT_DATA_HEADER_SIZE;
 
-            if (totalFragments == 0 || totalFragments > MAX_FRAGMENTS_PER_PACKET || fragmentIndex >= totalFragments)
+            if (totalFragments == 0 || fragmentIndex >= totalFragments)
                 return;
 
             if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
@@ -586,7 +588,7 @@ namespace PurrNet.UTP
             }
 
             int fragmentIdx = fragmentIndex;
-            if (fragmentIdx < 0 || fragmentIdx >= message.fragments.Length || fragmentIdx >= message.fragmentSizes.Length)
+            if (fragmentIdx >= message.fragments.Length || fragmentIdx >= message.fragmentSizes.Length)
                 return;
 
             // Store fragment if not already received
@@ -639,10 +641,10 @@ namespace PurrNet.UTP
         {
             byte totalFragments = packetData[1];
             byte fragmentIndex = packetData[2];
-            uint fragmentId = (uint)packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
+            uint fragmentId = packetData[3] | ((uint)packetData[4] << 8) | ((uint)packetData[5] << 16) | ((uint)packetData[6] << 24);
             int payloadSize = packetLength - FRAGMENT_LEGACY_HEADER_SIZE;
 
-            if (totalFragments == 0 || totalFragments > MAX_FRAGMENTS_PER_PACKET || fragmentIndex >= totalFragments)
+            if (totalFragments == 0 || fragmentIndex >= totalFragments)
                 return;
 
             if (!_fragmentBuffer.TryGetValue(fragmentId, out var message))
@@ -670,7 +672,7 @@ namespace PurrNet.UTP
             }
 
             int fragmentIdx = fragmentIndex;
-            if (fragmentIdx < 0 || fragmentIdx >= message.fragments.Length || fragmentIdx >= message.fragmentSizes.Length)
+            if (fragmentIdx >= message.fragments.Length || fragmentIdx >= message.fragmentSizes.Length)
                 return;
 
             if (message.fragments[fragmentIdx] == null)
@@ -713,7 +715,7 @@ namespace PurrNet.UTP
             if (packetLength < FRAGMENT_NACK_HEADER_SIZE)
                 return;
 
-            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            uint fragmentId = packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
             int missingCount = packetData[6];
 
             if (missingCount <= 0)
@@ -762,7 +764,7 @@ namespace PurrNet.UTP
             if (packetLength < FRAGMENT_CONTROL_HEADER_SIZE)
                 return;
 
-            uint fragmentId = (uint)packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
+            uint fragmentId = packetData[2] | ((uint)packetData[3] << 8) | ((uint)packetData[4] << 16) | ((uint)packetData[5] << 24);
             _outboundFragmentBuffer.Remove(fragmentId);
         }
 
@@ -775,7 +777,7 @@ namespace PurrNet.UTP
             if (message.fragments == null || message.fragments.Length == 0)
                 return;
 
-            int fragmentCount = Math.Min((int)totalFragments, message.fragments.Length);
+            int fragmentCount = Math.Min(totalFragments, message.fragments.Length);
             if (fragmentCount <= 0)
                 return;
 
@@ -893,20 +895,6 @@ namespace PurrNet.UTP
             }
 
             connectionState = ConnectionState.Connecting;
-        }
-
-        private void OnLocalConnectionState(NetworkEvent.Type eventType)
-        {
-            switch (eventType)
-            {
-                case NetworkEvent.Type.Connect:
-                    connectionState = ConnectionState.Connected;
-                    break;
-                case NetworkEvent.Type.Disconnect:
-                    connectionState = ConnectionState.Disconnecting;
-                    connectionState = ConnectionState.Disconnected;
-                    break;
-            }
         }
 
         void Disconnect()
