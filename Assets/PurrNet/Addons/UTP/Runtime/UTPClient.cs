@@ -3,17 +3,14 @@
 #endif
 
 using System;
-using System.Collections.Generic;
-using PurrNet.Logging;
 #if UTP_NET_PACKAGE
+using System.Collections.Generic;
 using System.Collections;
+using PurrNet.Logging;
 #endif
 using PurrNet.Transports;
-using UnityEngine;
-using PurrNet.Logging;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using Unity.Networking.Transport;
-using Unity.Collections;
 using Unity.Networking.Transport.Error;
 #endif
 
@@ -952,13 +949,6 @@ namespace PurrNet.UTP
 
             if (_driver.IsCreated)
                 _driver.Dispose();
-#endif
-        }
-
-        private void LogTransportTrace(string message)
-        {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            PurrLogger.Log($"[TransportTrace][UTPClient] {message}");
 #endif
         }
     }
