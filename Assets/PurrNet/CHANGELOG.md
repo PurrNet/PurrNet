@@ -1,3 +1,10 @@
+# [1.20.0-beta.100](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.99...v1.20.0-beta.100) (2026-04-25)
+
+
+### Features
+
+* ApplicationConstants ([b62c62d](https://github.com/PurrNet/PurrNet/commit/b62c62d68782316bbf27e1c8fe577a3ce47758b7))
+
 # [1.20.0-beta.99](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.98...v1.20.0-beta.99) (2026-04-25)
 
 
