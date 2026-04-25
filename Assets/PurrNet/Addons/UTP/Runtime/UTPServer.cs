@@ -737,7 +737,7 @@ namespace PurrNet.UTP
                 PurrLogger.LogError($"[UTP] Packet too large to fragment ({data.length} bytes would require {totalFragments} fragments, max {MAX_FRAGMENTS_PER_PACKET}). Dropping packet.");
                 return;
             }
-			
+
             byte[][] sentPackets = new byte[totalFragments][];
 
             for (int i = 0; i < totalFragments; i++)

@@ -899,7 +899,7 @@ namespace PurrNet.UTP
                 PurrLogger.LogError("Failed to connect to host");
                 return;
             }
-            
+
             connectionState = ConnectionState.Connecting;
         }
 
@@ -919,11 +919,11 @@ namespace PurrNet.UTP
 
         void Disconnect()
         {
-            if (!_connection.IsCreated) 
+            if (!_connection.IsCreated)
                 return;
 
             ClearPendingFragments();
-            
+
             if (connectionState != ConnectionState.Disconnected)
                 connectionState = ConnectionState.Disconnecting;
 
