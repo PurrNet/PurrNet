@@ -10,7 +10,7 @@ using UnityEngine.Networking;
 
 namespace PurrNet
 {
-    public static class PurrTelemetry
+    internal static class PurrInternalTelemetry
     {
         const string ENDPOINT = "https://purrnet.dev/api/telemetry/event";
         const string INSTALL_ID_KEY = "PurrNet_InstallId";
@@ -20,11 +20,11 @@ namespace PurrNet
         static string _installationId;
         static bool _projectIdLoaded;
 
-        public static string ProjectId { get; set; }
+        internal static string ProjectId { get; set; }
 
-        public static Dictionary<string, string> TransportMetadata { get; } = new();
+        internal static Dictionary<string, string> TransportMetadata { get; } = new();
 
-        public static bool IsEnabled
+        internal static bool IsEnabled
         {
             get
             {
@@ -60,7 +60,7 @@ namespace PurrNet
             return _installationId;
         }
 
-        public static async void SendEvent(string eventType, Dictionary<string, object> metadata)
+        internal static async void SendEvent(string eventType, Dictionary<string, object> metadata)
         {
             if (!IsEnabled)
                 return;
@@ -124,7 +124,7 @@ namespace PurrNet
             }
         }
 
-        public static void SendConnectionEvent(NetworkManager manager)
+        internal static void SendConnectionEvent(NetworkManager manager)
         {
             if (!IsEnabled)
                 return;

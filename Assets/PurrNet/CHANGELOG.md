@@ -1,3 +1,17 @@
+# [1.20.0-beta.98](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.97...v1.20.0-beta.98) (2026-04-25)
+
+
+### Bug Fixes
+
+* Move PurrTelemetry to internal ([830510c](https://github.com/PurrNet/PurrNet/commit/830510cc1272c3fa359b22a0a4f2c1c48d7a92a3))
+
+# [1.20.0-beta.97](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.96...v1.20.0-beta.97) (2026-04-25)
+
+
+### Bug Fixes
+
+* add layer weight actions for non-zero layers in NetAnimatorActionBatch ([e662b6d](https://github.com/PurrNet/PurrNet/commit/e662b6d6a2ecd921f9b175dbfeb2ef0d8ec09ba2))
+
 # [1.20.0-beta.96](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.95...v1.20.0-beta.96) (2026-04-22)
 
 
