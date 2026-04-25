@@ -123,7 +123,59 @@ namespace PurrNet
 
         public AnimatorControllerParameter[] parameters => _animator.parameters;
 
-        public RuntimeAnimatorController runtimeAnimatorController => _animator.runtimeAnimatorController;
+        public RuntimeAnimatorController runtimeAnimatorController
+        {
+            get => _animator.runtimeAnimatorController;
+            set
+            {
+                if (!IsController(_ownerAuth))
+                    return;
+
+                if (!WarnIfAssetNotNetworked(value, nameof(runtimeAnimatorController)))
+                    return;
+
+                var setController = new SetRuntimeAnimatorController { controller = value };
+                setController.Apply(_animator);
+
+                IfSameTypeReplace(new NetAnimatorRPC(setController));
+            }
+        }
+
+        public Avatar avatar
+        {
+            get => _animator.avatar;
+            set
+            {
+                if (!IsController(_ownerAuth))
+                    return;
+
+                if (!WarnIfAssetNotNetworked(value, nameof(avatar)))
+                    return;
+
+                var setAvatar = new SetAvatar { avatar = value };
+                setAvatar.Apply(_animator);
+
+                IfSameTypeReplace(new NetAnimatorRPC(setAvatar));
+            }
+        }
+
+        private bool WarnIfAssetNotNetworked(UnityEngine.Object asset, string memberName)
+        {
+            if (!asset)
+                return true;
+
+            var nm = networkManager;
+            if (!nm || !nm.networkAssets || nm.networkAssets.GetIndex(asset) < 0)
+            {
+                Logging.PurrLogger.LogError(
+                    $"NetworkAnimator.{memberName}: '{asset.name}' is not registered in NetworkAssets. " +
+                    "Add it to the NetworkAssets asset on the NetworkManager so it can be networked.",
+                    this);
+                return false;
+            }
+
+            return true;
+        }
 
         public float leftFeetBottomHeight => _animator.leftFeetBottomHeight;
 
@@ -514,7 +566,7 @@ namespace PurrNet
 
         [Obsolete("Use SetInteger instead")]
         public void SetInt(int nameHash, int value) => SetInteger(nameHash, value);
-        
+
         public void SetInteger(string propName, int value) => SetInteger(Animator.StringToHash(propName), value);
 
         public int GetInteger(string propName) => _animator.GetInteger(propName);

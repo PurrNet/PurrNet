@@ -52,7 +52,29 @@ namespace PurrNet
         SetIKHintPosition,
         SetIKPositionWeight,
         SetIKRotationWeight,
-        SetIKHintPositionWeight
+        SetIKHintPositionWeight,
+        SetRuntimeAnimatorController,
+        SetAvatar
+    }
+
+    internal struct SetRuntimeAnimatorController : IPackedAuto
+    {
+        public RuntimeAnimatorController controller;
+
+        public void Apply(Animator anim)
+        {
+            anim.runtimeAnimatorController = controller;
+        }
+    }
+
+    internal struct SetAvatar : IPackedAuto
+    {
+        public Avatar avatar;
+
+        public void Apply(Animator anim)
+        {
+            anim.avatar = avatar;
+        }
     }
 
     internal struct SetIKHintPosition : IPackedAuto
@@ -607,6 +629,20 @@ namespace PurrNet
         internal SetIKPositionWeight _setIKPositionWeight;
         internal SetIKRotationWeight _setIKRotationWeight;
         internal SetIKHintPositionWeight _setIKHintPositionWeight;
+        private SetRuntimeAnimatorController _setRuntimeAnimatorController;
+        private SetAvatar _setAvatar;
+
+        public NetAnimatorRPC(SetRuntimeAnimatorController action) : this()
+        {
+            type = NetAnimatorAction.SetRuntimeAnimatorController;
+            _setRuntimeAnimatorController = action;
+        }
+
+        public NetAnimatorRPC(SetAvatar action) : this()
+        {
+            type = NetAnimatorAction.SetAvatar;
+            _setAvatar = action;
+        }
 
         public NetAnimatorRPC(SetBoneLocalRotation action) : this()
         {
@@ -942,6 +978,9 @@ namespace PurrNet
                 case NetAnimatorAction.SetIKPositionWeight: _setIKPositionWeight.Apply(anim); break;
                 case NetAnimatorAction.SetIKRotationWeight: _setIKRotationWeight.Apply(anim); break;
                 case NetAnimatorAction.SetIKHintPositionWeight: _setIKHintPositionWeight.Apply(anim); break;
+                case NetAnimatorAction.SetRuntimeAnimatorController:
+                    _setRuntimeAnimatorController.Apply(anim); break;
+                case NetAnimatorAction.SetAvatar: _setAvatar.Apply(anim); break;
                 default:
                     throw new System.NotImplementedException(type.ToString());
             }
@@ -1034,6 +1073,10 @@ namespace PurrNet
                     Packer<SetIKRotationWeight>.Serialize(packer, ref _setIKRotationWeight); break;
                 case NetAnimatorAction.SetIKHintPositionWeight:
                     Packer<SetIKHintPositionWeight>.Serialize(packer, ref _setIKHintPositionWeight); break;
+                case NetAnimatorAction.SetRuntimeAnimatorController:
+                    Packer<SetRuntimeAnimatorController>.Serialize(packer, ref _setRuntimeAnimatorController); break;
+                case NetAnimatorAction.SetAvatar:
+                    Packer<SetAvatar>.Serialize(packer, ref _setAvatar); break;
                 default:
                     throw new System.NotImplementedException(type.ToString());
             }

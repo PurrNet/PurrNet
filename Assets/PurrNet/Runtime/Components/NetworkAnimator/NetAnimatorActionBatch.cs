@@ -44,6 +44,7 @@ namespace PurrNet
             }
             else
             {
+                SyncAssetReferences(animator, actions);
                 SyncParameters(ignoreHashes, animator, actions);
                 SyncAnimationState(animator, actions);
 
@@ -130,6 +131,32 @@ namespace PurrNet
                 {
                     hint = hint,
                     position = animator.GetIKHintPosition(hint)
+                }));
+            }
+        }
+
+        private static void SyncAssetReferences(Animator animator, DisposableList<NetAnimatorRPC> actions)
+        {
+            var nm = NetworkManager.main;
+            var assets = nm ? nm.networkAssets : null;
+            if (!assets)
+                return;
+
+            var controller = animator.runtimeAnimatorController;
+            if (controller && assets.GetIndex(controller) != -1)
+            {
+                actions.Add(new NetAnimatorRPC(new SetRuntimeAnimatorController
+                {
+                    controller = controller
+                }));
+            }
+
+            var avatar = animator.avatar;
+            if (avatar && assets.GetIndex(avatar) != -1)
+            {
+                actions.Add(new NetAnimatorRPC(new SetAvatar
+                {
+                    avatar = avatar
                 }));
             }
         }
