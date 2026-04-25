@@ -143,9 +143,7 @@ namespace PurrNet
         private Vector3 _latestRawSnapshotPos;
         private Transform _latestRawSnapshotParent;
         private string _bufferSampleMode = "None";
-        private float _lastOvershoot;
         private double _lastLogTime;
-        private int _pushCount;
         private float _predictionOffset;
 
         private void Awake()
@@ -362,7 +360,7 @@ namespace PurrNet
                 Vector3 posError = worldTargetPos - _rigidbody.position;
                 Vector3 velError = worldTargetLinVel - GetLinearVelocity();
 
-                Vector3 positionalPull = posError * (w * w) * ratio;
+                Vector3 positionalPull = posError * (w * w * ratio);
                 Vector3 velocityDamping = velError * (2f * w);
 
                 Vector3 dragCompensation = GetLinearVelocity() * GetDrag();
@@ -442,8 +440,6 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
-            _pushCount++;
-
             _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
             {
                 time = Time.unscaledTimeAsDouble,
@@ -469,21 +465,6 @@ namespace PurrNet
             return _snapshotBuffer[actual];
         }
 
-        private Vector3 EstimateAcceleration()
-        {
-            if (_bufferCount < 2)
-                return Vector3.zero;
-
-            var newest = GetSnapshot(_bufferCount - 1);
-            var previous = GetSnapshot(_bufferCount - 2);
-            float dt = (float)(newest.time - previous.time);
-
-            if (dt < 0.0001f)
-                return Vector3.zero;
-
-            return (newest.linearVelocity - previous.linearVelocity) / dt;
-        }
-
         private void SampleBuffer()
         {
             if (_bufferCount == 0)
@@ -494,7 +475,6 @@ namespace PurrNet
                 var only = GetSnapshot(0);
                 AdoptSnapshot(only);
                 _bufferSampleMode = "Single";
-                _lastOvershoot = 0f;
                 return;
             }
 
@@ -507,7 +487,6 @@ namespace PurrNet
             {
                 AdoptSnapshot(oldest);
                 _bufferSampleMode = "Clamp-Old";
-                _lastOvershoot = (float)(oldest.time - renderTime);
                 return;
             }
 
@@ -521,7 +500,6 @@ namespace PurrNet
                 _targetParent = newest.parent;
                 _bufferSampleMode = $"Extrap ({overshoot:F3}s)";
                 _predictionOffset = overshoot;
-                _lastOvershoot = overshoot;
                 return;
             }
 
@@ -543,7 +521,6 @@ namespace PurrNet
                     HermiteInterpolate(a, b, span, t);
                     _bufferSampleMode = a.parent == b.parent ? $"Interp ({t:F2})" : $"Interp-Reparent ({t:F2})";
                     _predictionOffset = 0f;
-                    _lastOvershoot = 0f;
                     return;
                 }
             }
@@ -569,13 +546,13 @@ namespace PurrNet
             float h10 = t3 - 2f * t2 + t;
             float h01 = -2f * t3 + 3f * t2;
             float h11 = t3 - t2;
-            
+
             if (a.parent == b.parent)
             {
                 _targetPosition = h00 * a.position
-                                + h10 * a.linearVelocity * dt
+                                + a.linearVelocity * (h10 * dt)
                                 + h01 * b.position
-                                + h11 * b.linearVelocity * dt;
+                                + b.linearVelocity * (h11 * dt);
 
                 _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
                 _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
@@ -594,9 +571,9 @@ namespace PurrNet
                 Vector3 bWorldAngVel = ToWorldAngularVelocity(b.angularVelocity, b.parent);
 
                 _targetPosition = h00 * aWorldPos
-                                + h10 * aWorldLinVel * dt
+                                + aWorldLinVel * (h10 * dt)
                                 + h01 * bWorldPos
-                                + h11 * bWorldLinVel * dt;
+                                + bWorldLinVel * (h11 * dt);
 
                 _targetLinearVelocity = Vector3.Lerp(aWorldLinVel, bWorldLinVel, t);
                 _targetRotation = Quaternion.Slerp(aWorldRot, bWorldRot, t);
@@ -611,7 +588,7 @@ namespace PurrNet
 
         public bool syncParent => _syncParent;
         public bool ownerAuth => _ownerAuth;
-        public bool isController => IsController(_ownerAuth);
+        public new bool isController => IsController(_ownerAuth);
 
         public void StartIgnoringParentChanges()
         {
