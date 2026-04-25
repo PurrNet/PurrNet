@@ -3520,6 +3520,7 @@ namespace PurrNet.Codegen
                 for (var m = 0; m < assemblyDefinition.Modules.Count; m++)
                 {
                     var module = assemblyDefinition.Modules[m];
+
                     var hasPurrNetAsReference = HasPurrNetAsReference(compiledAssembly.Name, module);
 
                     using var types = GetAllTypes(module);
@@ -3527,6 +3528,9 @@ namespace PurrNet.Codegen
 
                     for (var t = 0; t < types.Count; t++)
                     {
+                        if (types[t].FullName == typeof(ApplicationConstants).FullName)
+                            BakeApplicationConstants.Process(types[t], isEditor, messages);
+
                         if (types[t].HasInterfaces)
                         {
                             try

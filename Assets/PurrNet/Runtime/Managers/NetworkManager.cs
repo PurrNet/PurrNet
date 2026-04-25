@@ -6,7 +6,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using JetBrains.Annotations;
-using Newtonsoft.Json.Linq;
 using PurrNet.Authentication;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -637,31 +636,7 @@ namespace PurrNet
             if (_ready)
                 return;
 
-#if UNITY_EDITOR
-            static string TryFindVersion()
-            {
-                var packagePath = AssetDatabase.GUIDToAssetPath("0ec978dbed50a6f4b9a57580867f1fae");
-
-                if (string.IsNullOrEmpty(packagePath))
-                    return "v?";
-
-                var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(packagePath);
-
-                if (textAsset == null)
-                    return "v?";
-
-                var json = JObject.Parse(textAsset.text);
-                return 'v' + (json["version"]?.ToString() ?? "?");
-            }
-
-            version ??= TryFindVersion();
-#else
-            if (version == null)
-            {
-                var versionJson = Resources.Load<TextAsset>("PurrVersion");
-                version = versionJson ? versionJson.text : "v?";
-            }
-#endif
+            version ??= ApplicationConstants.TryGet("version", out var v) ? v : "v?";
 
             if (main && main != this)
             {
@@ -956,7 +931,7 @@ namespace PurrNet
             }
         }
 
-        private System.Collections.IEnumerator SendConnectionTelemetryDelayed()
+        private IEnumerator SendConnectionTelemetryDelayed()
         {
             yield return null;
             PurrInternalTelemetry.SendConnectionEvent(this);

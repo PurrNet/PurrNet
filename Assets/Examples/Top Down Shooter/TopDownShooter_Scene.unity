@@ -977,6 +977,50 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.78212506, y: 0.5, z: 0.782125}
   m_Center: {x: 0, y: 0.25, z: 0.000000014901161}
+--- !u!1 &399105011
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 399105013}
+  - component: {fileID: 399105012}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &399105012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 399105011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffcd6105f5bee814990b5b31d9031f3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrintConstants
+--- !u!4 &399105013
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 399105011}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.81943, y: -3.52184, z: 6.1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &507608532
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1390,7 +1434,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 634351193}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1b75530599bfcfa49ae4ecfe6ed3d21e, type: 3}
   m_Name: 
@@ -2779,7 +2823,6 @@ GameObject:
   - component: {fileID: 1216416910}
   - component: {fileID: 1216416911}
   - component: {fileID: 1216416912}
-  - component: {fileID: 1216416913}
   - component: {fileID: 1216416914}
   m_Layer: 0
   m_Name: Network
@@ -2948,24 +2991,6 @@ MonoBehaviour:
     maxLatency: 100
     simulatePacketLoss: 0
     packetLossChance: 10
---- !u!114 &1216416913
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1216416895}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef882a0e84c58df4885b0e1e59320b49, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.StatisticsManager
-  checkInterval: 0.33
-  placement: 1
-  _displayType: 3
-  _displayTarget: 6
-  fontSize: 13
-  textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &1216416914
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4225,14 +4250,18 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 0
-  _advancedSettings: {fileID: 0}
+  _space: 0
+  _syncParent: 1
+  _settingsOverride: {fileID: 0}
   _interpolationDelay: 0.05
   _predictionFactor: 0
   _positionStrength: 5
   _correctionRange: 2
   _rotationStrength: 3
   _hardSnapDistance: 3
+  _resetLinearVelocityOnSnap: 0
   _hardSnapAngle: 210
+  _resetAngularVelocityOnSnap: 0
   _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
@@ -4835,3 +4864,4 @@ SceneRoots:
   - {fileID: 1523968763}
   - {fileID: 198233782}
   - {fileID: 1871993795}
+  - {fileID: 399105013}

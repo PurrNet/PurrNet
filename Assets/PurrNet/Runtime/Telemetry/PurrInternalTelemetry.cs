@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using PurrNet.Logging;
 using PurrNet.Transports;
+using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -14,9 +14,6 @@ namespace PurrNet
     {
         const string ENDPOINT = "https://purrnet.dev/api/telemetry/event";
         const string INSTALL_ID_KEY = "PurrNet_InstallId";
-
-        const string PROJECT_ID_RESOURCE = "PurrTelemetryProjectId";
-
         static string _installationId;
         static bool _projectIdLoaded;
 
@@ -62,11 +59,11 @@ namespace PurrNet
 
         internal static async void SendEvent(string eventType, Dictionary<string, object> metadata)
         {
-            if (!IsEnabled)
-                return;
-
             try
             {
+                if (!IsEnabled)
+                    return;
+
                 LoadProjectIdFromResources();
 
                 var payload = new Dictionary<string, object>
@@ -114,9 +111,8 @@ namespace PurrNet
 
             try
             {
-                var asset = Resources.Load<TextAsset>(PROJECT_ID_RESOURCE);
-                if (asset)
-                    ProjectId = asset.text.Trim();
+                if (ApplicationConstants.TryGet("projectId", out var projectId))
+                    ProjectId = projectId.Trim();
             }
             catch
             {
