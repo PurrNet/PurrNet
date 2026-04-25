@@ -38,6 +38,14 @@ namespace PurrNet.Editor
             return !string.IsNullOrEmpty(GetApiKey());
         }
 
+        public static bool IsLoggedIn => HasApiKey();
+
+        public static bool TryGetApiKey(out string apiKey)
+        {
+            apiKey = GetApiKey();
+            return !string.IsNullOrEmpty(apiKey);
+        }
+
         public static void Login()
         {
             if (_listener != null)

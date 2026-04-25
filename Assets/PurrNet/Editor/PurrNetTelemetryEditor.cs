@@ -13,7 +13,7 @@ namespace PurrNet.Editor
         [InitializeOnLoadMethod]
         static void Init()
         {
-            if (!PurrTelemetry.IsEnabled)
+            if (!PurrInternalTelemetry.IsEnabled)
                 return;
 
             InitProjectId();
@@ -54,7 +54,7 @@ namespace PurrNet.Editor
                     foreach (var b in hash)
                         sb.Append(b.ToString("x2"));
 
-                    PurrTelemetry.ProjectId = sb.ToString();
+                    PurrInternalTelemetry.ProjectId = sb.ToString();
                     break;
                 }
             }
@@ -92,7 +92,7 @@ namespace PurrNet.Editor
                 ["os"] = SystemInfo.operatingSystem
             };
 
-            PurrTelemetry.SendEvent("project_start", metadata);
+            PurrInternalTelemetry.SendEvent("project_start", metadata);
         }
 
         static void SendSteamSession()
@@ -118,7 +118,7 @@ namespace PurrNet.Editor
                 ["steam_app_id"] = content
             };
 
-            PurrTelemetry.SendEvent("steam_session", metadata);
+            PurrInternalTelemetry.SendEvent("steam_session", metadata);
         }
 
 #if PURRNET_NO_TELEMETRY

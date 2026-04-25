@@ -294,7 +294,7 @@ namespace PurrNet.Steam
             try
             {
                 var appId = Steamworks.SteamUtils.GetAppID();
-                PurrTelemetry.TransportMetadata["steam_app_id"] = appId.m_AppId.ToString();
+                PurrInternalTelemetry.TransportMetadata["steam_app_id"] = appId.m_AppId.ToString();
             }
             catch
             {

@@ -959,7 +959,7 @@ namespace PurrNet
         private System.Collections.IEnumerator SendConnectionTelemetryDelayed()
         {
             yield return null;
-            PurrTelemetry.SendConnectionEvent(this);
+            PurrInternalTelemetry.SendConnectionEvent(this);
         }
 
         /// <summary>
