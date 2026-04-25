@@ -148,6 +148,15 @@ namespace PurrNet
                     layer = i,
                     normalizedTime = info.normalizedTime
                 }));
+
+                if (i == 0)
+                    continue;
+
+                actions.Add(new NetAnimatorRPC(new SetLayerWeight
+                {
+                    layerIndex = i,
+                    weight = animator.GetLayerWeight(i)
+                }));
             }
         }
 
