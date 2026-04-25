@@ -3,18 +3,13 @@
 #endif
 
 using System;
-#if UTP_NET_PACKAGE
+using PurrNet.Transports;
+#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using System.Collections.Generic;
 using System.Collections;
 using PurrNet.Logging;
-#endif
-using PurrNet.Transports;
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Error;
-#endif
-
-#if UTP_NET_PACKAGE
 using Unity.Networking.Transport.Relay;
 #endif
 
