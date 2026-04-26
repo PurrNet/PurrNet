@@ -1,3 +1,10 @@
+# [1.20.0-beta.101](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.100...v1.20.0-beta.101) (2026-04-26)
+
+
+### Bug Fixes
+
+* Network Rigidbody override settings factory instance ([3263f81](https://github.com/PurrNet/PurrNet/commit/3263f814c1107b16b34b0f22538565d6ee327baf))
+
 # [1.20.0-beta.100](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.99...v1.20.0-beta.100) (2026-04-25)
 
 
