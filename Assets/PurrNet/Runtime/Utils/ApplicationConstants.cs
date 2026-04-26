@@ -18,8 +18,12 @@ namespace PurrNet.Utils
 #if UNITY_EDITOR
         const string SAVE_PATH = "./ProjectSettings/ApplicationConstants.json";
 
-        [UnityEditor.InitializeOnLoadMethod]
-        static void Init()
+        static ApplicationConstants()
+        {
+            Load();
+        }
+
+        static void Load()
         {
             _constants.Clear();
 
