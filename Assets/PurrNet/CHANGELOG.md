@@ -1,3 +1,10 @@
+# [1.20.0-beta.102](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.101...v1.20.0-beta.102) (2026-04-26)
+
+
+### Bug Fixes
+
+* always ensure application constants loaded ([291863a](https://github.com/PurrNet/PurrNet/commit/291863ab6d58ddaa2499a9abddc14babacb51b6e))
+
 # [1.20.0-beta.101](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.100...v1.20.0-beta.101) (2026-04-26)
 
 
