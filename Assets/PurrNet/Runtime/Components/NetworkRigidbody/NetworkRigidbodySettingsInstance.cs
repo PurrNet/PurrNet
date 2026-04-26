@@ -1,40 +1,14 @@
-using System;
 using UnityEngine;
 
 namespace PurrNet
 {
-    public struct RigidbodyCorrectionContext
+    public abstract class NetworkRigidbodySettingsInstance
     {
-        public Rigidbody rigidbody;
-        public Vector3 targetPosition;
-        public Quaternion targetRotation;
-        public Vector3 targetLinearVelocity;
-        public Vector3 targetAngularVelocity;
-        public float positionError;
-        public float rotationError;
-        public float drag;
-        public float positionStrength;
-        public float correctionRange;
-        public float rotationStrength;
-        public float hardSnapDistance;
-        public float hardSnapAngle;
-        public float acceptableRotationError;
-    }
-
-    public abstract class NetworkRigidbodySettings : ScriptableObject
-    {
-        public virtual NetworkRigidbodySettingsInstance Create(NetworkRigidbody networkRigidbody)
-        {
-            return new LegacySettingsInstance(this);
-        }
-
-        [Obsolete("Override NetworkRigidbodySettingsInstance.ShouldTeleport on the instance returned from Create() instead.")]
         public virtual bool ShouldTeleport(in RigidbodyCorrectionContext ctx)
         {
             return ctx.positionError >= ctx.hardSnapDistance;
         }
 
-        [Obsolete("Override NetworkRigidbodySettingsInstance.ShouldSnapRotation on the instance returned from Create() instead.")]
         public virtual bool ShouldSnapRotation(in RigidbodyCorrectionContext ctx)
         {
             return ctx.hardSnapAngle >= 0
@@ -42,14 +16,12 @@ namespace PurrNet
                 && ctx.rotationError > ctx.hardSnapAngle;
         }
 
-        [Obsolete("Override NetworkRigidbodySettingsInstance.ShouldCorrectRotation on the instance returned from Create() instead.")]
         public virtual bool ShouldCorrectRotation(in RigidbodyCorrectionContext ctx)
         {
             return ctx.acceptableRotationError >= 0
                 && ctx.rotationError > ctx.acceptableRotationError;
         }
 
-        [Obsolete("Override NetworkRigidbodySettingsInstance.ApplyHardCorrection on the instance returned from Create() instead.")]
         public virtual void ApplyHardCorrection(in RigidbodyCorrectionContext ctx)
         {
             var rb = ctx.rigidbody;
@@ -59,7 +31,6 @@ namespace PurrNet
             rb.angularVelocity = ctx.targetAngularVelocity;
         }
 
-        [Obsolete("Override NetworkRigidbodySettingsInstance.ApplyPositionCorrection on the instance returned from Create() instead.")]
         public virtual void ApplyPositionCorrection(in RigidbodyCorrectionContext ctx)
         {
             var rb = ctx.rigidbody;
@@ -78,7 +49,6 @@ namespace PurrNet
             rb.AddForce((positionalPull + velocityDamping + dragCompensation) * m);
         }
 
-        [Obsolete("Override NetworkRigidbodySettingsInstance.ApplyRotationCorrection on the instance returned from Create() instead.")]
         public virtual void ApplyRotationCorrection(in RigidbodyCorrectionContext ctx)
         {
             var rb = ctx.rigidbody;
@@ -104,6 +74,10 @@ namespace PurrNet
 
             rb.AddTorque(torque);
         }
+
+        public virtual void OnReset(in RigidbodyCorrectionContext ctx) { }
+
+        public virtual void OnDespawned() { }
 
         protected static Quaternion NormalizeQuaternion(Quaternion q)
         {
@@ -140,33 +114,5 @@ namespace PurrNet
             return rb.drag;
 #endif
         }
-
-        private sealed class LegacySettingsInstance : NetworkRigidbodySettingsInstance
-        {
-            private readonly NetworkRigidbodySettings _settings;
-
-            public LegacySettingsInstance(NetworkRigidbodySettings settings)
-            {
-                _settings = settings;
-            }
-
-#pragma warning disable CS0618
-            public override bool ShouldTeleport(in RigidbodyCorrectionContext ctx) => _settings.ShouldTeleport(in ctx);
-            public override bool ShouldSnapRotation(in RigidbodyCorrectionContext ctx) => _settings.ShouldSnapRotation(in ctx);
-            public override bool ShouldCorrectRotation(in RigidbodyCorrectionContext ctx) => _settings.ShouldCorrectRotation(in ctx);
-            public override void ApplyHardCorrection(in RigidbodyCorrectionContext ctx) => _settings.ApplyHardCorrection(in ctx);
-            public override void ApplyPositionCorrection(in RigidbodyCorrectionContext ctx) => _settings.ApplyPositionCorrection(in ctx);
-            public override void ApplyRotationCorrection(in RigidbodyCorrectionContext ctx) => _settings.ApplyRotationCorrection(in ctx);
-#pragma warning restore CS0618
-        }
-    }
-
-    public abstract class NetworkRigidbodySettings<T> : NetworkRigidbodySettings
-        where T : NetworkRigidbodySettingsInstance
-    {
-        public sealed override NetworkRigidbodySettingsInstance Create(NetworkRigidbody networkRigidbody)
-            => CreateTyped(networkRigidbody);
-
-        protected abstract T CreateTyped(NetworkRigidbody networkRigidbody);
     }
 }

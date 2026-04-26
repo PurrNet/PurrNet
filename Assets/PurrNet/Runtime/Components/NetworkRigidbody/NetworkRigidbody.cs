@@ -71,8 +71,11 @@ namespace PurrNet
         [SerializeField] private bool _syncParent = true;
 
         [Header("Settings Override")]
-        [Tooltip("Optional. When assigned, this asset's virtual methods control all correction decisions. The fields below are passed as defaults via the correction context.")]
+        [Tooltip("Optional. When assigned, this asset's Create() builds a per-instance correction object that controls all correction decisions. The fields below are passed as defaults via the correction context.")]
         [SerializeField] private NetworkRigidbodySettings _settingsOverride;
+
+        private NetworkRigidbodySettingsInstance _settingsInstance;
+        private NetworkRigidbodySettings _settingsInstanceSource;
 
         [Header("Correction")]
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
@@ -184,6 +187,8 @@ namespace PurrNet
             _latestRawSnapshotParent = parentTrs;
             ClearBuffer();
 
+            EnsureSettingsInstance();
+
             if (IsController(_ownerAuth))
             {
                 SyncSettings(GetCurrentSettings());
@@ -196,6 +201,46 @@ namespace PurrNet
                     parent = parentIdentity
                 });
             }
+        }
+
+        protected override void OnDespawned()
+        {
+            base.OnDespawned();
+            DisposeSettingsInstance();
+        }
+
+        protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
+        {
+            base.OnOwnerChanged(oldOwner, newOwner, asServer);
+            DisposeSettingsInstance();
+            EnsureSettingsInstance();
+        }
+
+        private void EnsureSettingsInstance()
+        {
+            if (!_settingsOverride)
+            {
+                if (_settingsInstance != null)
+                    DisposeSettingsInstance();
+                return;
+            }
+
+            if (_settingsInstance != null && _settingsInstanceSource == _settingsOverride)
+                return;
+
+            DisposeSettingsInstance();
+            _settingsInstance = _settingsOverride.Create(this);
+            _settingsInstanceSource = _settingsOverride;
+        }
+
+        private void DisposeSettingsInstance()
+        {
+            if (_settingsInstance == null)
+                return;
+
+            _settingsInstance.OnDespawned();
+            _settingsInstance = null;
+            _settingsInstanceSource = null;
         }
 
         public void OnTick(float delta)
@@ -282,33 +327,37 @@ namespace PurrNet
             float positionError = Vector3.Distance(_rigidbody.position, worldTargetPos);
             float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(worldTargetRot));
 
-            if (_settingsOverride)
+            EnsureSettingsInstance();
+
+            if (_settingsInstance != null)
             {
                 var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, rotationError);
 
-                if (_settingsOverride.ShouldTeleport(in ctx))
+                if (_settingsInstance.ShouldTeleport(in ctx))
                 {
                     _lastCorrectionReason = "Hard (Distance)";
-                    _settingsOverride.ApplyHardCorrection(in ctx);
+                    _settingsInstance.ApplyHardCorrection(in ctx);
+                    _settingsInstance.OnReset(in ctx);
                     return;
                 }
 
-                bool hardSnapRotation = _settingsOverride.ShouldSnapRotation(in ctx);
+                bool hardSnapRotation = _settingsInstance.ShouldSnapRotation(in ctx);
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
                     _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
                     _rigidbody.angularVelocity = worldTargetAngVel;
+                    _settingsInstance.OnReset(in ctx);
                 }
 
-                _settingsOverride.ApplyPositionCorrection(in ctx);
+                _settingsInstance.ApplyPositionCorrection(in ctx);
 
-                if (!hardSnapRotation && _settingsOverride.ShouldCorrectRotation(in ctx))
-                    _settingsOverride.ApplyRotationCorrection(in ctx);
+                if (!hardSnapRotation && _settingsInstance.ShouldCorrectRotation(in ctx))
+                    _settingsInstance.ApplyRotationCorrection(in ctx);
 
                 if (!hardSnapRotation)
                 {
-                    bool correctingRot = _settingsOverride.ShouldCorrectRotation(in ctx);
+                    bool correctingRot = _settingsInstance.ShouldCorrectRotation(in ctx);
                     _lastCorrectionReason = correctingRot
                         ? "Position+Rotation (Override)"
                         : positionError > 0.001f ? "Position (Override)" : "No";
@@ -780,8 +829,17 @@ namespace PurrNet
         public NetworkRigidbodySettings settingsOverride
         {
             get => _settingsOverride;
-            set => _settingsOverride = value;
+            set
+            {
+                if (_settingsOverride == value)
+                    return;
+                _settingsOverride = value;
+                DisposeSettingsInstance();
+                EnsureSettingsInstance();
+            }
         }
+
+        public NetworkRigidbodySettingsInstance settingsInstance => _settingsInstance;
 
         public Vector3 linearVelocity
         {
@@ -1052,6 +1110,16 @@ namespace PurrNet
 
             ClearBuffer();
             _hasPendingTeleport = false;
+
+            if (_settingsInstance != null)
+            {
+                Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
+                Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
+                Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent);
+                Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
+                var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, 0f, 0f);
+                _settingsInstance.OnReset(in ctx);
+            }
         }
 
         [ServerRpc(deltaPacked: true)]
