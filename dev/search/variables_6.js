@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['max_5ffragments_0',['MAX_FRAGMENTS',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#a50082dc844940d6282038224597bc56e',1,'PurrNet::Transports::FragmentationLayer']]],
-  ['maxvalue_1',['MaxValue',['../structPurrNet_1_1Packing_1_1Half.html#ae0f5009343358148020ca3315085b6ed',1,'PurrNet::Packing::Half']]],
-  ['minvalue_2',['MinValue',['../structPurrNet_1_1Packing_1_1Half.html#a0cae7cbd2226affe20f88edc588defa1',1,'PurrNet::Packing::Half']]]
+  ['scene_0',['scene',['../structPurrNet_1_1Modules_1_1SceneState.html#a77339bb6ee1cb2496ce4c797fb2a6ad1',1,'PurrNet::Modules::SceneState']]],
+  ['settings_1',['settings',['../structPurrNet_1_1Modules_1_1SceneState.html#abec0619094f4777df3f2c4f953391260',1,'PurrNet::Modules::SceneState']]],
+  ['success_2',['success',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a530d346f1249cf9d55a855a23ceda6be',1,'PurrNet::Authentication::AuthenticationResponse']]]
 ];

@@ -96,72 +96,53 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1RigidbodyCorrectionCo
   <div class="headertitle"><div class="title">PurrNet.RigidbodyCorrectionContext Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>All the context needed by <a class="el" href="classPurrNet_1_1NetworkRigidbodySettings.html" title="Abstract settings layer for NetworkRigidbody. Subclass this ScriptableObject and override any virtual...">NetworkRigidbodySettings</a> virtual methods to make correction decisions. Includes the rigidbody, interpolated targets, pre-computed errors, and the component's default tuning values.   
- <a href="structPurrNet_1_1RigidbodyCorrectionContext.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ae95814a915cabd33a183061e38c11788"><td class="memItemLeft" align="right" valign="top"><a id="ae95814a915cabd33a183061e38c11788" name="ae95814a915cabd33a183061e38c11788"></a>
 Rigidbody&#160;</td><td class="memItemRight" valign="bottom"><b>rigidbody</b></td></tr>
-<tr class="memdesc:ae95814a915cabd33a183061e38c11788"><td class="mdescLeft">&#160;</td><td class="mdescRight">The rigidbody being corrected. <br /></td></tr>
 <tr class="separator:ae95814a915cabd33a183061e38c11788"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae6532170cd7664e23060d67ffa8d491"><td class="memItemLeft" align="right" valign="top"><a id="aae6532170cd7664e23060d67ffa8d491" name="aae6532170cd7664e23060d67ffa8d491"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>targetPosition</b></td></tr>
-<tr class="memdesc:aae6532170cd7664e23060d67ffa8d491"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target position from network interpolation. <br /></td></tr>
 <tr class="separator:aae6532170cd7664e23060d67ffa8d491"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a22678094064b3f7579e05f55641f4dde"><td class="memItemLeft" align="right" valign="top"><a id="a22678094064b3f7579e05f55641f4dde" name="a22678094064b3f7579e05f55641f4dde"></a>
 Quaternion&#160;</td><td class="memItemRight" valign="bottom"><b>targetRotation</b></td></tr>
-<tr class="memdesc:a22678094064b3f7579e05f55641f4dde"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target rotation from network interpolation. <br /></td></tr>
 <tr class="separator:a22678094064b3f7579e05f55641f4dde"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af36496c3d8cdbf68c51ab0500255425a"><td class="memItemLeft" align="right" valign="top"><a id="af36496c3d8cdbf68c51ab0500255425a" name="af36496c3d8cdbf68c51ab0500255425a"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>targetLinearVelocity</b></td></tr>
-<tr class="memdesc:af36496c3d8cdbf68c51ab0500255425a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target linear velocity from network interpolation. <br /></td></tr>
 <tr class="separator:af36496c3d8cdbf68c51ab0500255425a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6778a29364d6cdf894ce73aa16b6f94a"><td class="memItemLeft" align="right" valign="top"><a id="a6778a29364d6cdf894ce73aa16b6f94a" name="a6778a29364d6cdf894ce73aa16b6f94a"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>targetAngularVelocity</b></td></tr>
-<tr class="memdesc:a6778a29364d6cdf894ce73aa16b6f94a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target angular velocity from network interpolation. <br /></td></tr>
 <tr class="separator:a6778a29364d6cdf894ce73aa16b6f94a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b1990637fe5d8d3076eb0ed7473abe8"><td class="memItemLeft" align="right" valign="top"><a id="a2b1990637fe5d8d3076eb0ed7473abe8" name="a2b1990637fe5d8d3076eb0ed7473abe8"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>positionError</b></td></tr>
-<tr class="memdesc:a2b1990637fe5d8d3076eb0ed7473abe8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Euclidean distance between current and target position. <br /></td></tr>
 <tr class="separator:a2b1990637fe5d8d3076eb0ed7473abe8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a627773609c58959f54ea3d6450c758"><td class="memItemLeft" align="right" valign="top"><a id="a6a627773609c58959f54ea3d6450c758" name="a6a627773609c58959f54ea3d6450c758"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>rotationError</b></td></tr>
-<tr class="memdesc:a6a627773609c58959f54ea3d6450c758"><td class="mdescLeft">&#160;</td><td class="mdescRight">Angle in degrees between current and target rotation. <br /></td></tr>
 <tr class="separator:a6a627773609c58959f54ea3d6450c758"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3760565d0d0d95e35f62a5923fc83998"><td class="memItemLeft" align="right" valign="top"><a id="a3760565d0d0d95e35f62a5923fc83998" name="a3760565d0d0d95e35f62a5923fc83998"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>drag</b></td></tr>
-<tr class="memdesc:a3760565d0d0d95e35f62a5923fc83998"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rigidbody linear drag (version-independent convenience value). <br /></td></tr>
 <tr class="separator:a3760565d0d0d95e35f62a5923fc83998"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a88100d5ab22f5b8993c9145178ff8e4f"><td class="memItemLeft" align="right" valign="top"><a id="a88100d5ab22f5b8993c9145178ff8e4f" name="a88100d5ab22f5b8993c9145178ff8e4f"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>positionStrength</b></td></tr>
-<tr class="memdesc:a88100d5ab22f5b8993c9145178ff8e4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default position correction strength from the component. <br /></td></tr>
 <tr class="separator:a88100d5ab22f5b8993c9145178ff8e4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abf74bd620c35554b2284f2e040f6f0e9"><td class="memItemLeft" align="right" valign="top"><a id="abf74bd620c35554b2284f2e040f6f0e9" name="abf74bd620c35554b2284f2e040f6f0e9"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>correctionRange</b></td></tr>
-<tr class="memdesc:abf74bd620c35554b2284f2e040f6f0e9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default distance over which position correction ramps from zero to full. <br /></td></tr>
 <tr class="separator:abf74bd620c35554b2284f2e040f6f0e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0051197aa36cea942fb48369908ac685"><td class="memItemLeft" align="right" valign="top"><a id="a0051197aa36cea942fb48369908ac685" name="a0051197aa36cea942fb48369908ac685"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>rotationStrength</b></td></tr>
-<tr class="memdesc:a0051197aa36cea942fb48369908ac685"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default rotation correction strength from the component. <br /></td></tr>
 <tr class="separator:a0051197aa36cea942fb48369908ac685"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e136c02068d8c737a58444daefe3dc5"><td class="memItemLeft" align="right" valign="top"><a id="a6e136c02068d8c737a58444daefe3dc5" name="a6e136c02068d8c737a58444daefe3dc5"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>hardSnapDistance</b></td></tr>
-<tr class="memdesc:a6e136c02068d8c737a58444daefe3dc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default distance threshold for teleport (hard position snap). <br /></td></tr>
 <tr class="separator:a6e136c02068d8c737a58444daefe3dc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a09dba8f0612ca213bd3410a3777d111e"><td class="memItemLeft" align="right" valign="top"><a id="a09dba8f0612ca213bd3410a3777d111e" name="a09dba8f0612ca213bd3410a3777d111e"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>hardSnapAngle</b></td></tr>
-<tr class="memdesc:a09dba8f0612ca213bd3410a3777d111e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default angle threshold (degrees) for hard rotation snap. Negative disables. <br /></td></tr>
 <tr class="separator:a09dba8f0612ca213bd3410a3777d111e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab465467c07eb6a9d0bed96dfefc3bb35"><td class="memItemLeft" align="right" valign="top"><a id="ab465467c07eb6a9d0bed96dfefc3bb35" name="ab465467c07eb6a9d0bed96dfefc3bb35"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>acceptableRotationError</b></td></tr>
-<tr class="memdesc:ab465467c07eb6a9d0bed96dfefc3bb35"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default rotation error (degrees) below which soft correction stops. Negative disables. <br /></td></tr>
 <tr class="separator:ab465467c07eb6a9d0bed96dfefc3bb35"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >All the context needed by <a class="el" href="classPurrNet_1_1NetworkRigidbodySettings.html" title="Abstract settings layer for NetworkRigidbody. Subclass this ScriptableObject and override any virtual...">NetworkRigidbodySettings</a> virtual methods to make correction decisions. Includes the rigidbody, interpolated targets, pre-computed errors, and the component's default tuning values.  </p>
-</div><hr/>The documentation for this struct was generated from the following file:<ul>
+<hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbodySettings.cs</li>
 </ul>
 </div><!-- contents -->

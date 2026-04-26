@@ -426,6 +426,10 @@ var hierarchy =
       [ "PurrNet.ValidatedSyncVar< T >", "classPurrNet_1_1ValidatedSyncVar.html", null ]
     ] ],
     [ "PurrNet.Packing.NetworkRegister", "classPurrNet_1_1Packing_1_1NetworkRegister.html", null ],
+    [ "NetworkRigidbodySettings", null, [
+      [ "PurrNet.NetworkRigidbodySettings< T >", "classPurrNet_1_1NetworkRigidbodySettings.html", null ]
+    ] ],
+    [ "PurrNet.NetworkRigidbodySettingsInstance", "classPurrNet_1_1NetworkRigidbodySettingsInstance.html", null ],
     [ "PurrNet.Transports.NetworkSimulation", "structPurrNet_1_1Transports_1_1NetworkSimulation.html", null ],
     [ "PurrNet.NetworkTransformRules", "structPurrNet_1_1NetworkTransformRules.html", null ],
     [ "PurrNet.Modules.ObserverFilter", "structPurrNet_1_1Modules_1_1ObserverFilter.html", null ],
@@ -483,7 +487,7 @@ var hierarchy =
     [ "PurrNet.Modules.SceneState", "structPurrNet_1_1Modules_1_1SceneState.html", null ],
     [ "ScriptableObject", null, [
       [ "PurrNet.NetworkAssets", "classPurrNet_1_1NetworkAssets.html", null ],
-      [ "PurrNet.NetworkRigidbodySettings", "classPurrNet_1_1NetworkRigidbodySettings.html", null ],
+      [ "PurrNet.NetworkRigidbodySettings< T >", "classPurrNet_1_1NetworkRigidbodySettings.html", null ],
       [ "PurrNet.NetworkRules", "classPurrNet_1_1NetworkRules.html", null ],
       [ "PurrNet.NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", null ],
       [ "PurrNet.NetworkVisibilityRuleSet", "classPurrNet_1_1NetworkVisibilityRuleSet.html", null ],

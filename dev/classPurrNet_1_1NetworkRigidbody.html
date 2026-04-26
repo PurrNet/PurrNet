@@ -329,6 +329,12 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a1f5307a5ffaa725eea3fe068a2875216"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a1f5307a5ffaa725eea3fe068a2875216">OnSpawned</a> ()</td></tr>
 <tr class="memdesc:a1f5307a5ffaa725eea3fe068a2875216"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned This is only called once even if in host mode.   <a href="classPurrNet_1_1NetworkRigidbody.html#a1f5307a5ffaa725eea3fe068a2875216">More...</a><br /></td></tr>
 <tr class="separator:a1f5307a5ffaa725eea3fe068a2875216"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8aefefe9041ac4eb6442ed8b14cc41a9"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a8aefefe9041ac4eb6442ed8b14cc41a9">OnDespawned</a> ()</td></tr>
+<tr class="memdesc:a8aefefe9041ac4eb6442ed8b14cc41a9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is de-spawned. This is only called once even if in host mode.   <a href="classPurrNet_1_1NetworkRigidbody.html#a8aefefe9041ac4eb6442ed8b14cc41a9">More...</a><br /></td></tr>
+<tr class="separator:a8aefefe9041ac4eb6442ed8b14cc41a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5bbe3031041db15dd08f6239d4a7f1ae"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a5bbe3031041db15dd08f6239d4a7f1ae">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool asServer)</td></tr>
+<tr class="memdesc:a5bbe3031041db15dd08f6239d4a7f1ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1NetworkRigidbody.html#a5bbe3031041db15dd08f6239d4a7f1ae">More...</a><br /></td></tr>
+<tr class="separator:a5bbe3031041db15dd08f6239d4a7f1ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:a5d555248f0ca05193239704426014fe8 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a5d555248f0ca05193239704426014fe8" name="a5d555248f0ca05193239704426014fe8"></a>
 object&#160;</td><td class="memItemRight" valign="bottom"><b>CallGeneric</b> (string methodName, <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
@@ -414,6 +420,9 @@ new bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><
 <tr class="memitem:a01926ebaa5263267f803843a49e8d0fe"><td class="memItemLeft" align="right" valign="top"><a id="a01926ebaa5263267f803843a49e8d0fe" name="a01926ebaa5263267f803843a49e8d0fe"></a>
 <a class="el" href="classPurrNet_1_1NetworkRigidbodySettings.html">NetworkRigidbodySettings</a>&#160;</td><td class="memItemRight" valign="bottom"><b>settingsOverride</b><code> [get, set]</code></td></tr>
 <tr class="separator:a01926ebaa5263267f803843a49e8d0fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaeb7fd8b63190cedea6d2b4bd1f395db"><td class="memItemLeft" align="right" valign="top"><a id="aaeb7fd8b63190cedea6d2b4bd1f395db" name="aaeb7fd8b63190cedea6d2b4bd1f395db"></a>
+<a class="el" href="classPurrNet_1_1NetworkRigidbodySettingsInstance.html">NetworkRigidbodySettingsInstance</a>&#160;</td><td class="memItemRight" valign="bottom"><b>settingsInstance</b><code> [get]</code></td></tr>
+<tr class="separator:aaeb7fd8b63190cedea6d2b4bd1f395db"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3f0cfd26a848b55cad777ed4de537264"><td class="memItemLeft" align="right" valign="top"><a id="a3f0cfd26a848b55cad777ed4de537264" name="a3f0cfd26a848b55cad777ed4de537264"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>linearVelocity</b><code> [get, set]</code></td></tr>
 <tr class="separator:a3f0cfd26a848b55cad777ed4de537264"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -604,6 +613,89 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 <tr class="separator:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a8aefefe9041ac4eb6442ed8b14cc41a9" name="a8aefefe9041ac4eb6442ed8b14cc41a9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8aefefe9041ac4eb6442ed8b14cc41a9">&#9670;&#160;</a></span>OnDespawned()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkRigidbody.OnDespawned </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is de-spawned. This is only called once even if in host mode.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#aab36179b19e9a1ca89b4b0a05da42f12">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
+<a id="a5bbe3031041db15dd08f6239d4a7f1ae" name="a5bbe3031041db15dd08f6239d4a7f1ae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5bbe3031041db15dd08f6239d4a7f1ae">&#9670;&#160;</a></span>OnOwnerChanged()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkRigidbody.OnOwnerChanged </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>?&#160;</td>
+          <td class="paramname"><em>oldOwner</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>?&#160;</td>
+          <td class="paramname"><em>newOwner</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>asServer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when the owner of this object changes.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">oldOwner</td><td>The old owner of this object</td></tr>
+    <tr><td class="paramname">newOwner</td><td>The new owner of this object</td></tr>
+    <tr><td class="paramname">asServer</td><td>Is this on the server</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#a4b6ad344119f0f67c0a69bb28a3cd9ec">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
 <a id="a1f5307a5ffaa725eea3fe068a2875216" name="a1f5307a5ffaa725eea3fe068a2875216"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1f5307a5ffaa725eea3fe068a2875216">&#9670;&#160;</a></span>OnSpawned()</h2>
 

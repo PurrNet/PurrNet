@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['nan_0',['NaN',['../structPurrNet_1_1Packing_1_1Half.html#a60df7beccdba3eb451c165731929233d',1,'PurrNet::Packing::Half']]],
-  ['negativeinfinity_1',['NegativeInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a4036e61b09986902c3232b001cae7113',1,'PurrNet::Packing::Half']]]
+  ['tickdelta_0',['tickDelta',['../classPurrNet_1_1Modules_1_1TickManager.html#a28c972ac19e981cf1bc4579626f86881',1,'PurrNet::Modules::TickManager']]],
+  ['tickdeltadouble_1',['tickDeltaDouble',['../classPurrNet_1_1Modules_1_1TickManager.html#a05eb401a7cc8bf58ce17b9a7de51781d',1,'PurrNet::Modules::TickManager']]]
 ];
