@@ -50,12 +50,26 @@ namespace PurrNet.Modules
                    isActive == other.isActive && ArePathsEqual(inversedRelativePath, other.inversedRelativePath);
         }
 
+        /// <summary>
+        /// Structural match for prefab-subtree compression: identical prefab piece id, child count
+        /// and inversed relative path. isActive and localTransform are runtime-overridable, so they
+        /// are compared separately and sent as overrides on the wire.
+        /// </summary>
+        public bool StructurallyMatches(GameObjectFrameworkPiece other, bool ignorePath)
+        {
+            if (!pid.Equals(other.pid) || childCount != other.childCount)
+                return false;
+            return ignorePath || ArePathsEqual(inversedRelativePath, other.inversedRelativePath);
+        }
+
         private static bool ArePathsEqual(int[] ints, int[] otherInversedRelativePath)
         {
-            if (ints.Length != otherInversedRelativePath.Length)
+            int la = ints?.Length ?? 0;
+            int lb = otherInversedRelativePath?.Length ?? 0;
+            if (la != lb)
                 return false;
 
-            for (int i = 0; i < ints.Length; i++)
+            for (int i = 0; i < la; i++)
             {
                 if (ints[i] != otherInversedRelativePath[i])
                     return false;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 using UnityEngine;
@@ -343,7 +344,12 @@ namespace PurrNet.Modules
 
             int count = data.spawnPackets.Count;
             for (var i = 0; i < count; ++i)
-                HandleSpawn(player, data.spawnPackets[i], false);
+            {
+                var packet = data.spawnPackets[i];
+                DecodePrototypePayload(ref packet);
+                data.spawnPackets[i] = packet;
+                HandleSpawn(player, packet, false);
+            }
 
             count = data.despawnPackets.Count;
             for (var i = 0; i < count; ++i)
@@ -351,6 +357,12 @@ namespace PurrNet.Modules
 
             FlushSpawnPackets();
             data.Dispose();
+        }
+
+        private void DecodePrototypePayload(ref SpawnPacket packet)
+        {
+            using (packet.payload.AutoScope())
+                packet.prototype = PackGameObjectPrototype.ReadPrototype(packet.payload.packer, _manager);
         }
 
         bool _isDisposed;
@@ -781,6 +793,7 @@ namespace PurrNet.Modules
 
         private void OnSpawnPacket(PlayerID player, SpawnPacket data, bool asServer)
         {
+            DecodePrototypePayload(ref data);
             HandleSpawn(player, data, true);
         }
 
@@ -1233,13 +1246,6 @@ namespace PurrNet.Modules
         private void SendSpawnPacket(PlayerID player, GameObjectPrototype prototype, List<NetworkIdentity> spawned, bool batched)
         {
             var spawnId = new SpawnID(_nextPacketIdx++, player, _playersManager.localPlayerId);
-            var packet = new SpawnPacket
-            {
-                sceneId = _sceneId,
-                packetIdx = spawnId,
-                prototype = prototype,
-                localcache = spawned
-            };
 
             if (batched)
             {
@@ -1250,22 +1256,48 @@ namespace PurrNet.Modules
                         DisposableList<SpawnPacket>.Create(),
                         DisposableList<DespawnPacket>.Create()
                     );
-                    batch.spawnPackets.Add(packet);
                     _spawnPackets.Add(player, batch);
                 }
-                else
+
+                batch.spawnPackets.Add(new SpawnPacket
                 {
-                    batch.spawnPackets.Add(packet);
-                }
+                    sceneId = _sceneId,
+                    packetIdx = spawnId,
+                    prototype = prototype,
+                    localcache = spawned
+                });
             }
             else
             {
+                using var payloadSource = BitPackerPool.Get();
+
+                var packet = new SpawnPacket
+                {
+                    sceneId = _sceneId,
+                    packetIdx = spawnId,
+                    prototype = prototype,
+                    payload = EncodePrototypePayload(payloadSource, prototype, _manager),
+                    localcache = spawned
+                };
+
                 if (player.isServer)
                     _playersManager.SendToServer(packet);
                 else _playersManager.Send(player, packet);
                 packet.Dispose();
                 _toCompleteNextFrame.Add(spawnId);
             }
+        }
+
+        /// <summary>
+        /// Encodes <paramref name="prototype"/> into <paramref name="buffer"/> and returns a
+        /// BitData view of the bits just written. The buffer's lifetime is the caller's concern.
+        /// </summary>
+        private static BitData EncodePrototypePayload(BitPacker buffer, GameObjectPrototype prototype, NetworkManager manager)
+        {
+            int origin = buffer.positionInBits;
+            PackGameObjectPrototype.WritePrototype(buffer, prototype, manager);
+            int length = buffer.positionInBits - origin;
+            return new BitData(buffer, origin, length);
         }
 
         /// <summary>
@@ -1548,11 +1580,26 @@ namespace PurrNet.Modules
 
         private void FlushSpawnPackets()
         {
+            if (_spawnPackets.Count == 0)
+                return;
+
+            using var payloadSource = BitPackerPool.Get();
+
             foreach (var (player, batch) in _spawnPackets)
             {
                 using (batch)
                 {
-                    int count = batch.spawnPackets.Count;
+                    var spawns = batch.spawnPackets;
+                    int count = spawns.Count;
+
+                    // Encode prototypes into the shared buffer just before send.
+                    for (var i = 0; i < count; i++)
+                    {
+                        var packet = spawns[i];
+                        packet.payload = EncodePrototypePayload(payloadSource, packet.prototype, _manager);
+                        spawns[i] = packet;
+                    }
+
                     if (player.isServer)
                         _playersManager.SendToServer(batch);
                     else

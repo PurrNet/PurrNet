@@ -353,6 +353,16 @@ namespace PurrNet.Modules
             return _prefabPrototypes.TryGetValue(prefab, out prototype);
         }
 
+        public static bool TryGetPrefabPrototypeById(NetworkManager manager, int prefabId, out GameObjectPrototype prototype)
+        {
+            prototype = default;
+            if (!manager || manager.prefabProvider == null || prefabId < 0)
+                return false;
+            if (!manager.prefabProvider.TryGetPrefabData(prefabId, out var prefabData))
+                return false;
+            return TryGetOrCreatePrefabPrototype(prefabData, out prototype);
+        }
+
         public static bool TryGetOrCreatePrefabPrototype(PrefabData prefabData, out GameObjectPrototype prototype)
         {
             if (_prefabPrototypes.TryGetValue(prefabData.prefab, out prototype))

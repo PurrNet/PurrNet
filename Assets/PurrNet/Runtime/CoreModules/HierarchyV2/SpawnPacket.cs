@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using UnityEngine;
 
@@ -10,6 +11,20 @@ namespace PurrNet.Modules
     {
         public SceneID sceneId;
         public SpawnID packetIdx;
+
+        /// <summary>
+        /// Wire-only opaque payload of the prototype, encoded with manager-aware compression by
+        /// <see cref="PackGameObjectPrototype"/>. Decoded into <see cref="prototype"/> by the
+        /// receiver inside <c>HierarchyV2.OnSpawnPacketBatch</c>, which has the owning
+        /// <see cref="NetworkManager"/> in scope. Mirrors the NetworkTransformDelta blob pattern.
+        /// </summary>
+        public BitData payload;
+
+        /// <summary>
+        /// Live prototype; only present locally (sender's pre-pack source, or receiver's decoded
+        /// result). Marked DontPack — the wire copy lives in <see cref="payload"/>.
+        /// </summary>
+        [DontPack]
         public GameObjectPrototype prototype;
 
         [DontPack]
