@@ -1,3 +1,10 @@
+# [1.20.0-beta.104](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.103...v1.20.0-beta.104) (2026-04-27)
+
+
+### Bug Fixes
+
+* allow NakamaTransport.cs to link to existing match id when starting server ([69a75b2](https://github.com/PurrNet/PurrNet/commit/69a75b2cb0d31f283c9ad2919c31f021ff115f97))
+
 # [1.20.0-beta.103](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.102...v1.20.0-beta.103) (2026-04-27)
 
 
