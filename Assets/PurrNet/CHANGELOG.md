@@ -1,3 +1,15 @@
+# [1.20.0-beta.103](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.102...v1.20.0-beta.103) (2026-04-27)
+
+
+### Bug Fixes
+
+* external git commit hash issue with the package manager ([ad51f09](https://github.com/PurrNet/PurrNet/commit/ad51f095b9f1a6c0315d19d8b6f500c62c41183c))
+
+
+### Features
+
+* add nakama transport ([730ef5e](https://github.com/PurrNet/PurrNet/commit/730ef5e918747429791c8939c215c9261c2bce01))
+
 # [1.20.0-beta.102](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.101...v1.20.0-beta.102) (2026-04-26)
 
 
