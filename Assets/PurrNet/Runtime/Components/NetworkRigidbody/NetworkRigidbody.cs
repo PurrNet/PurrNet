@@ -193,19 +193,29 @@ namespace PurrNet
             ClearBuffer();
 
             EnsureSettingsInstance();
+        }
 
-            if (IsController(_ownerAuth))
+        protected override void OnObserverAdded(PlayerID player)
+        {
+            if (player == localPlayer)
+                return;
+
+            if (_ownerAuth && owner.HasValue && player == owner.Value)
+                return;
+
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            var stateData = new RigidbodyStateData
             {
-                SyncSettings(GetCurrentSettings());
-                SyncInitialState(new RigidbodyStateData
-                {
-                    position = pos,
-                    rotation = rot,
-                    linearVelocity = linVel,
-                    angularVelocity = angVel,
-                    parent = parentIdentity
-                });
-            }
+                position = ReadPosition(parentTrs),
+                rotation = ReadRotation(parentTrs),
+                linearVelocity = ReadLinearVelocity(parentTrs),
+                angularVelocity = ReadAngularVelocity(parentTrs),
+                parent = parentIdentity
+            };
+
+            SendInitialStateToObserver(player, stateData, GetCurrentSettings());
         }
 
         protected override void OnDespawned()
@@ -1135,13 +1145,17 @@ namespace PurrNet
 
         #region RPCs
 
-        [ObserversRpc(channel: Channel.ReliableOrdered, bufferLast: true, deltaPacked: true)]
-        private void SyncInitialState(RigidbodyStateData data)
+        [TargetRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
+        private void SendInitialStateToObserver(PlayerID player, RigidbodyStateData data, RigidbodySettingsData settings)
         {
             if (IsController(_ownerAuth))
                 return;
 
-            PushSnapshot(data);
+            _rigidbody.mass = settings.mass;
+            SetDrag(settings.drag);
+            SetAngularDrag(settings.angularDrag);
+            _rigidbody.useGravity = settings.useGravity;
+            _rigidbody.isKinematic = settings.isKinematic;
 
             var parentTrs = data.parent ? data.parent.transform : null;
 
@@ -1155,6 +1169,15 @@ namespace PurrNet
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
             _targetParent = parentTrs;
+
+            _lastSyncedPosition = data.position;
+            _lastSyncedRotation = data.rotation;
+            _lastSyncedLinearVelocity = data.linearVelocity;
+            _lastSyncedAngularVelocity = data.angularVelocity;
+            _lastSyncedParent = parentTrs;
+
+            ClearBuffer();
+            PushSnapshot(data);
         }
 
         [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true)]
