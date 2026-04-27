@@ -1,3 +1,10 @@
+# [1.20.0-beta.108](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.107...v1.20.0-beta.108) (2026-04-27)
+
+
+### Bug Fixes
+
+* host logic for Nakama ([02e66d7](https://github.com/PurrNet/PurrNet/commit/02e66d78aa01fb6395227789edaa018f5206b1e0))
+
 # [1.20.0-beta.107](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.106...v1.20.0-beta.107) (2026-04-27)
 
 
