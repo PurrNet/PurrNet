@@ -15,7 +15,7 @@ namespace PurrNet.Nakama
     public class NakamaTransport : GenericTransport, ITransport
     {
         [Header("Match Settings")]
-        [Tooltip("Match ID to join when starting as a client. Ignored when starting as a server (a new match is created).")]
+        [Tooltip("Match ID. As a client, the match to join. As a server, a non-empty value adopts an existing match (e.g. one created by a lobby system) instead of creating a new one.")]
         [SerializeField] private string _matchId;
 
         [Tooltip("Op code used for PurrNet data frames. Use a value not used by other systems sharing this match.")]
@@ -121,7 +121,10 @@ namespace PurrNet.Nakama
             listenerState = ConnectionState.Connecting;
             HookSocket();
 
-            _ = CreateMatchAsync();
+            if (string.IsNullOrEmpty(_matchId))
+                _ = CreateMatchAsync();
+            else
+                _ = AdoptMatchAsync(_matchId);
 #else
             PurrLogger.LogError("[NakamaTransport] Nakama package is not installed.");
 #endif
@@ -133,7 +136,7 @@ namespace PurrNet.Nakama
             try
             {
                 var created = await socket.CreateMatchAsync();
-                _eventQueue.Enqueue(() => OnMatchCreated(created));
+                _eventQueue.Enqueue(() => OnMatchAcquired(created));
             }
             catch (Exception e)
             {
@@ -146,16 +149,62 @@ namespace PurrNet.Nakama
             }
         }
 
-        private void OnMatchCreated(IMatch created)
+        private async System.Threading.Tasks.Task AdoptMatchAsync(string id)
         {
-            match = created;
-            _self = created.Self;
-            _matchId = created.Id;
+            try
+            {
+                // JoinMatchAsync is idempotent for an already-joined match (e.g. a match the host
+                // created via the same socket as part of a lobby system) and returns the IMatch with
+                // the current presence list, so we can use it for both fresh adoption and re-adoption.
+                var joined = await socket.JoinMatchAsync(id);
+                _eventQueue.Enqueue(() => OnMatchAcquired(joined));
+            }
+            catch (Exception e)
+            {
+                _eventQueue.Enqueue(() =>
+                {
+                    PurrLogger.LogError($"[NakamaTransport] Failed to adopt existing match `{id}`: {e.Message}");
+                    UnhookSocket();
+                    listenerState = ConnectionState.Disconnected;
+                });
+            }
+        }
+
+        private void OnMatchAcquired(IMatch acquired)
+        {
+            match = acquired;
+            _self = acquired.Self;
+            _matchId = acquired.Id;
             _connections.Clear();
             _idBySessionId.Clear();
             _presenceById.Clear();
             _nextConnectionId = 1;
+
+            // For an adopted match, register any non-self presences already in the room as client
+            // connections so the server side can talk to them immediately. For a freshly-created
+            // match the presence list contains only self, so this is a no-op.
+            var prejoined = new List<Connection>();
+            if (acquired.Presences != null)
+            {
+                foreach (var p in acquired.Presences)
+                {
+                    if (_self != null && p.SessionId == _self.SessionId) continue;
+                    if (_idBySessionId.ContainsKey(p.SessionId)) continue;
+
+                    int cid = _nextConnectionId++;
+                    _idBySessionId[p.SessionId] = cid;
+                    _presenceById[cid] = p;
+                    var conn = new Connection(cid);
+                    _connections.Add(conn);
+                    prejoined.Add(conn);
+                }
+            }
+
             listenerState = ConnectionState.Connected;
+
+            // Fire onConnected after the state transition so observers see a Connected listener.
+            for (int i = 0; i < prejoined.Count; i++)
+                onConnected?.Invoke(prejoined[i], true);
         }
 #endif
 
