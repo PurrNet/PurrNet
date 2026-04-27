@@ -94,6 +94,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1NetworkRigidbody.html'
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#properties">Properties</a> &#124;
+<a href="#events">Events</a> &#124;
 <a href="classPurrNet_1_1NetworkRigidbody-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.NetworkRigidbody Class Reference</div></div>
 </div><!--header-->
@@ -143,6 +144,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>TeleportTo</b> (Vecto
 void&#160;</td><td class="memItemRight" valign="bottom"><b>TeleportTo</b> (Vector3 position)</td></tr>
 <tr class="memdesc:a812d715d890c285ae57f0d0ddd0ed01f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Instantly teleports the rigidbody to a new position, clearing the interpolation buffer and syncing to all observers. Preserves current rotation and velocity.  <br /></td></tr>
 <tr class="separator:a812d715d890c285ae57f0d0ddd0ed01f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a390362c0481733d175190856810cff48"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a390362c0481733d175190856810cff48">ForceSyncFor</a> (float seconds=-1f)</td></tr>
+<tr class="memdesc:a390362c0481733d175190856810cff48"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens a force-sync window. While the window is open, the controller bypasses the change thresholds and ships state every tick, and observers can query <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a226f1bbf7545361d763a058622319933" title="True while a force-sync window is active. The controller uses it to bypass change-threshold gating on...">isInForceSyncWindow</a> to adjust local correction behaviour.   <a href="classPurrNet_1_1NetworkRigidbody.html#a390362c0481733d175190856810cff48">More...</a><br /></td></tr>
+<tr class="separator:a390362c0481733d175190856810cff48"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:aa9ca1d8499152c7c2a641b0b8783adf6 inherit pub_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="aa9ca1d8499152c7c2a641b0b8783adf6" name="aa9ca1d8499152c7c2a641b0b8783adf6"></a>
 Task&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetNextId&lt; T &gt;</b> (RPCType rpcType, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? target, float timeout, out <a class="el" href="structPurrNet_1_1Modules_1_1RpcRequest.html">RpcRequest</a> request)</td></tr>
@@ -460,6 +464,14 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>useGravity</b><code> 
 <tr class="memitem:a9a992799dd75853487cc21798752e05e"><td class="memItemLeft" align="right" valign="top"><a id="a9a992799dd75853487cc21798752e05e" name="a9a992799dd75853487cc21798752e05e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isKinematic</b><code> [get, set]</code></td></tr>
 <tr class="separator:a9a992799dd75853487cc21798752e05e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a226f1bbf7545361d763a058622319933"><td class="memItemLeft" align="right" valign="top"><a id="a226f1bbf7545361d763a058622319933" name="a226f1bbf7545361d763a058622319933"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isInForceSyncWindow</b><code> [get]</code></td></tr>
+<tr class="memdesc:a226f1bbf7545361d763a058622319933"><td class="mdescLeft">&#160;</td><td class="mdescRight">True while a force-sync window is active. The controller uses it to bypass change-threshold gating on outgoing state; receivers can query it from their correction code (e.g. to bypass weak-axis logic) for the duration.  <br /></td></tr>
+<tr class="separator:a226f1bbf7545361d763a058622319933"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abbf3ab24f5f3c6e45643304b663d1ce0"><td class="memItemLeft" align="right" valign="top"><a id="abbf3ab24f5f3c6e45643304b663d1ce0" name="abbf3ab24f5f3c6e45643304b663d1ce0"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>forceSyncWindowRemaining</b><code> [get]</code></td></tr>
+<tr class="memdesc:abbf3ab24f5f3c6e45643304b663d1ce0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Seconds remaining in the active force-sync window, or 0 if inactive / one-shot. <br /></td></tr>
+<tr class="separator:abbf3ab24f5f3c6e45643304b663d1ce0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('properties_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:a1522cd87b4ab0a7206b51e1d7d282f19 inherit properties_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a1522cd87b4ab0a7206b51e1d7d282f19" name="a1522cd87b4ab0a7206b51e1d7d282f19"></a>
 <a class="el" href="classPurrNet_1_1Modules_1_1RollbackModule.html">RollbackModule</a>&#160;</td><td class="memItemRight" valign="bottom"><b>rollbackModule</b><code> [get]</code></td></tr>
@@ -588,6 +600,28 @@ IReadOnlyList&lt; <a class="el" href="classPurrNet_1_1NetworkModule.html">Networ
 <a class="el" href="classPurrNet_1_1NetworkVisibilityRuleSet.html">NetworkVisibilityRuleSet</a>&#160;</td><td class="memItemRight" valign="bottom"><b>visibilityRules</b><code> [get]</code></td></tr>
 <tr class="separator:a2cfed1e82410e15c3d60dcb14899d4c8 inherit properties_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
+Events</h2></td></tr>
+<tr class="memitem:af6e51e3ec60610c656da3786e147b5e6"><td class="memItemLeft" align="right" valign="top"><a id="af6e51e3ec60610c656da3786e147b5e6" name="af6e51e3ec60610c656da3786e147b5e6"></a>
+Action&#160;</td><td class="memItemRight" valign="bottom"><b>onForceSyncWindowOpened</b></td></tr>
+<tr class="memdesc:af6e51e3ec60610c656da3786e147b5e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fired when <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a226f1bbf7545361d763a058622319933" title="True while a force-sync window is active. The controller uses it to bypass change-threshold gating on...">isInForceSyncWindow</a> transitions from false to true. <br /></td></tr>
+<tr class="separator:af6e51e3ec60610c656da3786e147b5e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af820fd825b17101054493054cf4f7886"><td class="memItemLeft" align="right" valign="top"><a id="af820fd825b17101054493054cf4f7886" name="af820fd825b17101054493054cf4f7886"></a>
+Action&#160;</td><td class="memItemRight" valign="bottom"><b>onForceSyncWindowClosed</b></td></tr>
+<tr class="memdesc:af820fd825b17101054493054cf4f7886"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fired when <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a226f1bbf7545361d763a058622319933" title="True while a force-sync window is active. The controller uses it to bypass change-threshold gating on...">isInForceSyncWindow</a> transitions from true to false. <br /></td></tr>
+<tr class="separator:af820fd825b17101054493054cf4f7886"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header events_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('events_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Events inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
+<tr class="memitem:ad64c7424d3ab990d4e48145cb1ba0a72 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ad64c7424d3ab990d4e48145cb1ba0a72" name="ad64c7424d3ab990d4e48145cb1ba0a72"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverAdded</b></td></tr>
+<tr class="separator:ad64c7424d3ab990d4e48145cb1ba0a72 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae11d3cbfc8d9bc4b234552da3a9763e1 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ae11d3cbfc8d9bc4b234552da3a9763e1" name="ae11d3cbfc8d9bc4b234552da3a9763e1"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverRemoved</b></td></tr>
+<tr class="separator:ae11d3cbfc8d9bc4b234552da3a9763e1 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a4033fcf94e189d7cb751bca972838cf3" name="a4033fcf94e189d7cb751bca972838cf3"></a>
+NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentChanged</b></td></tr>
+<tr class="memdesc:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the network parent of this object changes. This will be the closest parent with a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>.  <br /></td></tr>
+<tr class="separator:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
 <tr class="inherit_header pub_static_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
@@ -600,19 +634,34 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>OnReceivedRpc<
 <tr class="memitem:ac98578742fa658fa49406094e09f9e86 inherit pub_static_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ac98578742fa658fa49406094e09f9e86" name="ac98578742fa658fa49406094e09f9e86"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal</b> (GameObject go, <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> manager=null)</td></tr>
 <tr class="separator:ac98578742fa658fa49406094e09f9e86 inherit pub_static_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="inherit_header events_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('events_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Events inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
-<tr class="memitem:ad64c7424d3ab990d4e48145cb1ba0a72 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ad64c7424d3ab990d4e48145cb1ba0a72" name="ad64c7424d3ab990d4e48145cb1ba0a72"></a>
-Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverAdded</b></td></tr>
-<tr class="separator:ad64c7424d3ab990d4e48145cb1ba0a72 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae11d3cbfc8d9bc4b234552da3a9763e1 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ae11d3cbfc8d9bc4b234552da3a9763e1" name="ae11d3cbfc8d9bc4b234552da3a9763e1"></a>
-Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverRemoved</b></td></tr>
-<tr class="separator:ae11d3cbfc8d9bc4b234552da3a9763e1 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a4033fcf94e189d7cb751bca972838cf3" name="a4033fcf94e189d7cb751bca972838cf3"></a>
-NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentChanged</b></td></tr>
-<tr class="memdesc:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the network parent of this object changes. This will be the closest parent with a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>.  <br /></td></tr>
-<tr class="separator:a4033fcf94e189d7cb751bca972838cf3 inherit events_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a390362c0481733d175190856810cff48" name="a390362c0481733d175190856810cff48"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a390362c0481733d175190856810cff48">&#9670;&#160;</a></span>ForceSyncFor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.NetworkRigidbody.ForceSyncFor </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>seconds</em> = <code>-1f</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Opens a force-sync window. While the window is open, the controller bypasses the change thresholds and ships state every tick, and observers can query <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a226f1bbf7545361d763a058622319933" title="True while a force-sync window is active. The controller uses it to bypass change-threshold gating on...">isInForceSyncWindow</a> to adjust local correction behaviour.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">seconds</td><td>Window duration in seconds. Pass -1 (default) for a one-tick window.</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a8aefefe9041ac4eb6442ed8b14cc41a9" name="a8aefefe9041ac4eb6442ed8b14cc41a9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a8aefefe9041ac4eb6442ed8b14cc41a9">&#9670;&#160;</a></span>OnDespawned()</h2>
 
