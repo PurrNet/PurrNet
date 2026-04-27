@@ -1,11 +1,11 @@
-using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Transports;
 using UnityEngine;
 #if NAKAMA
 using Nakama;
+using System;
+using System.Collections.Concurrent;
 #endif
 
 namespace PurrNet.Nakama
@@ -286,6 +286,14 @@ namespace PurrNet.Nakama
 
         private void OnMatchJoined(IMatch joined)
         {
+            if (listenerState == ConnectionState.Connected && match != null && joined.Id == match.Id)
+            {
+                _hostPresence = null;
+                clientState = ConnectionState.Connected;
+                onConnected?.Invoke(new Connection(0), false);
+                return;
+            }
+
             match = joined;
             _self = joined.Self;
 
