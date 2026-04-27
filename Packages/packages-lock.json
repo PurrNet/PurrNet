@@ -23,6 +23,15 @@
       "dependencies": {},
       "hash": "52a7c762327216ef86b776b88cab9531c77e0980"
     },
+    "com.heroiclabs.nakama-unity": {
+      "version": "https://github.com/heroiclabs/nakama-unity.git?path=/Packages/Nakama",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.modules.unitywebrequest": "1.0.0"
+      },
+      "hash": "81ca60235430d2ada404d8423a2e908b96101682"
+    },
     "com.rlabrecque.steamworks.net": {
       "version": "https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net#2024.8.0",
       "depth": 0,

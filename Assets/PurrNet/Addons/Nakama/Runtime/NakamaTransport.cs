@@ -18,8 +18,14 @@ namespace PurrNet.Nakama
         [Tooltip("Match ID. As a client, the match to join. As a server, a non-empty value adopts an existing match (e.g. one created by a lobby system) instead of creating a new one.")]
         [SerializeField] private string _matchId;
 
-        [Tooltip("Op code used for PurrNet data frames. Use a value not used by other systems sharing this match.")]
-        [SerializeField] private long _opCode = 1;
+        [Tooltip("Base op code used for PurrNet data frames. Two consecutive op codes are reserved: this one for server→client traffic and (this + 1) for client→server traffic. Pick a base value such that neither collides with other systems sharing this match (e.g. PurrLobby uses 1-8).")]
+        [SerializeField] private long _opCode = 100;
+
+#if NAKAMA
+        // Distinct op code for client→host traffic so host+client mode (single socket, self-echoed
+        // state) can tell which side a message was sent from.
+        private long serverBoundOpCode => _opCode + 1;
+#endif
 
         public string matchId
         {
@@ -70,7 +76,6 @@ namespace PurrNet.Nakama
 
         public int GetMTU(Connection target, Channel channel, bool asServer) => 8192;
 
-        // ReSharper disable once CollectionNeverUpdated.Local
         private readonly List<Connection> _connections = new();
         public IReadOnlyList<Connection> connections => _connections;
 
@@ -78,7 +83,6 @@ namespace PurrNet.Nakama
         public ConnectionState listenerState
         {
             get => _listenerState;
-            // ReSharper disable once UnusedMember.Local
             private set
             {
                 if (_listenerState == value) return;
@@ -91,7 +95,6 @@ namespace PurrNet.Nakama
         public ConnectionState clientState
         {
             get => _clientState;
-            // ReSharper disable once UnusedMember.Local
             private set
             {
                 if (_clientState == value) return;
@@ -117,19 +120,18 @@ namespace PurrNet.Nakama
 
             if (socket == null || !socket.IsConnected)
             {
-                PurrLogger.LogError("[NakamaTransport] socket must be assigned and connected before Listen.");
+                PurrLogger.LogError("socket must be assigned and connected before Listen.");
                 return;
             }
 
             listenerState = ConnectionState.Connecting;
             HookSocket();
 
-            if (string.IsNullOrEmpty(_matchId))
-                _ = CreateMatchAsync();
-            else
-                _ = AdoptMatchAsync(_matchId);
+            _ = string.IsNullOrEmpty(_matchId) ?
+                CreateMatchAsync() :
+                AdoptMatchAsync(_matchId);
 #else
-            PurrLogger.LogError("[NakamaTransport] Nakama package is not installed.");
+            PurrLogger.LogError("Nakama package is not installed.");
 #endif
         }
 
@@ -145,7 +147,7 @@ namespace PurrNet.Nakama
             {
                 _eventQueue.Enqueue(() =>
                 {
-                    PurrLogger.LogError($"[NakamaTransport] CreateMatchAsync failed: {e.Message}");
+                    PurrLogger.LogError($"CreateMatchAsync failed: {e.Message}");
                     UnhookSocket();
                     listenerState = ConnectionState.Disconnected;
                 });
@@ -156,9 +158,8 @@ namespace PurrNet.Nakama
         {
             try
             {
-                // JoinMatchAsync is idempotent for an already-joined match (e.g. a match the host
-                // created via the same socket as part of a lobby system) and returns the IMatch with
-                // the current presence list, so we can use it for both fresh adoption and re-adoption.
+                // JoinMatchAsync is idempotent for already-joined matches (e.g. one this socket
+                // created via the lobby system), so the same call covers fresh and re-adoption.
                 var joined = await socket.JoinMatchAsync(id);
                 _eventQueue.Enqueue(() => OnMatchAcquired(joined));
             }
@@ -166,7 +167,7 @@ namespace PurrNet.Nakama
             {
                 _eventQueue.Enqueue(() =>
                 {
-                    PurrLogger.LogError($"[NakamaTransport] Failed to adopt existing match `{id}`: {e.Message}");
+                    PurrLogger.LogError($"Failed to adopt existing match `{id}`: {e.Message}");
                     UnhookSocket();
                     listenerState = ConnectionState.Disconnected;
                 });
@@ -183,9 +184,6 @@ namespace PurrNet.Nakama
             _presenceById.Clear();
             _nextConnectionId = 1;
 
-            // For an adopted match, register any non-self presences already in the room as client
-            // connections so the server side can talk to them immediately. For a freshly-created
-            // match the presence list contains only self, so this is a no-op.
             var prejoined = new List<Connection>();
             if (acquired.Presences != null)
             {
@@ -205,7 +203,6 @@ namespace PurrNet.Nakama
 
             listenerState = ConnectionState.Connected;
 
-            // Fire onConnected after the state transition so observers see a Connected listener.
             for (int i = 0; i < prejoined.Count; i++)
                 onConnected?.Invoke(prejoined[i], true);
         }
@@ -247,13 +244,13 @@ namespace PurrNet.Nakama
 
             if (socket == null || !socket.IsConnected)
             {
-                PurrLogger.LogError("[NakamaTransport] socket must be assigned and connected before Connect.");
+                PurrLogger.LogError("socket must be assigned and connected before Connect.");
                 return;
             }
 
             if (string.IsNullOrEmpty(ip))
             {
-                PurrLogger.LogError("[NakamaTransport] matchId (passed via Connect's ip parameter) must not be empty.");
+                PurrLogger.LogError("matchId (passed via Connect's ip parameter) must not be empty.");
                 return;
             }
 
@@ -263,7 +260,7 @@ namespace PurrNet.Nakama
 
             _ = JoinMatchAsync(ip);
 #else
-            PurrLogger.LogError("[NakamaTransport] Nakama package is not installed.");
+            PurrLogger.LogError("Nakama package is not installed.");
 #endif
         }
 
@@ -279,7 +276,7 @@ namespace PurrNet.Nakama
             {
                 _eventQueue.Enqueue(() =>
                 {
-                    PurrLogger.LogError($"[NakamaTransport] JoinMatchAsync failed: {e.Message}");
+                    PurrLogger.LogError($"JoinMatchAsync failed: {e.Message}");
                     if (listenerState == ConnectionState.Disconnected)
                         UnhookSocket();
                     clientState = ConnectionState.Disconnected;
@@ -289,19 +286,29 @@ namespace PurrNet.Nakama
 
         private void OnMatchJoined(IMatch joined)
         {
-            if (listenerState == ConnectionState.Connected && match != null && joined.Id == match.Id)
+            if (listenerState == ConnectionState.Connected && match != null && joined.Id == match.Id && _self != null)
             {
-                _hostPresence = null;
+                _hostPresence = _self;
+
+                if (!_idBySessionId.TryGetValue(_self.SessionId, out var selfId))
+                {
+                    selfId = _nextConnectionId++;
+                    _idBySessionId[_self.SessionId] = selfId;
+                    _presenceById[selfId] = _self;
+                    _connections.Add(new Connection(selfId));
+                }
+
                 clientState = ConnectionState.Connected;
                 onConnected?.Invoke(new Connection(0), false);
+                onConnected?.Invoke(new Connection(selfId), true);
                 return;
             }
 
             match = joined;
             _self = joined.Self;
 
-            // Pick the host: first existing presence (excluding self).
-            // PurrNet usage assumes the host created the match before any client joins.
+            // PurrNet usage assumes the host created the match before any client joins, so the
+            // first non-self presence is the host.
             _hostPresence = null;
             if (joined.Presences != null)
             {
@@ -317,7 +324,7 @@ namespace PurrNet.Nakama
 
             if (_hostPresence == null)
             {
-                PurrLogger.LogError("[NakamaTransport] Joined match has no host presence; refusing connection.");
+                PurrLogger.LogError("Joined match has no host presence; refusing connection.");
                 clientState = ConnectionState.Disconnected;
                 _ = LeaveMatchSafe(joined.Id);
                 return;
@@ -335,7 +342,7 @@ namespace PurrNet.Nakama
             }
             catch (Exception e)
             {
-                PurrLogger.LogWarning($"[NakamaTransport] LeaveMatchAsync failed: {e.Message}");
+                PurrLogger.LogWarning($"LeaveMatchAsync failed: {e.Message}");
             }
         }
 #endif
@@ -349,11 +356,25 @@ namespace PurrNet.Nakama
             clientState = ConnectionState.Disconnecting;
             _hostPresence = null;
 
+            // Host+client: Nakama doesn't generate a Leave event for self, so manually drop the
+            // self-presence connection on the listener side.
+            if (listenerState == ConnectionState.Connected
+                && _self != null
+                && _idBySessionId.Remove(_self.SessionId, out var selfId))
+            {
+                _presenceById.Remove(selfId);
+                var selfConn = new Connection(selfId);
+                _connections.Remove(selfConn);
+                onDisconnected?.Invoke(selfConn, DisconnectReason.ClientRequest, true);
+            }
+
             // Only leave the Nakama match when the listener isn't using it. In host+client mode
             // the listener owns the match and leaving it here would also tear down the server.
             if (listenerState == ConnectionState.Disconnected)
             {
-                var idToLeave = match?.Id ?? _matchId;
+                // Only leave if we actually joined; an adoption that errored leaves match==null
+                // and there's nothing on the server to tell goodbye to.
+                var idToLeave = match?.Id;
                 match = null;
                 _self = null;
                 UnhookSocket();
@@ -395,7 +416,7 @@ namespace PurrNet.Nakama
                 return;
 
             var payload = ToArray(data);
-            _ = SendStateSafe(match.Id, _opCode, payload, new[] { _hostPresence });
+            _ = SendStateSafe(match.Id, serverBoundOpCode, payload, new[] { _hostPresence });
             RaiseDataSent(default, data, false);
 #endif
         }
@@ -409,7 +430,7 @@ namespace PurrNet.Nakama
             }
             catch (Exception e)
             {
-                PurrLogger.LogWarning($"[NakamaTransport] SendMatchStateAsync failed: {e.Message}");
+                PurrLogger.LogWarning($"SendMatchStateAsync failed: {e.Message}");
             }
         }
 
@@ -428,10 +449,9 @@ namespace PurrNet.Nakama
 #if NAKAMA
             // Nakama relay has no host-side kick. Drop the mapping locally and notify;
             // the remote will continue to see the match until it leaves on its own.
-            if (!_presenceById.TryGetValue(conn.connectionId, out var presence))
+            if (!_presenceById.Remove(conn.connectionId, out var presence))
                 return;
 
-            _presenceById.Remove(conn.connectionId);
             _idBySessionId.Remove(presence.SessionId);
             _connections.Remove(conn);
             onDisconnected?.Invoke(conn, DisconnectReason.ServerRequest, true);
@@ -444,7 +464,7 @@ namespace PurrNet.Nakama
             while (_eventQueue.TryDequeue(out var evt))
             {
                 try { evt(); }
-                catch (Exception e) { PurrLogger.LogError($"[NakamaTransport] Event handler threw: {e}"); }
+                catch (Exception e) { PurrLogger.LogError($"Event handler threw: {e}"); }
             }
 #endif
         }
@@ -488,25 +508,21 @@ namespace PurrNet.Nakama
         {
             if (match == null || state.MatchId != match.Id)
                 return;
-            if (state.OpCode != _opCode)
-                return;
-            if (_self != null && state.UserPresence != null && state.UserPresence.SessionId == _self.SessionId)
-                return;
 
             var bytes = state.State ?? Array.Empty<byte>();
             var data = new ByteData(bytes, 0, bytes.Length);
 
-            if (listenerState == ConnectionState.Connected)
+            if (state.OpCode == serverBoundOpCode
+                && listenerState == ConnectionState.Connected
+                && state.UserPresence != null
+                && _idBySessionId.TryGetValue(state.UserPresence.SessionId, out var id))
             {
-                if (state.UserPresence != null
-                    && _idBySessionId.TryGetValue(state.UserPresence.SessionId, out var id))
-                {
-                    onDataReceived?.Invoke(new Connection(id), data, true);
-                }
+                onDataReceived?.Invoke(new Connection(id), data, true);
                 return;
             }
 
-            if (clientState == ConnectionState.Connected
+            if (state.OpCode == _opCode
+                && clientState == ConnectionState.Connected
                 && _hostPresence != null
                 && state.UserPresence != null
                 && state.UserPresence.SessionId == _hostPresence.SessionId)
@@ -520,7 +536,6 @@ namespace PurrNet.Nakama
             if (match == null || evt.MatchId != match.Id)
                 return;
 
-            // Server view: track joins/leaves as PurrNet connections.
             if (listenerState == ConnectionState.Connected)
             {
                 if (evt.Joins != null)
@@ -543,9 +558,8 @@ namespace PurrNet.Nakama
                 {
                     foreach (var p in evt.Leaves)
                     {
-                        if (!_idBySessionId.TryGetValue(p.SessionId, out var id))
+                        if (!_idBySessionId.Remove(p.SessionId, out var id))
                             continue;
-                        _idBySessionId.Remove(p.SessionId);
                         _presenceById.Remove(id);
                         var conn = new Connection(id);
                         _connections.Remove(conn);
@@ -554,7 +568,6 @@ namespace PurrNet.Nakama
                 }
             }
 
-            // Client view: only the host's leave matters.
             if (clientState == ConnectionState.Connected && _hostPresence != null && evt.Leaves != null)
             {
                 foreach (var p in evt.Leaves)
@@ -580,6 +593,7 @@ namespace PurrNet.Nakama
         private void Cleanup()
         {
             UnhookSocket();
+            while (_eventQueue.TryDequeue(out _)) { }
             var idToLeave = match?.Id;
             match = null;
             _self = null;
