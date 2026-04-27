@@ -1,3 +1,10 @@
+# [1.20.0-beta.106](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.105...v1.20.0-beta.106) (2026-04-27)
+
+
+### Bug Fixes
+
+* Add force sync window to network rigidbody ([c7ddedb](https://github.com/PurrNet/PurrNet/commit/c7ddedbb183a7f7b48ac5088373b09ccf9f9b1ae))
+
 # [1.20.0-beta.105](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.104...v1.20.0-beta.105) (2026-04-27)
 
 
