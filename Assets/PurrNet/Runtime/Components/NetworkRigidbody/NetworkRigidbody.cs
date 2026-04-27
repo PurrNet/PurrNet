@@ -1,3 +1,4 @@
+using System;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Transports;
@@ -142,6 +143,10 @@ namespace PurrNet
         private bool _hasPendingTeleport;
         private bool _isIgnoringParentChanges;
 
+        private double _forceSyncWindowEndTime = double.NegativeInfinity;
+        private bool _forceSyncOneShot;
+        private bool _wasInForceSyncWindow;
+
         private string _lastCorrectionReason = "No";
         private Vector3 _latestRawSnapshotPos;
         private Transform _latestRawSnapshotParent;
@@ -252,6 +257,8 @@ namespace PurrNet
                 ControllerTick();
             else
                 NonControllerTick();
+
+            TickForceSyncWindow();
         }
 
         private void ControllerTick()
@@ -259,7 +266,7 @@ namespace PurrNet
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
-            if (!HasStateChanged(parentTrs) && !ShouldSyncWhenStopped())
+            if (!isInForceSyncWindow && !HasStateChanged(parentTrs) && !ShouldSyncWhenStopped())
                 return;
 
             var pos = ReadPosition(parentTrs);
@@ -1033,6 +1040,97 @@ namespace PurrNet
             TeleportTo(position, _rigidbody.rotation);
         }
 
+        /// <summary>
+        /// True while a force-sync window is active. The controller uses it to bypass
+        /// change-threshold gating on outgoing state; receivers can query it from their
+        /// correction code (e.g. to bypass weak-axis logic) for the duration.
+        /// </summary>
+        public bool isInForceSyncWindow
+        {
+            get
+            {
+                if (_forceSyncOneShot)
+                    return true;
+                return Time.unscaledTimeAsDouble < _forceSyncWindowEndTime;
+            }
+        }
+
+        /// <summary>Seconds remaining in the active force-sync window, or 0 if inactive / one-shot.</summary>
+        public float forceSyncWindowRemaining
+        {
+            get
+            {
+                if (_forceSyncOneShot || _forceSyncWindowEndTime <= 0)
+                    return 0f;
+                return Mathf.Max(0f, (float)(_forceSyncWindowEndTime - Time.unscaledTimeAsDouble));
+            }
+        }
+
+        /// <summary>Fired when <see cref="isInForceSyncWindow"/> transitions from false to true.</summary>
+        public event Action onForceSyncWindowOpened;
+
+        /// <summary>Fired when <see cref="isInForceSyncWindow"/> transitions from true to false.</summary>
+        public event Action onForceSyncWindowClosed;
+
+        /// <summary>
+        /// Opens a force-sync window. While the window is open, the controller bypasses
+        /// the change thresholds and ships state every tick, and observers can query
+        /// <see cref="isInForceSyncWindow"/> to adjust local correction behaviour.
+        /// </summary>
+        /// <param name="seconds">Window duration in seconds. Pass -1 (default) for a one-tick window.</param>
+        public void ForceSyncFor(float seconds = -1f)
+        {
+            if (!isSpawned)
+                return;
+
+            if (!IsController(_ownerAuth))
+            {
+                PurrLogger.LogWarning($"ForceSyncFor called on {gameObject.name} from a non-controller. Ignored.", this);
+                return;
+            }
+
+            OpenForceSyncWindowLocal(seconds);
+
+            if (isActiveAndEnabled)
+                SyncForceSyncWindow(seconds);
+        }
+
+        private void OpenForceSyncWindowLocal(float seconds)
+        {
+            bool wasOpen = isInForceSyncWindow;
+
+            if (seconds < 0f)
+            {
+                _forceSyncOneShot = true;
+            }
+            else
+            {
+                double newEnd = Time.unscaledTimeAsDouble + seconds;
+                if (newEnd > _forceSyncWindowEndTime)
+                    _forceSyncWindowEndTime = newEnd;
+            }
+
+            bool isOpen = isInForceSyncWindow;
+            if (!wasOpen && isOpen)
+                onForceSyncWindowOpened?.Invoke();
+            _wasInForceSyncWindow = isOpen;
+        }
+
+        private void TickForceSyncWindow()
+        {
+            bool wasOpen = _wasInForceSyncWindow;
+
+            if (_forceSyncOneShot)
+                _forceSyncOneShot = false;
+
+            bool isOpen = isInForceSyncWindow;
+
+            if (wasOpen && !isOpen)
+                onForceSyncWindowClosed?.Invoke();
+
+            _wasInForceSyncWindow = isOpen;
+        }
+
         #endregion
 
         #region RPCs
@@ -1182,6 +1280,27 @@ namespace PurrNet
                 angularVelocity = ReadAngularVelocity(parentTrs),
                 parent = parentIdentity
             });
+        }
+
+        [ServerRpc(channel: Channel.ReliableOrdered)]
+        private void SyncForceSyncWindow(float seconds)
+        {
+            SyncForceSyncWindow_Internal(seconds);
+            SyncForceSyncWindow_Observer(seconds);
+        }
+
+        [ObserversRpc(channel: Channel.ReliableOrdered, excludeSender: true)]
+        private void SyncForceSyncWindow_Observer(float seconds)
+        {
+            SyncForceSyncWindow_Internal(seconds);
+        }
+
+        private void SyncForceSyncWindow_Internal(float seconds)
+        {
+            if (IsController(_ownerAuth))
+                return;
+
+            OpenForceSyncWindowLocal(seconds);
         }
 
         #endregion
