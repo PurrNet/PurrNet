@@ -2,6 +2,7 @@ var classPurrNet_1_1NetworkRigidbody =
 [
     [ "ForceSyncFor", "classPurrNet_1_1NetworkRigidbody.html#a390362c0481733d175190856810cff48", null ],
     [ "OnDespawned", "classPurrNet_1_1NetworkRigidbody.html#a8aefefe9041ac4eb6442ed8b14cc41a9", null ],
+    [ "OnObserverAdded", "classPurrNet_1_1NetworkRigidbody.html#ac9af82d6db296226dddea03eec9f8a74", null ],
     [ "OnOwnerChanged", "classPurrNet_1_1NetworkRigidbody.html#a5bbe3031041db15dd08f6239d4a7f1ae", null ],
     [ "OnSpawned", "classPurrNet_1_1NetworkRigidbody.html#a1f5307a5ffaa725eea3fe068a2875216", null ],
     [ "OnTick", "classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215", null ],
