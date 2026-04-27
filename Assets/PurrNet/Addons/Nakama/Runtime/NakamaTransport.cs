@@ -70,6 +70,7 @@ namespace PurrNet.Nakama
 
         public int GetMTU(Connection target, Channel channel, bool asServer) => 8192;
 
+        // ReSharper disable once CollectionNeverUpdated.Local
         private readonly List<Connection> _connections = new();
         public IReadOnlyList<Connection> connections => _connections;
 
@@ -77,6 +78,7 @@ namespace PurrNet.Nakama
         public ConnectionState listenerState
         {
             get => _listenerState;
+            // ReSharper disable once UnusedMember.Local
             private set
             {
                 if (_listenerState == value) return;
@@ -89,6 +91,7 @@ namespace PurrNet.Nakama
         public ConnectionState clientState
         {
             get => _clientState;
+            // ReSharper disable once UnusedMember.Local
             private set
             {
                 if (_clientState == value) return;
