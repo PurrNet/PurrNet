@@ -19,6 +19,11 @@ namespace PurrNet.Editor
             return await SendRequest<EntitlementsResponse>($"{BaseUrl}/entitlements", apiKey);
         }
 
+        public static async Task<Result<UserInfo>> GetMe(string apiKey)
+        {
+            return await SendRequest<UserInfo>($"{BaseUrl}/me", apiKey);
+        }
+
         public static async Task<Result<DownloadResponse>> GetDownloadUrl(string apiKey, string packageId, string versionId)
         {
             var url = $"{BaseUrl}/packages/{packageId}/download?versionId={versionId}";
@@ -31,7 +36,7 @@ namespace PurrNet.Editor
             {
                 var request = UnityWebRequest.Get(url);
                 request.downloadHandler = new DownloadHandlerFile(destPath);
-                await request.SendWebRequest();
+                await SendWebRequestAsync(request);
 
                 if (request.result != UnityWebRequest.Result.Success)
                     return Result<string>.Fail(request.error);
@@ -44,6 +49,14 @@ namespace PurrNet.Editor
             }
         }
 
+        private static Task SendWebRequestAsync(UnityWebRequest request)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            var operation = request.SendWebRequest();
+            operation.completed += _ => tcs.TrySetResult(true);
+            return tcs.Task;
+        }
+
         private static async Task<Result<T>> SendRequest<T>(string url, string apiKey)
         {
             try
@@ -53,7 +66,7 @@ namespace PurrNet.Editor
                 if (!string.IsNullOrEmpty(apiKey))
                     request.SetRequestHeader("Authorization", "Bearer " + apiKey);
 
-                await request.SendWebRequest();
+                await SendWebRequestAsync(request);
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {

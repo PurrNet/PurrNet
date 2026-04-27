@@ -39,10 +39,13 @@ namespace PurrNet.Pooling
         {
             var val = new DisposableDictionary<TKey, TValue>();
             val.dictionary = DictionaryPool<TKey, TValue>.Instantiate();
-            val._keys = DisposableList<TKey>.Create(copyFrom.Keys);
+            val._keys = DisposableList<TKey>.Create();
             val._isAllocated = true;
             foreach (var kvp in copyFrom)
-                val.dictionary.Add(kvp.Key, kvp.Value);
+            {
+                if (val.dictionary.TryAdd(kvp.Key, kvp.Value))
+                    val._keys.Add(kvp.Key);
+            }
             return val;
         }
 
@@ -163,8 +166,8 @@ namespace PurrNet.Pooling
             if (!_isAllocated)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
-            _keys.Add(key);
             dictionary.Add(key, value);
+            _keys.Add(key);
         }
 
         public bool ContainsKey(TKey key)
@@ -262,15 +265,21 @@ namespace PurrNet.Pooling
             if (isDisposed)
                 return default;
 
+            var res = Create();
+
             if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>() ||
                 RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
             {
-                var res = Create();
                 foreach (var pair in this)
                     res.Add(Packer.Copy(pair.Key), Packer.Copy(pair.Value));
-                return res;
             }
-            return Create(this);
+            else
+            {
+                foreach (var kvp in this)
+                    res.Add(kvp.Key, kvp.Value);
+            }
+
+            return res;
         }
 
         public bool Equals(DisposableDictionary<TKey, TValue> other)

@@ -33,33 +33,30 @@ namespace PurrNet
         public bool connectedServer { get; private set; }
         public bool connectedClient { get; private set; }
 
-        private const float PING_HISTORY_TIME = 2.5f;
-        private const int PACKET_HISTORY_SECONDS = 5;
-        private const int MAX_PACKET_HISTORY = 200;
-        private const float JITTER_SAMPLE_TIME = 2.5f;
-        private const int MAX_JITTER_SAMPLES = 128;
+        private const float PING_EMA_RISE_ALPHA = 0.15f;
+        private const float PING_EMA_FALL_ALPHA = 0.1f;
+        private const float JITTER_EMA_ALPHA = 0.0625f;
+        private const float WARMUP_DURATION = 1.0f;
+        private float _emaPing;
+        private bool _hasPingSample;
+        private float _connectionTime;
+        private int _lastRawPing;
+        private float _emaJitter;
 
-        private int[] _pingStats;
-        private readonly float[] _sentPacketTimes = new float[MAX_PACKET_HISTORY];
-        private readonly float[] _receivedPacketTimes = new float[MAX_PACKET_HISTORY];
+        private const int MAX_SEQUENCE_TRACKING = 256;
+        private const float PACKET_LOSS_WINDOW = 5f;
+        private const float MIN_INFLIGHT_GRACE = 0.5f;
 
-        private readonly float[] _jitterTimes = new float[MAX_JITTER_SAMPLES];
-        private readonly int[] _jitterValues = new int[MAX_JITTER_SAMPLES];
-        private int _jitterHead;
-        private int _jitterCount;
-
-        private int _pingHistorySize;
-        private int _pingIndex;
-        private int _pingCount;
-        private int _sentPacketIndex;
-        private int _receivedPacketIndex;
-        private int _sentPacketCount;
-        private int _receivedPacketCount;
-        private uint _lastPingSendTick;
+        private readonly uint[] _seqIds = new uint[MAX_SEQUENCE_TRACKING];
+        private readonly float[] _seqSendTimes = new float[MAX_SEQUENCE_TRACKING];
+        private readonly bool[] _seqAcked = new bool[MAX_SEQUENCE_TRACKING];
+        private int _seqHead;
+        private int _seqCount;
+        private uint _packetSequence;
 
         private int _packetsToSendPerSec = 20;
         private uint _lastPacketSendTick;
-        private uint _packetSequence;
+        private uint _lastPingSendTick;
 
         private float _totalDataReceived;
         private float _totalDataSent;
@@ -86,6 +83,18 @@ namespace PurrNet
             _networkManager.onServerConnectionState += OnServerConnectionState;
             _networkManager.onClientConnectionState += OnClientConnectionState;
         }
+
+#if UNITY_EDITOR
+        private void OnEnable()
+        {
+            PurrOnGUI.Subscribe(DrawStatisticsGUI);
+        }
+
+        private void OnDisable()
+        {
+            PurrOnGUI.Unsubscribe(DrawStatisticsGUI);
+        }
+#endif
 
         private void Start()
         {
@@ -161,15 +170,12 @@ namespace PurrNet
             ClientUnsubscribe_ServerStats();
         }
 
-        private void OnGUI()
-        {
 #if UNITY_EDITOR
+        private void DrawStatisticsGUI()
+        {
             if (!_displayTarget.HasFlag(StatisticsDisplayTarget.Editor))
                 return;
-#else
-            if (!_displayTarget.HasFlag(StatisticsDisplayTarget.Build))
-                return;
-#endif
+
             if (placement == StatisticsPlacement.None || !connectedClient)
                 return;
 
@@ -215,6 +221,7 @@ namespace PurrNet
                 GUI.Label(rect, "Version: " + NetworkManager.version, _labelStyle);
             }
         }
+#endif
 
         private void UpdateCachedStrings()
         {
@@ -361,7 +368,7 @@ namespace PurrNet
             }
 
             if (connectedClient)
-                CleanupOldPackets(Time.time);
+                CalculatePacketLoss();
 
             ServerStatsUpdate();
         }
@@ -383,8 +390,6 @@ namespace PurrNet
                     ServerUnsubscribe_ServerStats();
                     return;
                 case ConnectionState.Connected:
-                    _pingHistorySize = Mathf.RoundToInt(_networkManager.tickModule.tickRate * PING_HISTORY_TIME);
-                    _pingStats = new int[_pingHistorySize];
                     _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
                     _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
@@ -405,8 +410,6 @@ namespace PurrNet
                 return;
 
             _playersClientBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(false);
-            _pingHistorySize = Mathf.RoundToInt(_networkManager.tickModule.tickRate * PING_HISTORY_TIME);
-            _pingStats = new int[_pingHistorySize];
 
             connectedClient = state == ConnectionState.Connected;
 
@@ -448,26 +451,19 @@ namespace PurrNet
             ping = 0;
             jitter = 0;
             packetLoss = 0;
-            _pingIndex = 0;
-            _pingCount = 0;
-            _sentPacketIndex = 0;
-            _receivedPacketIndex = 0;
-            _sentPacketCount = 0;
-            _receivedPacketCount = 0;
+            _emaPing = 0;
+            _hasPingSample = false;
+            _connectionTime = Time.time;
+            _lastRawPing = 0;
+            _emaJitter = 0;
+            _seqHead = 0;
+            _seqCount = 0;
             _packetSequence = 0;
-            _jitterHead = 0;
-            _jitterCount = 0;
 
-            for (int i = 0; i < MAX_PACKET_HISTORY; i++)
+            for (int i = 0; i < MAX_SEQUENCE_TRACKING; i++)
             {
-                _sentPacketTimes[i] = 0;
-                _receivedPacketTimes[i] = 0;
-            }
-
-            for (int i = 0; i < MAX_JITTER_SAMPLES; i++)
-            {
-                _jitterTimes[i] = 0;
-                _jitterValues[i] = 0;
+                _seqSendTimes[i] = 0;
+                _seqAcked[i] = false;
             }
 
             _cachedPing = -1;
@@ -520,61 +516,35 @@ namespace PurrNet
                 return;
             }
 
+            if (Time.time - _connectionTime < WARMUP_DURATION)
+                return;
+
             float sentTime = msg.realSendTime;
             int currentPing = Mathf.Max(0, Mathf.FloorToInt((Time.time - sentTime) * 1000));
-            var multiplier = 2f;
-            if (_networkManager.isServer)
-                multiplier = 3f;
-            currentPing -= Mathf.Min(currentPing, Mathf.RoundToInt((_tickManager.tickDelta * multiplier) * 1000));
 
-            _pingStats[_pingIndex] = currentPing;
-            _pingIndex = (_pingIndex + 1) % _pingHistorySize;
-            if (_pingCount < _pingHistorySize)
-                _pingCount++;
+            var compensation = _tickManager.tickDelta * (_networkManager.isServer ? 3f : 2f);
+            currentPing -= Mathf.Min(currentPing, Mathf.RoundToInt(compensation * 1000));
 
-            CalculatePingStats();
-        }
-
-        private void CalculatePingStats()
-        {
-            if (_pingCount == 0)
+            if (_hasPingSample)
             {
-                ping = 0;
-                jitter = 0;
-                return;
+                int diff = Mathf.Abs(currentPing - _lastRawPing);
+                _emaJitter += JITTER_EMA_ALPHA * (diff - _emaJitter);
+            }
+            _lastRawPing = currentPing;
+
+            if (!_hasPingSample)
+            {
+                _emaPing = currentPing;
+                _hasPingSample = true;
+            }
+            else
+            {
+                float alpha = currentPing > _emaPing ? PING_EMA_RISE_ALPHA : PING_EMA_FALL_ALPHA;
+                _emaPing = alpha * currentPing + (1f - alpha) * _emaPing;
             }
 
-            int sum = 0;
-            for (int i = 0; i < _pingCount; i++)
-                sum += _pingStats[i];
-
-            ping = sum / _pingCount;
-
-            float now = Time.time;
-
-            _jitterTimes[_jitterHead] = now;
-            _jitterValues[_jitterHead] = ping;
-            _jitterHead = (_jitterHead + 1) % MAX_JITTER_SAMPLES;
-            if (_jitterCount < MAX_JITTER_SAMPLES)
-                _jitterCount++;
-
-            float cutoff = now - JITTER_SAMPLE_TIME;
-            int min = int.MaxValue;
-            int max = int.MinValue;
-            int validCount = 0;
-
-            for (int i = 0; i < _jitterCount; i++)
-            {
-                if (_jitterTimes[i] >= cutoff)
-                {
-                    int val = _jitterValues[i];
-                    if (val < min) min = val;
-                    if (val > max) max = val;
-                    validCount++;
-                }
-            }
-
-            jitter = validCount > 1 ? max - min : 0;
+            ping = Mathf.RoundToInt(_emaPing);
+            jitter = Mathf.RoundToInt(_emaJitter);
         }
 
         private void HandlePacketCheck()
@@ -584,66 +554,49 @@ namespace PurrNet
 
             _lastPacketSendTick = _tickManager.localTick;
 
-            _sentPacketTimes[_sentPacketIndex] = Time.time;
-            _sentPacketIndex = (_sentPacketIndex + 1) % MAX_PACKET_HISTORY;
-            if (_sentPacketCount < MAX_PACKET_HISTORY)
-                _sentPacketCount++;
+            int idx = _seqHead;
+            _seqIds[idx] = _packetSequence;
+            _seqSendTimes[idx] = Time.time;
+            _seqAcked[idx] = false;
+            _seqHead = (_seqHead + 1) % MAX_SEQUENCE_TRACKING;
+            if (_seqCount < MAX_SEQUENCE_TRACKING)
+                _seqCount++;
 
             _playersClientBroadcaster.SendToServer(new PacketMessage { sequenceId = _packetSequence++ }, Channel.Unreliable);
-
-            CalculatePacketLoss();
         }
 
         private void CalculatePacketLoss()
         {
-            float currentTime = Time.time;
-            float cutoffTime = currentTime - PACKET_HISTORY_SECONDS;
+            float now = Time.time;
+            float gracePeriod = Mathf.Max(MIN_INFLIGHT_GRACE, (_emaPing / 1000f) * 3f);
+            float graceThreshold = now - gracePeriod;
+            float windowStart = now - PACKET_LOSS_WINDOW;
 
-            int validSentPackets = 0;
-            int validReceivedPackets = 0;
-
-            for (int i = 0; i < _sentPacketCount; i++)
-            {
-                if (_sentPacketTimes[i] > 0 && _sentPacketTimes[i] >= cutoffTime)
-                    validSentPackets++;
-            }
-
-            for (int i = 0; i < _receivedPacketCount; i++)
-            {
-                if (_receivedPacketTimes[i] > 0 && _receivedPacketTimes[i] >= cutoffTime)
-                    validReceivedPackets++;
-            }
-
-            if (validSentPackets > 0)
-            {
-                int lossPercentage = 100 - (validReceivedPackets * 100 / validSentPackets);
-                packetLoss = Mathf.Clamp(lossPercentage, 0, 100);
-
-                if (_tickManager.localTick < 3 * _tickManager.tickRate)
-                    packetLoss = 0;
-            }
-            else
+            if (_tickManager != null && _tickManager.localTick < 3 * _tickManager.tickRate)
             {
                 packetLoss = 0;
+                return;
             }
-        }
 
-        private void CleanupOldPackets(float currentTime)
-        {
-            float cutoffTime = currentTime - PACKET_HISTORY_SECONDS - 1f;
+            int totalSettled = 0;
+            int totalLost = 0;
 
-            for (int i = 0; i < MAX_PACKET_HISTORY; i++)
+            for (int i = 0; i < _seqCount; i++)
             {
-                if (_sentPacketTimes[i] > 0 && _sentPacketTimes[i] < cutoffTime)
-                {
-                    _sentPacketTimes[i] = 0;
-                }
+                float sendTime = _seqSendTimes[i];
 
-                if (_receivedPacketTimes[i] > 0 && _receivedPacketTimes[i] < cutoffTime)
-                {
-                    _receivedPacketTimes[i] = 0;
-                }
+                if (sendTime < windowStart || sendTime > graceThreshold)
+                    continue;
+
+                totalSettled++;
+                if (!_seqAcked[i])
+                    totalLost++;
             }
+
+            if (totalSettled > 0)
+                packetLoss = Mathf.Clamp(totalLost * 100 / totalSettled, 0, 100);
+            else
+                packetLoss = 0;
         }
 
         private void ReceivePacket(PlayerID sender, PacketMessage msg, bool asServer)
@@ -654,10 +607,14 @@ namespace PurrNet
                 return;
             }
 
-            _receivedPacketTimes[_receivedPacketIndex] = Time.time;
-            _receivedPacketIndex = (_receivedPacketIndex + 1) % MAX_PACKET_HISTORY;
-            if (_receivedPacketCount < MAX_PACKET_HISTORY)
-                _receivedPacketCount++;
+            for (int i = 0; i < _seqCount; i++)
+            {
+                if (_seqIds[i] == msg.sequenceId)
+                {
+                    _seqAcked[i] = true;
+                    break;
+                }
+            }
         }
 
         private void OnDataReceived(Connection conn, ByteData data, bool asServer)

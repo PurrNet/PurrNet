@@ -8,7 +8,7 @@ using Object = UnityEngine.Object;
 namespace PurrNet
 {
     [AddComponentMenu("PurrNet/Network Reflection")]
-    public class NetworkReflection : NetworkIdentity, ITick
+    public partial class NetworkReflection : NetworkIdentity, ITick
     {
         [PurrDocs("systems-and-modules/plug-n-play-components/network-reflection-auto-sync")]
         [Tooltip("The behaviour to track")]
@@ -17,6 +17,9 @@ namespace PurrNet
 
         [Tooltip("The fields/properties to track and sync on the behaviour")] [SerializeField, HideInInspector]
         List<ReflectionData> _trackedFields;
+
+        [Tooltip("Methods to expose as RPCs on the behaviour")] [SerializeField, HideInInspector]
+        List<ReflectionMethodData> _trackedMethods;
 
         [Tooltip(
             "If true the owner has authority over this animator, if no owner is set it is controlled by the server")]
@@ -41,6 +44,20 @@ namespace PurrNet
             set => _trackedFields = value;
         }
 
+        /// <summary>
+        /// The methods to expose as RPCs on the behaviour
+        /// </summary>
+        public List<ReflectionMethodData> trackedMethods
+        {
+            get => _trackedMethods;
+            set => _trackedMethods = value;
+        }
+
+        /// <summary>
+        /// The tracked behaviour instance
+        /// </summary>
+        public Object trackedBehaviour => _trackedBehaviour;
+
         private void Awake()
         {
             if (_initialized)
@@ -60,6 +77,8 @@ namespace PurrNet
                 var value = new ReflectedValue(_trackedBehaviour, _trackedFields[i]);
                 _reflectedValues[i] = value;
             }
+
+            InitMethodTracking();
         }
 
         protected override void OnObserverAdded(PlayerID player)

@@ -227,9 +227,7 @@ namespace PurrNet
                 var oldValue = _array[index];
                 _array[index] = value;
                 var change = SyncArrayChange<T>.Set(value, oldValue, index);
-                //QueueChange(change);
                 InvokeChange(change);
-
             }
         }
 
@@ -250,9 +248,7 @@ namespace PurrNet
 
                     var resizeChange = SyncArrayChange<T>.Resized();
                     var clearChange = SyncArrayChange<T>.Cleared();
-                    QueueChange(resizeChange);
                     InvokeChange(resizeChange);
-                    QueueChange(clearChange);
                     InvokeChange(clearChange);
                 }
             }
@@ -277,9 +273,7 @@ namespace PurrNet
 
                     var resizeChange = SyncArrayChange<T>.Resized();
                     var clearChange = SyncArrayChange<T>.Cleared();
-                    QueueChange(resizeChange);
                     InvokeChange(resizeChange);
-                    //QueueChange(clearChange);
                     InvokeChange(clearChange);
                 }
             }
@@ -438,6 +432,9 @@ namespace PurrNet
 
         public void OnTick(float delta)
         {
+            if (!_isDirty && !_wasLastDirty)
+                return;
+
             if (!IsController(_ownerAuth))
                 return;
 
@@ -501,7 +498,6 @@ namespace PurrNet
                     var oldValue = _array[index];
                     _array[index] = value;
                     var change = SyncArrayChange<T>.Set(value, oldValue, index);
-                    QueueChange(change);
                     InvokeChange(change);
                 }
             }
@@ -517,7 +513,6 @@ namespace PurrNet
                     var oldValue = _array[index];
                     _array[index] = value;
                     var change = SyncArrayChange<T>.Set(value, oldValue, index);
-                    QueueChange(change);
                     InvokeChange(change);
                 }
             }
@@ -537,7 +532,6 @@ namespace PurrNet
             {
                 Array.Clear(_array, 0, _length);
                 var change = SyncArrayChange<T>.Cleared();
-                QueueChange(change);
                 InvokeChange(change);
             }
         }
@@ -549,7 +543,6 @@ namespace PurrNet
             {
                 Array.Clear(_array, 0, _length);
                 var change = SyncArrayChange<T>.Cleared();
-                QueueChange(change);
                 InvokeChange(change);
             }
         }
@@ -571,7 +564,6 @@ namespace PurrNet
                     Array.Resize(ref _array, newLength);
                     _length = newLength;
                     var change = SyncArrayChange<T>.Resized();
-                    QueueChange(change);
                     InvokeChange(change);
                 }
             }
@@ -587,7 +579,6 @@ namespace PurrNet
                     Array.Resize(ref _array, newLength);
                     _length = newLength;
                     var change = SyncArrayChange<T>.Resized();
-                    QueueChange(change);
                     InvokeChange(change);
                 }
             }
@@ -609,7 +600,6 @@ namespace PurrNet
                 {
                     _array[index] = value;
                     var change = SyncArrayChange<T>.SetDirty(value, index);
-                    QueueChange(change);
                     InvokeChange(change);
                 }
             }
@@ -624,7 +614,6 @@ namespace PurrNet
                 {
                     _array[index] = value;
                     var change = SyncArrayChange<T>.SetDirty(value, index);
-                    QueueChange(change);
                     InvokeChange(change);
                 }
             }

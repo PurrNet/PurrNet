@@ -12,6 +12,8 @@ namespace PurrNet
 
         private readonly PurrHashSet<PlayerID> _whitelist = new PurrHashSet<PlayerID>();
 
+        private readonly PurrHashSet<PlayerID> _whiteBlackDirtyPlayers = new PurrHashSet<PlayerID>();
+
         private readonly PurrHashSet<PlayerID> _blacklist = new PurrHashSet<PlayerID>();
 
         /// <summary>
@@ -39,19 +41,21 @@ namespace PurrNet
 
             if (_whitelist.Add(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
         }
 
-        private void SetVisibilityDirty()
+        private void SetVisibilityDirty(PlayerID player)
         {
             if (!_whiteBlackDirty)
             {
                 RegisterTickEvent(true);
                 _whiteBlackDirty = true;
             }
+
+            _whiteBlackDirtyPlayers.Add(player);
         }
 
         public bool BlacklistPlayer(PlayerID player)
@@ -65,7 +69,7 @@ namespace PurrNet
 
             if (_blacklist.Add(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
@@ -82,7 +86,7 @@ namespace PurrNet
 
             if (_whitelist.Remove(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
@@ -99,7 +103,7 @@ namespace PurrNet
 
             if (_blacklist.Remove(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;

@@ -13,6 +13,8 @@ namespace PurrNet
 
         ITransport rawTransport { get; }
 
+        MTUExceededBehaviour mtuExceededBehaviour { get; }
+
         ConnectionState serverState  { get; }
 
         ConnectionState clientState { get; }

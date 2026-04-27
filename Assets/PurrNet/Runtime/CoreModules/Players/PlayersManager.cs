@@ -106,9 +106,15 @@ namespace PurrNet.Modules
 
         public int GetMTU(PlayerID player, Channel channel, bool asServer)
         {
+            if (!asServer)
+            {
+                return _networkManager.transport.transport.GetMTU(default, channel, false);
+            }
+
             if (_playerToConnection.TryGetValue(player, out var p))
-                return _networkManager.transport.transport.GetMTU(p, channel, asServer);
-            return 1024;
+                return _networkManager.transport.transport.GetMTU(p, channel, true);
+
+            return 500;
         }
 
         /// <summary>
@@ -502,37 +508,77 @@ namespace PurrNet.Modules
 
         private void TriggerOnJoinedEvent(PlayerID player, bool isReconnect)
         {
-            onPrePlayerJoined?.Invoke(player, isReconnect, _asServer);
-            onPlayerJoined?.Invoke(player, isReconnect, _asServer);
-            onPostPlayerJoined?.Invoke(player, isReconnect, _asServer);
+            try
+            {
+                onPrePlayerJoined?.Invoke(player, isReconnect, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPlayerJoined?.Invoke(player, isReconnect, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPostPlayerJoined?.Invoke(player, isReconnect, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
         }
 
         private void UnregisterPlayer(Connection conn)
         {
-            if (!_connectionToPlayerId.TryGetValue(conn, out var player))
+            if (!_connectionToPlayerId.TryGetValue(conn, out var playerID))
                 return;
 
-            onPrePlayerLeft?.Invoke(player, _asServer);
+            try
+            {
+                onPrePlayerLeft?.Invoke(playerID, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
 
-            _players.Remove(player);
-            _playerToConnection.Remove(player);
+            _players.Remove(playerID);
+            _playerToConnection.Remove(playerID);
             _connectionToPlayerId.Remove(conn);
 
-            onPlayerLeft?.Invoke(player, _asServer);
-            onPostPlayerLeft?.Invoke(player, _asServer);
+            try
+            {
+                onPlayerLeft?.Invoke(playerID, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPostPlayerLeft?.Invoke(playerID, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
         }
 
         private void UnregisterPlayer(PlayerID playerId)
         {
-            onPrePlayerLeft?.Invoke(playerId, _asServer);
+            try
+            {
+                onPrePlayerLeft?.Invoke(playerId, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
 
             if (_playerToConnection.TryGetValue(playerId, out var conn))
                 _connectionToPlayerId.Remove(conn);
             _players.Remove(playerId);
             _playerToConnection.Remove(playerId);
 
-            onPlayerLeft?.Invoke(playerId, _asServer);
-            onPostPlayerLeft?.Invoke(playerId, _asServer);
+            try
+            {
+                onPlayerLeft?.Invoke(playerId, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPostPlayerLeft?.Invoke(playerId, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
         }
 
         public void OnConnected(Connection conn, bool asServer)

@@ -8,6 +8,7 @@ namespace LiteNetLib.Layers
     {
         public Crc32cLayer() : base(CRC32C.ChecksumSize)
         {
+
         }
 
         public override void ProcessInboundPacket(ref IPEndPoint endPoint, ref byte[] data, ref int length)
@@ -28,12 +29,10 @@ namespace LiteNetLib.Layers
                 length = 0;
                 return;
             }
-
             length -= CRC32C.ChecksumSize;
         }
 
-        public override void ProcessOutBoundPacket(ref IPEndPoint endPoint, ref byte[] data, ref int offset,
-            ref int length)
+        public override void ProcessOutBoundPacket(ref IPEndPoint endPoint, ref byte[] data, ref int offset, ref int length)
         {
             FastBitConverter.GetBytes(data, length, CRC32C.Compute(data, offset, length));
             length += CRC32C.ChecksumSize;

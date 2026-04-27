@@ -44,6 +44,7 @@ namespace PurrNet
             }
             else
             {
+                SyncAssetReferences(animator, actions);
                 SyncParameters(ignoreHashes, animator, actions);
                 SyncAnimationState(animator, actions);
 
@@ -134,6 +135,32 @@ namespace PurrNet
             }
         }
 
+        private static void SyncAssetReferences(Animator animator, DisposableList<NetAnimatorRPC> actions)
+        {
+            var nm = NetworkManager.main;
+            var assets = nm ? nm.networkAssets : null;
+            if (!assets)
+                return;
+
+            var controller = animator.runtimeAnimatorController;
+            if (controller && assets.GetIndex(controller) != -1)
+            {
+                actions.Add(new NetAnimatorRPC(new SetRuntimeAnimatorController
+                {
+                    controller = controller
+                }));
+            }
+
+            var avatar = animator.avatar;
+            if (avatar && assets.GetIndex(avatar) != -1)
+            {
+                actions.Add(new NetAnimatorRPC(new SetAvatar
+                {
+                    avatar = avatar
+                }));
+            }
+        }
+
         private static void SyncAnimationState(Animator animator, DisposableList<NetAnimatorRPC> actions)
         {
             if (!animator.runtimeAnimatorController)
@@ -147,6 +174,15 @@ namespace PurrNet
                     stateHash = info.fullPathHash,
                     layer = i,
                     normalizedTime = info.normalizedTime
+                }));
+
+                if (i == 0)
+                    continue;
+
+                actions.Add(new NetAnimatorRPC(new SetLayerWeight
+                {
+                    layerIndex = i,
+                    weight = animator.GetLayerWeight(i)
                 }));
             }
         }

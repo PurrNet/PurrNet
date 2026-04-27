@@ -1,9 +1,23 @@
 using System;
+using System.Threading.Tasks;
 using PurrNet.Modules;
 using PurrNet.Utils;
 
 namespace PurrNet.Packing
 {
+    /// <summary>
+    /// Implement on types that need async preparation around sync serialization.
+    /// PrepareForPackAsync runs before packing (sender); PrepareAfterUnpackAsync runs after unpacking (receiver).
+    /// Both return the prepared instance (for structs, return this after mutating).
+    /// </summary>
+    public interface IAsyncPackable
+    {
+        /// <summary>Prepare for sync serialization. Returns the prepared instance (for structs, return this after mutating).</summary>
+        ValueTask<IAsyncPackable> PrepareForPackAsync();
+
+        /// <summary>Hydrate after sync deserialization. Returns the prepared instance (for structs, return this after mutating).</summary>
+        ValueTask<IAsyncPackable> PrepareAfterUnpackAsync();
+    }
     public class NetworkRegister
     {
         [UsedByIL]

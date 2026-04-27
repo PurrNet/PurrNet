@@ -574,6 +574,8 @@ namespace PurrNet
         {
             if (_tickRegisteredClient <= 0)
             {
+                InternalTick();
+
                 try
                 {
                     _ticker?.OnTick(_serverTickManager.tickDelta);
@@ -602,8 +604,11 @@ namespace PurrNet
         {
             if (_whiteBlackDirty)
             {
+                foreach (var player in _whiteBlackDirtyPlayers)
+                    EvaluateVisibility(player);
+
+                _whiteBlackDirtyPlayers.Clear();
                 _whiteBlackDirty = false;
-                EvaluateVisibility();
                 UnregisterTickEvent(true);
             }
         }
@@ -873,6 +878,7 @@ namespace PurrNet
             isManualSpawn = false;
             _whitelist.Clear();
             _blacklist.Clear();
+            _whiteBlackDirtyPlayers.Clear();
         }
 
         private void OnChildDespawned(NetworkIdentity networkIdentity)
@@ -1080,7 +1086,7 @@ namespace PurrNet
         {
             if (!player.HasValue)
             {
-                RemoveOwnership();
+                RemoveOwnership(propagateToChildren);
                 return;
             }
 

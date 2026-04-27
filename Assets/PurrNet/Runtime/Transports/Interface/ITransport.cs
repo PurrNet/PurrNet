@@ -107,6 +107,23 @@ namespace PurrNet.Transports
         }
     }
 
+    /// <summary>
+    /// Defines what happens when a packet exceeds the MTU on an unreliable channel.
+    /// </summary>
+    public enum MTUExceededBehaviour : byte
+    {
+        /// <summary>
+        /// Automatically upgrade the channel to ReliableOrdered so the packet is
+        /// fragmented and delivered reliably. Logs a warning.
+        /// </summary>
+        UpgradeToReliable,
+
+        /// <summary>
+        /// Drop the packet and log a warning. Preserves unreliable semantics.
+        /// </summary>
+        Drop
+    }
+
     public enum Channel : byte
     {
         /// <summary>

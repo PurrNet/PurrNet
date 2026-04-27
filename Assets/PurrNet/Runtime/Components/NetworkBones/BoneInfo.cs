@@ -10,5 +10,8 @@ namespace PurrNet
         public NetworkBoneID posHash;
         public NetworkBoneID rotHash;
         public NetworkBoneID scaleHash;
+        public uint posKeyHash;
+        public uint rotKeyHash;
+        public uint scaleKeyHash;
     }
 }

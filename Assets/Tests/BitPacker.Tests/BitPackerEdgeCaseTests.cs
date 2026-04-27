@@ -31,13 +31,13 @@ public class BitPackerEdgeCaseTests
     /// Without the read-path fix this can read 1 byte OOB. With fix we throw.
     /// </summary>
     [Test]
-    public void ReadBits_56Bits_With7ByteBuffer_Throws()
+    public void ReadBits_57Bits_With7ByteBuffer_Throws()
     {
         var buf = new byte[7];
         _packer.MakeWrapper(new ByteData(buf, 0, 7));
         _packer.ResetPositionAndMode(true);
 
-        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(56));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(57));
     }
 
     /// <summary>
@@ -45,13 +45,13 @@ public class BitPackerEdgeCaseTests
     /// Should throw (need 8 bytes), not read OOB.
     /// </summary>
     [Test]
-    public void ReadBits_8Bits_With1ByteBuffer_Throws()
+    public void ReadBits_9Bits_With1ByteBuffer_Throws()
     {
         var buf = new byte[1];
         _packer.MakeWrapper(new ByteData(buf, 0, 1));
         _packer.ResetPositionAndMode(true);
 
-        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(8));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(9));
     }
 
     /// <summary>
@@ -59,13 +59,13 @@ public class BitPackerEdgeCaseTests
     /// This is the kind of underflow that could crash when reading a string from a truncated packet.
     /// </summary>
     [Test]
-    public void ReadBits_32Bits_With4ByteBuffer_Throws()
+    public void ReadBits_33Bits_With4ByteBuffer_Throws()
     {
         var buf = new byte[4];
         _packer.MakeWrapper(new ByteData(buf, 0, 4));
         _packer.ResetPositionAndMode(true);
 
-        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(32));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(33));
     }
 
     /// <summary>

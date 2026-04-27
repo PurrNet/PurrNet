@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -8,9 +8,13 @@ namespace PurrNet.Pooling
 {
     public struct DisposableHashSet<T> : ISet<T>, IDisposable, IDuplicate<DisposableHashSet<T>>, IEquatable<DisposableHashSet<T>>
     {
+        private bool _isAllocated;
         private HashSet<T> _set;
+        private DisposableList<T> _items;
 
         public HashSet<T> set => _set;
+
+        public bool isDisposed => !_isAllocated;
 
         [Obsolete( "Use DisposableHashSet<T>.Create() instead")]
         public DisposableHashSet(int capacity)
@@ -21,14 +25,16 @@ namespace PurrNet.Pooling
                 newSet = new HashSet<T>(newSet);
 
             _set = newSet;
-            isDisposed = false;
+            _items = DisposableList<T>.Create(capacity);
+            _isAllocated = true;
         }
 
         public static DisposableHashSet<T> Create()
         {
             var val = new DisposableHashSet<T>();
             val._set = HashSetPool<T>.Instantiate();
-            val.isDisposed = false;
+            val._items = DisposableList<T>.Create();
+            val._isAllocated = true;
             return val;
         }
 
@@ -37,7 +43,8 @@ namespace PurrNet.Pooling
             var val = new DisposableHashSet<T>();
             val._set = HashSetPool<T>.Instantiate();
             val._set.EnsureCapacity(capacity);
-            val.isDisposed = false;
+            val._items = DisposableList<T>.Create(capacity);
+            val._isAllocated = true;
             return val;
         }
 
@@ -45,23 +52,35 @@ namespace PurrNet.Pooling
         {
             var val = new DisposableHashSet<T>();
             val._set = HashSetPool<T>.Instantiate();
-            val._set.UnionWith(copyFrom);
-            val.isDisposed = false;
+            val._items = DisposableList<T>.Create();
+            foreach (var item in copyFrom)
+            {
+                if (val._set.Add(item))
+                    val._items.Add(item);
+            }
+            val._isAllocated = true;
             return val;
         }
 
         public void Dispose()
         {
-            if (isDisposed) return;
+            if (!_isAllocated) return;
 
-            HashSetPool<T>.Destroy(_set);
-            isDisposed = true;
+            if (_set != null)
+            {
+                HashSetPool<T>.Destroy(_set);
+                _items.Dispose();
+            }
+
+            _isAllocated = false;
         }
 
         public IEnumerator<T> GetEnumerator()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            return _set.GetEnumerator();
+            int count = _items.Count;
+            for (var i = 0; i < count; ++i)
+                yield return _items[i];
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -75,37 +94,67 @@ namespace PurrNet.Pooling
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
             if (item == null) throw new ArgumentNullException(nameof(item));
 
-            _set.Add(item);
+            if (_set.Add(item))
+                _items.Add(item);
         }
 
         public void UnionWith(IEnumerable<T> other)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            _set.UnionWith(other);
+            foreach (var item in other)
+            {
+                if (_set.Add(item))
+                    _items.Add(item);
+            }
         }
 
         public void IntersectWith(IEnumerable<T> other)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
             _set.IntersectWith(other);
+            for (int i = _items.Count - 1; i >= 0; i--)
+            {
+                if (!_set.Contains(_items[i]))
+                    _items.RemoveAt(i);
+            }
         }
 
         bool ISet<T>.Add(T item)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            return _set.Add(item);
+            if (_set.Add(item))
+            {
+                _items.Add(item);
+                return true;
+            }
+            return false;
         }
 
         public void ExceptWith(IEnumerable<T> other)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
             _set.ExceptWith(other);
+            for (int i = _items.Count - 1; i >= 0; i--)
+            {
+                if (!_set.Contains(_items[i]))
+                    _items.RemoveAt(i);
+            }
         }
 
         public void SymmetricExceptWith(IEnumerable<T> other)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
             _set.SymmetricExceptWith(other);
+            for (int i = _items.Count - 1; i >= 0; i--)
+            {
+                if (!_set.Contains(_items[i]))
+                    _items.RemoveAt(i);
+            }
+            foreach (var item in other)
+            {
+                if (_set.Contains(item) && !_items.Contains(item))
+                    _items.Add(item);
+            }
         }
 
         public bool IsSubsetOf(IEnumerable<T> other)
@@ -148,6 +197,7 @@ namespace PurrNet.Pooling
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
             _set.Clear();
+            _items.Clear();
         }
 
         public bool Contains(T item)
@@ -159,13 +209,20 @@ namespace PurrNet.Pooling
         public void CopyTo(T[] array, int arrayIndex)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            _set.CopyTo(array, arrayIndex);
+            int count = _items.Count;
+            for (int i = 0; i < count; i++)
+                array[arrayIndex + i] = _items[i];
         }
 
         public bool Remove(T item)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            return _set.Remove(item);
+            if (_set.Remove(item))
+            {
+                _items.Remove(item);
+                return true;
+            }
+            return false;
         }
 
         public int Count
@@ -178,7 +235,6 @@ namespace PurrNet.Pooling
         }
 
         public bool IsReadOnly => false;
-        public bool isDisposed { get; private set; }
 
         public DisposableHashSet<T> Duplicate()
         {

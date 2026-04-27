@@ -1,0 +1,27 @@
+{
+    "name": "PurrNet.Nakama.Editor",
+    "rootNamespace": "PurrNet.Nakama.Editor",
+    "references": [
+        "GUID:629ad64ea20117f43b28b33033f75b88",
+        "GUID:c10f76f339a862543b2845bd765a1c67",
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb",
+        "GUID:69810832b544b46da9804f1af9373521"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.heroiclabs.nakama-unity",
+            "expression": "",
+            "define": "NAKAMA"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -575,9 +575,31 @@ namespace PurrNet.Codegen
             ReturnMode returnMode,
             bool isNetworkClass)
         {
-            var code = newMethod.Body.GetILProcessor();
             var originalMethod = rpcMethod.originalMethod;
             int paramCount = originalMethod.Parameters.Count;
+
+            var hasAsyncPackableParam = false;
+            for (var p = 0; p < paramCount; p++)
+            {
+                var param = originalMethod.Parameters[p];
+                if (ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out _)) continue;
+                if (param.ParameterType is GenericParameter) continue;
+                var def = param.ParameterType.Resolve();
+                if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                {
+                    hasAsyncPackableParam = true;
+                    break;
+                }
+            }
+
+            if (hasAsyncPackableParam)
+            {
+                HandleNonGenericRPCReceiverAsyncPackable(module, rpcMethod, newMethod, streamVariable, info,
+                    returnMode, isNetworkClass);
+                return;
+            }
+
+            var code = newMethod.Body.GetILProcessor();
 
             var managerType = module.GetTypeDefinition<NetworkManager>();
             var networkModule = module.GetTypeDefinition<NetworkModule>();
@@ -710,6 +732,14 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
                 code.Append(Instruction.Create(OpCodes.Ldloca, variable));
                 code.Append(Instruction.Create(OpCodes.Call, serialize));
+
+                var paramDef = param.ParameterType.Resolve();
+                if (paramDef != null && GenerateSerializersProcessor.HasInterface(paramDef, typeof(IAsyncPackable)))
+                {
+                    var prepareAfterUnpack = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
+                }
             }
 
             if (!originalMethod.IsStatic)
@@ -776,6 +806,322 @@ namespace PurrNet.Codegen
                     });
                 }
             }
+        }
+
+        private static void HandleNonGenericRPCReceiverAsyncPackable(
+            ModuleDefinition module,
+            RPCMethod rpcMethod,
+            MethodDefinition newMethod,
+            VariableDefinition streamVariable,
+            ParameterDefinition info,
+            ReturnMode returnMode,
+            bool isNetworkClass)
+        {
+            var code = newMethod.Body.GetILProcessor();
+            var originalMethod = rpcMethod.originalMethod;
+            int paramCount = originalMethod.Parameters.Count;
+
+            var packetType = rpcMethod.Signature.isStatic ? module.GetTypeDefinition<StaticRPCPacket>() :
+                isNetworkClass ? module.GetTypeDefinition<ChildRPCPacket>() : module.GetTypeDefinition<RPCPacket>();
+            var managerType = module.GetTypeDefinition<NetworkManager>();
+            var networkModule = module.GetTypeDefinition<NetworkModule>();
+            var identityType = module.GetTypeDefinition<NetworkIdentity>();
+            var rpcReqRespType = module.GetTypeDefinition<RpcRequestResponseModule>();
+            var rpcModule = originalMethod.DeclaringType.Module.GetTypeDefinition<RPCModule>();
+            var getLocalPlayer = rpcModule.GetMethod("GetLocalPlayer").Import(module);
+            var responder = rpcReqRespType.GetMethod("CompleteRequestWithResponse", true).Import(module);
+            var responderUniTask = rpcReqRespType.GetMethod("CompleteRequestWithUniTask", true).Import(module);
+            var responderWithoutResponse = rpcReqRespType.GetMethod("CompleteRequestWithEmptyResponse").Import(module);
+            var responderCoroutine = rpcReqRespType.GetMethod("CompleteRequestWithCoroutine").Import(module);
+            var responderUniTaskWithoutResponse =
+                rpcReqRespType.GetMethod("CompleteRequestWithUniTaskEmptyResponse").Import(module);
+            var RPCPacketPackerType = module.GetTypeDefinition<RPCPacketPacker>();
+
+            var localPlayerProp = identityType.GetProperty("localPlayerForced");
+            var localPlayerGetter = localPlayerProp.GetMethod.Import(module);
+            var localPlayerPropModule = networkModule.GetProperty("localPlayerForced");
+            var localPlayerGetterModule = localPlayerPropModule.GetMethod.Import(module);
+            var mainManagerProp = managerType.GetProperty("main");
+            var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
+
+            VariableDefinition reqId = null;
+            VariableDefinition rpcPacker = null;
+            bool useDeltaPacking = rpcMethod.Signature.deltaPacked && rpcMethod.Signature.type != RPCType.ServerRPC;
+
+            ResolveTaskTypes(module, out var taskType, out var taskArrayType, out var taskOfTOpen,
+                out var actionOfTOpen, out _, out var actionCtor);
+
+            var actionOfTOpenResolved = actionOfTOpen.Resolve();
+            var actionOfTaskArray = new GenericInstanceType(actionOfTOpen) { GenericArguments = { taskArrayType } };
+            var actionOfTaskArrayCtorDef = actionOfTOpenResolved.Methods.First(m =>
+                m.IsConstructor && m.Parameters.Count == 2);
+            var actionOfTaskArrayCtor = new MethodReference(".ctor", module.TypeSystem.Void, actionOfTaskArray)
+                { HasThis = true };
+            actionOfTaskArrayCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.Object));
+            actionOfTaskArrayCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.IntPtr));
+
+            var stateType = new TypeDefinition("", $"RpcReceiveState_{rpcMethod.originalMethod.MetadataToken.RID}",
+                TypeAttributes.NestedPrivate | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+                module.TypeSystem.Object);
+            originalMethod.DeclaringType.NestedTypes.Add(stateType);
+
+            var stateCtorBase = new MethodReference(".ctor", module.TypeSystem.Void, module.TypeSystem.Object)
+                { HasThis = true };
+            var objectCtor = module.ImportReference(
+                module.TypeSystem.Object.Resolve().Methods.First(m => m.IsConstructor && !m.HasParameters));
+            var stateCtor = new MethodDefinition(".ctor", MethodAttributes.Public, module.TypeSystem.Void);
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ldarg_0));
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Call, objectCtor));
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));
+            stateType.Methods.Add(stateCtor);
+
+            var thisField = !originalMethod.IsStatic
+                ? new FieldDefinition("_this", FieldAttributes.Public, originalMethod.DeclaringType.Import(module))
+                : null;
+            if (thisField != null) stateType.Fields.Add(thisField);
+
+            var infoField = new FieldDefinition("_info", FieldAttributes.Public, info.ParameterType);
+            stateType.Fields.Add(infoField);
+
+            FieldDefinition reqIdStateField = null;
+            if (returnMode != ReturnMode.Void)
+            {
+                reqId = new VariableDefinition(module.TypeSystem.UInt32);
+                newMethod.Body.Variables.Add(reqId);
+                reqIdStateField = new FieldDefinition("_reqId", FieldAttributes.Public, module.TypeSystem.UInt32);
+                stateType.Fields.Add(reqIdStateField);
+            }
+
+            var paramFields = new List<FieldDefinition>();
+            var asyncParamParamIndices = new List<int>();
+            for (var p = 0; p < paramCount; p++)
+            {
+                var param = originalMethod.Parameters[p];
+                var field = new FieldDefinition($"_p{p}", FieldAttributes.Public, param.ParameterType);
+                stateType.Fields.Add(field);
+                paramFields.Add(field);
+
+                if (!ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out _) &&
+                    param.ParameterType is not GenericParameter)
+                {
+                    var def = param.ParameterType.Resolve();
+                    if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                        asyncParamParamIndices.Add(p);
+                }
+            }
+
+            var invokeMethod = new MethodDefinition("InvokeAfterPrepare", MethodAttributes.Public, module.TypeSystem.Void);
+            invokeMethod.Parameters.Add(new ParameterDefinition(taskArrayType));
+            stateType.Methods.Add(invokeMethod);
+            var invokeIl = invokeMethod.Body.GetILProcessor();
+
+            var asyncIdx = 0;
+            foreach (var p in asyncParamParamIndices)
+            {
+                var paramType = paramFields[p].FieldType;
+                var taskOfT = new GenericInstanceType(taskOfTOpen) { GenericArguments = { paramType } };
+                var getTaskResult = CreateGetTaskResultMethod(module, paramType);
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_1));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldc_I4, asyncIdx++));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldelem_Ref));
+                invokeIl.Append(Instruction.Create(OpCodes.Castclass, taskOfT.Import(module)));
+                invokeIl.Append(Instruction.Create(OpCodes.Call, getTaskResult));
+                invokeIl.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+            }
+
+            if (!originalMethod.IsStatic)
+            {
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, thisField.Import(module)));
+            }
+            for (var p = 0; p < paramCount; p++)
+            {
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, paramFields[p].Import(module)));
+            }
+            invokeIl.Append(Instruction.Create(OpCodes.Call, GetOriginalMethod(originalMethod)));
+
+            if (reqIdStateField != null)
+            {
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, infoField.Import(module)));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                invokeIl.Append(Instruction.Create(OpCodes.Ldfld, reqIdStateField.Import(module)));
+                var getNetworkManager = identityType.GetProperty("networkManager").GetMethod.Import(module);
+                var getNetworkManagerModule = networkModule.GetProperty("networkManager").GetMethod.Import(module);
+                if (originalMethod.IsStatic)
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, mainManagerGetter));
+                else
+                {
+                    invokeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                    invokeIl.Append(Instruction.Create(OpCodes.Ldfld, thisField.Import(module)));
+                    invokeIl.Append(Instruction.Create(OpCodes.Call,
+                        isNetworkClass ? getNetworkManagerModule : getNetworkManager));
+                }
+                if (returnMode is ReturnMode.Task or ReturnMode.UniTask &&
+                    originalMethod.ReturnType is GenericInstanceType genericInstance &&
+                    genericInstance.GenericArguments.Count == 1)
+                {
+                    var genericResponse = new GenericInstanceMethod(returnMode is ReturnMode.Task ? responder : responderUniTask);
+                    genericResponse.GenericArguments.Add(genericInstance.GenericArguments[0]);
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, genericResponse.Import(module)));
+                }
+                else
+                {
+                    invokeIl.Append(Instruction.Create(OpCodes.Call, returnMode switch
+                    {
+                        ReturnMode.IEnumerator => responderCoroutine,
+                        ReturnMode.UniTask => responderUniTaskWithoutResponse,
+                        ReturnMode.Task => responderWithoutResponse,
+                        _ => responderWithoutResponse
+                    }));
+                }
+            }
+            invokeIl.Append(Instruction.Create(OpCodes.Ret));
+
+            var packetParam = newMethod.Parameters[0];
+            var infoParam = newMethod.Parameters[1];
+
+            if (useDeltaPacking)
+            {
+                rpcPacker = new VariableDefinition(RPCPacketPackerType.Import(module));
+                newMethod.Body.Variables.Add(rpcPacker);
+                var createPackerForRPC = RPCPacketPackerType.GetMethod(GetCreateWithInfoName(rpcMethod, isNetworkClass))
+                    .Import(module);
+                PushNetworkManager(module, code, isNetworkClass, originalMethod.IsStatic);
+                code.Append(Instruction.Create(OpCodes.Ldarg, packetParam));
+                code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
+                code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
+                code.Append(Instruction.Create(OpCodes.Stloc, rpcPacker));
+            }
+
+            if (reqId != null)
+            {
+                var serializer = useDeltaPacking
+                    ? CreateDeltaSerializer(module, module.TypeSystem.UInt32, rpcPacker, false)
+                    : CreateSerializer(module, module.TypeSystem.UInt32, false);
+                if (useDeltaPacking)
+                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
+                code.Append(Instruction.Create(OpCodes.Ldloca, reqId));
+                code.Append(Instruction.Create(OpCodes.Call, serializer));
+            }
+
+            var stateVar = new VariableDefinition(stateType.Import(module));
+            newMethod.Body.Variables.Add(stateVar);
+
+            code.Append(Instruction.Create(OpCodes.Newobj, module.ImportReference(stateCtor)));
+            code.Append(Instruction.Create(OpCodes.Stloc, stateVar));
+
+            if (thisField != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                code.Append(Instruction.Create(OpCodes.Stfld, thisField.Import(module)));
+            }
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
+            code.Append(Instruction.Create(OpCodes.Stfld, infoField.Import(module)));
+            if (reqIdStateField != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldloc, reqId));
+                code.Append(Instruction.Create(OpCodes.Stfld, reqIdStateField.Import(module)));
+            }
+
+            var taskList = new List<VariableDefinition>();
+            for (var p = 0; p < paramCount; p++)
+            {
+                var param = originalMethod.Parameters[p];
+                var variable = new VariableDefinition(param.ParameterType);
+                newMethod.Body.Variables.Add(variable);
+
+                if (ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out var specialType))
+                {
+                    switch (specialType)
+                    {
+                        case SpecialParamType.RPCInfo:
+                            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                            code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
+                            code.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+                            break;
+                        case SpecialParamType.SenderId:
+                            if (GetArgType(param.ParameterType) == TargetArgType.Player)
+                            {
+                                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                                if (!originalMethod.IsStatic)
+                                {
+                                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                                    code.Append(isNetworkClass
+                                        ? Instruction.Create(OpCodes.Call, localPlayerGetterModule)
+                                        : Instruction.Create(OpCodes.Call, localPlayerGetter));
+                                }
+                                else
+                                    code.Append(Instruction.Create(OpCodes.Call, getLocalPlayer));
+                                code.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+                            }
+                            break;
+                    }
+                    continue;
+                }
+
+                var serialize = useDeltaPacking
+                    ? CreateDeltaSerializer(module, param.ParameterType, rpcPacker, false)
+                    : CreateSerializer(module, param.ParameterType, false);
+                if (useDeltaPacking)
+                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
+                code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                code.Append(Instruction.Create(OpCodes.Call, serialize));
+
+                var def = param.ParameterType.Resolve();
+                if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                {
+                    var prepareAsync = CreatePrepareAfterUnpackAsyncMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloc, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareAsync));
+                    var taskVar = new VariableDefinition(taskType);
+                    newMethod.Body.Variables.Add(taskVar);
+                    taskList.Add(taskVar);
+                    code.Append(Instruction.Create(OpCodes.Stloc, taskVar));
+                }
+                else
+                {
+                    var prepareSync = CreatePrepareAfterUnpackMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloca, variable));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareSync));
+                    code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                    code.Append(Instruction.Create(OpCodes.Ldloc, variable));
+                    code.Append(Instruction.Create(OpCodes.Stfld, paramFields[p].Import(module)));
+                }
+            }
+
+            code.Append(Instruction.Create(OpCodes.Ldc_I4, taskList.Count));
+            code.Append(Instruction.Create(OpCodes.Newarr, taskType));
+            var tasksArrayVar = new VariableDefinition(taskArrayType);
+            newMethod.Body.Variables.Add(tasksArrayVar);
+            code.Append(Instruction.Create(OpCodes.Stloc, tasksArrayVar));
+            for (var t = 0; t < taskList.Count; t++)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, tasksArrayVar));
+                code.Append(Instruction.Create(OpCodes.Ldc_I4, t));
+                code.Append(Instruction.Create(OpCodes.Ldloc, taskList[t]));
+                code.Append(Instruction.Create(OpCodes.Stelem_Ref));
+            }
+
+            var executeAfterPrepare = module.GetTypeDefinition(typeof(AsyncPackableHelper))
+                .Methods.First(m => m.Name == "ExecuteAfterPrepareAsync" && m.Parameters.Count == 2 &&
+                    m.Parameters[0].ParameterType.IsArray)
+                .Import(module);
+
+            code.Append(Instruction.Create(OpCodes.Ldloc, tasksArrayVar));
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldftn, invokeMethod.Import(module)));
+            code.Append(Instruction.Create(OpCodes.Newobj, module.ImportReference(actionOfTaskArrayCtor)));
+            code.Append(Instruction.Create(OpCodes.Call, executeAfterPrepare));
+            code.Append(Instruction.Create(OpCodes.Pop));
+            code.Append(Instruction.Create(OpCodes.Ret));
         }
 
         private static string GetCreateWithInfoName(RPCMethod rpcMethod, bool isNetworkClass)
@@ -1556,11 +1902,15 @@ namespace PurrNet.Codegen
                 return null;
             }
 
-            if (returnMode == ReturnMode.Task && methodRpc.Signature.type == RPCType.ObserversRPC)
+            var hasAsyncPackableParams = HasAsyncPackableParam(methodRpc);
+            if (returnMode == ReturnMode.Task && methodRpc.Signature.type == RPCType.ObserversRPC && !hasAsyncPackableParams)
             {
                 Error(messages, $"ObserversRPC '{method.Name}' method cannot return Task", method);
                 return null;
             }
+
+            // Don't upgrade void->Task for async packable: we fire-and-forget, caller gets void.
+            // Upgrading would break compiled call sites and require returning a Task we never produce.
 
             if (IsConcreteType(method.ReturnType, out var concreteType))
                 usedTypes.Add(concreteType);
@@ -1576,7 +1926,10 @@ namespace PurrNet.Codegen
             if (method.IsVirtual)
                 attributes |= MethodAttributes.Virtual;
 
-            var newMethod = new MethodDefinition(ogName, attributes, method.ReturnType);
+            // Keep original return type for async packable: we fire-and-forget internally.
+            // Changing void->Task would break callers compiled against the original signature.
+            var effectiveReturnType = method.ReturnType;
+            var newMethod = new MethodDefinition(ogName, attributes, effectiveReturnType);
 
             foreach (var t in method.GenericParameters)
                 newMethod.GenericParameters.Add(new GenericParameter(t.Name, newMethod));
@@ -1784,15 +2137,6 @@ namespace PurrNet.Codegen
                     PutIsServerOnStack(module, methodRpc, isNetworkClass, code, moduleType, identityType);
                     code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
                     break;
-                case RPCType.TargetRPC when GetArgType(newMethod.Parameters[0].ParameterType) == TargetArgType.Player:
-                {
-                    PushLocalPlayerProp(module, code, isNetworkClass, methodRpc.Signature.isStatic);
-                    code.Append(Instruction.Create(OpCodes.Ldarg_S, newMethod.Parameters[0]));
-                    var areEqualMethod = rpcType.GetMethod("ArePlayersEqual", false).Import(module);
-                    code.Append(Instruction.Create(OpCodes.Call, areEqualMethod));
-                    code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
-                    break;
-                }
             }
 
             if (returnMode != ReturnMode.Void)
@@ -1955,38 +2299,64 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Call, serializeGenericMethod));
             }
 
-            for (var i = 0; i < paramCount; i++)
-            {
-                var param = newMethod.Parameters[i];
+            var useAsyncPreparePath = hasAsyncPackableParams && !useDeltaPacking && returnMode != ReturnMode.IEnumerator;
+            var skipSyncPathLabel = Instruction.Create(OpCodes.Nop);
 
-                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0)
+            if (useAsyncPreparePath)
+            {
+                GenerateAsyncPrepareAndSendPath(module, methodRpc, id, isNetworkClass, newMethod, code, paramCount,
+                    streamVariable, rpcDataVariable, rpcSignature, packetType, rpcType, identityType, allocStreamMethod,
+                    freeStreamMethod, streamType);
+                code.Append(Instruction.Create(OpCodes.Br, skipSyncPathLabel));
+            }
+
+            {
+                for (var i = 0; i < paramCount; i++)
                 {
-                    var argType = GetArgType(param.ParameterType);
-                    if (argType == TargetArgType.None)
+                    var param = newMethod.Parameters[i];
+
+                    if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0)
                     {
-                        Error(messages, "TargetRPC method must have a 'PlayerID' as the first parameter", method);
-                        return null;
+                        var argType = GetArgType(param.ParameterType);
+                        if (argType == TargetArgType.None)
+                        {
+                            Error(messages, "TargetRPC method must have a 'PlayerID' as the first parameter", method);
+                            return null;
+                        }
+
+                        continue;
                     }
 
-                    continue;
+                    if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _))
+                        continue;
+
+                    var paramLocal = new VariableDefinition(param.ParameterType);
+                    newMethod.Body.Variables.Add(paramLocal);
+
+                    code.Append(Instruction.Create(OpCodes.Ldarg, param));
+                    code.Append(Instruction.Create(OpCodes.Stloc, paramLocal));
+
+                    var paramDef = param.ParameterType.Resolve();
+                    if (paramDef != null && GenerateSerializersProcessor.HasInterface(paramDef, typeof(IAsyncPackable)))
+                    {
+                        var prepareForPack = CreatePrepareForPackMethod(module, param.ParameterType);
+                        code.Append(Instruction.Create(OpCodes.Ldloca, paramLocal));
+                        code.Append(Instruction.Create(OpCodes.Call, prepareForPack));
+                    }
+
+                    MethodReference serializeGenericMethod;
+
+                    if (useDeltaPacking)
+                    {
+                        serializeGenericMethod = CreateDeltaSerializer(module, param.ParameterType, rpcPacker, true);
+                        code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+                    }
+                    else serializeGenericMethod = CreateSerializer(module, param.ParameterType, true);
+
+                    code.Append(Instruction.Create(OpCodes.Ldloc, streamVariable));
+                    code.Append(Instruction.Create(OpCodes.Ldloc, paramLocal));
+                    code.Append(Instruction.Create(OpCodes.Call, serializeGenericMethod));
                 }
-
-                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _))
-                    continue;
-
-                MethodReference serializeGenericMethod;
-
-                if (useDeltaPacking)
-                {
-                    serializeGenericMethod = CreateDeltaSerializer(module, param.ParameterType, rpcPacker, true);
-                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                }
-                else serializeGenericMethod = CreateSerializer(module, param.ParameterType, true);
-
-                code.Append(Instruction.Create(OpCodes.Ldloc, streamVariable));
-                code.Append(Instruction.Create(OpCodes.Ldarg, param));
-                code.Append(Instruction.Create(OpCodes.Call, serializeGenericMethod));
-            }
 
             // Call RPCModule.PreProcessRpc(RPCPacket packet, RPCSignature signature, ref BitPacker packer)
             var preProcessRpc = rpcType.GetMethod("PreProcessRpc").Import(module);
@@ -2025,6 +2395,8 @@ namespace PurrNet.Codegen
 
             code.Append(Instruction.Create(OpCodes.Ldloc, streamVariable));
             code.Append(Instruction.Create(OpCodes.Call, freeStreamMethod));
+
+            code.Append(skipSyncPathLabel);
 
             if (useDeltaPacking && hasMultipleTargets)
             {
@@ -2153,6 +2525,8 @@ namespace PurrNet.Codegen
                 }
             }
 
+            }
+
             return newMethod;
         }
 
@@ -2276,6 +2650,483 @@ namespace PurrNet.Codegen
                     $"Failed to import method '{genericWriteMethod.FullName}'. Module: {module.Name}, Target: {type.FullName}",
                     e);
             }
+        }
+
+        private static bool HasAsyncPackableParam(RPCMethod rpcMethod)
+        {
+            var paramCount = rpcMethod.originalMethod.Parameters.Count;
+            for (var i = 0; i < paramCount; i++)
+            {
+                var param = rpcMethod.originalMethod.Parameters[i];
+                if (ShouldIgnore(rpcMethod.Signature.type, param, i, paramCount, out _))
+                    continue;
+                if (param.ParameterType is GenericParameter)
+                    continue;
+                var def = param.ParameterType.Resolve();
+                if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                    return true;
+            }
+            return false;
+        }
+
+        private static MethodReference CreatePrepareForPackMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareForPack" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
+        private static MethodReference CreatePrepareForPackAsyncMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareForPackAsync" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
+        private static MethodReference CreateGetTaskResultMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "GetTaskResult" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
+        private static MethodReference CreatePrepareAfterUnpackMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareAfterUnpack" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
+        private static MethodReference CreatePrepareAfterUnpackAsyncMethod(ModuleDefinition module, TypeReference type)
+        {
+            var helperType = module.GetTypeDefinition(typeof(AsyncPackableHelper)).Import(module);
+            var method = helperType.Resolve().Methods.First(m =>
+                m.Name == "PrepareAfterUnpackAsync" && m.HasGenericParameters && m.GenericParameters.Count == 1);
+            var methodRef = method.Import(module);
+
+            var genericMethod = new GenericInstanceMethod(methodRef);
+            genericMethod.GenericArguments.Add(type);
+            return genericMethod.Import(module);
+        }
+
+        private static TypeReference GetTaskTypeFromModule(ModuleDefinition module)
+        {
+            var refsToCheck = new List<AssemblyNameReference>(module.AssemblyReferences);
+            var resolver = module.AssemblyResolver;
+            foreach (var r in module.AssemblyReferences)
+            {
+                try
+                {
+                    var a = resolver.Resolve(r);
+                    if (a != null)
+                    {
+                        foreach (var sub in a.MainModule.AssemblyReferences)
+                        {
+                            if (sub.Name != "System.Private.CoreLib" && !refsToCheck.Any(x => x.FullName == sub.FullName))
+                                refsToCheck.Add(sub);
+                        }
+                    }
+                }
+                catch { }
+            }
+            foreach (var asmRef in refsToCheck)
+            {
+                if (asmRef.Name == "System.Private.CoreLib") continue;
+                try
+                {
+                    var asm = resolver.Resolve(asmRef);
+                    if (asm == null) continue;
+                    var taskDef = asm.MainModule.GetType("System.Threading.Tasks", "Task");
+                    if (taskDef != null)
+                        return module.ImportReference(taskDef);
+                }
+                catch { }
+            }
+            throw new InvalidOperationException("Could not resolve System.Threading.Tasks.Task from module references.");
+        }
+
+        /// <summary>
+        /// Resolves Task types from an assembly the module already references (netstandard/mscorlib),
+        /// avoiding System.Private.CoreLib which Unity does not have.
+        /// </summary>
+        private static void ResolveTaskTypes(ModuleDefinition module, out TypeReference taskType,
+            out TypeReference taskArrayType, out TypeReference taskOfTOpen, out TypeReference actionOfTOpen,
+            out MethodReference completedTaskGetter, out MethodReference actionCtor)
+        {
+            var refsToCheck = new List<AssemblyNameReference>(module.AssemblyReferences);
+            var resolver = module.AssemblyResolver;
+            foreach (var r in module.AssemblyReferences)
+            {
+                try
+                {
+                    var a = resolver.Resolve(r);
+                    if (a != null)
+                    {
+                        foreach (var sub in a.MainModule.AssemblyReferences)
+                        {
+                            if (sub.Name != "System.Private.CoreLib" && !refsToCheck.Any(x => x.FullName == sub.FullName))
+                                refsToCheck.Add(sub);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            foreach (var asmRef in refsToCheck)
+            {
+                if (asmRef.Name == "System.Private.CoreLib")
+                    continue;
+                try
+                {
+                    var asm = resolver.Resolve(asmRef);
+                    if (asm == null) continue;
+                    var taskDef = asm.MainModule.GetType("System.Threading.Tasks", "Task");
+                    var taskOfTDef = asm.MainModule.GetType("System.Threading.Tasks", "Task`1");
+                    if (taskDef == null || taskOfTDef == null) continue;
+
+                    taskType = module.ImportReference(taskDef);
+                    taskOfTOpen = module.ImportReference(taskOfTDef);
+                    taskArrayType = new ArrayType(module.ImportReference(taskDef));
+
+                    var completedTask = taskDef.Methods.FirstOrDefault(m => m.Name == "get_CompletedTask" && m.IsStatic);
+                    if (completedTask == null) continue;
+                    completedTaskGetter = module.ImportReference(completedTask);
+
+                    var actionDef = asm.MainModule.GetType("System", "Action");
+                    if (actionDef == null) continue;
+                    var actionCtorDef = actionDef.Methods.FirstOrDefault(m =>
+                        m.IsConstructor && m.Parameters.Count == 2);
+                    if (actionCtorDef == null) continue;
+                    actionCtor = module.ImportReference(actionCtorDef);
+
+                    var actionOfTDef = asm.MainModule.GetType("System", "Action`1");
+                    if (actionOfTDef == null) continue;
+                    actionOfTOpen = module.ImportReference(actionOfTDef);
+                    return;
+                }
+                catch
+                {
+                    // try next assembly
+                }
+            }
+
+            throw new InvalidOperationException(
+                "Could not resolve System.Threading.Tasks.Task from module references. " +
+                "Ensure the assembly references netstandard or mscorlib.");
+        }
+
+        private static void GenerateAsyncPrepareAndSendPath(ModuleDefinition module, RPCMethod methodRpc, int id,
+            bool isNetworkClass, MethodDefinition newMethod, ILProcessor code, int paramCount,
+            VariableDefinition streamVariable, VariableDefinition rpcDataVariable, VariableDefinition rpcSignature,
+            TypeReference packetType, TypeDefinition rpcType, TypeDefinition identityType,
+            MethodReference allocStreamMethod, MethodReference freeStreamMethod, TypeReference streamType)
+        {
+            ResolveTaskTypes(module, out var taskType, out var taskArrayType, out var taskOfTOpen,
+                out var actionOfTOpen, out var completedTaskGetter, out var actionCtor);
+
+            var stateType = new TypeDefinition("", $"RpcSendState_{id}",
+                TypeAttributes.NestedPrivate | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+                module.TypeSystem.Object);
+            methodRpc.originalMethod.DeclaringType.NestedTypes.Add(stateType);
+
+            var paramFields = new List<FieldDefinition>();
+            for (var i = 0; i < paramCount; i++)
+            {
+                var param = methodRpc.originalMethod.Parameters[i];
+                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) continue;
+                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) continue;
+
+                var field = new FieldDefinition($"param{i}", FieldAttributes.Public, param.ParameterType);
+                stateType.Fields.Add(field);
+                paramFields.Add(field);
+            }
+
+            var streamField = new FieldDefinition("stream", FieldAttributes.Public, streamType.Import(module));
+            var rpcDataField = new FieldDefinition("rpcData", FieldAttributes.Public, rpcDataVariable.VariableType);
+            var rpcSigField = new FieldDefinition("rpcSig", FieldAttributes.Public, rpcSignature.VariableType);
+            stateType.Fields.Add(streamField);
+            stateType.Fields.Add(rpcDataField);
+            stateType.Fields.Add(rpcSigField);
+
+            FieldDefinition thisField = null;
+            if (!methodRpc.Signature.isStatic)
+            {
+                thisField = new FieldDefinition("_this", FieldAttributes.Public,
+                    methodRpc.originalMethod.DeclaringType.Import(module));
+                stateType.Fields.Add(thisField);
+            }
+
+            var doSend = new MethodDefinition("DoSend", MethodAttributes.Public, module.TypeSystem.Void);
+            stateType.Methods.Add(doSend);
+            var doSendIl = doSend.Body.GetILProcessor();
+
+            var paramIdx = 0;
+            for (var i = 0; i < paramCount; i++)
+            {
+                var param = methodRpc.originalMethod.Parameters[i];
+                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) continue;
+                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) continue;
+
+                var serialize = CreateSerializer(module, param.ParameterType, true);
+                doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                doSendIl.Append(Instruction.Create(OpCodes.Ldfld, streamField));
+                doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                doSendIl.Append(Instruction.Create(OpCodes.Ldfld, paramFields[paramIdx]));
+                doSendIl.Append(Instruction.Create(OpCodes.Call, serialize));
+                paramIdx++;
+            }
+
+            var preProcessRpc = rpcType.GetMethod("PreProcessRpc").Import(module);
+            var dataField = packetType.Resolve().GetField("data").Import(module);
+            doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldfld, rpcSigField));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldflda, streamField));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldflda, rpcDataField));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldflda, dataField));
+            doSendIl.Append(Instruction.Create(OpCodes.Call, preProcessRpc));
+
+            if (!methodRpc.Signature.isStatic)
+            {
+                doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                doSendIl.Append(Instruction.Create(OpCodes.Ldfld, thisField));
+            }
+            doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldfld, rpcDataField));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldfld, rpcSigField));
+            if (methodRpc.Signature.isStatic)
+            {
+                var sendRpc = rpcType.GetMethod("SendStaticRPC").Import(module);
+                doSendIl.Append(Instruction.Create(OpCodes.Call, sendRpc));
+            }
+            else if (isNetworkClass)
+            {
+                var sendRpc = module.GetTypeDefinition<NetworkModule>().GetMethod("SendRPC").Import(module);
+                doSendIl.Append(Instruction.Create(OpCodes.Call, sendRpc));
+            }
+            else
+            {
+                var sendRpc = identityType.GetMethod("SendRPC").Import(module);
+                doSendIl.Append(Instruction.Create(OpCodes.Call, sendRpc));
+            }
+            doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+            doSendIl.Append(Instruction.Create(OpCodes.Ldfld, streamField));
+            doSendIl.Append(Instruction.Create(OpCodes.Call, freeStreamMethod));
+
+            var runLocally = methodRpc.Signature.runLocally;
+            MethodDefinition runLocal = null;
+            if (runLocally)
+            {
+                runLocal = new MethodDefinition("RunLocal", MethodAttributes.Public, module.TypeSystem.Void);
+                stateType.Methods.Add(runLocal);
+                var runLocalIl = runLocal.Body.GetILProcessor();
+                var callOriginal = GetOriginalMethod(methodRpc.originalMethod).Import(module);
+                if (thisField != null)
+                {
+                    runLocalIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                    runLocalIl.Append(Instruction.Create(OpCodes.Ldfld, thisField));
+                }
+                paramIdx = 0;
+                for (var i = 0; i < paramCount; i++)
+                {
+                    if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) { paramIdx++; continue; }
+                    if (ShouldIgnore(methodRpc.Signature.type, methodRpc.originalMethod.Parameters[i], i, paramCount, out _))
+                    { paramIdx++; continue; }
+                    runLocalIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                    runLocalIl.Append(Instruction.Create(OpCodes.Ldfld, paramFields[paramIdx].Import(module)));
+                    paramIdx++;
+                }
+                runLocalIl.Append(Instruction.Create(OpCodes.Call, callOriginal));
+                runLocalIl.Append(Instruction.Create(OpCodes.Ret));
+            }
+
+            if (runLocally && runLocal != null)
+            {
+                doSendIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                doSendIl.Append(Instruction.Create(OpCodes.Call, runLocal.Import(module)));
+            }
+            doSendIl.Append(Instruction.Create(OpCodes.Ret));
+
+            var asyncParamIndices = new List<int>();
+            var asyncParamTypes = new List<TypeReference>();
+            paramIdx = 0;
+            for (var i = 0; i < paramCount; i++)
+            {
+                var param = methodRpc.originalMethod.Parameters[i];
+                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) { paramIdx++; continue; }
+                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) { paramIdx++; continue; }
+                if (param.ParameterType is GenericParameter) { paramIdx++; continue; }
+                var def = param.ParameterType.Resolve();
+                if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                {
+                    asyncParamIndices.Add(paramIdx);
+                    asyncParamTypes.Add(param.ParameterType);
+                }
+                paramIdx++;
+            }
+
+            MethodDefinition storeResultsAndSend = null;
+            if (asyncParamIndices.Count > 0)
+            {
+                storeResultsAndSend = new MethodDefinition("StoreResultsAndSend",
+                    MethodAttributes.Public, module.TypeSystem.Void);
+                storeResultsAndSend.Parameters.Add(new ParameterDefinition(taskArrayType));
+                stateType.Methods.Add(storeResultsAndSend);
+                var storeIl = storeResultsAndSend.Body.GetILProcessor();
+                for (var j = 0; j < asyncParamIndices.Count; j++)
+                {
+                    var paramFieldIdx = asyncParamIndices[j];
+                    var paramType = asyncParamTypes[j];
+                    var taskOfT = new GenericInstanceType(taskOfTOpen) { GenericArguments = { paramType } };
+                    var getTaskResult = CreateGetTaskResultMethod(module, paramType);
+                    storeIl.Append(Instruction.Create(OpCodes.Ldarg_0)); // obj for stfld (must be under value)
+                    storeIl.Append(Instruction.Create(OpCodes.Ldarg_1));
+                    storeIl.Append(Instruction.Create(OpCodes.Ldc_I4, j));
+                    storeIl.Append(Instruction.Create(OpCodes.Ldelem_Ref));
+                    storeIl.Append(Instruction.Create(OpCodes.Castclass, taskOfT.Import(module)));
+                    storeIl.Append(Instruction.Create(OpCodes.Call, getTaskResult)); // value on stack
+                    storeIl.Append(Instruction.Create(OpCodes.Stfld, paramFields[paramFieldIdx].Import(module)));
+                }
+                storeIl.Append(Instruction.Create(OpCodes.Ldarg_0));
+                storeIl.Append(Instruction.Create(OpCodes.Call, doSend.Import(module)));
+                storeIl.Append(Instruction.Create(OpCodes.Ret));
+            }
+
+            var stateVar = new VariableDefinition(stateType.Import(module));
+            newMethod.Body.Variables.Add(stateVar);
+
+            var stateCtor = new MethodDefinition(".ctor", MethodAttributes.Public | MethodAttributes.SpecialName |
+                MethodAttributes.RTSpecialName, module.TypeSystem.Void);
+            stateType.Methods.Add(stateCtor);
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ldarg_0));
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Call,
+                module.ImportReference(typeof(object).GetConstructor(Type.EmptyTypes))));
+            stateCtor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));
+
+            code.Append(Instruction.Create(OpCodes.Newobj, stateCtor.Import(module)));
+            code.Append(Instruction.Create(OpCodes.Stloc, stateVar));
+
+            paramIdx = 0;
+            for (var i = 0; i < paramCount; i++)
+            {
+                var param = newMethod.Parameters[i];
+                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) continue;
+                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) continue;
+
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldarg, param));
+                code.Append(Instruction.Create(OpCodes.Stfld, paramFields[paramIdx].Import(module)));
+                paramIdx++;
+            }
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldloc, streamVariable));
+            code.Append(Instruction.Create(OpCodes.Stfld, streamField.Import(module)));
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldloc, rpcDataVariable));
+            code.Append(Instruction.Create(OpCodes.Stfld, rpcDataField.Import(module)));
+            code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+            code.Append(Instruction.Create(OpCodes.Ldloc, rpcSignature));
+            code.Append(Instruction.Create(OpCodes.Stfld, rpcSigField.Import(module)));
+            if (thisField != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                code.Append(Instruction.Create(OpCodes.Stfld, thisField.Import(module)));
+            }
+
+            List<VariableDefinition> taskVars = null;
+            if (asyncParamIndices.Count == 0)
+            {
+                var executeAfterPrepareSingle = module.GetTypeDefinition(typeof(AsyncPackableHelper))
+                    .Methods.First(m => m.Name == "ExecuteAfterPrepareAsync" && m.Parameters.Count == 2 &&
+                        !m.Parameters[0].ParameterType.IsArray)
+                    .Import(module);
+                code.Append(Instruction.Create(OpCodes.Call, completedTaskGetter));
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldftn, doSend.Import(module)));
+                code.Append(Instruction.Create(OpCodes.Newobj, actionCtor));
+                code.Append(Instruction.Create(OpCodes.Call, executeAfterPrepareSingle));
+            }
+            else
+            {
+                taskVars = new List<VariableDefinition>();
+                paramIdx = 0;
+                for (var i = 0; i < paramCount; i++)
+                {
+                    var param = methodRpc.originalMethod.Parameters[i];
+                    if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) { paramIdx++; continue; }
+                    if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) { paramIdx++; continue; }
+                    if (param.ParameterType is GenericParameter) { paramIdx++; continue; }
+                    var def = param.ParameterType.Resolve();
+                    if (def == null || !GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
+                    { paramIdx++; continue; }
+
+                    var prepareAsync = CreatePrepareForPackAsyncMethod(module, param.ParameterType);
+                    code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                    code.Append(Instruction.Create(OpCodes.Ldfld, paramFields[paramIdx].Import(module)));
+                    code.Append(Instruction.Create(OpCodes.Call, prepareAsync));
+                    var taskVar = new VariableDefinition(taskType);
+                    newMethod.Body.Variables.Add(taskVar);
+                    taskVars.Add(taskVar);
+                    code.Append(Instruction.Create(OpCodes.Stloc, taskVar));
+                    paramIdx++;
+                }
+
+                code.Append(Instruction.Create(OpCodes.Ldc_I4, taskVars.Count));
+                code.Append(Instruction.Create(OpCodes.Newarr, taskType));
+                var tasksArrayVar = new VariableDefinition(taskArrayType);
+                newMethod.Body.Variables.Add(tasksArrayVar);
+                code.Append(Instruction.Create(OpCodes.Stloc, tasksArrayVar));
+                for (var t = 0; t < taskVars.Count; t++)
+                {
+                    code.Append(Instruction.Create(OpCodes.Ldloc, tasksArrayVar));
+                    code.Append(Instruction.Create(OpCodes.Ldc_I4, t));
+                    code.Append(Instruction.Create(OpCodes.Ldloc, taskVars[t]));
+                    code.Append(Instruction.Create(OpCodes.Stelem_Ref));
+                }
+
+                var executeAfterPrepareMulti = module.GetTypeDefinition(typeof(AsyncPackableHelper))
+                    .Methods.First(m => m.Name == "ExecuteAfterPrepareAsync" && m.Parameters.Count == 2 &&
+                        m.Parameters[0].ParameterType.IsArray)
+                    .Import(module);
+                var actionTaskArray = new GenericInstanceType(actionOfTOpen) { GenericArguments = { taskArrayType } };
+                var actionTaskArrayCtorDef = actionOfTOpen.Resolve().Methods.First(m =>
+                    m.IsConstructor && m.Parameters.Count == 2);
+                var actionTaskArrayCtor = new MethodReference(".ctor", module.TypeSystem.Void, actionTaskArray)
+                    { HasThis = true };
+                actionTaskArrayCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.Object));
+                actionTaskArrayCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.IntPtr));
+                code.Append(Instruction.Create(OpCodes.Ldloc, tasksArrayVar));
+                code.Append(Instruction.Create(OpCodes.Ldloc, stateVar));
+                code.Append(Instruction.Create(OpCodes.Ldftn, storeResultsAndSend.Import(module)));
+                code.Append(Instruction.Create(OpCodes.Newobj, module.ImportReference(actionTaskArrayCtor)));
+                code.Append(Instruction.Create(OpCodes.Call, executeAfterPrepareMulti));
+            }
+            // ExecuteAfterPrepareAsync returns Task; method is void so pop before ret
+            code.Append(Instruction.Create(OpCodes.Pop));
+            code.Append(Instruction.Create(OpCodes.Ret));
         }
 
         enum TargetArgType
@@ -2531,6 +3382,11 @@ namespace PurrNet.Codegen
                         if (instruction.Operand is MethodReference methodReference &&
                             methodReference.GetElementMethod() == old)
                         {
+                            // RpcSendState.RunLocal and RpcReceiveState.InvokeAfterPrepare intentionally
+                            // call the _Original method, not the wrapper. Skip updating refs in those types.
+                            if (type.Name.StartsWith("RpcSendState", StringComparison.Ordinal) ||
+                                type.Name.StartsWith("RpcReceiveState", StringComparison.Ordinal))
+                                continue;
                             var newRef = GenerateNewRef(@new, methodReference);
                             processor.Replace(instruction, Instruction.Create(instruction.OpCode, newRef));
                         }
@@ -2664,6 +3520,7 @@ namespace PurrNet.Codegen
                 for (var m = 0; m < assemblyDefinition.Modules.Count; m++)
                 {
                     var module = assemblyDefinition.Modules[m];
+
                     var hasPurrNetAsReference = HasPurrNetAsReference(compiledAssembly.Name, module);
 
                     using var types = GetAllTypes(module);
@@ -2671,6 +3528,9 @@ namespace PurrNet.Codegen
 
                     for (var t = 0; t < types.Count; t++)
                     {
+                        if (types[t].FullName == typeof(ApplicationConstants).FullName)
+                            BakeApplicationConstants.Process(types[t], isEditor, messages);
+
                         if (types[t].HasInterfaces)
                         {
                             try
@@ -2895,6 +3755,19 @@ namespace PurrNet.Codegen
                                 MessageData = $"FindUsedTypes {e.Message}\n{e.StackTrace}"
                             });
                         }
+
+                        try
+                        {
+                            ProcessReflectionRPCTargets(module, compiledAssembly, messages);
+                        }
+                        catch (Exception e)
+                        {
+                            messages.Add(new DiagnosticMessage
+                            {
+                                DiagnosticType = DiagnosticType.Error,
+                                MessageData = $"ProcessReflectionRPCTargets: {e.Message}\n{e.StackTrace}"
+                            });
+                        }
                     }
                 }
 
@@ -2923,6 +3796,8 @@ namespace PurrNet.Codegen
 
                 try
                 {
+                    foreach (var mod in assemblyDefinition.Modules)
+                        RedirectSystemPrivateCoreLibToNetStandard(mod);
                     assemblyDefinition.Write(pe, writerParameters);
                 }
                 catch (Exception e)
@@ -2950,6 +3825,113 @@ namespace PurrNet.Codegen
 
                 return new ILPostProcessResult(compiledAssembly.InMemoryAssembly, messages);
             }
+        }
+
+        /// <summary>
+        /// Redirects System.Private.CoreLib references to netstandard/System.Runtime so Unity can load the assembly.
+        /// The .NET 6 compiler adds System.Private.CoreLib for Task/async, but Unity doesn't have that assembly.
+        /// </summary>
+        private static void RedirectSystemPrivateCoreLibToNetStandard(ModuleDefinition module)
+        {
+            var coreLibRef = module.AssemblyReferences.FirstOrDefault(r => r.Name == "System.Private.CoreLib");
+            if (coreLibRef == null)
+                return;
+
+            var replacementRef = module.AssemblyReferences.FirstOrDefault(r =>
+                r.Name == "netstandard" || r.Name == "System.Runtime" || r.Name == "mscorlib");
+            if (replacementRef == null)
+                return;
+
+            void PatchTypeRef(TypeReference typeRef)
+            {
+                if (typeRef == null) return;
+                if (typeRef.Scope == coreLibRef)
+                    typeRef.Scope = replacementRef;
+                if (typeRef is GenericInstanceType genType)
+                {
+                    PatchTypeRef(genType.ElementType);
+                    foreach (var ga in genType.GenericArguments)
+                        PatchTypeRef(ga);
+                }
+                else if (typeRef is ArrayType arrType)
+                    PatchTypeRef(arrType.ElementType);
+                else if (typeRef is ByReferenceType byRefType)
+                    PatchTypeRef(byRefType.ElementType);
+                else if (typeRef is OptionalModifierType optType)
+                    PatchTypeRef(optType.ElementType);
+                else if (typeRef is RequiredModifierType reqType)
+                    PatchTypeRef(reqType.ElementType);
+                else if (typeRef is PinnedType pinnedType)
+                    PatchTypeRef(pinnedType.ElementType);
+            }
+
+            void ProcessType(TypeDefinition type)
+            {
+                PatchTypeRef(type.BaseType);
+                foreach (var iface in type.Interfaces)
+                    PatchTypeRef(iface.InterfaceType);
+                foreach (var attr in type.CustomAttributes)
+                {
+                    PatchTypeRef(attr.AttributeType);
+                    foreach (var arg in attr.ConstructorArguments)
+                        PatchTypeRef(arg.Type);
+                }
+                foreach (var field in type.Fields)
+                {
+                    PatchTypeRef(field.FieldType);
+                    foreach (var attr in field.CustomAttributes)
+                    {
+                        PatchTypeRef(attr.AttributeType);
+                        foreach (var arg in attr.ConstructorArguments)
+                            PatchTypeRef(arg.Type);
+                    }
+                }
+                foreach (var method in type.Methods)
+                {
+                    foreach (var attr in method.CustomAttributes)
+                    {
+                        PatchTypeRef(attr.AttributeType);
+                        foreach (var arg in attr.ConstructorArguments)
+                            PatchTypeRef(arg.Type);
+                    }
+                    PatchTypeRef(method.ReturnType);
+                    foreach (var p in method.Parameters)
+                        PatchTypeRef(p.ParameterType);
+                    foreach (var gp in method.GenericParameters)
+                        foreach (var c in gp.Constraints)
+                            PatchTypeRef(c.ConstraintType);
+                    if (method.Body != null)
+                    {
+                        foreach (var v in method.Body.Variables)
+                            PatchTypeRef(v.VariableType);
+                        foreach (var eh in method.Body.ExceptionHandlers)
+                            PatchTypeRef(eh.CatchType);
+                        foreach (var instr in method.Body.Instructions)
+                        {
+                            if (instr.Operand is TypeReference tr)
+                                PatchTypeRef(tr);
+                            else if (instr.Operand is MethodReference mr)
+                            {
+                                PatchTypeRef(mr.DeclaringType);
+                                PatchTypeRef(mr.ReturnType);
+                                foreach (var p in mr.Parameters)
+                                    PatchTypeRef(p.ParameterType);
+                                if (mr is GenericInstanceMethod genMethod)
+                                    foreach (var ga in genMethod.GenericArguments)
+                                        PatchTypeRef(ga);
+                            }
+                            else if (instr.Operand is FieldReference fr)
+                                PatchTypeRef(fr.DeclaringType);
+                        }
+                    }
+                }
+                foreach (var nested in type.NestedTypes)
+                    ProcessType(nested);
+            }
+
+            foreach (var type in module.Types)
+                ProcessType(type);
+            module.AssemblyReferences.Remove(coreLibRef);
         }
 
         private static bool HasPurrNetAsReference(string myName, ModuleDefinition module)
@@ -3385,6 +4367,18 @@ namespace PurrNet.Codegen
 
             var code = newMethod.Body.GetILProcessor();
 
+            // For generic types, field references must go through a GenericInstanceType
+            // so that the runtime sees them as belonging to the same type context as the method.
+            // Without this, private fields cause FieldAccessException.
+            TypeReference selfType = type;
+            if (type.HasGenericParameters)
+            {
+                var git = new GenericInstanceType(type);
+                foreach (var gp in type.GenericParameters)
+                    git.GenericArguments.Add(gp);
+                selfType = git;
+            }
+
             var parentType =
                 (isNetworkIdentity
                     ? module.GetTypeDefinition<NetworkIdentity>()
@@ -3402,11 +4396,16 @@ namespace PurrNet.Codegen
                 if (field.CustomAttributes.All(x => x.AttributeType.FullName != typeof(PreserveAttribute).FullName))
                     type.CustomAttributes.Add(new CustomAttribute(constructor));
 
+                // For generic types, construct a FieldReference through the GenericInstanceType
+                FieldReference fieldRef = type.HasGenericParameters
+                    ? new FieldReference(field.Name, field.FieldType, selfType)
+                    : field;
+
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
                 code.Append(Instruction.Create(OpCodes.Ldstr, field.Name));
                 code.Append(Instruction.Create(OpCodes.Ldstr, field.FieldType.Name));
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Ldc_I4, isNetworkIdentity ? 1 : 0));
                 code.Append(Instruction.Create(OpCodes.Call, registerModule));
 
@@ -3414,7 +4413,7 @@ namespace PurrNet.Codegen
 
                 // if not null
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Brfalse, endInstruction));
 
                 // call init method
@@ -3428,7 +4427,7 @@ namespace PurrNet.Codegen
                 codeGenInitRef.Parameters.Add(parentStr);
 
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 if (isNetworkIdentity)
                 {
                     code.Append(Instruction.Create(OpCodes.Ldstr, field.Name));
@@ -3448,7 +4447,7 @@ namespace PurrNet.Codegen
                     // if null
                     var endInstruction2 = Instruction.Create(OpCodes.Nop);
                     code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                    code.Append(Instruction.Create(OpCodes.Ldfld, field));
+                    code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                     code.Append(Instruction.Create(OpCodes.Brtrue, endInstruction2));
 
                     // call error
@@ -3656,6 +4655,259 @@ namespace PurrNet.Codegen
                 return false;
 
             return true;
+        }
+
+        private static string ReadCachePathFromSettings(string projectRoot)
+        {
+            const string defaultPath = "Assets/PurrNet/ReflectionRPCTargets.txt";
+            const string settingsFile = "ProjectSettings/PurrNetSettings.asset";
+
+            var settingsPath = string.IsNullOrEmpty(projectRoot)
+                ? settingsFile
+                : Path.Combine(projectRoot, settingsFile);
+
+            if (!File.Exists(settingsPath))
+                return defaultPath;
+
+            try
+            {
+                var json = File.ReadAllText(settingsPath);
+                const string key = "\"reflectionCachePath\"";
+                var idx = json.IndexOf(key, StringComparison.Ordinal);
+                if (idx < 0)
+                    return defaultPath;
+
+                var colonIdx = json.IndexOf(':', idx + key.Length);
+                if (colonIdx < 0)
+                    return defaultPath;
+
+                var quoteStart = json.IndexOf('"', colonIdx + 1);
+                if (quoteStart < 0)
+                    return defaultPath;
+
+                var quoteEnd = json.IndexOf('"', quoteStart + 1);
+                if (quoteEnd < 0)
+                    return defaultPath;
+
+                var value = json.Substring(quoteStart + 1, quoteEnd - quoteStart - 1);
+                return string.IsNullOrEmpty(value) ? defaultPath : value;
+            }
+            catch
+            {
+                return defaultPath;
+            }
+        }
+
+        private static string FindReflectionTargetsCache(ICompiledAssembly compiledAssembly)
+        {
+            var relativePath = ReadCachePathFromSettings(null);
+
+            if (File.Exists(relativePath))
+                return relativePath;
+
+            foreach (var reference in compiledAssembly.References)
+            {
+                var normalized = reference.Replace('\\', '/');
+                var idx = normalized.IndexOf("Library/", StringComparison.Ordinal);
+                if (idx <= 0)
+                    continue;
+
+                var root = reference.Substring(0, idx);
+                var cachePath = ReadCachePathFromSettings(root);
+                var fullPath = Path.Combine(root, cachePath);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
+        }
+
+        private static void ProcessReflectionRPCTargets(ModuleDefinition module,
+            ICompiledAssembly compiledAssembly, List<DiagnosticMessage> messages)
+        {
+            var processedTypes = new HashSet<string>();
+
+            var cacheFile = FindReflectionTargetsCache(compiledAssembly);
+            if (cacheFile != null)
+            {
+                var lines = File.ReadAllLines(cacheFile);
+                foreach (var line in lines)
+                {
+                    var typeName = line.Trim();
+                    if (string.IsNullOrEmpty(typeName))
+                        continue;
+
+                    var targetType = module.GetType(typeName);
+                    if (targetType == null)
+                        continue;
+
+                    if (!processedTypes.Add(targetType.FullName))
+                        continue;
+
+                    try
+                    {
+                        ProcessReflectionRPCType(module, targetType, messages);
+                    }
+                    catch (Exception e)
+                    {
+                        messages.Add(new DiagnosticMessage
+                        {
+                            DiagnosticType = DiagnosticType.Error,
+                            MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
+                        });
+                    }
+                }
+            }
+
+            var attrFullName = typeof(ReflectionRPCTargetAttribute).FullName;
+
+            foreach (var attr in module.Assembly.CustomAttributes)
+            {
+                if (attr.AttributeType.FullName != attrFullName)
+                    continue;
+
+                if (attr.ConstructorArguments.Count != 1)
+                    continue;
+
+                var targetTypeRef = attr.ConstructorArguments[0].Value as TypeReference;
+                if (targetTypeRef == null)
+                    continue;
+
+                var targetType = targetTypeRef.Resolve();
+                if (targetType == null)
+                    continue;
+
+                if (targetType.Module != module)
+                    continue;
+
+                if (!processedTypes.Add(targetType.FullName))
+                    continue;
+
+                try
+                {
+                    ProcessReflectionRPCType(module, targetType, messages);
+                }
+                catch (Exception e)
+                {
+                    messages.Add(new DiagnosticMessage
+                    {
+                        DiagnosticType = DiagnosticType.Error,
+                        MessageData = $"ReflectionRPC [{targetType.Name}]: {e.Message}\n{e.StackTrace}"
+                    });
+                }
+            }
+        }
+
+        private static void ProcessReflectionRPCType(ModuleDefinition module, TypeDefinition targetType,
+            List<DiagnosticMessage> messages)
+        {
+            var networkReflectionTypeDef = module.GetTypeDefinition<NetworkReflection>();
+            var reflectionFieldRef = module.ImportReference(
+                new FieldReference("__purrnet_reflection", networkReflectionTypeDef.Import(module), targetType));
+
+            bool fieldAdded = false;
+            for (int i = 0; i < targetType.Fields.Count; i++)
+            {
+                if (targetType.Fields[i].Name == "__purrnet_reflection")
+                {
+                    fieldAdded = true;
+                    reflectionFieldRef = targetType.Fields[i].Import(module);
+                    break;
+                }
+            }
+
+            if (!fieldAdded)
+            {
+                var field = new FieldDefinition("__purrnet_reflection",
+                    FieldAttributes.Public | FieldAttributes.NotSerialized,
+                    networkReflectionTypeDef.Import(module));
+                targetType.Fields.Add(field);
+                reflectionFieldRef = field.Import(module);
+            }
+
+            var bypassFieldRef = networkReflectionTypeDef.GetField("__bypassMethodDispatch").Import(module);
+            var tryDispatchRef = networkReflectionTypeDef.GetMethod("TryDispatchMethod").Import(module);
+            var objectTypeRef = module.ImportReference(module.TypeSystem.Object);
+
+            for (int i = 0; i < targetType.Methods.Count; i++)
+            {
+                var method = targetType.Methods[i];
+
+                if (method.IsStatic) continue;
+                if (method.IsConstructor) continue;
+                if (method.IsAbstract) continue;
+                if (!method.HasBody) continue;
+                if (method.ReturnType.FullName != module.TypeSystem.Void.FullName) continue;
+                if (method.IsGetter || method.IsSetter) continue;
+                if (method.HasGenericParameters) continue;
+
+                try
+                {
+                    InjectReflectionRPCDispatch(module, method, reflectionFieldRef, bypassFieldRef,
+                        tryDispatchRef, objectTypeRef);
+                }
+                catch (Exception e)
+                {
+                    messages.Add(new DiagnosticMessage
+                    {
+                        DiagnosticType = DiagnosticType.Error,
+                        MessageData =
+                            $"ReflectionRPC inject [{targetType.Name}.{method.Name}]: {e.Message}\n{e.StackTrace}"
+                    });
+                }
+            }
+        }
+
+        private static void InjectReflectionRPCDispatch(ModuleDefinition module, MethodDefinition method,
+            FieldReference reflectionFieldRef, FieldReference bypassFieldRef,
+            MethodReference tryDispatchRef, TypeReference objectTypeRef)
+        {
+            var body = method.Body;
+            var il = body.GetILProcessor();
+            var originalFirst = body.Instructions[0];
+
+            var objectArrayType = new ArrayType(objectTypeRef);
+            var reflLocal = new VariableDefinition(reflectionFieldRef.FieldType);
+            var argsLocal = new VariableDefinition(objectArrayType);
+            body.Variables.Add(reflLocal);
+            body.Variables.Add(argsLocal);
+
+            var paramCount = method.Parameters.Count;
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldsfld, bypassFieldRef));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Brtrue, originalFirst));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldarg_0));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldfld, reflectionFieldRef));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Stloc, reflLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldloc, reflLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Brfalse, originalFirst));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldc_I4, paramCount));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Newarr, objectTypeRef));
+
+            for (int i = 0; i < paramCount; i++)
+            {
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Dup));
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldc_I4, i));
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldarg, method.Parameters[i]));
+
+                var paramType = method.Parameters[i].ParameterType;
+                if (paramType.IsValueType || paramType.IsGenericParameter)
+                    il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Box, module.ImportReference(paramType)));
+
+                il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Stelem_Ref));
+            }
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Stloc, argsLocal));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldloc, reflLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldstr, method.Name));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ldloc, argsLocal));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Callvirt, tryDispatchRef));
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Brfalse, originalFirst));
+
+            il.InsertBefore(originalFirst, Instruction.Create(OpCodes.Ret));
         }
     }
 }

@@ -243,7 +243,8 @@ namespace PurrNet.Modules
                 return;
             }
 
-            module.AppendToBufferedRPCs(packet, signature);
+            if (signature.bufferLast)
+                module.AppendToBufferedRPCs(packet, signature);
 
             switch (signature.type)
             {
@@ -256,7 +257,7 @@ namespace PurrNet.Modules
                         break;
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                    if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                     module.BatchToServer(packet, signature.channel);
@@ -266,25 +267,46 @@ namespace PurrNet.Modules
                 {
                     if (nm.isServer)
                     {
-                        using var players = GetObservers(signature);
+                        if (signature.targetPlayer != null)
+                        {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
+                                Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
+#endif
+                            module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel);
+                        }
+                        else
+                        {
+                            var all = module._playersManager.players;
 
-                        if (players.Count == 0)
-                            break;
+                            if (all.Count == 0)
+                                break;
+
+                            bool skipLocal = signature.runLocally || signature.excludeSender;
+                            var filter = new ObserverFilter(
+                                nm.localPlayer, skipLocal,
+                                default, false
+                            );
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        for (var i = players.Count - 1; i >= 0; --i)
-                        {
-                            if (Hasher.TryGetType(packet.header.typeHash, out var type))
-                                Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
-                        }
+                            if (Statistics.shouldTrack)
+                            {
+                                for (var i = all.Count - 1; i >= 0; --i)
+                                {
+                                    if (!filter.ShouldSkip(all[i]))
+                                        if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                                            Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
+                                }
+                            }
 #endif
 
-                        module.BatchToTargets(players, packet, signature.channel);
+                            module.BatchToTargets(all, packet, signature.channel, filter);
+                        }
                     }
                     else
                     {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                        if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                        if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                             Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                         module.BatchToServer(packet, signature.channel);
@@ -294,7 +316,7 @@ namespace PurrNet.Modules
                 case RPCType.TargetRPC:
                 {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-                    if (Hasher.TryGetType(packet.header.typeHash, out var type))
+                    if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
                     if (nm.isServer)
@@ -572,48 +594,48 @@ namespace PurrNet.Modules
 
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
         {
-            using (_bufferRPCMarker.Auto())
-            {
-                AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
-                    _bufferedStaticRpcsDatas,
-                    packet.header,
-                    new RPC_ID(packet),
-                    packet.data,
-                    signature
-                );
-            }
+            if (!signature.bufferLast) return;
+            _bufferRPCMarker.Begin();
+            AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
+                _bufferedStaticRpcsDatas,
+                packet.header,
+                new RPC_ID(packet),
+                packet.data,
+                signature
+            );
+            _bufferRPCMarker.End();
         }
 
         public void AppendToBufferedRPCs(ChildRPCPacket packet, RPCSignature signature)
         {
-            using (_bufferRPCMarker.Auto())
-            {
-                AppendToBufferedRPCs(_bufferedChildRpcsKeys,
-                    _bufferedChildRpcsDatas,
-                    packet.header,
-                    new RPC_ID(packet),
-                    packet.data,
-                    signature
-                );
-            }
+            if (!signature.bufferLast) return;
+            _bufferRPCMarker.Begin();
+            AppendToBufferedRPCs(_bufferedChildRpcsKeys,
+                _bufferedChildRpcsDatas,
+                packet.header,
+                new RPC_ID(packet),
+                packet.data,
+                signature
+            );
+            _bufferRPCMarker.End();
         }
 
         public void AppendToBufferedRPCs(RPCPacket packet, RPCSignature signature)
         {
-            using (_bufferRPCMarker.Auto())
-            {
-                AppendToBufferedRPCs(
-                    _bufferedRpcsKeys,
-                    _bufferedRpcsDatas,
-                    packet.header,
-                    new RPC_ID(packet),
-                    packet.data,
-                    signature
-                );
-            }
+            if (!signature.bufferLast) return;
+            _bufferRPCMarker.Begin();
+            AppendToBufferedRPCs(
+                _bufferedRpcsKeys,
+                _bufferedRpcsDatas,
+                packet.header,
+                new RPC_ID(packet),
+                packet.data,
+                signature
+            );
+            _bufferRPCMarker.End();
         }
 
-        private void AppendToBufferedRPCs<T>(
+        private static void AppendToBufferedRPCs<T>(
             Dictionary<RPC_ID, RPC_DATA_BASE<T>> keys,
             List<RPC_DATA_BASE<T>> datas,
             T header,
@@ -623,7 +645,7 @@ namespace PurrNet.Modules
         {
             if (!signature.bufferLast) return;
 
-            if (_bufferedRpcsKeys.TryGetValue(rpcid, out var data))
+            if (keys.TryGetValue(rpcid, out var data))
             {
                 data.stream.ResetPosition();
                 data.stream.WriteBitDataWithoutConsumingIt(bitData);
@@ -963,6 +985,18 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTarget(PlayerID player, RPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTarget(PlayerID player, ChildRPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
         {
             _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
@@ -972,6 +1006,30 @@ namespace PurrNet.Modules
         public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
         {
             _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTarget(PlayerID player, StaticRPCPacket packet, Channel signatureChannel)
+        {
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
+        {
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
+        {
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
+        {
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

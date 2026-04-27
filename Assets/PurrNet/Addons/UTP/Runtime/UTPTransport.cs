@@ -2,8 +2,7 @@
 #define DISABLEUTPWORKS
 #endif
 
-#if UTP_LOBBYRELAY
-#define UTP_NET_PACKAGE
+#if UTP_NET_PACKAGE
 #if UTP_SERVICES
 using Unity.Services.Relay.Models;
 #endif
@@ -13,6 +12,7 @@ using Unity.Networking.Transport.Relay;
 
 using System;
 using System.Collections.Generic;
+using PurrNet.Logging;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -99,12 +99,26 @@ namespace PurrNet.UTP
         /// <returns>The MTU size in bytes.</returns>
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
-            return channel switch
+            try
             {
-                Channel.Unreliable => 1024,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
-            };
+                if (asServer)
+                {
+                    if (_server != null)
+                        return _server.GetMTU(target.connectionId, channel);
+                }
+                else
+                {
+                    if (_client != null)
+                        return _client.GetMTU(channel);
+                }
+
+                return 1024;
+            }
+            catch
+            {
+                // Fallback to minimum safe size if any error occurs
+                return 1024;
+            }
         }
 
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
@@ -202,7 +216,7 @@ namespace PurrNet.UTP
             Listen(_serverPort);
         }
 
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
+#if UTP_NET_PACKAGE && UTP_SERVICES && !DISABLEUTPWORKS
         /// <summary>
         /// Initializes the Unity Relay server data using a relay allocation.
         /// This must be called before starting the server in peer-to-peer mode.
@@ -281,6 +295,8 @@ namespace PurrNet.UTP
         /// <param name="port">The port number to listen on.</param>
         public void Listen(ushort port)
         {
+            // LogTransportTrace($"Listen requested port={port} p2p={_peerToPeer} dedicated={_dedicatedServer} hasServer={_server != null}");
+
             if (_server != null)
                 StopListening();
 
@@ -293,15 +309,12 @@ namespace PurrNet.UTP
             if (_peerToPeer)
                 _server.ListenP2P(_dedicatedServer, _relayServerData);
             else _server.Listen(port, _dedicatedServer, _relayServerData);
-#elif UTP_LOBBYRELAY && UTP_SERVICES
-            if (_peerToPeer)
-                _server.ListenP2P(_dedicatedServer);
-            else _server.Listen(port, _dedicatedServer);
 #endif
 
             if (_server.listening)
             {
                 listenerState = ConnectionState.Connected;
+                // LogTransportTrace("Listen succeeded: server is listening");
 
                 _server.onDataReceived += OnServerData;
                 _server.onRemoteConnected += OnRemoteConnected;
@@ -309,27 +322,30 @@ namespace PurrNet.UTP
             }
             else
             {
+                // LogTransportTrace("Listen failed: server is not listening");
                 listenerState = ConnectionState.Disconnecting;
                 listenerState = ConnectionState.Disconnected;
                 _server = null;
-                return;
             }
         }
 
         private void OnRemoteConnected(int obj)
         {
+            // LogTransportTrace($"Remote connected conn={obj}");
             _connections.Add(new Connection(obj));
             onConnected?.Invoke(new Connection(obj), true);
         }
 
         private void OnRemoteDisconnected(int obj)
         {
+            // LogTransportTrace($"Remote disconnected conn={obj}");
             _connections.Remove(new Connection(obj));
             onDisconnected?.Invoke(new Connection(obj), DisconnectReason.ClientRequest, true);
         }
 
         private void OnServerData(int conn, ByteData data)
         {
+            // LogTransportTrace($"Server data conn={conn} len={data.length}");
             onDataReceived?.Invoke(new Connection(conn), data, true);
         }
 
@@ -338,6 +354,8 @@ namespace PurrNet.UTP
         /// </summary>
         public void StopListening()
         {
+            // LogTransportTrace($"StopListening requested state={listenerState} hasServer={_server != null}");
+
             if (listenerState != ConnectionState.Disconnected)
                 listenerState = ConnectionState.Disconnecting;
 
@@ -351,6 +369,8 @@ namespace PurrNet.UTP
             _server?.Stop();
             listenerState = ConnectionState.Disconnected;
             _server = null;
+
+            // LogTransportTrace("StopListening completed");
         }
 
         private Coroutine _connectClientCoroutine;
@@ -363,6 +383,8 @@ namespace PurrNet.UTP
         /// <param name="port">The port number to connect to.</param>
         public void Connect(string ip, ushort port)
         {
+            // LogTransportTrace($"Connect requested ip={ip} port={port} p2p={_peerToPeer} dedicated={_dedicatedServer} hasClient={_client != null}");
+
             if (_client != null)
                 Disconnect();
 
@@ -375,20 +397,23 @@ namespace PurrNet.UTP
             _connectClientCoroutine = StartCoroutine(_peerToPeer
                 ? _client.ConnectP2P(ip, _dedicatedServer, _relayClientData)
                 : _client.Connect(ip, port, _dedicatedServer, _relayClientData));
-#elif UTP_LOBBYRELAY && UTP_SERVICES
-            _connectClientCoroutine = StartCoroutine(_peerToPeer
-                ? _client.ConnectP2P(ip, _dedicatedServer)
-                : _client.Connect(ip, port, _dedicatedServer));
 #endif
         }
 
         private void OnClientDataReceived(ByteData data)
         {
-            onDataReceived?.Invoke(new Connection(-1), data, false);
+            // LogTransportTrace($"Client data received len={data.length}");
+            if (data.length > 100)
+            {
+                // PurrLogger.LogError($"[UTP DEBUG] OnClientDataReceived - packet size: {data.length} bytes");
+            }
+            onDataReceived?.Invoke(new Connection(0), data, false);
         }
 
         private void OnClientStateChanged(ConnectionState state)
         {
+			// LogTransportTrace($"Client state changed to {state}");
+
 			// Update clientState BEFORE firing events to prevent race condition
     		// where authentication tries to send before clientState is updated
     		clientState = state;
@@ -398,7 +423,7 @@ namespace PurrNet.UTP
 
             if (state == ConnectionState.Disconnected)
                 onDisconnected?.Invoke(new Connection(0), DisconnectReason.ClientRequest, false);
-			
+
         }
 
         /// <summary>
@@ -406,6 +431,8 @@ namespace PurrNet.UTP
         /// </summary>
         public void Disconnect()
         {
+            // LogTransportTrace($"Disconnect requested hasClient={_client != null} hasCoroutine={_connectClientCoroutine != null}");
+
             if (_connectClientCoroutine != null)
             {
                 StopCoroutine(_connectClientCoroutine);
@@ -420,6 +447,8 @@ namespace PurrNet.UTP
 
             _client.Stop();
             _client = null;
+
+            // LogTransportTrace("Disconnect completed");
         }
 
         /// <summary>
@@ -452,6 +481,8 @@ namespace PurrNet.UTP
         /// <param name="method">The network channel to use for sending.</param>
         public void SendToClient(Connection target, ByteData data, Channel method = Channel.ReliableOrdered)
         {
+            // LogTransportTrace($"SendToClient conn={target.connectionId} valid={target.isValid} len={data.length} channel={method} listenerState={listenerState}");
+
             if (_server == null)
             {
                 Debug.LogWarning("Cannot send to client: Server is not initialized");
@@ -478,6 +509,8 @@ namespace PurrNet.UTP
         /// <param name="method">The network channel to use for sending.</param>
         public void SendToServer(ByteData data, Channel method = Channel.ReliableOrdered)
         {
+            // LogTransportTrace($"SendToServer len={data.length} channel={method} clientState={clientState} hasClient={_client != null}");
+
             if (_client == null)
             {
                 Debug.LogWarning("Cannot send to server: Client is not initialized");
@@ -493,6 +526,13 @@ namespace PurrNet.UTP
             _client.Send(data, method);
             RaiseDataSent(default, data, false);
         }
+
+            private void LogTransportTrace(string message)
+            {
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                PurrLogger.Log($"[TransportTrace][UTPTransport] {message}");
+        #endif
+            }
 
         /// <summary>
         /// Closes a specific client connection from the server side.

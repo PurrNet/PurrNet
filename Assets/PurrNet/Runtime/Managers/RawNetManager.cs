@@ -29,6 +29,10 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private int _tickRate = 20;
 
+        [Tooltip("What to do when a packet exceeds the MTU on an unreliable channel.")]
+        [SerializeField]
+        private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Drop;
+
         private ModulesCollection _serverModules;
         private ModulesCollection _clientModules;
 
@@ -66,6 +70,15 @@ namespace PurrNet
         private bool _isCleaningServer;
 
         public ITransport rawTransport => _transport ? _transport.transport : null;
+
+        /// <summary>
+        /// What to do when a packet exceeds the MTU on an unreliable channel.
+        /// </summary>
+        public MTUExceededBehaviour mtuExceededBehaviour
+        {
+            get => _mtuExceededBehaviour;
+            set => _mtuExceededBehaviour = value;
+        }
 
         /// <summary>
         /// The state of the server connection.
@@ -409,6 +422,8 @@ namespace PurrNet
             }
         }
 
+        private double _lastSendTime;
+
         private void OnTick()
         {
             bool serverConnected = serverState == ConnectionState.Connected;
@@ -436,7 +451,12 @@ namespace PurrNet
                 _clientModules.TriggerOnPostFixedUpdate();
 
             if (_transport)
-                _transport.transport.SendMessages(tickModule.tickDelta);
+            {
+                var now = UnityEngine.Time.unscaledTimeAsDouble;
+                var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : tickModule.tickDelta;
+                _lastSendTime = now;
+                _transport.transport.SendMessages(sendDelta);
+            }
 
             if (_isCleaningClient && _clientModules.Cleanup())
             {

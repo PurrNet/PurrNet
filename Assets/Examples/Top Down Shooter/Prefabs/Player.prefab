@@ -322,7 +322,7 @@ MonoBehaviour:
   _interpolateSettings: 255
   _minBufferSize: 1
   _maxBufferSize: 2
-  _characterControllerPatch: 1
+  _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 1
 --- !u!114 &468800014021081407
@@ -410,6 +410,10 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
+  PlayerName:
+    _value: Loading...
+    _ownerAuth: 1
+    _sendIntervalInSeconds: 0
 --- !u!1 &6426148537294609696
 GameObject:
   m_ObjectHideFlags: 0

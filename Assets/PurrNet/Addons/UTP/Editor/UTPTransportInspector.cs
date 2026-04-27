@@ -2,21 +2,11 @@
 #define DISABLEUTPWORKS
 #endif
 
-#if UTP_LOBBYRELAY
-#define UTP_NET_PACKAGE
-#endif
-
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using PurrNet.Editor;
 using PurrNet.Transports;
-
-#if UTP_NET_PACKAGE && !DISABLEUTPWORKS
-// using Unity Transport with Relay for P2P connectivity
-#endif
-
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.PackageManager;
@@ -78,8 +68,8 @@ namespace PurrNet.UTP.Editor
 #endif
             }
         }
-        
-        bool IsPackageInstalled(string packageName)
+
+        static bool IsPackageInstalled(string packageName)
         {
             var allPackages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages();
             return allPackages.Any(p => p.name == packageName);
@@ -90,7 +80,7 @@ namespace PurrNet.UTP.Editor
         {
             string currentDefines;
             HashSet<string> defines;
-            
+
 #if UNITY_2021_1_OR_NEWER
             currentDefines =
                 PlayerSettings.GetScriptingDefineSymbols(
@@ -102,7 +92,7 @@ namespace PurrNet.UTP.Editor
 #endif
             defines = new HashSet<string>(currentDefines.Split(';'));
             defines.Remove(symbol);
-            
+
             string newDefines = string.Join(";", defines);
             if (newDefines != currentDefines)
             {
@@ -129,11 +119,10 @@ namespace PurrNet.UTP.Editor
             if (generic && generic.transport != null)
                 generic.transport.onConnectionState -= OnDirty;
         }
-        
+
         private void OnDirty(ConnectionState state, bool asServer)
         {
             Repaint();
         }
     }
 }
-    

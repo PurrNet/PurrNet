@@ -200,11 +200,7 @@ namespace LiteNetLib.Utils
         /// </remarks>
         /// <seealso cref="NtpPacket.CorrectionOffset" />
         /// <seealso cref="NtpPacket.RoundTripTime" />
-        public DateTime? TransmitTimestamp
-        {
-            get { return GetDateTime64(40); }
-            private set { SetDateTime64(40, value); }
-        }
+        public DateTime? TransmitTimestamp { get { return GetDateTime64(40); } private set { SetDateTime64(40, value); } }
 
         /// <summary>
         /// Gets or sets the time of reception of response SNTP packet on the client.
@@ -236,8 +232,7 @@ namespace LiteNetLib.Utils
             get
             {
                 CheckTimestamps();
-                return (ReceiveTimestamp.Value - OriginTimestamp.Value) +
-                       (DestinationTimestamp.Value - TransmitTimestamp.Value);
+                return (ReceiveTimestamp.Value - OriginTimestamp.Value) + (DestinationTimestamp.Value - TransmitTimestamp.Value);
             }
         }
 
@@ -258,8 +253,7 @@ namespace LiteNetLib.Utils
             get
             {
                 CheckTimestamps();
-                return TimeSpan.FromTicks(((ReceiveTimestamp.Value - OriginTimestamp.Value) -
-                                           (DestinationTimestamp.Value - TransmitTimestamp.Value)).Ticks / 2);
+                return TimeSpan.FromTicks(((ReceiveTimestamp.Value - OriginTimestamp.Value) - (DestinationTimestamp.Value - TransmitTimestamp.Value)).Ticks / 2);
             }
         }
 
@@ -316,8 +310,7 @@ namespace LiteNetLib.Utils
             if (VersionNumber == 0)
                 throw new InvalidOperationException("Protocol version of the reply is not specified.");
             if (Stratum == 0)
-                throw new InvalidOperationException(
-                    string.Format("Received Kiss-o'-Death SNTP packet with code 0x{0:x}.", ReferenceId));
+                throw new InvalidOperationException(string.Format("Received Kiss-o'-Death SNTP packet with code 0x{0:x}.", ReferenceId));
             if (LeapIndicator == NtpLeapIndicator.AlarmCondition)
                 throw new InvalidOperationException("SNTP server has unsynchronized clock.");
             CheckTimestamps();
@@ -345,8 +338,7 @@ namespace LiteNetLib.Utils
 
         private void SetDateTime64(int offset, DateTime? value)
         {
-            SetUInt64BE(offset,
-                value == null ? 0 : Convert.ToUInt64((value.Value.Ticks - Epoch.Ticks) * (0.0000001 * (1L << 32))));
+            SetUInt64BE(offset, value == null ? 0 : Convert.ToUInt64((value.Value.Ticks - Epoch.Ticks) * (0.0000001 * (1L << 32))));
         }
 
         private TimeSpan GetTimeSpan32(int offset)

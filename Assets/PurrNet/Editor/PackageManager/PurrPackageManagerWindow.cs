@@ -9,7 +9,6 @@ namespace PurrNet.Editor
 {
     public class PurrPackageManagerWindow : EditorWindow
     {
-        private string _apiKeyInput = "";
         private string _errorMessage;
         private bool _isLoading;
 
@@ -23,9 +22,12 @@ namespace PurrNet.Editor
         private int _prevKeyboardControl;
         private int _releasePopupIndex;
         private int _devPopupIndex;
+        private bool _isUpdatingAll;
+        private int _updatableCount;
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
+        private PurrUserProfile _userProfile;
 
         // Cached sorted list rebuilt each frame from _packages
         private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
@@ -41,19 +43,26 @@ namespace PurrNet.Editor
         private static readonly Color _selectedBg = new Color(0.17f, 0.36f, 0.53f, 1f);
         private static readonly Color _hoverBg = new Color(0.26f, 0.26f, 0.26f, 1f);
         private static readonly Color _noAccessColor = new Color(0.95f, 0.45f, 0.45f, 1f);
+        private static readonly Dictionary<string, Color> _tierColors = new()
+        {
+            { "house-cat", new Color(0.4f, 0.7f, 1f, 1f) },
+            { "royal-british", new Color(0.7f, 0.45f, 0.9f, 1f) },
+            { "studio", new Color(0.85f, 0.65f, 0.3f, 1f) },
+        };
         private static readonly Color _categoryBg = new Color(0.16f, 0.16f, 0.16f, 1f);
         private static readonly Color _selectedAccent = new Color(0.35f, 0.65f, 0.95f, 1f);
 
-        private GUIStyle _titleStyle;
-        private GUIStyle _descStyle;
-        private GUIStyle _badgeStyle;
-        private GUIStyle _smallLabelStyle;
-        private GUIStyle _listItemStyle;
-        private GUIStyle _listItemDetailStyle;
-        private GUIStyle _categoryStyle;
-        private GUIStyle _detailTitleStyle;
-        private GUIStyle _releaseNotesStyle;
+        [NonSerialized] private GUIStyle _descStyle;
+        [NonSerialized] private GUIStyle _badgeStyle;
+        [NonSerialized] private GUIStyle _smallLabelStyle;
+        [NonSerialized] private GUIStyle _listItemStyle;
+        [NonSerialized] private GUIStyle _listItemDetailStyle;
+        [NonSerialized] private GUIStyle _categoryStyle;
+        [NonSerialized] private GUIStyle _detailTitleStyle;
+        [NonSerialized] private GUIStyle _releaseNotesStyle;
         private Texture2D _logo;
+
+        private const int StudiosEntryIndex = int.MaxValue;
 
         private const float SplitMargin = 80f;
         private const float ListItemHeight = 28f;
@@ -61,31 +70,63 @@ namespace PurrNet.Editor
         private const float CategoryGap = 8f;
         private const float SplitterWidth = 6f;
 
-        [MenuItem("Tools/PurrNet/Package Manager", false, -99)]
+        [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -99)]
         public static void ShowWindow()
         {
-            var window = GetWindow<PurrPackageManagerWindow>("PurrNet Package Manager");
+            var window = GetWindow<PurrPackageManagerWindow>();
+            var icon = Resources.Load<Texture2D>("purricon");
+            window.titleContent = new GUIContent("PurrNet Packages", icon);
             window.minSize = new Vector2(520, 350);
+        }
+
+        [MenuItem("Tools/PurrNet/PurrNet for Studios", false, 1000)]
+        private static void OpenStudiosPage()
+        {
+            Application.OpenURL("https://purrnet.dev/studios");
         }
 
         private void OnEnable()
         {
             wantsMouseMove = true;
-            _logo = Resources.Load<Texture2D>("purrlogo");
-            _apiKeyInput = PurrPackageManagerAuth.GetApiKey();
+            _logo = Resources.Load<Texture2D>("purricon");
+            _userProfile = new PurrUserProfile(Repaint);
+            _userProfile.Refresh();
+            PurrPackageManagerAuth.onAuthChanged += onAuthChanged;
             LoadData();
+        }
+
+        private void OnDisable()
+        {
+            PurrPackageManagerAuth.onAuthChanged -= onAuthChanged;
+        }
+
+        private void onAuthChanged()
+        {
+            PurrPackageManagerCache.Invalidate();
+            _entitlements = null;
+            _errorMessage = null;
+            _userProfile?.Refresh();
+            LoadData();
+            Repaint();
+        }
+
+        private static string FormatTierName(string tier)
+        {
+            if (string.IsNullOrEmpty(tier)) return null;
+            switch (tier)
+            {
+                case "house-cat": return "House Cat";
+                case "royal-british": return "Royal British";
+                case "studio": return "Studio";
+                case "free": return null;
+                default: return tier;
+            }
         }
 
         private void InitStyles()
         {
             if (_detailTitleStyle != null && _listItemDetailStyle != null && _releaseNotesStyle != null)
                 return;
-
-            _titleStyle = new GUIStyle(EditorStyles.boldLabel)
-            {
-                fontSize = 13,
-                margin = new RectOffset(0, 0, 0, 0)
-            };
 
             _descStyle = new GUIStyle(EditorStyles.label)
             {
@@ -202,9 +243,6 @@ namespace PurrNet.Editor
             DrawHeader();
             DrawSeparator();
 
-            DrawApiKeySection();
-            DrawSeparator();
-
             if (_isLoading)
             {
                 EditorGUILayout.Space(40);
@@ -230,9 +268,10 @@ namespace PurrNet.Editor
             }
 
             RebuildSortedPackages();
+            _updatableCount = CountUpdatablePackages();
 
-            // Clamp selection
-            if (_selectedIndex >= _sortedPackages.Count)
+            // Clamp selection (preserve special entries like Studios)
+            if (_selectedIndex != StudiosEntryIndex && _selectedIndex >= _sortedPackages.Count)
                 _selectedIndex = _sortedPackages.Count - 1;
 
             // Auto-select first if nothing selected
@@ -281,69 +320,51 @@ namespace PurrNet.Editor
 
             var labelRect = new Rect(logoRect.xMax + 8, headerRect.y + 4, 200, 20);
             var headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
-            GUI.Label(labelRect, "Package Manager", headerStyle);
+            GUI.Label(labelRect, "PurrNet Packages", headerStyle);
 
-            // Tier badge
+            // Tier badge (only shown for paid memberships)
             if (_entitlements != null)
             {
-                var tier = string.IsNullOrEmpty(_entitlements.Tier) ? "Free" : _entitlements.Tier;
-                var tierRect = new Rect(labelRect.x, labelRect.yMax - 2, 100, 16);
-                GUI.Label(tierRect, tier, _smallLabelStyle);
-            }
-
-            // Refresh button
-            var buttonRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
-            GUI.enabled = !_isLoading;
-            if (GUI.Button(buttonRect, "Refresh"))
-            {
-                PurrPackageManagerCache.Invalidate();
-                LoadData();
-            }
-            GUI.enabled = true;
-        }
-
-        private void DrawApiKeySection()
-        {
-            EditorGUILayout.Space(6);
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(8);
-
-            GUILayout.Label("API Key", EditorStyles.miniLabel, GUILayout.Width(44));
-            _apiKeyInput = EditorGUILayout.PasswordField(_apiKeyInput, GUILayout.Height(20));
-
-            if (string.IsNullOrEmpty(_apiKeyInput) && !PurrPackageManagerAuth.HasApiKey())
-            {
-                GUI.color = _accentColor;
-                if (GUILayout.Button("Get API Key", GUILayout.Width(80), GUILayout.Height(20)))
-                    Application.OpenURL("https://purrnet.dev/profile?tab=api-keys");
-                GUI.color = Color.white;
-            }
-            else
-            {
-                if (GUILayout.Button("Save", GUILayout.Width(46), GUILayout.Height(20)))
+                var tier = FormatTierName(_entitlements.Tier);
+                if (tier != null)
                 {
-                    PurrPackageManagerAuth.SetApiKey(_apiKeyInput);
-                    PurrPackageManagerCache.Invalidate();
-                    LoadData();
+                    var tierRect = new Rect(labelRect.x, labelRect.yMax - 2, 100, 16);
+                    GUI.Label(tierRect, tier, _smallLabelStyle);
                 }
             }
 
-            GUI.enabled = PurrPackageManagerAuth.HasApiKey();
-            if (GUILayout.Button("Clear", GUILayout.Width(46), GUILayout.Height(20)))
+            // Refresh button (rightmost)
+            var refreshRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
+            GUI.enabled = !_isLoading && !_isUpdatingAll;
+            if (GUI.Button(refreshRect, "Refresh"))
             {
-                _apiKeyInput = "";
-                PurrPackageManagerAuth.ClearApiKey();
                 PurrPackageManagerCache.Invalidate();
-                _entitlements = null;
-                _errorMessage = null;
+                _userProfile?.Refresh();
                 LoadData();
             }
             GUI.enabled = true;
 
-            GUILayout.Space(8);
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.Space(6);
+            // User profile (avatar + username + login/logout)
+            var profileAnchor = new Rect(headerRect.x, headerRect.y + 10, refreshRect.x - 4 - headerRect.x, 22);
+            if (_userProfile != null)
+            {
+                float profileWidth = _userProfile.DrawProfileBar(profileAnchor);
+
+                // Update All button (to the left of profile)
+                if (_updatableCount > 0)
+                {
+                    var updateLabel = $"Update All ({_updatableCount})";
+                    var updateRect = new Rect(profileAnchor.xMax - profileWidth - 104, headerRect.y + 10, 100, 22);
+                    GUI.enabled = !_isLoading && !_isUpdatingAll;
+                    GUI.color = _updateColor;
+                    if (GUI.Button(updateRect, updateLabel))
+                        UpdateAllPackages();
+                    GUI.color = Color.white;
+                    GUI.enabled = true;
+                }
+            }
         }
+
 
         private void DrawPackageList(Rect areaRect)
         {
@@ -354,7 +375,8 @@ namespace PurrNet.Editor
             for (int c = 0; c < _categories.Count; c++)
             {
                 if (c > 0) totalHeight += CategoryGap;
-                totalHeight += CategoryHeaderHeight + _categories[c].count * ListItemHeight;
+                int extra = string.Equals(_categories[c].name, "Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                totalHeight += CategoryHeaderHeight + (_categories[c].count + extra) * ListItemHeight;
             }
 
             bool needsScroll = totalHeight > areaRect.height;
@@ -385,6 +407,14 @@ namespace PurrNet.Editor
                     DrawListItem(_sortedPackages[i].pkg, i, itemRect);
                     y += ListItemHeight;
                 }
+
+                // "PurrNet for Studios" entry at the end of the Core category
+                if (string.Equals(categoryName, "Core", StringComparison.OrdinalIgnoreCase))
+                {
+                    var studioRect = new Rect(0, y, viewRect.width, ListItemHeight);
+                    DrawStudiosListItem(studioRect);
+                    y += ListItemHeight;
+                }
             }
 
             GUI.EndScrollView();
@@ -394,6 +424,7 @@ namespace PurrNet.Editor
         {
             bool isSelected = index == _selectedIndex;
             bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
+            bool isGitInstall = isInstalled && PurrPackageManagerInstaller.IsInstalledViaGit(package);
             var installedVersion = isInstalled ? PurrPackageManagerInstaller.GetInstalledVersion(package) : null;
             bool hasUpdate = isInstalled && installedVersion != null
                              && !string.IsNullOrEmpty(package.LatestVersion)
@@ -403,31 +434,42 @@ namespace PurrNet.Editor
             bool isHover = itemRect.Contains(Event.current.mousePosition);
 
             // Background
+            Color tierColor = default;
+            bool hasTierColor = !string.IsNullOrEmpty(package.RequiredTier)
+                                && _tierColors.TryGetValue(package.RequiredTier, out tierColor);
             if (isSelected)
             {
                 EditorGUI.DrawRect(itemRect, _selectedBg);
-                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 3, itemRect.height), _selectedAccent);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 3, itemRect.height),
+                    hasTierColor ? tierColor : _selectedAccent);
+            }
+            else if (hasTierColor)
+            {
+                var bg = new Color(tierColor.r, tierColor.g, tierColor.b, isHover ? 0.12f : 0.06f);
+                EditorGUI.DrawRect(itemRect, bg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 2, itemRect.height),
+                    new Color(tierColor.r, tierColor.g, tierColor.b, isHover ? 0.6f : 0.3f));
             }
             else if (isHover)
             {
                 EditorGUI.DrawRect(itemRect, _hoverBg);
             }
 
-            // External update detection — compare lock file hash against both channel commits
-            bool hasExternalUpdate = false;
-            if (package.IsExternal && isInstalled)
+            // Git update detection — compare lock file hash against both channel commits
+            // Only used for IsExternal packages; non-external uses version comparison.
+            bool hasGitUpdate = false;
+            if (package.IsExternal && isGitInstall)
             {
                 var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
-                if (hash != null)
-                    hasExternalUpdate = hash != package.LatestCommitRelease && hash != package.LatestCommitDev;
+                hasGitUpdate = HasGitUpdate(package, hash);
             }
 
             // Build right-side info text
             string info;
             if (!package.HasAccess)
                 info = "No access";
-            else if (package.IsExternal)
-                info = hasExternalUpdate ? "update" : isInstalled ? "installed" : "";
+            else if (package.IsExternal && isGitInstall)
+                info = hasGitUpdate ? "update" : "installed";
             else if (hasUpdate)
                 info = $"v{installedVersion} \u2192 v{package.LatestVersion}";
             else if (isInstalled && installedVersion != null)
@@ -441,7 +483,7 @@ namespace PurrNet.Editor
             float infoWidth = string.IsNullOrEmpty(info) ? 0 : _listItemDetailStyle.CalcSize(new GUIContent(info)).x + 4;
 
             // Status dot
-            bool showDot = hasUpdate || hasExternalUpdate || isInstalled;
+            bool showDot = hasUpdate || hasGitUpdate || isInstalled;
             float dotSpace = showDot ? 12 : 0;
 
             // Name (left) — drawn as pure text, no event handling
@@ -453,7 +495,7 @@ namespace PurrNet.Editor
             // Status dot (between name and info)
             if (showDot)
             {
-                var dotColor = (hasUpdate || hasExternalUpdate) ? _updateColor : _installedColor;
+                var dotColor = (hasUpdate || hasGitUpdate) ? _updateColor : _installedColor;
                 float dotX = nameRect.xMax + 2;
                 var dotRect = new Rect(dotX, itemRect.y + (itemRect.height - 6) / 2, 6, 6);
                 EditorGUI.DrawRect(dotRect, dotColor);
@@ -495,8 +537,145 @@ namespace PurrNet.Editor
                 Repaint();
         }
 
+        private static readonly Color _studiosAccent = new Color(0.85f, 0.65f, 0.3f, 1f);
+        private static readonly Color _studiosBg = new Color(0.85f, 0.65f, 0.3f, 0.06f);
+        private static readonly Color _studiosHoverBg = new Color(0.85f, 0.65f, 0.3f, 0.12f);
+
+        private void DrawStudiosListItem(Rect itemRect)
+        {
+            bool isSelected = _selectedIndex == StudiosEntryIndex;
+            bool isHover = itemRect.Contains(Event.current.mousePosition);
+
+            if (isSelected)
+            {
+                EditorGUI.DrawRect(itemRect, _selectedBg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 2, itemRect.height), _studiosAccent);
+            }
+            else
+            {
+                EditorGUI.DrawRect(itemRect, isHover ? _studiosHoverBg : _studiosBg);
+                EditorGUI.DrawRect(new Rect(itemRect.x, itemRect.y, 2, itemRect.height),
+                    new Color(_studiosAccent.r, _studiosAccent.g, _studiosAccent.b, isHover ? 0.6f : 0.3f));
+            }
+
+            if (Event.current.type == EventType.Repaint)
+            {
+                var nameRect = new Rect(itemRect.x, itemRect.y, itemRect.width, itemRect.height);
+                _listItemStyle.Draw(nameRect, "PurrNet for Studios", false, false, false, false);
+            }
+
+            if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
+            {
+                _selectedIndex = StudiosEntryIndex;
+                _releasePopupIndex = -1;
+                _devPopupIndex = -1;
+                GUI.FocusControl(null);
+                Event.current.Use();
+                Repaint();
+            }
+
+            if (isHover && Event.current.type == EventType.Repaint)
+                Repaint();
+        }
+
+        private void DrawStudiosDetail()
+        {
+            _detailScrollPosition = EditorGUILayout.BeginScrollView(_detailScrollPosition,
+                GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+
+            EditorGUILayout.Space(8);
+            GUILayout.Space(4);
+
+            // Title row
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            GUILayout.Label("PurrNet for Studios", _detailTitleStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Description
+            EditorGUILayout.Space(8);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.LabelField(
+                "Professional networking solutions with dedicated support, custom integrations, " +
+                "and consulting services designed to help your studio succeed at scale.",
+                _descStyle);
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Action buttons
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            GUI.color = _accentColor;
+            if (GUILayout.Button("Learn More", GUILayout.Height(28)))
+                Application.OpenURL("https://purrnet.dev/studios");
+            GUILayout.Space(4);
+            if (GUILayout.Button("Contact Us", GUILayout.Height(28)))
+                Application.OpenURL("mailto:martin@pebblesgames.com");
+            GUI.color = Color.white;
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Enterprise features
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Enterprise Features", _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            GUILayout.Label("\u2022  Priority support with direct access to the engineering team", _smallLabelStyle);
+            GUILayout.Label("\u2022  Hands-on project access for immediate troubleshooting and fixes", _smallLabelStyle);
+            GUILayout.Label("\u2022  Custom integrations tailored to your infrastructure and workflows", _smallLabelStyle);
+            GUILayout.Label("\u2022  Performance optimization tuned to your scale requirements", _smallLabelStyle);
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Singleplayer to multiplayer
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Singleplayer to Multiplayer", _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            GUILayout.Label("\u2022  Full conversion of existing singleplayer projects to multiplayer", _smallLabelStyle);
+            GUILayout.Label("\u2022  Custom tooling built around your game's specific needs", _smallLabelStyle);
+            GUILayout.Label("\u2022  State synchronization, lobby systems, and matchmaking integration", _smallLabelStyle);
+            GUILayout.Label("\u2022  Minimal disruption to your existing codebase and workflows", _smallLabelStyle);
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            // Consulting services
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Consulting Services", _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            GUILayout.Label("\u2022  Architecture review and optimization recommendations", _smallLabelStyle);
+            GUILayout.Label("\u2022  Migration planning from other networking solutions", _smallLabelStyle);
+            GUILayout.Label("\u2022  Performance auditing to identify bottlenecks", _smallLabelStyle);
+            GUILayout.Label("\u2022  Custom development for bespoke features and integrations", _smallLabelStyle);
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(12);
+            EditorGUILayout.EndScrollView();
+        }
+
         private void DrawPackageDetail()
         {
+            if (_selectedIndex == StudiosEntryIndex)
+            {
+                DrawStudiosDetail();
+                return;
+            }
+
             _detailScrollPosition = EditorGUILayout.BeginScrollView(_detailScrollPosition,
                 GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
@@ -511,22 +690,19 @@ namespace PurrNet.Editor
             var (package, release, dev) = _sortedPackages[_selectedIndex];
             var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(package);
             bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
+            bool isGitInstall = isInstalled && PurrPackageManagerInstaller.IsInstalledViaGit(package);
             bool hasUpdate = isInstalled && installedVersion != null
                              && !string.IsNullOrEmpty(package.LatestVersion)
                              && installedVersion != package.LatestVersion;
 
-            // External update detection — compare lock file hash against both channel commits
-            string externalInstalledHash = null;
-            bool hasExternalUpdate = false;
-            if (package.IsExternal && isInstalled)
+            // Git update detection — compare lock file hash against both channel commits
+            // Only used for IsExternal packages; non-external uses version comparison.
+            string gitInstalledHash = null;
+            bool hasGitUpdate = false;
+            if (package.IsExternal && isGitInstall)
             {
-                externalInstalledHash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
-                if (externalInstalledHash != null)
-                {
-                    bool matchesRelease = externalInstalledHash == package.LatestCommitRelease;
-                    bool matchesDev = externalInstalledHash == package.LatestCommitDev;
-                    hasExternalUpdate = !matchesRelease && !matchesDev;
-                }
+                gitInstalledHash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
+                hasGitUpdate = HasGitUpdate(package, gitInstalledHash);
             }
 
             EditorGUILayout.Space(8);
@@ -538,14 +714,14 @@ namespace PurrNet.Editor
             GUILayout.Label(package.DisplayName, _detailTitleStyle);
             GUILayout.FlexibleSpace();
 
-            if (package.IsExternal)
+            if (package.IsExternal && isGitInstall)
             {
-                if (hasExternalUpdate)
+                if (hasGitUpdate)
                 {
                     DrawBadge("UPDATE", _updateColor);
                     DrawBadge("INSTALLED", _installedColor);
                 }
-                else if (isInstalled)
+                else
                 {
                     DrawBadge("INSTALLED", _installedColor);
                 }
@@ -589,18 +765,17 @@ namespace PurrNet.Editor
             EditorGUILayout.BeginVertical();
 
             if (!string.IsNullOrEmpty(package.RequiredTier))
-                GUILayout.Label($"Tier: {package.RequiredTier}", _smallLabelStyle);
+                GUILayout.Label($"Tier: {FormatTierName(package.RequiredTier)}", _smallLabelStyle);
 
-            if (package.IsExternal)
+            if (package.IsExternal && isGitInstall)
             {
-                if (isInstalled)
-                {
-                    GUILayout.Label("Installed via git", _smallLabelStyle);
-                    if (externalInstalledHash != null)
-                        GUILayout.Label($"Commit: {externalInstalledHash.Substring(0, Math.Min(8, externalInstalledHash.Length))}", _smallLabelStyle);
-                    if (hasExternalUpdate)
-                        GUILayout.Label("Update available", _smallLabelStyle);
-                }
+                GUILayout.Label("Installed via git", _smallLabelStyle);
+                if (installedVersion != null && installedVersion != "git")
+                    GUILayout.Label($"Version: v{installedVersion}", _smallLabelStyle);
+                if (gitInstalledHash != null)
+                    GUILayout.Label($"Commit: {gitInstalledHash.Substring(0, Math.Min(8, gitInstalledHash.Length))}", _smallLabelStyle);
+                if (hasGitUpdate)
+                    GUILayout.Label("Update available", _smallLabelStyle);
             }
             else
             {
@@ -679,14 +854,16 @@ namespace PurrNet.Editor
                 // External packages: git URL install buttons
                 EditorGUILayout.BeginHorizontal();
                 DrawExternalInstallButton(package, "Release", package.GitInstallUrlRelease,
-                    isInstalled, externalInstalledHash, package.LatestCommitRelease, _installedColor);
+                    isInstalled, gitInstalledHash, package.LatestCommitRelease, _installedColor);
                 GUILayout.Space(4);
                 DrawExternalInstallButton(package, "Dev", package.GitInstallUrlDev,
-                    isInstalled, externalInstalledHash, package.LatestCommitDev, _accentColor);
+                    isInstalled, gitInstalledHash, package.LatestCommitDev, _accentColor);
                 EditorGUILayout.EndHorizontal();
             }
             else
             {
+                // Non-external packages: standard version-based buttons
+                // Works the same regardless of whether currently installed via git or tgz.
                 EditorGUILayout.BeginHorizontal();
                 DrawInstallButton(package, release, "Release", isInstalled, installedVersion, _installedColor);
                 GUILayout.Space(4);
@@ -774,10 +951,10 @@ namespace PurrNet.Editor
                     DrawSeparator();
                     EditorGUILayout.Space(4);
 
-                    var title = isInstalled && hasUpdate
+                    var ptitle = isInstalled && hasUpdate
                         ? $"What's New ({relevantVersions.Count} update{(relevantVersions.Count > 1 ? "s" : "")})"
                         : "Release Notes";
-                    GUILayout.Label(title, _detailTitleStyle);
+                    GUILayout.Label(ptitle, _detailTitleStyle);
                     EditorGUILayout.Space(4);
 
                     foreach (var v in relevantVersions)
@@ -1024,6 +1201,36 @@ namespace PurrNet.Editor
             return false;
         }
 
+        // Treats empty server hashes as "no info" (not a mismatch) and matches by case-insensitive
+        // prefix so a short SHA from one side equals a full SHA from the other. Avoids false
+        // "update available" when the API has no commit data for a channel that doesn't exist
+        // on the upstream repo (common for IsExternal packages).
+        private static bool HasGitUpdate(PackageInfo package, string installedHash)
+        {
+            if (string.IsNullOrEmpty(installedHash))
+                return false;
+
+            bool hasRelease = !string.IsNullOrEmpty(package.LatestCommitRelease);
+            bool hasDev = !string.IsNullOrEmpty(package.LatestCommitDev);
+            if (!hasRelease && !hasDev)
+                return false;
+
+            if (hasRelease && HashesMatch(installedHash, package.LatestCommitRelease))
+                return false;
+            if (hasDev && HashesMatch(installedHash, package.LatestCommitDev))
+                return false;
+
+            return true;
+        }
+
+        private static bool HashesMatch(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b))
+                return false;
+            int minLen = Math.Min(a.Length, b.Length);
+            return string.Compare(a, 0, b, 0, minLen, StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
         private static VersionInfo FindLatestByChannel(PackageInfo package, string channel)
         {
             if (package.Versions == null)
@@ -1118,67 +1325,215 @@ namespace PurrNet.Editor
             return text;
         }
 
-        private async void LoadData()
+        private int CountUpdatablePackages()
         {
-            _isLoading = true;
-            _errorMessage = null;
+            int count = 0;
+
+            foreach (var (pkg, release, dev) in _sortedPackages)
+            {
+                if (!pkg.HasAccess || pkg.Frozen) continue;
+
+                bool isInstalled = PurrPackageManagerInstaller.IsInstalled(pkg);
+                if (!isInstalled) continue;
+
+                bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
+                var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
+
+                if (pkg.IsExternal && isGitInstall)
+                {
+                    var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
+                    if (HasGitUpdate(pkg, hash))
+                        count++;
+                }
+                else
+                {
+                    if (installedVersion != null
+                        && !string.IsNullOrEmpty(pkg.LatestVersion)
+                        && installedVersion != pkg.LatestVersion)
+                    {
+                        VersionInfo target = IsInstalledOnChannel(pkg, "dev", installedVersion)
+                            ? dev : (release ?? dev);
+                        if (target != null && target.Version != installedVersion)
+                            count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        private List<(PackageInfo pkg, VersionInfo version, string gitUrl)> CollectUpdatablePackages()
+        {
+            var updates = new List<(PackageInfo pkg, VersionInfo version, string gitUrl)>();
+
+            foreach (var (pkg, release, dev) in _sortedPackages)
+            {
+                if (!pkg.HasAccess || pkg.Frozen) continue;
+
+                bool isInstalled = PurrPackageManagerInstaller.IsInstalled(pkg);
+                if (!isInstalled) continue;
+
+                bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
+                var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
+
+                if (pkg.IsExternal && isGitInstall)
+                {
+                    var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
+                    if (HasGitUpdate(pkg, hash))
+                    {
+                        var channel = PurrPackageManagerInstaller.GetInstalledGitChannel(pkg);
+                        var gitUrl = channel == "dev" ? pkg.GitInstallUrlDev : pkg.GitInstallUrlRelease;
+                        if (!string.IsNullOrEmpty(gitUrl))
+                            updates.Add((pkg, null, gitUrl));
+                    }
+                }
+                else
+                {
+                    if (installedVersion != null
+                        && !string.IsNullOrEmpty(pkg.LatestVersion)
+                        && installedVersion != pkg.LatestVersion)
+                    {
+                        VersionInfo target = IsInstalledOnChannel(pkg, "dev", installedVersion)
+                            ? dev : (release ?? dev);
+                        if (target != null && target.Version != installedVersion)
+                            updates.Add((pkg, target, null));
+                    }
+                }
+            }
+
+            return updates;
+        }
+
+        private async void UpdateAllPackages()
+        {
+            if (_isUpdatingAll || _packages?.Packages == null)
+                return;
+
+            var updates = CollectUpdatablePackages();
+            if (updates.Count == 0)
+                return;
+
+            var names = new StringBuilder();
+            foreach (var (pkg, _, _) in updates)
+                names.AppendLine($"\u2022 {pkg.DisplayName}");
+
+            if (!EditorUtility.DisplayDialog("Update All Packages",
+                $"The following {updates.Count} package(s) will be updated:\n\n{names}",
+                "Update All", "Cancel"))
+                return;
+
+            _isUpdatingAll = true;
             Repaint();
 
+            var apiKey = PurrPackageManagerAuth.GetApiKey();
+            var errors = new List<string>();
+
+            for (int i = 0; i < updates.Count; i++)
+            {
+                var (pkg, version, gitUrl) = updates[i];
+                EditorUtility.DisplayProgressBar("Updating All Packages",
+                    $"Updating {pkg.DisplayName} ({i + 1}/{updates.Count})...",
+                    (float)(i + 1) / updates.Count);
+
+                try
+                {
+                    if (gitUrl != null)
+                    {
+                        PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl, false);
+                    }
+                    else if (version != null)
+                    {
+                        var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version, false);
+                        if (!result.Success)
+                            errors.Add($"{pkg.DisplayName}: {result.Error}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    errors.Add($"{pkg.DisplayName}: {e.Message}");
+                }
+            }
+
+            EditorUtility.ClearProgressBar();
+
+            PurrPackageManagerCache.Invalidate();
+            UnityEditor.PackageManager.Client.Resolve();
+            AssetDatabase.Refresh();
+
+            _isUpdatingAll = false;
+
+            if (errors.Count > 0)
+                EditorUtility.DisplayDialog("Update Failed",
+                    string.Join("\n", errors), "Ok");
+
+            LoadData();
+        }
+
+        private async void LoadData()
+        {
             try
             {
-                var apiKey = PurrPackageManagerAuth.GetApiKey();
-                bool hasKey = !string.IsNullOrEmpty(apiKey);
+                _isLoading = true;
+                _errorMessage = null;
+                Repaint();
 
-                if (hasKey)
+                try
                 {
-                    if (PurrPackageManagerCache.TryGetEntitlements(out var cachedEntitlements))
+                    var apiKey = PurrPackageManagerAuth.GetApiKey();
+                    bool hasKey = !string.IsNullOrEmpty(apiKey);
+
+                    if (hasKey)
                     {
-                        _entitlements = cachedEntitlements;
-                    }
-                    else
-                    {
-                        var entitlementsResult = await PurrPackageManagerAPI.GetEntitlements(apiKey);
-                        if (entitlementsResult.Success)
+                        if (PurrPackageManagerCache.TryGetEntitlements(out var cachedEntitlements))
                         {
-                            _entitlements = entitlementsResult.Value;
-                            PurrPackageManagerCache.SetEntitlements(_entitlements);
+                            _entitlements = cachedEntitlements;
+                        }
+                        else
+                        {
+                            var entitlementsResult = await PurrPackageManagerAPI.GetEntitlements(apiKey);
+                            if (entitlementsResult.Success)
+                            {
+                                _entitlements = entitlementsResult.Value;
+                                PurrPackageManagerCache.SetEntitlements(_entitlements);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    _entitlements = null;
-                }
-
-                if (PurrPackageManagerCache.TryGetPackages(out var cachedPackages))
-                {
-                    _packages = cachedPackages;
-                }
-                else
-                {
-                    var packagesResult = await PurrPackageManagerAPI.GetPackages(apiKey);
-                    if (packagesResult.Success)
+                    else
                     {
-                        _packages = packagesResult.Value;
-                        PurrPackageManagerCache.SetPackages(_packages);
+                        _entitlements = null;
+                    }
+
+                    if (PurrPackageManagerCache.TryGetPackages(out var cachedPackages))
+                    {
+                        _packages = cachedPackages;
                     }
                     else
                     {
-                        _errorMessage = packagesResult.Error;
-                        _isLoading = false;
-                        Repaint();
-                        return;
+                        var packagesResult = await PurrPackageManagerAPI.GetPackages(apiKey);
+                        if (packagesResult.Success)
+                        {
+                            _packages = packagesResult.Value;
+                            PurrPackageManagerCache.SetPackages(_packages);
+                        }
+                        else
+                        {
+                            _errorMessage = packagesResult.Error;
+                        }
                     }
-                }
 
-                _isLoading = false;
-                Repaint();
+                    _isLoading = false;
+                    Repaint();
+                }
+                catch (Exception e)
+                {
+                    _errorMessage = e.Message;
+                    _isLoading = false;
+                    Repaint();
+                }
             }
             catch (Exception e)
             {
-                _errorMessage = e.Message;
-                _isLoading = false;
-                Repaint();
+                Debug.LogException(e);
             }
         }
 

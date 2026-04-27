@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using PurrNet.Packing;
 using PurrNet.Transports;
@@ -188,6 +188,8 @@ namespace PurrNet.Modules
                     _deltaModule.ReadReliable(packer, key, ref value);
                 else _deltaModule.Read(packer, key, _target, ref value, ref _cache);
             }
+
+            AsyncPackableHelper.PrepareAfterUnpack(ref value);
         }
     }
 }

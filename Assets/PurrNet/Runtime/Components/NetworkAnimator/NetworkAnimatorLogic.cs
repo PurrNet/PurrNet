@@ -13,9 +13,13 @@ namespace PurrNet
 
         readonly List<PlayerID> _reconcilePlayers = new List<PlayerID>();
 
-        protected override void OnObserverAdded(PlayerID player)
+        protected override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
-            Reconcile(player);
+            if (isSpawner)
+                return;
+
+            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, false);
+            ReconcileState(player, data);
             _reconcilePlayers.Add(player);
         }
 
@@ -254,7 +258,8 @@ namespace PurrNet
                     NetAnimatorAction.SetIKHintPosition or NetAnimatorAction.SetLookAtPosition or
                     NetAnimatorAction.SetBoneLocalRotation or NetAnimatorAction.SetIKHintPositionWeight or
                     NetAnimatorAction.SetIKPositionWeight or NetAnimatorAction.SetIKRotationWeight or
-                    NetAnimatorAction.SetBodyPosition or NetAnimatorAction.SetBodyRotation;
+                    NetAnimatorAction.SetBodyPosition or NetAnimatorAction.SetBodyRotation or
+                    NetAnimatorAction.SetLookAtWeight;
 
                 if (!isIk)
                     actions.actions[i].Apply(_animator);

@@ -168,8 +168,13 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  _moveForce: 8
+  _moveSpeed: 5
+  _acceleration: 50
   _jumpForce: 5
+  _groundDrag: 8
+  _airDrag: 0.5
+  _groundCheckDistance: 0.6
+  _velocityChangeBased: 1
   _rb: {fileID: 186609759476557284}
 --- !u!114 &186609759476557284
 MonoBehaviour:
@@ -193,18 +198,15 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
-  _acceptableError: 0.05
-  _hardCorrectionThreshold: 2
-  _maxCorrectionTime: -1
-  _springConstant: 90
-  _dampingConstant: 5
-  _uncertaintySpringDampening: 2
-  _accelerationDecay: 0.4
-  _hardCorrectionAccelerationScale: 0.1
-  _maxHardCorrectionMultiplier: 5
-  _lowSpeedThreshold: 1.5
-  _lowSpeedSpringMultiplier: 0.1
-  _extrapolateBasedOnPing: 1
+  _advancedSettings: {fileID: 11400000, guid: cd15aa9b4ac4ddb489f350e4a05037d8, type: 2}
+  _interpolationDelay: 0.05
+  _predictionFactor: 4
+  _positionStrength: 5
+  _correctionRange: 2
+  _rotationStrength: 0
+  _hardSnapDistance: 3
+  _hardSnapAngle: -1
+  _acceptableRotationError: 1
   _positionChangeThreshold: 0.001
   _rotationChangeThreshold: 0.001
   _velocityStopThreshold: 0.001
@@ -218,8 +220,8 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3854675144429920152}
   serializedVersion: 5
-  m_Mass: 10
-  m_LinearDamping: 0
+  m_Mass: 5
+  m_LinearDamping: 0.05
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
@@ -235,5 +237,5 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 1
-  m_Constraints: 0
+  m_Constraints: 112
   m_CollisionDetection: 1

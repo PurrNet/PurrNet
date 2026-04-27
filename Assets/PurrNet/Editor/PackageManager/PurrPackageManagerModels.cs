@@ -141,8 +141,23 @@ namespace PurrNet.Editor
         [JsonProperty("premium-tools")]
         public bool PremiumTools { get; private set; }
 
+        [JsonProperty("studio-tools")]
+        public bool StudioTools { get; private set; }
+
         [JsonProperty("supporter")]
         public bool Supporter { get; private set; }
+    }
+
+    public class UserInfo
+    {
+        [JsonProperty("id")]
+        public string Id { get; private set; }
+
+        [JsonProperty("username")]
+        public string Username { get; private set; }
+
+        [JsonProperty("avatar_url")]
+        public string AvatarUrl { get; private set; }
     }
 
     public class ApiError

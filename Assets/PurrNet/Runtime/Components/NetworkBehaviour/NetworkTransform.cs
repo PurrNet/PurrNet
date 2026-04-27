@@ -14,17 +14,25 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private SyncMode _syncPosition = SyncMode.World;
 
-        [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")] [SerializeField, PurrLock]
+        [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")]
+        [SerializeField, PurrLock]
         private SyncMode _syncRotation = SyncMode.World;
 
-        [Tooltip("Whether to sync the scale of the transform.")] [SerializeField, PurrLock]
+        [Tooltip("Whether to sync the scale of the transform.")]
+        [SerializeField, PurrLock]
         private bool _syncScale = true;
 
-        [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentiy.")]
+        [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.")]
         [SerializeField, PurrLock]
         private bool _syncParent = true;
 
-        [Header("How to Sync")] [Tooltip("What to interpolate when syncing the transform.")] [SerializeField, PurrLock]
+        [Tooltip("Forces any attached Rigidbody to sleep if not the controller, to ensure better syncing when RB is present.")]
+        [SerializeField, PurrLock]
+        private bool _forceSleepRb = true;
+
+        [Header("How to Sync")]
+        [Tooltip("What to interpolate when syncing the transform.")]
+        [SerializeField, PurrLock]
         private TransformSyncMode _interpolateSettings =
             TransformSyncMode.Position | TransformSyncMode.Rotation | TransformSyncMode.Scale;
         [Tooltip("The minimum amount of buffered ticks to store.\nThis is used for interpolation.")]
@@ -47,7 +55,7 @@ namespace PurrNet
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
         /// <summary>
-        /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentiy.
+        /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
         public bool syncParent => _syncParent;
 
@@ -113,15 +121,15 @@ namespace PurrNet
         private Transform _trs;
 #if UNITY_PHYSICS_3D
         private Rigidbody _rb;
+        private bool _hasRigidbody;
 #endif
 #if UNITY_PHYSICS_2D
         private Rigidbody2D _rb2d;
+        private bool _hasRigidbody2D;
 #endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
 #endif
-
-        private bool _prevWasController;
 
         public Vector3 position { get; private set; }
         public Quaternion rotation { get; private set; }
@@ -132,10 +140,12 @@ namespace PurrNet
             _trs = transform;
 #if UNITY_PHYSICS_3D
             _rb = GetComponent<Rigidbody>();
+            _hasRigidbody = _rb;
             _controller = GetComponent<CharacterController>();
 #endif
 #if UNITY_PHYSICS_2D
             _rb2d = GetComponent<Rigidbody2D>();
+            _hasRigidbody2D = _rb2d;
 #endif
         }
 
@@ -153,7 +163,8 @@ namespace PurrNet
             _lastSentDelta = _currentData;
 
             // Force sync if we're the controller and spawned
-            if (_wasOnSpawnedCalled && isController) {
+            if (_wasOnSpawnedCalled && isController)
+            {
                 ForceSync();
             }
         }
@@ -212,9 +223,13 @@ namespace PurrNet
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
         {
             _cachedConnectedOwner = hasConnectedOwner;
+            var wasController = _cachedIsController;
             _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
 
-            if (!enabled) {
+            if (!enabled)
+            {
                 return;
             }
 
@@ -245,7 +260,10 @@ namespace PurrNet
 
         protected override void OnSpawned(bool asServer)
         {
+            var wasController = _cachedIsController;
             _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
             _wasOnSpawnedCalled = true;
 
             if (!networkManager.TryGetModule<NetworkTransformFactory>(asServer, out var factory))
@@ -293,7 +311,8 @@ namespace PurrNet
 
         protected override void OnObserverAdded(PlayerID player)
         {
-            if (!enabled) {
+            if (!enabled)
+            {
                 return;
             }
 
@@ -335,8 +354,7 @@ namespace PurrNet
                 for (var i = 0; i < obCount; i++)
                 {
                     var observer = observers[i];
-
-                    if (owner == observer)
+                    if (_ownerAuth && owner == observer)
                         continue;
 
                     SendLatestState(observer, _currentData, true);
@@ -412,7 +430,7 @@ namespace PurrNet
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private void FixedUpdate()
         {
-            if (!isSpawned)
+            if (!isSpawned || !_forceSleepRb)
                 return;
 
             bool isNotController = !_cachedIsController;
@@ -420,10 +438,10 @@ namespace PurrNet
             if (isNotController)
             {
 #if UNITY_PHYSICS_3D
-                if (_rb) _rb.Sleep();
+                if (_hasRigidbody && _rb) _rb.Sleep();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_rb2d) _rb2d.Sleep();
+                if (_hasRigidbody2D && _rb) _rb2d.Sleep();
 #endif
             }
         }
@@ -447,6 +465,24 @@ namespace PurrNet
                 UpdateNT();
         }
 
+        private void OnIsControlledChanged(bool isController)
+        {
+            if (!isController)
+            {
+                _latestData = GetCurrentTransformData();
+                TeleportToData(_latestData);
+            }
+            else
+            {
+#if UNITY_PHYSICS_3D
+                if (_rb) _rb.WakeUp();
+#endif
+#if UNITY_PHYSICS_2D
+                if (_rb2d) _rb2d.WakeUp();
+#endif
+            }
+        }
+
         private void UpdateNT()
         {
             if (!isSpawned)
@@ -456,27 +492,7 @@ namespace PurrNet
 
             if (!isLocalController)
                 ApplyLerpedPosition();
-
             _latestData = GetCurrentTransformData();
-            if (isLocalController)
-                TeleportToData(_latestData);
-
-#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-            if (_prevWasController != isLocalController)
-            {
-#if UNITY_PHYSICS_3D
-                if (isLocalController && _rb)
-                    _rb.WakeUp();
-#endif
-
-#if UNITY_PHYSICS_2D
-                if (isLocalController && _rb2d)
-                    _rb2d.WakeUp();
-#endif
-
-                _prevWasController = isLocalController;
-            }
-#endif
         }
 
         private void ApplyLerpedPosition()
@@ -519,20 +535,42 @@ namespace PurrNet
 
         private NetworkTransformData GetCurrentTransformData()
         {
-            var pos = _syncPosition switch
-            {
-                SyncMode.World => _trs.position,
-                SyncMode.Local => _trs.localPosition,
-                _ => Vector3.zero
-            };
+            Vector3 pos;
+            Quaternion rot;
 
-            var rot = _syncRotation switch
+            if (_syncPosition == _syncRotation)
             {
-                SyncMode.World => _trs.rotation,
-                SyncMode.Local => _trs.localRotation,
-                _ => Quaternion.identity
-            };
+                switch (_syncPosition)
+                {
+                    case SyncMode.World:
+                        _trs.GetPositionAndRotation(out pos, out rot);
+                        break;
+                    case SyncMode.Local:
+                        _trs.GetLocalPositionAndRotation(out pos, out rot);
+                        break;
+                    case SyncMode.No:
+                    default:
+                        pos = Vector3.zero;
+                        rot = Quaternion.identity;
+                        break;
+                }
+            }
+            else
+            {
+                pos = _syncPosition switch
+                {
+                    SyncMode.World => _trs.position,
+                    SyncMode.Local => _trs.localPosition,
+                    _ => Vector3.zero
+                };
 
+                rot = _syncRotation switch
+                {
+                    SyncMode.World => _trs.rotation,
+                    SyncMode.Local => _trs.localRotation,
+                    _ => Quaternion.identity
+                };
+            }
 
             var ntScale = _syncScale ? _trs.localScale : default;
             return new NetworkTransformData(pos, rot, ntScale);
@@ -611,26 +649,16 @@ namespace PurrNet
             return !_currentData.Equals(_lastSentDelta);
         }
 
-        public bool DeltaWrite(BitPacker packer)
+        public void DeltaWrite(BitPacker packer)
         {
-            bool hasChanged = false;
-
             if (syncPosition)
-                hasChanged = DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position, _currentData.position);
+                DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position, _currentData.position);
 
             if (syncRotation)
-            {
-                hasChanged = DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation) ||
-                          hasChanged;
-            }
+                DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation);
 
             if (syncScale)
-            {
-                hasChanged = DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale) ||
-                          hasChanged;
-            }
-
-            return hasChanged;
+                DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale);
         }
 
         public void DeltaRead(BitPacker packet)
@@ -660,8 +688,6 @@ namespace PurrNet
         public void GatherState()
         {
             _currentData = _latestData;
-            if (_cachedIsController)
-                TeleportToData(_currentData);
         }
 
         public void DeltaSave()

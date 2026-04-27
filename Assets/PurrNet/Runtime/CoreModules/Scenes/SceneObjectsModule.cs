@@ -13,7 +13,7 @@ namespace PurrNet.Modules
 
         private static readonly List<NetworkIdentity> _sceneIdentities = new List<NetworkIdentity>();
 
-        public static void GetSceneIdentities(Scene scene, List<NetworkIdentity> networkIdentities)
+        public static void GetSceneIdentities(Scene scene, List<NetworkIdentity> networkIdentities, bool includeInstantiated = false)
         {
             onPreSceneLoad?.Invoke(scene);
 
@@ -32,7 +32,23 @@ namespace PurrNet.Modules
             }
 
             if (sceneInfo)
-                rootGameObjects = sceneInfo.rootGameObjects;
+            {
+                var orderedRoot = new List<GameObject>(sceneInfo.rootGameObjects);
+
+                if (includeInstantiated)
+                {
+                    var existing = new HashSet<GameObject>(orderedRoot);
+
+                    for (var i = 0; i < rootGameObjects.Count; i++)
+                    {
+                        var rootObject = rootGameObjects[i];
+                        if (rootObject && existing.Add(rootObject))
+                            orderedRoot.Add(rootObject);
+                    }
+                }
+
+                rootGameObjects = orderedRoot;
+            }
 
             for (var i = 0; i < rootGameObjects.Count; i++)
             {

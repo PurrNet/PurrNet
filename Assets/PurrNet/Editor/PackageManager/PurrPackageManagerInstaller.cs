@@ -13,7 +13,7 @@ namespace PurrNet.Editor
 {
     public static class PurrPackageManagerInstaller
     {
-        private const string PackagesDir = "PurrPackages";
+        private const string LegacyPackagesDir = "PurrPackages";
         private const string ManifestPath = "Packages/manifest.json";
         private const string LockFilePath = "Packages/packages-lock.json";
 
@@ -31,37 +31,59 @@ namespace PurrNet.Editor
             var value = match.Value.value;
             var key = match.Value.key;
 
-            // Git URL entries don't have a semver version
+            // Git URL entries — try to resolve the actual version
             if (IsGitUrl(value))
-                return "git";
+            {
+                var resolved = GetResolvedPackageVersion(key);
+                return resolved ?? "git";
+            }
 
             // Parse version from the entry value
-            // Format: "file:../PurrPackages/{name}-{version}.tgz" or "embedded:{name}-{version}"
+            // Format: "embedded:{name}-{version}" (current), or legacy "file:../PurrPackages/{name}-{version}.tgz" / "file:../PurrPackages/{name}-{version}"
             string nameAndVersion;
             if (value.StartsWith("embedded:"))
                 nameAndVersion = value.Substring("embedded:".Length);
-            else
+            else if (value.EndsWith(".tgz"))
                 nameAndVersion = Path.GetFileNameWithoutExtension(value);
+            else
+                nameAndVersion = Path.GetFileName(value);
 
-            if (nameAndVersion != null && nameAndVersion.StartsWith(key + "-"))
-                return nameAndVersion.Substring(key.Length + 1);
+            if (nameAndVersion.StartsWith(key + "-"))
+                return nameAndVersion[(key.Length + 1)..];
             return null;
         }
 
         /// <summary>
+        /// Returns true if the package is currently installed via a git URL
+        /// (either in manifest.json or resolved by Unity).
+        /// </summary>
+        public static bool IsInstalledViaGit(PackageInfo package)
+        {
+            var match = FindInstalledEntry(package);
+            if (match == null)
+                return false;
+            return IsGitUrl(match.Value.value);
+        }
+
+        /// <summary>
         /// Reads the resolved commit hash from packages-lock.json for a git-installed package.
+        /// Uses the actual manifest key (which may differ from GetUpmPackageName).
         /// </summary>
         public static string GetInstalledCommitHash(PackageInfo package)
         {
-            var upmName = package.GetUpmPackageName();
             if (!File.Exists(LockFilePath))
                 return null;
+
+            // Use the actual installed key, which may differ from apiName
+            // when the package was matched by git URL scanning.
+            var match = FindInstalledEntry(package);
+            var lookupName = match?.key ?? package.GetUpmPackageName();
 
             try
             {
                 var lockFile = JObject.Parse(File.ReadAllText(LockFilePath));
                 var deps = lockFile["dependencies"] as JObject;
-                var entry = deps?[upmName] as JObject;
+                var entry = deps?[lookupName] as JObject;
                 if (entry == null)
                     return null;
 
@@ -78,8 +100,8 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Finds the manifest dependency entry for a package installed via PurrPackages.
-        /// Also detects embedded packages in Packages/{name}/.
+        /// Finds the installed entry for a package. Checks embedded packages in Packages/{name}/,
+        /// manifest entries (git URLs), and legacy PurrPackages/ file: references.
         /// </summary>
         private static (string key, string value)? FindInstalledEntry(PackageInfo package)
         {
@@ -119,7 +141,7 @@ namespace PurrNet.Editor
 
             // Try direct lookup with API-provided name
             var directEntry = deps[apiName]?.ToString();
-            if (directEntry != null && directEntry.Contains(PackagesDir))
+            if (directEntry != null && directEntry.Contains(LegacyPackagesDir))
                 return (apiName, directEntry);
 
             // Check for git URL entries (external packages)
@@ -127,26 +149,48 @@ namespace PurrNet.Editor
                 return (apiName, directEntry);
 
             // API name may differ from the real name in package.json.
-            // Scan entries pointing to PurrPackages/ — this is safe because only our
+            // Scan legacy entries pointing to PurrPackages/ — this is safe because only our
             // installer puts tarballs there, unlike Packages/ which has unrelated packages.
-            if (package.Versions == null || package.Versions.Length == 0)
-                return null;
-
-            foreach (var prop in deps.Properties())
+            if (package.Versions != null && package.Versions.Length > 0)
             {
-                var val = prop.Value?.ToString();
-                if (val == null || !val.Contains(PackagesDir))
-                    continue;
-
-                // val is "file:../PurrPackages/{key}-{version}.tgz"
-                var filename = Path.GetFileNameWithoutExtension(val);
-                if (filename == null || !filename.StartsWith(prop.Name + "-"))
-                    continue;
-
-                var fileVersion = filename.Substring(prop.Name.Length + 1);
-                foreach (var v in package.Versions)
+                foreach (var prop in deps.Properties())
                 {
-                    if (v.Version == fileVersion)
+                    var val = prop.Value.ToString();
+                    if (!val.Contains(LegacyPackagesDir))
+                        continue;
+
+                    // Legacy: val is "file:../PurrPackages/{key}-{version}.tgz" or "file:../PurrPackages/{key}-{version}"
+                    var filename = val.EndsWith(".tgz") ? Path.GetFileNameWithoutExtension(val) : Path.GetFileName(val);
+                    if (!filename.StartsWith(prop.Name + "-"))
+                        continue;
+
+                    var fileVersion = filename[(prop.Name.Length + 1)..];
+                    foreach (var v in package.Versions)
+                    {
+                        if (v.Version == fileVersion)
+                            return (prop.Name, val);
+                    }
+                }
+            }
+
+            // Scan manifest for git URLs matching the package's known git URLs.
+            // This handles cases where the UPM name differs or the user installed
+            // via Unity's Package Manager using the same repo URL.
+            if (!string.IsNullOrEmpty(package.GitInstallUrlRelease) || !string.IsNullOrEmpty(package.GitInstallUrlDev))
+            {
+                var knownBaseUrls = new HashSet<string>();
+                if (!string.IsNullOrEmpty(package.GitInstallUrlRelease))
+                    knownBaseUrls.Add(GetBaseGitUrl(package.GitInstallUrlRelease));
+                if (!string.IsNullOrEmpty(package.GitInstallUrlDev))
+                    knownBaseUrls.Add(GetBaseGitUrl(package.GitInstallUrlDev));
+
+                foreach (var prop in deps.Properties())
+                {
+                    var val = prop.Value.ToString();
+                    if (!IsGitUrl(val))
+                        continue;
+
+                    if (knownBaseUrls.Contains(GetBaseGitUrl(val)))
                         return (prop.Name, val);
                 }
             }
@@ -170,44 +214,260 @@ namespace PurrNet.Editor
                 var manifest = JObject.Parse(File.ReadAllText(ManifestPath));
                 var deps = manifest["dependencies"] as JObject;
                 var entry = deps?[upmName]?.ToString();
-                if (entry != null && entry.StartsWith("file:"))
+                if (entry != null && (entry.StartsWith("file:") || IsGitUrl(entry)))
                     return false;
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             return true;
         }
 
         /// <summary>
-        /// Removes an embedded package folder at Packages/{upmName}/ if it exists.
-        /// Moves to Temp first to handle locked native DLLs.
+        /// Removes a directory by moving it to Temp/ first, then best-effort deleting it.
+        /// Directory.Move within the same volume is a rename, so the original path is
+        /// freed up immediately — locked files (e.g. loaded native DLLs) stay in Temp/
+        /// and get cleaned up later with the project's Temp folder.
         /// </summary>
-        private static void RemoveEmbeddedPackage(string upmName)
+        private static void SafeRemoveDirectory(string path)
         {
-            var embeddedPath = Path.Combine("Packages", upmName);
-            if (!Directory.Exists(embeddedPath))
+            if (!Directory.Exists(path))
                 return;
+
+            Directory.CreateDirectory("Temp");
+            var tempDest = Path.Combine("Temp", "PurrNet_cleanup_" + DateTime.Now.Ticks);
+            Directory.Move(path, tempDest);
 
             try
             {
-                var tempDest = Path.Combine("Temp", "PurrNet_embedded_" + DateTime.Now.Ticks);
-                Directory.Move(embeddedPath, tempDest);
+                Directory.Delete(tempDest, true);
             }
             catch
             {
-                // Fallback: try direct delete
-                try { Directory.Delete(embeddedPath, true); }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[PurrNet] Could not remove embedded package at {embeddedPath}: {e.Message}");
-                }
+                // Locked files remain in Temp/ — not our problem anymore, original path is free
             }
         }
 
-        public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version)
+        /// <summary>
+        /// Clears any existing install of <paramref name="package"/> so a new version can be written.
+        /// Removes manifest entries, legacy PurrPackages/ files, and embedded Packages/{name}/ folders
+        /// for both the detected install key and the canonical name (needed when api name ≠ upm name,
+        /// or when a rename crossed versions).
+        /// </summary>
+        /// <remarks>
+        /// Ordering within each name: SafeRemoveDirectory BEFORE CleanupLegacyPackageFiles.
+        /// Packages/{name}/ may be a Unity-created junction pointing at PurrPackages/{name}-{version}/.
+        /// Deleting the target first leaves the junction dangling and Directory.Exists returns false,
+        /// orphaning the junction forever.
+        /// </remarks>
+        private static void ClearExistingInstall(PackageInfo package, string canonicalName)
+        {
+            var match = FindInstalledEntry(package);
+            if (match != null)
+                ClearByName(match.Value.key);
+
+            if (!string.IsNullOrEmpty(canonicalName) && (match == null || match.Value.key != canonicalName))
+                ClearByName(canonicalName);
+
+            static void ClearByName(string name)
+            {
+                RemoveManifestEntry(name);
+                SafeRemoveDirectory(Path.Combine("Packages", name));
+                CleanupLegacyPackageFiles(name);
+            }
+        }
+
+        /// <summary>
+        /// Installs files from <paramref name="sourceDir"/> into Packages/{canonicalName}/ by
+        /// per-file sync: unchanged files are left untouched (critical — prevents Unity from
+        /// re-importing / reloading locked native DLLs that didn't actually change), new files
+        /// are copied in, and files absent from the source are removed. Also clears manifest
+        /// entries and legacy PurrPackages/ files for both the detected install key and the
+        /// canonical name so the install is auto-discovered as embedded.
+        /// </summary>
+        private static void InstallFilesSynced(PackageInfo package, string canonicalName, string sourceDir)
+        {
+            var targetFolder = Path.Combine("Packages", canonicalName);
+            var match = FindInstalledEntry(package);
+
+            RemoveManifestEntry(canonicalName);
+            CleanupLegacyPackageFiles(canonicalName);
+
+            // Different-name install (rename or api/upm mismatch) — can't sync across names, full wipe.
+            if (match != null && !string.Equals(match.Value.key, canonicalName, StringComparison.OrdinalIgnoreCase))
+            {
+                RemoveManifestEntry(match.Value.key);
+                SafeRemoveDirectory(Path.Combine("Packages", match.Value.key));
+                CleanupLegacyPackageFiles(match.Value.key);
+            }
+
+            // Unlink junction at target without following it — else sync would write into the
+            // legacy PurrPackages/ target rather than replacing the junction with a real folder.
+            if (Directory.Exists(targetFolder)
+                && (File.GetAttributes(targetFolder) & FileAttributes.ReparsePoint) != 0)
+            {
+                Directory.Delete(targetFolder, false);
+            }
+
+            SyncDirectory(sourceDir, targetFolder);
+        }
+
+        /// <summary>
+        /// Syncs <paramref name="destination"/> to match <paramref name="source"/>:
+        /// copies files that are new or have different content, deletes files not present in source,
+        /// and leaves byte-identical files completely untouched. Logs a warning if any file could
+        /// not be written or deleted (usually a locked native library — caller should advise a restart).
+        /// </summary>
+        private static void SyncDirectory(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+
+            var sourceRelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int failed = 0;
+
+            foreach (var srcFile in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(source, srcFile);
+                sourceRelPaths.Add(rel);
+
+                var dstFile = Path.Combine(destination, rel);
+
+                if (File.Exists(dstFile) && FilesEqual(srcFile, dstFile))
+                    continue;
+
+                var dstDir = Path.GetDirectoryName(dstFile);
+                if (!string.IsNullOrEmpty(dstDir))
+                    Directory.CreateDirectory(dstDir);
+
+                try
+                {
+                    if (File.Exists(dstFile))
+                        File.SetAttributes(dstFile, FileAttributes.Normal);
+                    File.Copy(srcFile, dstFile, overwrite: true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PurrNet] Could not write '{rel}' (may be a locked native library): {ex.Message}");
+                    failed++;
+                }
+            }
+
+            // Remove files that exist in destination but not in source
+            foreach (var dstFile in Directory.GetFiles(destination, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(destination, dstFile);
+                if (sourceRelPaths.Contains(rel))
+                    continue;
+
+                try
+                {
+                    File.SetAttributes(dstFile, FileAttributes.Normal);
+                    File.Delete(dstFile);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PurrNet] Could not remove orphaned '{rel}' (may be locked): {ex.Message}");
+                    failed++;
+                }
+            }
+
+            // Prune empty subdirectories bottom-up
+            var dirs = Directory.GetDirectories(destination, "*", SearchOption.AllDirectories);
+            Array.Sort(dirs, (a, b) => b.Length.CompareTo(a.Length));
+            foreach (var dir in dirs)
+            {
+                try
+                {
+                    if (Directory.GetFileSystemEntries(dir).Length == 0)
+                        Directory.Delete(dir, false);
+                }
+                catch
+                {
+                    // not empty or locked — skip
+                }
+            }
+
+            if (failed > 0)
+                Debug.LogWarning($"[PurrNet] Install completed with {failed} file(s) that could not be updated. A Unity restart may be required for native plugin changes to take effect.");
+        }
+
+        /// <summary>
+        /// Byte-compares two files after a size short-circuit. Chunked read avoids loading
+        /// large native DLLs fully into memory.
+        /// </summary>
+        private static bool FilesEqual(string a, string b)
+        {
+            var infoA = new FileInfo(a);
+            var infoB = new FileInfo(b);
+            if (infoA.Length != infoB.Length)
+                return false;
+            if (infoA.Length == 0)
+                return true;
+
+            const int bufSize = 64 * 1024;
+            var bufA = new byte[bufSize];
+            var bufB = new byte[bufSize];
+
+            using var streamA = new FileStream(a, FileMode.Open, FileAccess.Read, FileShare.Read, bufSize);
+            using var streamB = new FileStream(b, FileMode.Open, FileAccess.Read, FileShare.Read, bufSize);
+
+            while (true)
+            {
+                int readA = ReadFully(streamA, bufA);
+                int readB = ReadFully(streamB, bufB);
+                if (readA != readB)
+                    return false;
+                if (readA == 0)
+                    return true;
+                if (!bufA.AsSpan(0, readA).SequenceEqual(bufB.AsSpan(0, readB)))
+                    return false;
+            }
+
+            static int ReadFully(FileStream s, byte[] buf)
+            {
+                int total = 0;
+                while (total < buf.Length)
+                {
+                    int n = s.Read(buf, total, buf.Length - total);
+                    if (n == 0) break;
+                    total += n;
+                }
+                return total;
+            }
+        }
+
+        public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
             try
             {
+                // Git+tag fast path: no download needed, just set manifest to git URL with tag
+                if (!package.IsExternal)
+                {
+                    var gitUrl = GetGitUrlForChannel(package, version.Channel);
+                    if (gitUrl != null && !string.IsNullOrEmpty(version.TagName))
+                    {
+                        EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
+
+                        var gitUpmName = package.GetUpmPackageName();
+
+                        ClearExistingInstall(package, gitUpmName);
+
+                        SetManifestEntry(gitUpmName, StripGitRef(gitUrl) + "#" + version.TagName);
+
+                        EditorUtility.ClearProgressBar();
+                        if (resolve)
+                        {
+                            PurrPackageManagerCache.Invalidate();
+                            UnityEditor.PackageManager.Client.Resolve();
+                            AssetDatabase.Refresh();
+                        }
+
+                        return Result<bool>.Ok(true);
+                    }
+                }
+
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Getting download URL...", 0.1f);
 
                 var downloadResult = await PurrPackageManagerAPI.GetDownloadUrl(apiKey, package.Id, version.Id);
@@ -255,7 +515,7 @@ namespace PurrNet.Editor
                     return Result<bool>.Fail("Extracted package does not contain a package.json");
                 }
 
-                var pkgJson = JObject.Parse(File.ReadAllText(pkgJsonPath));
+                var pkgJson = JObject.Parse(await File.ReadAllTextAsync(pkgJsonPath));
                 var upmName = pkgJson["name"]?.ToString();
                 var upmVersion = pkgJson["version"]?.ToString();
 
@@ -280,50 +540,9 @@ namespace PurrNet.Editor
                         return Result<bool>.Fail("Installation cancelled by user.");
                     }
                     EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Removing embedded package...", 0.7f);
-                    RemoveEmbeddedPackage(apiName);
-                    RemoveEmbeddedPackage(upmName);
                 }
 
-                // Remove old version before installing new one
-                var oldMatch = FindInstalledEntry(package);
-                if (oldMatch != null)
-                {
-                    RemoveManifestEntry(oldMatch.Value.key);
-                    if (Directory.Exists(PackagesDir))
-                    {
-                        foreach (var oldTgz in Directory.GetFiles(PackagesDir, oldMatch.Value.key + "-*.tgz"))
-                        {
-                            try { File.Delete(oldTgz); }
-                            catch { /* best effort */ }
-                        }
-                    }
-                }
-
-                // Create the tgz tarball
-                Directory.CreateDirectory(PackagesDir);
-                var tgzFileName = $"{upmName}-{upmVersion}.tgz";
-                var tgzPath = Path.Combine(PackagesDir, tgzFileName);
-
-                // Remove any orphaned tgz with the real name (e.g., removed via Unity PM but file remains)
-                foreach (var oldTgz in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
-                {
-                    try { File.Delete(oldTgz); }
-                    catch { /* best effort */ }
-                }
-
-                try
-                {
-                    CreateTarGz(tempExtractDir, tgzPath);
-                }
-                catch (Exception tgzEx)
-                {
-                    Directory.Delete(tempExtractDir, true);
-                    EditorUtility.ClearProgressBar();
-                    return Result<bool>.Fail($"Failed to create package tarball: {tgzEx.Message}");
-                }
-
-                // Add file: reference to manifest.json
-                SetManifestEntry(upmName, "file:../" + PackagesDir + "/" + tgzFileName);
+                InstallFilesSynced(package, upmName, tempExtractDir);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
 
@@ -333,15 +552,19 @@ namespace PurrNet.Editor
                 if (Directory.Exists(tempExtractDir))
                     Directory.Delete(tempExtractDir, true);
 
-                PurrPackageManagerCache.Invalidate();
-                UnityEditor.PackageManager.Client.Resolve();
-                AssetDatabase.Refresh();
                 EditorUtility.ClearProgressBar();
+                if (resolve)
+                {
+                    PurrPackageManagerCache.Invalidate();
+                    UnityEditor.PackageManager.Client.Resolve();
+                    AssetDatabase.Refresh();
+                }
 
                 return Result<bool>.Ok(true);
             }
             catch (Exception e)
             {
+                Debug.LogError($"[PurrNet] Install failed: {e}");
                 EditorUtility.ClearProgressBar();
                 return Result<bool>.Fail(e.Message);
             }
@@ -360,25 +583,7 @@ namespace PurrNet.Editor
 
             try
             {
-                var upmName = match.Value.key;
-                var apiName = package.GetUpmPackageName();
-
-                // Remove embedded packages if they exist
-                RemoveEmbeddedPackage(upmName);
-                if (apiName != upmName)
-                    RemoveEmbeddedPackage(apiName);
-
-                // Delete the tgz file
-                if (Directory.Exists(PackagesDir))
-                {
-                    foreach (var tgz in Directory.GetFiles(PackagesDir, upmName + "-*.tgz"))
-                    {
-                        try { File.Delete(tgz); }
-                        catch { /* best effort */ }
-                    }
-                }
-
-                RemoveManifestEntry(upmName);
+                ClearExistingInstall(package, package.GetUpmPackageName());
 
                 PurrPackageManagerCache.Invalidate();
                 UnityEditor.PackageManager.Client.Resolve();
@@ -392,7 +597,7 @@ namespace PurrNet.Editor
             }
         }
 
-        public static void InstallExternal(PackageInfo package, string gitUrl)
+        public static void InstallExternal(PackageInfo package, string gitUrl, bool resolve = true)
         {
             try
             {
@@ -400,33 +605,17 @@ namespace PurrNet.Editor
 
                 var upmName = package.GetUpmPackageName();
 
-                // Remove old entry if present
-                var oldMatch = FindInstalledEntry(package);
-                if (oldMatch != null)
-                {
-                    RemoveManifestEntry(oldMatch.Value.key);
-
-                    // Clean up old tgz files if switching from tgz install
-                    if (Directory.Exists(PackagesDir))
-                    {
-                        foreach (var oldTgz in Directory.GetFiles(PackagesDir, oldMatch.Value.key + "-*.tgz"))
-                        {
-                            try { File.Delete(oldTgz); }
-                            catch { /* best effort */ }
-                        }
-                    }
-                }
-
-                // Remove embedded packages if they exist
-                if (HasEmbeddedPackage(upmName))
-                    RemoveEmbeddedPackage(upmName);
+                ClearExistingInstall(package, upmName);
 
                 SetManifestEntry(upmName, gitUrl);
 
-                PurrPackageManagerCache.Invalidate();
-                UnityEditor.PackageManager.Client.Resolve();
-                AssetDatabase.Refresh();
                 EditorUtility.ClearProgressBar();
+                if (resolve)
+                {
+                    PurrPackageManagerCache.Invalidate();
+                    UnityEditor.PackageManager.Client.Resolve();
+                    AssetDatabase.Refresh();
+                }
             }
             catch (Exception e)
             {
@@ -435,10 +624,125 @@ namespace PurrNet.Editor
             }
         }
 
+        public static string GetInstalledGitChannel(PackageInfo package)
+        {
+            var match = FindInstalledEntry(package);
+            if (match == null) return "release";
+            var value = match.Value.value;
+            if (!IsGitUrl(value)) return "release";
+
+            if (!string.IsNullOrEmpty(package.GitInstallUrlDev) && value == package.GitInstallUrlDev)
+                return "dev";
+            return "release";
+        }
+
         private static bool IsGitUrl(string value)
         {
             return value != null &&
                    (value.StartsWith("https://") || value.StartsWith("git://") || value.StartsWith("git+"));
+        }
+
+        /// <summary>
+        /// Strips the #fragment from a git URL but preserves ?path= query parameters.
+        /// Used when constructing git+tag manifest entries.
+        /// </summary>
+        private static string StripGitRef(string gitUrl)
+        {
+            if (gitUrl == null) return "";
+            var hashIdx = gitUrl.IndexOf('#');
+            return hashIdx >= 0 ? gitUrl.Substring(0, hashIdx) : gitUrl;
+        }
+
+        /// <summary>
+        /// Picks the appropriate git install URL for a given channel,
+        /// falling back to the other channel if the preferred one is null.
+        /// </summary>
+        private static string GetGitUrlForChannel(PackageInfo package, string channel)
+        {
+            if (string.Equals(channel, "dev", StringComparison.OrdinalIgnoreCase))
+                return package.GitInstallUrlDev ?? package.GitInstallUrlRelease;
+            return package.GitInstallUrlRelease ?? package.GitInstallUrlDev;
+        }
+
+        /// <summary>
+        /// Cleans up old package files in the legacy PurrPackages/ directory for a given UPM name.
+        /// Handles both legacy .tgz files and folder-based installs.
+        /// Also removes the PurrPackages/ directory itself if it becomes empty.
+        /// </summary>
+        private static void CleanupLegacyPackageFiles(string upmName)
+        {
+            if (!Directory.Exists(LegacyPackagesDir)) return;
+
+            // Old tgz files
+            foreach (var f in Directory.GetFiles(LegacyPackagesDir, upmName + "-*.tgz"))
+            {
+                try { File.Delete(f); }
+                catch
+                {
+                    // ignored
+                }
+            }
+
+            // Folder installs
+            foreach (var d in Directory.GetDirectories(LegacyPackagesDir, upmName + "-*"))
+            {
+                SafeRemoveDirectory(d);
+            }
+
+            // Remove PurrPackages/ itself if now empty
+            try
+            {
+                if (Directory.GetFileSystemEntries(LegacyPackagesDir).Length == 0)
+                    Directory.Delete(LegacyPackagesDir);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        /// <summary>
+        /// Strips the fragment (#branch/tag/commit) and query string from a git URL
+        /// so that URLs pointing to the same repo can be compared regardless of ref.
+        /// </summary>
+        private static string GetBaseGitUrl(string gitUrl)
+        {
+            if (gitUrl == null) return "";
+            var hashIdx = gitUrl.IndexOf('#');
+            if (hashIdx >= 0)
+                gitUrl = gitUrl.Substring(0, hashIdx);
+            var queryIdx = gitUrl.IndexOf('?');
+            if (queryIdx >= 0)
+                gitUrl = gitUrl.Substring(0, queryIdx);
+            return gitUrl.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Reads the actual semver version from the resolved package in Library/PackageCache.
+        /// </summary>
+        private static string GetResolvedPackageVersion(string packageName)
+        {
+            const string cacheDir = "Library/PackageCache";
+            if (!Directory.Exists(cacheDir))
+                return null;
+
+            try
+            {
+                var dirs = Directory.GetDirectories(cacheDir, packageName + "@*");
+                if (dirs.Length == 0)
+                    return null;
+
+                var pkgJsonPath = Path.Combine(dirs[0], "package.json");
+                if (!File.Exists(pkgJsonPath))
+                    return null;
+
+                var json = JObject.Parse(File.ReadAllText(pkgJsonPath));
+                return json["version"]?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static void SetManifestEntry(string packageName, string value)
@@ -477,96 +781,6 @@ namespace PurrNet.Editor
             {
                 Debug.LogError($"[PurrNet] Failed to update manifest.json: {e.Message}");
             }
-        }
-
-        private static void CreateTarGz(string sourceDir, string outputPath)
-        {
-            using var fileStream = File.Create(outputPath);
-            using var gzipStream = new GZipStream(fileStream, CompressionMode.Compress);
-
-            var files = Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories);
-
-            foreach (var filePath in files)
-            {
-                var relativePath = filePath.Substring(sourceDir.Length)
-                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                    .Replace('\\', '/');
-
-                // npm/Unity tgz convention: all files under a "package/" root
-                var tarPath = "package/" + relativePath;
-                var content = File.ReadAllBytes(filePath);
-                var header = CreateTarHeader(tarPath, content.Length);
-
-                gzipStream.Write(header, 0, 512);
-                gzipStream.Write(content, 0, content.Length);
-
-                // Pad to 512-byte boundary
-                int remainder = content.Length % 512;
-                if (remainder > 0)
-                {
-                    var padding = new byte[512 - remainder];
-                    gzipStream.Write(padding, 0, padding.Length);
-                }
-            }
-
-            // End of archive: two 512-byte zero blocks
-            var endBlock = new byte[1024];
-            gzipStream.Write(endBlock, 0, 1024);
-        }
-
-        private static byte[] CreateTarHeader(string entryPath, long size)
-        {
-            var header = new byte[512];
-
-            // Split path into prefix (max 155) and name (max 100) for ustar
-            string name = entryPath;
-            string prefix = "";
-
-            if (Encoding.ASCII.GetByteCount(name) > 100)
-            {
-                var lastSlash = name.LastIndexOf('/', Math.Min(name.Length - 1, 155));
-                if (lastSlash > 0)
-                {
-                    prefix = name.Substring(0, lastSlash);
-                    name = name.Substring(lastSlash + 1);
-                }
-            }
-
-            WriteAscii(header, 0, name, 100);
-            WriteAscii(header, 100, "0100644\0", 8);   // File mode
-            WriteAscii(header, 108, "0000000\0", 8);   // Owner ID
-            WriteAscii(header, 116, "0000000\0", 8);   // Group ID
-
-            var sizeStr = Convert.ToString(size, 8).PadLeft(11, '0');
-            WriteAscii(header, 124, sizeStr + "\0", 12);
-
-            var unixTime = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
-            var timeStr = Convert.ToString(unixTime, 8).PadLeft(11, '0');
-            WriteAscii(header, 136, timeStr + "\0", 12);
-
-            header[156] = (byte)'0'; // Regular file
-
-            WriteAscii(header, 257, "ustar\0", 6);     // Magic
-            WriteAscii(header, 263, "00", 2);           // Version
-
-            if (prefix.Length > 0)
-                WriteAscii(header, 345, prefix, 155);
-
-            // Compute checksum (fill checksum field with spaces first)
-            for (int i = 148; i < 156; i++) header[i] = (byte)' ';
-            int checksum = 0;
-            for (int i = 0; i < 512; i++) checksum += header[i];
-            var checksumStr = Convert.ToString(checksum, 8).PadLeft(6, '0') + "\0 ";
-            WriteAscii(header, 148, checksumStr, 8);
-
-            return header;
-        }
-
-        private static void WriteAscii(byte[] buffer, int offset, string value, int fieldLength)
-        {
-            var bytes = Encoding.ASCII.GetBytes(value);
-            var len = Math.Min(bytes.Length, fieldLength);
-            Array.Copy(bytes, 0, buffer, offset, len);
         }
 
         private static void ExtractUnityPackage(string packagePath, string targetDir)
@@ -671,7 +885,7 @@ namespace PurrNet.Editor
                 }
             }
 
-            // Find the root prefix by locating package.json
+            // Find the root prefix by locating the shallowest package.json
             string rootPrefix = null;
             foreach (var entry in entries.Values)
             {
@@ -685,8 +899,9 @@ namespace PurrNet.Editor
 
                 if (fn.EndsWith("/package.json") || fn == "package.json")
                 {
-                    rootPrefix = fn.Substring(0, fn.Length - "package.json".Length);
-                    break;
+                    var prefix = fn.Substring(0, fn.Length - "package.json".Length);
+                    if (rootPrefix == null || prefix.Length < rootPrefix.Length)
+                        rootPrefix = prefix;
                 }
             }
 

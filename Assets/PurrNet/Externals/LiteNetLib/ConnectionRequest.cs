@@ -12,16 +12,22 @@ namespace LiteNetLib
         RejectForce
     }
 
-    public class ConnectionRequest
+    public class LiteConnectionRequest
     {
-        private readonly NetManager _listener;
+        private readonly LiteNetManager _listener;
         private int _used;
 
+        /// <summary>
+        /// Data sent by the remote peer in the connection request.
+        /// </summary>
         public NetDataReader Data => InternalPacket.Data;
 
         internal ConnectionRequestResult Result { get; private set; }
         internal NetConnectRequestPacket InternalPacket;
 
+        /// <summary>
+        /// The remote endpoint (IP and Port) of the peer requesting the connection.
+        /// </summary>
         public readonly IPEndPoint RemoteEndPoint;
 
         internal void UpdateRequest(NetConnectRequestPacket connectRequest)
@@ -37,20 +43,26 @@ namespace LiteNetLib
             InternalPacket = connectRequest;
         }
 
-        private bool TryActivate()
-        {
-            return Interlocked.CompareExchange(ref _used, 1, 0) == 0;
-        }
+        private bool TryActivate() =>
+            Interlocked.CompareExchange(ref _used, 1, 0) == 0;
 
-        internal ConnectionRequest(IPEndPoint remoteEndPoint, NetConnectRequestPacket requestPacket,
-            NetManager listener)
+        internal LiteConnectionRequest(IPEndPoint remoteEndPoint, NetConnectRequestPacket requestPacket, LiteNetManager listener)
         {
             InternalPacket = requestPacket;
             RemoteEndPoint = remoteEndPoint;
             _listener = listener;
         }
 
-        public NetPeer AcceptIfKey(string key)
+        /// <summary>
+        /// Accepts the connection if the first string in the <see cref="Data"/> matches the provided key.
+        /// </summary>
+        /// <remarks>
+        /// This is a helper method for simple password/key validation.
+        /// If the key does not match or data is invalid, the connection is automatically rejected.
+        /// </remarks>
+        /// <param name="key">The required string key to match.</param>
+        /// <returns>A new <see cref="LiteNetPeer"/> if the key matches and connection is accepted; otherwise, <c>null</c>.</returns>
+        public LiteNetPeer AcceptIfKey(string key)
         {
             if (!TryActivate())
                 return null;
@@ -63,7 +75,6 @@ namespace LiteNetLib
             {
                 NetDebug.WriteError("[AC] Invalid incoming data");
             }
-
             if (Result == ConnectionRequestResult.Accept)
                 return _listener.OnConnectionSolved(this, null, 0, 0);
 
@@ -76,7 +87,7 @@ namespace LiteNetLib
         /// Accept connection and get new NetPeer as result
         /// </summary>
         /// <returns>Connected NetPeer</returns>
-        public NetPeer Accept()
+        public LiteNetPeer Accept()
         {
             if (!TryActivate())
                 return null;
@@ -84,6 +95,16 @@ namespace LiteNetLib
             return _listener.OnConnectionSolved(this, null, 0, 0);
         }
 
+        /// <summary>
+        /// Rejects the connection request.
+        /// </summary>
+        /// <param name="rejectData">Optional user data to send along with the rejection packet.</param>
+        /// <param name="start">Offset in the <paramref name="rejectData"/> array.</param>
+        /// <param name="length">Length of the data to be sent from the <paramref name="rejectData"/> array.</param>
+        /// <param name="force">
+        /// If <see langword="true"/>, immediately removes the request, if <paramref name="rejectData"/> is not <see langword="null"/> a reject packet is also sent. <br/>
+        /// If <see langword="false"/>, creates a temporary peer that sends rejection packets and lingers in memory until a timeout occurs to handle late-arriving packets.
+        /// </param>
         public void Reject(byte[] rejectData, int start, int length, bool force)
         {
             if (!TryActivate())
@@ -92,45 +113,76 @@ namespace LiteNetLib
             _listener.OnConnectionSolved(this, rejectData, start, length);
         }
 
-        public void Reject(byte[] rejectData, int start, int length)
-        {
+        /// <summary>
+        /// Rejects the connection reliably. Creates a temporary peer to handle packet loss.
+        /// </summary>
+        /// <param name="rejectData">Data to send with the rejection.</param>
+        /// <param name="start">Offset in the <paramref name="rejectData"/> array.</param>
+        /// <param name="length">Length of the data to be sent.</param>
+        public void Reject(byte[] rejectData, int start, int length) =>
             Reject(rejectData, start, length, false);
-        }
 
-
-        public void RejectForce(byte[] rejectData, int start, int length)
-        {
+        /// <summary>
+        /// Rejects the connection immediately without reliability.
+        /// Minimizes resource usage by not creating an internal peer.
+        /// </summary>
+        /// <param name="rejectData">Data to send with the rejection.</param>
+        /// <param name="start">Offset in the <paramref name="rejectData"/> array.</param>
+        /// <param name="length">Length of the data to be sent.</param>
+        public void RejectForce(byte[] rejectData, int start, int length) =>
             Reject(rejectData, start, length, true);
-        }
 
-        public void RejectForce()
-        {
+        /// <summary>
+        /// Rejects the connection immediately without sending any packet.
+        /// </summary>
+        public void RejectForce() =>
             Reject(null, 0, 0, true);
-        }
 
-        public void RejectForce(byte[] rejectData)
-        {
+        /// <summary>
+        /// Rejects the connection immediately without reliability.
+        /// </summary>
+        /// <param name="rejectData">Data to send with the rejection.</param>
+        public void RejectForce(byte[] rejectData) =>
             Reject(rejectData, 0, rejectData.Length, true);
-        }
 
-        public void RejectForce(NetDataWriter rejectData)
-        {
+        /// <summary>
+        /// Rejects the connection immediately without reliability using data from a <see cref="NetDataWriter"/>.
+        /// </summary>
+        /// <param name="rejectData">Writer containing the data to send.</param>
+        public void RejectForce(NetDataWriter rejectData) =>
             Reject(rejectData.Data, 0, rejectData.Length, true);
-        }
 
-        public void Reject()
-        {
+        /// <summary>
+        /// Rejects the connection reliably without additional data.
+        /// </summary>
+        public void Reject() =>
             Reject(null, 0, 0, false);
-        }
 
-        public void Reject(byte[] rejectData)
-        {
+        /// <summary>
+        /// Rejects the connection reliably.
+        /// </summary>
+        /// <param name="rejectData">Data to send with the rejection.</param>
+        public void Reject(byte[] rejectData) =>
             Reject(rejectData, 0, rejectData.Length, false);
+
+        /// <summary>
+        /// Rejects the connection reliably using data from a <see cref="NetDataWriter"/>.
+        /// </summary>
+        /// <param name="rejectData">Writer containing the data to send.</param>
+        public void Reject(NetDataWriter rejectData) =>
+            Reject(rejectData.Data, 0, rejectData.Length, false);
+    }
+
+    public class ConnectionRequest : LiteConnectionRequest
+    {
+        internal ConnectionRequest(IPEndPoint remoteEndPoint, NetConnectRequestPacket requestPacket, LiteNetManager listener) : base(remoteEndPoint, requestPacket, listener)
+        {
         }
 
-        public void Reject(NetDataWriter rejectData)
-        {
-            Reject(rejectData.Data, 0, rejectData.Length, false);
-        }
+        /// <inheritdoc cref="LiteConnectionRequest.AcceptIfKey(string)"/>
+        public new NetPeer AcceptIfKey(string key) => (NetPeer)base.AcceptIfKey(key);
+
+        /// <inheritdoc cref="LiteConnectionRequest.Accept"/>
+        public new NetPeer Accept() => (NetPeer)base.Accept();
     }
 }

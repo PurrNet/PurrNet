@@ -1,5 +1,6 @@
 ﻿using System;
 using PurrNet.Packing;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace PurrNet
@@ -27,9 +28,12 @@ namespace PurrNet
             return HashCode.Combine(position, rotation, scale);
         }
 
-        public bool Equals(NetworkTransformData other)
+        public unsafe bool Equals(NetworkTransformData other)
         {
-            return position.Equals(other.position) && rotation.Equals(other.rotation) && scale.Equals(other.scale);
+            fixed (NetworkTransformData* self = &this)
+            {
+                return UnsafeUtility.MemCmp(self, &other, sizeof(NetworkTransformData)) == 0;
+            }
         }
 
         public override string ToString()

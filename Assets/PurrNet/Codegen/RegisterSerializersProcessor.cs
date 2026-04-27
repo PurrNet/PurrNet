@@ -189,7 +189,8 @@ namespace PurrNet.Codegen
             }
 
             bool hasIDuplicate = DuplicateHelpers.HasDuplicateInterface(actualType);
-            if (writeTypes.Count == 0 && readTypes.Count == 0 && !hasIDuplicate)
+            bool hasIPurrEquatable = EquatableHelpers.HasEquatableInterface(actualType);
+            if (writeTypes.Count == 0 && readTypes.Count == 0 && !hasIDuplicate && !hasIPurrEquatable)
                 return;
 
             var writeFuncDelegate = module.GetTypeDefinition(typeof(WriteFunc<>)).Import(module);
@@ -350,6 +351,9 @@ namespace PurrNet.Codegen
 
             if (hasIDuplicate)
                 DuplicateHelpers.InjectRegistration(type, actualType, il);
+
+            if (hasIPurrEquatable)
+                EquatableHelpers.InjectRegistration(type, actualType, il);
 
             il.Emit(OpCodes.Ret);
         }

@@ -14,6 +14,7 @@ namespace PurrNet.Editor
         private SerializedProperty _host;
         private SerializedProperty _timeoutInSeconds;
         private SerializedProperty _pollEventsInUpdate;
+        private SerializedProperty _networkSimulation;
 
         private bool _lookingForBestRegion;
         string[] _regions = Array.Empty<string>();
@@ -27,6 +28,7 @@ namespace PurrNet.Editor
             _host = serializedObject.FindProperty("_host");
             _timeoutInSeconds = serializedObject.FindProperty("_timeoutInSeconds");
             _pollEventsInUpdate = serializedObject.FindProperty("_pollEventsInUpdate");
+            _networkSimulation = serializedObject.FindProperty("_networkSimulation");
 
             if (!EditorApplication.isPlayingOrWillChangePlaymode)
                 LoadRegions();
@@ -181,6 +183,9 @@ namespace PurrNet.Editor
 
             EditorGUILayout.PropertyField(_timeoutInSeconds);
             EditorGUILayout.PropertyField(_pollEventsInUpdate);
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.PropertyField(_networkSimulation, new GUIContent("Network Simulation (UDP)"));
 
             if (GUILayout.Button("Refresh"))
                 LoadRegions();
