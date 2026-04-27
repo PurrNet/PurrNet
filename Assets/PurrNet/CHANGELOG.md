@@ -1,3 +1,17 @@
+# [1.20.0-beta.107](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.106...v1.20.0-beta.107) (2026-04-27)
+
+
+### Bug Fixes
+
+* Network RB late join stuff ([68b2172](https://github.com/PurrNet/PurrNet/commit/68b217205df1d6673d42a42e62d8bf0d671ef283))
+
+# [1.20.0-beta.106](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.105...v1.20.0-beta.106) (2026-04-27)
+
+
+### Bug Fixes
+
+* Add force sync window to network rigidbody ([c7ddedb](https://github.com/PurrNet/PurrNet/commit/c7ddedbb183a7f7b48ac5088373b09ccf9f9b1ae))
+
 # [1.20.0-beta.105](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.104...v1.20.0-beta.105) (2026-04-27)
 
 
