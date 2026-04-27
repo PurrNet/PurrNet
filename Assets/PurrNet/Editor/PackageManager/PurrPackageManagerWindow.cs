@@ -461,8 +461,7 @@ namespace PurrNet.Editor
             if (package.IsExternal && isGitInstall)
             {
                 var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
-                if (hash != null)
-                    hasGitUpdate = hash != package.LatestCommitRelease && hash != package.LatestCommitDev;
+                hasGitUpdate = HasGitUpdate(package, hash);
             }
 
             // Build right-side info text
@@ -703,12 +702,7 @@ namespace PurrNet.Editor
             if (package.IsExternal && isGitInstall)
             {
                 gitInstalledHash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
-                if (gitInstalledHash != null)
-                {
-                    bool matchesRelease = gitInstalledHash == package.LatestCommitRelease;
-                    bool matchesDev = gitInstalledHash == package.LatestCommitDev;
-                    hasGitUpdate = !matchesRelease && !matchesDev;
-                }
+                hasGitUpdate = HasGitUpdate(package, gitInstalledHash);
             }
 
             EditorGUILayout.Space(8);
@@ -1207,6 +1201,36 @@ namespace PurrNet.Editor
             return false;
         }
 
+        // Treats empty server hashes as "no info" (not a mismatch) and matches by case-insensitive
+        // prefix so a short SHA from one side equals a full SHA from the other. Avoids false
+        // "update available" when the API has no commit data for a channel that doesn't exist
+        // on the upstream repo (common for IsExternal packages).
+        private static bool HasGitUpdate(PackageInfo package, string installedHash)
+        {
+            if (string.IsNullOrEmpty(installedHash))
+                return false;
+
+            bool hasRelease = !string.IsNullOrEmpty(package.LatestCommitRelease);
+            bool hasDev = !string.IsNullOrEmpty(package.LatestCommitDev);
+            if (!hasRelease && !hasDev)
+                return false;
+
+            if (hasRelease && HashesMatch(installedHash, package.LatestCommitRelease))
+                return false;
+            if (hasDev && HashesMatch(installedHash, package.LatestCommitDev))
+                return false;
+
+            return true;
+        }
+
+        private static bool HashesMatch(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b))
+                return false;
+            int minLen = Math.Min(a.Length, b.Length);
+            return string.Compare(a, 0, b, 0, minLen, StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
         private static VersionInfo FindLatestByChannel(PackageInfo package, string channel)
         {
             if (package.Versions == null)
@@ -1318,7 +1342,7 @@ namespace PurrNet.Editor
                 if (pkg.IsExternal && isGitInstall)
                 {
                     var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
-                    if (hash != null && hash != pkg.LatestCommitRelease && hash != pkg.LatestCommitDev)
+                    if (HasGitUpdate(pkg, hash))
                         count++;
                 }
                 else
@@ -1355,7 +1379,7 @@ namespace PurrNet.Editor
                 if (pkg.IsExternal && isGitInstall)
                 {
                     var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
-                    if (hash != null && hash != pkg.LatestCommitRelease && hash != pkg.LatestCommitDev)
+                    if (HasGitUpdate(pkg, hash))
                     {
                         var channel = PurrPackageManagerInstaller.GetInstalledGitChannel(pkg);
                         var gitUrl = channel == "dev" ? pkg.GitInstallUrlDev : pkg.GitInstallUrlRelease;
