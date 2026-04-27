@@ -118,9 +118,9 @@ namespace PurrNet.Nakama
             if (listenerState != ConnectionState.Disconnected)
                 return;
 
-            if (socket == null || !socket.IsConnected)
+            if (socket is not { IsConnected: true })
             {
-                PurrLogger.LogError("socket must be assigned and connected before Listen.");
+                PurrLogger.LogError("`socket` must be assigned and connected before Listen.");
                 return;
             }
 
@@ -242,9 +242,9 @@ namespace PurrNet.Nakama
             if (clientState != ConnectionState.Disconnected)
                 return;
 
-            if (socket == null || !socket.IsConnected)
+            if (socket is not { IsConnected: true })
             {
-                PurrLogger.LogError("socket must be assigned and connected before Connect.");
+                PurrLogger.LogError("`socket` must be assigned and connected before Connect.");
                 return;
             }
 
