@@ -1,3 +1,10 @@
+# [1.20.0-beta.105](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.104...v1.20.0-beta.105) (2026-04-27)
+
+
+### Bug Fixes
+
+* supress some warnings for NakamaTransport.cs when it isnt installed ([29c554a](https://github.com/PurrNet/PurrNet/commit/29c554af847a2cc53b34f504723ca2fd264e9029))
+
 # [1.20.0-beta.104](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.103...v1.20.0-beta.104) (2026-04-27)
 
 
