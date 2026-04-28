@@ -1,3 +1,10 @@
+# [1.20.0-beta.110](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.109...v1.20.0-beta.110) (2026-04-28)
+
+
+### Bug Fixes
+
+* first-time buffering path doesn't respect the BitData's bitOrigin ([bd99a9d](https://github.com/PurrNet/PurrNet/commit/bd99a9daab9200c2316acfdfef7f0175d6f74c68))
+
 # [1.20.0-beta.109](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.108...v1.20.0-beta.109) (2026-04-28)
 
 
