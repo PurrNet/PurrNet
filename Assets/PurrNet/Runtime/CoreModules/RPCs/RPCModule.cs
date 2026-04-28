@@ -653,7 +653,7 @@ namespace PurrNet.Modules
             else
             {
                 var newStream = AllocStream(false);
-                newStream.WriteBitsWithoutConsumingIt(bitData.packer, bitData.bitLength);
+                newStream.WriteBitDataWithoutConsumingIt(bitData);
 
                 var newdata = new RPC_DATA_BASE<T>
                 {
