@@ -4388,6 +4388,25 @@ namespace PurrNet.Codegen
             var concatMethod = module.TypeSystem.String.Resolve()
                 .GetMethod("Concat", module.TypeSystem.String, module.TypeSystem.String).Import(module);
 
+            // Chain to base type's init so base class's network fields get registered too.
+            // NetworkIdentity uses reflection to discover inherited inits, so only chain for NetworkModule.
+            if (!isNetworkIdentity && type.BaseType != null &&
+                type.FullName != typeof(NetworkModule).FullName)
+            {
+                var baseTypeRef = type.BaseType.Import(module);
+                var baseInitName =
+                    $"__{GenerateSerializersProcessor.MakeFullNameValidCSharp(baseTypeRef.Name)}_CodeGen_Initialize";
+                var baseInitRef = new MethodReference(baseInitName, module.TypeSystem.Void, baseTypeRef)
+                {
+                    HasThis = true
+                };
+                baseInitRef.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
+
+                code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                code.Append(Instruction.Create(OpCodes.Ldarg_1));
+                code.Append(Instruction.Create(OpCodes.Call, baseInitRef));
+            }
+
             for (int i = 0; i < networkFields.Count; i++)
             {
                 var field = networkFields[i];
