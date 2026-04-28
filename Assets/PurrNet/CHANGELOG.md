@@ -1,3 +1,10 @@
+# [1.20.0-beta.109](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.108...v1.20.0-beta.109) (2026-04-28)
+
+
+### Bug Fixes
+
+* inheritance and NetworkModules ([e3c145a](https://github.com/PurrNet/PurrNet/commit/e3c145a78cfacfe82d49b71b70579240b1aaed95))
+
 # [1.20.0-beta.108](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.107...v1.20.0-beta.108) (2026-04-27)
 
 
