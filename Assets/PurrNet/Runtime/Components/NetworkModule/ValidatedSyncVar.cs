@@ -27,6 +27,7 @@ namespace PurrNet
         private uint _nextPacketId;
         private uint _lastAppliedServerId;
         private uint _pendingId;
+        private bool _hasPending;
 
         public static implicit operator T(ValidatedSyncVar<T> syncVar) => syncVar._display;
 
@@ -41,13 +42,15 @@ namespace PurrNet
             get => _display;
             set
             {
-                if (!parent.IsController(true))
+                if (!isServer && !isOwner)
                     return;
 
                 var old = _display;
+                if ((old == null && value == null) || (old != null && old.Equals(value)))
+                    return;
+
                 if (isServer)
                 {
-                    if ((old == null && value == null) || (old != null && old.Equals(value))) return;
                     _display = value;
                     TriggerEvents(old, _display, false);
                     ServerValidateAndApply(value);
@@ -57,11 +60,9 @@ namespace PurrNet
                 if (!owner.HasValue)
                     return;
 
-                if ((old == null && value == null) || (old != null && old.Equals(value)))
-                    return;
-
                 _display = value;
                 _pendingId = ++_nextPacketId;
+                _hasPending = true;
                 TriggerEvents(old, _display, false);
 
                 using var pack = BitPackerPool.Get();
@@ -79,31 +80,34 @@ namespace PurrNet
             _nextPacketId = 0;
             _lastAppliedServerId = 0;
             _pendingId = 0;
+            _hasPending = false;
         }
 
         public override void OnEarlySpawn()
         {
-            if (!isServer && !isOwner)
+            if (!isServer)
                 _authoritative.onChangedWithOld += OnAuthoritativeChanged;
         }
 
         public override void OnDespawned()
         {
-            if (!isServer && !isOwner)
+            if (!isServer)
                 _authoritative.onChangedWithOld -= OnAuthoritativeChanged;
         }
 
         public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawnEvent, bool asServer)
         {
             _authoritative.onChangedWithOld -= OnAuthoritativeChanged;
-            if (!isServer && !isOwner)
+            if (!isServer)
                 _authoritative.onChangedWithOld += OnAuthoritativeChanged;
         }
 
         private void OnAuthoritativeChanged(T oldAuth, T newAuth)
         {
-            if (isOwner) return;
+            if (isOwner && _hasPending) return;
             var old = _display;
+            if ((old == null && newAuth == null) || (old != null && old.Equals(newAuth)))
+                return;
             _display = newAuth;
             TriggerEvents(old, _display, true);
         }
@@ -200,6 +204,7 @@ namespace PurrNet
                 var old = _display;
                 _display = v;
                 _pendingId = packetId;
+                _hasPending = false;
                 TriggerEvents(old, v, true);
             }
         }
@@ -220,6 +225,7 @@ namespace PurrNet
                 var old = _display;
                 _display = authoritativeNow;
                 _pendingId = packetId;
+                _hasPending = false;
                 TriggerEvents(old, _display, true);
                 onValidationFail?.Invoke(failed, authoritativeNow);
             }
