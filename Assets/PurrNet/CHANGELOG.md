@@ -1,3 +1,10 @@
+# [1.20.0-beta.112](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.111...v1.20.0-beta.112) (2026-04-29)
+
+
+### Bug Fixes
+
+* Validated syncvar can now be server authored as well ([1f3de10](https://github.com/PurrNet/PurrNet/commit/1f3de10be3f9c89e212640007ce4b713b35ebc81))
+
 # [1.20.0-beta.111](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.110...v1.20.0-beta.111) (2026-04-29)
 
 
