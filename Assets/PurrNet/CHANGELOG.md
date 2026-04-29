@@ -1,3 +1,10 @@
+# [1.20.0-beta.111](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.110...v1.20.0-beta.111) (2026-04-29)
+
+
+### Bug Fixes
+
+* include UniTask in the type discovery ([439f992](https://github.com/PurrNet/PurrNet/commit/439f9929b4f934042bd1159d2167ffd155855a8e))
+
 # [1.20.0-beta.110](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.109...v1.20.0-beta.110) (2026-04-28)
 
 
