@@ -1663,6 +1663,20 @@ namespace PurrNet.Codegen
             return type.Resolve().BaseType?.FullName == typeof(Task).FullName;
         }
 
+        static bool IsAwaitableGenericWrapper(TypeReference type)
+        {
+            if (IsTaskOrInheritsFromTask(type))
+                return true;
+
+#if UNITASK_PURRNET_SUPPORT
+            var resolved = type.Resolve();
+            if (resolved is { FullName: "Cysharp.Threading.Tasks.UniTask`1" })
+                return true;
+#endif
+
+            return false;
+        }
+
         public static bool IsConcreteType(TypeReference type, out TypeReference concreteType)
         {
             try
@@ -1672,7 +1686,7 @@ namespace PurrNet.Codegen
                 if (type.ContainsGenericParameter)
                     return false;
 
-                if (IsTaskOrInheritsFromTask(type) && type is GenericInstanceType genericInstanceType)
+                if (type is GenericInstanceType genericInstanceType && IsAwaitableGenericWrapper(type))
                     concreteType = genericInstanceType.GenericArguments[0];
 
                 return true;
