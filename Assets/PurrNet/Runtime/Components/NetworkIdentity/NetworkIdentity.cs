@@ -317,7 +317,7 @@ namespace PurrNet
         /// If you can, cache this value for performance.
         /// </summary>
         public PlayerID? owner => isServer ? internalOwnerServer : internalOwnerClient;
-        public PlayerID? controller => owner == null ? PlayerID.Server : owner;
+        public PlayerID controller => owner ?? PlayerID.Server;
 
         public NetworkManager networkManager { get; private set; }
 
