@@ -764,7 +764,9 @@ namespace PurrNet.Modules
                     }
                     catch (Exception e)
                     {
-                        PurrLogger.LogException(e);
+                        if (Manifest.TryGet(type, data.header.rpcId, out var entry))
+                             PurrLogger.LogError($"RPC `{entry}` threw: {e}");
+                        else PurrLogger.LogException(e);
                     }
                 }
             }
@@ -804,7 +806,10 @@ namespace PurrNet.Modules
                         }
                         catch (Exception e)
                         {
-                            PurrLogger.LogException(e, networkClass.parent);
+                            var moduleType = networkClass.GetType();
+                            if (Manifest.TryGet(moduleType, packet.header.rpcId, out var entry))
+                                 PurrLogger.LogError($"RPC `{entry}` threw: {e}", networkClass.parent);
+                            else PurrLogger.LogException(e, networkClass.parent);
                         }
                     }
                 }
@@ -897,7 +902,10 @@ namespace PurrNet.Modules
                     }
                     catch (Exception e)
                     {
-                        PurrLogger.LogException(e, identity);
+                        var identityType = identity.GetType();
+                        if (Manifest.TryGet(identityType, packet.header.rpcId, out var entry))
+                             PurrLogger.LogError($"RPC `{entry}` threw: {e}", identity);
+                        else PurrLogger.LogException(e, identity);
                     }
                 }
             }

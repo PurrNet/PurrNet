@@ -8,7 +8,7 @@ public class DeltaStreamTest : NetworkBehaviour
     
     private void Awake()
     {
-        _stream = new ReliableDeltaStream<int>(new TestKey());
+        _stream = new ReliableDeltaStream<int>(new TestRPCManifestKey());
     }
 
     private void Update()
@@ -29,7 +29,7 @@ public class DeltaStreamTest : NetworkBehaviour
         }
     }
     
-    public struct TestKey : IStableHashable
+    public struct TestRPCManifestKey : IStableHashable
     {
         public uint GetStableHash() => 0x1337u;
     }

@@ -3179,14 +3179,8 @@ namespace PurrNet.Codegen
             return TargetArgType.None;
         }
 
-        private static void PushRPCSignature(ModuleDefinition module, ILProcessor code, RPCMethod rpc,
-            bool isReceiving, bool isNetworkModule)
+        internal static void PushRPCSignatureMakeArgs(ILProcessor code, RPCMethod rpc)
         {
-            var rpcDetails = module.GetTypeDefinition<RPCSignature>();
-            var makeRpcDetails = rpcDetails.GetMethod("Make").Import(module);
-            var makeRpcDetailsTarget = rpcDetails.GetMethod("MakeWithTarget").Import(module);
-
-            // RPCDetails Make(RPCType type, Channel channel, bool runLocally, bool bufferLast, bool requireServer, bool excludeOwner)
             code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.type));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.channel));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.runLocally ? 1 : 0));
@@ -3194,12 +3188,22 @@ namespace PurrNet.Codegen
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.bufferLast ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.requireServer ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.excludeOwner ? 1 : 0));
-            code.Append(Instruction.Create(OpCodes.Ldstr, rpc.ogName));
+            code.Append(Instruction.Create(OpCodes.Ldstr, rpc.ogName ?? string.Empty));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.isStatic ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_R4, rpc.Signature.asyncTimeoutInSec));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.compressionLevel));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.excludeSender ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.deltaPacked ? 1 : 0));
+        }
+
+        private static void PushRPCSignature(ModuleDefinition module, ILProcessor code, RPCMethod rpc,
+            bool isReceiving, bool isNetworkModule)
+        {
+            var rpcDetails = module.GetTypeDefinition<RPCSignature>();
+            var makeRpcDetails = rpcDetails.GetMethod("Make").Import(module);
+            var makeRpcDetailsTarget = rpcDetails.GetMethod("MakeWithTarget").Import(module);
+
+            PushRPCSignatureMakeArgs(code, rpc);
 
             if (rpc.Signature.type == RPCType.TargetRPC)
             {
@@ -3738,6 +3742,8 @@ namespace PurrNet.Codegen
                                     false);
                             }
 
+                            if (_rpcMethods.Count > 0)
+                                GenerateRPCManifestProcessor.EmitRegistration(module, type, _rpcMethods, idOffset);
                         }
                         catch (Exception e)
                         {
