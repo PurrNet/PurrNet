@@ -1,3 +1,10 @@
+# [1.20.0-beta.114](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.113...v1.20.0-beta.114) (2026-04-30)
+
+
+### Bug Fixes
+
+* update NetworkTransform.cs _cachedIsController when OnOwnerDisconnected ([b67aa48](https://github.com/PurrNet/PurrNet/commit/b67aa48ebdd82a2dd79df09d6ee584841f93977e))
+
 # [1.20.0-beta.113](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.112...v1.20.0-beta.113) (2026-04-30)
 
 
