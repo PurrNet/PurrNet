@@ -12,7 +12,6 @@ public class StaticRpcTest : PlayerIdentity<StaticRpcTest>
     [SerializeField] Material _setMat;
     [SerializeField] List<ulong> _players;
 
-
     [PurrButton("Set Mat"), UsedImplicitly]
     private void SetMaterial()
     {
@@ -57,6 +56,13 @@ public class StaticRpcTest : PlayerIdentity<StaticRpcTest>
 
     [TargetRpc(requireServer: false)]
     private Task TargetRpc(PlayerID player, RPCInfo info = default)
+    {
+        Debug.Log($"TargetRpc from {info.sender}");
+        return Task.CompletedTask;
+    }
+
+    [TargetRpc(requireServer: false)]
+    private static Task TargetRpcStatic(PlayerID player, RPCInfo info = default)
     {
         Debug.Log($"TargetRpc from {info.sender}");
         return Task.CompletedTask;

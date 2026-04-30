@@ -143,7 +143,7 @@ namespace PurrNet.Packing
 
             if (!Hasher.TryGetType(hash, out var type))
             {
-                PurrLogger.LogError($"Type with hash '{hash}' not found.");
+                Hasher.PrintHashError(hash);
                 value = default;
                 return;
             }

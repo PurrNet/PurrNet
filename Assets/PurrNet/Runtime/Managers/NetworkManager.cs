@@ -611,6 +611,7 @@ namespace PurrNet
             _hasGeneratedAlready = true;
 
             Hasher.ClearState();
+            Manifest.Clear();
             CallAllRegisters();
         }
 

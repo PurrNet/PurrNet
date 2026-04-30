@@ -738,7 +738,7 @@ namespace PurrNet.Modules
         {
             if (!Hasher.TryGetType(data.header.typeHash, out var type))
             {
-                PurrLogger.LogError($"Failed to resolve type with hash {data.header.typeHash}.");
+                Hasher.PrintHashError(data.header.typeHash);
                 return;
             }
 
