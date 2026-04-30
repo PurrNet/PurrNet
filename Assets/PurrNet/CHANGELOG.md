@@ -1,3 +1,10 @@
+# [1.20.0-beta.113](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.112...v1.20.0-beta.113) (2026-04-30)
+
+
+### Features
+
+* better diagnosis logs for missmatching types and for RPC exceptions ([92470e3](https://github.com/PurrNet/PurrNet/commit/92470e33ac1fd1274ff4b3958456318473fecb0c))
+
 # [1.20.0-beta.112](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.111...v1.20.0-beta.112) (2026-04-29)
 
 
