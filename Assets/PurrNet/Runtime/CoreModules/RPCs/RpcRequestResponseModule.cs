@@ -108,7 +108,7 @@ namespace PurrNet.Modules
                     }
                     catch (Exception e)
                     {
-                        PurrLogger.LogError($"Error while processing RPC response: {e.Message}\n{e.StackTrace}");
+                        PurrLogger.LogError($"Error while processing RPC response: {e}");
                     }
 
                     break;
@@ -411,7 +411,7 @@ namespace PurrNet.Modules
             }
             catch (Exception e)
             {
-                PurrLogger.LogError($"Failed to send empty RPC response: {e.Message}\n{e.StackTrace}");
+                PurrLogger.LogError($"Failed to send empty RPC response: {e}");
             }
         }
 
@@ -437,7 +437,7 @@ namespace PurrNet.Modules
 
             if (caught != null)
             {
-                PurrLogger.LogError($"Error while processing RPC coroutine: {caught.Message}\n{caught.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC coroutine: {caught}");
                 onError?.Invoke();
                 yield break;
             }
@@ -448,7 +448,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
                 onError?.Invoke();
             }
         }
@@ -470,7 +470,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
                 SendEmptyResponse(info, reqId, manager);
             }
         }
@@ -486,7 +486,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
                 SendEmptyResponse(info, reqId, manager);
             }
         }
@@ -580,7 +580,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
             }
         }
 
@@ -623,7 +623,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
             }
         }
 
@@ -673,7 +673,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
             }
         }
 
@@ -688,7 +688,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
                 SendEmptyResponse(info, reqId, manager);
             }
         }
@@ -749,7 +749,7 @@ namespace PurrNet.Modules
             }
             catch (Exception ex)
             {
-                PurrLogger.LogError($"Error while processing RPC response: {ex.Message}\n{ex.StackTrace}");
+                PurrLogger.LogError($"Error while processing RPC response: {ex}");
             }
         }
 
