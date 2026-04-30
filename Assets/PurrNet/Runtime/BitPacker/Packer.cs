@@ -457,9 +457,7 @@ namespace PurrNet.Packing
             }
             catch (Exception e)
             {
-                PurrLogger.LogError(e.InnerException != null
-                    ? $"Failed to read value of type '{type}'.\n{e.InnerException.Message}\n{e.InnerException.StackTrace}"
-                    : $"Failed to read value of type '{type}'.\n{e.Message}\n{e.StackTrace}");
+                PurrLogger.LogError($"Failed to read value of type '{type}'.\n{e.InnerException ?? e}");
             }
         }
 
@@ -482,9 +480,7 @@ namespace PurrNet.Packing
             }
             catch (Exception e)
             {
-                PurrLogger.LogError(e.InnerException != null
-                    ? $"Failed to read value of type '{type}'.\n{e.InnerException.Message}\n{e.InnerException.StackTrace}"
-                    : $"Failed to read value of type '{type}'.\n{e.Message}\n{e.StackTrace}");
+                PurrLogger.LogError($"Failed to read value of type '{type}'.\n{e.InnerException ?? e}");
             }
         }
 

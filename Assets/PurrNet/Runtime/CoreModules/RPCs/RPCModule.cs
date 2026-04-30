@@ -503,7 +503,7 @@ namespace PurrNet.Modules
                     case RPCType.ServerRPC:
                         break;
                     default:
-                        PurrLogger.LogError($"Unexpected RPC type {data.sig.type} in SendAnyChildRPCs.");
+                        PurrLogger.LogError($"Unexpected RPC type {data.sig.type} in SendAnyChildRPCs (rpcId={data.rpcid}, name={data.sig.rpcName}).");
                         break;
                 }
             }
@@ -541,7 +541,7 @@ namespace PurrNet.Modules
                     case RPCType.ServerRPC:
                         break;
                     default:
-                        PurrLogger.LogError($"Unexpected RPC type {data.sig.type} in SendAnyInstanceRPCs.");
+                        PurrLogger.LogError($"Unexpected RPC type {data.sig.type} in SendAnyInstanceRPCs (rpcId={data.rpcid}, name={data.sig.rpcName}).");
                         break;
                 }
             }
@@ -570,7 +570,7 @@ namespace PurrNet.Modules
                     case RPCType.ServerRPC:
                         break;
                     default:
-                        PurrLogger.LogError($"Unexpected RPC type {data.sig.type} in SendAnyStaticRPCs.");
+                        PurrLogger.LogError($"Unexpected RPC type {data.sig.type} in SendAnyStaticRPCs (rpcId={data.rpcid}, name={data.sig.rpcName}).");
                         break;
                 }
             }
@@ -790,7 +790,7 @@ namespace PurrNet.Modules
                 if (!identity.TryGetModule(packet.header.childId, out var networkClass))
                 {
                     PurrLogger.LogError(
-                        $"Can't find child with id {packet.header.childId} in identity {identity.GetType().Name}.", identity);
+                        $"Can't find child with id {packet.header.childId} (rpcId={packet.header.rpcId}) in identity {identity.GetType().Name}.", identity);
                 }
                 else
                 {
