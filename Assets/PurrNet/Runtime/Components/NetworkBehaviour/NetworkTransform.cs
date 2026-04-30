@@ -700,6 +700,10 @@ namespace PurrNet
         protected override void OnOwnerDisconnected(PlayerID ownerId)
         {
             _cachedConnectedOwner = false;
+            var wasController = _cachedIsController;
+            _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
         }
 
         public bool IsControlling(PlayerID player, bool asServer)
