@@ -280,6 +280,8 @@ var annotated_dup =
       [ "RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", null ],
       [ "RigidbodyTeleportData", "structPurrNet_1_1RigidbodyTeleportData.html", null ],
       [ "RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
+      [ "RPCManifestEntry", "structPurrNet_1_1RPCManifestEntry.html", null ],
+      [ "RPCManifestKey", "structPurrNet_1_1RPCManifestKey.html", null ],
       [ "RPCPacket", "structPurrNet_1_1RPCPacket.html", null ],
       [ "RpcRules", "structPurrNet_1_1RpcRules.html", null ],
       [ "RPCSignature", "structPurrNet_1_1RPCSignature.html", null ],
