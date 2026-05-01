@@ -135,8 +135,11 @@ namespace PurrNet
         public Quaternion rotation { get; private set; }
         public Vector3 localScale { get; private set; }
 
+        private Action _lateLateUpdateCallback;
+
         private void Awake()
         {
+            _lateLateUpdateCallback = LateLateUpdate;
             _trs = transform;
 #if UNITY_PHYSICS_3D
             _rb = GetComponent<Rigidbody>();
@@ -151,7 +154,7 @@ namespace PurrNet
 
         private void OnEnable()
         {
-            UnityLatestUpdate.onLatestUpdate += LateLateUpdate;
+            UnityLatestUpdate.onLatestUpdate += _lateLateUpdateCallback;
 
             if (_trs == null)
                 return;
@@ -171,7 +174,7 @@ namespace PurrNet
 
         private void OnDisable()
         {
-            UnityLatestUpdate.onLatestUpdate -= LateLateUpdate;
+            UnityLatestUpdate.onLatestUpdate -= _lateLateUpdateCallback;
         }
 
         protected override void OnEarlySpawn()
