@@ -1,3 +1,10 @@
+# [1.20.0-beta.115](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.114...v1.20.0-beta.115) (2026-05-01)
+
+
+### Bug Fixes
+
+* Missing using directive ([f2a6720](https://github.com/PurrNet/PurrNet/commit/f2a6720542b089c7b295afdda7a67d123c782053))
+
 # [1.20.0-beta.114](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.113...v1.20.0-beta.114) (2026-04-30)
 
 
