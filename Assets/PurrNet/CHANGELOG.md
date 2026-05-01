@@ -1,3 +1,10 @@
+# [1.20.0-beta.117](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.116...v1.20.0-beta.117) (2026-05-01)
+
+
+### Bug Fixes
+
+* useDelta for single TargetRpc ([ce695f7](https://github.com/PurrNet/PurrNet/commit/ce695f729934653be38806fd2f340d4dfd8687f4))
+
 # [1.20.0-beta.116](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.115...v1.20.0-beta.116) (2026-05-01)
 
 
