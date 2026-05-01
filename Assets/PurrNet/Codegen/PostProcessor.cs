@@ -2071,8 +2071,7 @@ namespace PurrNet.Codegen
             Instruction playersLoopEnd = null;
 
             bool hasMultipleTargets = methodRpc.Signature.type == RPCType.ObserversRPC ||
-                                      methodRpc.Signature.targetPlayerEnumerable != null ||
-                                      methodRpc.Signature.targetPlayerList != null;
+                                      methodRpc.Signature.type == RPCType.TargetRPC;
 
             bool useDeltaPacking = methodRpc.Signature.deltaPacked && methodRpc.Signature.type != RPCType.ServerRPC;
 
@@ -2103,7 +2102,11 @@ namespace PurrNet.Codegen
                         code.Append(Instruction.Create(OpCodes.Ldloc, rpcSignature));
                         code.Append(Instruction.Create(OpCodes.Call, getObservers));
                     }
-                    else code.Append(Instruction.Create(OpCodes.Call, rpcSig_getTargets));
+                    else
+                    {
+                        code.Append(Instruction.Create(OpCodes.Ldloca, rpcSignature));
+                        code.Append(Instruction.Create(OpCodes.Call, rpcSig_getTargets));
+                    }
 
                     code.Append(Instruction.Create(OpCodes.Stloc, playersList));
 

@@ -1145,7 +1145,7 @@ namespace PurrNet
 
         #region RPCs
 
-        [TargetRpc(channel: Channel.ReliableOrdered)]
+        [TargetRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
         private void SendInitialStateToObserver(PlayerID player, RigidbodyStateData data, RigidbodySettingsData settings)
         {
             if (IsController(_ownerAuth))
