@@ -281,6 +281,23 @@ namespace PurrNet
             return asServer;
         }
 
+        /// <summary>
+        /// Returns the controller of this object.
+        /// If the object has a *connected* owner, it will return the owner.
+        /// If the object doesn't have an owner, it will return the Server.
+        /// </summary>
+        /// <param name="ownerHasAuthority">Should owner be controller or is it server only</param>
+        /// <returns>The controller of this object</returns>
+
+        public PlayerID? GetController(bool ownerHasAuthority)
+        {
+            if (!ownerHasAuthority) return PlayerID.Server;
+
+            if (!hasConnectedOwner) return PlayerID.Server;
+
+            return owner;
+        }
+
         public bool hasConnectedOwner
         {
             get
@@ -317,7 +334,6 @@ namespace PurrNet
         /// If you can, cache this value for performance.
         /// </summary>
         public PlayerID? owner => isServer ? internalOwnerServer : internalOwnerClient;
-        public PlayerID? controller => owner == null ? PlayerID.Server : owner;
 
         public NetworkManager networkManager { get; private set; }
 
