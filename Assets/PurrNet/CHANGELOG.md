@@ -1,3 +1,10 @@
+# [1.20.0-beta.116](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.115...v1.20.0-beta.116) (2026-05-01)
+
+
+### Bug Fixes
+
+* Network RB initial settings strip delta packing ([4d08208](https://github.com/PurrNet/PurrNet/commit/4d082084989d7370894f4cabfa5e94c63bdb7c9b))
+
 # [1.20.0-beta.115](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.114...v1.20.0-beta.115) (2026-05-01)
 
 
