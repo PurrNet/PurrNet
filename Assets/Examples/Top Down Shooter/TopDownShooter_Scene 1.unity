@@ -250,6 +250,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &19171040
 MeshFilter:
@@ -481,14 +482,14 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 358453800}
   m_Enabled: 1
-  serializedVersion: 11
+  serializedVersion: 12
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 2.5
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
-  m_CookieSize: 10
+  m_CookieSize2D: {x: 10, y: 10}
   m_Shadows:
     m_Type: 2
     m_Resolution: -1
@@ -688,7 +689,6 @@ GameObject:
   - component: {fileID: 414341344}
   - component: {fileID: 414341345}
   - component: {fileID: 414341346}
-  - component: {fileID: 414341347}
   m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
@@ -764,6 +764,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &414341342
 MeshFilter:
@@ -851,30 +852,10 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
---- !u!114 &414341347
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 414341339}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 00618773ad814134fb6df0e166ad0b0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.Issues.RpcIssue::PrintNetworklife
-  _isSetup: 0
-  _prefabId: -2147483648
-  _componentIndex: -2147483648
-  _shouldBePooled: 0
-  _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
-  _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
-  _earlySpawnPrint: 1
-  _spawnPrint: 1
-  _ownerPrint: 1
+  prefab: {fileID: 0}
+  p_parent: {fileID: 0}
+  pos: {x: 0, y: 0, z: 0}
+  rot: {x: 0, y: 0, z: 0}
 --- !u!1001 &507608532
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1098,6 +1079,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &519672111
 MeshFilter:
@@ -2135,11 +2117,13 @@ MonoBehaviour:
   _dontDestroyOnLoad: 0
   _transport: {fileID: 1216416902}
   _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
+  _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 1216416905}
   _tickRate: 20
+  _mtuExceededBehaviour: 1
   _patchLingeringProcessBug: 1
 --- !u!4 &1216416898
 Transform:
@@ -2168,11 +2152,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc64ff707d914a64e95f2ac0bf554c09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _automaticCloudSetups:
+    _adaptToEdgegap: 1
   _serverPort: 69
   _maxConnections: 100
   _address: 127.0.0.1
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!114 &1216416903
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2185,8 +2178,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de4778b5edf2476448bcb3ac3d9c35d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _automaticCloudSetups:
+    _adaptToEdgegap: 1
   _serverPort: 5001
   _maxConnections: 100
+  _forceIpv4: 0
   _address: localhost
   _query: 
   _path: 
@@ -2224,6 +2220,7 @@ MonoBehaviour:
   checkInterval: 0.1
   placement: 1
   _displayType: 11
+  _displayTarget: 6
   fontSize: 13
   textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &1216416907
@@ -2238,11 +2235,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 332e746c3c3253246aacad4d5559f1fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.Transports.PurrTransport
-  _masterServer: https://purrbalancer.riten.dev:8080/
+  _masterServer: https://purrtransport.purrservers.com/
   _roomName: d183be76477d40b5b16d5df51ffec9ff
   _region: eu-central
   _host: eu1.purrlay.riten.dev
+  _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!1001 &1312733901
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2437,6 +2442,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &1326095572
 MeshFilter:
@@ -2577,6 +2583,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &1331183421
 MeshFilter:
@@ -2617,7 +2624,6 @@ GameObject:
   - component: {fileID: 1353588534}
   - component: {fileID: 1353588536}
   - component: {fileID: 1353588537}
-  - component: {fileID: 1353588535}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -2650,6 +2656,7 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 1
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -2724,6 +2731,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &1353588532
 MeshFilter:
@@ -2762,27 +2770,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _movement: {x: 2, y: 0, z: 0}
   _speed: 0.2
---- !u!114 &1353588535
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1353588528}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5db08e776b1de434baa9cd6dcb5376d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _isSetup: 0
-  _prefabId: -2147483648
-  _componentIndex: -2147483648
-  _shouldBePooled: 0
-  _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
-  _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
 --- !u!114 &1353588536
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3489,6 +3476,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &1815343918
 MeshFilter:
