@@ -1,3 +1,10 @@
+# [1.20.0-beta.118](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.117...v1.20.0-beta.118) (2026-05-02)
+
+
+### Bug Fixes
+
+* dont save PurrNet version in the ApplicationConstants.json to avoid git changes for not much value ([f59651f](https://github.com/PurrNet/PurrNet/commit/f59651f37eab736cf4b0fd5c97168270a984c795))
+
 # [1.20.0-beta.117](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.116...v1.20.0-beta.117) (2026-05-01)
 
 
