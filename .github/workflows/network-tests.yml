@@ -26,8 +26,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Library
-        uses: actions/cache@v4
+      - name: Restore Library cache
+        id: cache-library
+        uses: actions/cache/restore@v4
         with:
           path: Library
           key: Library-PurrNet-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
@@ -48,10 +49,17 @@ jobs:
           # Mono is faster to build than IL2CPP; switch if you specifically need to test IL2CPP.
           unityVersion: auto
 
+      - name: Save Library cache
+        if: always() && steps.cache-library.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.cache-library.outputs.cache-primary-key }}
+
       - name: Inspect build output
         run: |
           ls -la build/StandaloneLinux64/
-          chmod +x build/StandaloneLinux64/PurrNetTests.x86_64
+          chmod +x build/StandaloneLinux64/PurrNetTests
 
       - name: Run scenarios (1 server + N clients)
         env:
@@ -59,7 +67,7 @@ jobs:
           CONNECT_DELAY: ${{ inputs.connectionDelaySeconds }}
         run: |
           set -u
-          BIN="$PWD/build/StandaloneLinux64/PurrNetTests.x86_64"
+          BIN="$PWD/build/StandaloneLinux64/PurrNetTests"
           RESULTS_DIR="$PWD/test-results"
           LOGS_DIR="$PWD/test-logs"
           mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
