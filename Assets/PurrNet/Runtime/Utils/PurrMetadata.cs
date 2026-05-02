@@ -12,15 +12,13 @@ namespace PurrNet.Utils
     {
         public const string PACKAGE_JSON_GUID = "0ec978dbed50a6f4b9a57580867f1fae";
 
-        private static string _version = "v?";
-
-        public static string version => _version;
+        public static string version { get; private set; } = "v?";
 
 #if UNITY_EDITOR
 
         static PurrMetadata()
         {
-            _version = ReadFromPackageJson() ?? "v?";
+            version = ReadFromPackageJson() ?? "v?";
         }
 
         static string ReadFromPackageJson()
@@ -42,7 +40,10 @@ namespace PurrNet.Utils
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration), Preserve]
         static void Init() { }
 
-        static void SetBakedVersion(string version) => _version = version;
+        static void SetBakedVersion(string version)
+        {
+            PurrMetadata.version = version;
+        }
 #endif
     }
 }
