@@ -12,7 +12,7 @@ on:
         required: true
         default: "5"
       timeoutMinutes:
-        description: "Hard timeout for the whole job"
+        description: "Hard timeout for the whole job, in minutes"
         required: true
         default: "30"
 
