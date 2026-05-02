@@ -34,12 +34,6 @@ jobs:
           restore-keys: |
             Library-PurrNet-
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune -a -f || true
-          df -h
-
       - name: Build StandaloneLinux64 player
         uses: game-ci/unity-builder@v4
         env:
