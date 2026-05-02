@@ -1,0 +1,164 @@
+name: Network Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      clientCount:
+        description: "Number of client processes to spawn"
+        required: true
+        default: "2"
+      connectionDelaySeconds:
+        description: "Seconds to wait after server starts before launching clients"
+        required: true
+        default: "5"
+      timeoutMinutes:
+        description: "Hard timeout for the whole job"
+        required: true
+        default: "30"
+
+jobs:
+  network-tests:
+    name: Build and run network test scenarios
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeoutMinutes) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-PurrNet-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-PurrNet-
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -a -f || true
+          df -h
+
+      - name: Build StandaloneLinux64 player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: StandaloneLinux64
+          buildName: PurrNetTests
+          buildsPath: build
+          # Mono is faster to build than IL2CPP; switch if you specifically need to test IL2CPP.
+          unityVersion: auto
+
+      - name: Inspect build output
+        run: |
+          ls -la build/StandaloneLinux64/
+          chmod +x build/StandaloneLinux64/PurrNetTests.x86_64
+
+      - name: Run scenarios (1 server + N clients)
+        env:
+          CLIENT_COUNT: ${{ inputs.clientCount }}
+          CONNECT_DELAY: ${{ inputs.connectionDelaySeconds }}
+        run: |
+          set -u
+          BIN="$PWD/build/StandaloneLinux64/PurrNetTests.x86_64"
+          RESULTS_DIR="$PWD/test-results"
+          LOGS_DIR="$PWD/test-logs"
+          mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
+
+          echo "::group::Launching server"
+          "$BIN" -batchmode -nographics \
+            -role server -count "$CLIENT_COUNT" \
+            -results "$RESULTS_DIR/server.json" \
+            -logFile "$LOGS_DIR/server.log" &
+          SERVER_PID=$!
+          echo "Server PID: $SERVER_PID"
+          echo "::endgroup::"
+
+          sleep "$CONNECT_DELAY"
+
+          if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo "::error::Server process died before clients could start"
+            tail -n 200 "$LOGS_DIR/server.log" || true
+            exit 1
+          fi
+
+          CLIENT_PIDS=()
+          for i in $(seq 1 "$CLIENT_COUNT"); do
+            echo "::group::Launching client $i"
+            "$BIN" -batchmode -nographics \
+              -role client \
+              -results "$RESULTS_DIR/client-$i.json" \
+              -logFile "$LOGS_DIR/client-$i.log" &
+            PID=$!
+            CLIENT_PIDS+=("$PID")
+            echo "Client $i PID: $PID"
+            echo "::endgroup::"
+          done
+
+          FAIL=0
+
+          for pid in "${CLIENT_PIDS[@]}"; do
+            if wait "$pid"; then
+              echo "Client PID $pid exited 0"
+            else
+              code=$?
+              echo "::error::Client PID $pid exited $code"
+              FAIL=1
+            fi
+          done
+
+          if wait "$SERVER_PID"; then
+            echo "Server exited 0"
+          else
+            code=$?
+            echo "::error::Server exited $code"
+            FAIL=1
+          fi
+
+          echo "::group::Result files"
+          for f in "$RESULTS_DIR"/*.json; do
+            [ -e "$f" ] || continue
+            echo "----- $f -----"
+            cat "$f"
+            echo
+          done
+          echo "::endgroup::"
+
+          # Cross-check the JSON: any scenario with success=false fails the run.
+          if command -v jq >/dev/null 2>&1; then
+            for f in "$RESULTS_DIR"/*.json; do
+              [ -e "$f" ] || continue
+              if jq -e 'any(.[]; .result.success == false)' "$f" >/dev/null; then
+                echo "::error::$f contains a failed scenario"
+                FAIL=1
+              fi
+            done
+          fi
+
+          exit $FAIL
+
+      - name: Tail logs on failure
+        if: failure()
+        run: |
+          for f in test-logs/*.log; do
+            [ -e "$f" ] || continue
+            echo "::group::$f (last 200 lines)"
+            tail -n 200 "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Upload test results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-test-artifacts
+          path: |
+            test-results/
+            test-logs/
+          if-no-files-found: warn
+          retention-days: 14
