@@ -637,7 +637,7 @@ namespace PurrNet
             if (_ready)
                 return;
 
-            version ??= ApplicationConstants.TryGet("version", out var v) ? v : "v?";
+            version ??= PurrMetadata.version;
 
             if (main && main != this)
             {

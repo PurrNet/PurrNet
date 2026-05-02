@@ -3552,6 +3552,9 @@ namespace PurrNet.Codegen
                         if (types[t].FullName == typeof(ApplicationConstants).FullName)
                             BakeApplicationConstants.Process(types[t], isEditor, messages);
 
+                        if (types[t].FullName == typeof(PurrMetadata).FullName)
+                            BakePurrVersion.Process(types[t], isEditor, messages);
+
                         if (types[t].HasInterfaces)
                         {
                             try

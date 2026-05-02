@@ -10,5 +10,7 @@ public class PrintConstants : MonoBehaviour
         {
             GUILayout.Label($"{key}: {val}");
         }
+
+        GUILayout.Label($"NEW_VER: {PurrMetadata.version}");
     }
 }
