@@ -211,6 +211,9 @@ public class Bootstrap : Scenario
                     dataReceived = _dataReceived
                 };
 
+                if (i == _scenarios.Length - 1)
+                    break;
+
                 try
                 {
                     await ScenarioBarrier.Wait(ctx, i, _barrierTimeoutSeconds);
@@ -229,20 +232,24 @@ public class Bootstrap : Scenario
         }
         finally
         {
+            bool anyResultFailed = false;
             for (var i = 0; i < _results.Length; i++)
             {
-                if (!_results[i].HasValue)
-                    anyFailed = true;
+                if (!_results[i].HasValue || !_results[i].Value.result.success)
+                {
+                    anyResultFailed = true;
+                    break;
+                }
             }
 
             WriteResults();
 
 #if UNITY_EDITOR
-            if (anyFailed)
+            if (anyResultFailed || anyFailed)
                 Debug.LogError("Some tests failed to run.");
             UnityEditor.EditorApplication.isPlaying = false;
 #else
-            Application.Quit(anyFailed ? -1 : 0);
+            Application.Quit(anyResultFailed ? -1 : 0);
 #endif
         }
     }
