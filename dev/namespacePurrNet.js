@@ -114,6 +114,7 @@ var namespacePurrNet =
     [ "RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
     [ "RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", null ],
     [ "RigidbodyTeleportData", "structPurrNet_1_1RigidbodyTeleportData.html", null ],
+    [ "RpcDispatchException", "classPurrNet_1_1RpcDispatchException.html", null ],
     [ "RpcException", "classPurrNet_1_1RpcException.html", null ],
     [ "RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
     [ "RPCManifestEntry", "structPurrNet_1_1RPCManifestEntry.html", null ],

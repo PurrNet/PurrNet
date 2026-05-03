@@ -36,6 +36,7 @@ var hierarchy =
     [ "Exception", null, [
       [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ],
       [ "PurrNet.RpcException", "classPurrNet_1_1RpcException.html", [
+        [ "PurrNet.RpcDispatchException", "classPurrNet_1_1RpcDispatchException.html", null ],
         [ "PurrNet.RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ]
       ] ]
     ] ],

@@ -115,6 +115,8 @@ Public Member Functions</h2></td></tr>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>AddProvider</b> (<a class="el" href="interfacePurrNet_1_1IPrefabProvider.html">IPrefabProvider</a> provider)</td></tr>
 <tr class="memdesc:acc5487aa7a6c541b64fd2c5bf7573639"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a provider to the composite. Providers must be added in the same order on all network peers for deterministic ID assignment.  <br /></td></tr>
 <tr class="separator:acc5487aa7a6c541b64fd2c5bf7573639"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace178e1a2a32a66d375974ac4b588a27"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1CompositePrefabProvider.html#ace178e1a2a32a66d375974ac4b588a27">AddRuntimePrefab</a> (string uniqueName, GameObject prefab, bool pooled=false, int warmup=5)</td></tr>
+<tr class="separator:ace178e1a2a32a66d375974ac4b588a27"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a918bb5bf1eb9a21bfed84460b30241"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1CompositePrefabProvider.html#a7a918bb5bf1eb9a21bfed84460b30241">Refresh</a> ()</td></tr>
 <tr class="memdesc:a7a918bb5bf1eb9a21bfed84460b30241"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rebuilds the lookup from all added providers. Must be called after all providers are added and individually refreshed   <a href="classPurrNet_1_1CompositePrefabProvider.html#a7a918bb5bf1eb9a21bfed84460b30241">More...</a><br /></td></tr>
 <tr class="separator:a7a918bb5bf1eb9a21bfed84460b30241"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -132,6 +134,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabData</b> 
 <tr class="memitem:aebb4c28c99a6d354ac98feaba7de0005"><td class="memItemLeft" align="right" valign="top"><a id="aebb4c28c99a6d354ac98feaba7de0005" name="aebb4c28c99a6d354ac98feaba7de0005"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabData</b> (GameObject prefab, out <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> prefabData)</td></tr>
 <tr class="separator:aebb4c28c99a6d354ac98feaba7de0005"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6cfcec7a3859b93c0118e6032eea05c1"><td class="memItemLeft" align="right" valign="top"><a id="a6cfcec7a3859b93c0118e6032eea05c1" name="a6cfcec7a3859b93c0118e6032eea05c1"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>AddRuntimePrefab</b> (string uniqueName, GameObject prefab, bool pooled=false, int warmup=5)</td></tr>
+<tr class="separator:a6cfcec7a3859b93c0118e6032eea05c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ade974e6d0a4ee7c9292c9e2153908d09"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1IPrefabProvider.html#ade974e6d0a4ee7c9292c9e2153908d09">Refresh</a> ()</td></tr>
 <tr class="separator:ade974e6d0a4ee7c9292c9e2153908d09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae41372d78271303cfa8d7f2b933c4616"><td class="memItemLeft" align="right" valign="top"><a id="ae41372d78271303cfa8d7f2b933c4616" name="ae41372d78271303cfa8d7f2b933c4616"></a>
@@ -151,6 +156,48 @@ IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData
 <tr class="separator:a8f1214b6fbcc8cc7577d675df6d5cf32 inherit properties_interfacePurrNet_1_1IPrefabProvider"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="ace178e1a2a32a66d375974ac4b588a27" name="ace178e1a2a32a66d375974ac4b588a27"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ace178e1a2a32a66d375974ac4b588a27">&#9670;&#160;</a></span>AddRuntimePrefab()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.CompositePrefabProvider.AddRuntimePrefab </td>
+          <td>(</td>
+          <td class="paramtype">string&#160;</td>
+          <td class="paramname"><em>uniqueName</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">GameObject&#160;</td>
+          <td class="paramname"><em>prefab</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>pooled</em> = <code>false</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>warmup</em> = <code>5</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IPrefabProvider.html">PurrNet.IPrefabProvider</a>.</p>
+
+</div>
+</div>
 <a id="a485031cfb09866591787ce67f88fd0f5" name="a485031cfb09866591787ce67f88fd0f5"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a485031cfb09866591787ce67f88fd0f5">&#9670;&#160;</a></span>LoadPrefabAsync()</h2>
 
