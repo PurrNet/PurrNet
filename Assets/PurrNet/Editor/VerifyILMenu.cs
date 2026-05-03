@@ -90,7 +90,11 @@ namespace PurrNet.Editor
             {
                 EditorUtility.ClearProgressBar();
                 sw.Stop();
-                try { if (File.Exists(responseFile)) File.Delete(responseFile); } catch { }
+                try { if (File.Exists(responseFile)) File.Delete(responseFile); }
+                catch
+                {
+                    // ignored
+                }
             }
 
             if (totalAssembliesWithErrors == 0)
@@ -154,7 +158,8 @@ namespace PurrNet.Editor
             if (!Directory.Exists(path)) return;
             try
             {
-                if (Directory.EnumerateFiles(path, "*.dll", SearchOption.TopDirectoryOnly).GetEnumerator().MoveNext())
+                using var enumerator = Directory.EnumerateFiles(path, "*.dll", SearchOption.TopDirectoryOnly).GetEnumerator();
+                if (enumerator.MoveNext())
                     set.Add(path);
             }
             catch { /* ignore unreadable dirs */ }
