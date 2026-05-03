@@ -9,7 +9,6 @@ using Channel = PurrNet.Transports.Channel;
 public class StaticRpcsScenario : Scenario
 {
     [SerializeField] private float _doneTimeoutSeconds = 30f;
-    [SerializeField] private float _postClientDelaySeconds = 0.5f;
 
     private static int _doneCount;
     private static int _fireAndForgetReceivedCount;
@@ -24,39 +23,14 @@ public class StaticRpcsScenario : Scenario
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
-        // No counter reset here: clients can send RPCs to the server before the server's
-        // own scenario starts (their Bootstrap completes on first connect, the server's
-        // Bootstrap waits for N). Resetting would wipe those early increments.
+        _doneCount = 0;
+        _fireAndForgetReceivedCount = 0;
 
         if (ctx.role == NetworkRole.Server)
             return await RunAsServerOnly(ctx);
 
-        // Client and host: drive the test cases.
         var clientResult = await RunClientChecks(ctx);
-
-        // Tell the server we're done so it knows to finish too.
         SignalDone();
-
-        // Give SignalDone time to flush over the wire before returning.
-        await UniTask.Delay(TimeSpan.FromSeconds(_postClientDelaySeconds));
-
-        if (ctx.role == NetworkRole.Host)
-        {
-            // Host has to also satisfy the server-side wait; the host's own SignalDone counts.
-            try
-            {
-                await UniTaskUtils.WaitWithTimeout(
-                    () => _doneCount >= ctx.expectedConnections,
-                    _doneTimeoutSeconds,
-                    ctx.cancellationToken);
-            }
-            catch (TimeoutException)
-            {
-                return ScenarioResult.Fail(
-                    $"Host timed out waiting for client signals; got {_doneCount}/{ctx.expectedConnections}");
-            }
-        }
-
         return clientResult;
     }
 

@@ -188,6 +188,8 @@ public class Bootstrap : Scenario
                 if (!result.success)
                     anyFailed = true;
 
+                await UniTask.WaitForSeconds(_timeBetweenScenarios);
+
                 _results[i] = new ScenarioDetails
                 {
                     result = result,
@@ -196,8 +198,6 @@ public class Bootstrap : Scenario
                     dataReceived = _dataReceived
                 };
 
-                // Sync all processes before advancing so a fast finisher can't
-                // start the next scenario while others are still running this one.
                 try
                 {
                     await ScenarioBarrier.Wait(ctx, i, _barrierTimeoutSeconds);
@@ -207,8 +207,6 @@ public class Bootstrap : Scenario
                     Debug.LogError($"[Bootstrap] Barrier {i} timed out after `{scenario.name}`");
                     anyFailed = true;
                 }
-
-                await UniTask.WaitForSeconds(_timeBetweenScenarios);
             }
         }
         catch (Exception e)
