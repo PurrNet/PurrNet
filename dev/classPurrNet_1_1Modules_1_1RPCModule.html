@@ -198,8 +198,8 @@ static bool&#160;</td><td class="memItemRight" valign="bottom"><b>ArePlayersEqua
 <tr class="memitem:a3e504f24d0f48bb6db07bc02d06c01ae"><td class="memItemLeft" align="right" valign="top"><a id="a3e504f24d0f48bb6db07bc02d06c01ae" name="a3e504f24d0f48bb6db07bc02d06c01ae"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>SendStaticRPC</b> (<a class="el" href="structPurrNet_1_1StaticRPCPacket.html">StaticRPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
 <tr class="separator:a3e504f24d0f48bb6db07bc02d06c01ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad47c87330c1a89bcabdbddd06efe6b1a"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html#ad47c87330c1a89bcabdbddd06efe6b1a">ValidateReceivingStaticRPC&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, T data, bool asServer)</td></tr>
-<tr class="separator:ad47c87330c1a89bcabdbddd06efe6b1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaae979c6f57cca087d6acf61d8cb7cff"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html#aaae979c6f57cca087d6acf61d8cb7cff">ValidateReceivingStaticRPC&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, T data, bool asServer, uint requestId, bool isAwaitable)</td></tr>
+<tr class="separator:aaae979c6f57cca087d6acf61d8cb7cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e764753ace4120b21a463869030c18a"><td class="memItemLeft" align="right" valign="top"><a id="a6e764753ace4120b21a463869030c18a" name="a6e764753ace4120b21a463869030c18a"></a>
 static object&#160;</td><td class="memItemRight" valign="bottom"><b>CallStaticGeneric</b> (RuntimeTypeHandle type, string methodName, <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
 <tr class="separator:a6e764753ace4120b21a463869030c18a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -278,8 +278,8 @@ static RPCPostProcessDelegate&#160;</td><td class="memItemRight" valign="bottom"
 
 </div>
 </div>
-<a id="ad47c87330c1a89bcabdbddd06efe6b1a" name="ad47c87330c1a89bcabdbddd06efe6b1a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad47c87330c1a89bcabdbddd06efe6b1a">&#9670;&#160;</a></span>ValidateReceivingStaticRPC&lt; T &gt;()</h2>
+<a id="aaae979c6f57cca087d6acf61d8cb7cff" name="aaae979c6f57cca087d6acf61d8cb7cff"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaae979c6f57cca087d6acf61d8cb7cff">&#9670;&#160;</a></span>ValidateReceivingStaticRPC&lt; T &gt;()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -309,7 +309,19 @@ static RPCPostProcessDelegate&#160;</td><td class="memItemRight" valign="bottom"
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>asServer</em>&#160;</td>
+          <td class="paramname"><em>asServer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint&#160;</td>
+          <td class="paramname"><em>requestId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>isAwaitable</em>&#160;</td>
         </tr>
         <tr>
           <td></td>

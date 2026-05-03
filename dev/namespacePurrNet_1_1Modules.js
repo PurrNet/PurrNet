@@ -44,6 +44,7 @@ var namespacePurrNet_1_1Modules =
     [ "RPCBatch", "classPurrNet_1_1Modules_1_1RPCBatch.html", null ],
     [ "RPCModule", "classPurrNet_1_1Modules_1_1RPCModule.html", null ],
     [ "RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],
+    [ "RpcRejection", "structPurrNet_1_1Modules_1_1RpcRejection.html", null ],
     [ "RpcRequest", "structPurrNet_1_1Modules_1_1RpcRequest.html", null ],
     [ "RpcRequestResponseModule", "classPurrNet_1_1Modules_1_1RpcRequestResponseModule.html", null ],
     [ "RpcResponse", "structPurrNet_1_1Modules_1_1RpcResponse.html", null ],

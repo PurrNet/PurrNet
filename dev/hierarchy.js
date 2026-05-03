@@ -34,7 +34,10 @@ var hierarchy =
     [ "PurrNet.Pooling.DisposableList< TKey >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< Transform >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "Exception", null, [
-      [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ]
+      [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ],
+      [ "PurrNet.RpcException", "classPurrNet_1_1RpcException.html", [
+        [ "PurrNet.RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ]
+      ] ]
     ] ],
     [ "PurrNet.Modules.GameObjectFrameworkPiece", "structPurrNet_1_1Modules_1_1GameObjectFrameworkPiece.html", null ],
     [ "PurrNet.Pooling.GenericPool< T >", "classPurrNet_1_1Pooling_1_1GenericPool.html", [
@@ -478,6 +481,7 @@ var hierarchy =
     [ "PurrNet.RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
     [ "PurrNet.RPCManifestEntry", "structPurrNet_1_1RPCManifestEntry.html", null ],
     [ "PurrNet.Modules.RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],
+    [ "PurrNet.Modules.RpcRejection", "structPurrNet_1_1Modules_1_1RpcRejection.html", null ],
     [ "PurrNet.Modules.RpcRequest", "structPurrNet_1_1Modules_1_1RpcRequest.html", null ],
     [ "PurrNet.Modules.RpcResponse", "structPurrNet_1_1Modules_1_1RpcResponse.html", null ],
     [ "PurrNet.RpcRules", "structPurrNet_1_1RpcRules.html", null ],

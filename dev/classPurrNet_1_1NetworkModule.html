@@ -216,8 +216,8 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a6fc0a87d284a7aa2ccf42112bffbab61"><td class="memItemLeft" align="right" valign="top"><a id="a6fc0a87d284a7aa2ccf42112bffbab61" name="a6fc0a87d284a7aa2ccf42112bffbab61"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SendRPC</b> (<a class="el" href="structPurrNet_1_1ChildRPCPacket.html">ChildRPCPacket</a> packet, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature)</td></tr>
 <tr class="separator:a6fc0a87d284a7aa2ccf42112bffbab61"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6ab1241a4970a9947f37b6642af648ae"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a6ab1241a4970a9947f37b6642af648ae">ValidateReceivingRPC&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, T data, bool asServer)</td></tr>
-<tr class="separator:a6ab1241a4970a9947f37b6642af648ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7acc5e507f75a4e7dc084ac0a5956429"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#a7acc5e507f75a4e7dc084ac0a5956429">ValidateReceivingRPC&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1RPCInfo.html">RPCInfo</a> info, <a class="el" href="structPurrNet_1_1RPCSignature.html">RPCSignature</a> signature, T data, bool asServer, uint requestId, bool isAwaitable)</td></tr>
+<tr class="separator:a7acc5e507f75a4e7dc084ac0a5956429"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3256ce7a0da3ceb674a31de08ef4cf69"><td class="memItemLeft" align="right" valign="top"><a id="a3256ce7a0da3ceb674a31de08ef4cf69" name="a3256ce7a0da3ceb674a31de08ef4cf69"></a>
 object&#160;</td><td class="memItemRight" valign="bottom"><b>CallGeneric</b> (string methodName, <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
 <tr class="separator:a3256ce7a0da3ceb674a31de08ef4cf69"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -636,8 +636,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
 
 </div>
 </div>
-<a id="a6ab1241a4970a9947f37b6642af648ae" name="a6ab1241a4970a9947f37b6642af648ae"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6ab1241a4970a9947f37b6642af648ae">&#9670;&#160;</a></span>ValidateReceivingRPC&lt; T &gt;()</h2>
+<a id="a7acc5e507f75a4e7dc084ac0a5956429" name="a7acc5e507f75a4e7dc084ac0a5956429"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7acc5e507f75a4e7dc084ac0a5956429">&#9670;&#160;</a></span>ValidateReceivingRPC&lt; T &gt;()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -667,7 +667,19 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>asServer</em>&#160;</td>
+          <td class="paramname"><em>asServer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint&#160;</td>
+          <td class="paramname"><em>requestId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>isAwaitable</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
