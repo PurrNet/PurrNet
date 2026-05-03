@@ -1,3 +1,10 @@
+# [1.20.0-beta.122](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.121...v1.20.0-beta.122) (2026-05-03)
+
+
+### Bug Fixes
+
+* async RPCs, add a fail fast path ([365bcda](https://github.com/PurrNet/PurrNet/commit/365bcda32738909f1d892c43c28061848e76401d))
+
 # [1.20.0-beta.121](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.120...v1.20.0-beta.121) (2026-05-03)
 
 
