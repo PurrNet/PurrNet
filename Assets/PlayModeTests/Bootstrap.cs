@@ -42,6 +42,17 @@ public class Bootstrap : Scenario
             return;
         }
 
+        var ctx = new ScenarioContext
+        {
+            role = _role,
+            expectedConnections = _expectedConnections,
+            networkManager = _networkManager,
+            cancellationToken = _runCts.Token
+        };
+
+        for (var i = 0; i < _scenarios.Length; i++)
+            _scenarios[i].Setup(ctx, _networkManager);
+
         SubscribeToDataSent(_networkManager.transport.transport);
 
         RunScenarios();
