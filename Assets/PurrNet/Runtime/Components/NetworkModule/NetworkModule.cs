@@ -196,13 +196,13 @@ namespace PurrNet
 #endif
 
         [UsedByIL]
-        protected bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
+        protected bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
             Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, parent);
 #endif
-            return parent && parent.ValidateIncomingRPC(info, signature, data, asServer);
+            return parent && parent.ValidateIncomingRPC(info, signature, data, asServer, requestId, isAwaitable);
         }
 
         [UsedByIL]

@@ -28,7 +28,7 @@ MonoBehaviour:
   _defaultRpcRules:
     ignoreRequireServerAttribute: 0
     ignoreRequireOwnerAttribute: 0
-    targetRpcsCanTargetServer: 1
+    targetRpcsCanTargetServer: 0
   _defaultVisibilityRules:
     visibilityMode: 0
   _defaultOwnershipRules:

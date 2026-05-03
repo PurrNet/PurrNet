@@ -340,20 +340,24 @@ namespace PurrNet.Modules
         }
 
         [UsedByIL]
-        public static bool ValidateReceivingStaticRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
+        public static bool ValidateReceivingStaticRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
             var networkManager = NetworkManager.main;
 
             if (!networkManager)
             {
                 PurrLogger.LogError($"Aborted RPC '{signature.rpcName}'. NetworkManager not found.");
+                TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.Unknown);
                 return false;
             }
 
             var rules = networkManager.networkRules;
 
             if (!networkManager.TryGetModule<RPCModule>(networkManager.isServer, out var module))
+            {
+                TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.Unknown);
                 return false;
+            }
 
             if (signature.type == RPCType.ServerRPC)
             {
@@ -374,9 +378,11 @@ namespace PurrNet.Modules
 
             if (!shouldIgnore && signature.requireServer)
             {
-                PurrLogger.LogError(
-                    $"Trying to receive static client RPC '{signature.rpcName}' on server. " +
-                    "If you want automatic forwarding use 'requireServer: false'.");
+                if (!isAwaitable)
+                    PurrLogger.LogError(
+                        $"Trying to receive static client RPC '{signature.rpcName}' on server. " +
+                        "If you want automatic forwarding use 'requireServer: false'.");
+                TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.ServerRequired);
                 return false;
             }
 
@@ -418,8 +424,10 @@ namespace PurrNet.Modules
 
                     if (isTargetingServer && !canTargetServer)
                     {
-                        PurrLogger.LogError(
-                            $"Trying to send TargetRPC '{signature.rpcName}' to server but `NetworkRules` don't allow for this.");
+                        if (!isAwaitable)
+                            PurrLogger.LogError(
+                                $"Trying to send TargetRPC '{signature.rpcName}' to server but `NetworkRules` don't allow for this.");
+                        TrySendRejection(networkManager, info, signature, requestId, isAwaitable, true, RpcError.TargetServerNotAllowed);
                     }
                     else if (!isTargetingServer)
                     {
@@ -432,6 +440,17 @@ namespace PurrNet.Modules
                 }
                 default: throw new ArgumentOutOfRangeException(nameof(signature.type));
             }
+        }
+
+        internal static void TrySendRejection(NetworkManager networkManager, RPCInfo info, RPCSignature signature, uint requestId, bool isAwaitable, bool asServer, RpcError error)
+        {
+            if (!isAwaitable || !asServer || networkManager == null)
+                return;
+
+            if (!networkManager.TryGetModule<RpcRequestResponseModule>(true, out var rpcModule))
+                return;
+
+            rpcModule.SendRejection(info.sender, requestId, error, signature.channel);
         }
 
         static readonly Dictionary<StaticGenericKey, MethodInfo> _staticGenericHandlers =

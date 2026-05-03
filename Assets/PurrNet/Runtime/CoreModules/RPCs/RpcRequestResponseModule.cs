@@ -27,6 +27,7 @@ namespace PurrNet.Modules
 
         public Action timeoutRequest;
         public Action<BitPacker> respond;
+        public Action<RpcError> respondError;
     }
 
     public struct RpcResponse
@@ -36,6 +37,15 @@ namespace PurrNet.Modules
         public Channel? channel;
         public PackedUInt id;
         public ByteData data;
+    }
+
+    public struct RpcRejection
+    {
+        public PlayerID? sender;
+        public PlayerID? forward;
+        public Channel? channel;
+        public PackedUInt id;
+        public RpcError error;
     }
 
     public class RpcRequestResponseModule : INetworkModule, IFixedUpdate
@@ -55,11 +65,13 @@ namespace PurrNet.Modules
         public void Enable(bool asServer)
         {
             _playersManager.Subscribe<RpcResponse>(OnRpcResponse);
+            _playersManager.Subscribe<RpcRejection>(OnRpcRejection);
         }
 
         public void Disable(bool asServer)
         {
             _playersManager.Unsubscribe<RpcResponse>(OnRpcResponse);
+            _playersManager.Unsubscribe<RpcRejection>(OnRpcRejection);
         }
 
         private void OnRpcResponse(PlayerID conn, RpcResponse data, bool asServer)
@@ -102,6 +114,73 @@ namespace PurrNet.Modules
                     break;
                 }
             }
+        }
+
+        private void OnRpcRejection(PlayerID conn, RpcRejection data, bool asServer)
+        {
+            var localPlayer = _manager.localPlayer;
+
+            switch (asServer)
+            {
+                case true when data.forward.HasValue && data.forward != localPlayer:
+                    data.sender = conn;
+                    _playersManager.Send(data.forward.Value, data, data.channel ?? Channel.ReliableOrdered);
+                    return;
+                case true:
+                    data.sender = null;
+                    break;
+            }
+
+            var actualSender = data.sender ?? conn;
+
+            for (int i = 0; i < _requests.Count; i++)
+            {
+                var request = _requests[i];
+                if (request.id == data.id && (!request.target.HasValue || request.target == actualSender || request.target.Value.isServer))
+                {
+                    _requests.RemoveAt(i);
+
+                    try
+                    {
+                        request.respondError?.Invoke(data.error);
+                    }
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogError($"Error while processing RPC rejection: {e}");
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        public void SendRejection(PlayerID originalSender, uint requestId, RpcError error, Channel channel)
+        {
+            var localPlayer = _manager.localPlayer;
+            var rejection = new RpcRejection
+            {
+                id = requestId,
+                error = error,
+                channel = channel
+            };
+
+            // Server origin: deliver to the original sender directly, or loop back if it's us.
+            if (_manager.isServer)
+            {
+                if (originalSender.isServer || originalSender == localPlayer)
+                {
+                    OnRpcRejection(localPlayer, rejection, true);
+                    return;
+                }
+
+                _playersManager.Send(originalSender, rejection, channel);
+                return;
+            }
+
+            // Client origin (e.g. Target/Observers requireServer:false handler ran on the client and
+            // wants to reject something the originating client sent through the server): forward via server.
+            rejection.forward = originalSender;
+            _playersManager.SendToServer(rejection, channel);
         }
 
         [UsedByIL]
@@ -240,6 +319,7 @@ namespace PurrNet.Modules
                 timeSent = Time.unscaledTime,
                 timeout = timeout,
                 respond = _ => { tcs.SetResult(true); },
+                respondError = err => { tcs.SetException(new RpcRejectedException(err)); },
                 timeoutRequest = () =>
                 {
                     tcs.SetException(
@@ -268,6 +348,7 @@ namespace PurrNet.Modules
                 timeSent = Time.unscaledTime,
                 timeout = timeout,
                 respond = _ => { tcs.TrySetResult(true); },
+                respondError = err => { tcs.TrySetException(new RpcRejectedException(err)); },
                 timeoutRequest = () =>
                 {
                     tcs.TrySetException(
@@ -306,6 +387,7 @@ namespace PurrNet.Modules
                     Packer<T>.Read(stream, ref response);
                     tcs.TrySetResult(response);
                 },
+                respondError = err => { tcs.TrySetException(new RpcRejectedException(err)); },
                 timeoutRequest = () =>
                 {
                     tcs.TrySetException(
@@ -335,6 +417,7 @@ namespace PurrNet.Modules
                     Packer<T>.Read(stream, ref response);
                     tcs.SetResult(response);
                 },
+                respondError = err => { tcs.SetException(new RpcRejectedException(err)); },
                 timeoutRequest = () =>
                 {
                     tcs.SetException(

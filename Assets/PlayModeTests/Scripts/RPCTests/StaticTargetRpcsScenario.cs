@@ -13,7 +13,6 @@ public class StaticTargetRpcsScenario : Scenario
     [SerializeField] private float _targetTimeoutSeconds = 10f;
 
     private static int _doneCount;
-    private static int _targetDefaultServerReceivedCount;
     private static float _staticTargetTimeoutSeconds = 10f;
 
     // The target is always the originating client itself, so per-process state is a single
@@ -72,13 +71,7 @@ public class StaticTargetRpcsScenario : Scenario
                 $"Server timed out waiting for client done signals; got {_doneCount}/{ctx.expectedConnections}");
         }
 
-        if (_targetDefaultServerReceivedCount < ctx.expectedConnections)
-        {
-            return ScenarioResult.Fail(
-                $"TargetRpc(default) reached server only {_targetDefaultServerReceivedCount}/{ctx.expectedConnections} times");
-        }
-
-        return ScenarioResult.Ok($"Done={_doneCount}, TargetDefaultServer={_targetDefaultServerReceivedCount}");
+        return ScenarioResult.Ok($"Done={_doneCount}");
     }
 
     private static async UniTask<ScenarioResult> RunClientChecks(ScenarioContext ctx)
@@ -242,10 +235,18 @@ public class StaticTargetRpcsScenario : Scenario
             if (result != 100) throw new Exception($"async target reply expected 100, got {result}");
         });
 
-        await Try(failures, "TargetServer_DefaultPlayerID", async () =>
+        await Try(failures, "TargetServer_DefaultPlayerID_Rejected", async () =>
         {
-            SendTargetServer(default, 8888);
-            await UniTask.CompletedTask;
+            try
+            {
+                await SendTargetServer(default, 8888);
+                throw new Exception("expected RpcRejectedException, none thrown");
+            }
+            catch (RpcRejectedException ex)
+            {
+                if (ex.error != RpcError.TargetServerNotAllowed)
+                    throw new Exception($"expected TargetServerNotAllowed, got {ex.error}");
+            }
         });
 
         // requireServer:false TargetRpc — client originates directly without going through
@@ -372,10 +373,10 @@ public class StaticTargetRpcsScenario : Scenario
     }
 
     [TargetRpc(requireServer: false)]
-    private static void SendTargetServer(PlayerID target, int payload)
+    private static Task SendTargetServer(PlayerID target, int payload)
     {
-        _targetDefaultServerReceivedCount++;
-        Debug.Log($"[StaticTargetRpcsScenario] SendTargetServer received: {payload} (total {_targetDefaultServerReceivedCount})");
+        Debug.Log($"[StaticTargetRpcsScenario] SendTargetServer received: {payload}");
+        return Task.CompletedTask;
     }
 
     [TargetRpc(requireServer: false)]

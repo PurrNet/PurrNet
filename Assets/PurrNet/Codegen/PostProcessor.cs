@@ -332,7 +332,7 @@ namespace PurrNet.Codegen
                 var code = newMethod.Body.GetILProcessor();
                 var end = Instruction.Create(OpCodes.Ret);
 
-                ValidateReceivingRPC(module, isNetworkClass, originalRpcs[i], code, info, packet, asServer, end);
+                EmitSetCompileTimeSignature(module, isNetworkClass, originalRpcs[i], code, info);
 
                 // Add debug information pointing to the original method
                 try
@@ -388,17 +388,31 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Ldfld, packerField));
                 code.Append(Instruction.Create(OpCodes.Stloc, streamVariable));
 
+                bool useDeltaPacking = originalRpcs[i].Signature.deltaPacked && originalRpcs[i].Signature.type != RPCType.ServerRPC;
+                bool isAwaitable = returnMode != ReturnMode.Void;
+
+                VariableDefinition rpcPacker = null;
+                VariableDefinition reqId = null;
+
+                if (useDeltaPacking)
+                    rpcPacker = EmitRpcPackerCreation(module, code, newMethod, originalRpcs[i], isNetworkClass);
+
+                if (isAwaitable)
+                    reqId = EmitRequestIdParsing(module, code, newMethod, streamVariable, rpcPacker, useDeltaPacking);
+
+                EmitValidateCall(module, isNetworkClass, originalRpcs[i], code, info, packet, asServer, reqId, isAwaitable, end);
+
                 try
                 {
                     if (originalRpcs[i].originalMethod.DeclaringType != null)
                     {
                         if (originalRpcs[i].originalMethod.HasGenericParameters)
                         {
-                            HandleGenericRPCReceiver(module, originalRpcs[i], newMethod, streamVariable, info, isNetworkClass);
+                            HandleGenericRPCReceiver(module, originalRpcs[i], newMethod, streamVariable, info, isNetworkClass, rpcPacker, reqId);
                         }
                         else
                             HandleNonGenericRPCReceiver(module, originalRpcs[i], newMethod, streamVariable, info, returnMode,
-                                isNetworkClass);
+                                isNetworkClass, rpcPacker, reqId);
                     }
                 }
                 catch (Exception e)
@@ -409,6 +423,57 @@ namespace PurrNet.Codegen
                 code.Append(end);
                 type.Methods.Add(newMethod);
             }
+        }
+
+        private static VariableDefinition EmitRpcPackerCreation(ModuleDefinition module, ILProcessor code,
+            MethodDefinition newMethod, RPCMethod rpcMethod, bool isNetworkClass)
+        {
+            var RPCPacketPackerType = module.GetTypeDefinition<RPCPacketPacker>();
+            var rpcPacker = new VariableDefinition(RPCPacketPackerType.Import(module));
+            newMethod.Body.Variables.Add(rpcPacker);
+
+            var createPackerForRPC = RPCPacketPackerType.GetMethod(GetCreateWithInfoName(rpcMethod, isNetworkClass))
+                .Import(module);
+
+            // NetworkManager manager, RPCPacket context, RPCInfo info
+            PushNetworkManager(module, code, isNetworkClass, newMethod.IsStatic);
+
+            if (rpcMethod.Signature.isStatic)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                code.Append(Instruction.Create(OpCodes.Ldarg_1));
+            }
+            else
+            {
+                code.Append(Instruction.Create(OpCodes.Ldarg_1));
+                code.Append(Instruction.Create(OpCodes.Ldarg_2));
+            }
+
+            code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
+            code.Append(Instruction.Create(OpCodes.Stloc, rpcPacker));
+
+            return rpcPacker;
+        }
+
+        private static VariableDefinition EmitRequestIdParsing(ModuleDefinition module, ILProcessor code,
+            MethodDefinition newMethod, VariableDefinition streamVariable, VariableDefinition rpcPacker, bool useDeltaPacking)
+        {
+            var reqId = new VariableDefinition(module.TypeSystem.UInt32);
+            newMethod.Body.Variables.Add(reqId);
+
+            MethodReference serializer;
+            if (useDeltaPacking)
+            {
+                serializer = CreateDeltaSerializer(module, module.TypeSystem.UInt32, rpcPacker, false);
+                code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+            }
+            else serializer = CreateSerializer(module, module.TypeSystem.UInt32, false);
+
+            code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
+            code.Append(Instruction.Create(OpCodes.Ldloca, reqId));
+            code.Append(Instruction.Create(OpCodes.Call, serializer));
+
+            return reqId;
         }
 
         private static void HandleRPCReceiverHandler(ModuleDefinition module, TypeDefinition type,
@@ -516,15 +581,21 @@ namespace PurrNet.Codegen
             body.Append(Instruction.Create(OpCodes.Ret));
         }
 
-        private static void ValidateReceivingRPC(ModuleDefinition module, bool isNetworkClass, RPCMethod originalRpc,
-            ILProcessor code, ParameterDefinition info, ParameterDefinition data, ParameterDefinition asServer,
-            Instruction end)
+        private static void EmitSetCompileTimeSignature(ModuleDefinition module, bool isNetworkClass, RPCMethod originalRpc,
+            ILProcessor code, ParameterDefinition info)
         {
             var compileTimeSignatureField = info.ParameterType.GetField("compileTimeSignature").Import(module);
 
             code.Append(Instruction.Create(OpCodes.Ldarga, info));
             PushRPCSignature(module, code, originalRpc, true, isNetworkClass);
             code.Append(Instruction.Create(OpCodes.Stfld, compileTimeSignatureField));
+        }
+
+        private static void EmitValidateCall(ModuleDefinition module, bool isNetworkClass, RPCMethod originalRpc,
+            ILProcessor code, ParameterDefinition info, ParameterDefinition data, ParameterDefinition asServer,
+            VariableDefinition reqId, bool isAwaitable, Instruction end)
+        {
+            var compileTimeSignatureField = info.ParameterType.GetField("compileTimeSignature").Import(module);
 
             MethodReference validateReceivingRPCGeneric;
             if (originalRpc.Signature.isStatic)
@@ -537,7 +608,7 @@ namespace PurrNet.Codegen
                 var nclass = module.GetTypeDefinition<NetworkModule>();
                 validateReceivingRPCGeneric = nclass.GetMethod("ValidateReceivingRPC", true).Import(module);
 
-                // Call validateReceivingRPC(this, RPCInfo, RPCSignature, asServer)
+                // Call validateReceivingRPC(this, RPCInfo, RPCSignature, asServer, requestId, isAwaitable)
                 code.Append(Instruction.Create(OpCodes.Ldarg_0)); // this
             }
             else
@@ -545,7 +616,7 @@ namespace PurrNet.Codegen
                 var identityType = module.GetTypeDefinition<NetworkIdentity>();
                 validateReceivingRPCGeneric = identityType.GetMethod("ValidateReceivingRPC", true).Import(module);
 
-                // Call validateReceivingRPC(this, RPCInfo, RPCSignature, asServer)
+                // Call validateReceivingRPC(this, RPCInfo, RPCSignature, asServer, requestId, isAwaitable)
                 code.Append(Instruction.Create(OpCodes.Ldarg_0)); // this
             }
 
@@ -553,13 +624,21 @@ namespace PurrNet.Codegen
             var validateReceivingRPC = new GenericInstanceMethod(validateReceivingRPCGeneric);
             validateReceivingRPC.GenericArguments.Add(data.ParameterType);
 
-            // RPCInfo info, RPCSignature signature, INetworkedData data, bool asServer
+            // RPCInfo info, RPCSignature signature, INetworkedData data, bool asServer, uint requestId, bool isAwaitable
             code.Append(Instruction.Create(OpCodes.Ldarg, info)); // info
 
             code.Append(Instruction.Create(OpCodes.Ldarga, info));
             code.Append(Instruction.Create(OpCodes.Ldfld, compileTimeSignatureField));
             code.Append(Instruction.Create(OpCodes.Ldarg, data)); // data
             code.Append(Instruction.Create(OpCodes.Ldarg, asServer)); // asServer
+
+            if (reqId != null)
+                code.Append(Instruction.Create(OpCodes.Ldloc, reqId));
+            else
+                code.Append(Instruction.Create(OpCodes.Ldc_I4_0));
+
+            code.Append(Instruction.Create(isAwaitable ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0));
+
             code.Append(Instruction.Create(OpCodes.Call, validateReceivingRPC));
 
             // if returned false, return early
@@ -573,7 +652,9 @@ namespace PurrNet.Codegen
             VariableDefinition streamVariable,
             ParameterDefinition info,
             ReturnMode returnMode,
-            bool isNetworkClass)
+            bool isNetworkClass,
+            VariableDefinition rpcPacker,
+            VariableDefinition reqId)
         {
             var originalMethod = rpcMethod.originalMethod;
             int paramCount = originalMethod.Parameters.Count;
@@ -595,7 +676,7 @@ namespace PurrNet.Codegen
             if (hasAsyncPackableParam)
             {
                 HandleNonGenericRPCReceiverAsyncPackable(module, rpcMethod, newMethod, streamVariable, info,
-                    returnMode, isNetworkClass);
+                    returnMode, isNetworkClass, rpcPacker, reqId);
                 return;
             }
 
@@ -613,7 +694,6 @@ namespace PurrNet.Codegen
             var responderCoroutine = rpcReqRespType.GetMethod("CompleteRequestWithCoroutine").Import(module);
             var responderUniTaskWithoutResponse =
                 rpcReqRespType.GetMethod("CompleteRequestWithUniTaskEmptyResponse").Import(module);
-            var RPCPacketPackerType = module.GetTypeDefinition<RPCPacketPacker>();
 
             var localPlayerProp = identityType.GetProperty("localPlayerForced");
             var localPlayerGetter = localPlayerProp.GetMethod.Import(module);
@@ -630,57 +710,7 @@ namespace PurrNet.Codegen
             var mainManagerProp = managerType.GetProperty("main");
             var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
 
-            VariableDefinition reqId = null;
-            VariableDefinition rpcPacker = null;
-
-
-            bool useDeltaPacking = rpcMethod.Signature.deltaPacked && rpcMethod.Signature.type != RPCType.ServerRPC;
-
-            // create delta packer
-            if (useDeltaPacking)
-            {
-                rpcPacker = new VariableDefinition(RPCPacketPackerType.Import(module));
-                newMethod.Body.Variables.Add(rpcPacker);
-
-                var createPackerForRPC = RPCPacketPackerType.GetMethod(GetCreateWithInfoName(rpcMethod, isNetworkClass))
-                    .Import(module);
-                //NetworkManager manager, RPCPacket context, RPCInfo info
-                PushNetworkManager(module, code, isNetworkClass, newMethod.IsStatic);
-                // PushNetworkManager(newMethod, isNetworkClass, code, mainManagerGetter, getNetworkManagerModule, getNetworkManager);
-
-                if (rpcMethod.Signature.isStatic)
-                {
-                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_1));
-                }
-                else
-                {
-                    code.Append(Instruction.Create(OpCodes.Ldarg_1));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_2));
-                }
-
-                code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
-                code.Append(Instruction.Create(OpCodes.Stloc, rpcPacker));
-            }
-
-            if (returnMode != ReturnMode.Void)
-            {
-                reqId = new VariableDefinition(module.TypeSystem.UInt32);
-                newMethod.Body.Variables.Add(reqId);
-
-                MethodReference serializer;
-
-                if (useDeltaPacking)
-                {
-                    serializer = CreateDeltaSerializer(module, module.TypeSystem.UInt32, rpcPacker, false);
-                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                }
-                else serializer = CreateSerializer(module, module.TypeSystem.UInt32, false);
-
-                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
-                code.Append(Instruction.Create(OpCodes.Ldloca, reqId));
-                code.Append(Instruction.Create(OpCodes.Call, serializer));
-            }
+            bool useDeltaPacking = rpcPacker != null;
 
             for (var p = 0; p < originalMethod.Parameters.Count; p++)
             {
@@ -815,7 +845,9 @@ namespace PurrNet.Codegen
             VariableDefinition streamVariable,
             ParameterDefinition info,
             ReturnMode returnMode,
-            bool isNetworkClass)
+            bool isNetworkClass,
+            VariableDefinition rpcPacker,
+            VariableDefinition reqId)
         {
             var code = newMethod.Body.GetILProcessor();
             var originalMethod = rpcMethod.originalMethod;
@@ -835,7 +867,6 @@ namespace PurrNet.Codegen
             var responderCoroutine = rpcReqRespType.GetMethod("CompleteRequestWithCoroutine").Import(module);
             var responderUniTaskWithoutResponse =
                 rpcReqRespType.GetMethod("CompleteRequestWithUniTaskEmptyResponse").Import(module);
-            var RPCPacketPackerType = module.GetTypeDefinition<RPCPacketPacker>();
 
             var localPlayerProp = identityType.GetProperty("localPlayerForced");
             var localPlayerGetter = localPlayerProp.GetMethod.Import(module);
@@ -844,9 +875,7 @@ namespace PurrNet.Codegen
             var mainManagerProp = managerType.GetProperty("main");
             var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
 
-            VariableDefinition reqId = null;
-            VariableDefinition rpcPacker = null;
-            bool useDeltaPacking = rpcMethod.Signature.deltaPacked && rpcMethod.Signature.type != RPCType.ServerRPC;
+            bool useDeltaPacking = rpcPacker != null;
 
             ResolveTaskTypes(module, out var taskType, out var taskArrayType, out var taskOfTOpen,
                 out var actionOfTOpen, out _, out var actionCtor);
@@ -884,10 +913,8 @@ namespace PurrNet.Codegen
             stateType.Fields.Add(infoField);
 
             FieldDefinition reqIdStateField = null;
-            if (returnMode != ReturnMode.Void)
+            if (reqId != null)
             {
-                reqId = new VariableDefinition(module.TypeSystem.UInt32);
-                newMethod.Body.Variables.Add(reqId);
                 reqIdStateField = new FieldDefinition("_reqId", FieldAttributes.Public, module.TypeSystem.UInt32);
                 stateType.Fields.Add(reqIdStateField);
             }
@@ -982,31 +1009,6 @@ namespace PurrNet.Codegen
 
             var packetParam = newMethod.Parameters[0];
             var infoParam = newMethod.Parameters[1];
-
-            if (useDeltaPacking)
-            {
-                rpcPacker = new VariableDefinition(RPCPacketPackerType.Import(module));
-                newMethod.Body.Variables.Add(rpcPacker);
-                var createPackerForRPC = RPCPacketPackerType.GetMethod(GetCreateWithInfoName(rpcMethod, isNetworkClass))
-                    .Import(module);
-                PushNetworkManager(module, code, isNetworkClass, originalMethod.IsStatic);
-                code.Append(Instruction.Create(OpCodes.Ldarg, packetParam));
-                code.Append(Instruction.Create(OpCodes.Ldarg, infoParam));
-                code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
-                code.Append(Instruction.Create(OpCodes.Stloc, rpcPacker));
-            }
-
-            if (reqId != null)
-            {
-                var serializer = useDeltaPacking
-                    ? CreateDeltaSerializer(module, module.TypeSystem.UInt32, rpcPacker, false)
-                    : CreateSerializer(module, module.TypeSystem.UInt32, false);
-                if (useDeltaPacking)
-                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
-                code.Append(Instruction.Create(OpCodes.Ldloca, reqId));
-                code.Append(Instruction.Create(OpCodes.Call, serializer));
-            }
 
             var stateVar = new VariableDefinition(stateType.Import(module));
             newMethod.Body.Variables.Add(stateVar);
@@ -1222,7 +1224,8 @@ namespace PurrNet.Codegen
 
         private static void HandleGenericRPCReceiver(ModuleDefinition module, RPCMethod rpcMethod,
             MethodDefinition newMethod,
-            VariableDefinition streamVariable, ParameterDefinition info, bool isNetworkClass)
+            VariableDefinition streamVariable, ParameterDefinition info, bool isNetworkClass,
+            VariableDefinition rpcPacker, VariableDefinition requestId)
         {
             var genericRpcHeaderType = module.GetTypeDefinition<GenericRPCHeader>();
             var identityType = module.GetTypeDefinition<NetworkIdentity>();
@@ -1281,41 +1284,13 @@ namespace PurrNet.Codegen
             int paramCount = originalMethod.Parameters.Count;
             int genericParamCount = originalMethod.GenericParameters.Count;
 
-            bool useDeltaPacking = rpcMethod.Signature.deltaPacked && rpcMethod.Signature.type != RPCType.ServerRPC;
+            bool useDeltaPacking = rpcPacker != null;
 
-            VariableDefinition requestId = null;
-            VariableDefinition rpcPacker = null;
             var genericParamCountValue = new VariableDefinition(module.TypeSystem.UInt32);
 
             var headerValue = new VariableDefinition(genericRpcHeaderType.Import(module));
             newMethod.Body.Variables.Add(headerValue);
             newMethod.Body.Variables.Add(genericParamCountValue);
-
-            // create delta packer
-            if (useDeltaPacking)
-            {
-                rpcPacker = new VariableDefinition(RPCPacketPackerType.Import(module));
-                newMethod.Body.Variables.Add(rpcPacker);
-
-                var createPackerForRPC = RPCPacketPackerType.GetMethod(GetCreateWithInfoName(rpcMethod, isNetworkClass))
-                    .Import(module);
-                //NetworkManager manager, RPCPacket context, RPCInfo info
-                PushNetworkManager(newMethod, isNetworkClass, code, mainManagerGetter, getNetworkManagerModule, getNetworkManager);
-
-                if (rpcMethod.Signature.isStatic)
-                {
-                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_1));
-                }
-                else
-                {
-                    code.Append(Instruction.Create(OpCodes.Ldarg_1));
-                    code.Append(Instruction.Create(OpCodes.Ldarg_2));
-                }
-
-                code.Append(Instruction.Create(OpCodes.Call, createPackerForRPC));
-                code.Append(Instruction.Create(OpCodes.Stloc, rpcPacker));
-            }
 
             bool isValidReturn = ValidateReturnType(originalMethod, out var returnMode);
             MethodReference serializeUint;
@@ -1327,18 +1302,6 @@ namespace PurrNet.Codegen
             if (!isValidReturn)
             {
                 return;
-            }
-
-            if (returnMode != ReturnMode.Void)
-            {
-                requestId = new VariableDefinition(module.TypeSystem.UInt32);
-                newMethod.Body.Variables.Add(requestId);
-
-                if (useDeltaPacking)
-                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
-                code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
-                code.Append(Instruction.Create(OpCodes.Ldloca, requestId));
-                code.Append(Instruction.Create(OpCodes.Call, serializeUint));
             }
 
             // read header value

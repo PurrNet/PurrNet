@@ -567,16 +567,16 @@ namespace PurrNet
         }
 
         [UsedByIL]
-        public bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
+        public bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
             Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, this);
 #endif
-            return ValidateIncomingRPC(info, signature, data, asServer);
+            return ValidateIncomingRPC(info, signature, data, asServer, requestId, isAwaitable);
         }
 
-        internal bool ValidateIncomingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
+        internal bool ValidateIncomingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
             using (_validatingRRPCMarker.Auto())
             {
@@ -587,7 +587,10 @@ namespace PurrNet
                     return false;
 
                 if (!shouldIgnoreOwnership && signature.requireOwnership && info.sender != owner)
+                {
+                    RPCModule.TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.RequireOwnership);
                     return false;
+                }
 
                 if (signature.excludeOwner && isOwner)
                     return false;
@@ -606,21 +609,24 @@ namespace PurrNet
 
                     if (idObservers == null)
                     {
-                        PurrLogger.LogError(
-                            $"Trying to receive server RPC '{signature.rpcName}' from '{name}' but failed to get observers.",
-                            this);
+                        if (!isAwaitable)
+                            PurrLogger.LogError(
+                                $"Trying to receive server RPC '{signature.rpcName}' from '{name}' but failed to get observers.",
+                                this);
+                        RPCModule.TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.NotObserver);
                         return false;
                     }
 
                     if (!IsObserver(info.sender))
                     {
-                        if (signature.channel == Channel.ReliableOrdered)
+                        if (!isAwaitable && signature.channel == Channel.ReliableOrdered)
                         {
                             PurrLogger.LogError(
                                 $"Trying to receive server RPC '{signature.rpcName}' from '{name}' by player '{info.sender}' which is not an observer. Aborting RPC call.",
                                 this);
                         }
 
+                        RPCModule.TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.NotObserver);
                         return false;
                     }
 
@@ -636,9 +642,11 @@ namespace PurrNet
 
                 if (!shouldIgnore && signature.requireServer)
                 {
-                    PurrLogger.LogError(
-                        $"Trying to receive client RPC '{signature.rpcName}' from '{name}' on server. " +
-                        "If you want automatic forwarding use 'requireServer: false'.", this);
+                    if (!isAwaitable)
+                        PurrLogger.LogError(
+                            $"Trying to receive client RPC '{signature.rpcName}' from '{name}' on server. " +
+                            "If you want automatic forwarding use 'requireServer: false'.", this);
+                    RPCModule.TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.ServerRequired);
                     return false;
                 }
 
@@ -673,7 +681,7 @@ namespace PurrNet
                     case RPCType.TargetRPC:
                     {
                         bool shouldExecute =
-                            SendToTargetOrServer(rules, data.targetPlayerId, data, signature.channel);
+                            SendToTargetOrServer(rules, data.targetPlayerId, data, signature, info, requestId, isAwaitable, asServer);
                         AppendToBufferedRPCs(signature, data, module);
                         return shouldExecute;
                     }
@@ -701,26 +709,30 @@ namespace PurrNet
                 networkManager.GetModule<PlayersManager>(true).Send(player, packet, method);
         }
 
-        bool SendToTargetOrServer<T>(NetworkRules rules, PlayerID player, T data, Channel method = Channel.ReliableOrdered)
+        bool SendToTargetOrServer<T>(NetworkRules rules, PlayerID player, T data, RPCSignature signature, RPCInfo info, uint requestId, bool isAwaitable, bool asServer) where T : struct, IRpc
         {
             if (player == PlayerID.Server)
             {
                 if (rules.CanTargetServerWithTargetRpc())
                     return true;
 
-                PurrLogger.LogError($"Trying to send TargetRPC to server `{name}`" +
-                                    $" but `NetworkRules` don't allow for this.", this);
+                if (!isAwaitable)
+                    PurrLogger.LogError($"Trying to send TargetRPC to server `{name}`" +
+                                        $" but `NetworkRules` don't allow for this.", this);
+                RPCModule.TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.TargetServerNotAllowed);
                 return false;
             }
 
             if (!IsObserver(player))
             {
-                PurrLogger.LogError($"Trying to send TargetRPC to player '{player}' which is not observing '{name}'.",
-                    this);
+                if (!isAwaitable)
+                    PurrLogger.LogError($"Trying to send TargetRPC to player '{player}' which is not observing '{name}'.",
+                        this);
+                RPCModule.TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.NotObserver);
                 return false;
             }
 
-            Send<T>(player, data, method);
+            Send<T>(player, data, signature.channel);
             return false;
         }
 
