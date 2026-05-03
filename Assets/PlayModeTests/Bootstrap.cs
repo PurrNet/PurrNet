@@ -42,6 +42,8 @@ public class Bootstrap : Scenario
             return;
         }
 
+        _runCts = new CancellationTokenSource();
+
         var ctx = new ScenarioContext
         {
             role = _role,
@@ -176,7 +178,6 @@ public class Bootstrap : Scenario
 
         try
         {
-            _runCts = new CancellationTokenSource();
             var ctx = new ScenarioContext
             {
                 role = _role,
