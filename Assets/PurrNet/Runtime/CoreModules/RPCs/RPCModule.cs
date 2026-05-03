@@ -382,7 +382,7 @@ namespace PurrNet.Modules
                     PurrLogger.LogError(
                         $"Trying to receive static client RPC '{signature.rpcName}' on server. " +
                         "If you want automatic forwarding use 'requireServer: false'.");
-                TrySendRejection(networkManager, info, signature, requestId, isAwaitable, asServer, RpcError.ServerRequired);
+                TrySendRejection(networkManager, info, signature, requestId, isAwaitable, true, RpcError.ServerRequired);
                 return false;
             }
 
