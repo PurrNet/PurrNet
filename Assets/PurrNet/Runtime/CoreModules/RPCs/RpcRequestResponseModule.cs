@@ -66,28 +66,16 @@ namespace PurrNet.Modules
         {
             var localPlayer = _manager.localPlayer;
 
-            if (asServer && data.forward.HasValue && data.forward != localPlayer)
+            switch (asServer)
             {
-                var rules = _manager.networkRules;
-                if (!rules)
-                {
-                    PurrLogger.LogError("Failed to get network rules.");
+                case true when data.forward.HasValue && data.forward != localPlayer:
+                    data.sender = conn;
+                    _playersManager.Send(data.forward.Value, data, data.channel ?? Channel.ReliableOrdered);
                     return;
-                }
-
-                if (!rules.ShouldIgnoreRequireServer())
-                {
-                    PurrLogger.LogError($"Received async response from client `{data.forward.Value}`, but server is required (network rules).");
-                    return;
-                }
-
-                data.sender = conn;
-                _playersManager.Send(data.forward.Value, data, data.channel ?? Channel.ReliableOrdered);
-                return;
+                case true:
+                    data.sender = null;
+                    break;
             }
-
-            if (asServer)
-                data.sender = null;
 
             var actualSender = data.sender ?? conn;
 
