@@ -1,3 +1,10 @@
+# [1.20.0-beta.120](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.119...v1.20.0-beta.120) (2026-05-03)
+
+
+### Bug Fixes
+
+* exit code for tests ([44915ff](https://github.com/PurrNet/PurrNet/commit/44915ffa08eebabc96efae57730f70df953edce3))
+
 # [1.20.0-beta.119](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.118...v1.20.0-beta.119) (2026-05-03)
 
 
