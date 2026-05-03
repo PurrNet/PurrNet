@@ -3334,10 +3334,8 @@ namespace PurrNet.Codegen
                 .GetMethod("ExitLocalExecution").FullName;
 
             types.AddRange(module.Types);
-            foreach (var type in module.Types)
-            {
-                types.AddRange(type.NestedTypes);
-            }
+            for (var i = 0; i < types.Count; i++)
+                types.AddRange(types[i].NestedTypes);
 
             bool isSkipping = false;
 
@@ -3482,8 +3480,8 @@ namespace PurrNet.Codegen
             var types = DisposableList<TypeDefinition>.Create(32);
 
             types.AddRange(module.Types);
-            foreach (var type in module.Types)
-                types.AddRange(type.NestedTypes);
+            for (var i = 0; i < types.Count; i++)
+                types.AddRange(types[i].NestedTypes);
 
             return types;
         }

@@ -19,7 +19,7 @@ public static class CommandLineUtils
         switch (arg)
         {
             case "-role":
-                value = PurrNet.Utils.ApplicationContext.isClone ? "client" : "host";
+                value = PurrNet.Utils.ApplicationContext.isClone ? "client" : "server";
                 return true;
             case "-count":
                 value = "2";
