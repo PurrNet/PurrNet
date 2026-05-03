@@ -57,9 +57,7 @@ jobs:
           key: ${{ steps.cache-library.outputs.cache-primary-key }}
 
       - name: Inspect build output
-        run: |
-          ls -la build/StandaloneLinux64/
-          chmod +x build/StandaloneLinux64/PurrNetTests
+        run: ls -la build/StandaloneLinux64/
 
       - name: Run scenarios (1 server + N clients)
         env:

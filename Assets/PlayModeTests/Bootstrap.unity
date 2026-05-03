@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 277924963}
   - component: {fileID: 277924964}
+  - component: {fileID: 277924965}
   m_Layer: 0
   m_Name: Bootstrap
   m_TagString: Untagged
@@ -166,6 +167,20 @@ MonoBehaviour:
   _networkManager: {fileID: 1216416897}
   _connectionTimeout: 15
   _timeBetweenScenarios: 2
+--- !u!114 &277924965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 277924962}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f86ede6bcb977a641a56431bc5ea5acf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticRpcsScenario
+  _doneTimeoutSeconds: 30
+  _postClientDelaySeconds: 0.5
 --- !u!1 &358453800
 GameObject:
   m_ObjectHideFlags: 0
@@ -495,7 +510,7 @@ MonoBehaviour:
   _networkPrefabs: {fileID: 11400000, guid: b7f7b36d94ccf2447b39c067fe832220, type: 2}
   _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 0}
-  _networkRules: {fileID: 11400000, guid: fbe159a2fdaa02e4bbb63b23c3085861, type: 2}
+  _networkRules: {fileID: 11400000, guid: 57ad4cc976c21074181652c4f7179d44, type: 2}
   _visibilityRules: {fileID: 0}
   _authenticator: {fileID: 0}
   _tickRate: 20
