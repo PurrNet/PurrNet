@@ -1,3 +1,10 @@
+# [1.20.0-beta.121](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.120...v1.20.0-beta.121) (2026-05-03)
+
+
+### Bug Fixes
+
+* inconsistent rules check with async RPCs and RequireServer rule ([2dc72af](https://github.com/PurrNet/PurrNet/commit/2dc72af26adfa491bfc7d40bb4ddc80b4b42f122))
+
 # [1.20.0-beta.120](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.119...v1.20.0-beta.120) (2026-05-03)
 
 
