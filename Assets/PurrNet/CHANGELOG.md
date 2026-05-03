@@ -1,3 +1,10 @@
+# [1.20.0-beta.119](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.118...v1.20.0-beta.119) (2026-05-03)
+
+
+### Bug Fixes
+
+* lambda RPC not being resolved properly ([362c044](https://github.com/PurrNet/PurrNet/commit/362c044061ac2c2010102bec8d0aedb279bfc9f5))
+
 # [1.20.0-beta.118](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.117...v1.20.0-beta.118) (2026-05-02)
 
 
