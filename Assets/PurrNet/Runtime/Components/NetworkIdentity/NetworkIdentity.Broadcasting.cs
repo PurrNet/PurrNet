@@ -26,26 +26,48 @@ namespace PurrNet
         internal readonly struct InstanceGenericKey : IEquatable<InstanceGenericKey>
         {
             readonly string _methodName;
+            readonly Type _caller;
+            readonly Type[] _types;
             readonly int _typesHash;
-            readonly int _callerHash;
 
             public InstanceGenericKey(string methodName, Type caller, Type[] types)
             {
                 _methodName = methodName;
-                _typesHash = 0;
+                _caller = caller;
+                _types = types;
 
-                _callerHash = caller.GetHashCode();
-
+                var hash = new HashCode();
                 for (int i = 0; i < types.Length; i++)
-                    _typesHash ^= types[i].GetHashCode();
+                    hash.Add(types[i]);
+                _typesHash = hash.ToHashCode();
             }
 
-            public override int GetHashCode() => _methodName.GetHashCode() ^ _typesHash ^ _callerHash;
+            // Used when storing this key in a long-lived dictionary, since the source
+            // `types` array comes from a pool and gets recycled after the call.
+            public InstanceGenericKey CloneForStorage()
+            {
+                return new InstanceGenericKey(_methodName, _caller, (Type[])_types.Clone());
+            }
+
+            public override int GetHashCode() =>
+                HashCode.Combine(_methodName, _caller, _typesHash);
 
             public bool Equals(InstanceGenericKey other)
             {
-                return _methodName == other._methodName && _typesHash == other._typesHash &&
-                       _callerHash == other._callerHash;
+                if (_methodName != other._methodName || _caller != other._caller ||
+                    _typesHash != other._typesHash)
+                    return false;
+
+                if (_types.Length != other._types.Length)
+                    return false;
+
+                for (int i = 0; i < _types.Length; i++)
+                {
+                    if (_types[i] != other._types[i])
+                        return false;
+                }
+
+                return true;
             }
 
             public override bool Equals(object obj)
@@ -68,7 +90,7 @@ namespace PurrNet
                     BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
                 gmethod = method?.MakeGenericMethod(rpcHeader.types);
 
-                genericMethods.Add(key, gmethod);
+                genericMethods.Add(key.CloneForStorage(), gmethod);
             }
 
             if (gmethod == null)

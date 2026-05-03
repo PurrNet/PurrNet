@@ -212,7 +212,7 @@ public class ModuleTargetRpcsScenario : Scenario
         await Try(failures, "AsyncTarget_Echo", async () =>
         {
             ModuleTargetRpcsModule.AsyncTargetReceived = null;
-            var result = await module.TriggerAsyncTarget(99);
+            var result = await UniTaskUtils.WithTimeout(module.TriggerAsyncTarget(99), timeout, ctx.cancellationToken, "TriggerAsyncTarget");
             if (!ModuleTargetRpcsModule.AsyncTargetReceived.HasValue) throw new Exception("async-target payload did not arrive at receiver");
             if (ModuleTargetRpcsModule.AsyncTargetReceived.Value != 99) throw new Exception($"receiver got {ModuleTargetRpcsModule.AsyncTargetReceived.Value}, expected 99");
             if (result != 100) throw new Exception($"async target reply expected 100, got {result}");
@@ -222,7 +222,7 @@ public class ModuleTargetRpcsScenario : Scenario
         {
             try
             {
-                await module.SendTargetServer(default, 8888);
+                await UniTaskUtils.WithTimeout(module.SendTargetServer(default, 8888), timeout, ctx.cancellationToken, "SendTargetServer");
                 throw new Exception("expected RpcRejectedException, none thrown");
             }
             catch (RpcRejectedException ex)
@@ -248,7 +248,7 @@ public class ModuleTargetRpcsScenario : Scenario
             foreach (var p in snapshot)
             {
                 if (p.isServer) continue;
-                var reply = await module.PingPlayer(p);
+                var reply = await UniTaskUtils.WithTimeout(module.PingPlayer(p), timeout, ctx.cancellationToken, $"PingPlayer({p.id.value})");
                 if (reply != p.id.value)
                     throw new Exception($"asked player {p.id.value}, got reply {reply}");
                 pinged++;

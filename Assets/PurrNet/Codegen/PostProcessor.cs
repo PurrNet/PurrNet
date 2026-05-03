@@ -1247,6 +1247,9 @@ namespace PurrNet.Codegen
             var localPlayerProp = identityType.GetProperty("localPlayerForced");
             var localPlayerGetter = localPlayerProp.GetMethod.Import(module);
 
+            var localPlayerPropModule = networkModule.GetProperty("localPlayerForced");
+            var localPlayerGetterModule = localPlayerPropModule.GetMethod.Import(module);
+
             var code = newMethod.Body.GetILProcessor();
             var createGenericHeader = genericRpcHeaderType.GetMethod("CreateGenericHeader").Import(module);
             var saveReadHashMethod = genericRpcHeaderType.GetMethod("SaveReadHash").Import(module);
@@ -1254,10 +1257,18 @@ namespace PurrNet.Codegen
             var setInfo = genericRpcHeaderType.GetMethod("SetInfo").Import(module);
             var readGeneric = genericRpcHeaderType.GetMethod("Read").Import(module);
             var readT = genericRpcHeaderType.GetMethod("Read", true).Import(module);
+            var readTypeMethod = genericRpcHeaderType.GetMethod("ReadType").Import(module);
             var setPlayerId = genericRpcHeaderType.GetMethod("SetPlayerId").Import(module);
             var getGenericTypeAt = genericRpcHeaderType.GetMethod("GetTypeAt").Import(module);
             var SaveReadValueNonGeneric = genericRpcHeaderType.GetMethod("SaveReadValue").Import(module);
             var SaveReadValueGeneric = genericRpcHeaderType.GetMethod("SaveReadValue", true).Import(module);
+
+            var typeTypeRef = module.ImportReference(typeof(Type));
+            var getTypeFromHandle = module.ImportReference(typeof(Type).GetMethod("GetTypeFromHandle"));
+            var makeGenericType = module.ImportReference(
+                typeof(Type).GetMethod("MakeGenericType", new[] { typeof(Type[]) }));
+            var makeArrayType = module.ImportReference(
+                typeof(Type).GetMethod("MakeArrayType", Type.EmptyTypes));
 
             var mainManagerProp = managerType.GetProperty("main");
             var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
@@ -1350,7 +1361,9 @@ namespace PurrNet.Codegen
                                 if (!rpcMethod.Signature.isStatic)
                                 {
                                     code.Append(Instruction.Create(OpCodes.Ldarg_0));
-                                    code.Append(Instruction.Create(OpCodes.Call, localPlayerGetter));
+                                    code.Append(isNetworkClass
+                                        ? Instruction.Create(OpCodes.Call, localPlayerGetterModule)
+                                        : Instruction.Create(OpCodes.Call, localPlayerGetter));
                                 }
                                 else
                                 {
@@ -1397,6 +1410,40 @@ namespace PurrNet.Codegen
                         code.Append(Instruction.Create(OpCodes.Ldc_I4, genericIdx));
                         code.Append(Instruction.Create(OpCodes.Ldc_I4, p));
                         code.Append(Instruction.Create(OpCodes.Call, readGeneric));
+                    }
+                }
+                else if (ContainsMethodGenericParameter(param.ParameterType, originalMethod))
+                {
+                    // Parameter type contains a method-level generic parameter that's not a raw `T`
+                    // (e.g. GenericPair<T>, List<T>, T[]). The strongly-typed Packer<T>/Read<T> path
+                    // is unusable here because the receiver IL has no method-generic in scope (`!!0`
+                    // would be invalid). Build the closed Type at runtime from rpcHeader.types[] and
+                    // route through the runtime-typed reader. Class-level generics (`!0`) are still
+                    // valid in scope inside a generic-class handler, so they fall through to the
+                    // strongly-typed branch below.
+                    if (useDeltaPacking)
+                    {
+                        code.Append(Instruction.Create(OpCodes.Ldloca, headerValue));
+
+                        // OBJ on stack via RPCPacketPacker.ReadObject(BitPacker, Type)
+                        code.Append(Instruction.Create(OpCodes.Ldloca, rpcPacker));
+                        code.Append(Instruction.Create(OpCodes.Ldloc_S, streamVariable));
+                        EmitBuildRuntimeType(code, module, param.ParameterType, originalMethod,
+                            headerValue, getGenericTypeAt, getTypeFromHandle, makeGenericType,
+                            makeArrayType, typeTypeRef);
+                        code.Append(Instruction.Create(OpCodes.Call, ReadObjectMethod));
+
+                        code.Append(Instruction.Create(OpCodes.Ldc_I4, p));
+                        code.Append(Instruction.Create(OpCodes.Call, SaveReadValueNonGeneric));
+                    }
+                    else
+                    {
+                        code.Append(Instruction.Create(OpCodes.Ldloca, headerValue));
+                        EmitBuildRuntimeType(code, module, param.ParameterType, originalMethod,
+                            headerValue, getGenericTypeAt, getTypeFromHandle, makeGenericType,
+                            makeArrayType, typeTypeRef);
+                        code.Append(Instruction.Create(OpCodes.Ldc_I4, p));
+                        code.Append(Instruction.Create(OpCodes.Call, readTypeMethod));
                     }
                 }
                 else
@@ -1514,6 +1561,86 @@ namespace PurrNet.Codegen
             {
                 code.Append(Instruction.Create(OpCodes.Pop));
             }
+        }
+
+        // True when `typeRef` references any GenericParameter whose Owner is `method` (i.e. a
+        // method-level generic, distinguished from class-level generics which are still in scope
+        // inside the generic-class handler IL).
+        private static bool ContainsMethodGenericParameter(TypeReference typeRef, MethodReference method)
+        {
+            if (typeRef == null) return false;
+            if (typeRef is GenericParameter gp)
+                return gp.Type == GenericParameterType.Method && gp.Owner == method;
+            if (typeRef is GenericInstanceType git)
+            {
+                foreach (var ga in git.GenericArguments)
+                    if (ContainsMethodGenericParameter(ga, method))
+                        return true;
+                return false;
+            }
+            if (typeRef is TypeSpecification ts)
+                return ContainsMethodGenericParameter(ts.ElementType, method);
+            return false;
+        }
+
+        // Emits IL that produces a `System.Type` on the evaluation stack representing the closed
+        // form of `typeRef`. Method-level GenericParameters are substituted at runtime via
+        // `headerValue.GetTypeAt(idx)`. Supports nested generics and arrays.
+        private static void EmitBuildRuntimeType(ILProcessor code, ModuleDefinition module,
+            TypeReference typeRef, MethodDefinition originalMethod, VariableDefinition headerValue,
+            MethodReference getGenericTypeAt, MethodReference getTypeFromHandle,
+            MethodReference makeGenericType, MethodReference makeArrayType,
+            TypeReference typeTypeRef)
+        {
+            if (typeRef is GenericParameter gp)
+            {
+                if (gp.Type == GenericParameterType.Method && gp.Owner == originalMethod)
+                {
+                    int idx = originalMethod.GenericParameters.IndexOf(gp);
+                    code.Append(Instruction.Create(OpCodes.Ldloca, headerValue));
+                    code.Append(Instruction.Create(OpCodes.Ldc_I4, idx));
+                    code.Append(Instruction.Create(OpCodes.Call, getGenericTypeAt));
+                    return;
+                }
+                // Class-level generic — `!0` is in scope inside a generic-class handler.
+                code.Append(Instruction.Create(OpCodes.Ldtoken, gp));
+                code.Append(Instruction.Create(OpCodes.Call, getTypeFromHandle));
+                return;
+            }
+
+            if (typeRef is ArrayType arr)
+            {
+                EmitBuildRuntimeType(code, module, arr.ElementType, originalMethod, headerValue,
+                    getGenericTypeAt, getTypeFromHandle, makeGenericType, makeArrayType, typeTypeRef);
+                code.Append(Instruction.Create(OpCodes.Callvirt, makeArrayType));
+                return;
+            }
+
+            if (typeRef is GenericInstanceType git)
+            {
+                var openDef = module.ImportReference(git.ElementType);
+                code.Append(Instruction.Create(OpCodes.Ldtoken, openDef));
+                code.Append(Instruction.Create(OpCodes.Call, getTypeFromHandle));
+
+                code.Append(Instruction.Create(OpCodes.Ldc_I4, git.GenericArguments.Count));
+                code.Append(Instruction.Create(OpCodes.Newarr, typeTypeRef));
+
+                for (int i = 0; i < git.GenericArguments.Count; i++)
+                {
+                    code.Append(Instruction.Create(OpCodes.Dup));
+                    code.Append(Instruction.Create(OpCodes.Ldc_I4, i));
+                    EmitBuildRuntimeType(code, module, git.GenericArguments[i], originalMethod,
+                        headerValue, getGenericTypeAt, getTypeFromHandle, makeGenericType,
+                        makeArrayType, typeTypeRef);
+                    code.Append(Instruction.Create(OpCodes.Stelem_Ref));
+                }
+
+                code.Append(Instruction.Create(OpCodes.Callvirt, makeGenericType));
+                return;
+            }
+
+            code.Append(Instruction.Create(OpCodes.Ldtoken, module.ImportReference(typeRef)));
+            code.Append(Instruction.Create(OpCodes.Call, getTypeFromHandle));
         }
 
         private static void PushNetworkManager(MethodDefinition newMethod, bool isNetworkClass, ILProcessor code,
@@ -3832,24 +3959,42 @@ namespace PurrNet.Codegen
             void PatchTypeRef(TypeReference typeRef)
             {
                 if (typeRef == null) return;
-                if (typeRef.Scope == coreLibRef)
-                    typeRef.Scope = replacementRef;
                 if (typeRef is GenericInstanceType genType)
                 {
                     PatchTypeRef(genType.ElementType);
                     foreach (var ga in genType.GenericArguments)
                         PatchTypeRef(ga);
+                    return;
                 }
-                else if (typeRef is ArrayType arrType)
+                if (typeRef is ArrayType arrType)
+                {
                     PatchTypeRef(arrType.ElementType);
-                else if (typeRef is ByReferenceType byRefType)
+                    return;
+                }
+                if (typeRef is ByReferenceType byRefType)
+                {
                     PatchTypeRef(byRefType.ElementType);
-                else if (typeRef is OptionalModifierType optType)
+                    return;
+                }
+                if (typeRef is OptionalModifierType optType)
+                {
                     PatchTypeRef(optType.ElementType);
-                else if (typeRef is RequiredModifierType reqType)
+                    return;
+                }
+                if (typeRef is RequiredModifierType reqType)
+                {
                     PatchTypeRef(reqType.ElementType);
-                else if (typeRef is PinnedType pinnedType)
+                    return;
+                }
+                if (typeRef is PinnedType pinnedType)
+                {
                     PatchTypeRef(pinnedType.ElementType);
+                    return;
+                }
+                // Plain TypeReference — Scope is settable. TypeSpecification.Scope is derived from
+                // ElementType and its setter throws InvalidOperationException, so we only patch here.
+                if (typeRef.Scope == coreLibRef)
+                    typeRef.Scope = replacementRef;
             }
 
             void ProcessType(TypeDefinition type)
@@ -4130,7 +4275,13 @@ namespace PurrNet.Codegen
         private static void IncludeAnyConcreteGenericParameters(TypeDefinition type,
             HashSet<TypeReference> typesToGenerateSerializer)
         {
-            if (type.BaseType is GenericInstanceType genericType)
+            // Walk the inheritance chain. For each generic base instantiation (e.g.
+            // `IdentityGenericRpcs<int>` from `IdentityGenericRpcsInt`), record the closed args
+            // and also substitute them into any RPC method's parameter/return types so that
+            // closed nested types like `IdentityGenericRpcs<int>.GenericPair<int>` end up in the
+            // serializer set.
+            var current = type.BaseType;
+            while (current is GenericInstanceType genericType)
             {
                 foreach (var genericParameter in genericType.GenericArguments)
                 {
@@ -4140,7 +4291,89 @@ namespace PurrNet.Codegen
                             typesToGenerateSerializer.Add(concreteType);
                     }
                 }
+
+                AddClosedRpcMemberTypesFromOpenDef(genericType, typesToGenerateSerializer);
+
+                TypeDefinition resolved;
+                try { resolved = genericType.Resolve(); }
+                catch { break; }
+                current = resolved?.BaseType;
             }
+
+            // Closed-generic NetworkModule instantiations also enter the type graph via fields
+            // (e.g. `readonly ModuleGenericRpcsModule<int> intModule` on the host identity), with
+            // no concrete subclass in sight. Walk fields and apply the same substitution.
+            for (int i = 0; i < type.Fields.Count; i++)
+            {
+                var ft = type.Fields[i].FieldType;
+                if (ft is GenericInstanceType git && !ft.ContainsGenericParameter)
+                    AddClosedRpcMemberTypesFromOpenDef(git, typesToGenerateSerializer);
+            }
+        }
+
+        // Substitute the closed generic arguments into each RPC method's parameter and return
+        // types declared on the open type, so that types like `GenericPair<T>` show up as
+        // `GenericPair<int>` in the serializer set whenever the open def gets closed — either by
+        // a sealed subclass (`IdentityGenericRpcsInt : IdentityGenericRpcs<int>`) or by a closed
+        // field type on a host identity (`ModuleGenericRpcsModule<int> intModule`).
+        private static void AddClosedRpcMemberTypesFromOpenDef(GenericInstanceType closedRef,
+            HashSet<TypeReference> typesToGenerateSerializer)
+        {
+            TypeDefinition openDef;
+            try { openDef = closedRef.Resolve(); }
+            catch { return; }
+            if (openDef == null) return;
+
+            int argCount = Math.Min(openDef.GenericParameters.Count, closedRef.GenericArguments.Count);
+            if (argCount == 0) return;
+
+            var mapping = new Dictionary<string, TypeReference>(argCount);
+            for (int i = 0; i < argCount; i++)
+            {
+                var arg = closedRef.GenericArguments[i];
+                if (arg.ContainsGenericParameter) return;
+                mapping[openDef.GenericParameters[i].Name] = arg;
+            }
+
+            for (int m = 0; m < openDef.Methods.Count; m++)
+            {
+                var method = openDef.Methods[m];
+                if (!HasRpcAttribute(method)) continue;
+
+                foreach (var param in method.Parameters)
+                {
+                    var pt = param.ParameterType;
+                    if (!pt.ContainsGenericParameter) continue;
+                    var closed = SubstituteGenericParameters(pt, mapping);
+                    if (closed == null || closed.ContainsGenericParameter) continue;
+                    typesToGenerateSerializer.Add(closed);
+                }
+
+                var rt = method.ReturnType;
+                if (rt != null && rt.ContainsGenericParameter)
+                {
+                    var closedRt = SubstituteGenericParameters(rt, mapping);
+                    if (closedRt != null && !closedRt.ContainsGenericParameter)
+                    {
+                        if (IsConcreteType(closedRt, out var concreteRt) && concreteRt != null)
+                            typesToGenerateSerializer.Add(concreteRt);
+                    }
+                }
+            }
+        }
+
+        private static bool HasRpcAttribute(MethodDefinition method)
+        {
+            if (!method.HasCustomAttributes) return false;
+            foreach (var attr in method.CustomAttributes)
+            {
+                var fn = attr.AttributeType.FullName;
+                if (fn == typeof(ServerRpcAttribute).FullName ||
+                    fn == typeof(TargetRpcAttribute).FullName ||
+                    fn == typeof(ObserversRpcAttribute).FullName)
+                    return true;
+            }
+            return false;
         }
 
         private static void FindNetworkModules(TypeDefinition type, string classFullName,
@@ -4581,6 +4814,60 @@ namespace PurrNet.Codegen
             {
                 if (!argument.IsGenericParameter)
                     types.Add(argument);
+            }
+
+            // Substitute the call's generic arguments into each parameter (and the return type)
+            // to capture closed types like GenericPair<int> when calling Echo_GenericPair<int>(p).
+            // Without this, the send path's `Packer<GenericPair<int>>.Write` falls back to
+            // the runtime hasher, which throws because no serializer was registered.
+            MethodDefinition resolved;
+            try
+            {
+                resolved = currentMethod.Resolve();
+            }
+            catch
+            {
+                return;
+            }
+
+            if (resolved == null)
+                return;
+
+            int genericCount = Math.Min(resolved.GenericParameters.Count, currentMethod.GenericArguments.Count);
+            if (genericCount == 0)
+                return;
+
+            var mapping = new Dictionary<string, TypeReference>(genericCount);
+            for (int i = 0; i < genericCount; i++)
+            {
+                var arg = currentMethod.GenericArguments[i];
+                if (arg.ContainsGenericParameter)
+                    return;
+                mapping[resolved.GenericParameters[i].Name] = arg;
+            }
+
+            for (int i = 0; i < resolved.Parameters.Count; i++)
+            {
+                var paramType = resolved.Parameters[i].ParameterType;
+                if (!paramType.ContainsGenericParameter)
+                    continue;
+
+                var closed = SubstituteGenericParameters(paramType, mapping);
+                if (closed == null || closed.ContainsGenericParameter)
+                    continue;
+
+                types.Add(closed);
+            }
+
+            var returnType = resolved.ReturnType;
+            if (returnType != null && returnType.ContainsGenericParameter)
+            {
+                var closedReturn = SubstituteGenericParameters(returnType, mapping);
+                if (closedReturn != null && !closedReturn.ContainsGenericParameter)
+                {
+                    if (IsConcreteType(closedReturn, out var concreteReturn) && concreteReturn != null)
+                        types.Add(concreteReturn);
+                }
             }
         }
 

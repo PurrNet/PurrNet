@@ -131,6 +131,7 @@ GameObject:
   - component: {fileID: 54853821}
   - component: {fileID: 54853820}
   - component: {fileID: 54853819}
+  - component: {fileID: 54853822}
   m_Layer: 0
   m_Name: IdentityRPC
   m_TagString: Untagged
@@ -195,6 +196,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d11dea3c0bf13824ca75d121d8584da1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityServerRpcsScenario
+  _doneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 15
+--- !u!114 &54853822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54853817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62c24875cc520b64f8f6780ce138de79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
 --- !u!1 &277924962
@@ -524,6 +539,7 @@ GameObject:
   - component: {fileID: 961530346}
   - component: {fileID: 961530345}
   - component: {fileID: 961530344}
+  - component: {fileID: 961530347}
   m_Layer: 0
   m_Name: ModuleRPC
   m_TagString: Untagged
@@ -588,6 +604,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32fffa126395d20459252cbf2f74564a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleServerRpcsScenario
+  _doneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 15
+--- !u!114 &961530347
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 961530342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e6aed612bf05054aaafe8519deaa453, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
 --- !u!1 &1216416895
@@ -801,6 +831,7 @@ GameObject:
   - component: {fileID: 1354744833}
   - component: {fileID: 1354744832}
   - component: {fileID: 1354744831}
+  - component: {fileID: 1354744834}
   m_Layer: 0
   m_Name: StaticRPC
   m_TagString: Untagged
@@ -864,6 +895,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticRpcsScenario
   _doneTimeoutSeconds: 30
+--- !u!114 &1354744834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354744829}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac27038b030b8ca40a0e7e7191be1de1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticGenericRpcsScenario
+  _doneTimeoutSeconds: 30
+  _broadcastTimeoutSeconds: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

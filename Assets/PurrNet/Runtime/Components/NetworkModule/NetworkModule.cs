@@ -222,7 +222,7 @@ namespace PurrNet
                     BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
                 gmethod = method?.MakeGenericMethod(rpcHeader.types);
 
-                NetworkIdentity.genericMethods.Add(key, gmethod);
+                NetworkIdentity.genericMethods.Add(key.CloneForStorage(), gmethod);
             }
 
             if (gmethod == null)

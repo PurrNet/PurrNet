@@ -468,7 +468,7 @@ namespace PurrNet.Modules
                     BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
                 gmethod = method?.MakeGenericMethod(rpcHeader.types);
 
-                _staticGenericHandlers[key] = gmethod;
+                _staticGenericHandlers[key.CloneForStorage()] = gmethod;
             }
 
             if (gmethod == null)
