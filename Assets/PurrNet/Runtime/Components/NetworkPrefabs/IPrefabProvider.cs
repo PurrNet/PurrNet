@@ -39,6 +39,8 @@ namespace PurrNet
 
         bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData);
 
+        void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5);
+
         void Refresh();
     }
 
@@ -49,6 +51,8 @@ namespace PurrNet
         public abstract bool TryGetPrefabData(int prefabId, out PrefabData prefabData);
 
         public abstract bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData);
+
+        public abstract void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5);
 
         public abstract void Refresh();
     }

@@ -17,7 +17,7 @@ namespace PurrNet
         {
             public AssetReferenceGameObject asset;
         }
-        
+
         [SerializeField] private bool _preloadAtStartup = true;
         [SerializeField] private List<Entry> _entries = new();
 
@@ -39,6 +39,16 @@ namespace PurrNet
         private readonly Dictionary<string, int> _guidToId = new();
         private readonly Dictionary<int, string> _idToGuid = new();
         private readonly List<AsyncOperationHandle<GameObject>> _loadHandles = new();
+        private readonly List<RuntimePrefabEntry> _runtimePrefabs = new();
+        private int _runtimePrefabStartId;
+
+        private struct RuntimePrefabEntry
+        {
+            public string uniqueName;
+            public GameObject prefab;
+            public bool pooled;
+            public int warmupCount;
+        }
 
         /// <summary>
         /// The entries registered in this asset. Read-only access for external inspection.
@@ -117,6 +127,19 @@ namespace PurrNet
 
             prefabData = default;
             return false;
+        }
+
+        public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
+        {
+            _runtimePrefabs.Add(new RuntimePrefabEntry
+            {
+                uniqueName = uniqueName,
+                prefab = prefab,
+                pooled = pooled,
+                warmupCount = warmup
+            });
+
+            Refresh();
         }
 
         public bool TryGetGuid(int localPrefabId, out string assetGuid)
@@ -207,6 +230,29 @@ namespace PurrNet
                     prefab = null,
                     pooled = false,
                     warmupCount = 0
+                };
+            }
+
+            int runtimeStart = sorted.Count;
+            _runtimePrefabStartId = runtimeStart;
+            for (int i = 0; i < _runtimePrefabs.Count; i++)
+            {
+                var rt = _runtimePrefabs[i];
+                if (!rt.prefab) continue;
+
+                int id = runtimeStart + i;
+                if (!string.IsNullOrEmpty(rt.uniqueName) && seenGuids.Add(rt.uniqueName))
+                {
+                    _guidToId[rt.uniqueName] = id;
+                    _idToGuid[id] = rt.uniqueName;
+                }
+
+                _prefabLookup[id] = new PrefabData
+                {
+                    prefabId = id,
+                    prefab = rt.prefab,
+                    pooled = rt.pooled,
+                    warmupCount = rt.warmupCount
                 };
             }
         }
@@ -342,6 +388,8 @@ namespace PurrNet
             for (int i = 0; i < keys.Count; i++)
             {
                 var key = keys[i];
+                if (key >= _runtimePrefabStartId)
+                    continue;
                 if (_prefabLookup.TryGetValue(key, out var data))
                 {
                     data.prefab = null;

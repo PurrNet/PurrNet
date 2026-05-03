@@ -35,7 +35,7 @@ namespace PurrNet
         public override IEnumerable<PrefabData> allPrefabs => prefabLookup.Values;
 
         private readonly Dictionary<int, PrefabData> prefabLookup = new();
-        
+
         public override bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
         {
             return this.prefabLookup.TryGetValue(prefabId, out prefabData);
@@ -82,6 +82,19 @@ namespace PurrNet
 
             prefabData = default;
             return false;
+        }
+
+        public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
+        {
+            prefabs.Add(new UserPrefabData
+            {
+                guid = uniqueName,
+                pooled = pooled,
+                prefab = prefab.gameObject,
+                warmupCount = warmup
+            });
+
+            Refresh();
         }
 
         public override void Refresh()

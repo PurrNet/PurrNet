@@ -24,4 +24,30 @@ namespace PurrNet
             this.error = error;
         }
     }
+
+    /// <summary>
+    /// Wraps an exception thrown by an RPC handler so the manifest entry shows up in the message
+    /// while the original stack trace is preserved as InnerException for clickable navigation.
+    /// </summary>
+    public class RpcDispatchException : RpcException
+    {
+        public Type declaringType { get; }
+        public int rpcId { get; }
+        public RPCManifestEntry? entry { get; }
+
+        public RpcDispatchException(RPCManifestEntry entry, Exception inner)
+            : base($"RPC `{entry}` threw", inner)
+        {
+            declaringType = entry.declaringType;
+            rpcId = entry.rpcId;
+            this.entry = entry;
+        }
+
+        public RpcDispatchException(Type declaringType, int rpcId, Exception inner)
+            : base($"RPC <id={rpcId}> on '{declaringType?.FullName ?? "<unknown>"}' threw", inner)
+        {
+            this.declaringType = declaringType;
+            this.rpcId = rpcId;
+        }
+    }
 }

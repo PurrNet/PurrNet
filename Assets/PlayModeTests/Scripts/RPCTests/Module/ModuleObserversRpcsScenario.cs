@@ -1,0 +1,224 @@
+using System;
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using PurrNet;
+using UnityEngine;
+
+public class ModuleObserversRpcsScenario : Scenario
+{
+    [SerializeField] private float _doneTimeoutSeconds = 30f;
+    [SerializeField] private float _broadcastTimeoutSeconds = 10f;
+    [SerializeField] private float _spawnTimeoutSeconds = 15f;
+
+    private ModuleObserversRpcs _prefab;
+
+    void CreatePrefab()
+    {
+        var go = new GameObject(nameof(ModuleObserversRpcsScenario));
+        _prefab = go.AddComponent<ModuleObserversRpcs>();
+        go.SetActive(false);
+    }
+
+    public override void Setup(ScenarioContext ctx, NetworkManager manager)
+    {
+        CreatePrefab();
+        manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
+    }
+
+    public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
+    {
+        if (ctx.role == NetworkRole.Server)
+        {
+            Instantiate(_prefab);
+            return await RunAsServerOnly(ctx);
+        }
+
+        if (ctx.isServer)
+            Instantiate(_prefab);
+
+        await UniTaskUtils.WaitWithTimeout(
+            () => ModuleObserversRpcs.LocalInstance != null,
+            _spawnTimeoutSeconds,
+            ctx.cancellationToken);
+
+        var clientResult = await RunClientChecks(ctx, _broadcastTimeoutSeconds);
+        ModuleObserversRpcs.LocalInstance.module.SignalDone();
+        return clientResult;
+    }
+
+    private async UniTask<ScenarioResult> RunAsServerOnly(ScenarioContext ctx)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.DoneCount >= ctx.expectedConnections,
+                _doneTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail(
+                $"Server timed out waiting for client done signals; got {ModuleObserversRpcsModule.DoneCount}/{ctx.expectedConnections}");
+        }
+
+        return ScenarioResult.Ok($"Done={ModuleObserversRpcsModule.DoneCount}");
+    }
+
+    private static async UniTask<ScenarioResult> RunClientChecks(ScenarioContext ctx, float timeout)
+    {
+        var failures = new List<string>();
+        var corr = ctx.networkManager.localPlayer.id.value;
+        var module = ModuleObserversRpcs.LocalInstance.module;
+
+        await Try(failures, "Int", async () =>
+        {
+            module.TriggerBroadcastInt(corr, 42);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.IntReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.IntReceived[corr] != 42)
+                throw new Exception($"expected 42, got {ModuleObserversRpcsModule.IntReceived[corr]}");
+        });
+
+        await Try(failures, "String", async () =>
+        {
+            module.TriggerBroadcastString(corr, "obs hello");
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.StringReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.StringReceived[corr] != "obs hello")
+                throw new Exception($"expected 'obs hello', got '{ModuleObserversRpcsModule.StringReceived[corr]}'");
+        });
+
+        await Try(failures, "Struct", async () =>
+        {
+            var input = new ModuleObserversRpcsModule.TestPayload { id = 11, label = "obs payload", weight = 2.25f };
+            module.TriggerBroadcastStruct(corr, input);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.StructReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            var r = ModuleObserversRpcsModule.StructReceived[corr];
+            if (r.id != input.id || r.label != input.label || Mathf.Abs(r.weight - input.weight) > 0.0001f)
+                throw new Exception($"struct mismatch: got id={r.id}, label='{r.label}', weight={r.weight}");
+        });
+
+        await Try(failures, "GenericInt", async () =>
+        {
+            module.TriggerBroadcastGeneric<int>(corr, 77);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.GenericIntReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.GenericIntReceived[corr] != 77)
+                throw new Exception($"expected 77, got {ModuleObserversRpcsModule.GenericIntReceived[corr]}");
+        });
+
+        await Try(failures, "Compression_None", async () =>
+        {
+            module.TriggerBroadcastCompNone(corr, 1001);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.CompNoneReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.CompNoneReceived[corr] != 1001)
+                throw new Exception($"expected 1001, got {ModuleObserversRpcsModule.CompNoneReceived[corr]}");
+        });
+
+        await Try(failures, "Compression_Fast", async () =>
+        {
+            module.TriggerBroadcastCompFast(corr, 1002);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.CompFastReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.CompFastReceived[corr] != 1002)
+                throw new Exception($"expected 1002, got {ModuleObserversRpcsModule.CompFastReceived[corr]}");
+        });
+
+        await Try(failures, "Compression_Balanced", async () =>
+        {
+            module.TriggerBroadcastCompBalanced(corr, 1003);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.CompBalancedReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.CompBalancedReceived[corr] != 1003)
+                throw new Exception($"expected 1003, got {ModuleObserversRpcsModule.CompBalancedReceived[corr]}");
+        });
+
+        await Try(failures, "Compression_Best", async () =>
+        {
+            module.TriggerBroadcastCompBest(corr, 1004);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.CompBestReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.CompBestReceived[corr] != 1004)
+                throw new Exception($"expected 1004, got {ModuleObserversRpcsModule.CompBestReceived[corr]}");
+        });
+
+        await Try(failures, "Unreliable", async () =>
+        {
+            for (var i = 0; i < 5; i++)
+                module.TriggerBroadcastUnreliable(corr, 555);
+
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.UnreliableReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (ModuleObserversRpcsModule.UnreliableReceived[corr] != 555)
+                throw new Exception($"expected 555, got {ModuleObserversRpcsModule.UnreliableReceived[corr]}");
+        });
+
+        await Try(failures, "DeltaPacked_Off_Sequence", async () =>
+        {
+            int[] seq = { 7, 7, 8, 8, 13 };
+            for (var i = 0; i < seq.Length; i++)
+                module.TriggerBroadcastDeltaOff(corr, seq[i]);
+
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.DeltaSequence.TryGetValue(corr, out var l) && l.Count >= seq.Length,
+                timeout, ctx.cancellationToken);
+
+            var got = ModuleObserversRpcsModule.DeltaSequence[corr];
+            for (var i = 0; i < seq.Length; i++)
+                if (got[i] != seq[i])
+                    throw new Exception($"seq[{i}] expected {seq[i]}, got {got[i]}");
+        });
+
+        await Try(failures, "DeltaPacked_On_Sequence", async () =>
+        {
+            int[] seq = { 100, 100, 101, 101, 200 };
+            for (var i = 0; i < seq.Length; i++)
+                module.TriggerBroadcastDeltaOn(corr, seq[i]);
+
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.DeltaPackedSequence.TryGetValue(corr, out var l) && l.Count >= seq.Length,
+                timeout, ctx.cancellationToken);
+
+            var got = ModuleObserversRpcsModule.DeltaPackedSequence[corr];
+            for (var i = 0; i < seq.Length; i++)
+                if (got[i] != seq[i])
+                    throw new Exception($"seq[{i}] expected {seq[i]}, got {got[i]}");
+        });
+
+        await Try(failures, "ObserversP2P_RequireServerFalse", async () =>
+        {
+            module.BroadcastP2P(corr, 6789);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.P2PBroadcastReceived.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            if (!ModuleObserversRpcsModule.P2PBroadcastReceived.TryGetValue(corr, out var got))
+                throw new Exception("p2p broadcast did not arrive");
+            if (got != 6789) throw new Exception($"expected 6789, got {got}");
+        });
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+        return ScenarioResult.Ok();
+    }
+
+    private static async UniTask Try(List<string> failures, string label, Func<UniTask> action)
+    {
+        try { await action(); }
+        catch (Exception e)
+        {
+            failures.Add($"{label}: {e.Message}");
+            Debug.LogError($"[ModuleObserversRpcsScenario] {label} failed: {e}");
+        }
+    }
+}

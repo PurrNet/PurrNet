@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PurrNet.Logging;
@@ -22,6 +23,18 @@ namespace PurrNet
         public void AddProvider(IPrefabProvider provider)
         {
             _providers.Add(provider);
+        }
+
+        public void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
+        {
+            if (_providers.Count == 0)
+            {
+                PurrLogger.LogError("CompositePrefabProvider: no providers registered, cannot add runtime prefab.");
+                return;
+            }
+
+            _providers[0].AddRuntimePrefab(uniqueName, prefab, pooled, warmup);
+            Refresh();
         }
 
         /// <summary>
