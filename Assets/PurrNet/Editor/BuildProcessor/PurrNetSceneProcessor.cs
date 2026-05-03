@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using PurrNet.Pooling;
 using PurrNet.Utils;
-using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;

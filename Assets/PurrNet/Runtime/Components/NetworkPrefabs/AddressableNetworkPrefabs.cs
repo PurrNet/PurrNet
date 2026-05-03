@@ -154,7 +154,7 @@ namespace PurrNet
             onLoadStateChanged?.Invoke(guid, loaded);
         }
 
-        public System.Collections.Generic.IEnumerable<string> GetLoadedGuids()
+        public IEnumerable<string> GetLoadedGuids()
         {
             foreach (var kvp in _prefabLookup)
             {
@@ -220,7 +220,7 @@ namespace PurrNet
 
             for (int i = 0; i < sorted.Count; i++)
             {
-                var (guid, entry) = sorted[i];
+                var (guid, _) = sorted[i];
 
                 _guidToId[guid] = i;
                 _idToGuid[i] = guid;
