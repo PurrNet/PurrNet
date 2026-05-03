@@ -192,6 +192,7 @@ public class Bootstrap : Scenario
 
                 _results[i] = new ScenarioDetails
                 {
+                    name = scenario.GetType().Name,
                     result = result,
                     durationInMs = elapsedMs,
                     dataSent = _dataSent,

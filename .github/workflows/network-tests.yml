@@ -146,6 +146,69 @@ jobs:
 
           exit $FAIL
 
+      - name: Render results to job summary
+        if: always()
+        run: |
+          set -u
+          shopt -s nullglob
+          files=(test-results/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            {
+              echo "## Network Test Results"
+              echo ""
+              echo "_No result files were produced._"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          JQ_LIB='
+            def humanBytes:
+              if . < 1024 then "\(.) B"
+              elif . < 1048576 then "\(((. * 10) / 1024 | floor) / 10) KB"
+              else "\(((. * 100) / 1048576 | floor) / 100) MB" end;
+            def humanDuration:
+              if . < 1000 then "\(((. * 10) | floor) / 10)ms"
+              else "\(((. * 100) / 1000 | floor) / 100)s" end;
+            def statusIcon:
+              if . then ":white_check_mark:" else ":x:" end;
+          '
+
+          total=0
+          passed=0
+          for f in "${files[@]}"; do
+            count=$(jq 'length' "$f")
+            pass=$(jq '[.[] | select(.result.success == true)] | length' "$f")
+            total=$((total + count))
+            passed=$((passed + pass))
+          done
+          failed=$((total - passed))
+
+          {
+            echo "## Network Test Results"
+            echo ""
+            if [ "$failed" -eq 0 ]; then
+              echo "### :white_check_mark: All scenarios passed (${passed}/${total})"
+            else
+              echo "### :x: ${failed} failure(s) — ${passed}/${total} passed"
+            fi
+            echo ""
+
+            for f in "${files[@]}"; do
+              proc=$(basename "$f" .json)
+              pcount=$(jq 'length' "$f")
+              ppass=$(jq '[.[] | select(.result.success == true)] | length' "$f")
+              echo "#### \`${proc}\` — ${ppass}/${pcount} passed"
+              echo ""
+              echo "| # | Scenario | Status | Duration | Sent | Received | Message |"
+              echo "|---|---|---|---|---|---|---|"
+              jq -r "$JQ_LIB"'
+                to_entries[] |
+                "| \(.key) | \(.value.name // "?") | \(.value.result.success | statusIcon) | \(.value.durationInMs | humanDuration) | \(.value.dataSent | humanBytes) | \(.value.dataReceived | humanBytes) | \((.value.result.message // "") | gsub("\\|"; "&#124;") | gsub("[\\r\\n]+"; " ")) |"
+              ' "$f"
+              echo ""
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Tail logs on failure
         if: failure()
         run: |
