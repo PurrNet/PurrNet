@@ -59,6 +59,11 @@ jobs:
       - name: Inspect build output
         run: ls -la build/StandaloneLinux64/
 
+      - name: Install xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
       - name: Run scenarios (1 server + N clients)
         env:
           CLIENT_COUNT: ${{ inputs.clientCount }}
@@ -70,8 +75,12 @@ jobs:
           LOGS_DIR="$PWD/test-logs"
           mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
 
+          # Unity 6 Linux player segfaults inside PlayerMain on ubuntu-latest
+          # even with -batchmode -nographics, so wrap each invocation in xvfb-run.
+          RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
+
           echo "::group::Launching server"
-          "$BIN" -batchmode -nographics \
+          "${RUN[@]}" "$BIN" -batchmode -nographics \
             -role server -count "$CLIENT_COUNT" \
             -results "$RESULTS_DIR/server.json" \
             -logFile "$LOGS_DIR/server.log" &
@@ -90,7 +99,7 @@ jobs:
           CLIENT_PIDS=()
           for i in $(seq 1 "$CLIENT_COUNT"); do
             echo "::group::Launching client $i"
-            "$BIN" -batchmode -nographics \
+            "${RUN[@]}" "$BIN" -batchmode -nographics \
               -role client \
               -results "$RESULTS_DIR/client-$i.json" \
               -logFile "$LOGS_DIR/client-$i.log" &

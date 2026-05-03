@@ -15,6 +15,7 @@ public class Bootstrap : Scenario
     [SerializeField] private NetworkManager _networkManager;
     [SerializeField] private float _connectionTimeout = 15f;
     [SerializeField] private float _timeBetweenScenarios = 2f;
+    [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
     private NetworkRole _role;
     private int _expectedConnections;
@@ -187,8 +188,6 @@ public class Bootstrap : Scenario
                 if (!result.success)
                     anyFailed = true;
 
-                await UniTask.WaitForSeconds(_timeBetweenScenarios);
-
                 _results[i] = new ScenarioDetails
                 {
                     result = result,
@@ -197,6 +196,19 @@ public class Bootstrap : Scenario
                     dataReceived = _dataReceived
                 };
 
+                // Sync all processes before advancing so a fast finisher can't
+                // start the next scenario while others are still running this one.
+                try
+                {
+                    await ScenarioBarrier.Wait(ctx, i, _barrierTimeoutSeconds);
+                }
+                catch (TimeoutException)
+                {
+                    Debug.LogError($"[Bootstrap] Barrier {i} timed out after `{scenario.name}`");
+                    anyFailed = true;
+                }
+
+                await UniTask.WaitForSeconds(_timeBetweenScenarios);
             }
         }
         catch (Exception e)
