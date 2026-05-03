@@ -77,7 +77,7 @@ namespace PurrNet.Modules
 
                 if (!rules.ShouldIgnoreRequireServer())
                 {
-                    PurrLogger.LogError("Received async response from a client, but server is required (network rules).");
+                    PurrLogger.LogError($"Received async response from client `{data.forward.Value}`, but server is required (network rules).");
                     return;
                 }
 

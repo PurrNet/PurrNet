@@ -5,8 +5,9 @@ using Cysharp.Threading.Tasks;
 using PurrNet;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
+using CompressionLevel = PurrNet.CompressionLevel;
 
-public class StaticRpcsScenario : Scenario
+public class StaticServerRpcsScenario : Scenario
 {
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
@@ -120,13 +121,32 @@ public class StaticRpcsScenario : Scenario
             if (r != 99) throw new Exception($"expected 99, got {r}");
         });
 
+        await Try(failures, "Echo_Compression_None", async () =>
+        {
+            var r = await Echo_CompNone(3001);
+            if (r != 3001) throw new Exception($"expected 3001, got {r}");
+        });
+
+        await Try(failures, "Echo_Compression_Fast", async () =>
+        {
+            var r = await Echo_CompFast(3002);
+            if (r != 3002) throw new Exception($"expected 3002, got {r}");
+        });
+
+        await Try(failures, "Echo_Compression_Balanced", async () =>
+        {
+            var r = await Echo_CompBalanced(3003);
+            if (r != 3003) throw new Exception($"expected 3003, got {r}");
+        });
+
+        await Try(failures, "Echo_Compression_Best", async () =>
+        {
+            var r = await Echo_CompBest(3004);
+            if (r != 3004) throw new Exception($"expected 3004, got {r}");
+        });
+
         await Try(failures, "Echo_WithInfo", async () =>
         {
-            // Server returns the sender id it observed. For a pure client this
-            // must equal the client's own localPlayer id and must be non-zero
-            // (PlayerID.Server has _id == 0, which is also default(PlayerID),
-            // so a simple `== Server` comparison can't distinguish "uninitialized"
-            // from "actually the server").
             var seenSenderId = await Echo_WithInfo(0);
 
             if (ctx.role == NetworkRole.Client)
@@ -139,7 +159,31 @@ public class StaticRpcsScenario : Scenario
             }
         });
 
-        // Fire-and-forget — server tracks how many it received in _fireAndForgetReceivedCount.
+        // deltaPacked Off/On sequences. Note: codegen drops deltaPacked on ServerRpc (see
+        // GenerateRpcMethodBody: useDeltaPacking = deltaPacked && type != ServerRPC), so On
+        // and Off should both behave like the Off baseline. We can only observe round-trip
+        // correctness from the client process — the server's per-call state lives in a
+        // different process — so verification is on the echo replies only.
+        await Try(failures, "DeltaPacked_Off_Sequence", async () =>
+        {
+            int[] seq = { 5, 5, 6, 6, 11 };
+            for (var i = 0; i < seq.Length; i++)
+            {
+                var r = await Echo_DeltaOff(seq[i]);
+                if (r != seq[i]) throw new Exception($"echo[{i}] expected {seq[i]}, got {r}");
+            }
+        });
+
+        await Try(failures, "DeltaPacked_On_Sequence", async () =>
+        {
+            int[] seq = { 300, 300, 301, 301, 400 };
+            for (var i = 0; i < seq.Length; i++)
+            {
+                var r = await Echo_DeltaOn(seq[i]);
+                if (r != seq[i]) throw new Exception($"echo[{i}] expected {seq[i]}, got {r}");
+            }
+        });
+
         await Try(failures, "FireAndForget", async () =>
         {
             FireAndForget(123);
@@ -165,37 +209,47 @@ public class StaticRpcsScenario : Scenario
         }
     }
 
-    // ---- RPC definitions ----
+    [ServerRpc(requireOwnership: false)]
+    private static Task<int> Echo_Int(int x, RPCInfo info = default) => Task.FromResult(x);
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<int> Echo_Int(int x) => Task.FromResult(x);
+    private static Task<string> Echo_String(string s, RPCInfo info = default) => Task.FromResult(s);
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<string> Echo_String(string s) => Task.FromResult(s);
+    private static Task<bool> Echo_Bool(bool b, RPCInfo info = default) => Task.FromResult(b);
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<bool> Echo_Bool(bool b) => Task.FromResult(b);
+    private static UniTask<float> Echo_FloatUni(float f, RPCInfo info = default) => UniTask.FromResult(f);
 
     [ServerRpc(requireOwnership: false)]
-    private static UniTask<float> Echo_FloatUni(float f) => UniTask.FromResult(f);
-
-    [ServerRpc(requireOwnership: false)]
-    private static async UniTask Echo_VoidUni(int dummy)
+    private static async UniTask Echo_VoidUni(int dummy, RPCInfo info = default)
     {
         await UniTask.Yield();
     }
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<T> Echo_Generic<T>(T value) => Task.FromResult(value);
+    private static Task<T> Echo_Generic<T>(T value, RPCInfo info = default) => Task.FromResult(value);
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<TestPayload> Echo_Struct(TestPayload p) => Task.FromResult(p);
+    private static Task<TestPayload> Echo_Struct(TestPayload p, RPCInfo info = default) => Task.FromResult(p);
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<int> Echo_Sum(int a, int b, int c) => Task.FromResult(a + b + c);
+    private static Task<int> Echo_Sum(int a, int b, int c, RPCInfo info = default) => Task.FromResult(a + b + c);
 
     [ServerRpc(requireOwnership: false, channel: Channel.Unreliable)]
-    private static Task<int> Echo_Unreliable(int x) => Task.FromResult(x);
+    private static Task<int> Echo_Unreliable(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false, compressionLevel: CompressionLevel.None)]
+    private static Task<int> Echo_CompNone(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false, compressionLevel: CompressionLevel.Fast)]
+    private static Task<int> Echo_CompFast(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false, compressionLevel: CompressionLevel.Balanced)]
+    private static Task<int> Echo_CompBalanced(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false, compressionLevel: CompressionLevel.Best)]
+    private static Task<int> Echo_CompBest(int x, RPCInfo info = default) => Task.FromResult(x);
 
     [ServerRpc(requireOwnership: false)]
     private static Task<ulong> Echo_WithInfo(int dummy, RPCInfo info = default)
@@ -203,17 +257,23 @@ public class StaticRpcsScenario : Scenario
         return Task.FromResult(info.sender.id.value);
     }
 
+    [ServerRpc(requireOwnership: false, deltaPacked: false)]
+    private static Task<int> Echo_DeltaOff(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false, deltaPacked: true)]
+    private static Task<int> Echo_DeltaOn(int x, RPCInfo info = default) => Task.FromResult(x);
+
     [ServerRpc(requireOwnership: false)]
-    private static void FireAndForget(int x)
+    private static void FireAndForget(int x, RPCInfo info = default)
     {
         _fireAndForgetReceivedCount++;
-        Debug.Log($"[StaticRpcsScenario] FireAndForget received: {x} (total {_fireAndForgetReceivedCount})");
+        Debug.Log($"[StaticRpcsScenario] FireAndForget received: {x} from sender {info.sender.id.value} (total {_fireAndForgetReceivedCount})");
     }
 
     [ServerRpc(requireOwnership: false)]
-    private static void SignalDone()
+    private static void SignalDone(RPCInfo info = default)
     {
         _doneCount++;
-        Debug.Log($"[StaticRpcsScenario] SignalDone received (total {_doneCount})");
+        Debug.Log($"[StaticRpcsScenario] SignalDone received from sender {info.sender.id.value} (total {_doneCount})");
     }
 }

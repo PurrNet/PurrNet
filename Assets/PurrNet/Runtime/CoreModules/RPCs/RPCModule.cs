@@ -413,10 +413,18 @@ namespace PurrNet.Modules
                     var playersManager = networkManager.GetModule<PlayersManager>(true);
 
                     bool isTargetingServer = data.targetPlayerId == PlayerID.Server;
-                    bool shouldExecute = isTargetingServer && rules.CanTargetServerWithTargetRpc();
+                    bool canTargetServer = rules.CanTargetServerWithTargetRpc();
+                    bool shouldExecute = isTargetingServer && canTargetServer;
 
-                    if (!isTargetingServer)
+                    if (isTargetingServer && !canTargetServer)
+                    {
+                        PurrLogger.LogError(
+                            $"Trying to send TargetRPC '{signature.rpcName}' to server but `NetworkRules` don't allow for this.");
+                    }
+                    else if (!isTargetingServer)
+                    {
                         playersManager.Send(data.targetPlayerId, data, signature.channel);
+                    }
 
                     if (data is StaticRPCPacket staticRpc)
                         module.AppendToBufferedRPCs(staticRpc, signature);
@@ -746,7 +754,7 @@ namespace PurrNet.Modules
             var info = new RPCInfo
             {
                 manager = _manager,
-                sender = player,
+                sender = data.header.senderId,
                 asServer = asServer
             };
 
@@ -778,7 +786,7 @@ namespace PurrNet.Modules
             var info = new RPCInfo
             {
                 manager = _manager,
-                sender = player,
+                sender = packet.header.senderId,
                 asServer = asServer
             };
 

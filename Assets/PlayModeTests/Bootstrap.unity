@@ -130,6 +130,8 @@ GameObject:
   - component: {fileID: 277924963}
   - component: {fileID: 277924964}
   - component: {fileID: 277924965}
+  - component: {fileID: 277924967}
+  - component: {fileID: 277924966}
   m_Layer: 0
   m_Name: Bootstrap
   m_TagString: Untagged
@@ -167,6 +169,7 @@ MonoBehaviour:
   _networkManager: {fileID: 1216416897}
   _connectionTimeout: 15
   _timeBetweenScenarios: 2
+  _barrierTimeoutSeconds: 60
 --- !u!114 &277924965
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -180,7 +183,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticRpcsScenario
   _doneTimeoutSeconds: 30
-  _postClientDelaySeconds: 0.5
+--- !u!114 &277924966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 277924962}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcd6f4b9e060235479397c84d07af732, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticTargetRpcsScenario
+  _doneTimeoutSeconds: 30
+  _targetTimeoutSeconds: 10
+--- !u!114 &277924967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 277924962}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d408dfd9981d849be9281f89e66461c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticObserversRpcsScenario
+  _doneTimeoutSeconds: 30
+  _broadcastTimeoutSeconds: 10
 --- !u!1 &358453800
 GameObject:
   m_ObjectHideFlags: 0
@@ -507,10 +537,10 @@ MonoBehaviour:
   _cookieScope: 1
   _dontDestroyOnLoad: 0
   _transport: {fileID: 1216416896}
-  _networkPrefabs: {fileID: 11400000, guid: b7f7b36d94ccf2447b39c067fe832220, type: 2}
+  _networkPrefabs: {fileID: 11400000, guid: 086e281128d7bb14f943c098795b35bc, type: 2}
   _addressableNetworkPrefabs: {fileID: 0}
-  _networkAssets: {fileID: 0}
-  _networkRules: {fileID: 11400000, guid: 57ad4cc976c21074181652c4f7179d44, type: 2}
+  _networkAssets: {fileID: 11400000, guid: 2b180f25aa2d83547b8d0d71a5e21cf2, type: 2}
+  _networkRules: {fileID: 11400000, guid: e0a4aaa8c3ab6ce4dbf625273ef3141b, type: 2}
   _visibilityRules: {fileID: 0}
   _authenticator: {fileID: 0}
   _tickRate: 20
