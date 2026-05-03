@@ -59,11 +59,6 @@ jobs:
       - name: Inspect build output
         run: ls -la build/StandaloneLinux64/
 
-      - name: Install xvfb
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-
       - name: Run scenarios (1 server + N clients)
         env:
           CLIENT_COUNT: ${{ inputs.clientCount }}
