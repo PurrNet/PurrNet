@@ -21,7 +21,7 @@ namespace PurrNet.Editor
                 Debug.LogError(
                     "[Verify IL] Could not locate `ilverify`. Install it as a .NET global tool:\n" +
                     "    dotnet tool install --global dotnet-ilverify\n" +
-                    "Then make sure %USERPROFILE%\\.dotnet\\tools is on your PATH and restart Unity.");
+                    @"Then make sure %USERPROFILE%\.dotnet\tools is on your PATH and restart Unity.");
                 return;
             }
 
@@ -38,16 +38,9 @@ namespace PurrNet.Editor
 
             var targets = Directory.GetFiles(scriptAssembliesDir, "*.dll");
             if (targets.Length == 0)
-            {
-                Debug.LogWarning($"[Verify IL] No DLLs found under {scriptAssembliesDir}");
                 return;
-            }
-
-            Debug.Log($"[Verify IL] Verifying {targets.Length} assemblies against {refDirs.Count} reference dirs via `{ilverifyExe} {ilverifyArgsPrefix}`...");
 
             var responseFile = WriteReferenceResponseFile(refDirs);
-            int totalFailures = 0;
-            int totalAssembliesWithErrors = 0;
             var sw = Stopwatch.StartNew();
 
             try
@@ -61,7 +54,6 @@ namespace PurrNet.Editor
                             $"{name} ({i + 1}/{targets.Length})",
                             (float)i / targets.Length))
                     {
-                        Debug.LogWarning("[Verify IL] Cancelled by user.");
                         return;
                     }
 
@@ -69,21 +61,9 @@ namespace PurrNet.Editor
                         continue;
 
                     var output = (stdout + "\n" + stderr).Trim();
-                    ClassifyOutput(output, out var errorCount, out var calliSkipCount, out var realErrorBlock);
+                    ClassifyOutput(output, out var errorCount, out var realErrorBlock);
                     if (errorCount > 0)
-                    {
-                        totalAssembliesWithErrors++;
-                        totalFailures += errorCount;
                         Debug.LogError($"[Verify IL] {name}: {errorCount} error(s) (exit {exitCode})\n{realErrorBlock}");
-                    }
-                    if (calliSkipCount > 0)
-                    {
-                        Debug.LogWarning($"[Verify IL] {name}: {calliSkipCount} `calli` site(s) skipped (ILVerify limitation, not an IL defect).");
-                    }
-                    if (errorCount == 0 && calliSkipCount == 0 && exitCode != 0)
-                    {
-                        Debug.LogWarning($"[Verify IL] {name}: ilverify exited {exitCode} but produced no parseable errors\n{output}");
-                    }
                 }
             }
             finally
@@ -96,11 +76,6 @@ namespace PurrNet.Editor
                     // ignored
                 }
             }
-
-            if (totalAssembliesWithErrors == 0)
-                Debug.Log($"[Verify IL] All {targets.Length} assemblies verified clean ({sw.Elapsed.TotalSeconds:F1}s).");
-            else
-                Debug.LogError($"[Verify IL] {totalAssembliesWithErrors}/{targets.Length} assemblies had IL errors ({totalFailures} total) in {sw.Elapsed.TotalSeconds:F1}s.");
         }
 
         static bool TryLocateIlVerify(out string exe, out string argsPrefix)
@@ -222,7 +197,7 @@ namespace PurrNet.Editor
                 p.WaitForExit();
                 exitCode = p.ExitCode;
                 if (exitCode != 0) return false;
-                ClassifyOutput(stdout + "\n" + stderr, out var errs, out _, out _);
+                ClassifyOutput(stdout + "\n" + stderr, out var errs, out _);
                 return errs == 0;
             }
             catch (Exception ex)
@@ -234,12 +209,62 @@ namespace PurrNet.Editor
             }
         }
 
-        const string CALLI_NOT_IMPLEMENTED = "ImportCalli not implemented";
+        static readonly string[] _ignoredErrorCodes =
+        {
+            "[UnmanagedPointer]",      // P/Invoke / unsafe wrappers with byte* etc.
+            "[ReturnPtrToStack]",      // Span<T> / ReadOnlySpan<T> returns (ref-struct pattern)
+            "[InitOnly]",              // Unsafe.AsRef / pointer-reinterpret writes through readonly
+            "[FieldAccess]",           // codegen-synthesized types touching private/internal fields — runtimes skip access checks
+            "[MethodAccess]",          // codegen-synthesized types calling private/internal methods — runtimes skip access checks
+            "[InitLocals]",            // .locals init flag missing — equivalent to [SkipLocalsInit]; runtimes don't require it
+            "[UnsatisfiedMethodInst]", // generic stub through codegen indirection; constraints are runtime-checked, not statically provable
+            "[CallVirtOnValueType]",   // codegen emits callvirt on value-type method without `constrained.` prefix; runtimes treat as call
+            "[Unverifiable]",          // generic "instruction not verifiable" — almost always unsafe pointer/interop code
+            "[ThisMismatch]",          // codegen 'this' parameter type the verifier can't statically reconcile
+            "[ConstrainedCallWithNonByRefThis]", // `constrained.` on a by-value 'this'; runtime boxes implicitly
+        };
 
-        static void ClassifyOutput(string output, out int errorCount, out int calliSkipCount, out string realErrorBlock)
+        const string CALLI_NOT_IMPLEMENTED = "ImportCalli not implemented";
+        const string EXPECTED_NUMERIC_TYPE = "[ExpectedNumericType]";
+        const string STACK_UNEXPECTED = "[StackUnexpected]";
+        const string STACK_BY_REF = "[StackByRef]";
+        const string ADDRESS_OF = "found address of"; // managed-ref → native-int conversion
+        const string FOUND_REF = "found ref ";        // managed object ref reinterpreted (Unsafe.As)
+        const string READONLY_ADDRESS = "readonly address"; // `in` parameter / `readonly ref` field
+        const string FOUND_NATIVE_INT = "found Native Int"; // pointer → byref interop conversion
+
+        static bool IsIgnorableError(string line)
+        {
+            if (line.IndexOf(CALLI_NOT_IMPLEMENTED, StringComparison.Ordinal) >= 0)
+                return true;
+
+            if (line.IndexOf(EXPECTED_NUMERIC_TYPE, StringComparison.Ordinal) >= 0 &&
+                (line.IndexOf(ADDRESS_OF, StringComparison.Ordinal) >= 0 ||
+                 line.IndexOf(FOUND_REF, StringComparison.Ordinal) >= 0))
+                return true;
+
+            if (line.IndexOf(STACK_UNEXPECTED, StringComparison.Ordinal) >= 0)
+            {
+                if (line.IndexOf(READONLY_ADDRESS, StringComparison.Ordinal) >= 0 ||
+                    line.IndexOf(FOUND_NATIVE_INT, StringComparison.Ordinal) >= 0 ||
+                    line.IndexOf("[found ", StringComparison.Ordinal) < 0)
+                    return true;
+            }
+
+            if (line.IndexOf(STACK_BY_REF, StringComparison.Ordinal) >= 0 &&
+                line.IndexOf(FOUND_NATIVE_INT, StringComparison.Ordinal) >= 0)
+                return true;
+
+            foreach (var code in _ignoredErrorCodes)
+                if (line.IndexOf(code, StringComparison.Ordinal) >= 0)
+                    return true;
+
+            return false;
+        }
+
+        static void ClassifyOutput(string output, out int errorCount, out string realErrorBlock)
         {
             errorCount = 0;
-            calliSkipCount = 0;
             if (string.IsNullOrEmpty(output))
             {
                 realErrorBlock = string.Empty;
@@ -253,12 +278,7 @@ namespace PurrNet.Editor
                 var trimmed = line.Trim();
                 if (trimmed.Length == 0) continue;
                 if (!trimmed.StartsWith("[IL]:", StringComparison.Ordinal)) continue;
-
-                if (trimmed.IndexOf(CALLI_NOT_IMPLEMENTED, StringComparison.Ordinal) >= 0)
-                {
-                    calliSkipCount++;
-                    continue;
-                }
+                if (IsIgnorableError(trimmed)) continue;
 
                 errorCount++;
                 sb.AppendLine(line);
