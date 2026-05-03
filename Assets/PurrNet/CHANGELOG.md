@@ -1,3 +1,10 @@
+# [1.20.0-beta.123](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.122...v1.20.0-beta.123) (2026-05-03)
+
+
+### Bug Fixes
+
+* Generic RPCs fixes and improvemets + tests ([c40665c](https://github.com/PurrNet/PurrNet/commit/c40665c07f3ad58902d735473bf8d7a09e8b897f))
+
 # [1.20.0-beta.122](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.121...v1.20.0-beta.122) (2026-05-03)
 
 
