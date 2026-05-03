@@ -23,9 +23,6 @@ public class StaticRpcsScenario : Scenario
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
-        _doneCount = 0;
-        _fireAndForgetReceivedCount = 0;
-
         if (ctx.role == NetworkRole.Server)
             return await RunAsServerOnly(ctx);
 
@@ -125,9 +122,21 @@ public class StaticRpcsScenario : Scenario
 
         await Try(failures, "Echo_WithInfo", async () =>
         {
-            var seenSenderIsServer = await Echo_WithInfo(0);
-            if (seenSenderIsServer && ctx.role == NetworkRole.Client)
-                throw new Exception("server saw default/Server sender PlayerID for a client-initiated RPC");
+            // Server returns the sender id it observed. For a pure client this
+            // must equal the client's own localPlayer id and must be non-zero
+            // (PlayerID.Server has _id == 0, which is also default(PlayerID),
+            // so a simple `== Server` comparison can't distinguish "uninitialized"
+            // from "actually the server").
+            var seenSenderId = await Echo_WithInfo(0);
+
+            if (ctx.role == NetworkRole.Client)
+            {
+                var localId = ctx.networkManager.localPlayer.id.value;
+                if (seenSenderId == 0UL)
+                    throw new Exception($"server observed sender id 0 (default/Server) for a client RPC; expected client id {localId}");
+                if (localId != 0UL && seenSenderId != localId)
+                    throw new Exception($"server observed sender id {seenSenderId}; expected client localPlayer id {localId}");
+            }
         });
 
         // Fire-and-forget — server tracks how many it received in _fireAndForgetReceivedCount.
@@ -189,9 +198,9 @@ public class StaticRpcsScenario : Scenario
     private static Task<int> Echo_Unreliable(int x) => Task.FromResult(x);
 
     [ServerRpc(requireOwnership: false)]
-    private static Task<bool> Echo_WithInfo(int dummy, RPCInfo info = default)
+    private static Task<ulong> Echo_WithInfo(int dummy, RPCInfo info = default)
     {
-        return Task.FromResult(info.sender == PlayerID.Server);
+        return Task.FromResult(info.sender.id.value);
     }
 
     [ServerRpc(requireOwnership: false)]
