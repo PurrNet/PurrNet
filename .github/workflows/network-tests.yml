@@ -10,7 +10,7 @@ on:
       connectionDelaySeconds:
         description: "Seconds to wait after server starts before launching clients"
         required: true
-        default: "5"
+        default: "1"
       timeoutMinutes:
         description: "Hard timeout for the whole job, in minutes"
         required: true
