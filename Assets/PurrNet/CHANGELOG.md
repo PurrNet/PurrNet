@@ -1,3 +1,10 @@
+# [1.20.0-beta.124](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.123...v1.20.0-beta.124) (2026-05-04)
+
+
+### Bug Fixes
+
+* add fallback to rebuild asset lookup if bake is missing ([a59cf71](https://github.com/PurrNet/PurrNet/commit/a59cf717f29e24930701ffeb75efa9c3e8635229))
+
 # [1.20.0-beta.123](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.122...v1.20.0-beta.123) (2026-05-03)
 
 
