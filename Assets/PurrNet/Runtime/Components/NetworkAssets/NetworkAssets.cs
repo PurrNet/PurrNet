@@ -66,6 +66,15 @@ namespace PurrNet
             idToAsset.Clear();
             assetToId.Clear();
 
+            // Fallback: if the bake never ran (or was lost), rebuild the lookup
+            // from the live `assets` list so runtime queries still resolve.
+            if (_bakedAssets.Count == 0 &&
+                (assets.Count > 0 || linkedNetworkAssets is { Count: > 0 }))
+            {
+                Refresh();
+                return;
+            }
+
             for (int i = 0; i < _bakedAssets.Count; i++)
             {
                 var obj = _bakedAssets[i];
@@ -100,6 +109,26 @@ namespace PurrNet
             var seenObjects = new HashSet<Object>();
             var buffer = new List<(Object asset, string guid)>();
 
+            Collect(this);
+
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                var obj = buffer[i].asset;
+                if (assetToId.ContainsKey(obj)) continue;
+
+                idToAsset[i] = obj;
+                assetToId[obj] = i;
+
+                _bakedIds.Add(i);
+                _bakedAssets.Add(obj);
+            }
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                UnityEditor.EditorUtility.SetDirty(this);
+#endif
+            return;
+
             void Collect(NetworkAssets na)
             {
                 if (!na || !visited.Add(na)) return;
@@ -119,20 +148,6 @@ namespace PurrNet
                     var link = na.linkedNetworkAssets[i];
                     if (link) Collect(link);
                 }
-            }
-
-            Collect(this);
-
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                var obj = buffer[i].asset;
-                if (assetToId.ContainsKey(obj)) continue;
-
-                idToAsset[i] = obj;
-                assetToId[obj] = i;
-
-                _bakedIds.Add(i);
-                _bakedAssets.Add(obj);
             }
         }
 
