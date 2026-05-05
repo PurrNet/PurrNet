@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -50,14 +49,7 @@ namespace PurrNet
         [SerializeField, HideInInspector] private List<string> _assetGuids = new();
 
         private readonly Dictionary<int, Object> idToAsset = new();
-        private readonly Dictionary<Object, int> assetToId = new(ReferenceComparer.Instance);
-
-        private sealed class ReferenceComparer : IEqualityComparer<Object>
-        {
-            public static readonly ReferenceComparer Instance = new();
-            public bool Equals(Object x, Object y) => ReferenceEquals(x, y);
-            public int GetHashCode(Object obj) => RuntimeHelpers.GetHashCode(obj);
-        }
+        private readonly Dictionary<int, int> instanceIdToId = new();
 
         [SerializeField, HideInInspector] private List<int> _bakedIds = new();
         [SerializeField, HideInInspector] private List<Object> _bakedAssets = new();
@@ -66,13 +58,14 @@ namespace PurrNet
 
         public int GetIndex(Object obj)
         {
-            return assetToId.GetValueOrDefault(obj, -1);
+            if (!obj) return -1;
+            return instanceIdToId.GetValueOrDefault(obj.GetInstanceID(), -1);
         }
 
         private void OnEnable()
         {
             idToAsset.Clear();
-            assetToId.Clear();
+            instanceIdToId.Clear();
 
             if (_bakedAssets.Count == 0 &&
                 (assets.Count > 0 || linkedNetworkAssets is { Count: > 0 }))
@@ -90,7 +83,7 @@ namespace PurrNet
                 try
                 {
                     idToAsset[id] = obj;
-                    assetToId[obj] = id;
+                    instanceIdToId[obj.GetInstanceID()] = id;
                 }
                 catch
                 {
@@ -114,7 +107,7 @@ namespace PurrNet
                 for (int i = 0; i < na.assets.Count; i++)
                 {
                     var obj = na.assets[i];
-                    if (obj && !assetToId.ContainsKey(obj))
+                    if (obj && !instanceIdToId.ContainsKey(obj.GetInstanceID()))
                         return true;
                 }
 
@@ -131,18 +124,16 @@ namespace PurrNet
 
         public IReadOnlyList<Object> AllAssets => assets;
         public IReadOnlyDictionary<int, Object> IndexToAsset => idToAsset;
-        public IReadOnlyDictionary<Object, int> AssetToIndex => assetToId;
 
         public void Refresh()
         {
             idToAsset.Clear();
-            assetToId.Clear();
+            instanceIdToId.Clear();
             _bakedIds.Clear();
             _bakedAssets.Clear();
 
-            // Collect all assets including from linked instances
             var visited = new HashSet<NetworkAssets>();
-            var seenObjects = new HashSet<Object>();
+            var seenInstanceIds = new HashSet<int>();
             var buffer = new List<(Object asset, string guid)>();
 
             Collect(this);
@@ -150,10 +141,11 @@ namespace PurrNet
             for (int i = 0; i < buffer.Count; i++)
             {
                 var obj = buffer[i].asset;
-                if (assetToId.ContainsKey(obj)) continue;
+                int instanceId = obj.GetInstanceID();
+                if (instanceIdToId.ContainsKey(instanceId)) continue;
 
                 idToAsset[i] = obj;
-                assetToId[obj] = i;
+                instanceIdToId[instanceId] = i;
 
                 _bakedIds.Add(i);
                 _bakedAssets.Add(obj);
@@ -172,7 +164,7 @@ namespace PurrNet
                 for (int i = 0; i < na.assets.Count; i++)
                 {
                     var obj = na.assets[i];
-                    if (!obj || !seenObjects.Add(obj)) continue;
+                    if (!obj || !seenInstanceIds.Add(obj.GetInstanceID())) continue;
 
                     string guid = (i < na._assetGuids.Count) ? na._assetGuids[i] : null;
                     buffer.Add((obj, guid));
@@ -191,7 +183,7 @@ namespace PurrNet
         {
             if (!obj) return;
 
-            if (assetToId.TryGetValue(obj, out _))
+            if (instanceIdToId.ContainsKey(obj.GetInstanceID()))
             {
                 if (logIfDuplicate)
                     Debug.LogWarning($"Asset already exists in NetworkAssets: {obj.name}");
@@ -299,7 +291,16 @@ namespace PurrNet
 #endif
 
         public bool TryGetAsset(int id, out Object obj) => idToAsset.TryGetValue(id, out obj);
-        public bool TryGetId(Object obj, out int id) => assetToId.TryGetValue(obj, out id);
+
+        public bool TryGetId(Object obj, out int id)
+        {
+            if (!obj)
+            {
+                id = -1;
+                return false;
+            }
+            return instanceIdToId.TryGetValue(obj.GetInstanceID(), out id);
+        }
     }
 
 }
