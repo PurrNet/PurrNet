@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -49,7 +50,14 @@ namespace PurrNet
         [SerializeField, HideInInspector] private List<string> _assetGuids = new();
 
         private readonly Dictionary<int, Object> idToAsset = new();
-        private readonly Dictionary<Object, int> assetToId = new();
+        private readonly Dictionary<Object, int> assetToId = new(ReferenceComparer.Instance);
+
+        private sealed class ReferenceComparer : IEqualityComparer<Object>
+        {
+            public static readonly ReferenceComparer Instance = new();
+            public bool Equals(Object x, Object y) => ReferenceEquals(x, y);
+            public int GetHashCode(Object obj) => RuntimeHelpers.GetHashCode(obj);
+        }
 
         [SerializeField, HideInInspector] private List<int> _bakedIds = new();
         [SerializeField, HideInInspector] private List<Object> _bakedAssets = new();
@@ -66,8 +74,6 @@ namespace PurrNet
             idToAsset.Clear();
             assetToId.Clear();
 
-            // Fallback: if the bake never ran (or was lost), rebuild the lookup
-            // from the live `assets` list so runtime queries still resolve.
             if (_bakedAssets.Count == 0 &&
                 (assets.Count > 0 || linkedNetworkAssets is { Count: > 0 }))
             {
@@ -90,6 +96,36 @@ namespace PurrNet
                 {
                     idToAsset.Remove(id);
                 }
+            }
+
+            if (IsBakeStale())
+                Refresh();
+        }
+
+        private bool IsBakeStale()
+        {
+            var visited = new HashSet<NetworkAssets>();
+            return Check(this);
+
+            bool Check(NetworkAssets na)
+            {
+                if (!na || !visited.Add(na)) return false;
+
+                for (int i = 0; i < na.assets.Count; i++)
+                {
+                    var obj = na.assets[i];
+                    if (obj && !assetToId.ContainsKey(obj))
+                        return true;
+                }
+
+                if (na.linkedNetworkAssets == null) return false;
+                for (int i = 0; i < na.linkedNetworkAssets.Count; i++)
+                {
+                    if (Check(na.linkedNetworkAssets[i]))
+                        return true;
+                }
+
+                return false;
             }
         }
 
