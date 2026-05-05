@@ -1,3 +1,10 @@
+# [1.20.0-beta.126](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.125...v1.20.0-beta.126) (2026-05-05)
+
+
+### Bug Fixes
+
+* Add reference comparer to Network Assets for IL2CPP ([a44f49d](https://github.com/PurrNet/PurrNet/commit/a44f49d08df727d0751db0c540ef273f646c519d))
+
 # [1.20.0-beta.125](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.124...v1.20.0-beta.125) (2026-05-05)
 
 
