@@ -1,3 +1,10 @@
+# [1.20.0-beta.125](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.124...v1.20.0-beta.125) (2026-05-05)
+
+
+### Bug Fixes
+
+* allow to supress auto ownership ([bcafea5](https://github.com/PurrNet/PurrNet/commit/bcafea5cea782cc4b147a93776e86b1d9bc34aa1))
+
 # [1.20.0-beta.124](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.123...v1.20.0-beta.124) (2026-05-04)
 
 
