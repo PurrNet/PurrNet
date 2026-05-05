@@ -1,3 +1,10 @@
+# [1.20.0-beta.127](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.126...v1.20.0-beta.127) (2026-05-05)
+
+
+### Bug Fixes
+
+* New potential approach to network assets ([be46b14](https://github.com/PurrNet/PurrNet/commit/be46b145806fc5045f485b6520d7f7e153c3d2c6))
+
 # [1.20.0-beta.126](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.125...v1.20.0-beta.126) (2026-05-05)
 
 
