@@ -1360,8 +1360,27 @@ namespace PurrNet.Modules
             AutoAssignOwnership(id);
         }
 
+        private static int _supressAutoOwner = 0;
+
+        public static void SupressAutoOwner()
+        {
+            ++_supressAutoOwner;
+        }
+
+        public static void ResumeAutoOwner()
+        {
+            --_supressAutoOwner;
+            if (_supressAutoOwner < 0)
+                _supressAutoOwner = 0;
+        }
+
         private void AutoAssignOwnership(NetworkIdentity id)
         {
+            bool shouldSupressAutoOwner = _supressAutoOwner > 0;
+
+            if (shouldSupressAutoOwner)
+                return;
+
             if (!id.ShouldClientGiveOwnershipOnSpawn(_manager))
                 return;
 
@@ -1919,7 +1938,7 @@ namespace PurrNet.Modules
             {
                 onObserverAdded?.Invoke(player, identity);
                 identity.TriggerOnPreObserverAdded(player, true);
-                
+
                 // Process observer events immediately instead of deferring to PreNetworkMessages.
                 // This ensures SyncVar.OnObserverAdded → SendLatestState queues state data
                 // BEFORE the calling ServerRpc response, so predicted spawn clients receive
