@@ -1,3 +1,10 @@
+# [1.20.0-beta.132](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.131...v1.20.0-beta.132) (2026-05-06)
+
+
+### Bug Fixes
+
+* client should not update it's last read state from current data, that just seems wrong ([641d33c](https://github.com/PurrNet/PurrNet/commit/641d33ceb49fbb412d0ae69dc5e4b8749a23c041))
+
 # [1.20.0-beta.131](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.130...v1.20.0-beta.131) (2026-05-06)
 
 
