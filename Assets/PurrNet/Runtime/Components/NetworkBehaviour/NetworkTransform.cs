@@ -160,17 +160,13 @@ namespace PurrNet
             if (_trs == null)
                 return;
 
-            // Reset delta compression state to prevent stale reference points
             _currentData = GetCurrentTransformData();
             _latestData = _currentData;
             _lastReadData = _currentData;
             _lastSentDelta = _currentData;
 
-            // Force sync if we're the controller and spawned
-            if (_wasOnSpawnedCalled && isController)
-            {
+            if (_wasOnSpawnedCalled && _cachedIsController)
                 ForceSync();
-            }
         }
 
         private void OnDisable()
@@ -378,6 +374,8 @@ namespace PurrNet
 
             _lastReadData = data;
             _currentData = data;
+            _latestData = data;
+            _lastSentDelta = data;
 
             TeleportToData(data);
             ApplyLerpedPosition();
@@ -414,6 +412,8 @@ namespace PurrNet
         {
             _lastReadData = data;
             _currentData = data;
+            _latestData = data;
+            _lastSentDelta = data;
             TeleportToData(data);
             ApplyLerpedPosition();
         }
@@ -423,6 +423,7 @@ namespace PurrNet
         {
             _lastReadData = data;
             _currentData = data;
+            _latestData = data;
 
             if (applyPosition)
             {
