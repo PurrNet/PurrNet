@@ -1,3 +1,10 @@
+# [1.20.0-beta.131](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.130...v1.20.0-beta.131) (2026-05-06)
+
+
+### Bug Fixes
+
+* stale NetworkTransform.cs data when re-enabling component ([5332464](https://github.com/PurrNet/PurrNet/commit/53324645257f1c854c0a1915fb398f625317379d))
+
 # [1.20.0-beta.130](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.129...v1.20.0-beta.130) (2026-05-06)
 
 
