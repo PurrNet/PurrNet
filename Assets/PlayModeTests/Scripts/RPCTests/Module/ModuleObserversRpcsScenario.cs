@@ -196,6 +196,20 @@ public class ModuleObserversRpcsScenario : Scenario
                     throw new Exception($"seq[{i}] expected {seq[i]}, got {got[i]}");
         });
 
+        await Try(failures, "Broadcast_AsyncPackable", async () =>
+        {
+            module.TriggerBroadcastAsyncPackable(corr, 42);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleObserversRpcsModule.AsyncObservedStamps.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            var observed = ModuleObserversRpcsModule.AsyncObservedStamps[corr];
+            if (observed == null || observed.Length != 3)
+                throw new Exception("observer did not capture all three stamps");
+            if (observed[0] != 42) throw new Exception($"seed: expected 42, got {observed[0]}");
+            if (observed[1] != 43) throw new Exception($"PrepareForPackAsync did not run on server (sender): expected 43, got {observed[1]}");
+            if (observed[2] != 53) throw new Exception($"PrepareAfterUnpackAsync did not run on observer: expected 53, got {observed[2]}");
+        });
+
         await Try(failures, "ObserversP2P_RequireServerFalse", async () =>
         {
             module.BroadcastP2P(corr, 6789);

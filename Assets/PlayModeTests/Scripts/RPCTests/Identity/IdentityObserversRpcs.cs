@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -9,6 +11,7 @@ public class IdentityObserversRpcs : NetworkIdentity
 {
     public static IdentityObserversRpcs LocalInstance;
     public static int DoneCount;
+    public static readonly Dictionary<ulong, int[]> AsyncObservedStamps = new();
 
     public static readonly Dictionary<ulong, int> IntReceived = new();
     public static readonly Dictionary<ulong, string> StringReceived = new();
@@ -29,6 +32,28 @@ public class IdentityObserversRpcs : NetworkIdentity
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     protected override void OnEarlySpawn()
@@ -52,6 +77,12 @@ public class IdentityObserversRpcs : NetworkIdentity
     [ServerRpc(requireOwnership: false, channel: Channel.Unreliable)] public void TriggerBroadcastUnreliable(ulong corr, int payload, RPCInfo info = default) => BroadcastUnreliable(corr, payload);
     [ServerRpc(requireOwnership: false)] public void TriggerBroadcastDeltaOff(ulong corr, int payload, RPCInfo info = default) => BroadcastDeltaOff(corr, payload);
     [ServerRpc(requireOwnership: false)] public void TriggerBroadcastDeltaOn(ulong corr, int payload, RPCInfo info = default) => BroadcastDeltaOn(corr, payload);
+
+    [ServerRpc(requireOwnership: false)]
+    public void TriggerBroadcastAsyncPackable(ulong corr, int seed, RPCInfo info = default)
+    {
+        BroadcastAsyncPackable(corr, new AsyncPayload { seed = seed });
+    }
 
     [ObserversRpc]
     public void BroadcastInt(ulong corr, int payload) => IntReceived[corr] = payload;
@@ -102,6 +133,12 @@ public class IdentityObserversRpcs : NetworkIdentity
 
     [ObserversRpc(requireServer: false)]
     public void BroadcastP2P(ulong corr, int payload) => P2PBroadcastReceived[corr] = payload;
+
+    [ObserversRpc]
+    public void BroadcastAsyncPackable(ulong corr, AsyncPayload p)
+    {
+        AsyncObservedStamps[corr] = new[] { p.seed, p.packStamp, p.unpackStamp };
+    }
 
     [ServerRpc(requireOwnership: false)]
     public void SignalDone(RPCInfo info = default)

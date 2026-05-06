@@ -193,6 +193,16 @@ public class IdentityServerRpcsScenario : Scenario
             }
         });
 
+        await Try(failures, "Echo_AsyncPackable", async () =>
+        {
+            var observed = await inst.Echo_AsyncPackable(new IdentityServerRpcs.AsyncPayload { seed = 42 });
+            if (observed == null || observed.Length != 3)
+                throw new Exception("server did not return all three stamps");
+            if (observed[0] != 42) throw new Exception($"seed: expected 42, got {observed[0]}");
+            if (observed[1] != 43) throw new Exception($"PrepareForPackAsync did not run on sender: expected packStamp=43, got {observed[1]}");
+            if (observed[2] != 53) throw new Exception($"PrepareAfterUnpackAsync did not run on receiver: expected unpackStamp=53, got {observed[2]}");
+        });
+
         await Try(failures, "Echo_IEnumerator", async () =>
         {
             var before = await inst.Echo_IEnumeratorRunCount();

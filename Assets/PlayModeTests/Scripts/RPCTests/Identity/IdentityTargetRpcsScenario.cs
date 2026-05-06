@@ -209,6 +209,25 @@ public class IdentityTargetRpcsScenario : Scenario
             if (IdentityTargetRpcs.MultiEnumReceived.Value != 5103) throw new Exception($"expected 5103, got {IdentityTargetRpcs.MultiEnumReceived.Value}");
         });
 
+        await Try(failures, "TargetAsyncPackable", async () =>
+        {
+            IdentityTargetRpcs.AsyncSeedReceived = null;
+            IdentityTargetRpcs.AsyncPackStampReceived = null;
+            IdentityTargetRpcs.AsyncUnpackStampReceived = null;
+            inst.TriggerTargetAsyncPackable(42);
+            await UniTaskUtils.WaitWithTimeout(
+                () => IdentityTargetRpcs.AsyncSeedReceived.HasValue
+                      && IdentityTargetRpcs.AsyncPackStampReceived.HasValue
+                      && IdentityTargetRpcs.AsyncUnpackStampReceived.HasValue,
+                timeout, ctx.cancellationToken);
+            if (IdentityTargetRpcs.AsyncSeedReceived != 42)
+                throw new Exception($"seed: expected 42, got {IdentityTargetRpcs.AsyncSeedReceived}");
+            if (IdentityTargetRpcs.AsyncPackStampReceived != 43)
+                throw new Exception($"PrepareForPackAsync did not run on server (sender): expected 43, got {IdentityTargetRpcs.AsyncPackStampReceived}");
+            if (IdentityTargetRpcs.AsyncUnpackStampReceived != 53)
+                throw new Exception($"PrepareAfterUnpackAsync did not run on target: expected 53, got {IdentityTargetRpcs.AsyncUnpackStampReceived}");
+        });
+
         await Try(failures, "TargetIEnumerator", async () =>
         {
             IdentityTargetRpcs.IEnumeratorTargetReceived = null;

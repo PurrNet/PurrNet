@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -22,6 +23,28 @@ public class StaticServerRpcsScenario : Scenario
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
@@ -186,6 +209,16 @@ public class StaticServerRpcsScenario : Scenario
             }
         });
 
+        await Try(failures, "Echo_AsyncPackable", async () =>
+        {
+            var observed = await Echo_AsyncPackable(new AsyncPayload { seed = 42 });
+            if (observed == null || observed.Length != 3)
+                throw new Exception("server did not return all three stamps");
+            if (observed[0] != 42) throw new Exception($"seed: expected 42, got {observed[0]}");
+            if (observed[1] != 43) throw new Exception($"PrepareForPackAsync did not run on sender: expected packStamp=43, got {observed[1]}");
+            if (observed[2] != 53) throw new Exception($"PrepareAfterUnpackAsync did not run on receiver: expected unpackStamp=53, got {observed[2]}");
+        });
+
         await Try(failures, "Echo_IEnumerator", async () =>
         {
             var before = await Echo_IEnumeratorRunCount();
@@ -273,6 +306,10 @@ public class StaticServerRpcsScenario : Scenario
 
     [ServerRpc(requireOwnership: false, deltaPacked: true)]
     private static Task<int> Echo_DeltaOn(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false)]
+    private static Task<int[]> Echo_AsyncPackable(AsyncPayload p, RPCInfo info = default)
+        => Task.FromResult(new[] { p.seed, p.packStamp, p.unpackStamp });
 
     [ServerRpc(requireOwnership: false)]
     private static IEnumerator Echo_IEnumerator(int payload, RPCInfo info = default)

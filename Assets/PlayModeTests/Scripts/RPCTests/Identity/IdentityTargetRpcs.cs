@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -14,6 +15,9 @@ public class IdentityTargetRpcs : NetworkIdentity
 
     public static int? IEnumeratorTargetReceived;
     public static int IEnumeratorTargetRunCount;
+    public static int? AsyncSeedReceived;
+    public static int? AsyncPackStampReceived;
+    public static int? AsyncUnpackStampReceived;
     public static int? IntReceived;
     public static string StringReceived;
     public static TestPayload? StructReceived;
@@ -39,6 +43,28 @@ public class IdentityTargetRpcs : NetworkIdentity
         public float weight;
     }
 
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
+    }
+
     protected override void OnEarlySpawn()
     {
         gameObject.SetActive(true);
@@ -61,6 +87,12 @@ public class IdentityTargetRpcs : NetworkIdentity
     [ServerRpc(requireOwnership: false)] public void TriggerTargetDeltaOff(int payload, RPCInfo info = default) => SendTargetDeltaOff(info.sender, payload);
     [ServerRpc(requireOwnership: false)] public void TriggerTargetDeltaOn(int payload, RPCInfo info = default) => SendTargetDeltaOn(info.sender, payload);
     [ServerRpc(requireOwnership: false)] public void TriggerTargetIEnumerator(int payload, RPCInfo info = default) => SendTargetIEnumerator(info.sender, payload);
+
+    [ServerRpc(requireOwnership: false)]
+    public void TriggerTargetAsyncPackable(int seed, RPCInfo info = default)
+    {
+        SendTargetAsyncPackable(info.sender, new AsyncPayload { seed = seed });
+    }
 
     [ServerRpc(requireOwnership: false)]
     public void TriggerTargetArray(int payload, RPCInfo info = default)
@@ -119,6 +151,14 @@ public class IdentityTargetRpcs : NetworkIdentity
         yield return null;
         IEnumeratorTargetReceived = payload;
         IEnumeratorTargetRunCount++;
+    }
+
+    [TargetRpc]
+    public void SendTargetAsyncPackable(PlayerID target, AsyncPayload p)
+    {
+        AsyncSeedReceived = p.seed;
+        AsyncPackStampReceived = p.packStamp;
+        AsyncUnpackStampReceived = p.unpackStamp;
     }
 
     [TargetRpc] public void SendTargetArray(PlayerID[] targets, int payload) => MultiArrayReceived = payload;

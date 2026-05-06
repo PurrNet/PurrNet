@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -36,6 +37,9 @@ public class StaticTargetRpcsScenario : Scenario
     private static int? _p2pTargetReceived;
     private static int? _ienumeratorTargetReceived;
     private static int _ienumeratorTargetRunCount;
+    private static int? _asyncSeedReceived;
+    private static int? _asyncPackStampReceived;
+    private static int? _asyncUnpackStampReceived;
     private static readonly List<int> _deltaSequence = new();
     private static readonly List<int> _deltaPackedSequence = new();
 
@@ -45,6 +49,28 @@ public class StaticTargetRpcsScenario : Scenario
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
@@ -247,6 +273,21 @@ public class StaticTargetRpcsScenario : Scenario
             if (result != 100) throw new Exception($"async target reply expected 100, got {result}");
         });
 
+        await Try(failures, "TargetAsyncPackable", async () =>
+        {
+            _asyncSeedReceived = null;
+            _asyncPackStampReceived = null;
+            _asyncUnpackStampReceived = null;
+            TriggerTargetAsyncPackable(42);
+            await UniTaskUtils.WaitWithTimeout(() => _asyncUnpackStampReceived.HasValue, timeout, ctx.cancellationToken);
+            if (_asyncSeedReceived != 42)
+                throw new Exception($"seed: expected 42, got {_asyncSeedReceived}");
+            if (_asyncPackStampReceived != 43)
+                throw new Exception($"PrepareForPackAsync did not run on sender: expected 43, got {_asyncPackStampReceived}");
+            if (_asyncUnpackStampReceived != 53)
+                throw new Exception($"PrepareAfterUnpackAsync did not run on receiver: expected 53, got {_asyncUnpackStampReceived}");
+        });
+
         await Try(failures, "TargetServer_DefaultPlayerID_Rejected", async () =>
         {
             try
@@ -347,6 +388,20 @@ public class StaticTargetRpcsScenario : Scenario
     private static async Task<int> TriggerAsyncTarget(int payload, RPCInfo info = default)
     {
         return await SendTargetEchoAsync(info.sender, payload);
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private static void TriggerTargetAsyncPackable(int seed, RPCInfo info = default)
+    {
+        SendTargetAsyncPackable(info.sender, new AsyncPayload { seed = seed });
+    }
+
+    [TargetRpc]
+    private static void SendTargetAsyncPackable(PlayerID target, AsyncPayload p)
+    {
+        _asyncSeedReceived = p.seed;
+        _asyncPackStampReceived = p.packStamp;
+        _asyncUnpackStampReceived = p.unpackStamp;
     }
 
     // ----- TargetRpc receivers. First parameter is always the target PlayerID (or collection). -----

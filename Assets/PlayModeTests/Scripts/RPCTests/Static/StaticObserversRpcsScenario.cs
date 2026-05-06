@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -29,6 +31,7 @@ public class StaticObserversRpcsScenario : Scenario
     private static readonly Dictionary<ulong, List<int>> _deltaSequence = new();
     private static readonly Dictionary<ulong, List<int>> _deltaPackedSequence = new();
     private static readonly Dictionary<ulong, int> _p2pBroadcastReceived = new();
+    private static readonly Dictionary<ulong, int[]> _asyncObservedStamps = new();
 
     [Serializable]
     public struct TestPayload
@@ -36,6 +39,28 @@ public class StaticObserversRpcsScenario : Scenario
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
@@ -208,6 +233,20 @@ public class StaticObserversRpcsScenario : Scenario
         // re-broadcasts to all observers. Each client receives at least its own broadcast
         // (and any other client's broadcast that uses the same corr key, but corr is the
         // local player id so receivers see distinct entries).
+        await Try(failures, "Broadcast_AsyncPackable", async () =>
+        {
+            TriggerBroadcastAsyncPackable(corr, 42);
+            await UniTaskUtils.WaitWithTimeout(
+                () => _asyncObservedStamps.ContainsKey(corr),
+                timeout, ctx.cancellationToken);
+            var observed = _asyncObservedStamps[corr];
+            if (observed == null || observed.Length != 3)
+                throw new Exception("observer did not capture all three stamps");
+            if (observed[0] != 42) throw new Exception($"seed: expected 42, got {observed[0]}");
+            if (observed[1] != 43) throw new Exception($"PrepareForPackAsync did not run on server (sender): expected 43, got {observed[1]}");
+            if (observed[2] != 53) throw new Exception($"PrepareAfterUnpackAsync did not run on observer: expected 53, got {observed[2]}");
+        });
+
         await Try(failures, "ObserversP2P_RequireServerFalse", async () =>
         {
             BroadcastP2P(corr, 6789);
@@ -299,6 +338,18 @@ public class StaticObserversRpcsScenario : Scenario
 
     [ObserversRpc(requireServer: false)]
     private static void BroadcastP2P(ulong corr, int payload) => _p2pBroadcastReceived[corr] = payload;
+
+    [ServerRpc(requireOwnership: false)]
+    private static void TriggerBroadcastAsyncPackable(ulong corr, int seed, RPCInfo info = default)
+    {
+        BroadcastAsyncPackable(corr, new AsyncPayload { seed = seed });
+    }
+
+    [ObserversRpc]
+    private static void BroadcastAsyncPackable(ulong corr, AsyncPayload p)
+    {
+        _asyncObservedStamps[corr] = new[] { p.seed, p.packStamp, p.unpackStamp };
+    }
 
     [ServerRpc(requireOwnership: false)]
     private static void SignalDone(RPCInfo info = default)

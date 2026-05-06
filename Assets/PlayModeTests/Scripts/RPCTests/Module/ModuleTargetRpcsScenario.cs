@@ -227,6 +227,23 @@ public class ModuleTargetRpcsScenario : Scenario
             if (result != 100) throw new Exception($"async target reply expected 100, got {result}");
         });
 
+        await Try(failures, "TargetAsyncPackable", async () =>
+        {
+            ModuleTargetRpcsModule.AsyncSeedReceived = null;
+            ModuleTargetRpcsModule.AsyncPackStampReceived = null;
+            ModuleTargetRpcsModule.AsyncUnpackStampReceived = null;
+            module.TriggerTargetAsyncPackable(42);
+            await UniTaskUtils.WaitWithTimeout(
+                () => ModuleTargetRpcsModule.AsyncUnpackStampReceived.HasValue,
+                timeout, ctx.cancellationToken);
+            if (ModuleTargetRpcsModule.AsyncSeedReceived != 42)
+                throw new Exception($"seed: expected 42, got {ModuleTargetRpcsModule.AsyncSeedReceived}");
+            if (ModuleTargetRpcsModule.AsyncPackStampReceived != 43)
+                throw new Exception($"PrepareForPackAsync did not run on sender: expected 43, got {ModuleTargetRpcsModule.AsyncPackStampReceived}");
+            if (ModuleTargetRpcsModule.AsyncUnpackStampReceived != 53)
+                throw new Exception($"PrepareAfterUnpackAsync did not run on receiver: expected 53, got {ModuleTargetRpcsModule.AsyncUnpackStampReceived}");
+        });
+
         await Try(failures, "TargetServer_DefaultPlayerID_Rejected", async () =>
         {
             try

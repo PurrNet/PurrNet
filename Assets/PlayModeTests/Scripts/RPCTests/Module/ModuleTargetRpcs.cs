@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -27,6 +28,9 @@ public class ModuleTargetRpcsModule : NetworkModule
     public static int? MultiEnumReceived;
     public static int? AsyncTargetReceived;
     public static int? P2PTargetReceived;
+    public static int? AsyncSeedReceived;
+    public static int? AsyncPackStampReceived;
+    public static int? AsyncUnpackStampReceived;
     public static readonly List<int> DeltaSequence = new();
     public static readonly List<int> DeltaPackedSequence = new();
 
@@ -36,6 +40,28 @@ public class ModuleTargetRpcsModule : NetworkModule
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     [ServerRpc(requireOwnership: false)] public void TriggerTargetInt(int payload, RPCInfo info = default) => SendTargetInt(info.sender, payload);
@@ -76,6 +102,20 @@ public class ModuleTargetRpcsModule : NetworkModule
     public async Task<int> TriggerAsyncTarget(int payload, RPCInfo info = default)
     {
         return await SendTargetEchoAsync(info.sender, payload);
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    public void TriggerTargetAsyncPackable(int seed, RPCInfo info = default)
+    {
+        SendTargetAsyncPackable(info.sender, new AsyncPayload { seed = seed });
+    }
+
+    [TargetRpc]
+    public void SendTargetAsyncPackable(PlayerID target, AsyncPayload p)
+    {
+        AsyncSeedReceived = p.seed;
+        AsyncPackStampReceived = p.packStamp;
+        AsyncUnpackStampReceived = p.unpackStamp;
     }
 
     [TargetRpc] public void SendTargetInt(PlayerID target, int payload) => IntReceived = payload;

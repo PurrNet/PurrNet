@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -21,6 +22,28 @@ public class IdentityServerRpcs : NetworkIdentity
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     protected override void OnEarlySpawn()
@@ -86,6 +109,12 @@ public class IdentityServerRpcs : NetworkIdentity
 
     [ServerRpc(requireOwnership: false, deltaPacked: true)]
     public Task<int> Echo_DeltaOn(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false)]
+    public Task<int[]> Echo_AsyncPackable(AsyncPayload p, RPCInfo info = default)
+    {
+        return Task.FromResult(new[] { p.seed, p.packStamp, p.unpackStamp });
+    }
 
     [ServerRpc(requireOwnership: false)]
     public IEnumerator Echo_IEnumerator(int payload, RPCInfo info = default)

@@ -3082,8 +3082,8 @@ namespace PurrNet.Codegen
             for (var i = 0; i < paramCount; i++)
             {
                 var param = methodRpc.originalMethod.Parameters[i];
-                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) { paramIdx++; continue; }
-                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) { paramIdx++; continue; }
+                if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) continue;
+                if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) continue;
                 if (param.ParameterType is GenericParameter) { paramIdx++; continue; }
                 var def = param.ParameterType.Resolve();
                 if (def != null && GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
@@ -3183,8 +3183,8 @@ namespace PurrNet.Codegen
                 for (var i = 0; i < paramCount; i++)
                 {
                     var param = methodRpc.originalMethod.Parameters[i];
-                    if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) { paramIdx++; continue; }
-                    if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) { paramIdx++; continue; }
+                    if (methodRpc.Signature.type == RPCType.TargetRPC && i == 0) continue;
+                    if (ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _)) continue;
                     if (param.ParameterType is GenericParameter) { paramIdx++; continue; }
                     var def = param.ParameterType.Resolve();
                     if (def == null || !GenerateSerializersProcessor.HasInterface(def, typeof(IAsyncPackable)))
@@ -3231,9 +3231,10 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Newobj, module.ImportReference(actionTaskArrayCtor)));
                 code.Append(Instruction.Create(OpCodes.Call, executeAfterPrepareMulti));
             }
-            // ExecuteAfterPrepareAsync returns Task; method is void so pop before ret
+            // ExecuteAfterPrepareAsync returns Task — discard it; the outer method appends a
+            // `Br skipSyncPathLabel` after this call which routes to the join point that handles
+            // the request/response Task return (or void) consistently with the sync send path.
             code.Append(Instruction.Create(OpCodes.Pop));
-            code.Append(Instruction.Create(OpCodes.Ret));
         }
 
         enum TargetArgType

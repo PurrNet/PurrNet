@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PurrNet;
+using PurrNet.Packing;
 using UnityEngine;
 using Channel = PurrNet.Transports.Channel;
 using CompressionLevel = PurrNet.CompressionLevel;
@@ -21,6 +23,7 @@ public class ModuleObserversRpcsModule : NetworkModule
     public static readonly Dictionary<ulong, List<int>> DeltaSequence = new();
     public static readonly Dictionary<ulong, List<int>> DeltaPackedSequence = new();
     public static readonly Dictionary<ulong, int> P2PBroadcastReceived = new();
+    public static readonly Dictionary<ulong, int[]> AsyncObservedStamps = new();
 
     [Serializable]
     public struct TestPayload
@@ -28,6 +31,28 @@ public class ModuleObserversRpcsModule : NetworkModule
         public int id;
         public string label;
         public float weight;
+    }
+
+    [Serializable]
+    public struct AsyncPayload : IAsyncPackable
+    {
+        public int seed;
+        public int packStamp;
+        public int unpackStamp;
+
+        public async ValueTask<IAsyncPackable> PrepareForPackAsync()
+        {
+            await Task.Yield();
+            packStamp = seed + 1;
+            return this;
+        }
+
+        public async ValueTask<IAsyncPackable> PrepareAfterUnpackAsync()
+        {
+            await Task.Yield();
+            unpackStamp = packStamp + 10;
+            return this;
+        }
     }
 
     [ServerRpc(requireOwnership: false)] public void TriggerBroadcastInt(ulong corr, int payload, RPCInfo info = default) => BroadcastInt(corr, payload);
@@ -91,6 +116,18 @@ public class ModuleObserversRpcsModule : NetworkModule
 
     [ObserversRpc(requireServer: false)]
     public void BroadcastP2P(ulong corr, int payload) => P2PBroadcastReceived[corr] = payload;
+
+    [ServerRpc(requireOwnership: false)]
+    public void TriggerBroadcastAsyncPackable(ulong corr, int seed, RPCInfo info = default)
+    {
+        BroadcastAsyncPackable(corr, new AsyncPayload { seed = seed });
+    }
+
+    [ObserversRpc]
+    public void BroadcastAsyncPackable(ulong corr, AsyncPayload p)
+    {
+        AsyncObservedStamps[corr] = new[] { p.seed, p.packStamp, p.unpackStamp };
+    }
 
     [ServerRpc(requireOwnership: false)]
     public void SignalDone(RPCInfo info = default)
