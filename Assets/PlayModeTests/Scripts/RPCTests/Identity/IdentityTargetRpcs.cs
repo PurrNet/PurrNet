@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PurrNet;
@@ -11,6 +12,8 @@ public class IdentityTargetRpcs : NetworkIdentity
     public static IdentityTargetRpcs LocalInstance;
     public static int DoneCount;
 
+    public static int? IEnumeratorTargetReceived;
+    public static int IEnumeratorTargetRunCount;
     public static int? IntReceived;
     public static string StringReceived;
     public static TestPayload? StructReceived;
@@ -57,6 +60,7 @@ public class IdentityTargetRpcs : NetworkIdentity
     [ServerRpc(requireOwnership: false, channel: Channel.Unreliable)] public void TriggerTargetUnreliable(int payload, RPCInfo info = default) => SendTargetUnreliable(info.sender, payload);
     [ServerRpc(requireOwnership: false)] public void TriggerTargetDeltaOff(int payload, RPCInfo info = default) => SendTargetDeltaOff(info.sender, payload);
     [ServerRpc(requireOwnership: false)] public void TriggerTargetDeltaOn(int payload, RPCInfo info = default) => SendTargetDeltaOn(info.sender, payload);
+    [ServerRpc(requireOwnership: false)] public void TriggerTargetIEnumerator(int payload, RPCInfo info = default) => SendTargetIEnumerator(info.sender, payload);
 
     [ServerRpc(requireOwnership: false)]
     public void TriggerTargetArray(int payload, RPCInfo info = default)
@@ -107,6 +111,15 @@ public class IdentityTargetRpcs : NetworkIdentity
 
     [TargetRpc(deltaPacked: true)]
     public void SendTargetDeltaOn(PlayerID target, int payload) => DeltaPackedSequence.Add(payload);
+
+    [TargetRpc]
+    public IEnumerator SendTargetIEnumerator(PlayerID target, int payload)
+    {
+        yield return null;
+        yield return null;
+        IEnumeratorTargetReceived = payload;
+        IEnumeratorTargetRunCount++;
+    }
 
     [TargetRpc] public void SendTargetArray(PlayerID[] targets, int payload) => MultiArrayReceived = payload;
     [TargetRpc] public void SendTargetList(IList<PlayerID> targets, int payload) => MultiListReceived = payload;

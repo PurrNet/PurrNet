@@ -193,6 +193,15 @@ public class ModuleServerRpcsScenario : Scenario
             }
         });
 
+        await Try(failures, "Echo_IEnumerator", async () =>
+        {
+            var before = await module.Echo_IEnumeratorRunCount();
+            await module.Echo_IEnumerator(555);
+            var after = await module.Echo_IEnumeratorRunCount();
+            if (after <= before)
+                throw new Exception($"server IEnumerator counter did not advance: {before} -> {after}");
+        });
+
         await Try(failures, "FireAndForget", async () =>
         {
             module.FireAndForget(123);

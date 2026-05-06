@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
@@ -33,6 +34,8 @@ public class StaticTargetRpcsScenario : Scenario
     private static int? _multiEnumReceived;
     private static int? _asyncTargetReceived;
     private static int? _p2pTargetReceived;
+    private static int? _ienumeratorTargetReceived;
+    private static int _ienumeratorTargetRunCount;
     private static readonly List<int> _deltaSequence = new();
     private static readonly List<int> _deltaPackedSequence = new();
 
@@ -224,6 +227,15 @@ public class StaticTargetRpcsScenario : Scenario
             if (_multiEnumReceived.Value != 5103) throw new Exception($"expected 5103, got {_multiEnumReceived.Value}");
         });
 
+        await Try(failures, "TargetIEnumerator", async () =>
+        {
+            _ienumeratorTargetReceived = null;
+            TriggerTargetIEnumerator(424);
+            await UniTaskUtils.WaitWithTimeout(() => _ienumeratorTargetReceived.HasValue, timeout, ctx.cancellationToken);
+            if (!_ienumeratorTargetReceived.HasValue) throw new Exception("ienumerator target payload did not arrive");
+            if (_ienumeratorTargetReceived.Value != 424) throw new Exception($"expected 424, got {_ienumeratorTargetReceived.Value}");
+        });
+
         // Async single-target. The trigger ServerRpc awaits the TargetRpc's Task<int> and
         // returns it back to the originating client, exercising the async TargetRpc reply path.
         await Try(failures, "AsyncTarget_Echo", async () =>
@@ -308,6 +320,7 @@ public class StaticTargetRpcsScenario : Scenario
     [ServerRpc(requireOwnership: false, channel: Channel.Unreliable)] private static void TriggerTargetUnreliable(int payload, RPCInfo info = default) => SendTargetUnreliable(info.sender, payload);
     [ServerRpc(requireOwnership: false)] private static void TriggerTargetDeltaOff(int payload, RPCInfo info = default) => SendTargetDeltaOff(info.sender, payload);
     [ServerRpc(requireOwnership: false)] private static void TriggerTargetDeltaOn(int payload, RPCInfo info = default) => SendTargetDeltaOn(info.sender, payload);
+    [ServerRpc(requireOwnership: false)] private static void TriggerTargetIEnumerator(int payload, RPCInfo info = default) => SendTargetIEnumerator(info.sender, payload);
 
     [ServerRpc(requireOwnership: false)]
     private static void TriggerTargetArray(int payload, RPCInfo info = default)
@@ -360,6 +373,15 @@ public class StaticTargetRpcsScenario : Scenario
 
     [TargetRpc(deltaPacked: true)]
     private static void SendTargetDeltaOn(PlayerID target, int payload) => _deltaPackedSequence.Add(payload);
+
+    [TargetRpc]
+    private static IEnumerator SendTargetIEnumerator(PlayerID target, int payload)
+    {
+        yield return null;
+        yield return null;
+        _ienumeratorTargetReceived = payload;
+        _ienumeratorTargetRunCount++;
+    }
 
     [TargetRpc] private static void SendTargetArray(PlayerID[] targets, int payload) => _multiArrayReceived = payload;
     [TargetRpc] private static void SendTargetList(IList<PlayerID> targets, int payload) => _multiListReceived = payload;

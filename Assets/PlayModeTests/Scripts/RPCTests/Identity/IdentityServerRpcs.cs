@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using PurrNet;
@@ -11,6 +12,8 @@ public class IdentityServerRpcs : NetworkIdentity
     public static IdentityServerRpcs LocalInstance;
     public static int FireAndForgetReceivedCount;
     public static int DoneCount;
+    public static int IEnumeratorRunCount;
+    public static int IEnumeratorPayloadReceived;
 
     [Serializable]
     public struct TestPayload
@@ -83,6 +86,18 @@ public class IdentityServerRpcs : NetworkIdentity
 
     [ServerRpc(requireOwnership: false, deltaPacked: true)]
     public Task<int> Echo_DeltaOn(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false)]
+    public IEnumerator Echo_IEnumerator(int payload, RPCInfo info = default)
+    {
+        yield return null;
+        yield return null;
+        IEnumeratorPayloadReceived = payload;
+        IEnumeratorRunCount++;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    public Task<int> Echo_IEnumeratorRunCount(RPCInfo info = default) => Task.FromResult(IEnumeratorRunCount);
 
     [ServerRpc(requireOwnership: false)]
     public void FireAndForget(int x, RPCInfo info = default)

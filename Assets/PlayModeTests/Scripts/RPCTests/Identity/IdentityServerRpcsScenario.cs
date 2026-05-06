@@ -193,6 +193,15 @@ public class IdentityServerRpcsScenario : Scenario
             }
         });
 
+        await Try(failures, "Echo_IEnumerator", async () =>
+        {
+            var before = await inst.Echo_IEnumeratorRunCount();
+            await inst.Echo_IEnumerator(555);
+            var after = await inst.Echo_IEnumeratorRunCount();
+            if (after <= before)
+                throw new Exception($"server IEnumerator counter did not advance: {before} -> {after}");
+        });
+
         await Try(failures, "FireAndForget", async () =>
         {
             inst.FireAndForget(123);

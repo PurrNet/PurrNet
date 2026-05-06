@@ -209,6 +209,15 @@ public class ModuleTargetRpcsScenario : Scenario
             if (ModuleTargetRpcsModule.MultiEnumReceived.Value != 5103) throw new Exception($"expected 5103, got {ModuleTargetRpcsModule.MultiEnumReceived.Value}");
         });
 
+        await Try(failures, "TargetIEnumerator", async () =>
+        {
+            ModuleTargetRpcsModule.IEnumeratorTargetReceived = null;
+            module.TriggerTargetIEnumerator(424);
+            await UniTaskUtils.WaitWithTimeout(() => ModuleTargetRpcsModule.IEnumeratorTargetReceived.HasValue, timeout, ctx.cancellationToken);
+            if (!ModuleTargetRpcsModule.IEnumeratorTargetReceived.HasValue) throw new Exception("ienumerator target payload did not arrive");
+            if (ModuleTargetRpcsModule.IEnumeratorTargetReceived.Value != 424) throw new Exception($"expected 424, got {ModuleTargetRpcsModule.IEnumeratorTargetReceived.Value}");
+        });
+
         await Try(failures, "AsyncTarget_Echo", async () =>
         {
             ModuleTargetRpcsModule.AsyncTargetReceived = null;

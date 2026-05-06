@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
@@ -13,6 +14,8 @@ public class StaticServerRpcsScenario : Scenario
 
     private static int _doneCount;
     private static int _fireAndForgetReceivedCount;
+    private static int _ienumeratorRunCount;
+    private static int _ienumeratorPayloadReceived;
 
     [Serializable]
     public struct TestPayload
@@ -184,6 +187,15 @@ public class StaticServerRpcsScenario : Scenario
             }
         });
 
+        await Try(failures, "Echo_IEnumerator", async () =>
+        {
+            var before = await Echo_IEnumeratorRunCount();
+            await Echo_IEnumerator(555);
+            var after = await Echo_IEnumeratorRunCount();
+            if (after <= before)
+                throw new Exception($"server IEnumerator counter did not advance: {before} -> {after}");
+        });
+
         await Try(failures, "FireAndForget", async () =>
         {
             FireAndForget(123);
@@ -262,6 +274,18 @@ public class StaticServerRpcsScenario : Scenario
 
     [ServerRpc(requireOwnership: false, deltaPacked: true)]
     private static Task<int> Echo_DeltaOn(int x, RPCInfo info = default) => Task.FromResult(x);
+
+    [ServerRpc(requireOwnership: false)]
+    private static IEnumerator Echo_IEnumerator(int payload, RPCInfo info = default)
+    {
+        yield return null;
+        yield return null;
+        _ienumeratorPayloadReceived = payload;
+        _ienumeratorRunCount++;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private static Task<int> Echo_IEnumeratorRunCount(RPCInfo info = default) => Task.FromResult(_ienumeratorRunCount);
 
     [ServerRpc(requireOwnership: false)]
     private static void FireAndForget(int x, RPCInfo info = default)
