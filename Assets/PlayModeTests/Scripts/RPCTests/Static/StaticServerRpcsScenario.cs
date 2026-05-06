@@ -15,7 +15,6 @@ public class StaticServerRpcsScenario : Scenario
     private static int _doneCount;
     private static int _fireAndForgetReceivedCount;
     private static int _ienumeratorRunCount;
-    private static int _ienumeratorPayloadReceived;
 
     [Serializable]
     public struct TestPayload
@@ -280,7 +279,6 @@ public class StaticServerRpcsScenario : Scenario
     {
         yield return null;
         yield return null;
-        _ienumeratorPayloadReceived = payload;
         _ienumeratorRunCount++;
     }
 
