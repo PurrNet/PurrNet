@@ -575,6 +575,12 @@ namespace PurrNet
 
         public void ResetTrigger(int nameHash)
         {
+            if (_dontSyncHashes.Contains(nameHash))
+            {
+                _animator.ResetTrigger(nameHash);
+                return;
+            }
+
             if (!IsController(_ownerAuth))
                 return;
 
@@ -587,6 +593,12 @@ namespace PurrNet
 
         public void SetTrigger(int nameHash)
         {
+            if (_dontSyncHashes.Contains(nameHash))
+            {
+                _animator.SetTrigger(nameHash);
+                return;
+            }
+
             if (!IsController(_ownerAuth))
                 return;
 
@@ -599,6 +611,12 @@ namespace PurrNet
 
         public void SetFloat(int nameHash, float value)
         {
+            if (_dontSyncHashes.Contains(nameHash))
+            {
+                _animator.SetFloat(nameHash, value);
+                return;
+            }
+
             if (!IsController(_ownerAuth))
                 return;
 
@@ -612,6 +630,12 @@ namespace PurrNet
 
         public void SetBool(int nameHash, bool value)
         {
+            if (_dontSyncHashes.Contains(nameHash))
+            {
+                _animator.SetBool(nameHash, value);
+                return;
+            }
+
             if (!IsController(_ownerAuth))
                 return;
 
@@ -625,6 +649,12 @@ namespace PurrNet
 
         public void SetInteger(int nameHash, int value)
         {
+            if (_dontSyncHashes.Contains(nameHash))
+            {
+                _animator.SetInteger(nameHash, value);
+                return;
+            }
+
             if (!IsController(_ownerAuth))
                 return;
 
