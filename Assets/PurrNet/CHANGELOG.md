@@ -1,3 +1,10 @@
+# [1.20.0-beta.130](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.129...v1.20.0-beta.130) (2026-05-06)
+
+
+### Bug Fixes
+
+* respet `DontSyncHashes` for non auto events ([59b55d5](https://github.com/PurrNet/PurrNet/commit/59b55d5a01b755fd6aa9adafbf5c84d20f8dd2bd))
+
 # [1.20.0-beta.129](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.128...v1.20.0-beta.129) (2026-05-06)
 
 
