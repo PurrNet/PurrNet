@@ -4,13 +4,12 @@ using UnityEngine;
 namespace PurrNet
 {
     /// <summary>
-    /// Centralized OnGUI dispatcher. Only runs in the editor.
+    /// Centralized OnGUI dispatcher.
     /// Reduces GC overhead by having a single OnGUI MonoBehaviour
     /// instead of one per component.
     /// </summary>
     public static class PurrOnGUI
     {
-#if UNITY_EDITOR
         private static event Action _onGUI;
         private static PurrOnGUIRunner _runner;
 
@@ -20,24 +19,18 @@ namespace PurrNet
             _onGUI = null;
             _runner = null;
         }
-#endif
 
         public static void Subscribe(Action callback)
         {
-#if UNITY_EDITOR
             _onGUI += callback;
             EnsureRunner();
-#endif
         }
 
         public static void Unsubscribe(Action callback)
         {
-#if UNITY_EDITOR
             _onGUI -= callback;
-#endif
         }
 
-#if UNITY_EDITOR
         private static void EnsureRunner()
         {
             if (_runner)
@@ -56,6 +49,5 @@ namespace PurrNet
                 _onGUI?.Invoke();
             }
         }
-#endif
     }
 }

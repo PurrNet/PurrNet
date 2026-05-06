@@ -84,7 +84,6 @@ namespace PurrNet
             _networkManager.onClientConnectionState += OnClientConnectionState;
         }
 
-#if UNITY_EDITOR
         private void OnEnable()
         {
             PurrOnGUI.Subscribe(DrawStatisticsGUI);
@@ -94,7 +93,6 @@ namespace PurrNet
         {
             PurrOnGUI.Unsubscribe(DrawStatisticsGUI);
         }
-#endif
 
         private void Start()
         {
@@ -170,10 +168,10 @@ namespace PurrNet
             ClientUnsubscribe_ServerStats();
         }
 
-#if UNITY_EDITOR
         private void DrawStatisticsGUI()
         {
-            if (!_displayTarget.HasFlag(StatisticsDisplayTarget.Editor))
+            var requiredTarget = Application.isEditor ? StatisticsDisplayTarget.Editor : StatisticsDisplayTarget.Build;
+            if (!_displayTarget.HasFlag(requiredTarget))
                 return;
 
             if (placement == StatisticsPlacement.None || !connectedClient)
@@ -221,7 +219,6 @@ namespace PurrNet
                 GUI.Label(rect, "Version: " + NetworkManager.version, _labelStyle);
             }
         }
-#endif
 
         private void UpdateCachedStrings()
         {
