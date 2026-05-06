@@ -1,4 +1,3 @@
-using System;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Utils;
