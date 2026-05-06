@@ -159,8 +159,14 @@ namespace PurrNet
             if (_wasOnSpawnedCalled)
             {
                 if (_cachedIsController)
-                     ForceSync();
-                else TeleportToData(GetCurrentTransformData());
+                {
+                    ForceSync();
+                }
+                else
+                {
+                    TeleportToData(_lastReadData);
+                    ApplyLerpedPosition();
+                }
             }
         }
 
@@ -346,10 +352,13 @@ namespace PurrNet
             if (isServer)
             {
                 int obCount = observers.Count;
+                var localP = localPlayer;
+
                 for (var i = 0; i < obCount; i++)
                 {
                     var observer = observers[i];
-                    if (_ownerAuth && owner == observer)
+
+                    if ((_ownerAuth && owner == observer) || observer == localP)
                         continue;
 
                     SendLatestState(observer, _currentData, true);
@@ -376,11 +385,13 @@ namespace PurrNet
             ApplyLerpedPosition();
 
             int obCount = observers.Count;
+            var localP = localPlayer;
+
             for (var i = 0; i < obCount; i++)
             {
                 var observer = observers[i];
 
-                if (owner == observer)
+                if (owner == observer || owner == localP)
                     continue;
 
                 SendLatestState(observer, data, true);
