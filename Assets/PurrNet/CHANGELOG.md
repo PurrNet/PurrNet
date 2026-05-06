@@ -1,3 +1,10 @@
+# [1.20.0-beta.128](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.127...v1.20.0-beta.128) (2026-05-06)
+
+
+### Bug Fixes
+
+* Statistics manager GUI for builds ([8e28039](https://github.com/PurrNet/PurrNet/commit/8e28039595d0780670e25d666f342389da0044db))
+
 # [1.20.0-beta.127](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.126...v1.20.0-beta.127) (2026-05-05)
 
 
