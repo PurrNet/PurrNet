@@ -51,6 +51,17 @@ namespace PurrNet
         private readonly Dictionary<int, Object> idToAsset = new();
         private readonly Dictionary<int, int> instanceIdToId = new();
 
+        // Fallback used when a duplicate managed instance of the same source asset shows up
+        // (e.g. Unity 6 IL2CPP dedicated server materializing a second instance of an SO via
+        // the on-demand resource pipeline). The instance-id lookup misses on the duplicate
+        // because its GetInstanceID() differs from the registered instance. We resolve via
+        // (Type, name) — the only signal that's identical between A and B and available in
+        // both editor and player builds, so the editor exactly reflects build behavior.
+        private const int AmbiguousMarker = -2;
+        private readonly Dictionary<(Type, string), int> typeNameToId = new();
+        private HashSet<(Type, string)> _warnedAmbiguous;
+        private HashSet<int> _warnedUnresolved;
+
         [SerializeField, HideInInspector] private List<int> _bakedIds = new();
         [SerializeField, HideInInspector] private List<Object> _bakedAssets = new();
 
@@ -59,13 +70,73 @@ namespace PurrNet
         public int GetIndex(Object obj)
         {
             if (!obj) return -1;
-            return instanceIdToId.GetValueOrDefault(obj.GetInstanceID(), -1);
+
+            int instanceId = obj.GetInstanceID();
+            if (instanceIdToId.TryGetValue(instanceId, out int id))
+                return id;
+
+            if (TryResolveDuplicate(obj, out id))
+            {
+                instanceIdToId[instanceId] = id;
+                return id;
+            }
+
+            WarnUnresolvedOnce(obj, instanceId);
+            return -1;
+        }
+
+        private bool TryResolveDuplicate(Object obj, out int id)
+        {
+            if (typeNameToId.TryGetValue((obj.GetType(), obj.name), out id))
+            {
+                if (id == AmbiguousMarker)
+                {
+                    WarnAmbiguousOnce(obj);
+                    id = -1;
+                    return false;
+                }
+                return true;
+            }
+            id = -1;
+            return false;
+        }
+
+        public bool TryGetCanonical(Object maybeDuplicate, out Object canonical)
+        {
+            canonical = null;
+            int id = GetIndex(maybeDuplicate);
+            if (id < 0) return false;
+            return idToAsset.TryGetValue(id, out canonical);
+        }
+
+        private void WarnAmbiguousOnce(Object obj)
+        {
+            _warnedAmbiguous ??= new HashSet<(Type, string)>();
+            var key = (obj.GetType(), obj.name);
+            if (_warnedAmbiguous.Add(key))
+            {
+                Debug.LogWarning(
+                    $"NetworkAssets: cannot resolve duplicate managed instance of '{obj.name}' " +
+                    $"({obj.GetType().Name}) — multiple registered assets share the same (Type, name). " +
+                    $"Returning -1.", this);
+            }
+        }
+
+        private void WarnUnresolvedOnce(Object obj, int instanceId)
+        {
+            _warnedUnresolved ??= new HashSet<int>();
+            if (_warnedUnresolved.Add(instanceId))
+            {
+                Debug.LogWarning(
+                    $"NetworkAssets: could not resolve '{obj.name}' ({obj.GetType().Name}, " +
+                    $"iid={instanceId}) — not registered and no (Type, name) fallback matched.",
+                    this);
+            }
         }
 
         private void OnEnable()
         {
-            idToAsset.Clear();
-            instanceIdToId.Clear();
+            ClearLookups();
 
             if (_bakedAssets.Count == 0 &&
                 (assets.Count > 0 || linkedNetworkAssets is { Count: > 0 }))
@@ -84,6 +155,7 @@ namespace PurrNet
                 {
                     idToAsset[id] = obj;
                     instanceIdToId[obj.GetInstanceID()] = id;
+                    RegisterTypeNameFallback(obj, id);
                 }
                 catch
                 {
@@ -93,6 +165,29 @@ namespace PurrNet
 
             if (IsBakeStale())
                 Refresh();
+        }
+
+        private void ClearLookups()
+        {
+            idToAsset.Clear();
+            instanceIdToId.Clear();
+            typeNameToId.Clear();
+            _warnedAmbiguous?.Clear();
+            _warnedUnresolved?.Clear();
+        }
+
+        private void RegisterTypeNameFallback(Object obj, int id)
+        {
+            var key = (obj.GetType(), obj.name);
+            if (typeNameToId.TryGetValue(key, out int existing))
+            {
+                if (existing != id)
+                    typeNameToId[key] = AmbiguousMarker;
+            }
+            else
+            {
+                typeNameToId[key] = id;
+            }
         }
 
         private bool IsBakeStale()
@@ -127,8 +222,7 @@ namespace PurrNet
 
         public void Refresh()
         {
-            idToAsset.Clear();
-            instanceIdToId.Clear();
+            ClearLookups();
             _bakedIds.Clear();
             _bakedAssets.Clear();
 
@@ -146,6 +240,8 @@ namespace PurrNet
 
                 idToAsset[i] = obj;
                 instanceIdToId[instanceId] = i;
+
+                RegisterTypeNameFallback(obj, i);
 
                 _bakedIds.Add(i);
                 _bakedAssets.Add(obj);
@@ -294,12 +390,8 @@ namespace PurrNet
 
         public bool TryGetId(Object obj, out int id)
         {
-            if (!obj)
-            {
-                id = -1;
-                return false;
-            }
-            return instanceIdToId.TryGetValue(obj.GetInstanceID(), out id);
+            id = GetIndex(obj);
+            return id >= 0;
         }
     }
 
