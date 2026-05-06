@@ -1,3 +1,10 @@
+# [1.20.0-beta.129](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.128...v1.20.0-beta.129) (2026-05-06)
+
+
+### Bug Fixes
+
+* async packable inconsistency + tests for it ([b37eee1](https://github.com/PurrNet/PurrNet/commit/b37eee130146989a05120a56930bf00435d246c9))
+
 # [1.20.0-beta.128](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.127...v1.20.0-beta.128) (2026-05-06)
 
 
