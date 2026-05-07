@@ -111,8 +111,15 @@ public class OwnershipPropagationScenario : Scenario
                 $"childChanges={OwnershipPropagationChild.Changes.Count}");
         }
 
-        ValidateChange(OwnershipPropagationParent.Changes, victimId, asServer: true, "parent", failures);
-        ValidateChange(OwnershipPropagationChild.Changes, victimId, asServer: true, "child", failures);
+        ValidateChange(ctx, OwnershipPropagationParent.Changes, victimId, asServer: true, "parent", failures);
+        ValidateChange(ctx, OwnershipPropagationChild.Changes, victimId, asServer: true, "child", failures);
+
+        // Host mode: also validate the host's client-side records, since they share static state.
+        if (ctx.role == NetworkRole.Host)
+        {
+            ValidateChange(ctx, OwnershipPropagationParent.Changes, victimId, asServer: false, "parent (host-client)", failures);
+            ValidateChange(ctx, OwnershipPropagationChild.Changes, victimId, asServer: false, "child (host-client)", failures);
+        }
 
         try
         {
@@ -169,8 +176,8 @@ public class OwnershipPropagationScenario : Scenario
                 $"childChanges={OwnershipPropagationChild.Changes.Count}");
         }
 
-        ValidateChange(OwnershipPropagationParent.Changes, victimId, asServer: false, "parent", failures);
-        ValidateChange(OwnershipPropagationChild.Changes, victimId, asServer: false, "child", failures);
+        ValidateChange(ctx, OwnershipPropagationParent.Changes, victimId, asServer: false, "parent", failures);
+        ValidateChange(ctx, OwnershipPropagationChild.Changes, victimId, asServer: false, "child", failures);
 
         if (OwnershipPropagationParent.LocalInstance != null)
             OwnershipPropagationParent.LocalInstance.SignalDone();
@@ -196,7 +203,7 @@ public class OwnershipPropagationScenario : Scenario
         return false;
     }
 
-    private static void ValidateChange(List<OwnershipPropagationParent.ChangeRecord> records,
+    private static void ValidateChange(ScenarioContext ctx, List<OwnershipPropagationParent.ChangeRecord> records,
         ulong victimId, bool asServer, string label, List<string> failures)
     {
         bool found = false;
@@ -206,10 +213,31 @@ public class OwnershipPropagationScenario : Scenario
             if (r.asServer != asServer) continue;
             if (r.oldHasValue || !r.newHasValue || r.newOwnerId != victimId) continue;
             found = true;
-            // Server side: server is not the new owner -> isOwnerAfter must be false.
-            // Client side: only the victim peer has isOwnerAfter=true.
-            if (asServer && r.isOwnerAfter)
-                failures.Add($"{label} server-side change: isOwner=true unexpected on server");
+
+            if (asServer)
+            {
+                // Server is never the new owner here (we always grant to a non-server client).
+                if (r.isOwnerAfter)
+                    failures.Add($"{label} server-side change: isOwner=true unexpected on server");
+                // hasConnectedOwner -> isController = isOwner (= false). No-owner branch doesn't apply
+                // to this transition since newOwner is always set.
+                if (r.isControllerAfter)
+                    failures.Add($"{label} server-side change: isController=true unexpected (server is not the owner)");
+            }
+            else
+            {
+                // Client side: isOwner is true iff the local player is the victim.
+                bool isVictimPeer = ctx.networkManager.isLocalPlayerReady
+                                    && ctx.networkManager.localPlayer.id.value == victimId;
+                if (r.isOwnerAfter != isVictimPeer)
+                    failures.Add(
+                        $"{label} client-side change: isOwner={r.isOwnerAfter}, expected {isVictimPeer} " +
+                        $"(local={(ctx.networkManager.isLocalPlayerReady ? ctx.networkManager.localPlayer.id.value : 0)}, victim={victimId})");
+                // On a non-server peer, isController == isOwner (no-owner branch doesn't apply).
+                if (r.isControllerAfter != isVictimPeer)
+                    failures.Add(
+                        $"{label} client-side change: isController={r.isControllerAfter}, expected {isVictimPeer}");
+            }
             break;
         }
         if (!found)

@@ -210,7 +210,9 @@ public class OwnerDisconnectDespawnScenario : Scenario
     private static PlayerID? PickVictim(ScenarioContext ctx)
     {
         var manager = ctx.networkManager;
-        var hostLocal = manager.isLocalPlayerReady ? manager.localPlayer : (PlayerID?)null;
+        var hostLocal = manager.isLocalPlayerReady && ctx.role == NetworkRole.Host
+            ? manager.localPlayer
+            : (PlayerID?)null;
 
         PlayerID? best = null;
         var players = manager.players;

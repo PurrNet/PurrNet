@@ -9,7 +9,6 @@ public class ObserverRemovalScenario : Scenario
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
     [SerializeField] private float _readyTimeoutSeconds = 30f;
     [SerializeField] private float _removalTimeoutSeconds = 30f;
-    [SerializeField] private float _doneTimeoutSeconds = 30f;
     [SerializeField] private float _propagationDelaySeconds = 0.5f;
     [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
@@ -110,22 +109,10 @@ public class ObserverRemovalScenario : Scenario
             failures.Add(
                 $"server expected 0 OnDespawned(asServer:true), got {ObserverRemovalIdentity.OnDespawnedServer}");
 
-        // Tell clients to wrap up.
-        inst.BroadcastDone();
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => ObserverRemovalIdentity.ServerDoneCount >= ctx.expectedConnections,
-                _doneTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            failures.Add(
-                $"server-done timeout: got {ObserverRemovalIdentity.ServerDoneCount}/{ctx.expectedConnections}");
-        }
-
+        // The barrier alone synchronizes the end of the scenario. We can't use a follow-up
+        // ObserversRpc here because the victim has been stripped from observers and would never
+        // receive it; and the victim's local instance has despawned so it can't reach back via
+        // a ServerRpc on this identity either.
         await ScenarioBarrier.Wait(ctx, BarrierEnd, _barrierTimeoutSeconds);
 
         return failures.Count == 0
@@ -184,23 +171,11 @@ public class ObserverRemovalScenario : Scenario
                     $"bystander expected 0 OnDespawned(asServer:false), got {ObserverRemovalIdentity.OnDespawnedClient}");
         }
 
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => ObserverRemovalIdentity.DonePhaseReceived,
-                _doneTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            failures.Add("client did not receive BroadcastDone");
-        }
-
-        // Bystanders' LocalInstance is still alive; victim's may be null after despawn.
-        if (ObserverRemovalIdentity.LocalInstance != null)
-            ObserverRemovalIdentity.LocalInstance.SignalDone();
-        else if (!isVictim)
+        // Bystander's LocalInstance must still be alive; victim's must be null post-despawn.
+        if (!isVictim && ObserverRemovalIdentity.LocalInstance == null)
             failures.Add("bystander's LocalInstance is null but should still be alive");
+        if (isVictim && ObserverRemovalIdentity.LocalInstance != null)
+            failures.Add("victim's LocalInstance should be null after blacklist despawn");
 
         await ScenarioBarrier.Wait(ctx, BarrierEnd, _barrierTimeoutSeconds);
 

@@ -1,14 +1,10 @@
-using System.Collections.Generic;
 using PurrNet;
 
-public class ObserverRemovalIdentity : NetworkIdentity
+public class HierarchyDespawnParent : NetworkIdentity
 {
-    public static ObserverRemovalIdentity LocalInstance;
+    public static HierarchyDespawnParent LocalInstance;
     public static int ServerReadyCount;
-    public static ulong VictimPlayerId;
-    public static bool VictimIdReceived;
 
-    public static readonly List<ulong> ObserverRemovedCalls = new();
     public static int OnDespawnedNoArg;
     public static int OnDespawnedServer;
     public static int OnDespawnedClient;
@@ -17,9 +13,6 @@ public class ObserverRemovalIdentity : NetworkIdentity
     {
         LocalInstance = null;
         ServerReadyCount = 0;
-        VictimPlayerId = 0;
-        VictimIdReceived = false;
-        ObserverRemovedCalls.Clear();
         OnDespawnedNoArg = 0;
         OnDespawnedServer = 0;
         OnDespawnedClient = 0;
@@ -35,11 +28,6 @@ public class ObserverRemovalIdentity : NetworkIdentity
         LocalInstance = this;
     }
 
-    protected override void OnObserverRemoved(PlayerID player)
-    {
-        ObserverRemovedCalls.Add(player.id.value);
-    }
-
     protected override void OnDespawned(bool asServer)
     {
         if (asServer) OnDespawnedServer++;
@@ -53,11 +41,4 @@ public class ObserverRemovalIdentity : NetworkIdentity
 
     [ServerRpc(requireOwnership: false)]
     public void SignalReady(RPCInfo info = default) => ServerReadyCount++;
-
-    [ObserversRpc(runLocally: true, bufferLast: true)]
-    public void BroadcastVictim(ulong victimId)
-    {
-        VictimPlayerId = victimId;
-        VictimIdReceived = true;
-    }
 }

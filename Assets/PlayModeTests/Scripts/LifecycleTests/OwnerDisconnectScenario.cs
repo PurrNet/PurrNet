@@ -134,7 +134,10 @@ public class OwnerDisconnectScenario : Scenario
                 $"server-done timeout: got {OwnerDisconnectIdentity.ServerDoneCount}/{ctx.expectedConnections}");
         }
 
-        // Verify exactly one disconnect and one reconnect for the victim.
+        // Server-only: callback fires once (server side). Host: fires twice (server + host's client side
+        // both run in this process, each side's GlobalOwnershipModule re-triggers the identity).
+        int expectedCallbacks = ctx.role == NetworkRole.Host ? 2 : 1;
+
         int disconnectsForVictim = 0;
         for (int i = 0; i < OwnerDisconnectIdentity.DisconnectCalls.Count; i++)
             if (OwnerDisconnectIdentity.DisconnectCalls[i] == victimId) disconnectsForVictim++;
@@ -143,10 +146,10 @@ public class OwnerDisconnectScenario : Scenario
         for (int i = 0; i < OwnerDisconnectIdentity.ReconnectCalls.Count; i++)
             if (OwnerDisconnectIdentity.ReconnectCalls[i] == victimId) reconnectsForVictim++;
 
-        if (disconnectsForVictim != 1)
-            failures.Add($"OnOwnerDisconnected for victim {victimId}: count={disconnectsForVictim}, expected 1");
-        if (reconnectsForVictim != 1)
-            failures.Add($"OnOwnerReconnected for victim {victimId}: count={reconnectsForVictim}, expected 1");
+        if (disconnectsForVictim != expectedCallbacks)
+            failures.Add($"OnOwnerDisconnected for victim {victimId}: count={disconnectsForVictim}, expected {expectedCallbacks}");
+        if (reconnectsForVictim != expectedCallbacks)
+            failures.Add($"OnOwnerReconnected for victim {victimId}: count={reconnectsForVictim}, expected {expectedCallbacks}");
 
         return failures.Count == 0
             ? ScenarioResult.Ok($"Victim={victimId}, Done={OwnerDisconnectIdentity.ServerDoneCount}")
@@ -169,8 +172,9 @@ public class OwnerDisconnectScenario : Scenario
             return ScenarioResult.Fail("client did not receive BroadcastVictim");
         }
 
+        var victimId = OwnerDisconnectIdentity.VictimPlayerId;
         bool isVictim = ctx.networkManager.isLocalPlayerReady
-                        && ctx.networkManager.localPlayer.id.value == OwnerDisconnectIdentity.VictimPlayerId;
+                        && ctx.networkManager.localPlayer.id.value == victimId;
 
         if (isVictim)
         {
@@ -189,6 +193,27 @@ public class OwnerDisconnectScenario : Scenario
             catch (TimeoutException)
             {
                 failures.Add("post-reconnect spawn (LocalInstance) timeout");
+            }
+        }
+        else
+        {
+            // Bystander: must have observed both OnOwnerDisconnected and OnOwnerReconnected for the
+            // victim. The server validates its own list separately; without this check a regression
+            // that fires server-side but skips the client-side callback would pass silently.
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => OwnerDisconnectIdentity.DisconnectCalls.Contains(victimId)
+                          && OwnerDisconnectIdentity.ReconnectCalls.Contains(victimId),
+                    _reconnectTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                failures.Add(
+                    $"bystander did not observe OnOwnerDisconnected+Reconnected for victim {victimId} " +
+                    $"(disconnects=[{string.Join(",", OwnerDisconnectIdentity.DisconnectCalls)}], " +
+                    $"reconnects=[{string.Join(",", OwnerDisconnectIdentity.ReconnectCalls)}])");
             }
         }
 
@@ -236,7 +261,9 @@ public class OwnerDisconnectScenario : Scenario
     private static PlayerID? PickVictim(ScenarioContext ctx)
     {
         var manager = ctx.networkManager;
-        var hostLocal = manager.isLocalPlayerReady ? manager.localPlayer : (PlayerID?)null;
+        var hostLocal = manager.isLocalPlayerReady && ctx.role == NetworkRole.Host
+            ? manager.localPlayer
+            : (PlayerID?)null;
 
         PlayerID? best = null;
         var players = manager.players;

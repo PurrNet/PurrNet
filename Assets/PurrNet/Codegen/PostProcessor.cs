@@ -2253,8 +2253,16 @@ namespace PurrNet.Codegen
             switch (methodRpc.Signature.type)
             {
                 case RPCType.ServerRPC:
-                    PutIsServerOnStack(module, methodRpc, isNetworkClass, code, moduleType, identityType);
-                    code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
+                    // Host shortcut: when isServer, call the original directly. We must not
+                    // take this shortcut when IAsyncPackable params are present — it bypasses
+                    // PrepareForPackAsync/PrepareAfterUnpackAsync, leaving the params in their
+                    // pre-prepare state. Routing through the network loopback (BatchToServer)
+                    // makes the host behave like a real client and runs the full lifecycle.
+                    if (!hasAsyncPackableParams)
+                    {
+                        PutIsServerOnStack(module, methodRpc, isNetworkClass, code, moduleType, identityType);
+                        code.Append(Instruction.Create(OpCodes.Brtrue, executeRunLocally));
+                    }
                     break;
             }
 
