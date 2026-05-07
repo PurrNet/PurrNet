@@ -14,6 +14,7 @@ public class LifecycleSpawnIdentity : NetworkIdentity
 
     public static bool IsOwnerInOnSpawnedNoArg;
     public static bool IsSpawnedInOnSpawnedNoArg;
+    public static bool IsControllerInOnSpawnedNoArg;
     public static int OnSpawnedNoArgFiredAfterEarly;
     public static int OnSpawnedAsServerFiredAfterEarlyAsServer;
 
@@ -27,6 +28,7 @@ public class LifecycleSpawnIdentity : NetworkIdentity
         OnSpawnedClient = 0;
         IsOwnerInOnSpawnedNoArg = false;
         IsSpawnedInOnSpawnedNoArg = false;
+        IsControllerInOnSpawnedNoArg = false;
         OnSpawnedNoArgFiredAfterEarly = 0;
         OnSpawnedAsServerFiredAfterEarlyAsServer = 0;
         ServerDoneCount = 0;
@@ -50,6 +52,7 @@ public class LifecycleSpawnIdentity : NetworkIdentity
         OnSpawnedNoArg++;
         IsOwnerInOnSpawnedNoArg = isOwner;
         IsSpawnedInOnSpawnedNoArg = isSpawned;
+        IsControllerInOnSpawnedNoArg = isController;
         if (OnEarlySpawnNoArg > 0)
             OnSpawnedNoArgFiredAfterEarly++;
         LocalInstance = this;

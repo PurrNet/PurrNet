@@ -13,6 +13,8 @@ public class OwnerChangeIdentity : NetworkIdentity
         public bool asServer;
         public bool isOwnerAfter;
         public bool hasOwnerAfter;
+        public bool isControllerAfter;
+        public bool hasConnectedOwnerAfter;
     }
 
     public static OwnerChangeIdentity LocalInstance;
@@ -59,6 +61,8 @@ public class OwnerChangeIdentity : NetworkIdentity
             asServer = asServer,
             isOwnerAfter = isOwner,
             hasOwnerAfter = hasOwner,
+            isControllerAfter = isController,
+            hasConnectedOwnerAfter = hasConnectedOwner,
         });
     }
 
@@ -74,6 +78,8 @@ public class OwnerChangeIdentity : NetworkIdentity
             asServer = asServer,
             isOwnerAfter = isOwner,
             hasOwnerAfter = hasOwner,
+            isControllerAfter = isController,
+            hasConnectedOwnerAfter = hasConnectedOwner,
         });
     }
 

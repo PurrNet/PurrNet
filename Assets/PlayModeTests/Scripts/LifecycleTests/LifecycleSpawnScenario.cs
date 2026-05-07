@@ -123,5 +123,13 @@ public class LifecycleSpawnScenario : Scenario
         // isSpawned should be true by the time OnSpawned() runs.
         if (!LifecycleSpawnIdentity.IsSpawnedInOnSpawnedNoArg)
             failures.Add("isSpawned was false inside OnSpawned()");
+
+        // isController for an ownerless identity == isServer. The no-arg OnSpawned fires from the
+        // first TriggerSpawnEvent (server-side first on host), so host/server-only see true and
+        // pure clients see false.
+        bool expectedIsController = host || serverOnly;
+        if (LifecycleSpawnIdentity.IsControllerInOnSpawnedNoArg != expectedIsController)
+            failures.Add(
+                $"isController in OnSpawned(): got {LifecycleSpawnIdentity.IsControllerInOnSpawnedNoArg}, expected {expectedIsController}");
     }
 }

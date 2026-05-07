@@ -229,12 +229,25 @@ public class OwnerChangeScenario : Scenario
             if (r.hasOwnerAfter != r.newOwnerHasValue)
                 failures.Add($"client 3-arg[{i}] hasOwner mismatch: hasOwner={r.hasOwnerAfter}, newOwner.HasValue={r.newOwnerHasValue}");
 
+            // No disconnects in this scenario, so hasConnectedOwner must equal hasOwner.
+            if (r.hasConnectedOwnerAfter != r.hasOwnerAfter)
+                failures.Add($"client 3-arg[{i}] hasConnectedOwner mismatch: hasConnectedOwner={r.hasConnectedOwnerAfter}, hasOwner={r.hasOwnerAfter}");
+
             // isOwner must be true iff localPlayer == newOwner.
             bool expectedIsOwner = localHasId && r.newOwnerHasValue && r.newOwnerId == localId;
             if (r.isOwnerAfter != expectedIsOwner)
             {
                 failures.Add(
                     $"client 3-arg[{i}] isOwner mismatch: got {r.isOwnerAfter}, expected {expectedIsOwner} (localId={localId}, newOwnerId={(r.newOwnerHasValue ? r.newOwnerId.ToString() : "null")})");
+            }
+
+            // isController on a pure client: true iff localPlayer is the connected owner.
+            // No-owner case → false (we're not the server).
+            bool expectedIsController = expectedIsOwner;
+            if (r.isControllerAfter != expectedIsController)
+            {
+                failures.Add(
+                    $"client 3-arg[{i}] isController mismatch: got {r.isControllerAfter}, expected {expectedIsController}");
             }
 
             prev = r;
@@ -290,6 +303,10 @@ public class OwnerChangeScenario : Scenario
             if (rec.hasOwnerAfter != nextHas)
                 failures.Add($"{label}[{i}] hasOwner={rec.hasOwnerAfter}, expected {nextHas}");
 
+            // No disconnects in this scenario, so hasConnectedOwner must equal hasOwner.
+            if (rec.hasConnectedOwnerAfter != rec.hasOwnerAfter)
+                failures.Add($"{label}[{i}] hasConnectedOwner={rec.hasConnectedOwnerAfter}, expected {rec.hasOwnerAfter}");
+
             // For the server side, isOwner is true on host iff localPlayer == newOwner; on a dedicated server localPlayer may be default(0).
             // We don't assert isOwner on the server-side records (asServer=true); it's a server perspective and not user-meaningful.
             if (!asServer)
@@ -299,6 +316,26 @@ public class OwnerChangeScenario : Scenario
                 {
                     failures.Add(
                         $"{label}[{i}] isOwner mismatch: got {rec.isOwnerAfter}, expected {expectedIsOwner}");
+                }
+
+                // isController on a non-server record: true iff localPlayer is the connected owner.
+                // No-owner case → false (this side is not the server).
+                if (rec.isControllerAfter != expectedIsOwner)
+                {
+                    failures.Add(
+                        $"{label}[{i}] isController mismatch: got {rec.isControllerAfter}, expected {expectedIsOwner}");
+                }
+            }
+            else
+            {
+                // isController on a server-side record: hasConnectedOwner ? isOwner : true.
+                // Our test gives ownership to clients (never the server), so when an owner is set
+                // the server is not the owner → expected false. When no owner, expected true.
+                bool expectedIsController = nextHas ? rec.isOwnerAfter : true;
+                if (rec.isControllerAfter != expectedIsController)
+                {
+                    failures.Add(
+                        $"{label}[{i}] isController mismatch: got {rec.isControllerAfter}, expected {expectedIsController} (newOwner={(nextHas ? nextId.ToString() : "null")})");
                 }
             }
 

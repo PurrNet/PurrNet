@@ -18,9 +18,18 @@ on:
 
 jobs:
   network-tests:
-    name: Build and run network test scenarios
+    name: ${{ matrix.mode }} mode
     runs-on: ubuntu-latest
     timeout-minutes: ${{ fromJSON(inputs.timeoutMinutes) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # "server" runs a pure server process + N client processes.
+        # "host" runs a host (server+client in one process) + N-1 client processes,
+        # so the same total player count is exercised but the server and one client
+        # share a process — same static state, same cookie store. Same-process
+        # cookie sharing is what late-join / reconnect tests rely on.
+        mode: [server, host]
 
     steps:
       - name: Checkout
@@ -62,10 +71,11 @@ jobs:
       - name: Inspect build output
         run: ls -la build/StandaloneLinux64/
 
-      - name: Run scenarios (1 server + N clients)
+      - name: Run scenarios
         env:
           CLIENT_COUNT: ${{ inputs.clientCount }}
           CONNECT_DELAY: ${{ inputs.connectionDelaySeconds }}
+          MODE: ${{ matrix.mode }}
         run: |
           set -u
           BIN="$PWD/build/StandaloneLinux64/PurrNetTests"
@@ -73,29 +83,45 @@ jobs:
           LOGS_DIR="$PWD/test-logs"
           mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
 
+          # Total player count we want exercised, regardless of host vs server-only mode.
+          TOTAL_COUNT="$CLIENT_COUNT"
+
+          # Server-only: 1 server process + N client processes (server has N connections).
+          # Host: 1 host process + (N-1) client processes (host has N connections, one
+          # of which is its own local client; cookies + static state shared with server).
+          if [ "$MODE" = "host" ]; then
+            EXTERNAL_CLIENTS=$((TOTAL_COUNT - 1))
+            if [ "$EXTERNAL_CLIENTS" -lt 1 ]; then
+              echo "::error::Host mode needs at least 1 external client (clientCount must be >= 2). Got $TOTAL_COUNT"
+              exit 1
+            fi
+          else
+            EXTERNAL_CLIENTS="$TOTAL_COUNT"
+          fi
+
           # Unity 6 Linux player segfaults inside PlayerMain on ubuntu-latest
           # even with -batchmode -nographics, so wrap each invocation in xvfb-run.
           RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
 
-          echo "::group::Launching server"
+          echo "::group::Launching $MODE process"
           "${RUN[@]}" "$BIN" -batchmode -nographics \
-            -role server -count "$CLIENT_COUNT" \
-            -results "$RESULTS_DIR/server.json" \
-            -logFile "$LOGS_DIR/server.log" &
+            -role "$MODE" -count "$TOTAL_COUNT" \
+            -results "$RESULTS_DIR/$MODE.json" \
+            -logFile "$LOGS_DIR/$MODE.log" &
           SERVER_PID=$!
-          echo "Server PID: $SERVER_PID"
+          echo "$MODE PID: $SERVER_PID"
           echo "::endgroup::"
 
           sleep "$CONNECT_DELAY"
 
           if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-            echo "::error::Server process died before clients could start"
-            tail -n 200 "$LOGS_DIR/server.log" || true
+            echo "::error::$MODE process died before clients could start"
+            tail -n 200 "$LOGS_DIR/$MODE.log" || true
             exit 1
           fi
 
           CLIENT_PIDS=()
-          for i in $(seq 1 "$CLIENT_COUNT"); do
+          for i in $(seq 1 "$EXTERNAL_CLIENTS"); do
             echo "::group::Launching client $i"
             "${RUN[@]}" "$BIN" -batchmode -nographics \
               -role client \
@@ -120,10 +146,10 @@ jobs:
           done
 
           if wait "$SERVER_PID"; then
-            echo "Server exited 0"
+            echo "$MODE process exited 0"
           else
             code=$?
-            echo "::error::Server exited $code"
+            echo "::error::$MODE process exited $code"
             FAIL=1
           fi
 
@@ -151,6 +177,8 @@ jobs:
 
       - name: Render results to job summary
         if: always()
+        env:
+          MODE: ${{ matrix.mode }}
         run: |
           set -u
           shopt -s nullglob
@@ -187,7 +215,7 @@ jobs:
           failed=$((total - passed))
 
           {
-            echo "## Network Test Results"
+            echo "## Network Test Results — ${MODE} mode"
             echo ""
             if [ "$failed" -eq 0 ]; then
               echo "### :white_check_mark: All scenarios passed (${passed}/${total})"
@@ -200,12 +228,39 @@ jobs:
               proc=$(basename "$f" .json)
               pcount=$(jq 'length' "$f")
               ppass=$(jq '[.[] | select(.result.success == true)] | length' "$f")
-              echo "#### \`${proc}\` — ${ppass}/${pcount} passed"
+              pfail=$((pcount - ppass))
+
+              # Client tables get loud with N near-identical rows; only show failed scenarios
+              # for clients. The server/host file always renders in full so it's clear which
+              # scenarios actually ran and how the authoritative side viewed each one.
+              case "$proc" in
+                client-*) is_client=1 ;;
+                *)        is_client=0 ;;
+              esac
+
+              if [ "$is_client" -eq 1 ]; then
+                if [ "$pfail" -eq 0 ]; then
+                  echo "#### \`${proc}\` — ${ppass}/${pcount} passed :white_check_mark:"
+                  echo ""
+                  echo "_All scenarios passed; rows omitted._"
+                  echo ""
+                  continue
+                fi
+                echo "#### \`${proc}\` — ${pfail} failed (${ppass}/${pcount} passed)"
+              else
+                echo "#### \`${proc}\` — ${ppass}/${pcount} passed"
+              fi
               echo ""
               echo "| # | Scenario | Status | Duration | Sent | Received | Message |"
               echo "|---|---|---|---|---|---|---|"
+
+              FILTER='to_entries[]'
+              if [ "$is_client" -eq 1 ]; then
+                FILTER='to_entries[] | select(.value.result.success == false)'
+              fi
+
               jq -r "$JQ_LIB"'
-                to_entries[] |
+                '"$FILTER"' |
                 "| \(.key) | \(.value.name // "?") | \(.value.result.success | statusIcon) | \(.value.durationInMs | humanDuration) | \(.value.dataSent | humanBytes) | \(.value.dataReceived | humanBytes) | \((.value.result.message // "") | gsub("\\|"; "&#124;") | gsub("[\\r\\n]+"; " ")) |"
               ' "$f"
               echo ""
@@ -226,7 +281,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: network-test-artifacts
+          name: network-test-artifacts-${{ matrix.mode }}
           path: |
             test-results/
             test-logs/

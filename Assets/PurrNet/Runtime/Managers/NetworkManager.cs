@@ -418,6 +418,22 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// Overrides the manager's <see cref="NetworkRules"/> asset. Must be called while the
+        /// manager is offline; runtime rule swaps mid-connection are not supported because
+        /// in-flight authority checks would observe inconsistent rules across peers.
+        /// </summary>
+        public void SetNetworkRules(NetworkRules rules)
+        {
+            if (!isOffline)
+            {
+                PurrLogger.LogError("Failed to update network rules since a connection is active.");
+                return;
+            }
+
+            _networkRules = rules;
+        }
+
+        /// <summary>
         /// Sets the prefab provider.
         /// </summary>
         /// <param name="provider">The provider to set.</param>
