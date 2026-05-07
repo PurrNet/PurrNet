@@ -1,3 +1,10 @@
+# [1.20.0-beta.138](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.137...v1.20.0-beta.138) (2026-05-07)
+
+
+### Bug Fixes
+
+* TargetRPC bufferLast was not recording per target but globally ([bd58bb6](https://github.com/PurrNet/PurrNet/commit/bd58bb623d3d1fb74c808b3ba5887757e205aabb))
+
 # [1.20.0-beta.137](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.136...v1.20.0-beta.137) (2026-05-07)
 
 
