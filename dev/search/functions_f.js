@@ -9,7 +9,7 @@ var searchData=
   ['set_6',['Set',['../classPurrNet_1_1Modules_1_1CookiesModule.html#a62dbf1cb55d35c7ccd89f07d9fb44dd5',1,'PurrNet::Modules::CookiesModule']]],
   ['setdirty_7',['SetDirty',['../classPurrNet_1_1SyncDictionary.html#ae438a185fffcb8fc3712274c4b722363',1,'PurrNet.SyncDictionary.SetDirty()'],['../classPurrNet_1_1SyncList.html#a2d66eec69e15202028625ea29ebaa61f',1,'PurrNet.SyncList.SetDirty()']]],
   ['setmaininstance_8',['SetMainInstance',['../classPurrNet_1_1NetworkManager.html#acb2f7c4e72a52689ffb75b6686f2a291',1,'PurrNet::NetworkManager']]],
-  ['setnetworkrules_9',['SetNetworkRules',['../classPurrNet_1_1NetworkIdentity.html#a3ed7ac05e6fad6c09054e193ddebd3ab',1,'PurrNet::NetworkIdentity']]],
+  ['setnetworkrules_9',['SetNetworkRules',['../classPurrNet_1_1NetworkIdentity.html#a3ed7ac05e6fad6c09054e193ddebd3ab',1,'PurrNet.NetworkIdentity.SetNetworkRules()'],['../classPurrNet_1_1NetworkManager.html#a34cb58a1aee2ed9816c4ab3fdb7aac4c',1,'PurrNet.NetworkManager.SetNetworkRules()']]],
   ['setprefabinstantiatedprovider_10',['SetPrefabInstantiatedProvider',['../classPurrNet_1_1PlayerSpawner.html#ae9c705d3fb888257159a534e8bb56413',1,'PurrNet::PlayerSpawner']]],
   ['setprefabprovider_11',['SetPrefabProvider',['../classPurrNet_1_1NetworkManager.html#a1b23e391bfdea87f9310b3eac5f57f4d',1,'PurrNet::NetworkManager']]],
   ['setrespawnpointprovider_12',['SetRespawnPointProvider',['../classPurrNet_1_1PlayerSpawner.html#aeb3567727374bc43c8fb1fdd4d0578c1',1,'PurrNet::PlayerSpawner']]],

@@ -18,6 +18,7 @@ var classPurrNet_1_1NetworkManager =
     [ "SendToAll< T >", "classPurrNet_1_1NetworkManager.html#ae2bc097590e198beb7b31719d0d46fb4", null ],
     [ "SendToScene< T >", "classPurrNet_1_1NetworkManager.html#a29f1275d9af5894d576bd32655ebe295", null ],
     [ "SendToServer< T >", "classPurrNet_1_1NetworkManager.html#a81a869171c04e93c783ad8b4f8fd1446", null ],
+    [ "SetNetworkRules", "classPurrNet_1_1NetworkManager.html#a34cb58a1aee2ed9816c4ab3fdb7aac4c", null ],
     [ "SetPrefabProvider", "classPurrNet_1_1NetworkManager.html#a1b23e391bfdea87f9310b3eac5f57f4d", null ],
     [ "StartClient", "classPurrNet_1_1NetworkManager.html#ab95d2e6fd594a1d152b1dae9bd160d31", null ],
     [ "StartHost", "classPurrNet_1_1NetworkManager.html#a0d9f46b12033650c50815172c0a06a25", null ],
