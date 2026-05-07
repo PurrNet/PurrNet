@@ -1,3 +1,10 @@
+# [1.20.0-beta.135](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.134...v1.20.0-beta.135) (2026-05-07)
+
+
+### Bug Fixes
+
+* NetworkTransform.cs prefer the smoother OnEnable version ([c744009](https://github.com/PurrNet/PurrNet/commit/c744009e40de38825ec3a3a891952d4b24709d47))
+
 # [1.20.0-beta.134](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.133...v1.20.0-beta.134) (2026-05-07)
 
 
