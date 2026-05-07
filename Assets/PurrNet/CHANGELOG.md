@@ -1,3 +1,10 @@
+# [1.20.0-beta.136](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.135...v1.20.0-beta.136) (2026-05-07)
+
+
+### Bug Fixes
+
+* deltaPacked with bufferLast causes issues so throw a compiler error for now atleast ([482305b](https://github.com/PurrNet/PurrNet/commit/482305b8379c6fe093e82c797a843a5a61df6e77))
+
 # [1.20.0-beta.135](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.134...v1.20.0-beta.135) (2026-05-07)
 
 
