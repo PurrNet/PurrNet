@@ -1,3 +1,10 @@
+# [1.20.0-beta.134](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.133...v1.20.0-beta.134) (2026-05-07)
+
+
+### Bug Fixes
+
+* what an idiot... i need to sleep man; networktransform fixes ([9335560](https://github.com/PurrNet/PurrNet/commit/9335560002b1bd68c8b7011320a59d4e503b7766))
+
 # [1.20.0-beta.133](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.132...v1.20.0-beta.133) (2026-05-06)
 
 
