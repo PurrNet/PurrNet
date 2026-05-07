@@ -355,6 +355,5 @@ public class StaticObserversRpcsScenario : Scenario
     private static void SignalDone(RPCInfo info = default)
     {
         _doneCount++;
-        Debug.Log($"[StaticObserversRpcsScenario] SignalDone received from sender {info.sender.id.value} (total {_doneCount})");
     }
 }

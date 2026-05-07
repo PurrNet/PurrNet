@@ -133,7 +133,6 @@ public class ModuleObserversRpcsModule : NetworkModule
     public void SignalDone(RPCInfo info = default)
     {
         DoneCount++;
-        Debug.Log($"[ModuleObserversRpcsModule] SignalDone received from sender {info.sender.id.value} (total {DoneCount})");
     }
 }
 

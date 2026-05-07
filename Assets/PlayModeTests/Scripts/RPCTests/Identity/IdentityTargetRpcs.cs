@@ -175,7 +175,6 @@ public class IdentityTargetRpcs : NetworkIdentity
     [TargetRpc(requireServer: false)]
     public Task SendTargetServer(PlayerID target, int payload)
     {
-        Debug.Log($"[IdentityTargetRpcs] SendTargetServer received: {payload}");
         return Task.CompletedTask;
     }
 
@@ -192,6 +191,5 @@ public class IdentityTargetRpcs : NetworkIdentity
     public void SignalDone()
     {
         DoneCount++;
-        Debug.Log($"[IdentityTargetRpcs] SignalDone received (total {DoneCount})");
     }
 }

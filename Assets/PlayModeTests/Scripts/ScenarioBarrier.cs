@@ -45,7 +45,6 @@ public static class ScenarioBarrier
     {
         _arrivedByBarrier.TryGetValue(barrierId, out var count);
         _arrivedByBarrier[barrierId] = count + 1;
-        Debug.Log($"[ScenarioBarrier] arrived barrier={barrierId} count={count + 1}");
     }
 
     [ObserversRpc(runLocally: true)]
@@ -53,6 +52,5 @@ public static class ScenarioBarrier
     {
         if (barrierId > _lastProceedBarrier)
             _lastProceedBarrier = barrierId;
-        Debug.Log($"[ScenarioBarrier] proceed barrier={barrierId}");
     }
 }

@@ -164,7 +164,6 @@ public class ModuleTargetRpcsModule : NetworkModule
     [TargetRpc(requireServer: false)]
     public Task SendTargetServer(PlayerID target, int payload)
     {
-        Debug.Log($"[ModuleTargetRpcsModule] SendTargetServer received: {payload}");
         return Task.CompletedTask;
     }
 
@@ -181,7 +180,6 @@ public class ModuleTargetRpcsModule : NetworkModule
     public void SignalDone()
     {
         DoneCount++;
-        Debug.Log($"[ModuleTargetRpcsModule] SignalDone received (total {DoneCount})");
     }
 }
 

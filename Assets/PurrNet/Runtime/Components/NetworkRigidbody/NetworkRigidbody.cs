@@ -1250,7 +1250,7 @@ namespace PurrNet
             SyncSettings_Observer(data);
         }
 
-        [ObserversRpc(bufferLast: true, deltaPacked: true, excludeSender: true)]
+        [ObserversRpc(bufferLast: true, excludeSender: true)]
         private void SyncSettings_Observer(RigidbodySettingsData data)
         {
             SyncSettings_Internal(data);

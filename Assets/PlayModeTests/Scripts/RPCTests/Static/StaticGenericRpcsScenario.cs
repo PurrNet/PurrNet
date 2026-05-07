@@ -207,6 +207,5 @@ public class StaticGenericRpcsScenario : Scenario
     private static void SignalDone(RPCInfo info = default)
     {
         _doneCount++;
-        Debug.Log($"[StaticGenericRpcsScenario] SignalDone received from sender {info.sender.id.value} (total {_doneCount})");
     }
 }

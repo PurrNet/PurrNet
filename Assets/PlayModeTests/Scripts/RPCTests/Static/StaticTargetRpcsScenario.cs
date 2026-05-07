@@ -452,7 +452,6 @@ public class StaticTargetRpcsScenario : Scenario
     [TargetRpc(requireServer: false)]
     private static Task SendTargetServer(PlayerID target, int payload)
     {
-        Debug.Log($"[StaticTargetRpcsScenario] SendTargetServer received: {payload}");
         return Task.CompletedTask;
     }
 
@@ -469,6 +468,5 @@ public class StaticTargetRpcsScenario : Scenario
     private static void SignalDone()
     {
         _doneCount++;
-        Debug.Log($"[StaticTargetRpcsScenario] SignalDone received (total {_doneCount})");
     }
 }

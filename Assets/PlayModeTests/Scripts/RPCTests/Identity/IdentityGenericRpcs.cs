@@ -63,7 +63,6 @@ public class IdentityGenericRpcs<T> : NetworkIdentity
     public void SignalDone(RPCInfo info = default)
     {
         DoneCount++;
-        Debug.Log($"[IdentityGenericRpcs<{typeof(T).Name}>] SignalDone received from sender {info.sender.id.value} (total {DoneCount})");
     }
 }
 

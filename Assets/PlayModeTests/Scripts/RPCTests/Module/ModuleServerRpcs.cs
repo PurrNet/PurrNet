@@ -119,14 +119,12 @@ public class ModuleServerRpcsModule : NetworkModule
     public void FireAndForget(int x, RPCInfo info = default)
     {
         FireAndForgetReceivedCount++;
-        Debug.Log($"[ModuleServerRpcsModule] FireAndForget received: {x} from sender {info.sender.id.value} (total {FireAndForgetReceivedCount})");
     }
 
     [ServerRpc(requireOwnership: false)]
     public void SignalDone(RPCInfo info = default)
     {
         DoneCount++;
-        Debug.Log($"[ModuleServerRpcsModule] SignalDone received from sender {info.sender.id.value} (total {DoneCount})");
     }
 }
 

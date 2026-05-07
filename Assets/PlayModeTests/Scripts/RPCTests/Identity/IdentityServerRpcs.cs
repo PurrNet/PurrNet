@@ -132,13 +132,11 @@ public class IdentityServerRpcs : NetworkIdentity
     public void FireAndForget(int x, RPCInfo info = default)
     {
         FireAndForgetReceivedCount++;
-        Debug.Log($"[IdentityServerRpcs] FireAndForget received: {x} from sender {info.sender.id.value} (total {FireAndForgetReceivedCount})");
     }
 
     [ServerRpc(requireOwnership: false)]
     public void SignalDone(RPCInfo info = default)
     {
         DoneCount++;
-        Debug.Log($"[IdentityServerRpcs] SignalDone received from sender {info.sender.id.value} (total {DoneCount})");
     }
 }

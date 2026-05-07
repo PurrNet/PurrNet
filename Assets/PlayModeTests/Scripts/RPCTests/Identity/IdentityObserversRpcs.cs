@@ -144,6 +144,5 @@ public class IdentityObserversRpcs : NetworkIdentity
     public void SignalDone(RPCInfo info = default)
     {
         DoneCount++;
-        Debug.Log($"[IdentityObserversRpcs] SignalDone received from sender {info.sender.id.value} (total {DoneCount})");
     }
 }

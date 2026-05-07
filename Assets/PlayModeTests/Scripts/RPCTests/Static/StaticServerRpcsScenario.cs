@@ -326,13 +326,11 @@ public class StaticServerRpcsScenario : Scenario
     private static void FireAndForget(int x, RPCInfo info = default)
     {
         _fireAndForgetReceivedCount++;
-        Debug.Log($"[StaticRpcsScenario] FireAndForget received: {x} from sender {info.sender.id.value} (total {_fireAndForgetReceivedCount})");
     }
 
     [ServerRpc(requireOwnership: false)]
     private static void SignalDone(RPCInfo info = default)
     {
         _doneCount++;
-        Debug.Log($"[StaticRpcsScenario] SignalDone received from sender {info.sender.id.value} (total {_doneCount})");
     }
 }

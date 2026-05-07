@@ -51,7 +51,6 @@ public class ModuleGenericRpcsModule<T> : NetworkModule
     public void SignalDone(RPCInfo info = default)
     {
         DoneCount++;
-        Debug.Log($"[ModuleGenericRpcsModule<{typeof(T).Name}>] SignalDone received from sender {info.sender.id.value} (total {DoneCount})");
     }
 }
 

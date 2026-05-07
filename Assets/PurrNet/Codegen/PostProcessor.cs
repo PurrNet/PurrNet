@@ -164,6 +164,12 @@ namespace PurrNet.Codegen
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[7].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[8].Value;
 
+                    if (bufferLast && deltaPacked)
+                    {
+                        Error(messages, "ObserversRPC cannot have both bufferLast and deltaPacked enabled", method);
+                        return null;
+                    }
+
                     data = new RPCSignature
                     {
                         type = RPCType.ObserversRPC,
@@ -196,6 +202,12 @@ namespace PurrNet.Codegen
                     var compressionLevel = (CompressionLevel)attribute.ConstructorArguments[4].Value;
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[5].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[6].Value;
+
+                    if (bufferLast && deltaPacked)
+                    {
+                        Error(messages, "TargetRPC cannot have both bufferLast and deltaPacked enabled", method);
+                        return null;
+                    }
 
                     data = new RPCSignature
                     {
