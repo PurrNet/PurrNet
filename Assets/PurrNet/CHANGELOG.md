@@ -1,3 +1,10 @@
+# [1.20.0-beta.139](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.138...v1.20.0-beta.139) (2026-05-07)
+
+
+### Bug Fixes
+
+* targetrpc host scenarios, asyncpackable host scenarios ([5bfb9c8](https://github.com/PurrNet/PurrNet/commit/5bfb9c8285d2c22320e11e67b478a1875d7045ea))
+
 # [1.20.0-beta.138](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.137...v1.20.0-beta.138) (2026-05-07)
 
 
