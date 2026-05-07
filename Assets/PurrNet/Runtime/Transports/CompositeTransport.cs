@@ -9,7 +9,7 @@ namespace PurrNet.Transports
 
     internal delegate void OnCompositeConnected(int transportIdx, Connection conn, bool asServer);
 
-    internal delegate void OnCompositeDisconnected(int transportIdx, Connection conn, bool asServer);
+    internal delegate void OnCompositeDisconnected(int transportIdx, Connection conn, DisconnectReason reason, bool asServer);
 
     internal class CompositeTransportEvents
     {
@@ -49,7 +49,7 @@ namespace PurrNet.Transports
 
         private void OnDisconnected(Connection conn, DisconnectReason reason, bool asServer)
         {
-            onDisconnected?.Invoke(index, conn, asServer);
+            onDisconnected?.Invoke(index, conn, reason, asServer);
         }
 
         private void OnConnected(Connection conn, bool asServer)
@@ -308,7 +308,7 @@ namespace PurrNet.Transports
             }
         }
 
-        private void OnTransportDisconnected(int transportidx, Connection conn, bool asServer)
+        private void OnTransportDisconnected(int transportidx, Connection conn, DisconnectReason reason, bool asServer)
         {
             switch (asServer)
             {
@@ -326,13 +326,13 @@ namespace PurrNet.Transports
                 if (_router.Remove(pair, out var target))
                 {
                     _connections.Remove(target);
-                    onDisconnected?.Invoke(target, DisconnectReason.Timeout, true);
+                    onDisconnected?.Invoke(target, reason, true);
                 }
                 else Debug.LogError($"Connection {conn} coming from transport {transportidx} is not routed.");
             }
             else
             {
-                onDisconnected?.Invoke(conn, DisconnectReason.Timeout, false);
+                onDisconnected?.Invoke(conn, reason, false);
             }
         }
 
