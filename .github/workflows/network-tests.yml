@@ -31,11 +31,11 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: Library
-          key: Library-PurrNet-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-PurrNet-IL2CPP-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
-            Library-PurrNet-
+            Library-PurrNet-IL2CPP-
 
-      - name: Build StandaloneLinux64 player
+      - name: Build StandaloneLinux64 player (IL2CPP)
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -46,8 +46,11 @@ jobs:
           targetPlatform: StandaloneLinux64
           buildName: PurrNetTests
           buildsPath: build
-          # Mono is faster to build than IL2CPP; switch if you specifically need to test IL2CPP.
           unityVersion: auto
+          # IL2CPP is slower to build than Mono but exercises the IL -> C++
+          # converter against our codegen output, which surfaces issues that
+          # Mono silently tolerates.
+          customParameters: -standaloneBuildSubtarget Player -scriptingBackend IL2CPP
 
       - name: Save Library cache
         if: always() && steps.cache-library.outputs.cache-hit != 'true'
