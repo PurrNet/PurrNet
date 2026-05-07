@@ -1,3 +1,10 @@
+# [1.20.0-beta.140](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.139...v1.20.0-beta.140) (2026-05-07)
+
+
+### Bug Fixes
+
+* composite transport disconnect reason ([63d6c79](https://github.com/PurrNet/PurrNet/commit/63d6c7962d173f3b6559aa9643bc4f7609a46d97))
+
 # [1.20.0-beta.139](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.138...v1.20.0-beta.139) (2026-05-07)
 
 
