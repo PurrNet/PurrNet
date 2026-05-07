@@ -619,17 +619,51 @@ namespace PurrNet.Modules
 
         static readonly ProfilerMarker _bufferRPCMarker = new ProfilerMarker($"RPCModule.AppendToBufferedRPCs");
 
+        private static bool IsMultiTargetTargetRpc(in RPCSignature signature)
+        {
+            return signature.type == RPCType.TargetRPC && !signature.targetPlayer.HasValue
+                && (signature.targetPlayerList != null || signature.targetPlayerEnumerable != null);
+        }
+
+        private static RPCSignature WithSingleTarget(RPCSignature signature, PlayerID target)
+        {
+            signature.targetPlayer = target;
+            signature.targetPlayerList = null;
+            signature.targetPlayerEnumerable = null;
+            return signature;
+        }
+
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
         {
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
-            AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
-                _bufferedStaticRpcsDatas,
-                packet.header,
-                new RPC_ID(packet),
-                packet.data,
-                signature
-            );
+
+            if (IsMultiTargetTargetRpc(signature))
+            {
+                using var targets = signature.GetTargets();
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    var target = targets[i];
+                    AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
+                        _bufferedStaticRpcsDatas,
+                        packet.header,
+                        new RPC_ID(packet, target),
+                        packet.data,
+                        WithSingleTarget(signature, target));
+                }
+            }
+            else
+            {
+                var target = signature.type == RPCType.TargetRPC && signature.targetPlayer.HasValue
+                    ? signature.targetPlayer.Value : default;
+                AppendToBufferedRPCs(_bufferedStaticRpcsKeys,
+                    _bufferedStaticRpcsDatas,
+                    packet.header,
+                    new RPC_ID(packet, target),
+                    packet.data,
+                    signature);
+            }
+
             _bufferRPCMarker.End();
         }
 
@@ -637,13 +671,33 @@ namespace PurrNet.Modules
         {
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
-            AppendToBufferedRPCs(_bufferedChildRpcsKeys,
-                _bufferedChildRpcsDatas,
-                packet.header,
-                new RPC_ID(packet),
-                packet.data,
-                signature
-            );
+
+            if (IsMultiTargetTargetRpc(signature))
+            {
+                using var targets = signature.GetTargets();
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    var target = targets[i];
+                    AppendToBufferedRPCs(_bufferedChildRpcsKeys,
+                        _bufferedChildRpcsDatas,
+                        packet.header,
+                        new RPC_ID(packet, target),
+                        packet.data,
+                        WithSingleTarget(signature, target));
+                }
+            }
+            else
+            {
+                var target = signature.type == RPCType.TargetRPC && signature.targetPlayer.HasValue
+                    ? signature.targetPlayer.Value : default;
+                AppendToBufferedRPCs(_bufferedChildRpcsKeys,
+                    _bufferedChildRpcsDatas,
+                    packet.header,
+                    new RPC_ID(packet, target),
+                    packet.data,
+                    signature);
+            }
+
             _bufferRPCMarker.End();
         }
 
@@ -651,14 +705,33 @@ namespace PurrNet.Modules
         {
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
-            AppendToBufferedRPCs(
-                _bufferedRpcsKeys,
-                _bufferedRpcsDatas,
-                packet.header,
-                new RPC_ID(packet),
-                packet.data,
-                signature
-            );
+
+            if (IsMultiTargetTargetRpc(signature))
+            {
+                using var targets = signature.GetTargets();
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    var target = targets[i];
+                    AppendToBufferedRPCs(_bufferedRpcsKeys,
+                        _bufferedRpcsDatas,
+                        packet.header,
+                        new RPC_ID(packet, target),
+                        packet.data,
+                        WithSingleTarget(signature, target));
+                }
+            }
+            else
+            {
+                var target = signature.type == RPCType.TargetRPC && signature.targetPlayer.HasValue
+                    ? signature.targetPlayer.Value : default;
+                AppendToBufferedRPCs(_bufferedRpcsKeys,
+                    _bufferedRpcsDatas,
+                    packet.header,
+                    new RPC_ID(packet, target),
+                    packet.data,
+                    signature);
+            }
+
             _bufferRPCMarker.End();
         }
 

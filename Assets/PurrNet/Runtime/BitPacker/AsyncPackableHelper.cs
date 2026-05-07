@@ -114,7 +114,7 @@ namespace PurrNet.Packing
         /// (Unity's main thread or SynchronizationContext) so RunLocal and SendRPC work correctly.
         /// </summary>
         [UsedByIL]
-        public static Task ExecuteAfterPrepareAsync(Task[] prepareTasks, Action<Task[]> storeResultsAndSend)
+        public static async Task ExecuteAfterPrepareAsync(Task[] prepareTasks, Action<Task[]> storeResultsAndSend)
         {
             bool allComplete = true;
             for (int i = 0; i < prepareTasks.Length; i++)
@@ -129,37 +129,35 @@ namespace PurrNet.Packing
             if (allComplete)
             {
                 InvokeOnMain(prepareTasks, storeResultsAndSend);
-                return Task.CompletedTask;
+                return;
             }
 
-            return Task.WhenAll(prepareTasks).ContinueWith(_ =>
-            {
-                if (SynchronizationContext.Current != null)
-                    InvokeOnMain(prepareTasks, storeResultsAndSend);
-                else
-                    UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(prepareTasks, storeResultsAndSend));
-            });
+            try { await Task.WhenAll(prepareTasks); } catch { }
+
+            if (SynchronizationContext.Current != null)
+                InvokeOnMain(prepareTasks, storeResultsAndSend);
+            else
+                UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(prepareTasks, storeResultsAndSend));
         }
 
         /// <summary>
         /// Single-task overload. Runs sendAction after prepareTask completes. Used when no IAsyncPackable params.
         /// </summary>
         [UsedByIL]
-        public static Task ExecuteAfterPrepareAsync(Task prepareTask, Action sendAction)
+        public static async Task ExecuteAfterPrepareAsync(Task prepareTask, Action sendAction)
         {
             if (prepareTask.IsCompleted)
             {
                 InvokeOnMain(sendAction);
-                return Task.CompletedTask;
+                return;
             }
 
-            return prepareTask.ContinueWith(_ =>
-            {
-                if (SynchronizationContext.Current != null)
-                    InvokeOnMain(sendAction);
-                else
-                    UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(sendAction));
-            });
+            try { await prepareTask; } catch { }
+
+            if (SynchronizationContext.Current != null)
+                InvokeOnMain(sendAction);
+            else
+                UnityLatestUpdate.ExecuteAsap(() => InvokeOnMain(sendAction));
         }
 
         private static void InvokeOnMain(Task[] tasks, Action<Task[]> callback)

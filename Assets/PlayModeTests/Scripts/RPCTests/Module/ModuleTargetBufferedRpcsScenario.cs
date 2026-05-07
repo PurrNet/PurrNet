@@ -121,7 +121,7 @@ public class ModuleTargetBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => ModuleTargetBufferedRpcsModule.PhaseACompleteCount > 0,
+                () => ModuleTargetBufferedRpcsModule.PhaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -163,7 +163,7 @@ public class ModuleTargetBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => ModuleTargetBufferedRpcsModule.PhaseACompleteCount > 0,
+                () => ModuleTargetBufferedRpcsModule.PhaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }

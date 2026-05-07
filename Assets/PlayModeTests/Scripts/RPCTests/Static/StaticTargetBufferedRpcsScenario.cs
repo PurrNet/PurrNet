@@ -181,13 +181,13 @@ public class StaticTargetBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => _phaseACompleteCount > 0,
+                () => _phaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }
         catch (TimeoutException)
         {
-            LogFail(failures,"Host did not receive PhaseAComplete locally");
+            LogFail(failures,$"Host did not receive PhaseAComplete locally; {ReceiveCountSummary()}");
         }
 
         VerifyPhaseAValues(failures);
@@ -222,13 +222,13 @@ public class StaticTargetBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => _phaseACompleteCount > 0,
+                () => _phaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }
         catch (TimeoutException)
         {
-            return LogAndFail("Client did not receive PhaseAComplete; server may not have fired the buffered set");
+            return LogAndFail($"Client did not receive PhaseAComplete; {ReceiveCountSummary()}");
         }
 
         VerifyPhaseAValues(failures);

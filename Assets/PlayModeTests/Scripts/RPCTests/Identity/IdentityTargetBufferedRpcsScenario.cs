@@ -121,7 +121,7 @@ public class IdentityTargetBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => IdentityTargetBufferedRpcs.PhaseACompleteCount > 0,
+                () => IdentityTargetBufferedRpcs.PhaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -163,7 +163,7 @@ public class IdentityTargetBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => IdentityTargetBufferedRpcs.PhaseACompleteCount > 0,
+                () => IdentityTargetBufferedRpcs.PhaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }

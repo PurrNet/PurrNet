@@ -120,7 +120,7 @@ public class IdentityObserversBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => IdentityObserversBufferedRpcs.PhaseACompleteCount > 0,
+                () => IdentityObserversBufferedRpcs.PhaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -162,7 +162,7 @@ public class IdentityObserversBufferedRpcsScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => IdentityObserversBufferedRpcs.PhaseACompleteCount > 0,
+                () => IdentityObserversBufferedRpcs.PhaseACompleteCount > 0 && AllVariantsReceived(),
                 _phaseACompleteTimeoutSeconds,
                 ctx.cancellationToken);
         }
