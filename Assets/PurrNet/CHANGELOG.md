@@ -1,3 +1,10 @@
+# [1.20.0-beta.133](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.132...v1.20.0-beta.133) (2026-05-06)
+
+
+### Bug Fixes
+
+* don't force sync to host's own player ([8d95b01](https://github.com/PurrNet/PurrNet/commit/8d95b0100379fdb3c2c85db675e33a4e6845768c))
+
 # [1.20.0-beta.132](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.131...v1.20.0-beta.132) (2026-05-06)
 
 
