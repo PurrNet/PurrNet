@@ -27,6 +27,8 @@ var classPurrNet_1_1NetworkIdentity =
     [ "OnSpawned", "classPurrNet_1_1NetworkIdentity.html#a14086750126d4e89bea12bfa8cb9c742", null ],
     [ "PromoteToServer", "classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e", null ],
     [ "ResetIsSetup", "classPurrNet_1_1NetworkIdentity.html#af42ac01c6542efe7a2e8c29c3bcff710", null ],
+    [ "SetNetworkRules", "classPurrNet_1_1NetworkIdentity.html#a3ed7ac05e6fad6c09054e193ddebd3ab", null ],
+    [ "SetVisibilityRules", "classPurrNet_1_1NetworkIdentity.html#ab9226d91e2d52222882668e2ba3cace2", null ],
     [ "Spawn", "classPurrNet_1_1NetworkIdentity.html#a6cbd9682b4d1f0f9a18b4d6ecffc27e6", null ],
     [ "blacklist", "classPurrNet_1_1NetworkIdentity.html#a1fbc33d0cc20898ca64304db209f4106", null ],
     [ "id", "classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b", null ],
