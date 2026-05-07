@@ -164,8 +164,8 @@ namespace PurrNet
                 }
                 else
                 {
-                    TeleportToData(_lastReadData);
-                    ApplyLerpedPosition();
+                    _currentData = GetCurrentTransformData();
+                    TeleportToData(_currentData);
                 }
             }
         }
