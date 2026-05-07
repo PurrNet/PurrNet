@@ -1,3 +1,10 @@
+# [1.20.0-beta.137](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.136...v1.20.0-beta.137) (2026-05-07)
+
+
+### Bug Fixes
+
+* bring back the cached `LateLateUpdate` delegate for NetworkTransform.cs ([0850c26](https://github.com/PurrNet/PurrNet/commit/0850c2692a83d74cf16e4be156a5fae9318b6499))
+
 # [1.20.0-beta.136](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.135...v1.20.0-beta.136) (2026-05-07)
 
 
