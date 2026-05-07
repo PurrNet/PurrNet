@@ -391,7 +391,7 @@ namespace PurrNet
             {
                 var observer = observers[i];
 
-                if (owner == observer || owner == localP)
+                if (owner == observer || observer == localP)
                     continue;
 
                 SendLatestState(observer, data, true);
