@@ -1,3 +1,10 @@
+# [1.20.0-beta.144](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.143...v1.20.0-beta.144) (2026-05-10)
+
+
+### Bug Fixes
+
+* properly copy when delta packing lists ([9f2c2a5](https://github.com/PurrNet/PurrNet/commit/9f2c2a5329aff8ae25f18e59e3f813fbb07c6f8e))
+
 # [1.20.0-beta.143](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.142...v1.20.0-beta.143) (2026-05-10)
 
 
