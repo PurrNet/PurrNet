@@ -48,6 +48,8 @@ namespace PurrNet
                     return;
                 }
             }
+
+            _raw_rules.Add(rule);
         }
 
         public void RemoveRule(INetworkVisibilityRule rule)
