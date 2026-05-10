@@ -57,7 +57,6 @@ namespace PurrNet
         public Transform parent;
     }
 
-    [RequireComponent(typeof(Rigidbody))]
     [AddComponentMenu("PurrNet/Network Rigidbody")]
     public partial class NetworkRigidbody : NetworkIdentity, ITick
     {
