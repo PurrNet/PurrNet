@@ -176,8 +176,8 @@ namespace PurrNet.Packing
 
                 foreach (var (key, val) in oldvalue)
                 {
-                    oldKeysList.Add(key);
-                    oldValuesList.Add(val);
+                    oldKeysList.Add(PurrCopy<TKey>.Copy(key));
+                    oldValuesList.Add(PurrCopy<TValue>.Copy(val));
                 }
             }
 

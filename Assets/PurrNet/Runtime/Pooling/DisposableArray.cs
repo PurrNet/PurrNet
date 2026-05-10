@@ -132,7 +132,13 @@ namespace PurrNet.Pooling
 #if UNITY_EDITOR && PURR_LEAKS_CHECK
             AllocationTracker.Track(array);
 #endif
-            Array.Copy(copyFrom, array, copyFrom.Length);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                for (int i = 0; i < copyFrom.Length; i++)
+                    array[i] = PurrCopy<T>.Copy(copyFrom[i]);
+            }
+            else Array.Copy(copyFrom, array, copyFrom.Length);
+
             return new DisposableArray<T>
             {
                 array = array,
