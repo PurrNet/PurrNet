@@ -1,4 +1,5 @@
-﻿using PurrNet.Modules;
+﻿using System.Runtime.CompilerServices;
+using PurrNet.Modules;
 using PurrNet.Pooling;
 
 namespace PurrNet.Packing
@@ -66,7 +67,12 @@ namespace PurrNet.Packing
             if (!old.isDisposed)
             {
                 value.Clear();
-                value.AddRange(old);
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                {
+                    for (int i = 0; i < old.Count; i++)
+                        value.Add(PurrCopy<T>.Copy(old[i]));
+                }
+                else value.AddRange(old);
             }
 
             var changes = DisposableList<DiffOp<T>>.Create();
