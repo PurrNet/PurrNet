@@ -15,7 +15,6 @@ public class Bootstrap : Scenario
     [SerializeField] private NetworkManager _networkManager;
     [SerializeField] private float _connectionTimeout = 15f;
     [SerializeField] private float _timeBetweenScenarios = 2f;
-    [SerializeField] private float _barrierTimeoutSeconds = 300f;
 
     [Header("Editor overrides (used when -role / -count are absent)")]
     [Tooltip("Role used by the main editor instance when no -role argument is provided. " +
@@ -210,42 +209,58 @@ public class Bootstrap : Scenario
                 cancellationToken = _runCts.Token
             };
 
-            for (var i = 0; i < _scenarios.Length; i++)
+            // Scenario 0 is Bootstrap itself (the connection scenario). It must run
+            // unconditionally on every peer before the sequencer can drive anything —
+            // clients don't exist on the server yet, so there's no one to coordinate with.
+            if (_scenarios.Length > 0)
             {
-                _dataSent = 0;
-                _dataReceived = 0;
-
-                var scenario = _scenarios[i];
-                long startTick = DateTime.Now.Ticks;
-                var result = await GetResult(scenario, ctx, i);
-                var elapsedTick = DateTime.Now.Ticks - startTick;
-                var elapsedMs = elapsedTick / (double)TimeSpan.TicksPerMillisecond;
-
-                if (!result.success)
+                if (await RunOne(0, ctx))
                     anyFailed = true;
+            }
 
-                await UniTask.WaitForSeconds(_timeBetweenScenarios);
+            if (ctx.isServer)
+            {
+                int expectedAcks = ScenarioSequencer.ExpectedAcks(ctx);
 
-                _results[i] = new ScenarioDetails
+                for (var i = 1; i < _scenarios.Length; i++)
                 {
-                    name = scenario.GetType().Name,
-                    result = result,
-                    durationInMs = elapsedMs,
-                    dataSent = _dataSent,
-                    dataReceived = _dataReceived
-                };
+                    ScenarioSequencer.IssueStart(i);
 
-                if (i == _scenarios.Length - 1)
-                    break;
+                    if (await RunOne(i, ctx))
+                        anyFailed = true;
 
-                try
-                {
-                    await ScenarioBarrier.Wait(ctx, i, _barrierTimeoutSeconds);
+                    await ScenarioSequencer.WaitForAllAcks(ctx, i, expectedAcks);
+
+                    if (i == _scenarios.Length - 1)
+                        break;
+
+                    await UniTask.WaitForSeconds(_timeBetweenScenarios);
                 }
-                catch (TimeoutException)
+
+                ScenarioSequencer.IssueSequenceComplete();
+                // Let the broadcast flush before the finally block tears the process down.
+                await UniTask.NextFrame();
+            }
+            else
+            {
+                for (var i = 1; i < _scenarios.Length; i++)
                 {
-                    Debug.LogError($"[Bootstrap] Barrier {i} timed out after `{scenario.name}`");
-                    anyFailed = true;
+                    await ScenarioSequencer.WaitForStart(ctx, i);
+
+                    // Defensive: server signalled the run is over (or crashed). Stop
+                    // running scenarios the server isn't tracking.
+                    if (ScenarioSequencer.SequenceComplete)
+                        break;
+
+                    if (await RunOne(i, ctx))
+                        anyFailed = true;
+
+                    ScenarioSequencer.AckLocalDone(ctx, i);
+
+                    if (i == _scenarios.Length - 1)
+                        break;
+
+                    await UniTask.WaitForSeconds(_timeBetweenScenarios);
                 }
             }
         }
@@ -276,6 +291,29 @@ public class Bootstrap : Scenario
             Application.Quit(anyResultFailed || anyFailed ? -1 : 0);
 #endif
         }
+    }
+
+    private async UniTask<bool> RunOne(int i, ScenarioContext ctx)
+    {
+        _dataSent = 0;
+        _dataReceived = 0;
+
+        var scenario = _scenarios[i];
+        long startTick = DateTime.Now.Ticks;
+        var result = await GetResult(scenario, ctx, i);
+        var elapsedTick = DateTime.Now.Ticks - startTick;
+        var elapsedMs = elapsedTick / (double)TimeSpan.TicksPerMillisecond;
+
+        _results[i] = new ScenarioDetails
+        {
+            name = scenario.GetType().Name,
+            result = result,
+            durationInMs = elapsedMs,
+            dataSent = _dataSent,
+            dataReceived = _dataReceived
+        };
+
+        return !result.success;
     }
 
     private static async Task<ScenarioResult> GetResult(Scenario scenario, ScenarioContext ctx, int i)
