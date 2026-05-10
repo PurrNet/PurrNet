@@ -1,3 +1,31 @@
+# [1.20.0-beta.143](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.142...v1.20.0-beta.143) (2026-05-10)
+
+
+### Bug Fixes
+
+* Network RB safety for runtime destroyed RB ([9d151d2](https://github.com/PurrNet/PurrNet/commit/9d151d295f9fd7940296e55a28aedbbe1e63febd))
+
+# [1.20.0-beta.142](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.141...v1.20.0-beta.142) (2026-05-10)
+
+
+### Bug Fixes
+
+* Stop requiring RB on the NetworkRB ([1758f88](https://github.com/PurrNet/PurrNet/commit/1758f882097c41f3e419f5fabbbec5276dd623c8))
+
+# [1.20.0-beta.141](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.140...v1.20.0-beta.141) (2026-05-10)
+
+
+### Bug Fixes
+
+* Default network RB to owner auth ([a4c1095](https://github.com/PurrNet/PurrNet/commit/a4c10957ee01db85c53fd6075d3523c93ba14bae))
+
+# [1.20.0-beta.140](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.139...v1.20.0-beta.140) (2026-05-07)
+
+
+### Bug Fixes
+
+* composite transport disconnect reason ([63d6c79](https://github.com/PurrNet/PurrNet/commit/63d6c7962d173f3b6559aa9643bc4f7609a46d97))
+
 # [1.20.0-beta.139](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.138...v1.20.0-beta.139) (2026-05-07)
 
 

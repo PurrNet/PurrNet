@@ -57,13 +57,12 @@ namespace PurrNet
         public Transform parent;
     }
 
-    [RequireComponent(typeof(Rigidbody))]
     [AddComponentMenu("PurrNet/Network Rigidbody")]
     public partial class NetworkRigidbody : NetworkIdentity, ITick
     {
         [Header("Authority")]
         [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
-        [SerializeField] private bool _ownerAuth;
+        [SerializeField] private bool _ownerAuth = true;
 
         [Tooltip("Space used to sync position and rotation. Local is relative to the current parent, World is absolute.")]
         [SerializeField] private RigidbodyTransformSpace _space = RigidbodyTransformSpace.Local;
@@ -157,11 +156,6 @@ namespace PurrNet
         private void Awake()
         {
             _cachedRigidbody = GetComponent<Rigidbody>();
-            if (!_cachedRigidbody)
-            {
-                PurrLogger.LogError($"NetworkRigidbody requires a Rigidbody component on {gameObject.name}", this);
-                enabled = false;
-            }
         }
 
         protected override void OnSpawned()
@@ -273,6 +267,9 @@ namespace PurrNet
 
         private void ControllerTick()
         {
+            if (!_rigidbody)
+                return;
+
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
@@ -334,6 +331,9 @@ namespace PurrNet
         private void FixedUpdate()
         {
             if (!isFullySpawned || IsController(_ownerAuth) || _hasPendingTeleport)
+                return;
+
+            if (!_rigidbody)
                 return;
 
             Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
@@ -700,22 +700,28 @@ namespace PurrNet
 
         private Vector3 ReadPosition(Transform parent)
         {
-            return parent ? parent.InverseTransformPoint(_rigidbody.position) : _rigidbody.position;
+            var p = _rigidbody ? _rigidbody.position : transform.position;
+            return parent ? parent.InverseTransformPoint(p) : p;
         }
 
         private Quaternion ReadRotation(Transform parent)
         {
-            return parent ? Quaternion.Inverse(parent.rotation) * _rigidbody.rotation : _rigidbody.rotation;
+            var r = _rigidbody ? _rigidbody.rotation : transform.rotation;
+            return parent ? Quaternion.Inverse(parent.rotation) * r : r;
         }
 
         private Vector3 ReadLinearVelocity(Transform parent)
         {
+            if (!_rigidbody)
+                return Vector3.zero;
             var v = GetLinearVelocity();
             return parent ? parent.InverseTransformVector(v) : v;
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
         {
+            if (!_rigidbody)
+                return Vector3.zero;
             var v = _rigidbody.angularVelocity;
             return parent ? Quaternion.Inverse(parent.rotation) * v : v;
         }
@@ -812,6 +818,8 @@ namespace PurrNet
 
         private bool ShouldSyncWhenStopped()
         {
+            if (!_rigidbody)
+                return false;
             return GetLinearVelocity().magnitude < _velocityStopThreshold
                 && _rigidbody.angularVelocity.magnitude < _velocityStopThreshold
                 && !_rigidbody.IsSleeping();
@@ -819,6 +827,8 @@ namespace PurrNet
 
         private RigidbodySettingsData GetCurrentSettings()
         {
+            if (!_rigidbody)
+                return default;
             return new RigidbodySettingsData
             {
                 mass = _rigidbody.mass,
@@ -831,6 +841,9 @@ namespace PurrNet
 
         private void ApplyForce(AppliedForce force)
         {
+            if (!_rigidbody)
+                return;
+
             if (force.isTorque)
                 _rigidbody.AddTorque(force.force, force.mode);
             else if (force.position.HasValue)
@@ -860,40 +873,42 @@ namespace PurrNet
 
         public Vector3 linearVelocity
         {
-            get => GetLinearVelocity();
-            set => SetLinearVelocity(value);
+            get => _rigidbody ? GetLinearVelocity() : Vector3.zero;
+            set { if (_rigidbody) SetLinearVelocity(value); }
         }
 
         /// <summary>Pre-Unity 6 alias for linearVelocity.</summary>
         public Vector3 velocity
         {
-            get => GetLinearVelocity();
-            set => SetLinearVelocity(value);
+            get => linearVelocity;
+            set => linearVelocity = value;
         }
 
         public Vector3 angularVelocity
         {
-            get => _rigidbody.angularVelocity;
-            set => _rigidbody.angularVelocity = value;
+            get => _rigidbody ? _rigidbody.angularVelocity : Vector3.zero;
+            set { if (_rigidbody) _rigidbody.angularVelocity = value; }
         }
 
         public Vector3 position
         {
-            get => _rigidbody.position;
-            set => _rigidbody.position = value;
+            get => _rigidbody ? _rigidbody.position : transform.position;
+            set { if (_rigidbody) _rigidbody.position = value; }
         }
 
         public Quaternion rotation
         {
-            get => _rigidbody.rotation;
-            set => _rigidbody.rotation = value;
+            get => _rigidbody ? _rigidbody.rotation : transform.rotation;
+            set { if (_rigidbody) _rigidbody.rotation = value; }
         }
 
         public float mass
         {
-            get => _rigidbody.mass;
+            get => _rigidbody ? _rigidbody.mass : 0f;
             set
             {
+                if (!_rigidbody)
+                    return;
                 _rigidbody.mass = value;
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -902,9 +917,11 @@ namespace PurrNet
 
         public float drag
         {
-            get => GetDrag();
+            get => _rigidbody ? GetDrag() : 0f;
             set
             {
+                if (!_rigidbody)
+                    return;
                 SetDrag(value);
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -919,9 +936,11 @@ namespace PurrNet
 
         public float angularDrag
         {
-            get => GetAngularDrag();
+            get => _rigidbody ? GetAngularDrag() : 0f;
             set
             {
+                if (!_rigidbody)
+                    return;
                 SetAngularDrag(value);
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -936,9 +955,11 @@ namespace PurrNet
 
         public bool useGravity
         {
-            get => _rigidbody.useGravity;
+            get => _rigidbody && _rigidbody.useGravity;
             set
             {
+                if (!_rigidbody)
+                    return;
                 _rigidbody.useGravity = value;
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -947,9 +968,11 @@ namespace PurrNet
 
         public bool isKinematic
         {
-            get => _rigidbody.isKinematic;
+            get => _rigidbody && _rigidbody.isKinematic;
             set
             {
+                if (!_rigidbody)
+                    return;
                 _rigidbody.isKinematic = value;
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -958,7 +981,7 @@ namespace PurrNet
 
         public void AddForce(Vector3 force, ForceMode mode = ForceMode.Force)
         {
-            if (!isSpawned)
+            if (!isSpawned || !_rigidbody)
                 return;
 
             var appliedForce = new AppliedForce { force = force, mode = mode };
@@ -975,7 +998,7 @@ namespace PurrNet
 
         public void AddForceAtPosition(Vector3 force, Vector3 position, ForceMode mode = ForceMode.Force)
         {
-            if (!isSpawned)
+            if (!isSpawned || !_rigidbody)
                 return;
 
             var appliedForce = new AppliedForce { force = force, position = position, mode = mode };
@@ -992,7 +1015,7 @@ namespace PurrNet
 
         public void AddTorque(Vector3 torque, ForceMode mode = ForceMode.Force)
         {
-            if (!isSpawned)
+            if (!isSpawned || !_rigidbody)
                 return;
 
             var appliedForce = new AppliedForce { force = torque, mode = mode, isTorque = true };
@@ -1009,11 +1032,15 @@ namespace PurrNet
 
         public void MovePosition(Vector3 position)
         {
+            if (!_rigidbody)
+                return;
             _rigidbody.MovePosition(position);
         }
 
         public void MoveRotation(Quaternion rotation)
         {
+            if (!_rigidbody)
+                return;
             _rigidbody.MoveRotation(rotation);
         }
 
@@ -1025,6 +1052,9 @@ namespace PurrNet
         /// </summary>
         public void TeleportTo(Vector3 position, Quaternion rotation)
         {
+            if (!_rigidbody)
+                return;
+
             _rigidbody.MovePosition(position);
             _rigidbody.MoveRotation(rotation);
             SetLinearVelocity(Vector3.zero);
@@ -1047,6 +1077,8 @@ namespace PurrNet
         /// </summary>
         public void TeleportTo(Vector3 position)
         {
+            if (!_rigidbody)
+                return;
             TeleportTo(position, _rigidbody.rotation);
         }
 
@@ -1151,6 +1183,9 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
+            if (!_rigidbody)
+                return;
+
             _rigidbody.mass = settings.mass;
             SetDrag(settings.drag);
             SetAngularDrag(settings.angularDrag);
@@ -1213,6 +1248,9 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
+            if (!_rigidbody)
+                return;
+
             _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
 
@@ -1261,6 +1299,9 @@ namespace PurrNet
             if (IsController(_ownerAuth))
                 return;
 
+            if (!_rigidbody)
+                return;
+
             _rigidbody.mass = data.mass;
             SetDrag(data.drag);
             SetAngularDrag(data.angularDrag);
@@ -1277,6 +1318,9 @@ namespace PurrNet
                 return;
             }
 
+            if (!_rigidbody)
+                return;
+
             _rigidbody.MovePosition(position);
             _rigidbody.MoveRotation(rotation);
             BroadcastTeleport();
@@ -1285,6 +1329,9 @@ namespace PurrNet
         [TargetRpc(deltaPacked: true)]
         private void ForwardTeleportRequest(PlayerID target, Vector3 position, Quaternion rotation)
         {
+            if (!_rigidbody)
+                return;
+
             _rigidbody.MovePosition(position);
             _rigidbody.MoveRotation(rotation);
             BroadcastTeleport();
