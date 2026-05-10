@@ -1,3 +1,10 @@
+# [1.20.0-beta.145](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.144...v1.20.0-beta.145) (2026-05-10)
+
+
+### Bug Fixes
+
+* some more disposable collections copying edgecases ([c6efbe8](https://github.com/PurrNet/PurrNet/commit/c6efbe8d146b5ab2ae66bab8761b30a5db0bf491))
+
 # [1.20.0-beta.144](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.143...v1.20.0-beta.144) (2026-05-10)
 
 
