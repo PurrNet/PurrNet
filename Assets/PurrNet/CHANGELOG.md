@@ -1,3 +1,10 @@
+# [1.20.0-beta.142](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.141...v1.20.0-beta.142) (2026-05-10)
+
+
+### Bug Fixes
+
+* Stop requiring RB on the NetworkRB ([1758f88](https://github.com/PurrNet/PurrNet/commit/1758f882097c41f3e419f5fabbbec5276dd623c8))
+
 # [1.20.0-beta.141](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.140...v1.20.0-beta.141) (2026-05-10)
 
 
