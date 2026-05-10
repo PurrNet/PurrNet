@@ -17,6 +17,13 @@ public class Bootstrap : Scenario
     [SerializeField] private float _timeBetweenScenarios = 2f;
     [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
+    [Header("Editor overrides (used when -role / -count are absent)")]
+    [Tooltip("Role used by the main editor instance when no -role argument is provided. " +
+             "Clones (Unity Multiplayer Playmode) always run as Client regardless of this.")]
+    [SerializeField] private NetworkRole _editorRole = NetworkRole.Host;
+    [Tooltip("Expected connection count when no -count argument is provided.")]
+    [SerializeField] private int _editorExpectedConnections = 2;
+
     private NetworkRole _role;
     private int _expectedConnections;
     private string _resultsPath;
@@ -89,48 +96,65 @@ public class Bootstrap : Scenario
 
     private void LoadArgs()
     {
-        if (!CommandLineUtils.TryGetArgument("-role", out var role))
+        if (!TryResolveRole(out _role))
         {
-            Debug.LogError($"Expected -role argument");
             Application.Quit(-1);
             return;
         }
 
-        switch (role)
-        {
-            case "server":
-                _role = NetworkRole.Server;
-                break;
-            case "client":
-                _role = NetworkRole.Client;
-                break;
-            case "host":
-                _role = NetworkRole.Host;
-                break;
-            default:
-                Debug.LogError($"Unknown role '{role}'");
-                Application.Quit(-1);
-                return;
-        }
-
         if (_role != NetworkRole.Client)
         {
-            if (!CommandLineUtils.TryGetArgument("-count", out var countString))
+            if (CommandLineUtils.TryGetArgument("-count", out var countString))
             {
+                if (!int.TryParse(countString, out _expectedConnections))
+                {
+                    Debug.LogError($"Could not parse -count value '{countString}'");
+                    Application.Quit(-1);
+                    return;
+                }
+            }
+            else
+            {
+#if UNITY_EDITOR
+                _expectedConnections = _editorExpectedConnections;
+#else
                 Debug.LogError($"Expected -count argument");
                 Application.Quit(-1);
                 return;
-            }
-
-            if (!int.TryParse(countString, out _expectedConnections))
-            {
-                Debug.LogError($"Could not parse -count value '{countString}'");
-                Application.Quit(-1);
-                return;
+#endif
             }
         }
 
         CommandLineUtils.TryGetArgument("-results", out _resultsPath);
+    }
+
+    private bool TryResolveRole(out NetworkRole resolved)
+    {
+        resolved = default;
+
+        if (CommandLineUtils.TryGetArgument("-role", out var role))
+        {
+            switch (role)
+            {
+                case "server": resolved = NetworkRole.Server; return true;
+                case "client": resolved = NetworkRole.Client; return true;
+                case "host":   resolved = NetworkRole.Host;   return true;
+                default:
+                    Debug.LogError($"Unknown role '{role}'");
+                    return false;
+            }
+        }
+
+#if UNITY_EDITOR
+        // Clones (Unity Multiplayer Playmode) always join as plain clients; the main editor
+        // uses the inspector-configured override so individual test scenes can opt in/out
+        // of host mode without re-baking command-line scripts.
+        resolved = PurrNet.Utils.ApplicationContext.isClone ? NetworkRole.Client : _editorRole;
+        return true;
+#else
+        Debug.LogError($"Expected -role argument");
+        return false;
+#endif
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)

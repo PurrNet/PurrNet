@@ -14,18 +14,6 @@ public static class CommandLineUtils
             }
         }
 
-#if UNITY_EDITOR
-        // Editor fallback for clone-based testing via Unity Multiplayer Playmode.
-        switch (arg)
-        {
-            case "-role":
-                value = PurrNet.Utils.ApplicationContext.isClone ? "client" : "server";
-                return true;
-            case "-count":
-                value = "2";
-                return true;
-        }
-#endif
 
         value = default;
         return false;
