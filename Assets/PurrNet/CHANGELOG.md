@@ -1,3 +1,10 @@
+# [1.20.0-beta.143](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.142...v1.20.0-beta.143) (2026-05-10)
+
+
+### Bug Fixes
+
+* Network RB safety for runtime destroyed RB ([9d151d2](https://github.com/PurrNet/PurrNet/commit/9d151d295f9fd7940296e55a28aedbbe1e63febd))
+
 # [1.20.0-beta.142](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.141...v1.20.0-beta.142) (2026-05-10)
 
 
