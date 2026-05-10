@@ -1216,7 +1216,7 @@ namespace PurrNet
             PushSnapshot(data);
         }
 
-        [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true)]
+        [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true, runLocally: true)]
         private void SyncState(RigidbodyStateData data)
         {
             if (IsController(_ownerAuth))
@@ -1243,7 +1243,7 @@ namespace PurrNet
             ApplyForce(force);
         }
 
-        [ObserversRpc(deltaPacked: true)]
+        [ObserversRpc(deltaPacked: true, runLocally: true)]
         private void Teleport(RigidbodyTeleportData data)
         {
             if (IsController(_ownerAuth))
