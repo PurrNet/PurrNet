@@ -273,7 +273,7 @@ public class Bootstrap : Scenario
                 Debug.LogError("Some tests failed to run.");
             UnityEditor.EditorApplication.isPlaying = false;
 #else
-            Application.Quit(anyResultFailed ? -1 : 0);
+            Application.Quit(anyResultFailed || anyFailed ? -1 : 0);
 #endif
         }
     }
