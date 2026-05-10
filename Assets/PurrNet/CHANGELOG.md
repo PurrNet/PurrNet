@@ -1,3 +1,10 @@
+# [1.20.0-beta.141](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.140...v1.20.0-beta.141) (2026-05-10)
+
+
+### Bug Fixes
+
+* Default network RB to owner auth ([a4c1095](https://github.com/PurrNet/PurrNet/commit/a4c10957ee01db85c53fd6075d3523c93ba14bae))
+
 # [1.20.0-beta.140](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.139...v1.20.0-beta.140) (2026-05-07)
 
 
