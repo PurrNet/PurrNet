@@ -93,11 +93,19 @@ public class OwnershipPropagationScenario : Scenario
         // the parent ownership should also flow to the child.
         parent.GiveOwnership(victim.Value);
 
+        // On host, the asServer=false callback fires only after the OwnershipChange
+        // RPC round-trips through host-loopback transport; wait for it here so the
+        // synchronous ValidateChange below doesn't race the inbound message.
+        bool waitForClientSide = ctx.role == NetworkRole.Host;
+
         try
         {
             await UniTaskUtils.WaitWithTimeout(
                 () => HasInitialChange(OwnershipPropagationParent.Changes, victimId, asServer: true)
-                      && HasInitialChange(OwnershipPropagationChild.Changes, victimId, asServer: true),
+                      && HasInitialChange(OwnershipPropagationChild.Changes, victimId, asServer: true)
+                      && (!waitForClientSide
+                          || (HasInitialChange(OwnershipPropagationParent.Changes, victimId, asServer: false)
+                              && HasInitialChange(OwnershipPropagationChild.Changes, victimId, asServer: false))),
                 _propagationTimeoutSeconds,
                 ctx.cancellationToken);
         }

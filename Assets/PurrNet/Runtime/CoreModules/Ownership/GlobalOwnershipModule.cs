@@ -105,6 +105,7 @@ namespace PurrNet.Modules
             _scenePlayers.onPlayerLoadedScene += OnPlayerLoadedScene;
 
             _playersManager.onPlayerLeft += OnPlayerLeft;
+            _playersManager.onPlayerJoined += OnPlayerJoined;
 
             _playersManager.Subscribe<OwnershipChangeBatch>(OnOwnershipChange);
             _playersManager.Subscribe<OwnershipChange>(OnOwnershipChange);
@@ -122,6 +123,7 @@ namespace PurrNet.Modules
             _scenePlayers.onPlayerLoadedScene -= OnPlayerLoadedScene;
 
             _playersManager.onPlayerLeft -= OnPlayerLeft;
+            _playersManager.onPlayerJoined -= OnPlayerJoined;
 
             _playersManager.Unsubscribe<OwnershipChangeBatch>(OnOwnershipChange);
             _playersManager.Unsubscribe<OwnershipChange>(OnOwnershipChange);
@@ -295,7 +297,53 @@ namespace PurrNet.Modules
         private void OnPlayerLeft(PlayerID player, bool asServer)
         {
             foreach (var (scene, ownerships) in _sceneOwnerships)
+            {
                 OnOwnerDisconnect(player, scene, ownerships, asServer);
+
+                if (asServer)
+                    continue;
+
+                var owned = ownerships.TryGetOwnedObjects(player);
+                if (owned.Count == 0)
+                    continue;
+
+                var ownedCache = ListPool<NetworkID>.Instantiate();
+                ownedCache.AddRange(owned);
+
+                for (var i = 0; i < ownedCache.Count; i++)
+                {
+                    var id = ownedCache[i];
+                    if (_hierarchy.TryGetIdentity(scene, id, out var identity))
+                        identity.TriggerOnOwnerDisconnected(player);
+                }
+
+                ListPool<NetworkID>.Destroy(ownedCache);
+            }
+        }
+
+        private void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer)
+        {
+            if (asServer)
+                return;
+
+            foreach (var (scene, ownerships) in _sceneOwnerships)
+            {
+                var owned = ownerships.TryGetOwnedObjects(player);
+                if (owned.Count == 0)
+                    continue;
+
+                var ownedCache = ListPool<NetworkID>.Instantiate();
+                ownedCache.AddRange(owned);
+
+                for (var i = 0; i < ownedCache.Count; i++)
+                {
+                    var id = ownedCache[i];
+                    if (_hierarchy.TryGetIdentity(scene, id, out var identity))
+                        identity.TriggerOnOwnerReconnected(player, false);
+                }
+
+                ListPool<NetworkID>.Destroy(ownedCache);
+            }
         }
 
         private void OnPlayerUnloadedScene(PlayerID player, SceneID scene, bool asServer)

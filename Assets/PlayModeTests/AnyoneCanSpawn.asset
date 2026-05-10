@@ -20,7 +20,7 @@ MonoBehaviour:
   _defaultSpawnRules:
     spawnAuth: 1
     despawnAuth: 1
-    defaultOwner: 0
+    defaultOwner: 1
     propagateOwnershipByDefault: 1
     despawnIfOwnerDisconnects: 1
     cleanupSpawnedObjects: 1
