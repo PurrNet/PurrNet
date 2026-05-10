@@ -164,10 +164,9 @@ namespace PurrNet.Modules
                 channel = channel
             };
 
-            // Server origin: deliver to the original sender directly, or loop back if it's us.
             if (_manager.isServer)
             {
-                if (originalSender.isServer || originalSender == localPlayer)
+                if (originalSender.isServer)
                 {
                     OnRpcRejection(localPlayer, rejection, true);
                     return;
