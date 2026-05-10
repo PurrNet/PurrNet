@@ -256,11 +256,19 @@ namespace PurrNet.Modules
                     if (signature.runLocally && nm.isServer)
                         break;
 
+                    var serverRpcModule = module;
+
+                    if (nm.isServer && !nm.TryGetModule<RPCModule>(false, out serverRpcModule))
+                    {
+                        PurrLogger.LogError("Failed to get client-side RPC module while sending ServerRPC from host.", nm);
+                        break;
+                    }
+
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                     if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                    module.BatchToServer(packet, signature.channel);
+                    serverRpcModule.BatchToServer(packet, signature.channel);
                     break;
                 }
                 case RPCType.ObserversRPC:

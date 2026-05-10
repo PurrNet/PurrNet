@@ -295,11 +295,18 @@ namespace PurrNet
                     if (signature.runLocally && isServer)
                         break;
 
+                    var serverChildRpcModule = rpcModule;
+                    if (isServer && !networkManager.TryGetRpcModule(false, out serverChildRpcModule))
+                    {
+                        PurrLogger.LogError("Failed to get client-side RPC module while sending ServerRPC from host.", this);
+                        break;
+                    }
+
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                     Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
                         this);
 #endif
-                    rpcModule.BatchToServer(packet, signature.channel);
+                    serverChildRpcModule.BatchToServer(packet, signature.channel);
                     break;
                 case RPCType.ObserversRPC:
                 {
@@ -407,11 +414,18 @@ namespace PurrNet
                     if (signature.runLocally && isServer)
                         break;
 
+                    var serverRpcModule = rpcModule;
+                    if (isServer && !networkManager.TryGetRpcModule(false, out serverRpcModule))
+                    {
+                        PurrLogger.LogError("Failed to get client-side RPC module while sending ServerRPC from host.", this);
+                        break;
+                    }
+
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                     Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
                         this);
 #endif
-                    rpcModule.BatchToServer(packet, signature.channel);
+                    serverRpcModule.BatchToServer(packet, signature.channel);
                     break;
                 case RPCType.ObserversRPC:
                 {
