@@ -63,7 +63,7 @@ namespace PurrNet
     {
         [Header("Authority")]
         [Tooltip("If true, the client owning the object calculates physics (Client Auth). If false, the server calculates physics (Server Auth).")]
-        [SerializeField] private bool _ownerAuth;
+        [SerializeField] private bool _ownerAuth = true;
 
         [Tooltip("Space used to sync position and rotation. Local is relative to the current parent, World is absolute.")]
         [SerializeField] private RigidbodyTransformSpace _space = RigidbodyTransformSpace.Local;
