@@ -1,3 +1,10 @@
+# [1.20.0-beta.146](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.145...v1.20.0-beta.146) (2026-05-10)
+
+
+### Bug Fixes
+
+* undo previous change regarding TargetRPC routing when HOST ([4a4fe88](https://github.com/PurrNet/PurrNet/commit/4a4fe88c69436ace522a8481bab0d7accd0b55a0))
+
 # [1.20.0-beta.145](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.144...v1.20.0-beta.145) (2026-05-10)
 
 
