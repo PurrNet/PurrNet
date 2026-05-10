@@ -9,7 +9,6 @@ public class PostSpawnSyncScenario : Scenario
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
     [SerializeField] private float _readyTimeoutSeconds = 30f;
     [SerializeField] private float _valueTimeoutSeconds = 30f;
-    [SerializeField] private float _doneTimeoutSeconds = 30f;
 
     private PostSpawnSyncIdentity _prefab;
 
