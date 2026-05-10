@@ -1,3 +1,10 @@
+# [1.20.0-beta.149](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.148...v1.20.0-beta.149) (2026-05-10)
+
+
+### Bug Fixes
+
+* host-loopback issue for async RPCs ([56e8ad3](https://github.com/PurrNet/PurrNet/commit/56e8ad336894bf0127e9a5900f52681604ce461b))
+
 # [1.20.0-beta.148](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.147...v1.20.0-beta.148) (2026-05-10)
 
 
