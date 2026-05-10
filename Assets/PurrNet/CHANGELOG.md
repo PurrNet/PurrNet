@@ -1,3 +1,10 @@
+# [1.20.0-beta.148](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.147...v1.20.0-beta.148) (2026-05-10)
+
+
+### Bug Fixes
+
+* if _raw_rules.Count is 0 it never adds the rule ([c884cfb](https://github.com/PurrNet/PurrNet/commit/c884cfb21f7bf5ef65b5a41f7f889271d9898809))
+
 # [1.20.0-beta.147](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.146...v1.20.0-beta.147) (2026-05-10)
 
 
