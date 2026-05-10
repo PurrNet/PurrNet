@@ -55,10 +55,7 @@ public class OwnerDisconnectScenario : Scenario
         if (ctx.isClient)
             OwnerDisconnectIdentity.LocalInstance.SignalReady();
 
-        if (ctx.isServer)
-            return await RunAsServer(ctx);
-
-        return await RunAsClient(ctx);
+        return await RunSplit(ctx, RunAsClient, RunAsServer);
     }
 
     private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)

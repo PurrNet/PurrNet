@@ -92,6 +92,7 @@ namespace PurrNet.Modules
                 else _players.onLocalPlayerReceivedID += OnLocalPlayerReady;
 
                 _scenes.onSceneLoaded += OnClientSceneLoaded;
+                _scenes.onSceneUnloaded += OnClientSceneUnloaded;
             }
         }
 
@@ -123,7 +124,8 @@ namespace PurrNet.Modules
             else
             {
                 _players.onLocalPlayerReceivedID -= OnLocalPlayerReady;
-                _scenes.onSceneUnloaded -= OnClientSceneLoaded;
+                _scenes.onSceneLoaded -= OnClientSceneLoaded;
+                _scenes.onSceneUnloaded -= OnClientSceneUnloaded;
             }
         }
 
@@ -159,6 +161,15 @@ namespace PurrNet.Modules
             onPostPlayerLoadedScene?.Invoke(_players.localPlayerId.Value, scene, asServer);
 
             _players.SendToServer(new ClientFinishedLoadingScene { scene = scene });
+        }
+
+        private void OnClientSceneUnloaded(SceneID scene, bool asServer)
+        {
+            if (!_players.localPlayerId.HasValue)
+                return;
+
+            onPlayerLeftScene?.Invoke(_players.localPlayerId.Value, scene, asServer);
+            onPlayerUnloadedScene?.Invoke(_players.localPlayerId.Value, scene, asServer);
         }
 
         private void RemoteClientLoadedScene(PlayerID player, ClientFinishedLoadingScene data, bool asServer)

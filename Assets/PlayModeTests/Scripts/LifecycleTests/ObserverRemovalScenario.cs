@@ -50,10 +50,7 @@ public class ObserverRemovalScenario : Scenario
         if (ctx.isClient)
             ObserverRemovalIdentity.LocalInstance.SignalReady();
 
-        if (ctx.isServer)
-            return await RunAsServer(ctx);
-
-        return await RunAsClient(ctx);
+        return await RunSplit(ctx, RunAsClient, RunAsServer);
     }
 
     private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)

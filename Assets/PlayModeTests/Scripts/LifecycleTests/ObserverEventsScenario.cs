@@ -36,10 +36,7 @@ public class ObserverEventsScenario : Scenario
             _spawnTimeoutSeconds,
             ctx.cancellationToken);
 
-        if (ctx.isServer)
-            return await RunAsServer(ctx);
-
-        return await RunAsClient(ctx);
+        return await RunSplit(ctx, RunAsClient, RunAsServer);
     }
 
     private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)
