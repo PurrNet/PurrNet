@@ -32,7 +32,7 @@ MonoBehaviour:
   _defaultVisibilityRules:
     visibilityMode: 0
   _defaultOwnershipRules:
-    assignAuth: 0
+    assignAuth: 1
     transferAuth: 1
     removeAuth: 1
     overrideWhenPropagating: 1
