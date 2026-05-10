@@ -1,6 +1,7 @@
 using System;
 using PurrNet.Logging;
 using PurrNet.Modules;
+using PurrNet.Packing;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -14,35 +15,35 @@ namespace PurrNet
 
     public struct AppliedForce
     {
-        public Vector3 force;
-        public Vector3? position;
+        public HalfVector3 force;
+        public CompressedVector3? position;
         public ForceMode mode;
         public bool isTorque;
     }
 
     public struct RigidbodyStateData
     {
-        public Vector3 position;
-        public Quaternion rotation;
-        public Vector3 linearVelocity;
-        public Vector3 angularVelocity;
+        public CompressedVector3 position;
+        public PackedQuaternion rotation;
+        public HalfVector3 linearVelocity;
+        public HalfVector3 angularVelocity;
         public NetworkIdentity parent;
     }
 
     public struct RigidbodyTeleportData
     {
-        public Vector3 position;
-        public Quaternion rotation;
-        public Vector3 linearVelocity;
-        public Vector3 angularVelocity;
+        public CompressedVector3 position;
+        public PackedQuaternion rotation;
+        public HalfVector3 linearVelocity;
+        public HalfVector3 angularVelocity;
         public NetworkIdentity parent;
     }
 
     public struct RigidbodySettingsData
     {
-        public float mass;
-        public float drag;
-        public float angularDrag;
+        public Half mass;
+        public Half drag;
+        public Half angularDrag;
         public bool useGravity;
         public bool isKinematic;
     }
@@ -831,9 +832,9 @@ namespace PurrNet
                 return default;
             return new RigidbodySettingsData
             {
-                mass = _rigidbody.mass,
-                drag = GetDrag(),
-                angularDrag = GetAngularDrag(),
+                mass = (Half)_rigidbody.mass,
+                drag = (Half)GetDrag(),
+                angularDrag = (Half)GetAngularDrag(),
                 useGravity = _rigidbody.useGravity,
                 isKinematic = _rigidbody.isKinematic
             };
@@ -1001,7 +1002,7 @@ namespace PurrNet
             if (!isSpawned || !_rigidbody)
                 return;
 
-            var appliedForce = new AppliedForce { force = force, position = position, mode = mode };
+            var appliedForce = new AppliedForce { force = force, position = (CompressedVector3)position, mode = mode };
 
             if (IsController(_ownerAuth))
             {
@@ -1310,7 +1311,7 @@ namespace PurrNet
         }
 
         [ServerRpc(requireOwnership: false, deltaPacked: true)]
-        private void RequestTeleport(Vector3 position, Quaternion rotation)
+        private void RequestTeleport(CompressedVector3 position, PackedQuaternion rotation)
         {
             if (_ownerAuth && owner.HasValue)
             {
@@ -1327,7 +1328,7 @@ namespace PurrNet
         }
 
         [TargetRpc(deltaPacked: true)]
-        private void ForwardTeleportRequest(PlayerID target, Vector3 position, Quaternion rotation)
+        private void ForwardTeleportRequest(PlayerID target, CompressedVector3 position, PackedQuaternion rotation)
         {
             if (!_rigidbody)
                 return;
