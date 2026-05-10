@@ -1,3 +1,11 @@
+# [1.20.0-beta.150](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.149...v1.20.0-beta.150) (2026-05-10)
+
+
+### Bug Fixes
+
+* Cleanup of Network RB calls to self ([6f20e5a](https://github.com/PurrNet/PurrNet/commit/6f20e5ac945b132536826377afc41d752428eb60))
+* Performance optimizations for Network Rigidbody ([f2be755](https://github.com/PurrNet/PurrNet/commit/f2be75513816b8779bec762346b713e69214d692))
+
 # [1.20.0-beta.149](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.148...v1.20.0-beta.149) (2026-05-10)
 
 
