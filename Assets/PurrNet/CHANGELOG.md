@@ -1,3 +1,10 @@
+# [1.20.0-beta.147](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.146...v1.20.0-beta.147) (2026-05-10)
+
+
+### Bug Fixes
+
+* trigger server callbacks on the correct module (async packables need it) ([0ab9f5e](https://github.com/PurrNet/PurrNet/commit/0ab9f5e4d771a4ebc943efe445f6d6105cc2819d))
+
 # [1.20.0-beta.146](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.145...v1.20.0-beta.146) (2026-05-10)
 
 
