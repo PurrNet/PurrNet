@@ -319,11 +319,7 @@ namespace PurrNet.Modules
                     if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                    // requireServer:false means a client may originate this RPC. On host, route
-                    // through the server receive path (BatchToServer) so rule validation
-                    // (e.g. CanTargetServerWithTargetRpc) runs uniformly — host should behave
-                    // like a client here, not bypass validation by going straight to targets.
-                    if (nm.isServer && signature.requireServer)
+                    if (nm.isServer)
                     {
                         using var targets = signature.GetTargets();
                         module.BatchToTargets(targets, packet, signature.channel);
