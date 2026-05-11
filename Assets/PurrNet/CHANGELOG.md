@@ -1,3 +1,10 @@
+# [1.20.0-beta.151](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.150...v1.20.0-beta.151) (2026-05-11)
+
+
+### Bug Fixes
+
+* ownership callbacks order ([2b1dff1](https://github.com/PurrNet/PurrNet/commit/2b1dff128e44fa241717385243a97375497560fb))
+
 # [1.20.0-beta.150](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.149...v1.20.0-beta.150) (2026-05-10)
 
 
