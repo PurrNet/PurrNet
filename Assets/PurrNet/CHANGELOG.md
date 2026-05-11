@@ -1,3 +1,10 @@
+# [1.20.0-beta.152](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.151...v1.20.0-beta.152) (2026-05-11)
+
+
+### Bug Fixes
+
+* loopback for async RPC exceptions ([3365282](https://github.com/PurrNet/PurrNet/commit/3365282488743c2ec706e8def8734b1bcadf0424))
+
 # [1.20.0-beta.151](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.150...v1.20.0-beta.151) (2026-05-11)
 
 
