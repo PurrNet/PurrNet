@@ -633,21 +633,20 @@ namespace PurrNet.Modules
                             return;
                         case > 0 when list[0] && _asServer:
                         {
+                            var spawner = data.packetIdx.scope;
                             for (var i = 0; i < count; i++)
                             {
                                 var nid = list[i];
                                 if (!nid || !nid.isSpawned) continue;
-                                if (nid.TryAddObserver(player))
-                                {
-                                    onObserverAdded?.Invoke(player, nid);
-                                    nid.TriggerOnPreObserverAdded(player, true);
-                                    _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = true });
-                                }
+                                if (!nid.IsObserver(spawner)) continue;
+                                onObserverAdded?.Invoke(spawner, nid);
+                                nid.TriggerOnPreObserverAdded(spawner, true);
+                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
                             }
 
                             var lastNid = list[count - 1];
                             if (lastNid && lastNid.id.HasValue)
-                                _playersManager.RegisterClientLastId(player, lastNid.id.Value);
+                                _playersManager.RegisterClientLastId(spawner, lastNid.id.Value);
 
                             if (_scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
                             {
@@ -739,12 +738,10 @@ namespace PurrNet.Modules
                         {
                             var nid = list[j];
                             if (!nid || !nid.isSpawned) continue;
-                            if (nid.TryAddObserver(spawner))
-                            {
-                                onObserverAdded?.Invoke(spawner, nid);
-                                nid.TriggerOnPreObserverAdded(spawner, true);
-                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
-                            }
+                            if (!nid.IsObserver(spawner)) continue;
+                            onObserverAdded?.Invoke(spawner, nid);
+                            nid.TriggerOnPreObserverAdded(spawner, true);
+                            _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
                         }
 
                         var lastNid = list[count - 1];
@@ -976,12 +973,14 @@ namespace PurrNet.Modules
                 if (_asServer)
                 {
                     bool isHost = IsServerHost();
+                    var spawner = data.packetIdx.scope;
 
                     for (var i = 0; i < createdNids.Count; i++)
                     {
                         var nid = createdNids[i];
                         nid.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
                         RegisterIdentity(nid, false);
+                        nid.TryAddObserver(spawner);
                     }
                 }
                 else
