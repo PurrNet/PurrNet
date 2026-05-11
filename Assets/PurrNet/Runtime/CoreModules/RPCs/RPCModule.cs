@@ -329,6 +329,14 @@ namespace PurrNet.Modules
 #endif
                     if (nm.isServer)
                     {
+                        if (nm.isHost && signature.targetPlayer == PlayerID.Server &&
+                            nm.TryGetModule<RPCModule>(false, out var hostClientModule))
+                        {
+                            packet.targetPlayerId = PlayerID.Server;
+                            hostClientModule.BatchToServer(packet, signature.channel);
+                            break;
+                        }
+
                         using var targets = signature.GetTargets();
                         module.BatchToTargets(targets, packet, signature.channel);
                     }

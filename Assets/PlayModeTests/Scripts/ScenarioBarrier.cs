@@ -48,6 +48,13 @@ public static class ScenarioBarrier
                     timeoutSeconds,
                     ctx.cancellationToken);
             }
+            catch (System.TimeoutException)
+            {
+                _arrivedByBarrier.TryGetValue(barrierId, out var arrived);
+                Debug.LogError(
+                    $"[ScenarioBarrier] server timeout barrier={barrierId} arrived={arrived}/{ctx.expectedConnections} role={ctx.role}");
+                throw;
+            }
             finally
             {
                 // Always release clients, even on timeout, so a single missing

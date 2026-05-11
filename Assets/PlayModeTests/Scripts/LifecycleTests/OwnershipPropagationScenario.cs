@@ -114,6 +114,10 @@ public class OwnershipPropagationScenario : Scenario
             failures.Add(
                 $"server-side propagation timeout: parentChanges={OwnershipPropagationParent.Changes.Count}, " +
                 $"childChanges={OwnershipPropagationChild.Changes.Count}");
+            Debug.LogError(
+                $"[OwnershipPropagation/server] timeout victimId={victimId} waitForClientSide={waitForClientSide}\n" +
+                $"  parent: {DumpChanges(OwnershipPropagationParent.Changes)}\n" +
+                $"  child:  {DumpChanges(OwnershipPropagationChild.Changes)}");
         }
 
         ValidateChange(ctx, OwnershipPropagationParent.Changes, victimId, asServer: true, "parent", failures);
@@ -179,6 +183,11 @@ public class OwnershipPropagationScenario : Scenario
             failures.Add(
                 $"client-side propagation timeout: parentChanges={OwnershipPropagationParent.Changes.Count}, " +
                 $"childChanges={OwnershipPropagationChild.Changes.Count}");
+            Debug.LogError(
+                $"[OwnershipPropagation/client] timeout victimId={victimId} " +
+                $"localPlayerId={(ctx.networkManager.isLocalPlayerReady ? ctx.networkManager.localPlayer.id.value.ToString() : "<unready>")}\n" +
+                $"  parent: {DumpChanges(OwnershipPropagationParent.Changes)}\n" +
+                $"  child:  {DumpChanges(OwnershipPropagationChild.Changes)}");
         }
 
         ValidateChange(ctx, OwnershipPropagationParent.Changes, victimId, asServer: false, "parent", failures);
@@ -192,6 +201,18 @@ public class OwnershipPropagationScenario : Scenario
         return failures.Count == 0
             ? ScenarioResult.Ok()
             : ScenarioResult.Fail(string.Join(" | ", failures));
+    }
+
+    private static string DumpChanges(List<OwnershipPropagationParent.ChangeRecord> records)
+    {
+        if (records.Count == 0) return "<empty>";
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < records.Count; i++)
+        {
+            var r = records[i];
+            sb.Append($"[{i}] asServer={r.asServer} old={(r.oldHasValue ? r.oldOwnerId.ToString() : "null")} -> new={(r.newHasValue ? r.newOwnerId.ToString() : "null")} isOwner={r.isOwnerAfter} isController={r.isControllerAfter}; ");
+        }
+        return sb.ToString();
     }
 
     private static bool HasInitialChange(List<OwnershipPropagationParent.ChangeRecord> records,

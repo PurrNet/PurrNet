@@ -55,9 +55,11 @@ namespace PurrNet.Modules
         private readonly List<RpcRequest> _requests = new List<RpcRequest>();
 
         private uint _nextId;
+        private bool _asServer;
 
-        public RpcRequestResponseModule(NetworkManager manager, PlayersManager playersManager)
+        public RpcRequestResponseModule(NetworkManager manager, PlayersManager playersManager, bool asServer)
         {
+            _asServer = asServer;
             _playersManager = playersManager;
             _manager = manager;
         }
@@ -156,7 +158,6 @@ namespace PurrNet.Modules
 
         public void SendRejection(PlayerID originalSender, uint requestId, RpcError error, Channel channel)
         {
-            var localPlayer = _manager.localPlayer;
             var rejection = new RpcRejection
             {
                 id = requestId,
@@ -164,11 +165,11 @@ namespace PurrNet.Modules
                 channel = channel
             };
 
-            if (_manager.isServer)
+            if (_asServer)
             {
-                if (originalSender.isServer)
+                if (originalSender.isServer || _manager.isHost && originalSender == _manager.localPlayer)
                 {
-                    OnRpcRejection(localPlayer, rejection, true);
+                    OnRpcRejection(_manager.localPlayer, rejection, true);
                     return;
                 }
 
@@ -176,8 +177,6 @@ namespace PurrNet.Modules
                 return;
             }
 
-            // Client origin (e.g. Target/Observers requireServer:false handler ran on the client and
-            // wants to reject something the originating client sent through the server): forward via server.
             rejection.forward = originalSender;
             _playersManager.SendToServer(rejection, channel);
         }

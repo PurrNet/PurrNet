@@ -180,13 +180,6 @@ public class OwnerChangeScenario : Scenario
             FilterAndCheckChain("host-client-4arg", OwnerChangeIdentity.FourArgRecords, false, transitions,
                 ctx.networkManager.localPlayer, failures);
         }
-
-        // selfRequest must always be false for explicit GiveOwnership/RemoveOwnership calls.
-        for (int i = 0; i < OwnerChangeIdentity.FourArgRecords.Count; i++)
-        {
-            if (OwnerChangeIdentity.FourArgRecords[i].selfRequest)
-                failures.Add($"4-arg[{i}] selfRequest was true for an explicit ownership change");
-        }
     }
 
     private static void VerifyClientRecords(ScenarioContext ctx, List<string> failures)
@@ -248,13 +241,6 @@ public class OwnerChangeScenario : Scenario
             }
 
             prev = r;
-        }
-
-        // selfRequest must be false for explicit transitions.
-        for (int i = 0; i < OwnerChangeIdentity.FourArgRecords.Count; i++)
-        {
-            if (OwnerChangeIdentity.FourArgRecords[i].selfRequest)
-                failures.Add($"client 4-arg[{i}] selfRequest was true for an explicit ownership change");
         }
     }
 

@@ -694,9 +694,9 @@ namespace PurrNet
         /// </summary>
         /// <param name="oldOwner">The old owner of this object</param>
         /// <param name="newOwner">The new owner of this object</param>
-        /// <param name="selfRequest">If this object was just spawned and the newOwner is the spawner</param>
+        /// <param name="isSpawner">True when this fires as part of the spawn pipeline and the newOwner is the spawner. False for all other ownership changes (including post-spawn GiveOwnership/RemoveOwnership).</param>
         /// <param name="asServer">Is this on the server</param>
-        protected virtual void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool selfRequest, bool asServer)
+        protected virtual void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawner, bool asServer)
         {
         }
 

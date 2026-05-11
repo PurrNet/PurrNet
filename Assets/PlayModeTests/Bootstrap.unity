@@ -212,6 +212,155 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
+--- !u!1 &55695744
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 55695745}
+  - component: {fileID: 55695751}
+  - component: {fileID: 55695750}
+  - component: {fileID: 55695749}
+  - component: {fileID: 55695748}
+  - component: {fileID: 55695747}
+  - component: {fileID: 55695746}
+  m_Layer: 0
+  m_Name: BufferedRPC
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &55695745
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1015553666}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &55695746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea234d903634dd344944cc1637c904be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleTargetBufferedRpcsScenario
+  _kickoffTimeoutSeconds: 30
+  _phaseACompleteTimeoutSeconds: 30
+  _doneTimeoutSeconds: 60
+  _spawnTimeoutSeconds: 15
+  _disconnectTimeoutSeconds: 15
+  _reconnectTimeoutSeconds: 30
+  _replayTimeoutSeconds: 30
+--- !u!114 &55695747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3082f9ab4fb8a7a4eae66936594d84ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleObserversBufferedRpcsScenario
+  _kickoffTimeoutSeconds: 30
+  _phaseACompleteTimeoutSeconds: 30
+  _doneTimeoutSeconds: 60
+  _spawnTimeoutSeconds: 15
+  _disconnectTimeoutSeconds: 15
+  _reconnectTimeoutSeconds: 30
+  _replayTimeoutSeconds: 30
+--- !u!114 &55695748
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4e0c59ae6a4db44d833075404fbc1c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityTargetBufferedRpcsScenario
+  _kickoffTimeoutSeconds: 30
+  _phaseACompleteTimeoutSeconds: 30
+  _doneTimeoutSeconds: 60
+  _spawnTimeoutSeconds: 15
+  _disconnectTimeoutSeconds: 15
+  _reconnectTimeoutSeconds: 30
+  _replayTimeoutSeconds: 30
+--- !u!114 &55695749
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d7568453b5aa9f4ab2b3403ebd96492, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityObserversBufferedRpcsScenario
+  _kickoffTimeoutSeconds: 30
+  _phaseACompleteTimeoutSeconds: 30
+  _doneTimeoutSeconds: 60
+  _spawnTimeoutSeconds: 15
+  _disconnectTimeoutSeconds: 15
+  _reconnectTimeoutSeconds: 30
+  _replayTimeoutSeconds: 30
+--- !u!114 &55695750
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3f81eb65cb7c1746a1f6ece723c4784, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticTargetBufferedRpcsScenario
+  _kickoffTimeoutSeconds: 30
+  _phaseACompleteTimeoutSeconds: 30
+  _doneTimeoutSeconds: 60
+  _disconnectTimeoutSeconds: 15
+  _reconnectTimeoutSeconds: 30
+  _replayTimeoutSeconds: 30
+--- !u!114 &55695751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55695744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ec0ebe1276cfa445b95da056a50bf6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticObserversBufferedRpcsScenario
+  _kickoffTimeoutSeconds: 30
+  _phaseACompleteTimeoutSeconds: 30
+  _doneTimeoutSeconds: 60
+  _disconnectTimeoutSeconds: 15
+  _reconnectTimeoutSeconds: 30
+  _replayTimeoutSeconds: 30
 --- !u!1 &277924962
 GameObject:
   m_ObjectHideFlags: 0
@@ -228,7 +377,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &277924963
 Transform:
   m_ObjectHideFlags: 0
@@ -623,6 +772,59 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
+--- !u!1 &1015553664
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1015553666}
+  - component: {fileID: 1015553665}
+  m_Layer: 0
+  m_Name: Bootstrap (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1015553665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1015553664}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f4386744cce92c478f5a182d9d8e2c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::Bootstrap
+  _networkManager: {fileID: 1216416897}
+  _connectionTimeout: 15
+  _timeBetweenScenarios: 2
+  _editorRole: 2
+  _editorExpectedConnections: 2
+--- !u!4 &1015553666
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1015553664}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2144445669}
+  - {fileID: 1372873617}
+  - {fileID: 1422812530}
+  - {fileID: 55695745}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1128545786
 GameObject:
   m_ObjectHideFlags: 0
@@ -1061,6 +1263,192 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _broadcastTimeoutSeconds: 10
+--- !u!1 &1372873616
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1372873617}
+  - component: {fileID: 1372873621}
+  - component: {fileID: 1372873620}
+  - component: {fileID: 1372873619}
+  - component: {fileID: 1372873618}
+  m_Layer: 0
+  m_Name: IdentityRPC
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1372873617
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372873616}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1015553666}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1372873618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372873616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62c24875cc520b64f8f6780ce138de79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
+  _doneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 15
+--- !u!114 &1372873619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372873616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 079a63b2e270ddf488b3c6f64aa82cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityTargetRpcsScenario
+  _doneTimeoutSeconds: 30
+  _targetTimeoutSeconds: 10
+  _spawnTimeoutSeconds: 15
+--- !u!114 &1372873620
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372873616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d6e3a61f65c99e448c5a90890346290, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityObserversRpcsScenario
+  _doneTimeoutSeconds: 30
+  _broadcastTimeoutSeconds: 10
+  _spawnTimeoutSeconds: 15
+--- !u!114 &1372873621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372873616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d11dea3c0bf13824ca75d121d8584da1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityServerRpcsScenario
+  _doneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 15
+--- !u!1 &1422812529
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1422812530}
+  - component: {fileID: 1422812534}
+  - component: {fileID: 1422812533}
+  - component: {fileID: 1422812532}
+  - component: {fileID: 1422812531}
+  m_Layer: 0
+  m_Name: ModuleRPC
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1422812530
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1422812529}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1015553666}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1422812531
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1422812529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e6aed612bf05054aaafe8519deaa453, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleGenericRpcsScenario
+  _doneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 15
+--- !u!114 &1422812532
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1422812529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f76b39aafb428c645aa87152ef0e7256, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleTargetRpcsScenario
+  _doneTimeoutSeconds: 30
+  _targetTimeoutSeconds: 10
+  _spawnTimeoutSeconds: 15
+--- !u!114 &1422812533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1422812529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 114dceeb0bff72f47b7d2e08bb9a6cf2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleObserversRpcsScenario
+  _doneTimeoutSeconds: 30
+  _broadcastTimeoutSeconds: 10
+  _spawnTimeoutSeconds: 15
+--- !u!114 &1422812534
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1422812529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32fffa126395d20459252cbf2f74564a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleServerRpcsScenario
+  _doneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 15
 --- !u!1 &1680343622
 GameObject:
   m_ObjectHideFlags: 0
@@ -1338,6 +1726,96 @@ MonoBehaviour:
   _readyTimeoutSeconds: 30
   _ownershipTimeoutSeconds: 30
   _propagationDelaySeconds: 0.5
+--- !u!1 &2144445668
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2144445669}
+  - component: {fileID: 2144445673}
+  - component: {fileID: 2144445672}
+  - component: {fileID: 2144445671}
+  - component: {fileID: 2144445670}
+  m_Layer: 0
+  m_Name: StaticRPC
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2144445669
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144445668}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1015553666}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2144445670
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144445668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac27038b030b8ca40a0e7e7191be1de1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticGenericRpcsScenario
+  _doneTimeoutSeconds: 30
+  _broadcastTimeoutSeconds: 10
+--- !u!114 &2144445671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144445668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcd6f4b9e060235479397c84d07af732, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticTargetRpcsScenario
+  _doneTimeoutSeconds: 30
+  _targetTimeoutSeconds: 10
+--- !u!114 &2144445672
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144445668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d408dfd9981d849be9281f89e66461c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticObserversRpcsScenario
+  _doneTimeoutSeconds: 30
+  _broadcastTimeoutSeconds: 10
+--- !u!114 &2144445673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144445668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f86ede6bcb977a641a56431bc5ea5acf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticRpcsScenario
+  _doneTimeoutSeconds: 30
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1347,3 +1825,4 @@ SceneRoots:
   - {fileID: 1326095569}
   - {fileID: 1216416898}
   - {fileID: 277924963}
+  - {fileID: 1015553666}

@@ -360,6 +360,18 @@ namespace PurrNet
                 case RPCType.TargetRPC:
                     if (isServer)
                     {
+                        if (networkManager.isHost && signature.targetPlayer == PlayerID.Server &&
+                            networkManager.TryGetRpcModule(false, out var hostClientRpcModule))
+                        {
+                            packet.targetPlayerId = PlayerID.Server;
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                packet.rpcData, this);
+#endif
+                            hostClientRpcModule.BatchToServer(packet, signature.channel);
+                            break;
+                        }
+
                         using var players = signature.GetTargets();
 
                         if (players.Count == 0)
@@ -478,6 +490,18 @@ namespace PurrNet
                 case RPCType.TargetRPC:
                     if (isServer)
                     {
+                        if (networkManager.isHost && signature.targetPlayer == PlayerID.Server &&
+                            networkManager.TryGetRpcModule(false, out var hostClientRpcModule))
+                        {
+                            packet.targetPlayerId = PlayerID.Server;
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
+                                packet.rpcData, this);
+#endif
+                            hostClientRpcModule.BatchToServer(packet, signature.channel);
+                            break;
+                        }
+
                         using var players = signature.GetTargets();
 
                         if (players.Count == 0)

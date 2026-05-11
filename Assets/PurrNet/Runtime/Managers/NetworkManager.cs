@@ -1203,7 +1203,7 @@ namespace PurrNet
             modules.AddModule(hierarchyV2);
             modules.AddModule(ownershipModule);
             modules.AddModule(rpcModule);
-            modules.AddModule(new RpcRequestResponseModule(this, playersManager));
+            modules.AddModule(new RpcRequestResponseModule(this, playersManager, asServer));
             modules.AddModule(colliderRollback);
 
 #if ADDRESSABLES_PURRNET_SUPPORT
