@@ -1,3 +1,10 @@
+# [1.20.0-beta.153](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.152...v1.20.0-beta.153) (2026-05-11)
+
+
+### Bug Fixes
+
+* delay player catchup to once they are marked as having the scene loaded ([01445c0](https://github.com/PurrNet/PurrNet/commit/01445c082b28135d492848a18fb0a1f8dcc40be7))
+
 # [1.20.0-beta.152](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.151...v1.20.0-beta.152) (2026-05-11)
 
 
