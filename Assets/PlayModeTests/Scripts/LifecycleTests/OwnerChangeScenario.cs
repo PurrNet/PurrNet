@@ -162,9 +162,12 @@ public class OwnerChangeScenario : Scenario
                 $"client records timeout: expected={OwnerChangeIdentity.ExpectedTransitions}, 3-arg={OwnerChangeIdentity.ThreeArgRecords.Count}, 4-arg={OwnerChangeIdentity.FourArgRecords.Count}");
         }
 
-        // Build the expected transition chain from our records (we don't know server's intent
-        // ahead of time, so we just assert the chain is internally consistent and isOwner is correct).
-        VerifyClientRecords(ctx, failures);
+        // On host, both RunSplit halves share the same static records list. The host's
+        // client-side records are already validated by VerifyChain via FilterAndCheckChain's
+        // "host-client-*" pass, so skip the pure-client validator here to avoid choking
+        // on interleaved server-side records.
+        if (ctx.role != NetworkRole.Host)
+            VerifyClientRecords(ctx, failures);
 
         inst.SignalDone();
 
@@ -175,19 +178,21 @@ public class OwnerChangeScenario : Scenario
 
     private static void VerifyChain(ScenarioContext ctx, List<PlayerID?> transitions, List<string> failures)
     {
+        bool isHost = ctx.role == NetworkRole.Host;
+
         // Server-side: asServer=true should match our transitions exactly.
         FilterAndCheckChain("server-3arg", OwnerChangeIdentity.ThreeArgRecords, true, transitions,
-            ctx.networkManager.localPlayer, failures);
+            ctx.networkManager.localPlayer, isHost, failures);
         FilterAndCheckChain("server-4arg", OwnerChangeIdentity.FourArgRecords, true, transitions,
-            ctx.networkManager.localPlayer, failures);
+            ctx.networkManager.localPlayer, isHost, failures);
 
         // Host mode: the server identity also runs as a client; assert client-side records too.
-        if (ctx.role == NetworkRole.Host)
+        if (isHost)
         {
             FilterAndCheckChain("host-client-3arg", OwnerChangeIdentity.ThreeArgRecords, false, transitions,
-                ctx.networkManager.localPlayer, failures);
+                ctx.networkManager.localPlayer, isHost, failures);
             FilterAndCheckChain("host-client-4arg", OwnerChangeIdentity.FourArgRecords, false, transitions,
-                ctx.networkManager.localPlayer, failures);
+                ctx.networkManager.localPlayer, isHost, failures);
         }
     }
 
@@ -254,7 +259,7 @@ public class OwnerChangeScenario : Scenario
     }
 
     private static void FilterAndCheckChain(string label, List<OwnerChangeIdentity.ChangeRecord> records, bool asServer,
-        List<PlayerID?> expected, PlayerID localPlayer, List<string> failures)
+        List<PlayerID?> expected, PlayerID localPlayer, bool localIsServer, List<string> failures)
     {
         var filtered = new List<OwnerChangeIdentity.ChangeRecord>(records.Count);
         for (int i = 0; i < records.Count; i++)
@@ -311,11 +316,12 @@ public class OwnerChangeScenario : Scenario
                 }
 
                 // isController on a non-server record: true iff localPlayer is the connected owner.
-                // No-owner case → false (this side is not the server).
-                if (rec.isControllerAfter != expectedIsOwner)
+                // No-owner case → falls back to "is this process the server" (true on host, false on pure client).
+                bool expectedIsController = nextHas ? expectedIsOwner : localIsServer;
+                if (rec.isControllerAfter != expectedIsController)
                 {
                     failures.Add(
-                        $"{label}[{i}] isController mismatch: got {rec.isControllerAfter}, expected {expectedIsOwner}");
+                        $"{label}[{i}] isController mismatch: got {rec.isControllerAfter}, expected {expectedIsController}");
                 }
             }
             else
