@@ -147,9 +147,14 @@ public class ClientSpawnScenario : Scenario
             if (rec.asServer)
             {
                 foundServerSide = true;
-                if (rec.isOwnerAfter)
+                // isOwner == (owner == localPlayer). On a pure server localPlayer is unset, so
+                // isOwner is always false. In host mode the server's localPlayer can equal the
+                // spawner (when the host's local client initiated the spawn), in which case
+                // isOwner is legitimately true server-side.
+                bool serverIsSpawner = isLocalSpawner;
+                if (rec.isOwnerAfter != serverIsSpawner)
                     failures.Add(
-                        $"server-side OnOwnerChanged for spawner expected isOwner=false on server (server is not the new owner)");
+                        $"server-side OnOwnerChanged for spawner: isOwner={rec.isOwnerAfter}, expected {serverIsSpawner}");
             }
             else
             {
@@ -200,20 +205,16 @@ public class ClientSpawnScenario : Scenario
 
     private static PlayerID? PickSpawner(ScenarioContext ctx)
     {
+        // Pick the lowest-id non-server player. Every peer (including pure clients) must arrive
+        // at the same choice, so we cannot filter on host-local membership here — pure clients
+        // have no way to know which player is the host's local one.
         var manager = ctx.networkManager;
-        // If we're in host mode, exclude the host's local player so the spawner is a *pure* client.
-        // (This matches what tests want to validate: a non-server client initiating the spawn.)
-        var hostLocal = manager.isLocalPlayerReady && ctx.role == NetworkRole.Host
-            ? manager.localPlayer
-            : (PlayerID?)null;
-
         PlayerID? best = null;
         var players = manager.players;
         for (int i = 0; i < players.Count; i++)
         {
             var p = players[i];
             if (p.isServer) continue;
-            if (hostLocal.HasValue && hostLocal.Value == p) continue;
             if (!best.HasValue || p.id.value < best.Value.id.value)
                 best = p;
         }

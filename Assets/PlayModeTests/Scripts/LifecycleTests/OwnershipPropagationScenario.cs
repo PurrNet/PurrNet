@@ -218,11 +218,14 @@ public class OwnershipPropagationScenario : Scenario
     private static bool HasInitialChange(List<OwnershipPropagationParent.ChangeRecord> records,
         ulong victimId, bool asServer)
     {
+        // In host mode the spawn auto-assigns ownership to the host's local player
+        // (DefaultOwner.SpawnerIfClientOnly), so the transition chain is
+        // null -> hostLocal -> victim rather than the pure-server null -> victim.
+        // Match any record whose new owner is the victim, regardless of old owner.
         for (int i = 0; i < records.Count; i++)
         {
             var r = records[i];
             if (r.asServer != asServer) continue;
-            if (r.oldHasValue) continue; // not the initial null->X
             if (!r.newHasValue) continue;
             if (r.newOwnerId == victimId) return true;
         }
@@ -237,7 +240,8 @@ public class OwnershipPropagationScenario : Scenario
         {
             var r = records[i];
             if (r.asServer != asServer) continue;
-            if (r.oldHasValue || !r.newHasValue || r.newOwnerId != victimId) continue;
+            // Accept any transition that ends with the victim — see HasInitialChange for why.
+            if (!r.newHasValue || r.newOwnerId != victimId) continue;
             found = true;
 
             if (asServer)
