@@ -94,12 +94,13 @@ public class ClientSpawnScenario : Scenario
             return ScenarioResult.Fail(string.Join(" | ", failures));
         }
 
-        // Give a beat for OnOwnerChanged + OnObserverAdded to land after OnSpawned.
+        // Give a beat for OnOwnerChanged + OnObserverAdded to land after OnSpawned. OnObserverAdded
+        // fires server-side only, so a pure-client peer waits on the owner-change record alone.
         try
         {
             await UniTaskUtils.WaitWithTimeout(
                 () => ClientSpawnIdentity.ChangeRecords.Count >= 1
-                      && ClientSpawnIdentity.ObserverAdds.Count >= 1,
+                      && (!ctx.isServer || ClientSpawnIdentity.ObserverAdds.Count >= 1),
                 _validateTimeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -113,7 +114,7 @@ public class ClientSpawnScenario : Scenario
         }
 
         ValidateOwnerChange(ctx, spawnerId, isLocalSpawner, failures);
-        ValidateObserverAdded(ctx, spawnerId, isLocalSpawner, failures);
+        ValidateObserverAdded(ctx, spawnerId, failures);
 
         await ScenarioBarrier.Wait(ctx, BarrierEnd, _barrierTimeoutSeconds);
 
@@ -172,12 +173,19 @@ public class ClientSpawnScenario : Scenario
             failures.Add($"client side did not record initial null->spawner OnOwnerChanged for spawner {spawnerId}");
     }
 
-    private static void ValidateObserverAdded(ScenarioContext ctx, ulong spawnerId, bool isLocalSpawner,
-        List<string> failures)
+    private static void ValidateObserverAdded(ScenarioContext ctx, ulong spawnerId, List<string> failures)
     {
-        // On the server side, the spawner client must show isSpawner=true and every other observer
-        // must show isSpawner=false. On a non-host client, OnObserverAdded fires only for the local
-        // player; that record's isSpawner reflects whether the local player IS the spawner.
+        // OnObserverAdded fires only on the server side. Pure-client peers must record zero
+        // observer adds; server-side peers must show isSpawner=true for the spawner and false
+        // for every other observer, and must have observed the spawner specifically.
+        if (!ctx.isServer)
+        {
+            if (ClientSpawnIdentity.ObserverAdds.Count != 0)
+                failures.Add(
+                    $"client peer expected 0 OnObserverAdded records (server-only callback), got {ClientSpawnIdentity.ObserverAdds.Count}");
+            return;
+        }
+
         for (int i = 0; i < ClientSpawnIdentity.ObserverAdds.Count; i++)
         {
             var rec = ClientSpawnIdentity.ObserverAdds[i];
@@ -187,34 +195,18 @@ public class ClientSpawnScenario : Scenario
                     $"OnObserverAdded for player {rec.playerId} expected isSpawner={shouldBeSpawner}, got {rec.isSpawner}");
         }
 
-        // On a pure-client peer, we should have at most a single OnObserverAdded for the local
-        // player (server-spawned identities follow this pattern).
-        if (ctx.role == NetworkRole.Client)
+        bool sawSpawnerWithFlag = false;
+        for (int i = 0; i < ClientSpawnIdentity.ObserverAdds.Count; i++)
         {
-            if (ClientSpawnIdentity.ObserverAdds.Count != 1)
-                failures.Add(
-                    $"client peer expected exactly 1 OnObserverAdded record, got {ClientSpawnIdentity.ObserverAdds.Count}");
-            else if (ClientSpawnIdentity.ObserverAdds[0].playerId != ctx.networkManager.localPlayer.id.value)
-                failures.Add(
-                    $"client peer's single OnObserverAdded should be for the local player, got {ClientSpawnIdentity.ObserverAdds[0].playerId}");
-        }
-
-        // On the server side we must have observed the spawner specifically with isSpawner=true.
-        if (ctx.isServer)
-        {
-            bool sawSpawnerWithFlag = false;
-            for (int i = 0; i < ClientSpawnIdentity.ObserverAdds.Count; i++)
+            var rec = ClientSpawnIdentity.ObserverAdds[i];
+            if (rec.playerId == spawnerId && rec.isSpawner)
             {
-                var rec = ClientSpawnIdentity.ObserverAdds[i];
-                if (rec.playerId == spawnerId && rec.isSpawner)
-                {
-                    sawSpawnerWithFlag = true;
-                    break;
-                }
+                sawSpawnerWithFlag = true;
+                break;
             }
-            if (!sawSpawnerWithFlag)
-                failures.Add($"server did not record OnObserverAdded(player={spawnerId}, isSpawner=true)");
         }
+        if (!sawSpawnerWithFlag)
+            failures.Add($"server did not record OnObserverAdded(player={spawnerId}, isSpawner=true)");
     }
 
     private static PlayerID? PickSpawner(ScenarioContext ctx)

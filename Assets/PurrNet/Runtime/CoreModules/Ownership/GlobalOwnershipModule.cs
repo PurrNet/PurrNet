@@ -296,13 +296,12 @@ namespace PurrNet.Modules
 
         private void OnPlayerLeft(PlayerID player, bool asServer)
         {
+
+            if (asServer)
+                return;
+
             foreach (var (scene, ownerships) in _sceneOwnerships)
             {
-                OnOwnerDisconnect(player, scene, ownerships, asServer);
-
-                if (asServer)
-                    continue;
-
                 var owned = ownerships.TryGetOwnedObjects(player);
                 if (owned.Count == 0)
                     continue;
@@ -350,11 +349,9 @@ namespace PurrNet.Modules
         {
             if (!_sceneOwnerships.TryGetValue(scene, out var ownerships)) return;
 
-            OnOwnerDisconnect(player, scene, ownerships, asServer);
-
-            var owned = ownerships.TryGetOwnedObjects(player);
+            var preOwned = ownerships.TryGetOwnedObjects(player);
             var ownedCache = ListPool<NetworkID>.Instantiate();
-            ownedCache.AddRange(owned);
+            ownedCache.AddRange(preOwned);
 
             for (var i = 0; i < ownedCache.Count; i++)
             {
@@ -364,6 +361,8 @@ namespace PurrNet.Modules
             }
 
             ListPool<NetworkID>.Destroy(ownedCache);
+
+            OnOwnerDisconnect(player, scene, ownerships, asServer);
         }
 
         private void OnOwnerDisconnect(PlayerID player, SceneID scene, SceneOwnership ownerships, bool asServer)
@@ -378,9 +377,7 @@ namespace PurrNet.Modules
             {
                 if (_hierarchy.TryGetIdentity(scene, id, out var identity))
                 {
-                    bool shouldDespawn = identity.ShouldDespawnOnOwnerDisconnect();
-
-                    if (shouldDespawn && !identity.isSceneObject && !identity.isManualSpawn)
+                    if (identity.ShouldDespawnOnOwnerDisconnect() && !identity.isSceneObject && !identity.isManualSpawn)
                         toDestroy.Add(identity.gameObject);
                 }
             }
@@ -388,9 +385,7 @@ namespace PurrNet.Modules
             foreach (var go in toDestroy)
             {
                 if (go)
-                {
                     Object.Destroy(go);
-                }
             }
 
             HashSetPool<GameObject>.Destroy(toDestroy);
@@ -511,7 +506,8 @@ namespace PurrNet.Modules
 
                 var oldOwner = identity.GetOwner(_asServer);
 
-                if (module.GiveOwnership(identity, player))
+                bool addedCb = module.GiveOwnership(identity, player);
+                if (addedCb)
                 {
                     callbacks.Add(new OwnershipCallback
                     {

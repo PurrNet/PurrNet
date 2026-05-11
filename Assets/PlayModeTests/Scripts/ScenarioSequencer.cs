@@ -1,12 +1,16 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 
 public static class ScenarioSequencer
 {
-    private const float NO_TIMEOUT_SECONDS = 24f * 60f * 60f;
+    private const float SCENARIO_TIMEOUT_SECONDS = 24f * 60f * 60f;
+    private const float END_OF_RUN_HANDSHAKE_TIMEOUT_SECONDS = 10f;
 
-    private static readonly Dictionary<int, int> _ackCountByIndex = new();
+    private static readonly Dictionary<int, HashSet<PlayerID>> _acksByIndex = new();
+    private static readonly HashSet<PlayerID> _endOfRunAcks = new();
+
     private static int _latestStartedIndex = -1;
     private static bool _sequenceComplete;
 
@@ -21,21 +25,36 @@ public static class ScenarioSequencer
     {
         await UniTaskUtils.WaitWithTimeout(
             () => _latestStartedIndex >= index || _sequenceComplete,
-            NO_TIMEOUT_SECONDS,
+            SCENARIO_TIMEOUT_SECONDS,
             ctx.cancellationToken);
     }
 
-    public static async UniTask WaitForAllAcks(ScenarioContext ctx, int index, int expectedAcks)
+    public static async UniTask WaitForAllAcks(ScenarioContext ctx, int index)
     {
-        if (expectedAcks <= 0)
-            return;
+        var localId = ctx.networkManager.localPlayer;
+        bool isHost = ctx.role == NetworkRole.Host;
 
         await UniTaskUtils.WaitWithTimeout(
-            () => _ackCountByIndex.TryGetValue(index, out var c) && c >= expectedAcks,
-            NO_TIMEOUT_SECONDS,
+            () => AllConnectedClientsAcked(ctx, index, localId, isHost),
+            SCENARIO_TIMEOUT_SECONDS,
             ctx.cancellationToken);
 
-        _ackCountByIndex.Remove(index);
+        _acksByIndex.Remove(index);
+    }
+
+    private static bool AllConnectedClientsAcked(ScenarioContext ctx, int index, PlayerID localId, bool isHost)
+    {
+        _acksByIndex.TryGetValue(index, out var acks);
+        var connected = ctx.networkManager.players;
+        for (int i = 0; i < connected.Count; i++)
+        {
+            var p = connected[i];
+            if (isHost && p == localId)
+                continue;
+            if (acks == null || !acks.Contains(p))
+                return false;
+        }
+        return true;
     }
 
     public static void AckLocalDone(ScenarioContext ctx, int index)
@@ -50,11 +69,45 @@ public static class ScenarioSequencer
         BroadcastSequenceComplete();
     }
 
-    public static int ExpectedAcks(ScenarioContext ctx)
+    public static async UniTask WaitForEndOfRunHandshake(ScenarioContext ctx)
     {
-        return ctx.role == NetworkRole.Host
-            ? ctx.expectedConnections - 1
-            : ctx.expectedConnections;
+        var localId = ctx.networkManager.localPlayer;
+        bool isHost = ctx.role == NetworkRole.Host;
+
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => AllConnectedClientsEndOfRunAcked(ctx, localId, isHost),
+                END_OF_RUN_HANDSHAKE_TIMEOUT_SECONDS,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            // Bounded wait: if a peer is already gone there's nothing to confirm.
+            // The per-scenario results already encode pass/fail; we just want to
+            // exit cleanly here.
+        }
+    }
+
+    public static void AckEndOfRun(ScenarioContext ctx)
+    {
+        if (ctx.role != NetworkRole.Client)
+            return;
+        AckEndOfRunRpc();
+    }
+
+    private static bool AllConnectedClientsEndOfRunAcked(ScenarioContext ctx, PlayerID localId, bool isHost)
+    {
+        var connected = ctx.networkManager.players;
+        for (int i = 0; i < connected.Count; i++)
+        {
+            var p = connected[i];
+            if (isHost && p == localId)
+                continue;
+            if (!_endOfRunAcks.Contains(p))
+                return false;
+        }
+        return true;
     }
 
     [ObserversRpc(runLocally: true)]
@@ -65,15 +118,25 @@ public static class ScenarioSequencer
     }
 
     [ServerRpc(requireOwnership: false)]
-    private static void AckDone(int index)
+    private static void AckDone(int index, RPCInfo info = default)
     {
-        _ackCountByIndex.TryGetValue(index, out var count);
-        _ackCountByIndex[index] = count + 1;
+        if (!_acksByIndex.TryGetValue(index, out var set))
+        {
+            set = new HashSet<PlayerID>();
+            _acksByIndex[index] = set;
+        }
+        set.Add(info.sender);
     }
 
     [ObserversRpc(runLocally: true)]
     private static void BroadcastSequenceComplete()
     {
         _sequenceComplete = true;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private static void AckEndOfRunRpc(RPCInfo info = default)
+    {
+        _endOfRunAcks.Add(info.sender);
     }
 }

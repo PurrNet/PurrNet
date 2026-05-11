@@ -220,8 +220,6 @@ public class Bootstrap : Scenario
 
             if (ctx.isServer)
             {
-                int expectedAcks = ScenarioSequencer.ExpectedAcks(ctx);
-
                 for (var i = 1; i < _scenarios.Length; i++)
                 {
                     ScenarioSequencer.IssueStart(i);
@@ -229,7 +227,7 @@ public class Bootstrap : Scenario
                     if (await RunOne(i, ctx))
                         anyFailed = true;
 
-                    await ScenarioSequencer.WaitForAllAcks(ctx, i, expectedAcks);
+                    await ScenarioSequencer.WaitForAllAcks(ctx, i);
 
                     if (i == _scenarios.Length - 1)
                         break;
@@ -238,8 +236,9 @@ public class Bootstrap : Scenario
                 }
 
                 ScenarioSequencer.IssueSequenceComplete();
-                // Let the broadcast flush before the finally block tears the process down.
-                await UniTask.NextFrame();
+                // End-of-run handshake: bounded wait so a crashed/already-exited peer
+                // can't strand the server in the finally-then-Quit path.
+                await ScenarioSequencer.WaitForEndOfRunHandshake(ctx);
             }
             else
             {
@@ -262,6 +261,18 @@ public class Bootstrap : Scenario
 
                     await UniTask.WaitForSeconds(_timeBetweenScenarios);
                 }
+
+                // Wait for the server's sequence-complete broadcast, then ack so
+                // the server can exit its handshake wait cleanly.
+                await UniTaskUtils.WaitWithTimeout(
+                    () => ScenarioSequencer.SequenceComplete,
+                    30f,
+                    ctx.cancellationToken);
+                ScenarioSequencer.AckEndOfRun(ctx);
+                // Give the ack a couple frames to flush through transport before
+                // the finally block quits the process.
+                await UniTask.NextFrame();
+                await UniTask.NextFrame();
             }
         }
         catch (Exception e)
@@ -286,7 +297,7 @@ public class Bootstrap : Scenario
 #if UNITY_EDITOR
             if (anyResultFailed || anyFailed)
                 Debug.LogError("Some tests failed to run.");
-            UnityEditor.EditorApplication.isPlaying = false;
+            Debug.Break();
 #else
             Application.Quit(anyResultFailed || anyFailed ? -1 : 0);
 #endif
