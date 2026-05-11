@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Modules;
 using UnityEngine;
 
 public class OwnerChangeScenario : Scenario
@@ -29,7 +30,15 @@ public class OwnerChangeScenario : Scenario
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
         if (ctx.isServer)
-            Instantiate(_prefab);
+        {
+            // Suppress the default SpawnerIfClientOnly auto-owner rule so the spawn is
+            // truly ownerless on host. Otherwise the host's local player gets an extra
+            // null->hostLocal record before our explicit transitions, breaking the
+            // exact-chain assertions on the client side.
+            HierarchyV2.SupressAutoOwner();
+            try { Instantiate(_prefab); }
+            finally { HierarchyV2.ResumeAutoOwner(); }
+        }
 
         await UniTaskUtils.WaitWithTimeout(
             () => OwnerChangeIdentity.LocalInstance != null,

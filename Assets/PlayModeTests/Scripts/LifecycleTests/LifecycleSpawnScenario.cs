@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Modules;
 using UnityEngine;
 
 public class LifecycleSpawnScenario : Scenario
@@ -28,7 +29,14 @@ public class LifecycleSpawnScenario : Scenario
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
         if (ctx.isServer)
-            Instantiate(_prefab);
+        {
+            // In host mode the default rule DefaultOwner.SpawnerIfClientOnly assigns the
+            // host's local player as owner of server-spawned identities. Suppress that so
+            // the test's "ownerless server-spawned object" premise holds on host too.
+            HierarchyV2.SupressAutoOwner();
+            try { Instantiate(_prefab); }
+            finally { HierarchyV2.ResumeAutoOwner(); }
+        }
 
         await UniTaskUtils.WaitWithTimeout(
             () => LifecycleSpawnIdentity.LocalInstance != null,

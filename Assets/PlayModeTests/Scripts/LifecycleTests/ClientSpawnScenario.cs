@@ -20,6 +20,9 @@ public class ClientSpawnScenario : Scenario
 
     private ClientSpawnIdentity _prefab;
 
+    private static ulong _spawnerIdBroadcast;
+    private static bool _spawnerIdReceived;
+
     void CreatePrefab()
     {
         var go = new GameObject(nameof(ClientSpawnScenario));
@@ -33,6 +36,8 @@ public class ClientSpawnScenario : Scenario
                            "spawnAuth=Server and the client-side spawn will be rejected.");
 
         ClientSpawnIdentity.ResetAll();
+        _spawnerIdBroadcast = 0;
+        _spawnerIdReceived = false;
     }
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
@@ -68,11 +73,30 @@ public class ClientSpawnScenario : Scenario
 
         await ScenarioBarrier.Wait(ctx, BarrierStart, _barrierTimeoutSeconds);
 
-        var spawner = PickSpawner(ctx);
-        if (!spawner.HasValue)
-            return ScenarioResult.Fail("no eligible non-host client to act as spawner");
+        // Only the server can correctly exclude the host's local player from the
+        // candidate set; pure clients have no way to identify the host-local id.
+        // Server picks and broadcasts; every peer waits for the broadcast.
+        if (ctx.isServer)
+        {
+            var picked = PickSpawner(ctx);
+            if (!picked.HasValue)
+                return ScenarioResult.Fail("no eligible non-host client to act as spawner");
+            BroadcastSpawnerId(picked.Value.id.value);
+        }
 
-        var spawnerId = spawner.Value.id.value;
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => _spawnerIdReceived,
+                _playersTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail("spawner-id broadcast not received");
+        }
+
+        var spawnerId = _spawnerIdBroadcast;
 
         bool isLocalSpawner = ctx.networkManager.isLocalPlayerReady
                               && ctx.networkManager.localPlayer.id.value == spawnerId;
@@ -205,19 +229,31 @@ public class ClientSpawnScenario : Scenario
 
     private static PlayerID? PickSpawner(ScenarioContext ctx)
     {
-        // Pick the lowest-id non-server player. Every peer (including pure clients) must arrive
-        // at the same choice, so we cannot filter on host-local membership here — pure clients
-        // have no way to know which player is the host's local one.
+        // Server-only pick: choose the lowest-id non-server, non-host-local player.
+        // The result is broadcast to all peers via BroadcastSpawnerId so pure clients
+        // don't have to identify the host-local id themselves.
         var manager = ctx.networkManager;
+        var hostLocal = manager.isLocalPlayerReady && ctx.role == NetworkRole.Host
+            ? manager.localPlayer
+            : (PlayerID?)null;
+
         PlayerID? best = null;
         var players = manager.players;
         for (int i = 0; i < players.Count; i++)
         {
             var p = players[i];
             if (p.isServer) continue;
+            if (hostLocal.HasValue && hostLocal.Value == p) continue;
             if (!best.HasValue || p.id.value < best.Value.id.value)
                 best = p;
         }
         return best;
+    }
+
+    [ObserversRpc(bufferLast: true, runLocally: true)]
+    private static void BroadcastSpawnerId(ulong spawnerId)
+    {
+        _spawnerIdBroadcast = spawnerId;
+        _spawnerIdReceived = true;
     }
 }
