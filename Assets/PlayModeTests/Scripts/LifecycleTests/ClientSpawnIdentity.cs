@@ -6,7 +6,6 @@ public class ClientSpawnIdentity : NetworkIdentity
     public struct OwnerChangeRecord
     {
         public bool oldOwnerHasValue;
-        public ulong oldOwnerId;
         public bool newOwnerHasValue;
         public ulong newOwnerId;
         public bool asServer;
@@ -40,12 +39,11 @@ public class ClientSpawnIdentity : NetworkIdentity
         LocalInstance = this;
     }
 
-    protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawner, bool asServer)
+    protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
     {
         ChangeRecords.Add(new OwnerChangeRecord
         {
             oldOwnerHasValue = oldOwner.HasValue,
-            oldOwnerId = oldOwner.HasValue ? oldOwner.Value.id.value : 0,
             newOwnerHasValue = newOwner.HasValue,
             newOwnerId = newOwner.HasValue ? newOwner.Value.id.value : 0,
             asServer = asServer,
@@ -53,7 +51,7 @@ public class ClientSpawnIdentity : NetworkIdentity
         });
     }
 
-    protected override void OnObserverAdded(PlayerID player, bool isSpawner)
+    protected override void OnObserverAdded(PlayerID player)
     {
         ObserverAdds.Add(new ObserverRecord
         {
