@@ -52,7 +52,7 @@ namespace PurrNet.Transports
         [SerializeField, HideInInspector] private float _timeoutInSeconds = 5f;
         [SerializeField, HideInInspector] private bool _pollEventsInUpdate;
 
-        [SerializeField, HideInInspector] private NetworkSimulation _networkSimulation = NetworkSimulation.Default;
+        [SerializeField, HideInInspector] private NetworkSimulation _networkSimulation = NetworkSimulation.@default;
 
         public string region
         {

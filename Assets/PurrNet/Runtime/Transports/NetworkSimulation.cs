@@ -26,7 +26,7 @@ namespace PurrNet.Transports
         [Range(1, 100)]
         public int packetLossChance;
 
-        public static NetworkSimulation Default => new()
+        public static NetworkSimulation @default => new()
         {
             includeInBuild = false,
             simulateLatency = false,

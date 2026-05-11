@@ -34,7 +34,7 @@ namespace PurrNet.Transports
         [SerializeField]
         private bool _pollEventsInUpdate;
 
-        [SerializeField] private NetworkSimulation _networkSimulation = NetworkSimulation.Default;
+        [SerializeField] private NetworkSimulation _networkSimulation = NetworkSimulation.@default;
 
         public event OnConnected onConnected;
         public event OnDisconnected onDisconnected;
