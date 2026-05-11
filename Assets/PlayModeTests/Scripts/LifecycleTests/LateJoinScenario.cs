@@ -275,35 +275,8 @@ public class LateJoinScenario : Scenario
         else
         {
             // Bystander client: the original instance stays alive across the victim's disconnect.
-            // We must observe OnObserverRemoved(victim) and then OnObserverAdded(victim) again.
-            try
-            {
-                await UniTaskUtils.WaitWithTimeout(
-                    () =>
-                    {
-                        bool removed = false;
-                        bool readded = false;
-                        for (int i = 0; i < LateJoinIdentity.ObserverEvents.Count; i++)
-                        {
-                            var ev = LateJoinIdentity.ObserverEvents[i];
-                            if (ev.playerId != victimId) continue;
-                            if (!ev.added) removed = true;
-                            else if (removed) readded = true;
-                        }
-                        return removed && readded;
-                    },
-                    _reconnectTimeoutSeconds,
-                    ctx.cancellationToken);
-            }
-            catch (TimeoutException)
-            {
-                failures.Add(
-                    $"bystander did not observe OnObserverRemoved followed by OnObserverAdded for victim {victimId}");
-            }
-
-            // The bystander's local NetworkIdentity should have stayed alive (no extra spawn record).
-            // Allow at most the initial OnSpawned record on a bystander.
-            // Note: on a host bystander (not the spawner), there can be 2 entries (server + client).
+            // OnObserverAdded/Removed are server-only callbacks (see NetworkIdentity.cs:740-766),
+            // so we can't assert them from here. Verify the identity stayed alive instead.
             int expectedMaxSpawns = ctx.role == NetworkRole.Host ? 2 : 1;
             if (LateJoinIdentity.Spawns.Count > expectedMaxSpawns)
                 failures.Add(
