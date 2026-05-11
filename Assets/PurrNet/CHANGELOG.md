@@ -1,3 +1,10 @@
+# [1.20.0-beta.154](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.153...v1.20.0-beta.154) (2026-05-11)
+
+
+### Bug Fixes
+
+* fix some timing issues with OnObserverAdded and packets being split across multiple ticks ([fe50eb8](https://github.com/PurrNet/PurrNet/commit/fe50eb8296ec7021d7fbffa1fd75f20fb32e639f))
+
 # [1.20.0-beta.153](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.152...v1.20.0-beta.153) (2026-05-11)
 
 
