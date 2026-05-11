@@ -14,7 +14,7 @@ public class Bootstrap : Scenario
 {
     [SerializeField] private NetworkManager _networkManager;
     [SerializeField] private float _connectionTimeout = 15f;
-    [SerializeField] private float _timeBetweenScenarios = 2f;
+    [SerializeField] private float _timeBetweenScenarios = 0.1f;
 
     [Header("Editor overrides (used when -role / -count are absent)")]
     [Tooltip("Role used by the main editor instance when no -role argument is provided. " +

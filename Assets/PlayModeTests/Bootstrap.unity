@@ -263,7 +263,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::Bootstrap
   _networkManager: {fileID: 1216416897}
   _connectionTimeout: 15
-  _timeBetweenScenarios: 2
+  _timeBetweenScenarios: 0.1
   _editorRole: 2
   _editorExpectedConnections: 2
 --- !u!1 &358453800
