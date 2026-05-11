@@ -363,9 +363,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeM
 <tr class="memitem:a4b6ad344119f0f67c0a69bb28a3cd9ec"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a4b6ad344119f0f67c0a69bb28a3cd9ec">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool asServer)</td></tr>
 <tr class="memdesc:a4b6ad344119f0f67c0a69bb28a3cd9ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1NetworkIdentity.html#a4b6ad344119f0f67c0a69bb28a3cd9ec">More...</a><br /></td></tr>
 <tr class="separator:a4b6ad344119f0f67c0a69bb28a3cd9ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adecbd6ec2c83e9ea44083cadba2c6683"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#adecbd6ec2c83e9ea44083cadba2c6683">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool selfRequest, bool asServer)</td></tr>
-<tr class="memdesc:adecbd6ec2c83e9ea44083cadba2c6683"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1NetworkIdentity.html#adecbd6ec2c83e9ea44083cadba2c6683">More...</a><br /></td></tr>
-<tr class="separator:adecbd6ec2c83e9ea44083cadba2c6683"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9c3488f459dd1fe939e163f153ff2da8"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a9c3488f459dd1fe939e163f153ff2da8">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool isSpawner, bool asServer)</td></tr>
+<tr class="memdesc:a9c3488f459dd1fe939e163f153ff2da8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1NetworkIdentity.html#a9c3488f459dd1fe939e163f153ff2da8">More...</a><br /></td></tr>
+<tr class="separator:a9c3488f459dd1fe939e163f153ff2da8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada9d695cb5ec0673a6d0a01f215db7ff"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ada9d695cb5ec0673a6d0a01f215db7ff">OnOwnerDisconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
 <tr class="memdesc:ada9d695cb5ec0673a6d0a01f215db7ff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object disconnects. Server only.   <a href="classPurrNet_1_1NetworkIdentity.html#ada9d695cb5ec0673a6d0a01f215db7ff">More...</a><br /></td></tr>
 <tr class="separator:ada9d695cb5ec0673a6d0a01f215db7ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -895,8 +895,8 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 
 </div>
 </div>
-<a id="adecbd6ec2c83e9ea44083cadba2c6683" name="adecbd6ec2c83e9ea44083cadba2c6683"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adecbd6ec2c83e9ea44083cadba2c6683">&#9670;&#160;</a></span>OnOwnerChanged() <span class="overload">[2/2]</span></h2>
+<a id="a9c3488f459dd1fe939e163f153ff2da8" name="a9c3488f459dd1fe939e163f153ff2da8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9c3488f459dd1fe939e163f153ff2da8">&#9670;&#160;</a></span>OnOwnerChanged() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -920,7 +920,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>selfRequest</em>, </td>
+          <td class="paramname"><em>isSpawner</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -946,7 +946,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   <table class="params">
     <tr><td class="paramname">oldOwner</td><td>The old owner of this object</td></tr>
     <tr><td class="paramname">newOwner</td><td>The new owner of this object</td></tr>
-    <tr><td class="paramname">selfRequest</td><td>If this object was just spawned and the newOwner is the spawner</td></tr>
+    <tr><td class="paramname">isSpawner</td><td>True when this fires as part of the spawn pipeline and the newOwner is the spawner. False for all other ownership changes (including post-spawn GiveOwnership/RemoveOwnership).</td></tr>
     <tr><td class="paramname">asServer</td><td>Is this on the server</td></tr>
   </table>
   </dd>
