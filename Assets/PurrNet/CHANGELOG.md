@@ -1,3 +1,10 @@
+# [1.20.0-beta.155](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.154...v1.20.0-beta.155) (2026-05-11)
+
+
+### Bug Fixes
+
+* observer addition for spawner ([ede2fe3](https://github.com/PurrNet/PurrNet/commit/ede2fe365d9bde7d197d34d918fae46c0f591b89))
+
 # [1.20.0-beta.154](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.153...v1.20.0-beta.154) (2026-05-11)
 
 
