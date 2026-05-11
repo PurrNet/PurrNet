@@ -403,8 +403,7 @@ GameObject:
   m_Component:
   - component: {fileID: 786529247}
   - component: {fileID: 786529246}
-  - component: {fileID: 786529245}
-  - component: {fileID: 786529244}
+  - component: {fileID: 786529248}
   m_Layer: 0
   m_Name: Bootstrap (1)
   m_TagString: Untagged
@@ -412,45 +411,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &786529244
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 786529243}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 94385e3e41871b347a8ef16cf1af1d8d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnerDisconnectDespawnScenario
-  _spawnTimeoutSeconds: 15
-  _readyTimeoutSeconds: 30
-  _disconnectTimeoutSeconds: 30
-  _despawnTimeoutSeconds: 30
-  _reconnectTimeoutSeconds: 30
-  _propagationDelaySeconds: 0.5
-  _stayDisconnectedSeconds: 1
---- !u!114 &786529245
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 786529243}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1f718293445af80a1c2334d5e6f80915, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnerDisconnectScenario
-  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
-  _spawnTimeoutSeconds: 15
-  _readyTimeoutSeconds: 30
-  _disconnectTimeoutSeconds: 30
-  _reconnectTimeoutSeconds: 30
-  _doneTimeoutSeconds: 30
-  _propagationDelaySeconds: 0.5
-  _stayDisconnectedSeconds: 1
 --- !u!114 &786529246
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -483,6 +443,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &786529248
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 786529243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c4b3e7a1f284b29a37e5d92c8b416f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::LateJoinScenario
+  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _disconnectTimeoutSeconds: 30
+  _reconnectTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
+  _stayDisconnectedSeconds: 1
+  _barrierTimeoutSeconds: 60
 --- !u!1 &926210937
 GameObject:
   m_ObjectHideFlags: 0

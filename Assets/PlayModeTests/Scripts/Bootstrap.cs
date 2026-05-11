@@ -297,7 +297,6 @@ public class Bootstrap : Scenario
 #if UNITY_EDITOR
             if (anyResultFailed || anyFailed)
                 Debug.LogError("Some tests failed to run.");
-            Debug.Break();
 #else
             Application.Quit(anyResultFailed || anyFailed ? -1 : 0);
 #endif

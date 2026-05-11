@@ -154,31 +154,39 @@ public class LateJoinScenario : Scenario
         }
 
         // After reconnect, server must record OnObserverAdded for victim again (re-added as observer).
+        // OnOwnerReconnected fires synchronously inside RemoteClientLoadedScene (via
+        // GlobalOwnershipModule.OnPlayerLoadedScene), but the observer-add callback is queued
+        // in HierarchyV2._triggerLateObserverAdded and only flushed in the next frame's
+        // PreNetworkMessages → SendDelayedObserverEvents. Wait for the deferred flush.
         bool serverSawObserverReadd = false;
-        for (int i = 0; i < LateJoinIdentity.ObserverEvents.Count; i++)
-        {
-            var ev = LateJoinIdentity.ObserverEvents[i];
-            // Skip the initial observer-add for the victim (which happened pre-disconnect).
-            if (!ev.added) continue;
-            if (ev.playerId != victimId) continue;
-            // We saw at least one add for victim; now check if there's an add AFTER a remove.
-            // To do this properly we look for: any "added" event for victimId at index > index of first "removed" for victim.
-        }
         int firstRemovedIdx = -1;
         int latestAddedIdx = -1;
-        for (int i = 0; i < LateJoinIdentity.ObserverEvents.Count; i++)
+        try
         {
-            var ev = LateJoinIdentity.ObserverEvents[i];
-            if (ev.playerId != victimId) continue;
-            if (!ev.added && firstRemovedIdx < 0) firstRemovedIdx = i;
-            if (ev.added) latestAddedIdx = i;
+            await UniTaskUtils.WaitWithTimeout(
+                () =>
+                {
+                    firstRemovedIdx = -1;
+                    latestAddedIdx = -1;
+                    for (int i = 0; i < LateJoinIdentity.ObserverEvents.Count; i++)
+                    {
+                        var ev = LateJoinIdentity.ObserverEvents[i];
+                        if (ev.playerId != victimId) continue;
+                        if (!ev.added && firstRemovedIdx < 0) firstRemovedIdx = i;
+                        if (ev.added) latestAddedIdx = i;
+                    }
+                    return firstRemovedIdx >= 0 && latestAddedIdx > firstRemovedIdx;
+                },
+                _reconnectTimeoutSeconds,
+                ctx.cancellationToken);
+            serverSawObserverReadd = true;
         }
-        if (firstRemovedIdx < 0 || latestAddedIdx <= firstRemovedIdx)
+        catch (TimeoutException)
+        {
             failures.Add(
                 $"server did not record OnObserverAdded for victim {victimId} after their reconnect " +
                 $"(removedIdx={firstRemovedIdx}, latestAddedIdx={latestAddedIdx})");
-        else
-            serverSawObserverReadd = true;
+        }
 
         // Tell clients we're done so the bystanders/victim can finalize.
         inst.BroadcastRejoinPhase();
