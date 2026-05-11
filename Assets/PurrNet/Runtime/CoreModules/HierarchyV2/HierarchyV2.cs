@@ -423,12 +423,6 @@ namespace PurrNet.Modules
         private void OnPlayerReceivedID(PlayerID player)
         {
             _isPlayerReady = true;
-
-            if (!_asServer && _manager.TryGetModule<HierarchyFactory>(true, out var factory) &&
-                factory.TryGetHierarchy(_sceneId, out var other))
-            {
-                other.CatchupClient(player);
-            }
         }
 
         private void OnParentChangedPacket(PlayerID player, ChangeParentPacket data, bool asserver)
@@ -1043,6 +1037,9 @@ namespace PurrNet.Modules
 
             if (scene != _sceneId)
                 return;
+
+            if (IsServerHost() && _manager.localPlayer == player)
+                CatchupClient(player);
 
             var roots = HashSetPool<NetworkIdentity>.Instantiate();
             var count = _spawnedIdentities.Count;
