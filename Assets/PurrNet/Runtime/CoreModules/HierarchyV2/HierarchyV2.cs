@@ -908,7 +908,7 @@ namespace PurrNet.Modules
                 int rootPrefabId = data.prototype.framework[0].pid.prefabId;
                 if (_manager.prefabProvider.TryGetPrefabData(rootPrefabId, out var prefabData) && !prefabData.prefab)
                 {
-                    ProcessSpawnWhenLoadedAsync(player, data, flushData, asyncProvider, rootPrefabId);
+                    ProcessSpawnWhenLoadedAsync(data, flushData, asyncProvider, rootPrefabId);
                     return;
                 }
             }
@@ -916,7 +916,7 @@ namespace PurrNet.Modules
             CompleteSpawn(data, flushData);
         }
 
-        private async void ProcessSpawnWhenLoadedAsync(PlayerID player, SpawnPacket data, bool flushData,
+        private async void ProcessSpawnWhenLoadedAsync(SpawnPacket data, bool flushData,
             IAsyncPrefabProvider asyncProvider, int rootPrefabId)
         {
             try
