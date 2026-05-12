@@ -17,6 +17,96 @@ namespace PurrNet.Editor
         private const string ManifestPath = "Packages/manifest.json";
         private const string LockFilePath = "Packages/packages-lock.json";
 
+        // The package-manager window re-queries install state on every OnGUI repaint — once per
+        // package row, plus the "Update All" count — and each query parsed manifest.json /
+        // packages-lock.json from disk. Parsing a ~500-line JSON document dozens of times per frame
+        // was the bulk of the window's CPU/GC cost, so the parsed forms are cached and invalidated
+        // by file modification time (and explicitly after our own writes).
+        private static JObject _cachedManifest;
+        private static DateTime _cachedManifestMtime;
+        private static JObject _cachedLockFile;
+        private static DateTime _cachedLockFileMtime;
+
+        private static JObject ReadJsonCached(string path, ref JObject cache, ref DateTime cacheMtime)
+        {
+            if (!File.Exists(path))
+            {
+                cache = null;
+                return null;
+            }
+
+            var mtime = File.GetLastWriteTimeUtc(path);
+            if (cache != null && mtime == cacheMtime)
+                return cache;
+
+            try
+            {
+                cache = JObject.Parse(File.ReadAllText(path));
+                cacheMtime = mtime;
+            }
+            catch
+            {
+                cache = null;
+            }
+            return cache;
+        }
+
+        private static JObject GetManifestJson() => ReadJsonCached(ManifestPath, ref _cachedManifest, ref _cachedManifestMtime);
+        private static JObject GetLockFileJson() => ReadJsonCached(LockFilePath, ref _cachedLockFile, ref _cachedLockFileMtime);
+
+        private static void InvalidateFileCaches()
+        {
+            _cachedManifest = null;
+            _cachedLockFile = null;
+        }
+
+        /// <summary>
+        /// Snapshot of Packages/manifest.json and packages-lock.json taken before an install/remove
+        /// touches them. If the operation throws partway (download failure, a locked PackageCache
+        /// folder Unity can't delete during resolve, a failed file sync, ...) the snapshot is restored
+        /// so the project is never left without the package it had before.
+        /// </summary>
+        private readonly struct ManifestBackup
+        {
+            private readonly string _manifest;
+            private readonly bool _hadManifest;
+            private readonly string _lock;
+            private readonly bool _hadLock;
+
+            private ManifestBackup(string manifest, bool hadManifest, string lockFile, bool hadLock)
+            {
+                _manifest = manifest;
+                _hadManifest = hadManifest;
+                _lock = lockFile;
+                _hadLock = hadLock;
+            }
+
+            public static ManifestBackup Capture()
+            {
+                bool hadManifest = File.Exists(ManifestPath);
+                bool hadLock = File.Exists(LockFilePath);
+                return new ManifestBackup(
+                    hadManifest ? File.ReadAllText(ManifestPath) : null, hadManifest,
+                    hadLock ? File.ReadAllText(LockFilePath) : null, hadLock);
+            }
+
+            public void Restore()
+            {
+                try
+                {
+                    if (_hadManifest && _manifest != null && File.ReadAllText(ManifestPath) != _manifest)
+                        File.WriteAllText(ManifestPath, _manifest);
+                    if (_hadLock && _lock != null && (!File.Exists(LockFilePath) || File.ReadAllText(LockFilePath) != _lock))
+                        File.WriteAllText(LockFilePath, _lock);
+                    InvalidateFileCaches();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[PurrNet] Failed to restore manifest after a failed package operation: {e.Message}");
+                }
+            }
+        }
+
         public static bool IsInstalled(PackageInfo package)
         {
             return FindInstalledEntry(package) != null;
@@ -31,10 +121,17 @@ namespace PurrNet.Editor
             var value = match.Value.value;
             var key = match.Value.key;
 
-            // Git URL entries — try to resolve the actual version
+            // Git URL entries — prefer the version tag baked into the manifest URL (#vX.Y.Z).
+            // It's written synchronously by Install() and is the source of truth, unlike
+            // Library/PackageCache which Unity only updates after an async resolve — reading
+            // it right after a (batch) update yields a stale @oldhash folder.
             if (IsGitUrl(value))
             {
-                var resolved = GetResolvedPackageVersion(key);
+                var tagVersion = GetVersionFromGitUrlRef(value);
+                if (tagVersion != null)
+                    return tagVersion;
+
+                var resolved = GetResolvedPackageVersion(key, GetInstalledCommitHash(package));
                 return resolved ?? "git";
             }
 
@@ -71,7 +168,8 @@ namespace PurrNet.Editor
         /// </summary>
         public static string GetInstalledCommitHash(PackageInfo package)
         {
-            if (!File.Exists(LockFilePath))
+            var lockFile = GetLockFileJson();
+            if (lockFile == null)
                 return null;
 
             // Use the actual installed key, which may differ from apiName
@@ -81,7 +179,6 @@ namespace PurrNet.Editor
 
             try
             {
-                var lockFile = JObject.Parse(File.ReadAllText(LockFilePath));
                 var deps = lockFile["dependencies"] as JObject;
                 var entry = deps?[lookupName] as JObject;
                 if (entry == null)
@@ -123,21 +220,10 @@ namespace PurrNet.Editor
                 }
             }
 
-            if (!File.Exists(ManifestPath))
+            var manifest = GetManifestJson();
+            var deps = manifest?["dependencies"] as JObject;
+            if (deps == null)
                 return null;
-
-            JObject deps;
-            try
-            {
-                var manifest = JObject.Parse(File.ReadAllText(ManifestPath));
-                deps = manifest["dependencies"] as JObject;
-                if (deps == null)
-                    return null;
-            }
-            catch
-            {
-                return null;
-            }
 
             // Try direct lookup with API-provided name
             var directEntry = deps[apiName]?.ToString();
@@ -206,21 +292,10 @@ namespace PurrNet.Editor
 
             // Unity also creates this folder for tgz/file: installs.
             // Only consider it embedded if there's no file: reference in the manifest.
-            if (!File.Exists(ManifestPath))
-                return true;
-
-            try
-            {
-                var manifest = JObject.Parse(File.ReadAllText(ManifestPath));
-                var deps = manifest["dependencies"] as JObject;
-                var entry = deps?[upmName]?.ToString();
-                if (entry != null && (entry.StartsWith("file:") || IsGitUrl(entry)))
-                    return false;
-            }
-            catch
-            {
-                // ignored
-            }
+            var deps = GetManifestJson()?["dependencies"] as JObject;
+            var entry = deps?[upmName]?.ToString();
+            if (entry != null && (entry.StartsWith("file:") || IsGitUrl(entry)))
+                return false;
 
             return true;
         }
@@ -440,6 +515,10 @@ namespace PurrNet.Editor
 
         public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
+            var backup = ManifestBackup.Capture();
+            string installedFolder = null;
+            bool installedFolderExisted = false;
+
             try
             {
                 // Git+tag fast path: no download needed, just set manifest to git URL with tag
@@ -542,6 +621,9 @@ namespace PurrNet.Editor
                     EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Removing embedded package...", 0.7f);
                 }
 
+                installedFolder = Path.Combine("Packages", upmName);
+                installedFolderExisted = Directory.Exists(installedFolder);
+
                 InstallFilesSynced(package, upmName, tempExtractDir);
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
@@ -566,6 +648,20 @@ namespace PurrNet.Editor
             {
                 Debug.LogError($"[PurrNet] Install failed: {e}");
                 EditorUtility.ClearProgressBar();
+
+                // Roll back: a partial install must not leave the project worse off than before.
+                // Remove any half-written embedded folder we created, then restore manifest/lock.
+                if (installedFolder != null && !installedFolderExisted && Directory.Exists(installedFolder))
+                    SafeRemoveDirectory(installedFolder);
+                backup.Restore();
+
+                if (resolve)
+                {
+                    PurrPackageManagerCache.Invalidate();
+                    try { UnityEditor.PackageManager.Client.Resolve(); } catch { /* lock still held — picked up on next reload */ }
+                    AssetDatabase.Refresh();
+                }
+
                 return Result<bool>.Fail(e.Message);
             }
         }
@@ -599,6 +695,7 @@ namespace PurrNet.Editor
 
         public static void InstallExternal(PackageInfo package, string gitUrl, bool resolve = true)
         {
+            var backup = ManifestBackup.Capture();
             try
             {
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
@@ -621,6 +718,14 @@ namespace PurrNet.Editor
             {
                 EditorUtility.ClearProgressBar();
                 Debug.LogError($"[PurrNet] Failed to install external package: {e.Message}");
+
+                backup.Restore();
+                if (resolve)
+                {
+                    PurrPackageManagerCache.Invalidate();
+                    try { UnityEditor.PackageManager.Client.Resolve(); } catch { /* lock still held — picked up on next reload */ }
+                    AssetDatabase.Refresh();
+                }
             }
         }
 
@@ -718,9 +823,32 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Reads the actual semver version from the resolved package in Library/PackageCache.
+        /// Extracts a semver version from the #fragment of a git URL (e.g. "...#v1.2.3" -> "1.2.3").
+        /// Returns null when the ref is a branch name, commit hash, or otherwise not a version tag.
         /// </summary>
-        private static string GetResolvedPackageVersion(string packageName)
+        private static string GetVersionFromGitUrlRef(string gitUrl)
+        {
+            if (string.IsNullOrEmpty(gitUrl))
+                return null;
+            var hashIdx = gitUrl.IndexOf('#');
+            if (hashIdx < 0 || hashIdx == gitUrl.Length - 1)
+                return null;
+
+            var refName = gitUrl.Substring(hashIdx + 1);
+            // Tags are conventionally "v{semver}"; tolerate a bare semver too.
+            if (refName.Length > 1 && (refName[0] == 'v' || refName[0] == 'V') && char.IsDigit(refName[1]))
+                refName = refName.Substring(1);
+
+            // Looks like a version only if it starts with a digit and contains a dot.
+            return refName.Length > 0 && char.IsDigit(refName[0]) && refName.Contains('.') ? refName : null;
+        }
+
+        /// <summary>
+        /// Reads the actual semver version from the resolved package in Library/PackageCache.
+        /// When several "<name>@<hash>" folders exist (a stale one lingering after a re-resolve),
+        /// prefers the one matching <paramref name="preferredHash"/>, then the most recently written.
+        /// </summary>
+        private static string GetResolvedPackageVersion(string packageName, string preferredHash = null)
         {
             const string cacheDir = "Library/PackageCache";
             if (!Directory.Exists(cacheDir))
@@ -732,7 +860,33 @@ namespace PurrNet.Editor
                 if (dirs.Length == 0)
                     return null;
 
-                var pkgJsonPath = Path.Combine(dirs[0], "package.json");
+                string chosen = null;
+                if (!string.IsNullOrEmpty(preferredHash))
+                {
+                    foreach (var d in dirs)
+                    {
+                        var at = Path.GetFileName(d);
+                        var atIdx = at.IndexOf('@');
+                        if (atIdx >= 0 && string.Equals(at.Substring(atIdx + 1), preferredHash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            chosen = d;
+                            break;
+                        }
+                    }
+                }
+
+                if (chosen == null)
+                {
+                    chosen = dirs[0];
+                    var newest = Directory.GetLastWriteTimeUtc(chosen);
+                    for (int i = 1; i < dirs.Length; i++)
+                    {
+                        var t = Directory.GetLastWriteTimeUtc(dirs[i]);
+                        if (t > newest) { newest = t; chosen = dirs[i]; }
+                    }
+                }
+
+                var pkgJsonPath = Path.Combine(chosen, "package.json");
                 if (!File.Exists(pkgJsonPath))
                     return null;
 
@@ -758,10 +912,12 @@ namespace PurrNet.Editor
                 }
                 deps[packageName] = value;
                 File.WriteAllText(ManifestPath, manifest.ToString(Formatting.Indented));
+                InvalidateFileCaches();
             }
             catch (Exception e)
             {
                 Debug.LogError($"[PurrNet] Failed to update manifest.json: {e.Message}");
+                throw;
             }
         }
 
@@ -775,11 +931,13 @@ namespace PurrNet.Editor
                 {
                     deps.Remove(packageName);
                     File.WriteAllText(ManifestPath, manifest.ToString(Formatting.Indented));
+                    InvalidateFileCaches();
                 }
             }
             catch (Exception e)
             {
                 Debug.LogError($"[PurrNet] Failed to update manifest.json: {e.Message}");
+                throw;
             }
         }
 

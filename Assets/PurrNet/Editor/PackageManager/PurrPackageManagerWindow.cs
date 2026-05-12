@@ -20,8 +20,14 @@ namespace PurrNet.Editor
         private bool _isDraggingSplitter;
         private Rect _cachedSplitterRect;
         private int _prevKeyboardControl;
-        private int _releasePopupIndex;
-        private int _devPopupIndex;
+        // -1 = "follow the installed version". Once the user picks something else in the
+        // dropdown the *Touched flag latches, so re-renders (and async installed-version
+        // refreshes) stop overriding their choice. Both reset whenever the selected package
+        // changes or an install completes.
+        private int _releasePopupIndex = -1;
+        private int _devPopupIndex = -1;
+        private bool _releasePopupTouched;
+        private bool _devPopupTouched;
         private bool _isUpdatingAll;
         private int _updatableCount;
 
@@ -404,7 +410,8 @@ namespace PurrNet.Editor
                 for (int i = startIndex; i < startIndex + count; i++)
                 {
                     var itemRect = new Rect(0, y, viewRect.width, ListItemHeight);
-                    DrawListItem(_sortedPackages[i].pkg, i, itemRect);
+                    var entry = _sortedPackages[i];
+                    DrawListItem(entry.pkg, entry.release, entry.dev, i, itemRect);
                     y += ListItemHeight;
                 }
 
@@ -420,15 +427,14 @@ namespace PurrNet.Editor
             GUI.EndScrollView();
         }
 
-        private void DrawListItem(PackageInfo package, int index, Rect itemRect)
+        private void DrawListItem(PackageInfo package, VersionInfo release, VersionInfo dev, int index, Rect itemRect)
         {
             bool isSelected = index == _selectedIndex;
             bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
             bool isGitInstall = isInstalled && PurrPackageManagerInstaller.IsInstalledViaGit(package);
             var installedVersion = isInstalled ? PurrPackageManagerInstaller.GetInstalledVersion(package) : null;
-            bool hasUpdate = isInstalled && installedVersion != null
-                             && !string.IsNullOrEmpty(package.LatestVersion)
-                             && installedVersion != package.LatestVersion;
+            var updateTarget = isInstalled ? GetVersionUpdateTarget(package, installedVersion, release, dev) : null;
+            bool hasUpdate = updateTarget != null;
 
             // Hover detection
             bool isHover = itemRect.Contains(Event.current.mousePosition);
@@ -471,7 +477,7 @@ namespace PurrNet.Editor
             else if (package.IsExternal && isGitInstall)
                 info = hasGitUpdate ? "update" : "installed";
             else if (hasUpdate)
-                info = $"v{installedVersion} \u2192 v{package.LatestVersion}";
+                info = $"v{installedVersion} \u2192 v{updateTarget.Version}";
             else if (isInstalled && installedVersion != null)
                 info = $"v{installedVersion}";
             else if (!string.IsNullOrEmpty(package.LatestVersion))
@@ -527,6 +533,8 @@ namespace PurrNet.Editor
                 _selectedIndex = index;
                 _releasePopupIndex = -1;
                 _devPopupIndex = -1;
+                _releasePopupTouched = false;
+                _devPopupTouched = false;
                 GUI.FocusControl(null);
                 Event.current.Use();
                 Repaint();
@@ -569,6 +577,8 @@ namespace PurrNet.Editor
                 _selectedIndex = StudiosEntryIndex;
                 _releasePopupIndex = -1;
                 _devPopupIndex = -1;
+                _releasePopupTouched = false;
+                _devPopupTouched = false;
                 GUI.FocusControl(null);
                 Event.current.Use();
                 Repaint();
@@ -691,17 +701,18 @@ namespace PurrNet.Editor
             var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(package);
             bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
             bool isGitInstall = isInstalled && PurrPackageManagerInstaller.IsInstalledViaGit(package);
-            bool hasUpdate = isInstalled && installedVersion != null
-                             && !string.IsNullOrEmpty(package.LatestVersion)
-                             && installedVersion != package.LatestVersion;
+            var updateTarget = isInstalled ? GetVersionUpdateTarget(package, installedVersion, release, dev) : null;
+            bool hasUpdate = updateTarget != null;
 
             // Git update detection — compare lock file hash against both channel commits
             // Only used for IsExternal packages; non-external uses version comparison.
             string gitInstalledHash = null;
+            string gitInstalledChannel = null;
             bool hasGitUpdate = false;
             if (package.IsExternal && isGitInstall)
             {
                 gitInstalledHash = PurrPackageManagerInstaller.GetInstalledCommitHash(package);
+                gitInstalledChannel = PurrPackageManagerInstaller.GetInstalledGitChannel(package);
                 hasGitUpdate = HasGitUpdate(package, gitInstalledHash);
             }
 
@@ -854,10 +865,10 @@ namespace PurrNet.Editor
                 // External packages: git URL install buttons
                 EditorGUILayout.BeginHorizontal();
                 DrawExternalInstallButton(package, "Release", package.GitInstallUrlRelease,
-                    isInstalled, gitInstalledHash, package.LatestCommitRelease, _installedColor);
+                    isInstalled, gitInstalledHash, gitInstalledChannel, package.LatestCommitRelease, _installedColor);
                 GUILayout.Space(4);
                 DrawExternalInstallButton(package, "Dev", package.GitInstallUrlDev,
-                    isInstalled, gitInstalledHash, package.LatestCommitDev, _accentColor);
+                    isInstalled, gitInstalledHash, gitInstalledChannel, package.LatestCommitDev, _accentColor);
                 EditorGUILayout.EndHorizontal();
             }
             else
@@ -878,21 +889,24 @@ namespace PurrNet.Editor
 
                     foreach (var v in package.Versions)
                     {
+                        // Always keep the installed version in its channel list, even past
+                        // the 20-item cap — otherwise the dropdown can't select it.
+                        bool isInstalledVersion = isInstalled && v.Version == installedVersion;
                         if (string.Equals(v.Channel, "release", StringComparison.OrdinalIgnoreCase))
                         {
-                            if (releaseVersions.Count < 20) releaseVersions.Add(v);
+                            if (releaseVersions.Count < 20 || isInstalledVersion) releaseVersions.Add(v);
                         }
                         else
                         {
-                            if (devVersions.Count < 20) devVersions.Add(v);
+                            if (devVersions.Count < 20 || isInstalledVersion) devVersions.Add(v);
                         }
                     }
 
                     EditorGUILayout.Space(8);
-                    DrawVersionDropdown("Release", releaseVersions, ref _releasePopupIndex,
+                    DrawVersionDropdown("Release", releaseVersions, ref _releasePopupIndex, ref _releasePopupTouched,
                         isInstalled, installedVersion, package, _installedColor);
                     EditorGUILayout.Space(4);
-                    DrawVersionDropdown("Dev", devVersions, ref _devPopupIndex,
+                    DrawVersionDropdown("Dev", devVersions, ref _devPopupIndex, ref _devPopupTouched,
                         isInstalled, installedVersion, package, _accentColor);
                 }
             }
@@ -974,7 +988,8 @@ namespace PurrNet.Editor
         }
 
         private void DrawVersionDropdown(string channelLabel, List<VersionInfo> versions,
-            ref int popupIndex, bool isInstalled, string installedVersion, PackageInfo package, Color color)
+            ref int popupIndex, ref bool popupTouched, bool isInstalled, string installedVersion,
+            PackageInfo package, Color color)
         {
             if (versions.Count == 0)
                 return;
@@ -990,8 +1005,9 @@ namespace PurrNet.Editor
                     labels[i] += " (installed)";
             }
 
-            // Default to the installed version if uninitialized
-            if (popupIndex < 0 && isInstalled && installedVersion != null)
+            // Track the installed version until the user explicitly picks something else.
+            // (popupTouched latches in that case so async installed-version refreshes don't snap it back.)
+            if (!popupTouched && isInstalled && installedVersion != null)
             {
                 for (int i = 0; i < versions.Count; i++)
                 {
@@ -1003,7 +1019,11 @@ namespace PurrNet.Editor
                 }
             }
             popupIndex = Mathf.Clamp(popupIndex, 0, labels.Length - 1);
-            popupIndex = EditorGUILayout.Popup(popupIndex, labels, GUILayout.Height(20));
+
+            int newIndex = EditorGUILayout.Popup(popupIndex, labels, GUILayout.Height(20));
+            if (newIndex != popupIndex)
+                popupTouched = true;
+            popupIndex = newIndex;
 
             var selected = versions[popupIndex];
             bool isSelectedInstalled = isInstalled && installedVersion == selected.Version;
@@ -1054,7 +1074,7 @@ namespace PurrNet.Editor
         }
 
         private void DrawExternalInstallButton(PackageInfo package, string channelLabel, string gitUrl,
-            bool isInstalled, string installedHash, string latestCommit, Color buttonColor)
+            bool isInstalled, string installedHash, string installedChannel, string latestCommit, Color buttonColor)
         {
             if (string.IsNullOrEmpty(gitUrl))
             {
@@ -1064,33 +1084,49 @@ namespace PurrNet.Editor
                 return;
             }
 
-            if (!isInstalled)
+            // Is this the channel/URL the package is currently installed from?
+            bool isThisChannel = isInstalled
+                && string.Equals(installedChannel, channelLabel, StringComparison.OrdinalIgnoreCase);
+
+            if (isThisChannel)
             {
-                GUI.color = buttonColor;
-                if (GUILayout.Button($"Install {channelLabel}", GUILayout.Height(26)))
-                    PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
-                GUI.color = Color.white;
+                bool hasNewerCommit = !string.IsNullOrEmpty(latestCommit)
+                                      && !string.IsNullOrEmpty(installedHash)
+                                      && !HashesMatch(installedHash, latestCommit);
+                if (hasNewerCommit)
+                {
+                    GUI.color = _updateColor;
+                    if (GUILayout.Button($"Update {channelLabel}", GUILayout.Height(26)))
+                        PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                    GUI.color = Color.white;
+                }
+                else
+                {
+                    GUI.enabled = false;
+                    GUILayout.Button($"{channelLabel} (installed)", GUILayout.Height(26));
+                    GUI.enabled = true;
+                }
+                return;
             }
-            else if (!string.IsNullOrEmpty(latestCommit)
-                && !string.IsNullOrEmpty(installedHash)
-                && installedHash == latestCommit)
-            {
-                GUI.enabled = false;
-                GUILayout.Button($"{channelLabel} (up to date)", GUILayout.Height(26));
-                GUI.enabled = true;
-            }
-            else
-            {
-                GUI.color = buttonColor;
-                if (GUILayout.Button($"Install {channelLabel}", GUILayout.Height(26)))
-                    PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
-                GUI.color = Color.white;
-            }
+
+            // Not installed at all, or installed from the other channel.
+            GUI.color = buttonColor;
+            if (GUILayout.Button(isInstalled ? $"Switch to {channelLabel}" : $"Install {channelLabel}", GUILayout.Height(26)))
+                PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+            GUI.color = Color.white;
         }
+
+        // Markdown→rich-text is regex-heavy and the detail panel re-renders every OnGUI repaint;
+        // the source notes are immutable, so memoize the rendered output.
+        private static readonly Dictionary<string, string> _renderedNotesCache = new();
 
         private void DrawReleaseNotesText(string notes)
         {
-            var rendered = MarkdownToRichText(notes);
+            if (!_renderedNotesCache.TryGetValue(notes ?? "", out var rendered))
+            {
+                rendered = MarkdownToRichText(notes);
+                _renderedNotesCache[notes ?? ""] = rendered;
+            }
             var content = new GUIContent(rendered);
             var width = EditorGUIUtility.currentViewWidth - 40;
             var height = _releaseNotesStyle.CalcHeight(content, width);
@@ -1199,6 +1235,24 @@ namespace PurrNet.Editor
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// The version this package would update to given what's installed: the latest version in the
+        /// channel it was installed from. A release install is NOT "outdated" just because a newer dev
+        /// preview exists, so we only offer a dev update when the installed version is itself on dev.
+        /// Returns null when not installed via a known version, or already up to date.
+        /// </summary>
+        private static VersionInfo GetVersionUpdateTarget(PackageInfo package, string installedVersion,
+            VersionInfo release, VersionInfo dev)
+        {
+            if (string.IsNullOrEmpty(installedVersion) || installedVersion == "git")
+                return null;
+
+            var target = IsInstalledOnChannel(package, "dev", installedVersion) ? dev : (release ?? dev);
+            if (target == null || target.Version == installedVersion)
+                return null;
+            return target;
         }
 
         // Treats empty server hashes as "no info" (not a mismatch) and matches by case-insensitive
@@ -1347,15 +1401,8 @@ namespace PurrNet.Editor
                 }
                 else
                 {
-                    if (installedVersion != null
-                        && !string.IsNullOrEmpty(pkg.LatestVersion)
-                        && installedVersion != pkg.LatestVersion)
-                    {
-                        VersionInfo target = IsInstalledOnChannel(pkg, "dev", installedVersion)
-                            ? dev : (release ?? dev);
-                        if (target != null && target.Version != installedVersion)
-                            count++;
-                    }
+                    if (GetVersionUpdateTarget(pkg, installedVersion, release, dev) != null)
+                        count++;
                 }
             }
 
@@ -1389,15 +1436,9 @@ namespace PurrNet.Editor
                 }
                 else
                 {
-                    if (installedVersion != null
-                        && !string.IsNullOrEmpty(pkg.LatestVersion)
-                        && installedVersion != pkg.LatestVersion)
-                    {
-                        VersionInfo target = IsInstalledOnChannel(pkg, "dev", installedVersion)
-                            ? dev : (release ?? dev);
-                        if (target != null && target.Version != installedVersion)
-                            updates.Add((pkg, target, null));
-                    }
+                    var target = GetVersionUpdateTarget(pkg, installedVersion, release, dev);
+                    if (target != null)
+                        updates.Add((pkg, target, null));
                 }
             }
 
@@ -1549,6 +1590,8 @@ namespace PurrNet.Editor
 
                 _releasePopupIndex = -1;
                 _devPopupIndex = -1;
+                _releasePopupTouched = false;
+                _devPopupTouched = false;
                 Repaint();
             }
             catch (Exception e)
