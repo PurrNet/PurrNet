@@ -594,6 +594,7 @@ namespace PurrNet.Modules
                     worldPositionStays = worldPositionStays
                 };
 
+                _manager.FlushBatchedRPCs();
                 if (_asServer)
                     _playersManager.Send(identity.observers, packet);
                 else _playersManager.SendToServer(packet);
@@ -608,6 +609,7 @@ namespace PurrNet.Modules
                     _visibility.RefreshVisibilityForGameObject(player, trs, closestNid);
                 }
 
+                _manager.FlushBatchedRPCs();
                 FlushSpawnPackets();
             }
         }
@@ -1221,7 +1223,10 @@ namespace PurrNet.Modules
                 ListPool<NetworkIdentity>.Destroy(children);
 
                 if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
+                {
+                    _manager.FlushBatchedRPCs();
                     SendDespawnPacket(player, identity, true);
+                }
             }
         }
 
