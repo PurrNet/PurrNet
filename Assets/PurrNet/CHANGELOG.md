@@ -1,3 +1,10 @@
+# [1.20.0-beta.157](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.156...v1.20.0-beta.157) (2026-05-12)
+
+
+### Bug Fixes
+
+* parent change flush rpcs before sending packet ([432def8](https://github.com/PurrNet/PurrNet/commit/432def8b0657118a99f157c99217b76516d82613))
+
 # [1.20.0-beta.156](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.155...v1.20.0-beta.156) (2026-05-12)
 
 
