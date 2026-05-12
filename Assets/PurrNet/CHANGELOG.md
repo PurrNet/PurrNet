@@ -1,3 +1,10 @@
+# [1.20.0-beta.158](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.157...v1.20.0-beta.158) (2026-05-12)
+
+
+### Bug Fixes
+
+* update purrnet packages with bug fixes and performance improvements ([43cce1a](https://github.com/PurrNet/PurrNet/commit/43cce1a374d7bd39c448272cb997d8508f8107ac))
+
 # [1.20.0-beta.157](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.156...v1.20.0-beta.157) (2026-05-12)
 
 
