@@ -1,3 +1,10 @@
+# [1.20.0-beta.156](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.155...v1.20.0-beta.156) (2026-05-12)
+
+
+### Bug Fixes
+
+* NetworkRigidbody only sync details if there is actually a rigidbody component ([f9ebafe](https://github.com/PurrNet/PurrNet/commit/f9ebafeb9d38fd7740fe91052cc12fdeac0d8bd5))
+
 # [1.20.0-beta.155](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.154...v1.20.0-beta.155) (2026-05-11)
 
 
