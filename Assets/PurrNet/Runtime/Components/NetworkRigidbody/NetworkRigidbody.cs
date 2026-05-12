@@ -192,6 +192,9 @@ namespace PurrNet
 
         protected override void OnObserverAdded(PlayerID player)
         {
+            if (!_rigidbody)
+                return;
+
             if (player == localPlayer)
                 return;
 
