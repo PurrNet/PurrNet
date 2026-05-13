@@ -1,3 +1,10 @@
+# [1.20.0-beta.159](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.158...v1.20.0-beta.159) (2026-05-13)
+
+
+### Bug Fixes
+
+* Improved performance of UnifiedAssetPostprocessor ([6454bec](https://github.com/PurrNet/PurrNet/commit/6454becf5b7d5dd489db38e2982cdbe047ec972f))
+
 # [1.20.0-beta.158](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.157...v1.20.0-beta.158) (2026-05-12)
 
 
