@@ -450,11 +450,11 @@ namespace PurrNet.Modules
                 return;
             }
 
-            bool hadOwnerPreviously = nid.hasOwner;
+            bool hadOwnerPreviously = nid.HasOwner(_asServer);
 
             switch (hadOwnerPreviously)
             {
-                case true when nid.owner == player:
+                case true when nid.GetOwner(_asServer) == player:
                 {
                     return;
                 }
@@ -492,7 +492,7 @@ namespace PurrNet.Modules
 
                 if (!identity.id.HasValue) continue;
 
-                if (identity.hasOwner)
+                if (identity.HasOwner(_asServer))
                 {
                     if (!shouldOverride)
                         continue;
@@ -575,7 +575,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            if (!id.owner.HasValue)
+            if (!id.HasOwner(_asServer))
                 return;
 
             if (!id.HasTransferOwnershipAuthority(_asServer))
@@ -601,7 +601,7 @@ namespace PurrNet.Modules
                 var identity = children[i];
 
                 if (!identity.id.HasValue) continue;
-                if (!identity.hasOwner) continue;
+                if (!identity.HasOwner(_asServer)) continue;
                 if (!identity.HasTransferOwnershipAuthority(_asServer))
                 {
                     if (!supressErrorMessages)
@@ -654,7 +654,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            if (!id.owner.HasValue)
+            if (!id.HasOwner(_asServer))
                 return;
 
             if (!id.HasTransferOwnershipAuthority(_asServer))
@@ -673,7 +673,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            var originalOwner = id.owner.Value;
+            var originalOwner = id.GetOwner(_asServer).Value;
             var children = ListPool<NetworkIdentity>.Instantiate();
             GetAllChildrenOrSelf(id, children, propagateToChildren);
 
@@ -885,7 +885,7 @@ namespace PurrNet.Modules
                 return false;
             }
 
-            if (identity.hasOwner)
+            if (identity.HasOwner(_asServer))
             {
                 if (!identity.HasTransferOwnershipAuthority(actor, !_asServer))
                 {

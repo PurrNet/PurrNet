@@ -614,6 +614,8 @@ namespace PurrNet
 
         internal PlayerID? GetOwner(bool asServer) => asServer ? internalOwnerServer : internalOwnerClient;
 
+        internal bool HasOwner(bool asServer) => GetOwner(asServer).HasValue;
+
         [UsedImplicitly]
         public bool IsSpawned(bool asServer) => asServer ? _isSpawnedServer : _isSpawnedClient;
 
