@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: PurrNet.Authentication.AuthenticationBehaviour&lt; T &gt; Class Template Reference</title>
+<title>PurrNet: PurrNet.Authentication.AuthenticationBehaviour&lt; TRequest, TDenial &gt; Class Template Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -93,28 +93,42 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Authentication_1_1Auth
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
+<a href="#events">Events</a> &#124;
 <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">PurrNet.Authentication.AuthenticationBehaviour&lt; T &gt; Class Template Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div></div>
+  <div class="headertitle"><div class="title">PurrNet.Authentication.AuthenticationBehaviour&lt; TRequest, TDenial &gt; Class Template Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p><a class="el" href="namespacePurrNet_1_1Authentication.html">Authentication</a> behaviour with a typed denial payload. On the server, returning <code>success = false</code> from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193" title="Once the client payload is received, this method is called to validate the payload....">ValidateClientPayload</a> ships the supplied <em>TDenial</em>  to the client (via <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html" title="Server -&gt; client packet describing why a connection is about to be closed. The client decodes reason ...">AuthenticationDenialPacket</a>) before the socket closes. On the client, <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af8b155dc1fcfc36275f7ebf32e19900e" title="Client-side event fired when the server has rejected the connection. The kind tells you which built-i...">onDeniedByServer</a> fires with the decoded reason so user UI can react.   
+ <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#details">More...</a></p>
 <div class="dynheader">
-Inheritance diagram for PurrNet.Authentication.AuthenticationBehaviour&lt; T &gt;:</div>
+Inheritance diagram for PurrNet.Authentication.AuthenticationBehaviour&lt; TRequest, TDenial &gt;:</div>
 <div class="dyncontent">
  <div class="center">
-  <img src="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.png" usemap="#PurrNet.Authentication.AuthenticationBehaviour_3C_20T_20_3E_map" alt=""/>
-  <map id="PurrNet.Authentication.AuthenticationBehaviour_3C_20T_20_3E_map" name="PurrNet.Authentication.AuthenticationBehaviour_3C_20T_20_3E_map">
-<area href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html" alt="PurrNet.Authentication.AuthenticationLayer" shape="rect" coords="0,56,313,80"/>
+  <img src="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.png" usemap="#PurrNet.Authentication.AuthenticationBehaviour_3C_20TRequest_2C_20TDenial_20_3E_map" alt=""/>
+  <map id="PurrNet.Authentication.AuthenticationBehaviour_3C_20TRequest_2C_20TDenial_20_3E_map" name="PurrNet.Authentication.AuthenticationBehaviour_3C_20TRequest_2C_20TDenial_20_3E_map">
+<area href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html" alt="PurrNet.Authentication.AuthenticationLayer" shape="rect" coords="0,56,409,80"/>
+<area href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html" alt="PurrNet.Authentication.AuthenticationLayer" shape="rect" coords="419,56,828,80"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a790e765e99b0f64eb8f79d9a8a78c8f8"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a790e765e99b0f64eb8f79d9a8a78c8f8">Subscribe</a> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
-<tr class="separator:a790e765e99b0f64eb8f79d9a8a78c8f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a66ad314ccd2bcede83e75d4c16e875f2"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a66ad314ccd2bcede83e75d4c16e875f2">Unsubscribe</a> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
-<tr class="separator:a66ad314ccd2bcede83e75d4c16e875f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afa39144b3a2b42465758b8046dd79498"><td class="memItemLeft" align="right" valign="top">override async void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#afa39144b3a2b42465758b8046dd79498">SendClientPayload</a> (<a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1CookiesModule.html">CookiesModule</a> cookies)</td></tr>
-<tr class="separator:afa39144b3a2b42465758b8046dd79498"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac87f7b16d765df0df3ad4fc87ec2a3fc"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ac87f7b16d765df0df3ad4fc87ec2a3fc">Subscribe</a> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
+<tr class="separator:ac87f7b16d765df0df3ad4fc87ec2a3fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b3d2572b2025e6dfe06d5f077d1950a"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a5b3d2572b2025e6dfe06d5f077d1950a">Unsubscribe</a> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
+<tr class="separator:a5b3d2572b2025e6dfe06d5f077d1950a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af74a2059a5a50addeb0d88ab57b95fa6"><td class="memItemLeft" align="right" valign="top">override async void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af74a2059a5a50addeb0d88ab57b95fa6">SendClientPayload</a> (<a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1CookiesModule.html">CookiesModule</a> cookies)</td></tr>
+<tr class="separator:af74a2059a5a50addeb0d88ab57b95fa6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac87f7b16d765df0df3ad4fc87ec2a3fc"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ac87f7b16d765df0df3ad4fc87ec2a3fc">Subscribe</a> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
+<tr class="separator:ac87f7b16d765df0df3ad4fc87ec2a3fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b3d2572b2025e6dfe06d5f077d1950a"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a5b3d2572b2025e6dfe06d5f077d1950a">Unsubscribe</a> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
+<tr class="separator:a5b3d2572b2025e6dfe06d5f077d1950a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af74a2059a5a50addeb0d88ab57b95fa6"><td class="memItemLeft" align="right" valign="top">override async void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af74a2059a5a50addeb0d88ab57b95fa6">SendClientPayload</a> (<a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1CookiesModule.html">CookiesModule</a> cookies)</td></tr>
+<tr class="separator:af74a2059a5a50addeb0d88ab57b95fa6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9122dd7de15cc1865070bce30d5141da"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a9122dd7de15cc1865070bce30d5141da">OnDenialReceived</a> (<a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a> kind, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>? reason)</td></tr>
+<tr class="memdesc:a9122dd7de15cc1865070bce30d5141da"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on the client by AuthModule when a denial packet arrives. The default implementation does nothing; AuthenticationBehaviour&lt;TRequest,TDenial&gt; overrides this to deserialize the reason bytes into TDenial and surface <code>onDeniedByServer</code>. <code>reason</code> is <code>null</code> when the server sent no payload (e.g. built-in deniers like version mismatch / timeout).   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a9122dd7de15cc1865070bce30d5141da">More...</a><br /></td></tr>
+<tr class="separator:a9122dd7de15cc1865070bce30d5141da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af43e5fb4692b09cd96406bce4ba31ac0"><td class="memItemLeft" align="right" valign="top"><a id="af43e5fb4692b09cd96406bce4ba31ac0" name="af43e5fb4692b09cd96406bce4ba31ac0"></a>
 abstract void&#160;</td><td class="memItemRight" valign="bottom"><b>Subscribe</b> (<a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> players)</td></tr>
 <tr class="separator:af43e5fb4692b09cd96406bce4ba31ac0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -124,15 +138,27 @@ abstract void&#160;</td><td class="memItemRight" valign="bottom"><b>Unsubscribe<
 <tr class="memitem:a64ab6b3fac09473b707b52005750c1cc"><td class="memItemLeft" align="right" valign="top"><a id="a64ab6b3fac09473b707b52005750c1cc" name="a64ab6b3fac09473b707b52005750c1cc"></a>
 abstract void&#160;</td><td class="memItemRight" valign="bottom"><b>SendClientPayload</b> (<a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1CookiesModule.html">CookiesModule</a> cookies)</td></tr>
 <tr class="separator:a64ab6b3fac09473b707b52005750c1cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a63b137e8589f7fcff6a4e276f2da3445"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html#a63b137e8589f7fcff6a4e276f2da3445">OnDenialReceived</a> (<a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a> kind, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>? reason)</td></tr>
+<tr class="memdesc:a63b137e8589f7fcff6a4e276f2da3445"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on the client by AuthModule when a denial packet arrives. The default implementation does nothing; AuthenticationBehaviour&lt;TRequest,TDenial&gt; overrides this to deserialize the reason bytes into TDenial and surface <code>onDeniedByServer</code>. <code>reason</code> is <code>null</code> when the server sent no payload (e.g. built-in deniers like version mismatch / timeout).   <a href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html#a63b137e8589f7fcff6a4e276f2da3445">More...</a><br /></td></tr>
+<tr class="separator:a63b137e8589f7fcff6a4e276f2da3445"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
-<tr class="memitem:acfc388678fcda066efbcab6e44b83e14"><td class="memItemLeft" align="right" valign="top">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>&lt; T &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#acfc388678fcda066efbcab6e44b83e14">GetClientPayload</a> ()</td></tr>
-<tr class="memdesc:acfc388678fcda066efbcab6e44b83e14"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the client payload to be validated. This gets called when a new client connects and is then sent to the server for validation.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#acfc388678fcda066efbcab6e44b83e14">More...</a><br /></td></tr>
-<tr class="separator:acfc388678fcda066efbcab6e44b83e14"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4bafcd16021b65fea7c513e30ea9fbcd"><td class="memItemLeft" align="right" valign="top">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a4bafcd16021b65fea7c513e30ea9fbcd">ValidateClientPayload</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, T payload)</td></tr>
-<tr class="memdesc:a4bafcd16021b65fea7c513e30ea9fbcd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Once the client payload is received, this method is called to validate the payload. This only runs on the server.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a4bafcd16021b65fea7c513e30ea9fbcd">More...</a><br /></td></tr>
-<tr class="separator:a4bafcd16021b65fea7c513e30ea9fbcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac4b8d8b72299b48509e58aa33b56a8e0"><td class="memItemLeft" align="right" valign="top">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>&lt; T &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ac4b8d8b72299b48509e58aa33b56a8e0">GetClientPayload</a> ()</td></tr>
+<tr class="memdesc:ac4b8d8b72299b48509e58aa33b56a8e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the client payload to be validated. This gets called when a new client connects and is then sent to the server for validation.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ac4b8d8b72299b48509e58aa33b56a8e0">More...</a><br /></td></tr>
+<tr class="separator:ac4b8d8b72299b48509e58aa33b56a8e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab668a6e38ce3a22fdd668f51c140c193"><td class="memItemLeft" align="right" valign="top">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193">ValidateClientPayload</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, T payload)</td></tr>
+<tr class="memdesc:ab668a6e38ce3a22fdd668f51c140c193"><td class="mdescLeft">&#160;</td><td class="mdescRight">Once the client payload is received, this method is called to validate the payload. This only runs on the server.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193">More...</a><br /></td></tr>
+<tr class="separator:ab668a6e38ce3a22fdd668f51c140c193"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe7a24f65248501bad3e1b2ab9aac6b3"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#afe7a24f65248501bad3e1b2ab9aac6b3">OnDeniedByServer</a> (<a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a> kind, TDenial reason)</td></tr>
+<tr class="memdesc:afe7a24f65248501bad3e1b2ab9aac6b3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Convenience override for client-side denial handling. Called before the <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af8b155dc1fcfc36275f7ebf32e19900e" title="Client-side event fired when the server has rejected the connection. The kind tells you which built-i...">onDeniedByServer</a> event so subclasses can react in-place without wiring an event handler. Default body is empty.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#afe7a24f65248501bad3e1b2ab9aac6b3">More...</a><br /></td></tr>
+<tr class="separator:afe7a24f65248501bad3e1b2ab9aac6b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7582fe12a7b79c83604efccba2170e61"><td class="memItemLeft" align="right" valign="top">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>&lt; TRequest &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a7582fe12a7b79c83604efccba2170e61">GetClientPayload</a> ()</td></tr>
+<tr class="memdesc:a7582fe12a7b79c83604efccba2170e61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the client payload to be validated. This gets called when a new client connects and is then sent to the server for validation.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a7582fe12a7b79c83604efccba2170e61">More...</a><br /></td></tr>
+<tr class="separator:a7582fe12a7b79c83604efccba2170e61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a408c262ed5d37b23399a071e3064471e"><td class="memItemLeft" align="right" valign="top">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a>&lt; TDenial &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a408c262ed5d37b23399a071e3064471e">ValidateClientPayload</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, TRequest payload)</td></tr>
+<tr class="memdesc:a408c262ed5d37b23399a071e3064471e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Once the client payload is received, this method is called to validate the payload. This only runs on the server. Return <code>success = false</code> with a populated <code>denialReason</code> to ship a typed rejection to the client.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a408c262ed5d37b23399a071e3064471e">More...</a><br /></td></tr>
+<tr class="separator:a408c262ed5d37b23399a071e3064471e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">PurrNet.Authentication.AuthenticationLayer</a></td></tr>
 <tr class="memitem:a74129a656a2d78fa9251bb520bca352f inherit pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="a74129a656a2d78fa9251bb520bca352f" name="a74129a656a2d78fa9251bb520bca352f"></a>
 abstract void&#160;</td><td class="memItemRight" valign="bottom"><b>UnAuthenticateClient</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn)</td></tr>
@@ -140,6 +166,24 @@ abstract void&#160;</td><td class="memItemRight" valign="bottom"><b>UnAuthentica
 <tr class="memitem:a20214dff33b9143ca225c564c665cdf9 inherit pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="a20214dff33b9143ca225c564c665cdf9" name="a20214dff33b9143ca225c564c665cdf9"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>TrigerAuthenticationComplete</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> response)</td></tr>
 <tr class="separator:a20214dff33b9143ca225c564c665cdf9 inherit pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae68dd7fbf61eb228306cb82ef8edf08b inherit pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="ae68dd7fbf61eb228306cb82ef8edf08b" name="ae68dd7fbf61eb228306cb82ef8edf08b"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>TriggerAuthenticationDeniedWithReason</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>? reason)</td></tr>
+<tr class="separator:ae68dd7fbf61eb228306cb82ef8edf08b inherit pro_methods_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
+Events</h2></td></tr>
+<tr class="memitem:af8b155dc1fcfc36275f7ebf32e19900e"><td class="memItemLeft" align="right" valign="top"><a id="af8b155dc1fcfc36275f7ebf32e19900e" name="af8b155dc1fcfc36275f7ebf32e19900e"></a>
+Action&lt; <a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a>, TDenial &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onDeniedByServer</b></td></tr>
+<tr class="memdesc:af8b155dc1fcfc36275f7ebf32e19900e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Client-side event fired when the server has rejected the connection. The kind tells you which built-in or user denier triggered; <em>reason</em>  is meaningful only when <em>kind</em>  is DenialKind.AuthenticatorRejected.  <br /></td></tr>
+<tr class="separator:af8b155dc1fcfc36275f7ebf32e19900e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td colspan="2" onclick="javascript:toggleInherit('events_classPurrNet_1_1Authentication_1_1AuthenticationLayer')"><img src="closed.png" alt="-"/>&#160;Events inherited from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">PurrNet.Authentication.AuthenticationLayer</a></td></tr>
+<tr class="memitem:ab325596bb165b1e78b61bcb1e636d12f inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="ab325596bb165b1e78b61bcb1e636d12f" name="ab325596bb165b1e78b61bcb1e636d12f"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onAuthenticationComplete</b></td></tr>
+<tr class="separator:ab325596bb165b1e78b61bcb1e636d12f inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a11087f7bc62c4a41f62bee94ac681f9c inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="a11087f7bc62c4a41f62bee94ac681f9c" name="a11087f7bc62c4a41f62bee94ac681f9c"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>?&gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onAuthenticationDeniedWithReason</b></td></tr>
+<tr class="memdesc:a11087f7bc62c4a41f62bee94ac681f9c inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server-side event raised by behaviours that want to attach a typed denial payload to a rejection. The bytes are forwarded verbatim by AuthModule inside an <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html" title="Server -&gt; client packet describing why a connection is about to be closed. The client decodes reason ...">AuthenticationDenialPacket</a>. <code>null</code> means "no reason payload"; pass actual bytes (even zero-length) to indicate the behaviour produced a payload.  <br /></td></tr>
+<tr class="separator:a11087f7bc62c4a41f62bee94ac681f9c inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
@@ -147,14 +191,13 @@ Additional Inherited Members</h2></td></tr>
 <tr class="memitem:a5ef54ed2ca826d4aa63a340e09c5d21a inherit properties_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="a5ef54ed2ca826d4aa63a340e09c5d21a" name="a5ef54ed2ca826d4aa63a340e09c5d21a"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>timeout</b><code> [get, set]</code></td></tr>
 <tr class="separator:a5ef54ed2ca826d4aa63a340e09c5d21a inherit properties_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="inherit_header events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td colspan="2" onclick="javascript:toggleInherit('events_classPurrNet_1_1Authentication_1_1AuthenticationLayer')"><img src="closed.png" alt="-"/>&#160;Events inherited from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">PurrNet.Authentication.AuthenticationLayer</a></td></tr>
-<tr class="memitem:ab325596bb165b1e78b61bcb1e636d12f inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memItemLeft" align="right" valign="top"><a id="ab325596bb165b1e78b61bcb1e636d12f" name="ab325596bb165b1e78b61bcb1e636d12f"></a>
-Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onAuthenticationComplete</b></td></tr>
-<tr class="separator:ab325596bb165b1e78b61bcb1e636d12f inherit events_classPurrNet_1_1Authentication_1_1AuthenticationLayer"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
-<a id="acfc388678fcda066efbcab6e44b83e14" name="acfc388678fcda066efbcab6e44b83e14"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acfc388678fcda066efbcab6e44b83e14">&#9670;&#160;</a></span>GetClientPayload()</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p ><a class="el" href="namespacePurrNet_1_1Authentication.html">Authentication</a> behaviour with a typed denial payload. On the server, returning <code>success = false</code> from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193" title="Once the client payload is received, this method is called to validate the payload....">ValidateClientPayload</a> ships the supplied <em>TDenial</em>  to the client (via <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html" title="Server -&gt; client packet describing why a connection is about to be closed. The client decodes reason ...">AuthenticationDenialPacket</a>) before the socket closes. On the client, <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af8b155dc1fcfc36275f7ebf32e19900e" title="Client-side event fired when the server has rejected the connection. The kind tells you which built-i...">onDeniedByServer</a> fires with the decoded reason so user UI can react.  </p>
+<p >This is a separate type from AuthenticationBehaviour&lt;T&gt; to preserve the existing contract; pick this overload when you need to surface a structured rejection reason to the client UI. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="ac4b8d8b72299b48509e58aa33b56a8e0" name="ac4b8d8b72299b48509e58aa33b56a8e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac4b8d8b72299b48509e58aa33b56a8e0">&#9670;&#160;</a></span>GetClientPayload() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -163,7 +206,7 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>&lt; T &gt; &gt; <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; T &gt;.GetClientPayload </td>
+          <td class="memname">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>&lt; T &gt; &gt; <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.GetClientPayload </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -183,8 +226,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
 
 </div>
 </div>
-<a id="afa39144b3a2b42465758b8046dd79498" name="afa39144b3a2b42465758b8046dd79498"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afa39144b3a2b42465758b8046dd79498">&#9670;&#160;</a></span>SendClientPayload()</h2>
+<a id="a7582fe12a7b79c83604efccba2170e61" name="a7582fe12a7b79c83604efccba2170e61"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7582fe12a7b79c83604efccba2170e61">&#9670;&#160;</a></span>GetClientPayload() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -193,7 +236,122 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">override async void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; T &gt;.SendClientPayload </td>
+          <td class="memname">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>&lt; TRequest &gt; &gt; <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.GetClientPayload </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Get the client payload to be validated. This gets called when a new client connects and is then sent to the server for validation.  </p>
+<dl class="section return"><dt>Returns</dt><dd>The client payload to be validated.</dd></dl>
+
+<p>Implemented in <a class="el" href="classPurrNet_1_1Authentication_1_1SimpleAuthenticator.html#a251b29dde40ff2dbc1288a4f07ae42fd">PurrNet.Authentication.SimpleAuthenticator</a>.</p>
+
+</div>
+</div>
+<a id="a9122dd7de15cc1865070bce30d5141da" name="a9122dd7de15cc1865070bce30d5141da"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9122dd7de15cc1865070bce30d5141da">&#9670;&#160;</a></span>OnDenialReceived()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.OnDenialReceived </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a>&#160;</td>
+          <td class="paramname"><em>kind</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>?&#160;</td>
+          <td class="paramname"><em>reason</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called on the client by AuthModule when a denial packet arrives. The default implementation does nothing; AuthenticationBehaviour&lt;TRequest,TDenial&gt; overrides this to deserialize the reason bytes into TDenial and surface <code>onDeniedByServer</code>. <code>reason</code> is <code>null</code> when the server sent no payload (e.g. built-in deniers like version mismatch / timeout).  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html#a63b137e8589f7fcff6a4e276f2da3445">PurrNet.Authentication.AuthenticationLayer</a>.</p>
+
+</div>
+</div>
+<a id="afe7a24f65248501bad3e1b2ab9aac6b3" name="afe7a24f65248501bad3e1b2ab9aac6b3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afe7a24f65248501bad3e1b2ab9aac6b3">&#9670;&#160;</a></span>OnDeniedByServer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.OnDeniedByServer </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a>&#160;</td>
+          <td class="paramname"><em>kind</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">TDenial&#160;</td>
+          <td class="paramname"><em>reason</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Convenience override for client-side denial handling. Called before the <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af8b155dc1fcfc36275f7ebf32e19900e" title="Client-side event fired when the server has rejected the connection. The kind tells you which built-i...">onDeniedByServer</a> event so subclasses can react in-place without wiring an event handler. Default body is empty.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">kind</td><td>Which denier rejected the connection.</td></tr>
+    <tr><td class="paramname">reason</td><td>Decoded TDenial; only meaningful when <em>kind</em>  is DenialKind.AuthenticatorRejected, otherwise <code>default</code>.</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="af74a2059a5a50addeb0d88ab57b95fa6" name="af74a2059a5a50addeb0d88ab57b95fa6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af74a2059a5a50addeb0d88ab57b95fa6">&#9670;&#160;</a></span>SendClientPayload() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override async void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.SendClientPayload </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a>&#160;</td>
           <td class="paramname"><em>broadcastModule</em>, </td>
@@ -221,8 +379,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
 
 </div>
 </div>
-<a id="a790e765e99b0f64eb8f79d9a8a78c8f8" name="a790e765e99b0f64eb8f79d9a8a78c8f8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a790e765e99b0f64eb8f79d9a8a78c8f8">&#9670;&#160;</a></span>Subscribe()</h2>
+<a id="af74a2059a5a50addeb0d88ab57b95fa6" name="af74a2059a5a50addeb0d88ab57b95fa6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af74a2059a5a50addeb0d88ab57b95fa6">&#9670;&#160;</a></span>SendClientPayload() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -231,7 +389,45 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; T &gt;.Subscribe </td>
+          <td class="memname">override async void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.SendClientPayload </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a>&#160;</td>
+          <td class="paramname"><em>broadcastModule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1CookiesModule.html">CookiesModule</a>&#160;</td>
+          <td class="paramname"><em>cookies</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">PurrNet.Authentication.AuthenticationLayer</a>.</p>
+
+</div>
+</div>
+<a id="ac87f7b16d765df0df3ad4fc87ec2a3fc" name="ac87f7b16d765df0df3ad4fc87ec2a3fc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac87f7b16d765df0df3ad4fc87ec2a3fc">&#9670;&#160;</a></span>Subscribe() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.Subscribe </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a>&#160;</td>
           <td class="paramname"><em>manager</em>, </td>
@@ -265,8 +461,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
 
 </div>
 </div>
-<a id="a66ad314ccd2bcede83e75d4c16e875f2" name="a66ad314ccd2bcede83e75d4c16e875f2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a66ad314ccd2bcede83e75d4c16e875f2">&#9670;&#160;</a></span>Unsubscribe()</h2>
+<a id="ac87f7b16d765df0df3ad4fc87ec2a3fc" name="ac87f7b16d765df0df3ad4fc87ec2a3fc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac87f7b16d765df0df3ad4fc87ec2a3fc">&#9670;&#160;</a></span>Subscribe() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -275,7 +471,7 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; T &gt;.Unsubscribe </td>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.Subscribe </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a>&#160;</td>
           <td class="paramname"><em>manager</em>, </td>
@@ -309,8 +505,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
 
 </div>
 </div>
-<a id="a4bafcd16021b65fea7c513e30ea9fbcd" name="a4bafcd16021b65fea7c513e30ea9fbcd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4bafcd16021b65fea7c513e30ea9fbcd">&#9670;&#160;</a></span>ValidateClientPayload()</h2>
+<a id="a5b3d2572b2025e6dfe06d5f077d1950a" name="a5b3d2572b2025e6dfe06d5f077d1950a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5b3d2572b2025e6dfe06d5f077d1950a">&#9670;&#160;</a></span>Unsubscribe() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -319,7 +515,95 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt; <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; T &gt;.ValidateClientPayload </td>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.Unsubscribe </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a>&#160;</td>
+          <td class="paramname"><em>manager</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a>&#160;</td>
+          <td class="paramname"><em>broadcastModule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a>&#160;</td>
+          <td class="paramname"><em>players</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">PurrNet.Authentication.AuthenticationLayer</a>.</p>
+
+</div>
+</div>
+<a id="a5b3d2572b2025e6dfe06d5f077d1950a" name="a5b3d2572b2025e6dfe06d5f077d1950a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5b3d2572b2025e6dfe06d5f077d1950a">&#9670;&#160;</a></span>Unsubscribe() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.Unsubscribe </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="interfacePurrNet_1_1INetworkManager.html">INetworkManager</a>&#160;</td>
+          <td class="paramname"><em>manager</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a>&#160;</td>
+          <td class="paramname"><em>broadcastModule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a>&#160;</td>
+          <td class="paramname"><em>players</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">PurrNet.Authentication.AuthenticationLayer</a>.</p>
+
+</div>
+</div>
+<a id="ab668a6e38ce3a22fdd668f51c140c193" name="ab668a6e38ce3a22fdd668f51c140c193"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab668a6e38ce3a22fdd668f51c140c193">&#9670;&#160;</a></span>ValidateClientPayload() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt; <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.ValidateClientPayload </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>&#160;</td>
           <td class="paramname"><em>conn</em>, </td>
@@ -344,6 +628,52 @@ Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">C
 </div><div class="memdoc">
 
 <p>Once the client payload is received, this method is called to validate the payload. This only runs on the server.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">conn</td><td>The connection of the client.</td></tr>
+    <tr><td class="paramname">payload</td><td>The client payload to be validated.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The result of the validation.</dd></dl>
+
+</div>
+</div>
+<a id="a408c262ed5d37b23399a071e3064471e" name="a408c262ed5d37b23399a071e3064471e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a408c262ed5d37b23399a071e3064471e">&#9670;&#160;</a></span>ValidateClientPayload() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">abstract Task&lt; <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a>&lt; TDenial &gt; &gt; <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">PurrNet.Authentication.AuthenticationBehaviour</a>&lt; TRequest, TDenial &gt;.ValidateClientPayload </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>&#160;</td>
+          <td class="paramname"><em>conn</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">TRequest&#160;</td>
+          <td class="paramname"><em>payload</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Once the client payload is received, this method is called to validate the payload. This only runs on the server. Return <code>success = false</code> with a populated <code>denialReason</code> to ship a typed rejection to the client.  </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">conn</td><td>The connection of the client.</td></tr>

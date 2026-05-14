@@ -1,7 +1,7 @@
 var namespacePurrNet_1_1Modules =
 [
     [ "AckDeltaMessage", "structPurrNet_1_1Modules_1_1AckDeltaMessage.html", null ],
-    [ "AuthModule", "classPurrNet_1_1Modules_1_1AuthModule.html", null ],
+    [ "AuthModule", "classPurrNet_1_1Modules_1_1AuthModule.html", "classPurrNet_1_1Modules_1_1AuthModule" ],
     [ "BroadcastModule", "classPurrNet_1_1Modules_1_1BroadcastModule.html", null ],
     [ "ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
     [ "ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: PurrNet.Authentication.AuthenticationResponse Struct Reference</title>
+<title>PurrNet: PurrNet.Authentication.AuthenticationResponse&lt; TDenial &gt; Struct Template Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -94,40 +94,55 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1Authentication_1_1Aut
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="structPurrNet_1_1Authentication_1_1AuthenticationResponse-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">PurrNet.Authentication.AuthenticationResponse Struct Reference</div></div>
+  <div class="headertitle"><div class="title">PurrNet.Authentication.AuthenticationResponse&lt; TDenial &gt; Struct Template Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Result returned by <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193" title="Once the client payload is received, this method is called to validate the payload....">AuthenticationBehaviour&lt;TRequest,TDenial&gt;.ValidateClientPayload</a>. When <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a9f133b1ad762ff6c3dae75cd6065fbe5" title="Whether the authentication was successful. If true, the client will be authenticated....">success</a> is false, denialReason is serialized and shipped to the client before its connection is closed.   
+ <a href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#details">More...</a></p>
 <div class="dynheader">
-Inheritance diagram for PurrNet.Authentication.AuthenticationResponse:</div>
+Inheritance diagram for PurrNet.Authentication.AuthenticationResponse&lt; TDenial &gt;:</div>
 <div class="dyncontent">
  <div class="center">
-  <img src="structPurrNet_1_1Authentication_1_1AuthenticationResponse.png" usemap="#PurrNet.Authentication.AuthenticationResponse_map" alt=""/>
-  <map id="PurrNet.Authentication.AuthenticationResponse_map" name="PurrNet.Authentication.AuthenticationResponse_map">
-<area href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html" alt="PurrNet.Packing.IPackedAuto" shape="rect" coords="0,0,279,24"/>
+  <img src="structPurrNet_1_1Authentication_1_1AuthenticationResponse.png" usemap="#PurrNet.Authentication.AuthenticationResponse_3C_20TDenial_20_3E_map" alt=""/>
+  <map id="PurrNet.Authentication.AuthenticationResponse_3C_20TDenial_20_3E_map" name="PurrNet.Authentication.AuthenticationResponse_3C_20TDenial_20_3E_map">
+<area href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html" alt="PurrNet.Packing.IPackedAuto" shape="rect" coords="0,0,346,24"/>
+<area href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html" alt="PurrNet.Packing.IPackedAuto" shape="rect" coords="356,0,702,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a44b3fe6801d70800b50351ec13bf3166"><td class="memItemLeft" align="right" valign="top"><a id="a44b3fe6801d70800b50351ec13bf3166" name="a44b3fe6801d70800b50351ec13bf3166"></a>
+<tr class="memitem:a23a457d75700d46746ac23998e0a4e27"><td class="memItemLeft" align="right" valign="top"><a id="a23a457d75700d46746ac23998e0a4e27" name="a23a457d75700d46746ac23998e0a4e27"></a>
 static implicit&#160;</td><td class="memItemRight" valign="bottom"><b>operator bool</b> (<a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> response)</td></tr>
-<tr class="separator:a44b3fe6801d70800b50351ec13bf3166"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac6dca119cdda79f6f35aae8004731089"><td class="memItemLeft" align="right" valign="top"><a id="ac6dca119cdda79f6f35aae8004731089" name="ac6dca119cdda79f6f35aae8004731089"></a>
-static implicit&#160;</td><td class="memItemRight" valign="bottom"><b>operator AuthenticationResponse</b> (bool <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a530d346f1249cf9d55a855a23ceda6be">success</a>)</td></tr>
-<tr class="separator:ac6dca119cdda79f6f35aae8004731089"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:a23a457d75700d46746ac23998e0a4e27"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad28f8b8e345084a25722c9a30e2f6eb4"><td class="memItemLeft" align="right" valign="top"><a id="ad28f8b8e345084a25722c9a30e2f6eb4" name="ad28f8b8e345084a25722c9a30e2f6eb4"></a>
+static implicit&#160;</td><td class="memItemRight" valign="bottom"><b>operator AuthenticationResponse</b> (bool <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a9f133b1ad762ff6c3dae75cd6065fbe5">success</a>)</td></tr>
+<tr class="separator:ad28f8b8e345084a25722c9a30e2f6eb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a000ebee2e8214e55b0c2408e4a80e6ef"><td class="memItemLeft" align="right" valign="top"><a id="a000ebee2e8214e55b0c2408e4a80e6ef" name="a000ebee2e8214e55b0c2408e4a80e6ef"></a>
+static <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a>&lt; TDenial &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Accept</b> (string <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a3cdee677b4261b733e59384d925c9d78">cookie</a>=null)</td></tr>
+<tr class="separator:a000ebee2e8214e55b0c2408e4a80e6ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afcb1326d918449af71720acc1f38576b"><td class="memItemLeft" align="right" valign="top"><a id="afcb1326d918449af71720acc1f38576b" name="afcb1326d918449af71720acc1f38576b"></a>
+static <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a>&lt; TDenial &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Deny</b> (TDenial reason)</td></tr>
+<tr class="separator:afcb1326d918449af71720acc1f38576b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a530d346f1249cf9d55a855a23ceda6be"><td class="memItemLeft" align="right" valign="top"><a id="a530d346f1249cf9d55a855a23ceda6be" name="a530d346f1249cf9d55a855a23ceda6be"></a>
+<tr class="memitem:a9f133b1ad762ff6c3dae75cd6065fbe5"><td class="memItemLeft" align="right" valign="top"><a id="a9f133b1ad762ff6c3dae75cd6065fbe5" name="a9f133b1ad762ff6c3dae75cd6065fbe5"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>success</b></td></tr>
-<tr class="memdesc:a530d346f1249cf9d55a855a23ceda6be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the authentication was successful. If true, the client will be authenticated. Else, the client will be disconnected.  <br /></td></tr>
-<tr class="separator:a530d346f1249cf9d55a855a23ceda6be"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0f3e871f6655d075de4a33cf00a5cc9c"><td class="memItemLeft" align="right" valign="top"><a id="a0f3e871f6655d075de4a33cf00a5cc9c" name="a0f3e871f6655d075de4a33cf00a5cc9c"></a>
+<tr class="memdesc:a9f133b1ad762ff6c3dae75cd6065fbe5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the authentication was successful. If true, the client will be authenticated. Else, the client will be disconnected.  <br /></td></tr>
+<tr class="separator:a9f133b1ad762ff6c3dae75cd6065fbe5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3cdee677b4261b733e59384d925c9d78"><td class="memItemLeft" align="right" valign="top"><a id="a3cdee677b4261b733e59384d925c9d78" name="a3cdee677b4261b733e59384d925c9d78"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>cookie</b></td></tr>
-<tr class="memdesc:a0f3e871f6655d075de4a33cf00a5cc9c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional cookie, this overrides the cookie in the <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>. This will be used to retrieve the same <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> from past sessions if present.  <br /></td></tr>
-<tr class="separator:a0f3e871f6655d075de4a33cf00a5cc9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memdesc:a3cdee677b4261b733e59384d925c9d78"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional cookie, this overrides the cookie in the <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequest.html">AuthenticationRequest</a>. This will be used to retrieve the same <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> from past sessions if present.  <br /></td></tr>
+<tr class="separator:a3cdee677b4261b733e59384d925c9d78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff4190c31acab55d7c1abf9d5991ca89"><td class="memItemLeft" align="right" valign="top"><a id="aff4190c31acab55d7c1abf9d5991ca89" name="aff4190c31acab55d7c1abf9d5991ca89"></a>
+TDenial&#160;</td><td class="memItemRight" valign="bottom"><b>denialReason</b></td></tr>
+<tr class="separator:aff4190c31acab55d7c1abf9d5991ca89"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this struct was generated from the following file:<ul>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p >Result returned by <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193" title="Once the client payload is received, this method is called to validate the payload....">AuthenticationBehaviour&lt;TRequest,TDenial&gt;.ValidateClientPayload</a>. When <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a9f133b1ad762ff6c3dae75cd6065fbe5" title="Whether the authentication was successful. If true, the client will be authenticated....">success</a> is false, denialReason is serialized and shipped to the client before its connection is closed.  </p>
+</div><hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Authentication/IAuthentication.cs</li>
 </ul>
 </div><!-- contents -->

@@ -246,10 +246,13 @@ var hierarchy =
       [ "PurrNet.StateMachine.StateMachineState", "structPurrNet_1_1StateMachine_1_1StateMachineState.html", null ]
     ] ],
     [ "PurrNet.Packing.IPackedAuto", "interfacePurrNet_1_1Packing_1_1IPackedAuto.html", [
+      [ "PurrNet.Authentication.AuthenticationDenialAck", "structPurrNet_1_1Authentication_1_1AuthenticationDenialAck.html", null ],
+      [ "PurrNet.Authentication.AuthenticationDenialPacket", "structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html", null ],
       [ "PurrNet.Authentication.AuthenticationRequest< T >", "structPurrNet_1_1Authentication_1_1AuthenticationRequest.html", null ],
       [ "PurrNet.Authentication.AuthenticationRequest< T >", "structPurrNet_1_1Authentication_1_1AuthenticationRequest.html", null ],
       [ "PurrNet.Authentication.AuthenticationRequestData", "structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html", null ],
-      [ "PurrNet.Authentication.AuthenticationResponse", "structPurrNet_1_1Authentication_1_1AuthenticationResponse.html", null ],
+      [ "PurrNet.Authentication.AuthenticationResponse< TDenial >", "structPurrNet_1_1Authentication_1_1AuthenticationResponse.html", null ],
+      [ "PurrNet.Authentication.AuthenticationResponse< TDenial >", "structPurrNet_1_1Authentication_1_1AuthenticationResponse.html", null ],
       [ "PurrNet.ChildRPCPacket", "structPurrNet_1_1ChildRPCPacket.html", null ],
       [ "PurrNet.HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
       [ "PurrNet.MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
@@ -375,7 +378,8 @@ var hierarchy =
     [ "PurrNet.ModulesCollection", "structPurrNet_1_1ModulesCollection.html", null ],
     [ "MonoBehaviour", null, [
       [ "PurrNet.Authentication.AuthenticationLayer", "classPurrNet_1_1Authentication_1_1AuthenticationLayer.html", [
-        [ "PurrNet.Authentication.AuthenticationBehaviour< T >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", null ]
+        [ "PurrNet.Authentication.AuthenticationBehaviour< TRequest, TDenial >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", null ],
+        [ "PurrNet.Authentication.AuthenticationBehaviour< TRequest, TDenial >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", null ]
       ] ],
       [ "PurrNet.BandwidthProfilerToFile", "classPurrNet_1_1BandwidthProfilerToFile.html", null ],
       [ "PurrNet.NetworkIdentity", "classPurrNet_1_1NetworkIdentity.html", [

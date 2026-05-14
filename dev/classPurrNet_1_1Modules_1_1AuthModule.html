@@ -146,6 +146,10 @@ Events</h2></td></tr>
 <tr class="memitem:a351f3f8019b00086acd9cf93edb43a5f"><td class="memItemLeft" align="right" valign="top"><a id="a351f3f8019b00086acd9cf93edb43a5f" name="a351f3f8019b00086acd9cf93edb43a5f"></a>
 Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onConnection</b></td></tr>
 <tr class="separator:a351f3f8019b00086acd9cf93edb43a5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab02501e97c9270c04a0cf1dd738311d7"><td class="memItemLeft" align="right" valign="top"><a id="ab02501e97c9270c04a0cf1dd738311d7" name="ab02501e97c9270c04a0cf1dd738311d7"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a>, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>?&gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onAuthenticationDenied</b></td></tr>
+<tr class="memdesc:ab02501e97c9270c04a0cf1dd738311d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server-side event raised whenever a client is rejected, including by built-in deniers (version mismatch, ack timeout, missing authenticator) and by the active AuthenticationLayer. Fires before the denial packet is shipped, so handlers can record the rejection regardless of whether the client acks. <code>reason</code> is <code>null</code> for built-in deniers (no payload) and non-null only when an AuthenticationBehaviour&lt;TRequest,TDenial&gt; attached a typed denial reason.  <br /></td></tr>
+<tr class="separator:ab02501e97c9270c04a0cf1dd738311d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="a7b0c59c842e16d29ded6758117c3dfa8" name="a7b0c59c842e16d29ded6758117c3dfa8"></a>

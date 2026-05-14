@@ -3,7 +3,9 @@ var annotated_dup =
     [ "PurrNet", "namespacePurrNet.html", [
       [ "Authentication", "namespacePurrNet_1_1Authentication.html", [
         [ "AuthenticationBehaviour", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour" ],
-        [ "AuthenticationLayer", "classPurrNet_1_1Authentication_1_1AuthenticationLayer.html", null ],
+        [ "AuthenticationDenialAck", "structPurrNet_1_1Authentication_1_1AuthenticationDenialAck.html", null ],
+        [ "AuthenticationDenialPacket", "structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html", null ],
+        [ "AuthenticationLayer", "classPurrNet_1_1Authentication_1_1AuthenticationLayer.html", "classPurrNet_1_1Authentication_1_1AuthenticationLayer" ],
         [ "AuthenticationRequest", "structPurrNet_1_1Authentication_1_1AuthenticationRequest.html", "structPurrNet_1_1Authentication_1_1AuthenticationRequest" ],
         [ "AuthenticationRequestData", "structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html", "structPurrNet_1_1Authentication_1_1AuthenticationRequestData" ],
         [ "AuthenticationResponse", "structPurrNet_1_1Authentication_1_1AuthenticationResponse.html", "structPurrNet_1_1Authentication_1_1AuthenticationResponse" ],
@@ -22,7 +24,7 @@ var annotated_dup =
       ] ],
       [ "Modules", "namespacePurrNet_1_1Modules.html", [
         [ "AckDeltaMessage", "structPurrNet_1_1Modules_1_1AckDeltaMessage.html", null ],
-        [ "AuthModule", "classPurrNet_1_1Modules_1_1AuthModule.html", null ],
+        [ "AuthModule", "classPurrNet_1_1Modules_1_1AuthModule.html", "classPurrNet_1_1Modules_1_1AuthModule" ],
         [ "BroadcastModule", "classPurrNet_1_1Modules_1_1BroadcastModule.html", null ],
         [ "ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
         [ "ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],

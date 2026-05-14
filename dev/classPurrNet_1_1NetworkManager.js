@@ -69,6 +69,7 @@ var classPurrNet_1_1NetworkManager =
     [ "tickRate", "classPurrNet_1_1NetworkManager.html#ac2f0860cabe80123ea095c0e4966d48b", null ],
     [ "transport", "classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908", null ],
     [ "visibilityRules", "classPurrNet_1_1NetworkManager.html#a3d02f1808663d7c208d2300f8955d8de", null ],
+    [ "onAuthenticationDenied", "classPurrNet_1_1NetworkManager.html#ac5ba99b81878417201372cdb0a0d77f3", null ],
     [ "onClientConnectionState", "classPurrNet_1_1NetworkManager.html#af107336749b67361d07c646814c9771b", null ],
     [ "onLocalPlayerReceivedID", "classPurrNet_1_1NetworkManager.html#a42a25c5d91918825b7a301f3205a13c8", null ],
     [ "onNetworkShutdown", "classPurrNet_1_1NetworkManager.html#a497cc7f3a7d7a9a50d90ae6bfd0d2c6e", null ],

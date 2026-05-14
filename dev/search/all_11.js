@@ -74,7 +74,7 @@ var searchData=
   ['stringutf8_71',['StringUTF8',['../structPurrNet_1_1StringUTF8.html',1,'PurrNet']]],
   ['subscribe_3c_20t_20_3e_72',['Subscribe&lt; T &gt;',['../classPurrNet_1_1NetworkManager.html#a497ba975811d4b1cd3d82bf233cd5d97',1,'PurrNet.NetworkManager.Subscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback, bool asServer)'],['../classPurrNet_1_1NetworkManager.html#aaaa6cb198e1d29e6ab40e79527c43752',1,'PurrNet.NetworkManager.Subscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback)']]],
   ['subtract_73',['Subtract',['../structPurrNet_1_1Packing_1_1Half.html#a2db028ac39b62d727a733ce0840e1aad',1,'PurrNet::Packing::Half']]],
-  ['success_74',['success',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a530d346f1249cf9d55a855a23ceda6be',1,'PurrNet::Authentication::AuthenticationResponse']]],
+  ['success_74',['success',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a9f133b1ad762ff6c3dae75cd6065fbe5',1,'PurrNet::Authentication::AuthenticationResponse']]],
   ['syncarray_75',['SyncArray',['../classPurrNet_1_1SyncArray.html',1,'PurrNet']]],
   ['syncarraychange_76',['SyncArrayChange',['../structPurrNet_1_1SyncArrayChange.html',1,'PurrNet']]],
   ['syncasset_77',['SyncAsset',['../classPurrNet_1_1SyncAsset.html',1,'PurrNet']]],

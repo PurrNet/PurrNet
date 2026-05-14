@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['validateclientpayload_0',['ValidateClientPayload',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a4bafcd16021b65fea7c513e30ea9fbcd',1,'PurrNet::Authentication::AuthenticationBehaviour']]],
+  ['validateclientpayload_0',['ValidateClientPayload',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193',1,'PurrNet.Authentication.AuthenticationBehaviour.ValidateClientPayload(Connection conn, T payload)'],['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a408c262ed5d37b23399a071e3064471e',1,'PurrNet.Authentication.AuthenticationBehaviour.ValidateClientPayload(Connection conn, TRequest payload)']]],
   ['validatedsyncvar_1',['ValidatedSyncVar',['../classPurrNet_1_1ValidatedSyncVar.html',1,'PurrNet']]],
   ['value_2',['value',['../classPurrNet_1_1SyncInput.html#a151f2cdd82eebb5bdbd58b3bf72211df',1,'PurrNet::SyncInput']]],
   ['vector3withparent_3',['Vector3WithParent',['../structPurrNet_1_1Vector3WithParent.html',1,'PurrNet']]],
