@@ -83,6 +83,7 @@ var menudata={children:[
 {text:"b",url:"functions_prop.html#index_b"},
 {text:"c",url:"functions_prop.html#index_c"},
 {text:"f",url:"functions_prop.html#index_f"},
+{text:"h",url:"functions_prop.html#index_h"},
 {text:"i",url:"functions_prop.html#index_i"},
 {text:"l",url:"functions_prop.html#index_l"},
 {text:"m",url:"functions_prop.html#index_m"},

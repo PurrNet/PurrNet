@@ -82,6 +82,7 @@ var hierarchy =
         [ "PurrNet.Transports.CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", null ],
         [ "PurrNet.Transports.LocalTransport", "classPurrNet_1_1Transports_1_1LocalTransport.html", null ],
         [ "PurrNet.Transports.PurrTransport", "classPurrNet_1_1Transports_1_1PurrTransport.html", null ],
+        [ "PurrNet.Transports.PurrTransportLayer", "classPurrNet_1_1Transports_1_1PurrTransportLayer.html", null ],
         [ "PurrNet.Transports.UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", null ],
         [ "PurrNet.Transports.WebTransport", "classPurrNet_1_1Transports_1_1WebTransport.html", null ]
       ] ]
@@ -116,7 +117,8 @@ var hierarchy =
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
       [ "PurrNet.Profiler.TickSample", "classPurrNet_1_1Profiler_1_1TickSample.html", null ],
       [ "PurrNet.SyncEventData", "structPurrNet_1_1SyncEventData.html", null ],
-      [ "PurrNet.Transports.FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", null ]
+      [ "PurrNet.Transports.FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", null ],
+      [ "PurrNet.Transports.PurrTransportLayer", "classPurrNet_1_1Transports_1_1PurrTransportLayer.html", null ]
     ] ],
     [ "PurrNet.Packing.IDuplicate< out T >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", null ],
     [ "PurrNet.Packing.IDuplicate< BitPacker >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [

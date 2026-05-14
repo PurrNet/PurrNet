@@ -1,5 +1,11 @@
 var NAVTREEINDEX6 =
 {
+"structPurrNet_1_1Modules_1_1PlayerLeftEvent.html":[0,0,0,4,33],
+"structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html":[0,0,0,4,35],
+"structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html":[1,0,0,4,35],
+"structPurrNet_1_1Modules_1_1PoolPair.html":[0,0,0,4,36],
+"structPurrNet_1_1Modules_1_1PoolPair.html":[1,0,0,4,36],
+"structPurrNet_1_1Modules_1_1PrefabPieceID.html":[0,0,0,4,37],
 "structPurrNet_1_1Modules_1_1PrefabPieceID.html":[1,0,0,4,37],
 "structPurrNet_1_1Modules_1_1PurrSceneSettings.html":[1,0,0,4,38],
 "structPurrNet_1_1Modules_1_1PurrSceneSettings.html":[0,0,0,4,38],
@@ -243,11 +249,5 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1Transports_1_1HostJoinInfo.html":[1,0,0,9,7],
 "structPurrNet_1_1Transports_1_1NetworkSimulation.html":[1,0,0,9,12],
 "structPurrNet_1_1Transports_1_1NetworkSimulation.html":[0,0,0,9,12],
-"structPurrNet_1_1Transports_1_1RelayServer.html":[1,0,0,9,16],
-"structPurrNet_1_1Transports_1_1RelayServer.html":[0,0,0,9,16],
-"structPurrNet_1_1Transports_1_1Relayers.html":[1,0,0,9,15],
-"structPurrNet_1_1Transports_1_1Relayers.html":[0,0,0,9,15],
-"structPurrNet_1_1UnionRPCHeader.html":[0,0,0,165],
-"structPurrNet_1_1UnionRPCHeader.html":[1,0,0,165],
-"structPurrNet_1_1Vector3WithParent.html":[0,0,0,168]
+"structPurrNet_1_1Transports_1_1RelayServer.html":[1,0,0,9,17]
 };
