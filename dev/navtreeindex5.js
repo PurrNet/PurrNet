@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"functions_func_w.html":[1,3,1,19],
+"functions_g.html":[1,3,0,6],
 "functions_h.html":[1,3,0,7],
 "functions_i.html":[1,3,0,8],
 "functions_k.html":[1,3,0,9],
@@ -247,7 +249,5 @@ var NAVTREEINDEX5 =
 "structPurrNet_1_1Modules_1_1SpawnID.html":[0,0,0,4,54],
 "structPurrNet_1_1Modules_1_1SpawnID.html":[1,0,0,4,54],
 "structPurrNet_1_1Modules_1_1SpawnPacket.html":[0,0,0,4,55],
-"structPurrNet_1_1Modules_1_1SpawnPacket.html":[1,0,0,4,55],
-"structPurrNet_1_1Modules_1_1SpawnPacket.html#a0922c12a911e2f57ff97efefa4da72b0":[1,0,0,4,55,0],
-"structPurrNet_1_1Modules_1_1SpawnPacket.html#a0922c12a911e2f57ff97efefa4da72b0":[0,0,0,4,55,0]
+"structPurrNet_1_1Modules_1_1SpawnPacket.html":[1,0,0,4,55]
 };

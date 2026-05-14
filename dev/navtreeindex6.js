@@ -1,5 +1,7 @@
 var NAVTREEINDEX6 =
 {
+"structPurrNet_1_1Modules_1_1SpawnPacket.html#a0922c12a911e2f57ff97efefa4da72b0":[1,0,0,4,55,0],
+"structPurrNet_1_1Modules_1_1SpawnPacket.html#a0922c12a911e2f57ff97efefa4da72b0":[0,0,0,4,55,0],
 "structPurrNet_1_1Modules_1_1SpawnPacketBatch.html":[1,0,0,4,56],
 "structPurrNet_1_1Modules_1_1SpawnPacketBatch.html":[0,0,0,4,56],
 "structPurrNet_1_1Modules_1_1TickManagerRequestLocalTick.html":[1,0,0,4,58],
