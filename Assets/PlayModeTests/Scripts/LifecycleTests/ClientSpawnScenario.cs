@@ -126,10 +126,14 @@ public class ClientSpawnScenario : Scenario
 
         // Give a beat for OnOwnerChanged + OnObserverAdded to land after OnSpawned. OnObserverAdded
         // fires server-side only, so a pure-client peer waits on the owner-change record alone.
+        // Host has both perspectives in one process, and reliable host-loopback is now deferred by
+        // a tick (PurrTransportLayer), so the server-side record arrives first and the client-side
+        // record on the next ReceiveMessages drain — wait for both before validating.
+        int expectedOwnerChanges = ctx.isServer && ctx.isClient ? 2 : 1;
         try
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => ClientSpawnIdentity.ChangeRecords.Count >= 1
+                () => ClientSpawnIdentity.ChangeRecords.Count >= expectedOwnerChanges
                       && (!ctx.isServer || ClientSpawnIdentity.ObserverAdds.Count >= 1),
                 _validateTimeoutSeconds,
                 ctx.cancellationToken);

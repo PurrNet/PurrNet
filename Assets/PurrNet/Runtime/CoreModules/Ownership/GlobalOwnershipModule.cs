@@ -907,9 +907,7 @@ namespace PurrNet.Modules
 
             if (change.isAdding)
             {
-                module.GiveOwnership(identity, change.player);
-
-                if (oldOwner != change.player)
+                if (module.GiveOwnership(identity, change.player) && oldOwner != change.player)
                     identity.TriggerOnOwnerChanged(oldOwner, change.player, _asServer, change.isSpawner);
             }
             else
