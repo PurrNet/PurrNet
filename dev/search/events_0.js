@@ -7,7 +7,7 @@ var searchData=
   ['onchanged_4',['onChanged',['../classPurrNet_1_1SyncDictionary.html#ac307c72171951df98c5e14e45fa92491',1,'PurrNet.SyncDictionary.onChanged()'],['../classPurrNet_1_1SyncHashSet.html#acb0b6229263b74cfc8478721f5b5cfcf',1,'PurrNet.SyncHashSet.onChanged()'],['../classPurrNet_1_1SyncInput.html#a2f16aa294f1a0b8bfff1760def1c2a78',1,'PurrNet.SyncInput.onChanged()'],['../classPurrNet_1_1SyncList.html#adba87c78ce8e6534415b097edc73aa1d',1,'PurrNet.SyncList.onChanged()']]],
   ['onclientconnectionstate_5',['onClientConnectionState',['../classPurrNet_1_1NetworkManager.html#af107336749b67361d07c646814c9771b',1,'PurrNet::NetworkManager']]],
   ['onclientspawnvalidate_6',['onClientSpawnValidate',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a0783729a0b49a2e30cadbc335a948f58',1,'PurrNet::Modules::HierarchyV2']]],
-  ['ondeniedbyserver_7',['onDeniedByServer',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#af8b155dc1fcfc36275f7ebf32e19900e',1,'PurrNet::Authentication::AuthenticationBehaviour']]],
+  ['ondeniedbyserver_7',['onDeniedByServer',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a92cf06ebfc6358f240ab501ae619f736',1,'PurrNet::Authentication::AuthenticationBehaviour']]],
   ['onearlyidentityadded_8',['onEarlyIdentityAdded',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#ad2e7ac7352bbce58511f1c562dd8d013',1,'PurrNet::Modules::HierarchyV2']]],
   ['onforcesyncwindowclosed_9',['onForceSyncWindowClosed',['../classPurrNet_1_1NetworkRigidbody.html#af820fd825b17101054493054cf4f7886',1,'PurrNet::NetworkRigidbody']]],
   ['onforcesyncwindowopened_10',['onForceSyncWindowOpened',['../classPurrNet_1_1NetworkRigidbody.html#af6e51e3ec60610c656da3786e147b5e6',1,'PurrNet::NetworkRigidbody']]],
