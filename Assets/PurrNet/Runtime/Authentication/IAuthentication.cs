@@ -300,16 +300,18 @@ namespace PurrNet.Authentication
     /// reason to the client UI.
     /// </remarks>
     public abstract class AuthenticationBehaviour<TRequest, TDenial> : AuthenticationLayer
+        where TDenial : struct
     {
         private PlayersManager _players;
         private INetworkManager _networkManager;
 
         /// <summary>
         /// Client-side event fired when the server has rejected the connection. The kind tells you
-        /// which built-in or user denier triggered; <paramref name="reason"/> is meaningful only
-        /// when <paramref name="kind"/> is <see cref="DenialKind.AuthenticatorRejected"/>.
+        /// which built-in or user denier triggered; <paramref name="reason"/> is <c>null</c> for
+        /// built-in deniers (version mismatch, timeout, etc.) and only carries a value when
+        /// <paramref name="kind"/> is <see cref="DenialKind.AuthenticatorRejected"/>.
         /// </summary>
-        public event Action<DenialKind, TDenial> onDeniedByServer;
+        public event Action<DenialKind, TDenial?> onDeniedByServer;
 
         public override void Subscribe(INetworkManager manager, BroadcastModule broadcastModule, PlayersManager players)
         {
@@ -403,13 +405,15 @@ namespace PurrNet.Authentication
 
         public override void OnDenialReceived(DenialKind kind, ByteData? reason)
         {
-            TDenial decoded = default;
+            TDenial? decoded = null;
             try
             {
                 if (kind == DenialKind.AuthenticatorRejected && reason.HasValue)
                 {
                     using var packer = BitPackerPool.Get(reason.Value);
-                    Packer<TDenial>.Read(packer, ref decoded);
+                    TDenial value = default;
+                    Packer<TDenial>.Read(packer, ref value);
+                    decoded = value;
                 }
             }
             catch (Exception e)
@@ -442,9 +446,9 @@ namespace PurrNet.Authentication
         /// wiring an event handler. Default body is empty.
         /// </summary>
         /// <param name="kind">Which denier rejected the connection.</param>
-        /// <param name="reason">Decoded TDenial; only meaningful when <paramref name="kind"/>
-        /// is <see cref="DenialKind.AuthenticatorRejected"/>, otherwise <c>default</c>.</param>
-        protected virtual void OnDeniedByServer(DenialKind kind, TDenial reason)
+        /// <param name="reason"><c>null</c> for built-in deniers (no payload). Carries the decoded
+        /// TDenial only when <paramref name="kind"/> is <see cref="DenialKind.AuthenticatorRejected"/>.</param>
+        protected virtual void OnDeniedByServer(DenialKind kind, TDenial? reason)
         {
         }
 
