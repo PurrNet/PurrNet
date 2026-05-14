@@ -224,6 +224,15 @@ namespace PurrNet
         /// </summary>
         public static event Action<ConnectionState> onAnyClientConnectionState;
 
+        /// <summary>
+        /// Server-side: fires when a client is rejected by either a built-in denier
+        /// (version mismatch, ack timeout, missing authenticator) or by the active
+        /// <see cref="Authentication.AuthenticationLayer"/>. <c>reason</c> is <c>null</c> for
+        /// built-ins and only carries bytes for typed denials produced by an
+        /// <see cref="Authentication.AuthenticationBehaviour{TRequest,TDenial}"/>.
+        /// </summary>
+        public event Action<Connection, DenialKind, ByteData?> onAuthenticationDenied;
+
         public ITransport rawTransport => _transport ? _transport.transport : null;
 
         private bool _ready;
@@ -238,6 +247,7 @@ namespace PurrNet
             onClientConnectionState = null;
             onAnyServerConnectionState = null;
             onAnyClientConnectionState = null;
+            onAuthenticationDenied = null;
 
             onPreTick = null;
             onTick = null;
@@ -908,6 +918,8 @@ namespace PurrNet
         internal DeltaModule _clientDeltaModule;
         internal DeltaModule _serverDeltaModule;
 
+        private AuthModule _serverAuthModule;
+
         /// <summary>
         /// This event is triggered before the tick.
         /// It may be triggered multiple times if you are both a server and a client.
@@ -967,6 +979,9 @@ namespace PurrNet
         public event OnPlayerEvent onLocalPlayerReceivedID;
 
         void OnLocalPlayerReceivedID(PlayerID player) => onLocalPlayerReceivedID?.Invoke(player);
+
+        void OnAuthenticationDenied(Connection conn, DenialKind kind, ByteData? reason) =>
+            onAuthenticationDenied?.Invoke(conn, kind, reason);
 
         /// <summary>
         /// This event is triggered when a player joins the scene.
@@ -1082,6 +1097,12 @@ namespace PurrNet
 
             if (asServer)
             {
+                if (_serverAuthModule != null)
+                    _serverAuthModule.onAuthenticationDenied -= OnAuthenticationDenied;
+
+                _serverAuthModule = authModule;
+                _serverAuthModule.onAuthenticationDenied += OnAuthenticationDenied;
+
                 if (_serverPlayersManager != null)
                 {
                     _serverPlayersManager.onPlayerJoined -= OnPlayerJoined;
