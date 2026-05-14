@@ -1,3 +1,15 @@
+# [1.20.0-beta.164](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.163...v1.20.0-beta.164) (2026-05-14)
+
+
+### Bug Fixes
+
+* store a client owner version for correct OnOwnerChanged callbacks in host mode ([a12293b](https://github.com/PurrNet/PurrNet/commit/a12293bbccf925c6f30632ad909ba208e37055ca))
+
+
+### Features
+
+* introduce a thin layer between purrnet and the transport for some finer control ([b26c76c](https://github.com/PurrNet/PurrNet/commit/b26c76c39a0c4aab477dba173fb9e5e9e7b3568a))
+
 # [1.20.0-beta.163](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.162...v1.20.0-beta.163) (2026-05-14)
 
 
