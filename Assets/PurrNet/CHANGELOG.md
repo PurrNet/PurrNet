@@ -1,3 +1,10 @@
+# [1.20.0-beta.162](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.161...v1.20.0-beta.162) (2026-05-14)
+
+
+### Bug Fixes
+
+* make auth denial reason nullable ([10c701f](https://github.com/PurrNet/PurrNet/commit/10c701f44350ff2d4d15bd21cff8055bf993c8d6))
+
 # [1.20.0-beta.161](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.160...v1.20.0-beta.161) (2026-05-14)
 
 
