@@ -1,3 +1,10 @@
+# [1.20.0-beta.160](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.159...v1.20.0-beta.160) (2026-05-14)
+
+
+### Bug Fixes
+
+* don't delay spawn packet by one tick ([bdbcd52](https://github.com/PurrNet/PurrNet/commit/bdbcd5215a2a7094c95489620d3e269bf7c06196))
+
 # [1.20.0-beta.159](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.158...v1.20.0-beta.159) (2026-05-13)
 
 
