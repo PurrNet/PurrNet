@@ -233,7 +233,9 @@ namespace PurrNet
         /// </summary>
         public event Action<Connection, DenialKind, ByteData?> onAuthenticationDenied;
 
-        public ITransport rawTransport => _transport ? _transport.transport : null;
+        private PurrTransportLayer _transportLayer;
+
+        public ITransport rawTransport => _transportLayer;
 
         private bool _ready;
 
@@ -270,7 +272,7 @@ namespace PurrNet
             _clientPendingSubscriptions.Clear();
         }
 
-        public ITransport currentTransport => _transport ? _transport.transport : null;
+        public ITransport currentTransport => _transportLayer;
 
         /// <summary>
         /// The transport of the network manager.
@@ -292,20 +294,14 @@ namespace PurrNet
                             PurrLogger.FormatMessage("Cannot change transport while it is being used."));
                     }
 
-                    _transport.transport.onConnected -= OnNewConnection;
-                    _transport.transport.onDisconnected -= OnLostConnection;
-                    _transport.transport.onConnectionState -= OnConnectionState;
-                    _transport.transport.onDataReceived -= OnDataReceived;
+                    TeardownTransportLayer();
                 }
 
                 _transport = value;
 
                 if (_transport)
                 {
-                    _transport.transport.onConnected += OnNewConnection;
-                    _transport.transport.onDisconnected += OnLostConnection;
-                    _transport.transport.onConnectionState += OnConnectionState;
-                    _transport.transport.onDataReceived += OnDataReceived;
+                    BuildTransportLayer();
                     _subscribed = true;
                 }
                 else
@@ -313,6 +309,28 @@ namespace PurrNet
                     _subscribed = false;
                 }
             }
+        }
+
+        private void BuildTransportLayer()
+        {
+            _transportLayer = new PurrTransportLayer(_transport.transport);
+            _transportLayer.onConnected += OnNewConnection;
+            _transportLayer.onDisconnected += OnLostConnection;
+            _transportLayer.onConnectionState += OnConnectionState;
+            _transportLayer.onDataReceived += OnDataReceived;
+        }
+
+        private void TeardownTransportLayer()
+        {
+            if (_transportLayer == null)
+                return;
+
+            _transportLayer.onConnected -= OnNewConnection;
+            _transportLayer.onDisconnected -= OnLostConnection;
+            _transportLayer.onConnectionState -= OnConnectionState;
+            _transportLayer.onDataReceived -= OnDataReceived;
+            _transportLayer.Dispose();
+            _transportLayer = null;
         }
 
         /// <summary>
@@ -336,7 +354,7 @@ namespace PurrNet
         {
             get
             {
-                var state = !_transport ? ConnectionState.Disconnected : _transport.transport.listenerState;
+                var state = _transportLayer == null ? ConnectionState.Disconnected : _transportLayer.listenerState;
                 var result = state == ConnectionState.Disconnected && _isCleaningServer
                     ? ConnectionState.Disconnecting
                     : state;
@@ -352,7 +370,7 @@ namespace PurrNet
         {
             get
             {
-                var state = !_transport ? ConnectionState.Disconnected : _transport.transport.clientState;
+                var state = _transportLayer == null ? ConnectionState.Disconnected : _transportLayer.clientState;
                 return state == ConnectionState.Disconnected && _isCleaningClient
                     ? ConnectionState.Disconnecting
                     : state;
@@ -1395,8 +1413,8 @@ namespace PurrNet
             _serverModules.TriggerOnUpdate();
             _clientModules.TriggerOnUpdate();
 
-            if (_transport)
-                _transport.transport.UnityUpdate(Time.deltaTime);
+            if (_transportLayer != null)
+                _transportLayer.UnityUpdate(Time.deltaTime);
         }
 
         private void OnDrawGizmos()
@@ -1441,8 +1459,8 @@ namespace PurrNet
 
             using (_receiveMessagesMarker.Auto())
             {
-                if (_transport)
-                    _transport.transport.ReceiveMessages(delta);
+                if (_transportLayer != null)
+                    _transportLayer.ReceiveMessages(delta);
             }
 
             using (_receiveFixedUpdateMarker.Auto())
@@ -1483,12 +1501,12 @@ namespace PurrNet
 
             using (_onSendMessagesMarker.Auto())
             {
-                if (_transport)
+                if (_transportLayer != null)
                 {
                     var now = Time.unscaledTimeAsDouble;
                     var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : delta;
                     _lastSendTime = now;
-                    _transport.transport.SendMessages(sendDelta);
+                    _transportLayer.SendMessages(sendDelta);
                 }
             }
 
@@ -1554,6 +1572,8 @@ namespace PurrNet
             if (_addressableNetworkPrefabs)
                 _addressableNetworkPrefabs.ReleaseAll();
 #endif
+
+            TeardownTransportLayer();
         }
 
         /// <summary>
@@ -2014,8 +2034,8 @@ namespace PurrNet
 
         public void CloseConnection(Connection conn)
         {
-            if (isServer && _transport)
-                _transport.transport.CloseConnection(conn);
+            if (isServer && _transportLayer != null)
+                _transportLayer.CloseConnection(conn);
         }
 
         private RPCModule _clientRpcModule;

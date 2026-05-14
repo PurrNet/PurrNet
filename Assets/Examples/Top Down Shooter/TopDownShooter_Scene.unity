@@ -2519,6 +2519,7 @@ GameObject:
   - component: {fileID: 1216416911}
   - component: {fileID: 1216416912}
   - component: {fileID: 1216416914}
+  - component: {fileID: 1216416915}
   m_Layer: 0
   m_Name: Network
   m_TagString: Untagged
@@ -2702,6 +2703,24 @@ MonoBehaviour:
   _dedicatedServer: 0
   _peerToPeer: 1
   _address: 127.0.0.1
+--- !u!114 &1216416915
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1216416895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef882a0e84c58df4885b0e1e59320b49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.StatisticsManager
+  checkInterval: 0.33
+  placement: 1
+  _displayType: 3
+  _displayTarget: 6
+  fontSize: 13
+  textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1001 &1312733901
 PrefabInstance:
   m_ObjectHideFlags: 0

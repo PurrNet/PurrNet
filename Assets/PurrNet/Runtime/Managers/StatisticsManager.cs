@@ -146,8 +146,12 @@ namespace PurrNet
             {
                 _networkManager.onServerConnectionState -= OnServerConnectionState;
                 _networkManager.onClientConnectionState -= OnClientConnectionState;
-                _networkManager.transport.transport.onDataReceived -= OnDataReceived;
-                _networkManager.transport.transport.onDataSent -= OnDataSent;
+                var rt = _networkManager.rawTransport;
+                if (rt != null)
+                {
+                    rt.onDataReceived -= OnDataReceived;
+                    rt.onDataSent -= OnDataSent;
+                }
                 if (_networkManager.TryGetModule(out TickManager tm, false))
                     tm.onTick -= OnClientTick;
             }
@@ -382,16 +386,20 @@ namespace PurrNet
                     _playersServerBroadcaster.Unsubscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Unsubscribe<PacketMessage>(ReceivePacket);
                     _playersServerBroadcaster = null;
-                    _networkManager.transport.transport.onDataReceived -= OnDataReceived;
-                    _networkManager.transport.transport.onDataSent -= OnDataSent;
+                    var rt = _networkManager.rawTransport;
+                    if (rt != null)
+                    {
+                        rt.onDataReceived -= OnDataReceived;
+                        rt.onDataSent -= OnDataSent;
+                    }
                     ServerUnsubscribe_ServerStats();
                     return;
                 case ConnectionState.Connected:
                     _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
                     _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
-                    _networkManager.transport.transport.onDataReceived += OnDataReceived;
-                    _networkManager.transport.transport.onDataSent += OnDataSent;
+                    _networkManager.rawTransport.onDataReceived += OnDataReceived;
+                    _networkManager.rawTransport.onDataSent += OnDataSent;
                     ServerSubscribe_ServerStats();
                     break;
                 case ConnectionState.Connecting:
@@ -417,8 +425,12 @@ namespace PurrNet
                 _tickManager.onTick -= OnClientTick;
                 if (!connectedServer)
                 {
-                    _networkManager.transport.transport.onDataReceived -= OnDataReceived;
-                    _networkManager.transport.transport.onDataSent -= OnDataSent;
+                    var rt = _networkManager.rawTransport;
+                    if (rt != null)
+                    {
+                        rt.onDataReceived -= OnDataReceived;
+                        rt.onDataSent -= OnDataSent;
+                    }
                 }
 
                 ClientUnsubscribe_ServerStats();
@@ -432,8 +444,8 @@ namespace PurrNet
 
             if (!connectedServer)
             {
-                _networkManager.transport.transport.onDataReceived += OnDataReceived;
-                _networkManager.transport.transport.onDataSent += OnDataSent;
+                _networkManager.rawTransport.onDataReceived += OnDataReceived;
+                _networkManager.rawTransport.onDataSent += OnDataSent;
             }
 
             if (_tickManager.tickRate < _packetsToSendPerSec)
