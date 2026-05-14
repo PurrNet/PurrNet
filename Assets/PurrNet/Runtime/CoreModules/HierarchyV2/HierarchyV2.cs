@@ -96,6 +96,14 @@ namespace PurrNet.Modules
         /// </summary>
         public event SpawnedAction onSentSpawnPacket;
 
+        /// <summary>
+        /// Fired in PostNetworkMessages after observer-add state RPCs have been flushed but before
+        /// FinishSpawnPacket ships. Modules with per-spawn data that piggybacks on observer adds
+        /// (e.g. GlobalOwnershipModule's pending ownership changes) flush here so their packets
+        /// arrive before the receiver fires OnSpawned.
+        /// </summary>
+        public event Action<SceneID> onPreFinishSpawn;
+
         private bool _isPlayerReady;
 
         public HierarchyV2(NetworkManager manager, SceneID sceneId, Scene scene,
@@ -1655,16 +1663,15 @@ namespace PurrNet.Modules
         public void PreNetworkMessages()
         {
             _manager.FlushBatchedRPCs();
-            SendDelayedObserverEvents();
-            _manager.FlushBatchedRPCs();
-            SendDelayedCompleteSpawns();
         }
 
         public void PostNetworkMessages()
         {
-            _manager.FlushBatchedRPCs();
             FlushSpawnPackets();
+            SendDelayedObserverEvents();
             _manager.FlushBatchedRPCs();
+            onPreFinishSpawn?.Invoke(_sceneId);
+            SendDelayedCompleteSpawns();
             SpawnDelayedIdentities();
         }
 

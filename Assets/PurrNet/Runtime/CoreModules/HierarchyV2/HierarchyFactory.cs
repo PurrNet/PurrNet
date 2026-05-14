@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using UnityEngine.SceneManagement;
@@ -57,6 +58,8 @@ namespace PurrNet.Modules
 
         public event SpawnedAction onSentSpawnPacket;
 
+        public event Action<SceneID> onPreFinishSpawn;
+
         public void Enable(bool asServer)
         {
             var scenes = _scenes.sceneStates;
@@ -100,6 +103,7 @@ namespace PurrNet.Modules
             hierarchy.onIdentityAdded += OnIdentityAdded;
             hierarchy.onIdentityRemoved += OnIdentityRemoved;
             hierarchy.onSentSpawnPacket += OnSentSpawnPacket;
+            hierarchy.onPreFinishSpawn += OnPreFinishSpawn;
 
             if (_onClientSpawnValidate != null)
             {
@@ -115,6 +119,8 @@ namespace PurrNet.Modules
 
         private void OnSentSpawnPacket(PlayerID player, SceneID scene, NetworkID identity) =>
             onSentSpawnPacket?.Invoke(player, scene, identity);
+
+        private void OnPreFinishSpawn(SceneID scene) => onPreFinishSpawn?.Invoke(scene);
 
         private void OnLateObserverAdded(PlayerID player, NetworkIdentity identity) =>
             onLateObserverAdded?.Invoke(player, identity);
@@ -147,6 +153,7 @@ namespace PurrNet.Modules
             hierarchy.onIdentityAdded -= OnIdentityAdded;
             hierarchy.onIdentityRemoved -= OnIdentityRemoved;
             hierarchy.onSentSpawnPacket -= OnSentSpawnPacket;
+            hierarchy.onPreFinishSpawn -= OnPreFinishSpawn;
 
             if (_onClientSpawnValidate != null)
             {

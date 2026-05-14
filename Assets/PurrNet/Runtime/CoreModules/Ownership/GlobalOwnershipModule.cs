@@ -100,6 +100,7 @@ namespace PurrNet.Modules
 
             _hierarchy.onIdentityRemoved += OnIdentityDespawned;
             _hierarchy.onObserverAdded += OnPlayerObserverAdded;
+            _hierarchy.onPreFinishSpawn += HandlePendingChanges;
 
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _scenePlayers.onPlayerLoadedScene += OnPlayerLoadedScene;
@@ -118,6 +119,7 @@ namespace PurrNet.Modules
 
             _hierarchy.onIdentityRemoved -= OnIdentityDespawned;
             _hierarchy.onObserverAdded -= OnPlayerObserverAdded;
+            _hierarchy.onPreFinishSpawn -= HandlePendingChanges;
 
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             _scenePlayers.onPlayerLoadedScene -= OnPlayerLoadedScene;
@@ -737,18 +739,36 @@ namespace PurrNet.Modules
 
         private void HandlePendingChanges()
         {
+            HandlePendingChangesInternal(scopeScene: null);
+        }
+
+        private void HandlePendingChanges(SceneID scene)
+        {
+            HandlePendingChangesInternal(scopeScene: scene);
+        }
+
+        private void HandlePendingChangesInternal(SceneID? scopeScene)
+        {
             if (_pendingOwnershipChanges.Count == 0)
                 return;
 
             _manager.FlushBatchedRPCs();
 
+            using var keysToRemove = scopeScene.HasValue
+                ? DisposableList<PlayerSceneID>.Create(_pendingOwnershipChanges.Count)
+                : default;
+
             foreach (var (player, changes) in _pendingOwnershipChanges)
             {
+                if (scopeScene.HasValue && player.scene != scopeScene.Value)
+                    continue;
+
                 // TODO: ACTUAL RLE HERE
 
                 if (!_sceneOwnerships.TryGetValue(player.scene, out var ownerships))
                 {
                     changes.Dispose();
+                    if (scopeScene.HasValue) keysToRemove.Add(player);
                     continue;
                 }
 
@@ -766,6 +786,8 @@ namespace PurrNet.Modules
 
                 changes.Dispose();
 
+                if (scopeScene.HasValue) keysToRemove.Add(player);
+
                 if (resolved.Count == 0)
                     continue;
 
@@ -776,7 +798,15 @@ namespace PurrNet.Modules
                 });
             }
 
-            _pendingOwnershipChanges.Clear();
+            if (scopeScene.HasValue)
+            {
+                for (int i = 0; i < keysToRemove.Count; i++)
+                    _pendingOwnershipChanges.Remove(keysToRemove[i]);
+            }
+            else
+            {
+                _pendingOwnershipChanges.Clear();
+            }
         }
 
         struct PendingOwnershipChanges
