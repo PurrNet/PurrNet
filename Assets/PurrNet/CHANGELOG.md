@@ -1,3 +1,10 @@
+# [1.20.0-beta.163](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.162...v1.20.0-beta.163) (2026-05-14)
+
+
+### Bug Fixes
+
+* allow SyncBigData base contructor to shine through :) ([a16891c](https://github.com/PurrNet/PurrNet/commit/a16891cbb0c8304f5571a8f08cc6409481db5503))
+
 # [1.20.0-beta.162](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.161...v1.20.0-beta.162) (2026-05-14)
 
 
