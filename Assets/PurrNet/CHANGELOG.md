@@ -1,3 +1,10 @@
+# [1.20.0-beta.161](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.160...v1.20.0-beta.161) (2026-05-14)
+
+
+### Features
+
+* add variant of AuthenticationBehaviour that can give a deny response to client ([b0edd85](https://github.com/PurrNet/PurrNet/commit/b0edd85c4329f0eb9b71dc67499fefe5fabe14d3))
+
 # [1.20.0-beta.160](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.159...v1.20.0-beta.160) (2026-05-14)
 
 
