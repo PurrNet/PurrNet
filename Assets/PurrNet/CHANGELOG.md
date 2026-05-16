@@ -1,3 +1,10 @@
+# [1.20.0-beta.165](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.164...v1.20.0-beta.165) (2026-05-16)
+
+
+### Features
+
+* NetworkRigidbody.cs position driver ([da26c4f](https://github.com/PurrNet/PurrNet/commit/da26c4fea1e3484009d0886f9604c8f73714a894))
+
 # [1.20.0-beta.164](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.163...v1.20.0-beta.164) (2026-05-14)
 
 
