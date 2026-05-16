@@ -3,6 +3,7 @@ using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Transports;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace PurrNet
@@ -23,7 +24,13 @@ namespace PurrNet
 
     public struct RigidbodyStateData
     {
+        /// <summary>Legacy quantized position. Carries the value when no position
+        /// transform is installed; default otherwise.</summary>
         public CompressedVector3 position;
+        /// <summary>Absolute peer-agnostic position. Carries the value when a
+        /// position transform is installed and the object is unparented; default
+        /// otherwise. Delta-packed, so it costs nothing on the legacy path.</summary>
+        public double3 absolutePosition;
         public PackedQuaternion rotation;
         public HalfVector3 linearVelocity;
         public HalfVector3 angularVelocity;
@@ -33,6 +40,7 @@ namespace PurrNet
     public struct RigidbodyTeleportData
     {
         public CompressedVector3 position;
+        public double3 absolutePosition;
         public PackedQuaternion rotation;
         public HalfVector3 linearVelocity;
         public HalfVector3 angularVelocity;
@@ -51,7 +59,10 @@ namespace PurrNet
     struct TimestampedSnapshot
     {
         public double time;
-        public Vector3 position;
+        /// <summary>Position in the sync frame: parent-local when parented,
+        /// otherwise the absolute peer-agnostic frame (origin-invariant either
+        /// way, so it survives a local origin shift).</summary>
+        public double3 position;
         public Quaternion rotation;
         public Vector3 linearVelocity;
         public Vector3 angularVelocity;
@@ -127,14 +138,14 @@ namespace PurrNet
         private int _bufferHead;
         private int _bufferCount;
 
-        private Vector3 _targetPosition;
+        private double3 _targetPosition;
         private Quaternion _targetRotation = Quaternion.identity;
         private Vector3 _targetLinearVelocity;
         private Vector3 _targetAngularVelocity;
         /// <summary>Reference frame for _target* values. Null means world-space.</summary>
         private Transform _targetParent;
 
-        private Vector3 _lastSyncedPosition;
+        private double3 _lastSyncedPosition;
         private Quaternion _lastSyncedRotation;
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
@@ -148,11 +159,21 @@ namespace PurrNet
         private bool _wasInForceSyncWindow;
 
         private string _lastCorrectionReason = "No";
-        private Vector3 _latestRawSnapshotPos;
+        private double3 _latestRawSnapshotPos;
         private Transform _latestRawSnapshotParent;
         private string _bufferSampleMode = "None";
         private double _lastLogTime;
         private float _predictionOffset;
+
+        /// <summary>
+        /// Process-wide fallback used when a NetworkRigidbody has no runtime override
+        /// and no sibling component implementing <see cref="INetworkRigidbodyPositionTransform"/>.
+        /// Default null preserves legacy wire behaviour.
+        /// </summary>
+        public static INetworkRigidbodyPositionTransform defaultPositionTransform { get; set; }
+
+        private INetworkRigidbodyPositionTransform _positionTransform;
+        private bool _positionTransformExplicit;
 
         private void Awake()
         {
@@ -163,10 +184,12 @@ namespace PurrNet
         {
             base.OnSpawned();
 
+            ResolvePositionTransform();
+
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
-            var pos = ReadPosition(parentTrs);
+            var pos = ReadSyncPosition(parentTrs);
             var rot = ReadRotation(parentTrs);
             var linVel = ReadLinearVelocity(parentTrs);
             var angVel = ReadAngularVelocity(parentTrs);
@@ -204,15 +227,16 @@ namespace PurrNet
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
+            WriteWirePosition(parentTrs, out var wirePos, out var wireAbs);
             var stateData = new RigidbodyStateData
             {
-                position = ReadPosition(parentTrs),
+                position = wirePos,
+                absolutePosition = wireAbs,
                 rotation = ReadRotation(parentTrs),
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
                 parent = parentIdentity
             };
-
             SendInitialStateToObserver(player, stateData, GetCurrentSettings());
         }
 
@@ -220,6 +244,8 @@ namespace PurrNet
         {
             base.OnDespawned();
             DisposeSettingsInstance();
+            _positionTransform = null;
+            _positionTransformExplicit = false;
         }
 
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
@@ -280,25 +306,26 @@ namespace PurrNet
             if (!isInForceSyncWindow && !HasStateChanged(parentTrs) && !ShouldSyncWhenStopped())
                 return;
 
-            var pos = ReadPosition(parentTrs);
+            var pos = WriteWirePosition(parentTrs, out var wirePos, out var wireAbs);
             var rot = ReadRotation(parentTrs);
             var linVel = ReadLinearVelocity(parentTrs);
             var angVel = ReadAngularVelocity(parentTrs);
-
-            var stateData = new RigidbodyStateData
-            {
-                position = pos,
-                rotation = rot,
-                linearVelocity = linVel,
-                angularVelocity = angVel,
-                parent = parentIdentity
-            };
 
             _targetPosition = pos;
             _targetRotation = rot;
             _targetLinearVelocity = linVel;
             _targetAngularVelocity = angVel;
             _targetParent = parentTrs;
+
+            var stateData = new RigidbodyStateData
+            {
+                position = wirePos,
+                absolutePosition = wireAbs,
+                rotation = rot,
+                linearVelocity = linVel,
+                angularVelocity = angVel,
+                parent = parentIdentity
+            };
 
             if (isServer)
                 SyncState(stateData);
@@ -323,7 +350,7 @@ namespace PurrNet
             if (_predictionFactor > 0f)
             {
                 float compensation = _interpolationDelay * _predictionFactor;
-                _targetPosition += _targetLinearVelocity * compensation;
+                _targetPosition += ToD3(_targetLinearVelocity * compensation);
                 _predictionOffset = compensation;
             }
             else
@@ -510,10 +537,11 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
+            var syncPos = ExtractSyncPosition(data.parent, data.position, data.absolutePosition);
             _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
             {
                 time = Time.unscaledTimeAsDouble,
-                position = data.position,
+                position = syncPos,
                 rotation = data.rotation,
                 linearVelocity = data.linearVelocity,
                 angularVelocity = data.angularVelocity,
@@ -524,7 +552,7 @@ namespace PurrNet
             if (_bufferCount < BUFFER_SIZE)
                 _bufferCount++;
 
-            _latestRawSnapshotPos = data.position;
+            _latestRawSnapshotPos = syncPos;
             _latestRawSnapshotParent = data.parent ? data.parent.transform : null;
         }
 
@@ -563,7 +591,7 @@ namespace PurrNet
             if (renderTime >= newest.time)
             {
                 float overshoot = (float)(renderTime - newest.time);
-                _targetPosition = newest.position + newest.linearVelocity * overshoot;
+                _targetPosition = newest.position + ToD3(newest.linearVelocity * overshoot);
                 _targetRotation = newest.rotation;
                 _targetLinearVelocity = newest.linearVelocity;
                 _targetAngularVelocity = newest.angularVelocity;
@@ -620,9 +648,9 @@ namespace PurrNet
             if (a.parent == b.parent)
             {
                 _targetPosition = h00 * a.position
-                                + a.linearVelocity * (h10 * dt)
+                                + ToD3(a.linearVelocity * (h10 * dt))
                                 + h01 * b.position
-                                + b.linearVelocity * (h11 * dt);
+                                + ToD3(b.linearVelocity * (h11 * dt));
 
                 _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
                 _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
@@ -640,10 +668,11 @@ namespace PurrNet
                 Vector3 aWorldAngVel = ToWorldAngularVelocity(a.angularVelocity, a.parent);
                 Vector3 bWorldAngVel = ToWorldAngularVelocity(b.angularVelocity, b.parent);
 
-                _targetPosition = h00 * aWorldPos
-                                + aWorldLinVel * (h10 * dt)
-                                + h01 * bWorldPos
-                                + bWorldLinVel * (h11 * dt);
+                Vector3 worldResult = h00 * aWorldPos
+                                    + aWorldLinVel * (h10 * dt)
+                                    + h01 * bWorldPos
+                                    + bWorldLinVel * (h11 * dt);
+                _targetPosition = WorldToSyncNoParent(worldResult);
 
                 _targetLinearVelocity = Vector3.Lerp(aWorldLinVel, bWorldLinVel, t);
                 _targetRotation = Quaternion.Slerp(aWorldRot, bWorldRot, t);
@@ -702,10 +731,82 @@ namespace PurrNet
             return parentTrs.GetComponent<NetworkIdentity>();
         }
 
-        private Vector3 ReadPosition(Transform parent)
+        private static double3 ToD3(Vector3 v) => new double3(v.x, v.y, v.z);
+        private static Vector3 ToV3(double3 v) => new Vector3((float)v.x, (float)v.y, (float)v.z);
+
+        /// <summary>
+        /// Reads the rigidbody position into the origin-invariant sync frame:
+        /// parent-local when parented, absolute (via the position transform) when
+        /// unparented and a transform is installed, otherwise raw Unity world space.
+        /// </summary>
+        private double3 ReadSyncPosition(Transform parent)
         {
             var p = _rigidbody ? _rigidbody.position : transform.position;
-            return parent ? parent.InverseTransformPoint(p) : p;
+            if (parent)
+                return ToD3(parent.InverseTransformPoint(p));
+            if (_positionTransform != null)
+                return _positionTransform.ToAbsolute(this, p);
+            return ToD3(p);
+        }
+
+        /// <summary>
+        /// Reads the rigidbody position and fills the wire fields of a state struct.
+        /// Exactly one of <paramref name="wirePos"/> / <paramref name="wireAbs"/>
+        /// carries the value; the other stays default so it delta-packs away.
+        /// Returns the same value in the sync frame.
+        /// </summary>
+        private double3 WriteWirePosition(Transform parent, out CompressedVector3 wirePos, out double3 wireAbs)
+        {
+            var p = _rigidbody ? _rigidbody.position : transform.position;
+            if (parent)
+            {
+                var local = parent.InverseTransformPoint(p);
+                wirePos = local;
+                wireAbs = default;
+                return ToD3(local);
+            }
+            if (_positionTransform != null)
+            {
+                wirePos = default;
+                wireAbs = _positionTransform.ToAbsolute(this, p);
+                return wireAbs;
+            }
+            wirePos = p;
+            wireAbs = default;
+            return ToD3(p);
+        }
+
+        /// <summary>Converts a Unity world-space position into the wire fields (unparented).</summary>
+        private void WorldToWire(Vector3 worldPos, out CompressedVector3 wirePos, out double3 wireAbs)
+        {
+            if (_positionTransform != null)
+            {
+                wirePos = default;
+                wireAbs = _positionTransform.ToAbsolute(this, worldPos);
+            }
+            else
+            {
+                wirePos = worldPos;
+                wireAbs = default;
+            }
+        }
+
+        /// <summary>Decodes the wire fields of a received state into the sync frame.</summary>
+        private double3 ExtractSyncPosition(NetworkIdentity parentIdentity, CompressedVector3 wirePos, double3 wireAbs)
+        {
+            if (parentIdentity)
+                return ToD3(wirePos);
+            if (_positionTransform != null)
+                return wireAbs;
+            return ToD3(wirePos);
+        }
+
+        /// <summary>Converts an unparented Unity world-space position into the sync frame.</summary>
+        private double3 WorldToSyncNoParent(Vector3 worldPos)
+        {
+            if (_positionTransform != null)
+                return _positionTransform.ToAbsolute(this, worldPos);
+            return ToD3(worldPos);
         }
 
         private Quaternion ReadRotation(Transform parent)
@@ -730,9 +831,18 @@ namespace PurrNet
             return parent ? Quaternion.Inverse(parent.rotation) * v : v;
         }
 
-        private static Vector3 ToWorldPosition(Vector3 pos, Transform parent)
+        /// <summary>
+        /// Converts a sync-frame position back into this peer's Unity world space:
+        /// parent transform when parented, the position transform's inverse when
+        /// unparented and a transform is installed, otherwise the value as-is.
+        /// </summary>
+        private Vector3 ToWorldPosition(double3 pos, Transform parent)
         {
-            return parent ? parent.TransformPoint(pos) : pos;
+            if (parent)
+                return parent.TransformPoint(ToV3(pos));
+            if (_positionTransform != null)
+                return _positionTransform.ToLocal(this, pos);
+            return ToV3(pos);
         }
 
         private static Quaternion ToWorldRotation(Quaternion rot, Transform parent)
@@ -809,7 +919,7 @@ namespace PurrNet
             if (parent != _lastSyncedParent)
                 return true;
 
-            float positionDelta = Vector3.Distance(ReadPosition(parent), _lastSyncedPosition);
+            double positionDelta = math.distance(ReadSyncPosition(parent), _lastSyncedPosition);
             float rotationDelta = Quaternion.Angle(ReadRotation(parent), _lastSyncedRotation);
             float linearVelocityDelta = Vector3.Distance(ReadLinearVelocity(parent), _lastSyncedLinearVelocity);
             float angularVelocityDelta = Vector3.Distance(ReadAngularVelocity(parent), _lastSyncedAngularVelocity);
@@ -874,6 +984,32 @@ namespace PurrNet
         }
 
         public NetworkRigidbodySettingsInstance settingsInstance => _settingsInstance;
+
+        /// <summary>
+        /// Active position transform for this rigidbody, or null when positions
+        /// travel on the wire in this peer's own Unity world space (legacy behaviour).
+        /// </summary>
+        public INetworkRigidbodyPositionTransform positionTransform => _positionTransform;
+
+        /// <summary>
+        /// Install a position transform at runtime, overriding any sibling component
+        /// or static default. Pass null to fall back to the resolution chain on the
+        /// next spawn.
+        /// </summary>
+        public void SetPositionTransform(INetworkRigidbodyPositionTransform transform)
+        {
+            _positionTransform = transform;
+            _positionTransformExplicit = transform != null;
+        }
+
+        private void ResolvePositionTransform()
+        {
+            if (_positionTransformExplicit)
+                return;
+
+            var sibling = GetComponent<INetworkRigidbodyPositionTransform>();
+            _positionTransform = sibling ?? defaultPositionTransform;
+        }
 
         public Vector3 linearVelocity
         {
@@ -1071,7 +1207,8 @@ namespace PurrNet
             }
             else if (isActiveAndEnabled)
             {
-                RequestTeleport(position, rotation);
+                WorldToWire(position, out var wirePos, out var wireAbs);
+                RequestTeleport(wirePos, wireAbs, rotation);
             }
         }
 
@@ -1197,19 +1334,20 @@ namespace PurrNet
             _rigidbody.isKinematic = settings.isKinematic;
 
             var parentTrs = data.parent ? data.parent.transform : null;
+            var syncPos = ExtractSyncPosition(data.parent, data.position, data.absolutePosition);
 
-            _rigidbody.MovePosition(ToWorldPosition(data.position, parentTrs));
+            _rigidbody.MovePosition(ToWorldPosition(syncPos, parentTrs));
             _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
             _rigidbody.angularVelocity = ToWorldAngularVelocity(data.angularVelocity, parentTrs);
 
-            _targetPosition = data.position;
+            _targetPosition = syncPos;
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
             _targetParent = parentTrs;
 
-            _lastSyncedPosition = data.position;
+            _lastSyncedPosition = syncPos;
             _lastSyncedRotation = data.rotation;
             _lastSyncedLinearVelocity = data.linearVelocity;
             _lastSyncedAngularVelocity = data.angularVelocity;
@@ -1259,13 +1397,14 @@ namespace PurrNet
             _hasPendingTeleport = true;
 
             var parentTrs = data.parent ? data.parent.transform : null;
+            var syncPos = ExtractSyncPosition(data.parent, data.position, data.absolutePosition);
 
-            _rigidbody.MovePosition(ToWorldPosition(data.position, parentTrs));
+            _rigidbody.MovePosition(ToWorldPosition(syncPos, parentTrs));
             _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
             _rigidbody.angularVelocity = ToWorldAngularVelocity(data.angularVelocity, parentTrs);
 
-            _targetPosition = data.position;
+            _targetPosition = syncPos;
             _targetRotation = data.rotation;
             _targetLinearVelocity = data.linearVelocity;
             _targetAngularVelocity = data.angularVelocity;
@@ -1314,29 +1453,30 @@ namespace PurrNet
         }
 
         [ServerRpc(requireOwnership: false, deltaPacked: true)]
-        private void RequestTeleport(CompressedVector3 position, PackedQuaternion rotation)
+        private void RequestTeleport(CompressedVector3 position, double3 absolutePosition, PackedQuaternion rotation)
         {
             if (_ownerAuth && owner.HasValue)
             {
-                ForwardTeleportRequest(owner.Value, position, rotation);
+                // position stays in the peer-agnostic wire frame; the owner converts it.
+                ForwardTeleportRequest(owner.Value, position, absolutePosition, rotation);
                 return;
             }
 
             if (!_rigidbody)
                 return;
 
-            _rigidbody.MovePosition(position);
+            _rigidbody.MovePosition(ToWorldPosition(ExtractSyncPosition(null, position, absolutePosition), null));
             _rigidbody.MoveRotation(rotation);
             BroadcastTeleport();
         }
 
         [TargetRpc(deltaPacked: true)]
-        private void ForwardTeleportRequest(PlayerID target, CompressedVector3 position, PackedQuaternion rotation)
+        private void ForwardTeleportRequest(PlayerID target, CompressedVector3 position, double3 absolutePosition, PackedQuaternion rotation)
         {
             if (!_rigidbody)
                 return;
 
-            _rigidbody.MovePosition(position);
+            _rigidbody.MovePosition(ToWorldPosition(ExtractSyncPosition(null, position, absolutePosition), null));
             _rigidbody.MoveRotation(rotation);
             BroadcastTeleport();
         }
@@ -1346,9 +1486,11 @@ namespace PurrNet
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
+            WriteWirePosition(parentTrs, out var wirePos, out var wireAbs);
             Teleport(new RigidbodyTeleportData
             {
-                position = ReadPosition(parentTrs),
+                position = wirePos,
+                absolutePosition = wireAbs,
                 rotation = ReadRotation(parentTrs),
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),

@@ -1,3 +1,4 @@
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace PurrNet
@@ -8,7 +9,7 @@ namespace PurrNet
         [SerializeField] private bool _debugGizmos;
         [SerializeField] private float _debugTextOffset = 2f;
 
-        private Vector3 _prePredictionTarget;
+        private double3 _prePredictionTarget;
 
         private void OnDrawGizmos()
         {
