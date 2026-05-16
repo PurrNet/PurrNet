@@ -1,3 +1,10 @@
+# [1.20.0-beta.166](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.165...v1.20.0-beta.166) (2026-05-16)
+
+
+### Bug Fixes
+
+* make RigidbodyStateData encode it's position frame to avoid race conditions on the remotes ([7394471](https://github.com/PurrNet/PurrNet/commit/739447198bf15c49001d9c34088696f761c3ab8d))
+
 # [1.20.0-beta.165](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.164...v1.20.0-beta.165) (2026-05-16)
 
 
