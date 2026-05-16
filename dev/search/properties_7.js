@@ -1,9 +1,9 @@
 var searchData=
 [
-  ['main_0',['main',['../classPurrNet_1_1NetworkManager.html#a363f5d48f41229126959dd5650d7988a',1,'PurrNet::NetworkManager']]],
-  ['maxdistance_1',['maxDistance',['../classPurrNet_1_1NetworkAudioSource.html#ab3ab48c764ba377d103b73c09caae09b',1,'PurrNet::NetworkAudioSource']]],
-  ['mindistance_2',['minDistance',['../classPurrNet_1_1NetworkAudioSource.html#a797c7724ec086dadfa93b17f1ff6e8ca',1,'PurrNet::NetworkAudioSource']]],
-  ['mostrecenttick_3',['MostRecentTick',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a5f08d15724c68d06438febca8ccc5f08',1,'PurrNet::Modules::SimpleHistory']]],
-  ['mtuexceededbehaviour_4',['mtuExceededBehaviour',['../classPurrNet_1_1NetworkManager.html#a6b09aaaaf0343e8a7b916d4adddf2521',1,'PurrNet.NetworkManager.mtuExceededBehaviour()'],['../classPurrNet_1_1RawNetManager.html#aa72ae7325b7df4f678a0b21496f8846b',1,'PurrNet.RawNetManager.mtuExceededBehaviour()']]],
-  ['mute_5',['mute',['../classPurrNet_1_1NetworkAudioSource.html#a84b768c9c8c9346149a5be9db88f40ca',1,'PurrNet::NetworkAudioSource']]]
+  ['layer_0',['layer',['../classPurrNet_1_1NetworkIdentity.html#ac793e32b016d54d9f442ae2c96ee1b17',1,'PurrNet::NetworkIdentity']]],
+  ['localplayer_1',['localPlayer',['../classPurrNet_1_1NetworkIdentity.html#a2b2931d588dbaac32efb5b6e982b602b',1,'PurrNet.NetworkIdentity.localPlayer()'],['../classPurrNet_1_1NetworkManager.html#ac200382655c66ced12c58831ca4bd69b',1,'PurrNet.NetworkManager.localPlayer()']]],
+  ['localplayerforced_2',['localPlayerForced',['../classPurrNet_1_1NetworkIdentity.html#ab56e1bed461605fc17f2c450224d4b29',1,'PurrNet::NetworkIdentity']]],
+  ['localprecisetick_3',['localPreciseTick',['../classPurrNet_1_1Modules_1_1TickManager.html#a0d4145ccebbb160a69b60f93babe0e18',1,'PurrNet::Modules::TickManager']]],
+  ['localtick_4',['localTick',['../classPurrNet_1_1Modules_1_1TickManager.html#ab8ea7b7b0dce2b4c4a7b1c2cd5887899',1,'PurrNet::Modules::TickManager']]],
+  ['loop_5',['loop',['../classPurrNet_1_1NetworkAudioSource.html#a412171afdd9010a7cb1c0b83302f7242',1,'PurrNet::NetworkAudioSource']]]
 ];

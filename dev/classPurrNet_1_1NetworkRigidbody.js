@@ -6,10 +6,12 @@ var classPurrNet_1_1NetworkRigidbody =
     [ "OnOwnerChanged", "classPurrNet_1_1NetworkRigidbody.html#a5bbe3031041db15dd08f6239d4a7f1ae", null ],
     [ "OnSpawned", "classPurrNet_1_1NetworkRigidbody.html#a1f5307a5ffaa725eea3fe068a2875216", null ],
     [ "OnTick", "classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215", null ],
+    [ "SetPositionTransform", "classPurrNet_1_1NetworkRigidbody.html#aa75c5f52eecdc4115cab13eee992f3c6", null ],
     [ "TeleportTo", "classPurrNet_1_1NetworkRigidbody.html#a812d715d890c285ae57f0d0ddd0ed01f", null ],
     [ "TeleportTo", "classPurrNet_1_1NetworkRigidbody.html#a22932505939adb31002b60333856cf60", null ],
     [ "forceSyncWindowRemaining", "classPurrNet_1_1NetworkRigidbody.html#abbf3ab24f5f3c6e45643304b663d1ce0", null ],
     [ "isInForceSyncWindow", "classPurrNet_1_1NetworkRigidbody.html#a226f1bbf7545361d763a058622319933", null ],
+    [ "positionTransform", "classPurrNet_1_1NetworkRigidbody.html#af03e259ba604c57476834135fc38c69b", null ],
     [ "velocity", "classPurrNet_1_1NetworkRigidbody.html#a991b4caed336f1e8cd3e6cb0db4ca2f2", null ],
     [ "onForceSyncWindowClosed", "classPurrNet_1_1NetworkRigidbody.html#af820fd825b17101054493054cf4f7886", null ],
     [ "onForceSyncWindowOpened", "classPurrNet_1_1NetworkRigidbody.html#af6e51e3ec60610c656da3786e147b5e6", null ]

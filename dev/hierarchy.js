@@ -225,6 +225,7 @@ var hierarchy =
       [ "PurrNet.Modules.TickManager", "classPurrNet_1_1Modules_1_1TickManager.html", null ],
       [ "PurrNet.PlayersBroadcaster", "classPurrNet_1_1PlayersBroadcaster.html", null ]
     ] ],
+    [ "PurrNet.INetworkRigidbodyPositionTransform", "interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html", null ],
     [ "PurrNet.INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", [
       [ "PurrNet.NetworkTransform", "classPurrNet_1_1NetworkTransform.html", null ]
     ] ],

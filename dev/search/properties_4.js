@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['hasloopback_0',['hasLoopback',['../classPurrNet_1_1Transports_1_1PurrTransportLayer.html#a137137b7107077cda3a7f1f9d7923168',1,'PurrNet::Transports::PurrTransportLayer']]]
+  ['floatingpoint_0',['floatingPoint',['../classPurrNet_1_1Modules_1_1TickManager.html#a227da955ded5ed38b90fa6198666e5b2',1,'PurrNet::Modules::TickManager']]],
+  ['forcesyncwindowremaining_1',['forceSyncWindowRemaining',['../classPurrNet_1_1NetworkRigidbody.html#abbf3ab24f5f3c6e45643304b663d1ce0',1,'PurrNet::NetworkRigidbody']]]
 ];

@@ -121,6 +121,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>StartIgnoringParentCh
 <tr class="memitem:a53a687dbf657b0adf2e14fe83d68900b"><td class="memItemLeft" align="right" valign="top"><a id="a53a687dbf657b0adf2e14fe83d68900b" name="a53a687dbf657b0adf2e14fe83d68900b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StopIgnoringParentChanges</b> ()</td></tr>
 <tr class="separator:a53a687dbf657b0adf2e14fe83d68900b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa75c5f52eecdc4115cab13eee992f3c6"><td class="memItemLeft" align="right" valign="top"><a id="aa75c5f52eecdc4115cab13eee992f3c6" name="aa75c5f52eecdc4115cab13eee992f3c6"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetPositionTransform</b> (<a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html">INetworkRigidbodyPositionTransform</a> transform)</td></tr>
+<tr class="memdesc:aa75c5f52eecdc4115cab13eee992f3c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Install a position transform at runtime, overriding any sibling component or static default. Pass null to fall back to the resolution chain on the next spawn.  <br /></td></tr>
+<tr class="separator:aa75c5f52eecdc4115cab13eee992f3c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a210b9e0e8c0c6a9c60c193e1096ea431"><td class="memItemLeft" align="right" valign="top"><a id="a210b9e0e8c0c6a9c60c193e1096ea431" name="a210b9e0e8c0c6a9c60c193e1096ea431"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>AddForce</b> (Vector3 force, ForceMode mode=ForceMode.Force)</td></tr>
 <tr class="separator:a210b9e0e8c0c6a9c60c193e1096ea431"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -423,6 +427,10 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDestroy</b>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
+<tr class="memitem:a0db5d022bc12ec428664fa34d2767ecc"><td class="memItemLeft" align="right" valign="top"><a id="a0db5d022bc12ec428664fa34d2767ecc" name="a0db5d022bc12ec428664fa34d2767ecc"></a>
+static <a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html">INetworkRigidbodyPositionTransform</a>&#160;</td><td class="memItemRight" valign="bottom"><b>defaultPositionTransform</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a0db5d022bc12ec428664fa34d2767ecc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Process-wide fallback used when a <a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a> has no runtime override and no sibling component implementing <a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html" title="Pluggable origin converter for NetworkRigidbody.">INetworkRigidbodyPositionTransform</a>. Default null preserves legacy wire behaviour.  <br /></td></tr>
+<tr class="separator:a0db5d022bc12ec428664fa34d2767ecc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a24ae2e36247db669fd36bdba625acc02"><td class="memItemLeft" align="right" valign="top"><a id="a24ae2e36247db669fd36bdba625acc02" name="a24ae2e36247db669fd36bdba625acc02"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>syncParent</b><code> [get]</code></td></tr>
 <tr class="separator:a24ae2e36247db669fd36bdba625acc02"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -438,6 +446,10 @@ new bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><
 <tr class="memitem:aaeb7fd8b63190cedea6d2b4bd1f395db"><td class="memItemLeft" align="right" valign="top"><a id="aaeb7fd8b63190cedea6d2b4bd1f395db" name="aaeb7fd8b63190cedea6d2b4bd1f395db"></a>
 <a class="el" href="classPurrNet_1_1NetworkRigidbodySettingsInstance.html">NetworkRigidbodySettingsInstance</a>&#160;</td><td class="memItemRight" valign="bottom"><b>settingsInstance</b><code> [get]</code></td></tr>
 <tr class="separator:aaeb7fd8b63190cedea6d2b4bd1f395db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af03e259ba604c57476834135fc38c69b"><td class="memItemLeft" align="right" valign="top"><a id="af03e259ba604c57476834135fc38c69b" name="af03e259ba604c57476834135fc38c69b"></a>
+<a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html">INetworkRigidbodyPositionTransform</a>&#160;</td><td class="memItemRight" valign="bottom"><b>positionTransform</b><code> [get]</code></td></tr>
+<tr class="memdesc:af03e259ba604c57476834135fc38c69b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Active position transform for this rigidbody, or null when positions travel on the wire in this peer's own Unity world space (legacy behaviour).  <br /></td></tr>
+<tr class="separator:af03e259ba604c57476834135fc38c69b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3f0cfd26a848b55cad777ed4de537264"><td class="memItemLeft" align="right" valign="top"><a id="a3f0cfd26a848b55cad777ed4de537264" name="a3f0cfd26a848b55cad777ed4de537264"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>linearVelocity</b><code> [get, set]</code></td></tr>
 <tr class="separator:a3f0cfd26a848b55cad777ed4de537264"><td class="memSeparator" colspan="2">&#160;</td></tr>
