@@ -171,6 +171,7 @@ var namespacePurrNet =
     [ "ValidatedSyncVar", "classPurrNet_1_1ValidatedSyncVar.html", "classPurrNet_1_1ValidatedSyncVar" ],
     [ "Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", null ],
     [ "VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ],
+    [ "RigidbodyPositionFrame", "namespacePurrNet.html#aa716bfa44eaf7ea6eb67cdedcac071d4", null ],
     [ "SyncDictionaryOperation", "namespacePurrNet.html#a7aa16184a63314ebb157015a347b6ae0", null ],
     [ "SyncHashSetOperation", "namespacePurrNet.html#a632ad9e97daa2680bc840e36e5ddda74", null ],
     [ "SyncListOperation", "namespacePurrNet.html#abb62eac57dfdbad47d7033db026fc518", null ]

@@ -56,7 +56,7 @@ var NAVTREEINDEX =
 "classPurrNet_1_1StateMachine_1_1StateNode.html#a164ea21c44eb2c124ce46ed3a91591e5",
 "functions.html",
 "structPurrNet_1_1Modules_1_1LocalTransform.html",
-"structPurrNet_1_1SyncStatus.html"
+"structPurrNet_1_1SyncQueueChange.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

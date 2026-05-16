@@ -1,14 +1,17 @@
 var NAVTREEINDEX7 =
 {
+"structPurrNet_1_1SyncQueueChange.html":[0,0,0,156],
+"structPurrNet_1_1SyncQueueChange.html":[1,0,0,156],
+"structPurrNet_1_1SyncStatus.html":[0,0,0,159],
 "structPurrNet_1_1SyncStatus.html":[1,0,0,159],
 "structPurrNet_1_1TimestampedSnapshot.html":[0,0,0,165],
 "structPurrNet_1_1TimestampedSnapshot.html":[1,0,0,165],
 "structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76":[0,0,0,165,0],
 "structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76":[1,0,0,165,0],
-"structPurrNet_1_1Transports_1_1ByteData.html":[1,0,0,9,1],
 "structPurrNet_1_1Transports_1_1ByteData.html":[0,0,0,9,1],
-"structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[1,0,0,9,2],
+"structPurrNet_1_1Transports_1_1ByteData.html":[1,0,0,9,1],
 "structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[0,0,0,9,2],
+"structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[1,0,0,9,2],
 "structPurrNet_1_1Transports_1_1Connection.html":[0,0,0,9,4],
 "structPurrNet_1_1Transports_1_1Connection.html":[1,0,0,9,4],
 "structPurrNet_1_1Transports_1_1HostJoinInfo.html":[1,0,0,9,7],
@@ -17,12 +20,12 @@ var NAVTREEINDEX7 =
 "structPurrNet_1_1Transports_1_1NetworkSimulation.html":[0,0,0,9,12],
 "structPurrNet_1_1Transports_1_1RelayServer.html":[1,0,0,9,17],
 "structPurrNet_1_1Transports_1_1RelayServer.html":[0,0,0,9,17],
-"structPurrNet_1_1Transports_1_1Relayers.html":[0,0,0,9,16],
 "structPurrNet_1_1Transports_1_1Relayers.html":[1,0,0,9,16],
-"structPurrNet_1_1UnionRPCHeader.html":[0,0,0,166],
+"structPurrNet_1_1Transports_1_1Relayers.html":[0,0,0,9,16],
 "structPurrNet_1_1UnionRPCHeader.html":[1,0,0,166],
-"structPurrNet_1_1Vector3WithParent.html":[0,0,0,169],
+"structPurrNet_1_1UnionRPCHeader.html":[0,0,0,166],
 "structPurrNet_1_1Vector3WithParent.html":[1,0,0,169],
-"structPurrNet_1_1VisibilityRules.html":[0,0,0,170],
-"structPurrNet_1_1VisibilityRules.html":[1,0,0,170]
+"structPurrNet_1_1Vector3WithParent.html":[0,0,0,169],
+"structPurrNet_1_1VisibilityRules.html":[1,0,0,170],
+"structPurrNet_1_1VisibilityRules.html":[0,0,0,170]
 };
