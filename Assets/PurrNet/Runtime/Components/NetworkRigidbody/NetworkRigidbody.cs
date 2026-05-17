@@ -416,7 +416,7 @@ namespace PurrNet
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
                     _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
-                    _rigidbody.angularVelocity = worldTargetAngVel;
+                    SetAngularVelocity(worldTargetAngVel);
                     _settingsInstance.OnReset(in ctx);
                 }
 
@@ -451,7 +451,7 @@ namespace PurrNet
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
                     _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
-                    _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel;
+                    SetAngularVelocity(_resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel);
                 }
 
                 bool correctRotation = !hardSnapRotation
@@ -470,6 +470,9 @@ namespace PurrNet
 
         private void ApplyCorrection(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel, float positionError, bool correctRotation)
         {
+            if (!CanApplyDynamicMotion())
+                return;
+
             float m = _rigidbody.mass;
             float range = Mathf.Max(_correctionRange, 0.01f);
             float ratio = Mathf.Clamp01(positionError / range);
@@ -484,7 +487,7 @@ namespace PurrNet
 
                 Vector3 dragCompensation = GetLinearVelocity() * GetDrag();
 
-                _rigidbody.AddForce((positionalPull + velocityDamping + dragCompensation) * m);
+                ApplyForceToRigidbody((positionalPull + velocityDamping + dragCompensation) * m);
             }
 
             if (correctRotation)
@@ -507,7 +510,7 @@ namespace PurrNet
                 if (torqueMag > maxTorque)
                     torque *= maxTorque / torqueMag;
 
-                _rigidbody.AddTorque(torque);
+                ApplyTorqueToRigidbody(torque);
             }
         }
 
@@ -537,7 +540,7 @@ namespace PurrNet
             _rigidbody.MovePosition(worldTargetPos);
             _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
             SetLinearVelocity(_resetLinearVelocityOnSnap ? Vector3.zero : worldTargetLinVel);
-            _rigidbody.angularVelocity = _resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel;
+            SetAngularVelocity(_resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel);
         }
 
         private static Quaternion NormalizeQuaternion(Quaternion q)
@@ -906,20 +909,37 @@ namespace PurrNet
 
         private Vector3 GetLinearVelocity()
         {
-#if UNITY_6000_0_OR_NEWER
-            return _rigidbody.linearVelocity;
-#else
-            return _rigidbody.velocity;
-#endif
+            return NetworkRigidbodyPhysics.GetLinearVelocity(_rigidbody);
         }
 
         private void SetLinearVelocity(Vector3 value)
         {
-#if UNITY_6000_0_OR_NEWER
-            _rigidbody.linearVelocity = value;
-#else
-            _rigidbody.velocity = value;
-#endif
+            NetworkRigidbodyPhysics.SetLinearVelocity(_rigidbody, value);
+        }
+
+        private void SetAngularVelocity(Vector3 value)
+        {
+            NetworkRigidbodyPhysics.SetAngularVelocity(_rigidbody, value);
+        }
+
+        private void ApplyForceToRigidbody(Vector3 force, ForceMode mode = ForceMode.Force)
+        {
+            NetworkRigidbodyPhysics.AddForce(_rigidbody, force, mode);
+        }
+
+        private void ApplyForceAtPositionToRigidbody(Vector3 force, Vector3 position, ForceMode mode = ForceMode.Force)
+        {
+            NetworkRigidbodyPhysics.AddForceAtPosition(_rigidbody, force, position, mode);
+        }
+
+        private void ApplyTorqueToRigidbody(Vector3 torque, ForceMode mode = ForceMode.Force)
+        {
+            NetworkRigidbodyPhysics.AddTorque(_rigidbody, torque, mode);
+        }
+
+        private bool CanApplyDynamicMotion()
+        {
+            return NetworkRigidbodyPhysics.CanApplyDynamicMotion(_rigidbody);
         }
 
         private float GetDrag()
@@ -1003,11 +1023,11 @@ namespace PurrNet
                 return;
 
             if (force.isTorque)
-                _rigidbody.AddTorque(force.force, force.mode);
+                ApplyTorqueToRigidbody(force.force, force.mode);
             else if (force.position.HasValue)
-                _rigidbody.AddForceAtPosition(force.force, force.position.Value, force.mode);
+                ApplyForceAtPositionToRigidbody(force.force, force.position.Value, force.mode);
             else
-                _rigidbody.AddForce(force.force, force.mode);
+                ApplyForceToRigidbody(force.force, force.mode);
         }
 
         #endregion
@@ -1071,7 +1091,7 @@ namespace PurrNet
         public Vector3 angularVelocity
         {
             get => _rigidbody ? _rigidbody.angularVelocity : Vector3.zero;
-            set { if (_rigidbody) _rigidbody.angularVelocity = value; }
+            set { if (_rigidbody) SetAngularVelocity(value); }
         }
 
         public Vector3 position
@@ -1172,7 +1192,7 @@ namespace PurrNet
 
             if (IsController(_ownerAuth))
             {
-                _rigidbody.AddForce(force, mode);
+                ApplyForceToRigidbody(force, mode);
             }
             else if (isActiveAndEnabled)
             {
@@ -1189,7 +1209,7 @@ namespace PurrNet
 
             if (IsController(_ownerAuth))
             {
-                _rigidbody.AddForceAtPosition(force, position, mode);
+                ApplyForceAtPositionToRigidbody(force, position, mode);
             }
             else if (isActiveAndEnabled)
             {
@@ -1206,7 +1226,7 @@ namespace PurrNet
 
             if (IsController(_ownerAuth))
             {
-                _rigidbody.AddTorque(torque, mode);
+                ApplyTorqueToRigidbody(torque, mode);
             }
             else if (isActiveAndEnabled)
             {
@@ -1242,7 +1262,7 @@ namespace PurrNet
             _rigidbody.MovePosition(position);
             _rigidbody.MoveRotation(rotation);
             SetLinearVelocity(Vector3.zero);
-            _rigidbody.angularVelocity = Vector3.zero;
+            SetAngularVelocity(Vector3.zero);
 
             if (IsController(_ownerAuth))
             {
@@ -1383,7 +1403,7 @@ namespace PurrNet
             _rigidbody.MovePosition(ToWorldPosition(syncPos, parentTrs));
             _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
-            _rigidbody.angularVelocity = ToWorldAngularVelocity(data.angularVelocity, parentTrs);
+            SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
 
             _targetPosition = syncPos;
             _targetRotation = data.rotation;
@@ -1446,7 +1466,7 @@ namespace PurrNet
             _rigidbody.MovePosition(ToWorldPosition(syncPos, parentTrs));
             _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
-            _rigidbody.angularVelocity = ToWorldAngularVelocity(data.angularVelocity, parentTrs);
+            SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
 
             _targetPosition = syncPos;
             _targetRotation = data.rotation;

@@ -28,12 +28,15 @@ namespace PurrNet
             rb.MovePosition(ctx.targetPosition);
             rb.MoveRotation(NormalizeQuaternion(ctx.targetRotation));
             SetLinearVelocity(rb, ctx.targetLinearVelocity);
-            rb.angularVelocity = ctx.targetAngularVelocity;
+            SetAngularVelocity(rb, ctx.targetAngularVelocity);
         }
 
         public virtual void ApplyPositionCorrection(in RigidbodyCorrectionContext ctx)
         {
             var rb = ctx.rigidbody;
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
             float m = rb.mass;
             float range = Mathf.Max(ctx.correctionRange, 0.01f);
             float ratio = Mathf.Clamp01(ctx.positionError / range);
@@ -46,12 +49,15 @@ namespace PurrNet
             Vector3 velocityDamping = velError * (2f * w);
             Vector3 dragCompensation = GetLinearVelocity(rb) * ctx.drag;
 
-            rb.AddForce((positionalPull + velocityDamping + dragCompensation) * m);
+            AddForce(rb, (positionalPull + velocityDamping + dragCompensation) * m);
         }
 
         public virtual void ApplyRotationCorrection(in RigidbodyCorrectionContext ctx)
         {
             var rb = ctx.rigidbody;
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
             float m = rb.mass;
             float w = ctx.rotationStrength;
 
@@ -72,7 +78,7 @@ namespace PurrNet
             if (torqueMag > maxTorque)
                 torque *= maxTorque / torqueMag;
 
-            rb.AddTorque(torque);
+            AddTorque(rb, torque);
         }
 
         public virtual void OnReset(in RigidbodyCorrectionContext ctx) { }
@@ -90,20 +96,32 @@ namespace PurrNet
 
         protected static Vector3 GetLinearVelocity(Rigidbody rb)
         {
-#if UNITY_6000_0_OR_NEWER
-            return rb.linearVelocity;
-#else
-            return rb.velocity;
-#endif
+            return NetworkRigidbodyPhysics.GetLinearVelocity(rb);
         }
 
         protected static void SetLinearVelocity(Rigidbody rb, Vector3 value)
         {
-#if UNITY_6000_0_OR_NEWER
-            rb.linearVelocity = value;
-#else
-            rb.velocity = value;
-#endif
+            NetworkRigidbodyPhysics.SetLinearVelocity(rb, value);
+        }
+
+        protected static void SetAngularVelocity(Rigidbody rb, Vector3 value)
+        {
+            NetworkRigidbodyPhysics.SetAngularVelocity(rb, value);
+        }
+
+        protected static void AddForce(Rigidbody rb, Vector3 force, ForceMode mode = ForceMode.Force)
+        {
+            NetworkRigidbodyPhysics.AddForce(rb, force, mode);
+        }
+
+        protected static void AddTorque(Rigidbody rb, Vector3 torque, ForceMode mode = ForceMode.Force)
+        {
+            NetworkRigidbodyPhysics.AddTorque(rb, torque, mode);
+        }
+
+        protected static bool CanApplyDynamicMotion(Rigidbody rb)
+        {
+            return NetworkRigidbodyPhysics.CanApplyDynamicMotion(rb);
         }
 
         protected static float GetDrag(Rigidbody rb)
@@ -113,6 +131,67 @@ namespace PurrNet
 #else
             return rb.drag;
 #endif
+        }
+    }
+
+    internal static class NetworkRigidbodyPhysics
+    {
+        internal static bool CanApplyDynamicMotion(Rigidbody rb)
+        {
+            return rb && !rb.isKinematic;
+        }
+
+        internal static Vector3 GetLinearVelocity(Rigidbody rb)
+        {
+#if UNITY_6000_0_OR_NEWER
+            return rb.linearVelocity;
+#else
+            return rb.velocity;
+#endif
+        }
+
+        internal static void SetLinearVelocity(Rigidbody rb, Vector3 value)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+#if UNITY_6000_0_OR_NEWER
+            rb.linearVelocity = value;
+#else
+            rb.velocity = value;
+#endif
+        }
+
+        internal static void SetAngularVelocity(Rigidbody rb, Vector3 value)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+            rb.angularVelocity = value;
+        }
+
+        internal static void AddForce(Rigidbody rb, Vector3 force, ForceMode mode = ForceMode.Force)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+            rb.AddForce(force, mode);
+        }
+
+        internal static void AddForceAtPosition(Rigidbody rb, Vector3 force, Vector3 position, ForceMode mode = ForceMode.Force)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+            rb.AddForceAtPosition(force, position, mode);
+        }
+
+        internal static void AddTorque(Rigidbody rb, Vector3 torque, ForceMode mode = ForceMode.Force)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+            rb.AddTorque(torque, mode);
         }
     }
 }
