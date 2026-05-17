@@ -1,3 +1,10 @@
+# [1.20.0-beta.167](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.166...v1.20.0-beta.167) (2026-05-17)
+
+
+### Bug Fixes
+
+* Cleanup Network RB kinematic handling ([6a16ffe](https://github.com/PurrNet/PurrNet/commit/6a16ffeaf9024dbd01f1e845c486c944ffacda03))
+
 # [1.20.0-beta.166](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.165...v1.20.0-beta.166) (2026-05-16)
 
 
