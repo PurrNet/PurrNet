@@ -135,7 +135,6 @@ namespace PurrNet.Editor
             var server = _masterServer.stringValue;
             if (Uri.TryCreate(server, UriKind.Absolute, out var url) && url.Host.EndsWith("purrtransport.purrservers.com"))
             {
-                // draw help box saying this is meant for dev use only
                 EditorGUILayout.HelpBox("This server is meant for development use only.\n" +
                                         "Usage in production is strictly prohibited.\n" +
                                         "You need to host your own relay servers for production.", MessageType.Warning);

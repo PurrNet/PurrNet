@@ -15,6 +15,7 @@ using UnityEngine;
 namespace PurrNet.Transports
 {
     [AddComponentMenu("PurrNet/Transport/Purr Transport")]
+    // ReSharper disable once PartialTypeWithSinglePart
     public partial class PurrTransport : GenericTransport, ITransport
     {
         enum SERVER_PACKET_TYPE : byte
@@ -58,8 +59,7 @@ namespace PurrNet.Transports
                  "If a punch succeeds the session runs over P2P; if that link is later " +
                  "lost the session is disconnected cleanly.")]
         [SerializeField, HideInInspector] private bool _useNat;
-
-        [SerializeField] private float _natResolveTimeout = 8f;
+        [SerializeField, HideInInspector] private float _natResolveTimeout = 8f;
 
         [SerializeField, HideInInspector] private NetworkSimulation _networkSimulation = NetworkSimulation.@default;
 
@@ -117,7 +117,6 @@ namespace PurrNet.Transports
 
         public override ITransport transport => this;
 
-        // Pipe mode: simple connId-to-connId forwarding, no rooms or hosts
         private bool _isPipeMode;
         private int _pipeConnId;
 
@@ -266,11 +265,6 @@ namespace PurrNet.Transports
         private readonly Dictionary<int, NetPeer> _p2pPeersByConnId = new();
         private readonly Dictionary<NetPeer, int> _connIdByP2pPeer = new();
 
-        // Punch sessions are split by role: a single PurrTransport can play BOTH server
-        // and client (host mode), and the relay introduces the host to its own local
-        // client using one shared token. Keying every punch by token alone would let one
-        // role's session clobber the other's, so server-role and client-role punches are
-        // tracked separately.
         private readonly Dictionary<string, PunchSession> _serverPunches = new();
         private PunchSession _clientPunch;
         private readonly List<string> _punchScratch = new();
@@ -341,9 +335,8 @@ namespace PurrNet.Transports
         /// <summary>Drops and disconnects the direct P2P peer for the given connId, if any.</summary>
         private void DropP2pPeer(int connId)
         {
-            if (_p2pPeersByConnId.TryGetValue(connId, out var peer))
+            if (_p2pPeersByConnId.Remove(connId, out var peer))
             {
-                _p2pPeersByConnId.Remove(connId);
                 _connIdByP2pPeer.Remove(peer);
                 peer.Disconnect();
             }
@@ -462,8 +455,6 @@ namespace PurrNet.Transports
 
             if (natEnabled && _connIdByP2pPeer.TryGetValue(peer, out var p2pConnId))
             {
-                // First game data over a P2P peer means that client committed to the
-                // P2P link. Resolve before delivering so onConnected precedes the packet.
                 if (_pendingHostConns.ContainsKey(p2pConnId))
                     ResolveHostConnAsP2p(p2pConnId);
 
@@ -557,9 +548,6 @@ namespace PurrNet.Transports
                                  data.Array[data.Offset + 3] << 16 |
                                  data.Array[data.Offset + 4] << 24;
 
-                    // Relay-forwarded game data for a still-pending connection means
-                    // that client committed to the relay link. Resolve before
-                    // delivering so onConnected precedes the packet.
                     if (natEnabled && _pendingHostConns.ContainsKey(connId))
                         ResolveHostConnAsRelay(connId);
 
@@ -595,7 +583,7 @@ namespace PurrNet.Transports
                 return;
             }
 
-            if (natEnabled && peer == _p2pHostPeer)
+            if (natEnabled && ReferenceEquals(peer, _p2pHostPeer))
             {
                 _clientPunch = null;
 
@@ -625,11 +613,9 @@ namespace PurrNet.Transports
                 return;
             }
 
-            // Only the relay link dropping ends the session. Any other peer is a P2P
-            // peer (live, stale, or already discarded) and must never reach Disconnect.
-            if (natEnabled && peer != _relayClientPeer)
+            if (natEnabled && !ReferenceEquals(peer, _relayClientPeer))
             {
-                if (peer != _p2pHostPeer)
+                if (!ReferenceEquals(peer, _p2pHostPeer))
                     return;
 
                 _p2pHostPeer = null;
@@ -659,11 +645,8 @@ namespace PurrNet.Transports
                 return;
             }
 
-            if (natEnabled && peer == _p2pHostPeer)
+            if (natEnabled && ReferenceEquals(peer, _p2pHostPeer))
             {
-                // First game data over the P2P link means the host committed to P2P.
-                // The LiteNetLib handshake normally raises PeerConnected (-> ResolveClientConn)
-                // before any data, but resolve here too so a racing packet is never dropped.
                 if (_clientConnPending)
                 {
                     _p2pHostEstablished = true;
@@ -683,13 +666,6 @@ namespace PurrNet.Transports
             if (data.Array == null || data.Count == 0)
                 return;
 
-            // Once SERVER_AUTHENTICATED has been received the relay forwards nothing
-            // but unframed game data — every NAT introduce is delivered before
-            // AUTHENTICATED. So if we're still waiting on the NAT punch
-            // (_clientConnPending), the arrival of any relay packet means the host
-            // committed to the relay link. Adopt it immediately: resolve as relay
-            // (which fires onConnected) before delivering, so neither this packet
-            // nor its ordering relative to everything after it is ever lost.
             if (_clientConnPending)
                 ResolveClientConn(false);
 
@@ -707,9 +683,6 @@ namespace PurrNet.Transports
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATED:
                     if (natEnabled && _clientPunch != null)
                     {
-                        // NAT pending: keep clientState as Connecting so onConnectionState
-                        // and onConnected fire together once the session is resolved
-                        // (see ResolveClientConn) — same atomicity as the relay path.
                         _clientConnPending = true;
                         _clientConnDeadline = Time.realtimeSinceStartup + P2PResolveTimeout;
                     }
@@ -751,7 +724,7 @@ namespace PurrNet.Transports
 
         private void OnHostConnectedUDP(NetPeer peer)
         {
-            if (natEnabled && peer != _relayServerPeer)
+            if (natEnabled && !ReferenceEquals(peer, _relayServerPeer))
             {
                 if (_connIdByP2pPeer.TryGetValue(peer, out var p2pConnId))
                 {
@@ -808,14 +781,11 @@ namespace PurrNet.Transports
 
         private void OnHostDisconnectedUDP(NetPeer peer, DisconnectInfo disconnectInfo)
         {
-            // Only the relay link dropping tears down the host. Any other peer is a P2P
-            // peer (live, stale, or already unmapped) and must never reach StopListening.
-            if (natEnabled && peer != _relayServerPeer)
+            if (natEnabled && !ReferenceEquals(peer, _relayServerPeer))
             {
-                if (!_connIdByP2pPeer.TryGetValue(peer, out var p2pConnId))
+                if (!_connIdByP2pPeer.Remove(peer, out var p2pConnId))
                     return;
 
-                _connIdByP2pPeer.Remove(peer);
                 _p2pPeersByConnId.Remove(p2pConnId);
 
                 if (_p2pSessionConns.Remove(p2pConnId))
@@ -915,7 +885,6 @@ namespace PurrNet.Transports
                 }
                 catch (OperationCanceledException)
                 {
-                    // ignore
                 }
                 catch (Exception e)
                 {
@@ -1228,7 +1197,6 @@ namespace PurrNet.Transports
 
             if (clientState != ConnectionState.Connected)
             {
-                // Waiting for auth response
                 var type = (SERVER_PACKET_TYPE)data.Array[data.Offset];
 
                 if (type == SERVER_PACKET_TYPE.SERVER_PIPE_AUTHENTICATED && data.Count >= 5)
@@ -1248,7 +1216,6 @@ namespace PurrNet.Transports
             }
             else
             {
-                // Pipe data: [senderConnId(4)] [payload]
                 if (data.Count < 5) return;
 
                 int senderConnId = data.Array[data.Offset]
@@ -1334,9 +1301,8 @@ namespace PurrNet.Transports
 
         public void CloseConnection(Connection conn)
         {
-            if (natEnabled && _p2pPeersByConnId.TryGetValue(conn.connectionId, out var kickP2pPeer))
+            if (natEnabled && _p2pPeersByConnId.Remove(conn.connectionId, out var kickP2pPeer))
             {
-                _p2pPeersByConnId.Remove(conn.connectionId);
                 _connIdByP2pPeer.Remove(kickP2pPeer);
                 kickP2pPeer.Disconnect();
             }
@@ -1363,7 +1329,7 @@ namespace PurrNet.Transports
         {
             string token = null;
             try { token = request.Data.GetString(); }
-            catch { /* malformed request */ }
+            catch { /* ignored */ }
 
             if (!string.IsNullOrEmpty(token) &&
                 _serverPunches.TryGetValue(token, out var session))
@@ -1398,13 +1364,9 @@ namespace PurrNet.Transports
                 deadline = Time.realtimeSinceStartup + 6f
             };
 
-            // Server and client punches are tracked separately — in host mode the relay
-            // introduces this transport to its own local client with one shared token,
-            // so both a server-role and a client-role punch can be live for that token.
             if (isServer)
             {
-                if (!_serverPunches.ContainsKey(token))
-                    _serverPunches[token] = session;
+                _serverPunches.TryAdd(token, session);
             }
             else
             {
@@ -1470,7 +1432,6 @@ namespace PurrNet.Transports
             if (_relayUdpEndPoint == null)
                 return;
 
-            // Server-role punches: resend introduce requests until success or deadline.
             if (_serverPunches.Count > 0)
             {
                 _punchScratch.Clear();
@@ -1496,7 +1457,6 @@ namespace PurrNet.Transports
                     _serverPunches.Remove(_punchScratch[i]);
             }
 
-            // Client-role punch: a single pending handshake toward the host.
             if (_clientPunch != null)
             {
                 if (now >= _clientPunch.deadline)
