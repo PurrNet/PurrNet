@@ -14,6 +14,8 @@ namespace PurrNet.Editor
         private SerializedProperty _host;
         private SerializedProperty _timeoutInSeconds;
         private SerializedProperty _pollEventsInUpdate;
+        private SerializedProperty _useNat;
+        private SerializedProperty _natResolveTimeout;
         private SerializedProperty _networkSimulation;
 
         private bool _lookingForBestRegion;
@@ -28,6 +30,8 @@ namespace PurrNet.Editor
             _host = serializedObject.FindProperty("_host");
             _timeoutInSeconds = serializedObject.FindProperty("_timeoutInSeconds");
             _pollEventsInUpdate = serializedObject.FindProperty("_pollEventsInUpdate");
+            _useNat = serializedObject.FindProperty("_useNat");
+            _natResolveTimeout = serializedObject.FindProperty("_natResolveTimeout");
             _networkSimulation = serializedObject.FindProperty("_networkSimulation");
 
             if (!EditorApplication.isPlayingOrWillChangePlaymode)
@@ -183,6 +187,21 @@ namespace PurrNet.Editor
 
             EditorGUILayout.PropertyField(_timeoutInSeconds);
             EditorGUILayout.PropertyField(_pollEventsInUpdate);
+            EditorGUILayout.PropertyField(_useNat, new GUIContent("Use NAT",
+                "Attempt a direct P2P link via NAT hole-punching. Fully transparent to the " +
+                "game: traffic falls back to the relay automatically when P2P is unavailable."));
+
+            if (_useNat.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(_natResolveTimeout, new GUIContent("NAT Resolve Timeout",
+                    "Seconds to wait for a NAT punch to establish a direct P2P link before " +
+                    "falling back to the relay. Keep this comfortably below your connection/" +
+                    "auth timeout so a failed punch still falls back in time."));
+                if (_natResolveTimeout.floatValue < 1f)
+                    _natResolveTimeout.floatValue = 1f;
+                EditorGUI.indentLevel--;
+            }
 
             EditorGUILayout.Space(4);
             EditorGUILayout.PropertyField(_networkSimulation, new GUIContent("Network Simulation (UDP)"));
