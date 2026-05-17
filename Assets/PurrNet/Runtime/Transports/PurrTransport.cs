@@ -95,6 +95,48 @@ namespace PurrNet.Transports
             set => _useNat = value;
         }
 
+        /// <summary>Which link a session is running over: the relay or a direct NAT-punched P2P link.</summary>
+        public enum SessionLink
+        {
+            /// <summary>No active session.</summary>
+            None,
+            /// <summary>Connected, still waiting for the NAT punch to resolve P2P vs relay.</summary>
+            Resolving,
+            /// <summary>Session is running over the relay.</summary>
+            Relay,
+            /// <summary>Session is running over a direct P2P link.</summary>
+            P2P
+        }
+
+        /// <summary>Which link the local client's session is running over (relay vs direct P2P).</summary>
+        public SessionLink clientSessionLink
+        {
+            get
+            {
+                if (_clientConnPending)
+                    return SessionLink.Resolving;
+                if (_clientState != ConnectionState.Connected)
+                    return SessionLink.None;
+                return _clientP2pSession ? SessionLink.P2P : SessionLink.Relay;
+            }
+        }
+
+        /// <summary>Number of host-side connections currently running over a direct P2P link.</summary>
+        public int p2pConnectionCount => _p2pSessionConns.Count;
+
+        /// <summary>Remote endpoint of the direct P2P link to the host, or null when not on a P2P session.</summary>
+        public string p2pHostEndpoint =>
+            _clientP2pSession && _p2pHostPeer != null ? _p2pHostPeer.ToString() : null;
+
+        /// <summary>Remote endpoint of a host-side connection's direct P2P link, or null if it runs over the relay.</summary>
+        public string GetP2pEndpoint(Connection conn)
+        {
+            return _p2pSessionConns.Contains(conn.connectionId) &&
+                   _p2pPeersByConnId.TryGetValue(conn.connectionId, out var peer)
+                ? peer.ToString()
+                : null;
+        }
+
         public void SetServer(RelayServer server)
         {
             _region = server.region;
@@ -329,7 +371,6 @@ namespace PurrNet.Transports
             if (!_connections.Contains(conn))
                 _connections.Add(conn);
             onConnected?.Invoke(conn, true);
-            PurrLogger.Log($"[PurrTransport] Connection {connId} running over direct P2P link");
         }
 
         /// <summary>Drops and disconnects the direct P2P peer for the given connId, if any.</summary>
@@ -350,9 +391,6 @@ namespace PurrNet.Transports
 
             _clientConnPending = false;
             _clientP2pSession = p2p;
-
-            if (p2p)
-                PurrLogger.Log("[PurrTransport] Session running over direct P2P link");
 
             clientState = ConnectionState.Connected;
             onConnected?.Invoke(new Connection(0), false);
@@ -453,12 +491,19 @@ namespace PurrNet.Transports
         {
             var data = new ByteData(reader.RawData, reader.UserDataOffset, reader.UserDataSize);
 
-            if (natEnabled && _connIdByP2pPeer.TryGetValue(peer, out var p2pConnId))
+            // Any non-relay peer is a P2P peer. If it is still mapped, deliver its game
+            // data; if it was already dropped (relay won the race, or the session ended)
+            // ignore the stale packets — raw P2P bytes must never reach OnHostData, which
+            // would misparse them as a relay control frame.
+            if (natEnabled && !ReferenceEquals(peer, _relayServerPeer))
             {
-                if (_pendingHostConns.ContainsKey(p2pConnId))
-                    ResolveHostConnAsP2p(p2pConnId);
+                if (_connIdByP2pPeer.TryGetValue(peer, out var p2pConnId))
+                {
+                    if (_pendingHostConns.ContainsKey(p2pConnId))
+                        ResolveHostConnAsP2p(p2pConnId);
 
-                RaiseDataReceived(new Connection(p2pConnId), data, true);
+                    RaiseDataReceived(new Connection(p2pConnId), data, true);
+                }
                 return;
             }
 
@@ -590,7 +635,6 @@ namespace PurrNet.Transports
                 if (_clientConnPending)
                 {
                     _p2pHostEstablished = true;
-                    PurrLogger.Log("[PurrTransport] Direct P2P link to host established");
                     ResolveClientConn(true);
                 }
                 else
@@ -623,7 +667,6 @@ namespace PurrNet.Transports
                 if (_p2pHostEstablished)
                 {
                     _p2pHostEstablished = false;
-                    PurrLogger.Log("[PurrTransport] Direct P2P link to host lost, disconnecting");
                     Disconnect();
                 }
                 else if (_clientConnPending)
@@ -645,16 +688,22 @@ namespace PurrNet.Transports
                 return;
             }
 
-            if (natEnabled && ReferenceEquals(peer, _p2pHostPeer))
+            // Any non-relay peer is the P2P link. Deliver while it is the live host
+            // peer; ignore stale packets from a dropped P2P peer so they never reach
+            // OnClientData and get misparsed as a relay control frame.
+            if (natEnabled && !ReferenceEquals(peer, _relayClientPeer))
             {
-                if (_clientConnPending)
+                if (ReferenceEquals(peer, _p2pHostPeer))
                 {
-                    _p2pHostEstablished = true;
-                    ResolveClientConn(true);
-                }
+                    if (_clientConnPending)
+                    {
+                        _p2pHostEstablished = true;
+                        ResolveClientConn(true);
+                    }
 
-                if (clientState == ConnectionState.Connected)
-                    RaiseDataReceived(new Connection(0), new ByteData(data.Array, data.Offset, data.Count), false);
+                    if (clientState == ConnectionState.Connected)
+                        RaiseDataReceived(new Connection(0), new ByteData(data.Array, data.Offset, data.Count), false);
+                }
                 return;
             }
 
@@ -794,7 +843,6 @@ namespace PurrNet.Transports
                     if (_connections.Remove(conn))
                         onDisconnected?.Invoke(conn, DisconnectReason.Timeout, true);
                     CloseConnection(conn);
-                    PurrLogger.Log($"[PurrTransport] Direct P2P link for connId {p2pConnId} lost, disconnecting");
                 }
                 else if (_pendingHostConns.ContainsKey(p2pConnId))
                 {
@@ -1338,7 +1386,6 @@ namespace PurrNet.Transports
                 _p2pPeersByConnId[session.clientConnId] = peer;
                 _connIdByP2pPeer[peer] = session.clientConnId;
                 _serverPunches.Remove(token);
-                PurrLogger.Log($"[PurrTransport] Accepted direct P2P link for connId {session.clientConnId}");
             }
             else
             {
@@ -1383,7 +1430,6 @@ namespace PurrNet.Transports
             if (_p2pHostPeer != null)
                 return;
 
-            PurrLogger.Log($"[PurrTransport] NAT punch succeeded, connecting P2P to {targetEndPoint}");
             _p2pHostPeer = _udpClient.Connect(targetEndPoint, token);
         }
 
@@ -1413,10 +1459,7 @@ namespace PurrNet.Transports
             float now = Time.realtimeSinceStartup;
 
             if (_clientConnPending && now >= _clientConnDeadline)
-            {
-                PurrLogger.Log("[PurrTransport] NAT punch timed out, session running over relay");
                 ResolveClientConn(false);
-            }
 
             if (_pendingHostConns.Count > 0)
             {

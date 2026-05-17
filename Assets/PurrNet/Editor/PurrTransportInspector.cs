@@ -210,7 +210,52 @@ namespace PurrNet.Editor
 
             TransportInspector.DrawTransportStatus(transport);
 
+            DrawConnectionMode(transport);
+
             serializedObject.ApplyModifiedProperties();
         }
+
+        private void DrawConnectionMode(PurrTransport transport)
+        {
+            if (!Application.isPlaying)
+                return;
+
+            var link = transport.clientSessionLink;
+            string clientLine = link switch
+            {
+                PurrTransport.SessionLink.P2P => transport.p2pHostEndpoint != null
+                    ? $"Direct P2P (NAT) — {transport.p2pHostEndpoint}"
+                    : "Direct P2P (NAT)",
+                PurrTransport.SessionLink.Relay => "Relay",
+                PurrTransport.SessionLink.Resolving => "resolving NAT punch…",
+                _ => null
+            };
+
+            int total = transport.connections.Count;
+            bool hasHost = total > 0;
+
+            if (clientLine == null && !hasHost)
+                return;
+
+            EditorGUILayout.Space(4);
+
+            if (clientLine != null)
+                EditorGUILayout.LabelField("Client session", clientLine);
+
+            if (hasHost)
+            {
+                EditorGUILayout.LabelField("Host links",
+                    $"{transport.p2pConnectionCount} P2P / {total - transport.p2pConnectionCount} relay");
+
+                foreach (var conn in transport.connections)
+                {
+                    var endpoint = transport.GetP2pEndpoint(conn);
+                    if (endpoint != null)
+                        EditorGUILayout.LabelField($"    conn {conn.connectionId}", $"P2P {endpoint}");
+                }
+            }
+        }
+
+        public override bool RequiresConstantRepaint() => Application.isPlaying;
     }
 }
