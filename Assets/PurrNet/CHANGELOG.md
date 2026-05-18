@@ -1,3 +1,10 @@
+# [1.20.0-beta.170](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.169...v1.20.0-beta.170) (2026-05-18)
+
+
+### Bug Fixes
+
+* don't print public user IPs in the inspector (NAT debug view) ([413231e](https://github.com/PurrNet/PurrNet/commit/413231e257a70521bcb55aa42d48e95dc2e4fa07))
+
 # [1.20.0-beta.169](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.168...v1.20.0-beta.169) (2026-05-18)
 
 
