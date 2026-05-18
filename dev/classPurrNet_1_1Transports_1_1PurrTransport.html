@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Transports_1_1PurrTran
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#properties">Properties</a> &#124;
@@ -113,8 +114,18 @@ Inheritance diagram for PurrNet.Transports.PurrTransport:</div>
   </map>
 </div></div>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a9c1074a3457b1be31fbf09f912e17661"><td class="memItemLeft" align="right" valign="top"><a id="a9c1074a3457b1be31fbf09f912e17661" name="a9c1074a3457b1be31fbf09f912e17661"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a9c1074a3457b1be31fbf09f912e17661">SessionLink</a> </td></tr>
+<tr class="memdesc:a9c1074a3457b1be31fbf09f912e17661"><td class="mdescLeft">&#160;</td><td class="mdescRight">Which link a session is running over: the relay or a direct NAT-punched P2P link. <br /></td></tr>
+<tr class="separator:a9c1074a3457b1be31fbf09f912e17661"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a494876d88e0afc801b7a91f4a82cbed2"><td class="memItemLeft" align="right" valign="top"><a id="a494876d88e0afc801b7a91f4a82cbed2" name="a494876d88e0afc801b7a91f4a82cbed2"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>GetP2pEndpoint</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn)</td></tr>
+<tr class="memdesc:a494876d88e0afc801b7a91f4a82cbed2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remote endpoint of a host-side connection's direct P2P link, or null if it runs over the relay. <br /></td></tr>
+<tr class="separator:a494876d88e0afc801b7a91f4a82cbed2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a348d074b40b42bd5ccd5972ab5bff39b"><td class="memItemLeft" align="right" valign="top"><a id="a348d074b40b42bd5ccd5972ab5bff39b" name="a348d074b40b42bd5ccd5972ab5bff39b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetServer</b> (<a class="el" href="structPurrNet_1_1Transports_1_1RelayServer.html">RelayServer</a> server)</td></tr>
 <tr class="separator:a348d074b40b42bd5ccd5972ab5bff39b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -256,6 +267,21 @@ string&#160;</td><td class="memItemRight" valign="bottom"><b>masterServer</b><co
 <tr class="memitem:a26e7209d2dea3c2fc5d4c466d0d52af7"><td class="memItemLeft" align="right" valign="top"><a id="a26e7209d2dea3c2fc5d4c466d0d52af7" name="a26e7209d2dea3c2fc5d4c466d0d52af7"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>roomName</b><code> [get, set]</code></td></tr>
 <tr class="separator:a26e7209d2dea3c2fc5d4c466d0d52af7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a14892dc32e17023db8badbb49b5fda3f"><td class="memItemLeft" align="right" valign="top"><a id="a14892dc32e17023db8badbb49b5fda3f" name="a14892dc32e17023db8badbb49b5fda3f"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>useNat</b><code> [get, set]</code></td></tr>
+<tr class="separator:a14892dc32e17023db8badbb49b5fda3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5bf95d839dc60b37fec0e3342992b63a"><td class="memItemLeft" align="right" valign="top"><a id="a5bf95d839dc60b37fec0e3342992b63a" name="a5bf95d839dc60b37fec0e3342992b63a"></a>
+<a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a9c1074a3457b1be31fbf09f912e17661">SessionLink</a>&#160;</td><td class="memItemRight" valign="bottom"><b>clientSessionLink</b><code> [get]</code></td></tr>
+<tr class="memdesc:a5bf95d839dc60b37fec0e3342992b63a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Which link the local client's session is running over (relay vs direct P2P). <br /></td></tr>
+<tr class="separator:a5bf95d839dc60b37fec0e3342992b63a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab6765727ea69bff54704c3bd7c4e3233"><td class="memItemLeft" align="right" valign="top"><a id="ab6765727ea69bff54704c3bd7c4e3233" name="ab6765727ea69bff54704c3bd7c4e3233"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>p2pConnectionCount</b><code> [get]</code></td></tr>
+<tr class="memdesc:ab6765727ea69bff54704c3bd7c4e3233"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of host-side connections currently running over a direct P2P link. <br /></td></tr>
+<tr class="separator:ab6765727ea69bff54704c3bd7c4e3233"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b359d220a83037363b8914f15949953"><td class="memItemLeft" align="right" valign="top"><a id="a6b359d220a83037363b8914f15949953" name="a6b359d220a83037363b8914f15949953"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>p2pHostEndpoint</b><code> [get]</code></td></tr>
+<tr class="memdesc:a6b359d220a83037363b8914f15949953"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remote endpoint of the direct P2P link to the host, or null when not on a P2P session. <br /></td></tr>
+<tr class="separator:a6b359d220a83037363b8914f15949953"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c2e8caf9e42196d01011c3da71fb363"><td class="memItemLeft" align="right" valign="top"><a id="a8c2e8caf9e42196d01011c3da71fb363" name="a8c2e8caf9e42196d01011c3da71fb363"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasRegionAndHost</b><code> [get]</code></td></tr>
 <tr class="separator:a8c2e8caf9e42196d01011c3da71fb363"><td class="memSeparator" colspan="2">&#160;</td></tr>

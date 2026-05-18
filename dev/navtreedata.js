@@ -40,6 +40,7 @@ var NAVTREE =
         [ "All", "functions.html", "functions_dup" ],
         [ "Functions", "functions_func.html", "functions_func" ],
         [ "Variables", "functions_vars.html", null ],
+        [ "Enumerations", "functions_enum.html", null ],
         [ "Properties", "functions_prop.html", null ],
         [ "Events", "functions_evnt.html", null ]
       ] ]
@@ -54,9 +55,9 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkManager.html#a10f7383683d187529d9736a9c248a32e",
 "classPurrNet_1_1NetworkTransform.html",
 "classPurrNet_1_1StateMachine_1_1StateNode.html#a164ea21c44eb2c124ce46ed3a91591e5",
-"functions.html",
-"structPurrNet_1_1Modules_1_1LocalTransform.html",
-"structPurrNet_1_1SyncQueueChange.html"
+"classPurrNet_1_1Utils_1_1PurrReadOnlyAttribute.html",
+"structPurrNet_1_1Modules_1_1DeltaValue.html",
+"structPurrNet_1_1StringUTF8.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
