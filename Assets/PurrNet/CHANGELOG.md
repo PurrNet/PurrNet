@@ -1,3 +1,10 @@
+# [1.20.0-beta.169](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.168...v1.20.0-beta.169) (2026-05-18)
+
+
+### Bug Fixes
+
+* move mathematics packer to it's own assembly to avoid having others to reference it ([71a23a0](https://github.com/PurrNet/PurrNet/commit/71a23a014111150f64455339dfe82e71a7ba62fd))
+
 # [1.20.0-beta.168](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.167...v1.20.0-beta.168) (2026-05-18)
 
 
