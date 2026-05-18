@@ -1,4 +1,5 @@
 using System;
+using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Utils;
@@ -120,8 +121,9 @@ namespace PurrNet
         {
             get
             {
-                if (_lastReadData.absolutePosition.HasValue && positionTransform != null)
-                    return positionTransform.ToLocal(this, _lastReadData.absolutePosition.Value);
+                if (_lastReadData.absolutePosition.HasValue &&
+                    TryResolvePositionTransform(out var transform))
+                    return transform.ToLocal(this, _lastReadData.absolutePosition.Value);
                 return _lastReadData.position.GetValueOrDefault();
             }
         }
@@ -253,9 +255,31 @@ namespace PurrNet
 
         private Vector3WithParent MakePositionSample(Transform p, NetworkTransformData data)
         {
-            if (data.absolutePosition.HasValue && positionTransform != null)
-                return new Vector3WithParent(this, positionTransform, data.absolutePosition.Value);
-            return new Vector3WithParent(p, _syncPosition == SyncMode.Local, data.position.GetValueOrDefault());
+            if (data.absolutePosition.HasValue)
+            {
+                if (TryResolvePositionTransform(out var transform))
+                    return new Vector3WithParent(this, transform, data.absolutePosition.Value);
+
+                PurrLogger.LogError(
+                    $"'{name}' received an absolute-frame position but has no {nameof(INetworkTransformPositionTransform)} " +
+                    $"to decode it. Assign one via {nameof(SetPositionTransform)} or {nameof(defaultPositionTransform)}.", this);
+            }
+            if (!data.position.HasValue)
+            {
+                PurrLogger.LogError(
+                    $"'{name}' received a {nameof(NetworkTransformData)} with no position in either frame. " +
+                    $"Holding the current transform instead of snapping to the parent origin.", this);
+                bool local = _syncPosition == SyncMode.Local;
+                return new Vector3WithParent(p, local, local ? _trs.localPosition : _trs.position);
+            }
+
+            return new Vector3WithParent(p, _syncPosition == SyncMode.Local, data.position.Value);
+        }
+
+        private bool TryResolvePositionTransform(out INetworkTransformPositionTransform transform)
+        {
+            transform = positionTransform ?? defaultPositionTransform;
+            return transform != null;
         }
 
         protected override void OnOwnerReconnected(PlayerID ownerId)
@@ -636,10 +660,7 @@ namespace PurrNet
             var ntScale = _syncScale ? _trs.localScale : default;
 
             if (_useAbsoluteFrame)
-            {
-                // pos is Unity world space (absolute frame only engages for SyncMode.World).
                 return new NetworkTransformData(null, positionTransform.ToAbsolute(this, pos), rot, ntScale);
-            }
 
             return new NetworkTransformData((CompressedVector3)pos, null, rot, ntScale);
         }
