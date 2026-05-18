@@ -1,7 +1,7 @@
 var searchData=
 [
   ['abs_0',['Abs',['../structPurrNet_1_1Packing_1_1Half.html#afa4d12633c91700807723fcf84bbc22e',1,'PurrNet::Packing::Half']]],
-  ['absoluteposition_1',['absolutePosition',['../structPurrNet_1_1RigidbodyStateData.html#aaff529f7bfcf643f82af85880773312a',1,'PurrNet::RigidbodyStateData']]],
+  ['absoluteposition_1',['absolutePosition',['../structPurrNet_1_1NetworkTransformData.html#ab42ad03ebbf76d8caaa97f6a01359725',1,'PurrNet.NetworkTransformData.absolutePosition()'],['../structPurrNet_1_1RigidbodyStateData.html#aaff529f7bfcf643f82af85880773312a',1,'PurrNet.RigidbodyStateData.absolutePosition()']]],
   ['ackdeltamessage_2',['AckDeltaMessage',['../structPurrNet_1_1Modules_1_1AckDeltaMessage.html',1,'PurrNet::Modules']]],
   ['add_3',['Add',['../structPurrNet_1_1Packing_1_1Half.html#adb92bc3fa147f5154cde721957826073',1,'PurrNet.Packing.Half.Add()'],['../classPurrNet_1_1SyncDictionary.html#a7d5f554a53932554be01d6caf124c9e6',1,'PurrNet.SyncDictionary.Add()'],['../classPurrNet_1_1SyncHashSet.html#a69d5d055eb6b43f47507b6f9683976d9',1,'PurrNet.SyncHashSet.Add()'],['../classPurrNet_1_1SyncList.html#a53cdbed6b00b71040f707b82a31cad07',1,'PurrNet.SyncList.Add()']]],
   ['addprovider_4',['AddProvider',['../classPurrNet_1_1CompositePrefabProvider.html#acc5487aa7a6c541b64fd2c5bf7573639',1,'PurrNet::CompositePrefabProvider']]],

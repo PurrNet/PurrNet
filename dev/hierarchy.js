@@ -229,6 +229,7 @@ var hierarchy =
     [ "PurrNet.INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", [
       [ "PurrNet.NetworkTransform", "classPurrNet_1_1NetworkTransform.html", null ]
     ] ],
+    [ "PurrNet.INetworkTransformPositionTransform", "interfacePurrNet_1_1INetworkTransformPositionTransform.html", null ],
     [ "PurrNet.INetworkVisibilityRule", "interfacePurrNet_1_1INetworkVisibilityRule.html", [
       [ "PurrNet.NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", [
         [ "PurrNet.AlwaysVisibleRule", "classPurrNet_1_1AlwaysVisibleRule.html", null ],

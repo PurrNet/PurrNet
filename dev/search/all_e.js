@@ -46,7 +46,7 @@ var searchData=
   ['pooling_43',['Pooling',['../namespacePurrNet_1_1Pooling.html',1,'PurrNet']]],
   ['poolingconfig_44',['PoolingConfig',['../structPurrNet_1_1PoolingConfig.html',1,'PurrNet']]],
   ['poolpair_45',['PoolPair',['../structPurrNet_1_1Modules_1_1PoolPair.html',1,'PurrNet::Modules']]],
-  ['position_46',['position',['../structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76',1,'PurrNet.TimestampedSnapshot.position()'],['../structPurrNet_1_1RigidbodyStateData.html#ae0bfae34481270aa5bf465497626a1bc',1,'PurrNet.RigidbodyStateData.position()']]],
+  ['position_46',['position',['../structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76',1,'PurrNet.TimestampedSnapshot.position()'],['../structPurrNet_1_1NetworkTransformData.html#acaab2fe2ceeb035cf20d61ce7b9d129b',1,'PurrNet.NetworkTransformData.position()'],['../structPurrNet_1_1RigidbodyStateData.html#ae0bfae34481270aa5bf465497626a1bc',1,'PurrNet.RigidbodyStateData.position()']]],
   ['positionframe_47',['positionFrame',['../structPurrNet_1_1RigidbodyStateData.html#a663a74dabb08b151658e5a77ff27d625',1,'PurrNet::RigidbodyStateData']]],
   ['positiontransform_48',['positionTransform',['../classPurrNet_1_1NetworkRigidbody.html#af03e259ba604c57476834135fc38c69b',1,'PurrNet::NetworkRigidbody']]],
   ['positiveinfinity_49',['PositiveInfinity',['../structPurrNet_1_1Packing_1_1Half.html#acb50d7590924fa38aa606d74e667e9a3',1,'PurrNet::Packing::Half']]],

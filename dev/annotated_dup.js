@@ -204,6 +204,7 @@ var annotated_dup =
       [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", null ],
       [ "INetworkRigidbodyPositionTransform", "interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html", "interfacePurrNet_1_1INetworkRigidbodyPositionTransform" ],
       [ "INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", "interfacePurrNet_1_1INetworkTransform" ],
+      [ "INetworkTransformPositionTransform", "interfacePurrNet_1_1INetworkTransformPositionTransform.html", null ],
       [ "INetworkVisibilityRule", "interfacePurrNet_1_1INetworkVisibilityRule.html", "interfacePurrNet_1_1INetworkVisibilityRule" ],
       [ "Interpolated", "classPurrNet_1_1Interpolated.html", null ],
       [ "InterpolatedWithDispose", "classPurrNet_1_1InterpolatedWithDispose.html", null ],
@@ -249,7 +250,7 @@ var annotated_dup =
       [ "NetworkSceneRules", "structPurrNet_1_1NetworkSceneRules.html", null ],
       [ "NetworkServerToggle", "classPurrNet_1_1NetworkServerToggle.html", "classPurrNet_1_1NetworkServerToggle" ],
       [ "NetworkTransform", "classPurrNet_1_1NetworkTransform.html", "classPurrNet_1_1NetworkTransform" ],
-      [ "NetworkTransformData", "structPurrNet_1_1NetworkTransformData.html", null ],
+      [ "NetworkTransformData", "structPurrNet_1_1NetworkTransformData.html", "structPurrNet_1_1NetworkTransformData" ],
       [ "NetworkTransformRules", "structPurrNet_1_1NetworkTransformRules.html", null ],
       [ "NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", "classPurrNet_1_1NetworkVisibilityRule" ],
       [ "NetworkVisibilityRuleSet", "classPurrNet_1_1NetworkVisibilityRuleSet.html", null ],
@@ -338,7 +339,7 @@ var annotated_dup =
       [ "UnionRPCHeader", "structPurrNet_1_1UnionRPCHeader.html", null ],
       [ "UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
       [ "ValidatedSyncVar", "classPurrNet_1_1ValidatedSyncVar.html", "classPurrNet_1_1ValidatedSyncVar" ],
-      [ "Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", null ],
+      [ "Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", "structPurrNet_1_1Vector3WithParent" ],
       [ "VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ]
     ] ]
 ];
