@@ -1,3 +1,10 @@
+# [1.20.0-beta.171](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.170...v1.20.0-beta.171) (2026-05-18)
+
+
+### Features
+
+* allow position transform similar to networkrigidbody transform but for NetworkTransform.cs ([4a06b8e](https://github.com/PurrNet/PurrNet/commit/4a06b8e100b62a5b0cefa290862c8095abd9237a))
+
 # [1.20.0-beta.170](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.169...v1.20.0-beta.170) (2026-05-18)
 
 
