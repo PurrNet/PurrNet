@@ -165,7 +165,9 @@ namespace PurrNet
             if (!_positionTransformExplicit)
                 positionTransform = defaultPositionTransform;
 
-            _useAbsoluteFrame = _syncPosition == SyncMode.World && positionTransform != null;
+            _useAbsoluteFrame = positionTransform != null &&
+                                (_syncPosition == SyncMode.World ||
+                                 (_syncPosition == SyncMode.Local && _trs && !_trs.parent));
         }
 
         private void Awake()
@@ -649,6 +651,14 @@ namespace PurrNet
 
             if (_isIgnoringParentChanges)
                 return;
+
+            if (_syncPosition == SyncMode.Local && positionTransform != null)
+            {
+                bool wasAbsolute = _useAbsoluteFrame;
+                ResolvePositionTransform();
+                if (wasAbsolute != _useAbsoluteFrame)
+                    ForceSync();
+            }
 
             if (!_syncParent)
                 return;
