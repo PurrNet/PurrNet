@@ -1,3 +1,10 @@
+# [1.20.0-beta.175](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.174...v1.20.0-beta.175) (2026-05-18)
+
+
+### Bug Fixes
+
+* don't override NT's pos when no valid data is present (yet) ([88360a0](https://github.com/PurrNet/PurrNet/commit/88360a07436e0b19985f635d3a3ac77ddf7375ee))
+
 # [1.20.0-beta.174](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.173...v1.20.0-beta.174) (2026-05-18)
 
 
