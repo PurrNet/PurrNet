@@ -1,3 +1,10 @@
+# [1.20.0-beta.174](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.173...v1.20.0-beta.174) (2026-05-18)
+
+
+### Bug Fixes
+
+* teleport should... teleport ([c7e40e8](https://github.com/PurrNet/PurrNet/commit/c7e40e8d2031ba0b66f5441c5c782526b7079d6c))
+
 # [1.20.0-beta.173](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.172...v1.20.0-beta.173) (2026-05-18)
 
 
