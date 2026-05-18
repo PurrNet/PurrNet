@@ -1,3 +1,10 @@
+# [1.20.0-beta.176](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.175...v1.20.0-beta.176) (2026-05-18)
+
+
+### Bug Fixes
+
+* timing issues with NT ([ed46035](https://github.com/PurrNet/PurrNet/commit/ed4603510798b8bafc4754ee7b84784c964432eb))
+
 # [1.20.0-beta.175](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.174...v1.20.0-beta.175) (2026-05-18)
 
 
