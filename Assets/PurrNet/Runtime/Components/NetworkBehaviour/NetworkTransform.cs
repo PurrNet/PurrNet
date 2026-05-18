@@ -122,8 +122,8 @@ namespace PurrNet
             get
             {
                 if (_lastReadData.absolutePosition.HasValue &&
-                    TryResolvePositionTransform(out var transform))
-                    return transform.ToLocal(this, _lastReadData.absolutePosition.Value);
+                    TryResolvePositionTransform(out var trs))
+                    return trs.ToLocal(this, _lastReadData.absolutePosition.Value);
                 return _lastReadData.position.GetValueOrDefault();
             }
         }
@@ -216,6 +216,7 @@ namespace PurrNet
         protected override void OnEarlySpawn()
         {
             _trs = transform;
+            ReCacheIsController();
             ResolvePositionTransform();
 
             float sendDelta = networkManager.tickModule.tickDelta;
@@ -257,8 +258,8 @@ namespace PurrNet
         {
             if (data.absolutePosition.HasValue)
             {
-                if (TryResolvePositionTransform(out var transform))
-                    return new Vector3WithParent(this, transform, data.absolutePosition.Value);
+                if (TryResolvePositionTransform(out var trs))
+                    return new Vector3WithParent(this, trs, data.absolutePosition.Value);
 
                 PurrLogger.LogError(
                     $"'{name}' received an absolute-frame position but has no {nameof(INetworkTransformPositionTransform)} " +
@@ -292,10 +293,7 @@ namespace PurrNet
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
         {
             _cachedConnectedOwner = hasConnectedOwner;
-            var wasController = _cachedIsController;
-            _cachedIsController = IsController(_ownerAuth);
-            if (wasController != _cachedIsController)
-                OnIsControlledChanged(_cachedIsController);
+            ReCacheIsController();
 
             if (!enabled)
             {
@@ -323,6 +321,14 @@ namespace PurrNet
                 SendLatestStateToServer(_currentData);
                 _lastSentDelta = _currentData;
             }
+        }
+
+        private void ReCacheIsController()
+        {
+            var wasController = _cachedIsController;
+            _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
         }
 
         private bool _wasOnSpawnedCalled;
