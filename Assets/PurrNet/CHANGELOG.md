@@ -1,3 +1,10 @@
+# [1.20.0-beta.172](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.171...v1.20.0-beta.172) (2026-05-18)
+
+
+### Bug Fixes
+
+* snapshot jumping with world shifting on NR ([c406040](https://github.com/PurrNet/PurrNet/commit/c406040a6fab9c14e31222167864ff27d4d81daa))
+
 # [1.20.0-beta.171](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.170...v1.20.0-beta.171) (2026-05-18)
 
 
