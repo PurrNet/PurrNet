@@ -537,8 +537,8 @@ namespace PurrNet
 
         private void HardCorrect(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel)
         {
-            _rigidbody.MovePosition(worldTargetPos);
-            _rigidbody.MoveRotation(NormalizeQuaternion(worldTargetRot));
+            _rigidbody.position = worldTargetPos;
+            _rigidbody.rotation = NormalizeQuaternion(worldTargetRot);
             SetLinearVelocity(_resetLinearVelocityOnSnap ? Vector3.zero : worldTargetLinVel);
             SetAngularVelocity(_resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel);
         }
@@ -1269,8 +1269,8 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
-            _rigidbody.MovePosition(position);
-            _rigidbody.MoveRotation(rotation);
+            _rigidbody.position = position;
+            _rigidbody.rotation = rotation;
             SetLinearVelocity(Vector3.zero);
             SetAngularVelocity(Vector3.zero);
 
@@ -1410,8 +1410,8 @@ namespace PurrNet
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
 
-            _rigidbody.MovePosition(ToWorldPosition(syncPos, parentTrs));
-            _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
+            _rigidbody.position = ToWorldPosition(syncPos, parentTrs);
+            _rigidbody.rotation = NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
             SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
 
@@ -1473,8 +1473,8 @@ namespace PurrNet
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
 
-            _rigidbody.MovePosition(ToWorldPosition(syncPos, parentTrs));
-            _rigidbody.MoveRotation(NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs)));
+            _rigidbody.position = ToWorldPosition(syncPos, parentTrs);
+            _rigidbody.rotation = NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
             SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
 
@@ -1539,8 +1539,8 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
-            _rigidbody.MovePosition(ToWorldPosition(ExtractSyncPosition(frame, position, absolutePosition), null));
-            _rigidbody.MoveRotation(rotation);
+            _rigidbody.position = ToWorldPosition(ExtractSyncPosition(frame, position, absolutePosition), null);
+            _rigidbody.rotation = rotation;
             BroadcastTeleport();
         }
 
@@ -1550,8 +1550,8 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
-            _rigidbody.MovePosition(ToWorldPosition(ExtractSyncPosition(frame, position, absolutePosition), null));
-            _rigidbody.MoveRotation(rotation);
+            _rigidbody.position = ToWorldPosition(ExtractSyncPosition(frame, position, absolutePosition), null);
+            _rigidbody.rotation = rotation;
             BroadcastTeleport();
         }
 
