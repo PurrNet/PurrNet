@@ -223,9 +223,7 @@ namespace PurrNet.Editor
             var link = transport.clientSessionLink;
             string clientLine = link switch
             {
-                PurrTransport.SessionLink.P2P => transport.p2pHostEndpoint != null
-                    ? $"Direct P2P (NAT) — {transport.p2pHostEndpoint}"
-                    : "Direct P2P (NAT)",
+                PurrTransport.SessionLink.P2P => "Direct P2P (NAT)",
                 PurrTransport.SessionLink.Relay => "Relay",
                 PurrTransport.SessionLink.Resolving => "resolving NAT punch…",
                 _ => null
@@ -249,9 +247,8 @@ namespace PurrNet.Editor
 
                 foreach (var conn in transport.connections)
                 {
-                    var endpoint = transport.GetP2pEndpoint(conn);
-                    if (endpoint != null)
-                        EditorGUILayout.LabelField($"    conn {conn.connectionId}", $"P2P {endpoint}");
+                    var isP2p = transport.GetP2pEndpoint(conn) != null;
+                    EditorGUILayout.LabelField($"    conn {conn.connectionId}", isP2p ? "P2P" : "Relay");
                 }
             }
         }
