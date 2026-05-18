@@ -1,3 +1,10 @@
+# [1.20.0-beta.173](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.172...v1.20.0-beta.173) (2026-05-18)
+
+
+### Bug Fixes
+
+* position driver with local coords ([d0e8309](https://github.com/PurrNet/PurrNet/commit/d0e830911aa5ec6cc70c871d5e921bcdaa6f17f8))
+
 # [1.20.0-beta.172](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.171...v1.20.0-beta.172) (2026-05-18)
 
 
