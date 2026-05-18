@@ -1,3 +1,15 @@
+# [1.20.0-beta.168](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.167...v1.20.0-beta.168) (2026-05-18)
+
+
+### Bug Fixes
+
+* PurrTransport NAT bugs and editor rendering ([cb25abb](https://github.com/PurrNet/PurrNet/commit/cb25abbc44952b27a98c7a82f23dff1108629018))
+
+
+### Features
+
+* NAT p2p support for PurrTransport ([b8ee129](https://github.com/PurrNet/PurrNet/commit/b8ee12926c1db6de013d643027082b3118764e3c))
+
 # [1.20.0-beta.167](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.166...v1.20.0-beta.167) (2026-05-17)
 
 
