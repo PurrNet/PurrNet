@@ -562,11 +562,21 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
+            var now = Time.unscaledTimeAsDouble;
+
+            if (_bufferCount > 0)
+            {
+                int lastIndex = (_bufferHead - 1 + BUFFER_SIZE) % BUFFER_SIZE;
+                double maxGap = Math.Max(0.5, _interpolationDelay * 4.0);
+                if (now - _snapshotBuffer[lastIndex].time > maxGap)
+                    ClearBuffer();
+            }
+
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
             _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
             {
-                time = Time.unscaledTimeAsDouble,
+                time = now,
                 position = syncPos,
                 rotation = data.rotation,
                 linearVelocity = data.linearVelocity,
