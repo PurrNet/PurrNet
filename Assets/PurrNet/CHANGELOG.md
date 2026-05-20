@@ -1,3 +1,10 @@
+# [1.20.0-beta.178](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.177...v1.20.0-beta.178) (2026-05-20)
+
+
+### Bug Fixes
+
+* NetworkRigidbody handoff ([63ee82b](https://github.com/PurrNet/PurrNet/commit/63ee82be3d21fd273bc0005bb974002af938136b))
+
 # [1.20.0-beta.177](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.176...v1.20.0-beta.177) (2026-05-20)
 
 
