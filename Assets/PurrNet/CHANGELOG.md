@@ -1,3 +1,10 @@
+# [1.20.0-beta.179](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.178...v1.20.0-beta.179) (2026-05-20)
+
+
+### Bug Fixes
+
+* NetworkRigidbody allow to tp locally ([81c6bf4](https://github.com/PurrNet/PurrNet/commit/81c6bf4ecfb85e02bb7f2ed339c478214c1f4b7f))
+
 # [1.20.0-beta.178](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.177...v1.20.0-beta.178) (2026-05-20)
 
 
