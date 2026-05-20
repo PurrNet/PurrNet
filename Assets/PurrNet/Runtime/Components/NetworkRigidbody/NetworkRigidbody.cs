@@ -274,6 +274,70 @@ namespace PurrNet
             base.OnOwnerChanged(oldOwner, newOwner, asServer);
             DisposeSettingsInstance();
             EnsureSettingsInstance();
+
+            if (!isSpawned || !_rigidbody)
+                return;
+
+            if (!_ownerAuth)
+                return;
+
+            if (asServer)
+                return;
+
+            if (newOwner == localPlayer && !isServer)
+            {
+                AdoptControllerStateFromRigidbody();
+                return;
+            }
+
+            if (oldOwner == localPlayer && newOwner != localPlayer)
+            {
+                ClearBuffer();
+                _forceSyncOneShot = false;
+                _forceSyncWindowEndTime = double.NegativeInfinity;
+                _wasInForceSyncWindow = false;
+            }
+        }
+
+        private void AdoptControllerStateFromRigidbody()
+        {
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            var pos = WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
+            var rot = ReadRotation(parentTrs);
+            var linVel = ReadLinearVelocity(parentTrs);
+            var angVel = ReadAngularVelocity(parentTrs);
+
+            _targetPosition = pos;
+            _targetRotation = rot;
+            _targetLinearVelocity = linVel;
+            _targetAngularVelocity = angVel;
+            _targetParent = parentTrs;
+
+            _lastSyncedPosition = pos;
+            _lastSyncedRotation = rot;
+            _lastSyncedLinearVelocity = linVel;
+            _lastSyncedAngularVelocity = angVel;
+            _lastSyncedParent = parentTrs;
+
+            _latestRawSnapshotPos = pos;
+            _latestRawSnapshotParent = parentTrs;
+            ClearBuffer();
+
+            if (!isActiveAndEnabled)
+                return;
+
+            SendStateToServer(new RigidbodyStateData
+            {
+                position = wirePos,
+                absolutePosition = wireAbs,
+                positionFrame = wireFrame,
+                rotation = rot,
+                linearVelocity = linVel,
+                angularVelocity = angVel,
+                parent = parentIdentity
+            });
         }
 
         private void EnsureSettingsInstance()
