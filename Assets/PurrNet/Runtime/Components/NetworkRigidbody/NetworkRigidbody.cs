@@ -1274,6 +1274,28 @@ namespace PurrNet
             SetLinearVelocity(Vector3.zero);
             SetAngularVelocity(Vector3.zero);
 
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            var syncPos = WriteWirePosition(parentTrs, out _, out _, out _);
+            var syncRot = ReadRotation(parentTrs);
+            var syncLinVel = ReadLinearVelocity(parentTrs);
+            var syncAngVel = ReadAngularVelocity(parentTrs);
+
+            _targetPosition = syncPos;
+            _targetRotation = syncRot;
+            _targetLinearVelocity = syncLinVel;
+            _targetAngularVelocity = syncAngVel;
+            _targetParent = parentTrs;
+
+            _lastSyncedPosition = syncPos;
+            _lastSyncedRotation = syncRot;
+            _lastSyncedLinearVelocity = syncLinVel;
+            _lastSyncedAngularVelocity = syncAngVel;
+            _lastSyncedParent = parentTrs;
+
+            ClearBuffer();
+
             if (IsController(_ownerAuth))
             {
                 if (isActiveAndEnabled)
