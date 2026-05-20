@@ -1,3 +1,10 @@
+# [1.20.0-beta.177](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.176...v1.20.0-beta.177) (2026-05-20)
+
+
+### Bug Fixes
+
+* NetworkRigidbody teleport rigidbody left state and the interpolation buffer stale ([20e1331](https://github.com/PurrNet/PurrNet/commit/20e133151f7bb98418a69e9d6975a95a419ce4f7))
+
 # [1.20.0-beta.176](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.175...v1.20.0-beta.176) (2026-05-18)
 
 
