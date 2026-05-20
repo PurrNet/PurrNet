@@ -282,7 +282,17 @@ namespace PurrNet
                 return;
 
             if (asServer)
+            {
+                var handoff = CaptureCurrentState();
+
+                if (newOwner.HasValue && newOwner != localPlayer)
+                    SendHandoffState(newOwner.Value, handoff);
+
+                if (oldOwner.HasValue && newOwner != oldOwner && oldOwner != localPlayer)
+                    SendHandoffState(oldOwner.Value, handoff);
+
                 return;
+            }
 
             if (newOwner == localPlayer && !isServer)
             {
@@ -297,6 +307,24 @@ namespace PurrNet
                 _forceSyncWindowEndTime = double.NegativeInfinity;
                 _wasInForceSyncWindow = false;
             }
+        }
+
+        private RigidbodyStateData CaptureCurrentState()
+        {
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
+            return new RigidbodyStateData
+            {
+                position = wirePos,
+                absolutePosition = wireAbs,
+                positionFrame = wireFrame,
+                rotation = ReadRotation(parentTrs),
+                linearVelocity = ReadLinearVelocity(parentTrs),
+                angularVelocity = ReadAngularVelocity(parentTrs),
+                parent = parentIdentity
+            };
         }
 
         private void AdoptControllerStateFromRigidbody()
@@ -1333,6 +1361,58 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
+            ApplyLocalTeleport(position, rotation);
+
+            if (IsController(_ownerAuth))
+            {
+                if (isActiveAndEnabled)
+                    BroadcastTeleport();
+            }
+            else if (isActiveAndEnabled)
+            {
+                WorldToWire(position, out var wirePos, out var wireAbs, out var wireFrame);
+                RequestTeleport(wirePos, wireAbs, wireFrame, rotation);
+            }
+        }
+
+        /// <summary>
+        /// Instantly teleports the rigidbody to a new position, clearing the interpolation
+        /// buffer and syncing to all observers. Preserves current rotation and velocity.
+        /// </summary>
+        public void TeleportTo(Vector3 position)
+        {
+            if (!_rigidbody)
+                return;
+            TeleportTo(position, _rigidbody.rotation);
+        }
+
+        /// <summary>
+        /// Locally repositions the rigidbody and resets all interpolation/correction state
+        /// (target pose, lastSynced mirrors, snapshot buffer) without sending any RPCs.
+        /// Use this when the caller is already handling network sync separately, or to fix
+        /// up a single peer's view (e.g. a late-joining client snapping to a known pose).
+        /// </summary>
+        public void TeleportLocal(Vector3 position, Quaternion rotation)
+        {
+            if (!_rigidbody)
+                return;
+
+            ApplyLocalTeleport(position, rotation);
+        }
+
+        /// <summary>
+        /// Locally repositions the rigidbody and resets interpolation/correction state without
+        /// sending any RPCs. Preserves current rotation.
+        /// </summary>
+        public void TeleportLocal(Vector3 position)
+        {
+            if (!_rigidbody)
+                return;
+            TeleportLocal(position, _rigidbody.rotation);
+        }
+
+        private void ApplyLocalTeleport(Vector3 position, Quaternion rotation)
+        {
             _rigidbody.position = position;
             _rigidbody.rotation = rotation;
             SetLinearVelocity(Vector3.zero);
@@ -1359,28 +1439,6 @@ namespace PurrNet
             _lastSyncedParent = parentTrs;
 
             ClearBuffer();
-
-            if (IsController(_ownerAuth))
-            {
-                if (isActiveAndEnabled)
-                    BroadcastTeleport();
-            }
-            else if (isActiveAndEnabled)
-            {
-                WorldToWire(position, out var wirePos, out var wireAbs, out var wireFrame);
-                RequestTeleport(wirePos, wireAbs, wireFrame, rotation);
-            }
-        }
-
-        /// <summary>
-        /// Instantly teleports the rigidbody to a new position, clearing the interpolation
-        /// buffer and syncing to all observers. Preserves current rotation and velocity.
-        /// </summary>
-        public void TeleportTo(Vector3 position)
-        {
-            if (!_rigidbody)
-                return;
-            TeleportTo(position, _rigidbody.rotation);
         }
 
         /// <summary>
@@ -1500,6 +1558,34 @@ namespace PurrNet
             _rigidbody.rotation = NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs));
             SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
             SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
+
+            _targetPosition = syncPos;
+            _targetRotation = data.rotation;
+            _targetLinearVelocity = data.linearVelocity;
+            _targetAngularVelocity = data.angularVelocity;
+            _targetParent = parentTrs;
+
+            _lastSyncedPosition = syncPos;
+            _lastSyncedRotation = data.rotation;
+            _lastSyncedLinearVelocity = data.linearVelocity;
+            _lastSyncedAngularVelocity = data.angularVelocity;
+            _lastSyncedParent = parentTrs;
+
+            ClearBuffer();
+            PushSnapshot(data);
+        }
+
+        [TargetRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
+        private void SendHandoffState(PlayerID player, RigidbodyStateData data)
+        {
+            if (IsController(_ownerAuth))
+                return;
+
+            if (!_rigidbody)
+                return;
+
+            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
+            var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
 
             _targetPosition = syncPos;
             _targetRotation = data.rotation;
