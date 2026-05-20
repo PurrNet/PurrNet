@@ -7,6 +7,8 @@ var classPurrNet_1_1NetworkRigidbody =
     [ "OnSpawned", "classPurrNet_1_1NetworkRigidbody.html#a1f5307a5ffaa725eea3fe068a2875216", null ],
     [ "OnTick", "classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215", null ],
     [ "SetPositionTransform", "classPurrNet_1_1NetworkRigidbody.html#aa75c5f52eecdc4115cab13eee992f3c6", null ],
+    [ "TeleportLocal", "classPurrNet_1_1NetworkRigidbody.html#add5a259323b060a95968c40baf2bf9e4", null ],
+    [ "TeleportLocal", "classPurrNet_1_1NetworkRigidbody.html#ae583c8128f6c85fc805113427f4530b9", null ],
     [ "TeleportTo", "classPurrNet_1_1NetworkRigidbody.html#a812d715d890c285ae57f0d0ddd0ed01f", null ],
     [ "TeleportTo", "classPurrNet_1_1NetworkRigidbody.html#a22932505939adb31002b60333856cf60", null ],
     [ "forceSyncWindowRemaining", "classPurrNet_1_1NetworkRigidbody.html#abbf3ab24f5f3c6e45643304b663d1ce0", null ],
