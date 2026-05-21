@@ -33,6 +33,7 @@ var classPurrNet_1_1NetworkIdentity =
     [ "SetVisibilityRules", "classPurrNet_1_1NetworkIdentity.html#ab9226d91e2d52222882668e2ba3cace2", null ],
     [ "Spawn", "classPurrNet_1_1NetworkIdentity.html#a6cbd9682b4d1f0f9a18b4d6ecffc27e6", null ],
     [ "blacklist", "classPurrNet_1_1NetworkIdentity.html#a1fbc33d0cc20898ca64304db209f4106", null ],
+    [ "hasConnectedOwner", "classPurrNet_1_1NetworkIdentity.html#a844e2d660b4b912092a2b73c0803e8b2", null ],
     [ "id", "classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b", null ],
     [ "isController", "classPurrNet_1_1NetworkIdentity.html#a41a14548ab0d7a6f460751237b6af048", null ],
     [ "isSpawned", "classPurrNet_1_1NetworkIdentity.html#a1ee60a1c08b4452a59a233dee72059e1", null ],
