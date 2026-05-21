@@ -1,3 +1,10 @@
+# [1.20.0-beta.183](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.182...v1.20.0-beta.183) (2026-05-21)
+
+
+### Bug Fixes
+
+* GetFullPrototype wasn't including all children just the first one for all gameobjects ([926ee40](https://github.com/PurrNet/PurrNet/commit/926ee401655df0bbfbc79edd6f642ed7da95798e))
+
 # [1.20.0-beta.182](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.181...v1.20.0-beta.182) (2026-05-21)
 
 
