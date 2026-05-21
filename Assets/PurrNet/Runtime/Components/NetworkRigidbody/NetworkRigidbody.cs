@@ -200,6 +200,12 @@ namespace PurrNet
             _cachedRigidbody = GetComponent<Rigidbody>();
         }
 
+        protected override void OnEarlySpawn()
+        {
+            base.OnEarlySpawn();
+            ResolvePositionTransform();
+        }
+
         protected override void OnSpawned()
         {
             base.OnSpawned();
