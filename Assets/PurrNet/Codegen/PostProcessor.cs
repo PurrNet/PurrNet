@@ -3932,7 +3932,10 @@ namespace PurrNet.Codegen
                 try
                 {
                     foreach (var mod in assemblyDefinition.Modules)
+                    {
                         RedirectSystemPrivateCoreLibToNetStandard(mod);
+                        RemoveSelfReferences(mod);
+                    }
                     assemblyDefinition.Write(pe, writerParameters);
                 }
                 catch (Exception e)
@@ -3977,6 +3980,33 @@ namespace PurrNet.Codegen
             if (replacementRef == null)
                 return;
 
+            WalkModuleTypeReferences(module, typeRef =>
+            {
+                if (typeRef.Scope == coreLibRef)
+                    typeRef.Scope = replacementRef;
+            });
+            module.AssemblyReferences.Remove(coreLibRef);
+        }
+
+        private static void RemoveSelfReferences(ModuleDefinition module)
+        {
+            var selfName = module.Assembly.Name.Name;
+            var selfRefs = module.AssemblyReferences.Where(r => r.Name == selfName).ToList();
+            if (selfRefs.Count == 0)
+                return;
+
+            WalkModuleTypeReferences(module, typeRef =>
+            {
+                if (typeRef.Scope is AssemblyNameReference anr && anr.Name == selfName)
+                    typeRef.Scope = module;
+            });
+
+            foreach (var selfRef in selfRefs)
+                module.AssemblyReferences.Remove(selfRef);
+        }
+
+        private static void WalkModuleTypeReferences(ModuleDefinition module, Action<TypeReference> patch)
+        {
             void PatchTypeRef(TypeReference typeRef)
             {
                 if (typeRef == null) return;
@@ -4012,10 +4042,7 @@ namespace PurrNet.Codegen
                     PatchTypeRef(pinnedType.ElementType);
                     return;
                 }
-                // Plain TypeReference — Scope is settable. TypeSpecification.Scope is derived from
-                // ElementType and its setter throws InvalidOperationException, so we only patch here.
-                if (typeRef.Scope == coreLibRef)
-                    typeRef.Scope = replacementRef;
+                patch(typeRef);
             }
 
             void ProcessType(TypeDefinition type)
@@ -4084,7 +4111,6 @@ namespace PurrNet.Codegen
 
             foreach (var type in module.Types)
                 ProcessType(type);
-            module.AssemblyReferences.Remove(coreLibRef);
         }
 
         private static bool HasPurrNetAsReference(string myName, ModuleDefinition module)

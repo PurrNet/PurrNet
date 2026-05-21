@@ -73,16 +73,22 @@ namespace PurrNet.Codegen
 
         public static TypeReference Import(this ModuleDefinition module, TypeReference member)
         {
+            if (member != null && member.Module == module)
+                return member;
             return module.ImportReference(member);
         }
 
         public static MethodReference Import(this ModuleDefinition module, MethodReference member)
         {
+            if (member != null && member.Module == module)
+                return member;
             return module.ImportReference(member);
         }
 
         public static FieldReference Import(this ModuleDefinition module, FieldReference member)
         {
+            if (member != null && member.Module == module)
+                return member;
             return module.ImportReference(member);
         }
 
