@@ -1,3 +1,10 @@
+# [1.20.0-beta.180](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.179...v1.20.0-beta.180) (2026-05-21)
+
+
+### Features
+
+* OnSerialize/OnDeserialize for spawn coupled data ([cf93d09](https://github.com/PurrNet/PurrNet/commit/cf93d09c0c6eb47c788e97e944878d3bd9792b3f))
+
 # [1.20.0-beta.179](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.178...v1.20.0-beta.179) (2026-05-20)
 
 
