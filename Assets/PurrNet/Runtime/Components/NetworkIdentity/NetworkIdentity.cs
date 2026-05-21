@@ -282,22 +282,33 @@ namespace PurrNet
             return asServer;
         }
 
-        public bool hasConnectedOwner
+        /// <summary>
+        /// Whether this object's owner is currently connected.
+        /// On the server this means the owner is loaded in this scene; on a client it means the owner is connected.
+        /// Cached and refreshed on owner-change / owner-disconnect / owner-reconnect / spawn events.
+        /// </summary>
+        public bool hasConnectedOwner => _cachedHasConnectedOwner;
+
+        private bool _cachedHasConnectedOwner;
+
+        private bool ComputeHasConnectedOwner()
         {
-            get
+            if (!owner.HasValue || !isSpawned)
+                return false;
+
+            if (isServer)
             {
-                if (!owner.HasValue || !isSpawned)
-                    return false;
-
-                if (isServer)
-                {
-                    return networkManager.TryGetModule<ScenePlayersModule>(true, out var scenesModule) &&
-                           scenesModule.IsPlayerLoadedInScene(owner.Value, sceneId);
-                }
-
-                return networkManager.TryGetModule<PlayersManager>(false, out var module) &&
-                       module.IsPlayerConnected(owner.Value);
+                return networkManager.TryGetModule<ScenePlayersModule>(true, out var scenesModule) &&
+                       scenesModule.IsPlayerLoadedInScene(owner.Value, sceneId);
             }
+
+            return networkManager.TryGetModule<PlayersManager>(false, out var module) &&
+                   module.IsPlayerConnected(owner.Value);
+        }
+
+        internal void RecacheHasConnectedOwner()
+        {
+            _cachedHasConnectedOwner = ComputeHasConnectedOwner();
         }
 
         internal PlayerID? internalOwnerServer;
@@ -894,6 +905,7 @@ namespace PurrNet
             _idClient = null;
             internalOwnerServer = null;
             internalOwnerClient = null;
+            _cachedHasConnectedOwner = false;
             _moduleId = 0;
             _modules.Clear();
             _externalModulesView.Clear();
@@ -1207,6 +1219,8 @@ namespace PurrNet
 
         internal void TriggerSpawnEvent(bool asServer)
         {
+            RecacheHasConnectedOwner();
+
             InternalOnSpawn(asServer);
 
             try
@@ -1368,6 +1382,8 @@ namespace PurrNet
                 _isSpawnedServer = false;
             else _isSpawnedClient = false;
 
+            RecacheHasConnectedOwner();
+
             if (_spawnedCount == 0)
             {
                 _externalModulesView.Clear();
@@ -1377,6 +1393,8 @@ namespace PurrNet
 
         internal void TriggerOnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer, bool isSpawner)
         {
+            RecacheHasConnectedOwner();
+
             try
             {
                 OnOwnerChanged(oldOwner, newOwner, asServer);
@@ -1419,6 +1437,8 @@ namespace PurrNet
 
         internal void TriggerOnOwnerDisconnected(PlayerID ownerId)
         {
+            _cachedHasConnectedOwner = false;
+
             try
             {
                 OnOwnerDisconnected(ownerId);
@@ -1443,6 +1463,8 @@ namespace PurrNet
 
         internal void TriggerOnOwnerReconnected(PlayerID ownerId, bool asServer)
         {
+            _cachedHasConnectedOwner = true;
+
             try
             {
                 OnOwnerReconnected(ownerId);

@@ -14,6 +14,11 @@ public class OwnerDisconnectIdentity : NetworkIdentity
     public static readonly List<ulong> DisconnectCalls = new();
     public static readonly List<ulong> ReconnectCalls = new();
 
+    // hasConnectedOwner is cached and refreshed by the owner-disconnect/reconnect triggers; these flag
+    // a stale cache (a regression in NetworkIdentity's cache wiring) observed at the exact callback moment.
+    public static bool DisconnectCacheWrong;
+    public static bool ReconnectCacheWrong;
+
     public static void ResetAll()
     {
         LocalInstance = null;
@@ -25,6 +30,8 @@ public class OwnerDisconnectIdentity : NetworkIdentity
         VictimReturnedCount = 0;
         DisconnectCalls.Clear();
         ReconnectCalls.Clear();
+        DisconnectCacheWrong = false;
+        ReconnectCacheWrong = false;
     }
 
     protected override void OnEarlySpawn()
@@ -40,11 +47,15 @@ public class OwnerDisconnectIdentity : NetworkIdentity
     protected override void OnOwnerDisconnected(PlayerID ownerId)
     {
         DisconnectCalls.Add(ownerId.id.value);
+        if (hasConnectedOwner)
+            DisconnectCacheWrong = true;
     }
 
     protected override void OnOwnerReconnected(PlayerID ownerId)
     {
         ReconnectCalls.Add(ownerId.id.value);
+        if (!hasConnectedOwner)
+            ReconnectCacheWrong = true;
     }
 
     [ServerRpc(requireOwnership: false)]

@@ -84,6 +84,10 @@ public class OwnerDisconnectScenario : Scenario
         inst.GiveOwnership(victim.Value);
         await UniTask.WaitForSeconds(_propagationDelaySeconds, cancellationToken: ctx.cancellationToken);
 
+        // Owner is assigned and connected: the cached hasConnectedOwner must reflect that.
+        if (!inst.hasConnectedOwner)
+            failures.Add("server: hasConnectedOwner=false right after ownership was given to a connected player");
+
         // Tell every observer (including the victim) who is disconnecting.
         inst.BroadcastVictim(victimId);
 
@@ -100,6 +104,11 @@ public class OwnerDisconnectScenario : Scenario
             failures.Add($"OnOwnerDisconnected for victim {victimId} did not fire within {_disconnectTimeoutSeconds}s");
         }
 
+        // Identity survives the disconnect (despawnIfOwnerDisconnects=false); its cached
+        // hasConnectedOwner must have flipped to false now that the owner is gone.
+        if (inst && inst.hasConnectedOwner)
+            failures.Add("server: hasConnectedOwner=true while the owner is disconnected");
+
         // Wait for the victim to come back and signal it returned.
         try
         {
@@ -114,6 +123,10 @@ public class OwnerDisconnectScenario : Scenario
             failures.Add(
                 $"victim {victimId} did not return / OnOwnerReconnected did not fire within {_reconnectTimeoutSeconds}s (returned={OwnerDisconnectIdentity.VictimReturnedCount}, reconnectCalls=[{string.Join(",", OwnerDisconnectIdentity.ReconnectCalls)}])");
         }
+
+        // Owner is back: the cached hasConnectedOwner must have flipped to true again.
+        if (inst && !inst.hasConnectedOwner)
+            failures.Add("server: hasConnectedOwner=false after the owner reconnected");
 
         // Tell every client (and host's client side) that the disconnect/reconnect phase is done.
         inst.BroadcastPhaseDone();
@@ -147,6 +160,11 @@ public class OwnerDisconnectScenario : Scenario
             failures.Add($"OnOwnerDisconnected for victim {victimId}: count={disconnectsForVictim}, expected {expectedCallbacks}");
         if (reconnectsForVictim != expectedCallbacks)
             failures.Add($"OnOwnerReconnected for victim {victimId}: count={reconnectsForVictim}, expected {expectedCallbacks}");
+
+        if (OwnerDisconnectIdentity.DisconnectCacheWrong)
+            failures.Add("server: hasConnectedOwner was true inside OnOwnerDisconnected (stale cache)");
+        if (OwnerDisconnectIdentity.ReconnectCacheWrong)
+            failures.Add("server: hasConnectedOwner was false inside OnOwnerReconnected (stale cache)");
 
         return failures.Count == 0
             ? ScenarioResult.Ok($"Victim={victimId}, Done={OwnerDisconnectIdentity.ServerDoneCount}")
@@ -212,6 +230,12 @@ public class OwnerDisconnectScenario : Scenario
                     $"(disconnects=[{string.Join(",", OwnerDisconnectIdentity.DisconnectCalls)}], " +
                     $"reconnects=[{string.Join(",", OwnerDisconnectIdentity.ReconnectCalls)}])");
             }
+
+            // Client-side cache must track the owner's connection state just like the server's.
+            if (OwnerDisconnectIdentity.DisconnectCacheWrong)
+                failures.Add("bystander: hasConnectedOwner was true inside OnOwnerDisconnected (stale cache)");
+            if (OwnerDisconnectIdentity.ReconnectCacheWrong)
+                failures.Add("bystander: hasConnectedOwner was false inside OnOwnerReconnected (stale cache)");
         }
 
         try
