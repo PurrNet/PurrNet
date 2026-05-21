@@ -1,3 +1,10 @@
+# [1.20.0-beta.182](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.181...v1.20.0-beta.182) (2026-05-21)
+
+
+### Bug Fixes
+
+* use manager local player (server would check for default...) ([a306011](https://github.com/PurrNet/PurrNet/commit/a30601138cd8835a3381a4f704e6925ea8e6c235))
+
 # [1.20.0-beta.181](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.180...v1.20.0-beta.181) (2026-05-21)
 
 
