@@ -381,7 +381,7 @@ namespace PurrNet.Modules
             bool isDefaultParent = transform.parent == rootId.defaultParent;
 
             var rootPair = new TransformIdentityPair(transform, rootId);
-            if (!rootPair.HasObserver(scope, allChildren))
+            if (!rootPair.HasObserver(scope))
             {
                 prototype = default;
                 framework.Dispose();
@@ -389,6 +389,7 @@ namespace PurrNet.Modules
             }
 
             var queue = QueuePool<GameObjectRuntimePair>.Instantiate();
+            var pieceIdentities = allChildren != null ? ListPool<NetworkIdentity>.Instantiate() : null;
             var pair = GetRuntimePair(null, rootId);
 
             queue.Enqueue(pair);
@@ -404,7 +405,7 @@ namespace PurrNet.Modules
                 {
                     var child = children[i];
 
-                    if (child.HasObserver(scope, allChildren))
+                    if (child.HasObserver(scope))
                     {
                         var childPair = GetRuntimePair(trs, child.identity);
                         queue.Enqueue(childPair);
@@ -424,9 +425,16 @@ namespace PurrNet.Modules
                     current.identity.invertedPathToNearestParent
                 );
                 framework.Add(piece);
+                pieceIdentities?.Add(current.identity);
             }
 
             QueuePool<GameObjectRuntimePair>.Destroy(queue);
+
+            if (allChildren != null)
+            {
+                CollectInBuildOrder(framework, pieceIdentities, 0, allChildren);
+                ListPool<NetworkIdentity>.Destroy(pieceIdentities);
+            }
 
             var parentNid = rootId.parent ? rootId.parent : default;
             var parentID = parentNid?.id;
@@ -451,6 +459,7 @@ namespace PurrNet.Modules
 
             bool isDefaultParent = transform.parent == rootId.defaultParent;
             var queue = QueuePool<GameObjectRuntimePair>.Instantiate();
+            var pieceIdentities = allChildren != null ? ListPool<NetworkIdentity>.Instantiate() : null;
             var pair = GetRuntimePair(null, rootId);
 
             queue.Enqueue(pair);
@@ -480,19 +489,18 @@ namespace PurrNet.Modules
                     current.identity.gameObject.activeSelf,
                     current.identity.invertedPathToNearestParent
                 );
-                if (allChildren != null)
-                {
-                    var components = ListPool<NetworkIdentity>.Instantiate();
-                    current.identity.gameObject.GetComponents(components);
-                    for (var c = 0; c < components.Count; c++)
-                        allChildren.Add(components[c]);
-                    ListPool<NetworkIdentity>.Destroy(components);
-                }
 
                 framework.Add(piece);
+                pieceIdentities?.Add(current.identity);
             }
 
             QueuePool<GameObjectRuntimePair>.Destroy(queue);
+
+            if (allChildren != null)
+            {
+                CollectInBuildOrder(framework, pieceIdentities, 0, allChildren);
+                ListPool<NetworkIdentity>.Destroy(pieceIdentities);
+            }
 
             var parentNid = rootId.parent ? rootId.parent : default;
             var parentID = parentNid?.id;
@@ -503,6 +511,24 @@ namespace PurrNet.Modules
 
             return new GameObjectPrototype(transform.localPosition, transform.localRotation, transform.localScale, parentID, path, framework,
                 isDefaultParent ? transform.GetSiblingIndex() : null);
+        }
+
+        private static void CollectInBuildOrder(DisposableList<GameObjectFrameworkPiece> framework,
+            List<NetworkIdentity> pieceIdentities, int currentIdx, List<NetworkIdentity> allChildren)
+        {
+            var components = ListPool<NetworkIdentity>.Instantiate();
+            pieceIdentities[currentIdx].gameObject.GetComponents(components);
+            for (var c = 0; c < components.Count; c++)
+                allChildren.Add(components[c]);
+            ListPool<NetworkIdentity>.Destroy(components);
+
+            int childScopeStart = 1;
+            for (var i = 0; i < currentIdx; ++i)
+                childScopeStart += framework[i].childCount;
+
+            var childCount = framework[currentIdx].childCount;
+            for (var j = 0; j < childCount; j++)
+                CollectInBuildOrder(framework, pieceIdentities, childScopeStart + j, allChildren);
         }
 
         public static bool TryBuildPrototype(PoolPair pair, GameObjectPrototype prototype,
