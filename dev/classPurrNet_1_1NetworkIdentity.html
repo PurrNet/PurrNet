@@ -337,11 +337,11 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SendRPC</b> (<a class
 <tr class="memitem:a2e1ca126d4d67f694c1a7375660d43d5"><td class="memItemLeft" align="right" valign="top"><a id="a2e1ca126d4d67f694c1a7375660d43d5" name="a2e1ca126d4d67f694c1a7375660d43d5"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>TakeOwnership</b> ()</td></tr>
 <tr class="separator:a2e1ca126d4d67f694c1a7375660d43d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2bd59d231b3183b5d02e0f3755915a8d"><td class="memItemLeft" align="right" valign="top"><a id="a2bd59d231b3183b5d02e0f3755915a8d" name="a2bd59d231b3183b5d02e0f3755915a8d"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnSerialize</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memitem:a2bd59d231b3183b5d02e0f3755915a8d"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a2bd59d231b3183b5d02e0f3755915a8d">OnSerialize</a> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memdesc:a2bd59d231b3183b5d02e0f3755915a8d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on the spawner to attach custom data to the spawn packet. Whatever you write here travels with the object and is read back in OnDeserialize.   <a href="classPurrNet_1_1NetworkIdentity.html#a2bd59d231b3183b5d02e0f3755915a8d">More...</a><br /></td></tr>
 <tr class="separator:a2bd59d231b3183b5d02e0f3755915a8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab604cc6b2de5f3e9e591362e9e5f5856"><td class="memItemLeft" align="right" valign="top"><a id="ab604cc6b2de5f3e9e591362e9e5f5856" name="ab604cc6b2de5f3e9e591362e9e5f5856"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDeserialize</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memitem:ab604cc6b2de5f3e9e591362e9e5f5856"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab604cc6b2de5f3e9e591362e9e5f5856">OnDeserialize</a> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memdesc:ab604cc6b2de5f3e9e591362e9e5f5856"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on peers that create the object, after the spawn packet arrives. Read the data back in the same order you wrote it in OnSerialize. Only called if something was actually written during OnSerialize.   <a href="classPurrNet_1_1NetworkIdentity.html#ab604cc6b2de5f3e9e591362e9e5f5856">More...</a><br /></td></tr>
 <tr class="separator:ab604cc6b2de5f3e9e591362e9e5f5856"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a932ab159855e93725ccf83e0a2797381"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a932ab159855e93725ccf83e0a2797381">OnSpawned</a> ()</td></tr>
 <tr class="memdesc:a932ab159855e93725ccf83e0a2797381"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned This is only called once even if in host mode.   <a href="classPurrNet_1_1NetworkIdentity.html#a932ab159855e93725ccf83e0a2797381">More...</a><br /></td></tr>
@@ -635,6 +635,40 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Can you control this identity</dd></dl>
+
+</div>
+</div>
+<a id="ab604cc6b2de5f3e9e591362e9e5f5856" name="ab604cc6b2de5f3e9e591362e9e5f5856"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab604cc6b2de5f3e9e591362e9e5f5856">&#9670;&#160;</a></span>OnDeserialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkIdentity.OnDeserialize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td>
+          <td class="paramname"><em>packer</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called on peers that create the object, after the spawn packet arrives. Read the data back in the same order you wrote it in OnSerialize. Only called if something was actually written during OnSerialize.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packer</td><td>The packer to read your data from</td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1105,6 +1139,40 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   <table class="params">
     <tr><td class="paramname">player</td><td>The observer player id</td></tr>
     <tr><td class="paramname">isSpawner</td><td>If this object was just spawned and the observer is the spawner</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a2bd59d231b3183b5d02e0f3755915a8d" name="a2bd59d231b3183b5d02e0f3755915a8d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2bd59d231b3183b5d02e0f3755915a8d">&#9670;&#160;</a></span>OnSerialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkIdentity.OnSerialize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td>
+          <td class="paramname"><em>packer</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called on the spawner to attach custom data to the spawn packet. Whatever you write here travels with the object and is read back in OnDeserialize.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packer</td><td>The packer to write your data into</td></tr>
   </table>
   </dd>
 </dl>
