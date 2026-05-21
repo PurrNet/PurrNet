@@ -480,7 +480,15 @@ namespace PurrNet.Modules
                     current.identity.gameObject.activeSelf,
                     current.identity.invertedPathToNearestParent
                 );
-                allChildren?.Add(current.identity);
+                if (allChildren != null)
+                {
+                    var components = ListPool<NetworkIdentity>.Instantiate();
+                    current.identity.gameObject.GetComponents(components);
+                    for (var c = 0; c < components.Count; c++)
+                        allChildren.Add(components[c]);
+                    ListPool<NetworkIdentity>.Destroy(components);
+                }
+
                 framework.Add(piece);
             }
 

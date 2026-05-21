@@ -84,10 +84,20 @@ namespace PurrNet
         {
         }
 
+        /// <summary>
+        /// Called on the spawner to attach custom data to the parent's spawn packet.
+        /// Whatever you write here travels with the object and is read back in OnDeserialize.
+        /// </summary>
+        /// <param name="packer">The packer to write your data into</param>
         public virtual void OnSerialize(BitPacker packer)
         {
         }
 
+        /// <summary>
+        /// Called on peers that create the object, after the spawn packet arrives.
+        /// Read the data back in the same order you wrote it in OnSerialize.
+        /// </summary>
+        /// <param name="packer">The packer to read your data from</param>
         public virtual void OnDeserialize(BitPacker packer)
         {
         }

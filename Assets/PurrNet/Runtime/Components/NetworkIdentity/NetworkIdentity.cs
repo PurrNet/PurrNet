@@ -634,10 +634,21 @@ namespace PurrNet
             OnDeserialize(packer);
         }
 
+        /// <summary>
+        /// Called on the spawner to attach custom data to the spawn packet.
+        /// Whatever you write here travels with the object and is read back in OnDeserialize.
+        /// </summary>
+        /// <param name="packer">The packer to write your data into</param>
         protected virtual void OnSerialize(BitPacker packer)
         {
         }
 
+        /// <summary>
+        /// Called on peers that create the object, after the spawn packet arrives.
+        /// Read the data back in the same order you wrote it in OnSerialize.
+        /// Only called if something was actually written during OnSerialize.
+        /// </summary>
+        /// <param name="packer">The packer to read your data from</param>
         protected virtual void OnDeserialize(BitPacker packer)
         {
         }
