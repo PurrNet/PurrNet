@@ -48,7 +48,7 @@ namespace PurrNet.Modules
                 if (piece.inversedRelativePath != null && piece.inversedRelativePath.Length > 0)
                 {
                     pathCopy = new int[piece.inversedRelativePath.Length];
-                    System.Array.Copy(piece.inversedRelativePath, pathCopy, piece.inversedRelativePath.Length);
+                    Array.Copy(piece.inversedRelativePath, pathCopy, piece.inversedRelativePath.Length);
                 }
                 newFramework.Add(new GameObjectFrameworkPiece(
                     piece.localTransform,
@@ -56,7 +56,7 @@ namespace PurrNet.Modules
                     piece.id,
                     piece.childCount,
                     piece.isActive,
-                    pathCopy ?? System.Array.Empty<int>()));
+                    pathCopy ?? Array.Empty<int>()));
             }
             return new GameObjectPrototype(
                 position,

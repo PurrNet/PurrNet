@@ -84,6 +84,14 @@ namespace PurrNet
         {
         }
 
+        public virtual void OnSerialize(BitPacker packer)
+        {
+        }
+
+        public virtual void OnDeserialize(BitPacker packer)
+        {
+        }
+
         /// <summary>
         /// Called when an observer is added.
         /// Server only.

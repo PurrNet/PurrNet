@@ -440,7 +440,7 @@ namespace PurrNet.Modules
             return true;
         }
 
-        public static GameObjectPrototype GetFullPrototype(Transform transform)
+        public static GameObjectPrototype GetFullPrototype(Transform transform, List<NetworkIdentity> allChildren = null)
         {
             var framework = DisposableList<GameObjectFrameworkPiece>.Create(16);
             if (!transform.TryGetComponent<NetworkIdentity>(out var rootId))
@@ -480,6 +480,7 @@ namespace PurrNet.Modules
                     current.identity.gameObject.activeSelf,
                     current.identity.invertedPathToNearestParent
                 );
+                allChildren?.Add(current.identity);
                 framework.Add(piece);
             }
 

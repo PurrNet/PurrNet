@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 using UnityEngine;
@@ -929,6 +930,7 @@ namespace PurrNet.Modules
             try
             {
                 var prototypeCopy = data.prototype.Clone();
+                var customDataCopy = data.customData.Duplicate();
                 var packetIdx = data.packetIdx;
                 var sceneId = data.sceneId;
 
@@ -939,16 +941,24 @@ namespace PurrNet.Modules
                     {
                         PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
                         prototypeCopy.Dispose();
+                        customDataCopy.Dispose();
                         return;
                     }
 
                     if (_isDisposed)
                     {
                         prototypeCopy.Dispose();
+                        customDataCopy.Dispose();
                         return;
                     }
 
-                    var spawnData = new SpawnPacket { sceneId = sceneId, packetIdx = packetIdx, prototype = prototypeCopy };
+                    var spawnData = new SpawnPacket
+                    {
+                        sceneId = sceneId,
+                        packetIdx = packetIdx,
+                        prototype = prototypeCopy,
+                        customData = customDataCopy
+                    };
                     CompleteSpawn(spawnData, flushData);
                     spawnData.Dispose();
                 }
@@ -956,6 +966,7 @@ namespace PurrNet.Modules
                 {
                     PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: exception for prefab {rootPrefabId}: {e.Message}\n{e.StackTrace}");
                     try { prototypeCopy.Dispose(); } catch { /* ignore */ }
+                    try { customDataCopy.Dispose(); } catch { /* ignore */ }
                 }
             }
             catch (Exception e)
@@ -968,6 +979,7 @@ namespace PurrNet.Modules
         {
             var createdNids = DisposableList<NetworkIdentity>.Create(16);
             var go = CreatePrototype(data.prototype, createdNids.list);
+            bool hasCustomData = data.customData.bitLength > 0;
 
             if (!go || createdNids.Count == 0)
             {
@@ -979,16 +991,22 @@ namespace PurrNet.Modules
             try
             {
                 onPreSpawn?.Invoke(go, false);
+                using var scope = data.customData.AutoScope();
 
                 if (_asServer)
                 {
                     bool isHost = IsServerHost();
                     var spawner = data.packetIdx.scope;
 
+
                     for (var i = 0; i < createdNids.Count; i++)
                     {
                         var nid = createdNids[i];
                         nid.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
+
+                        if (hasCustomData)
+                            nid.TriggerOnDeserialize(data.customData.packer);
+
                         RegisterIdentity(nid, false);
                         nid.TryAddObserver(spawner);
                     }
@@ -999,6 +1017,10 @@ namespace PurrNet.Modules
                     {
                         var nid = createdNids[i];
                         nid.SetIdentity(_manager, this, _sceneId, _asServer, false);
+
+                        if (hasCustomData)
+                            nid.TriggerOnDeserialize(data.customData.packer);
+
                         RegisterIdentity(nid, false);
                     }
                 }
@@ -1281,12 +1303,32 @@ namespace PurrNet.Modules
         private void SendSpawnPacket(PlayerID player, GameObjectPrototype prototype, List<NetworkIdentity> spawned, bool batched)
         {
             var spawnId = new SpawnID(_nextPacketIdx++, player, _playersManager.localPlayerId);
+            var data = BitPackerPool.Get();
+
+            try
+            {
+                if (player != _playersManager.localPlayerId)
+                {
+                    for (var i = 0; i < spawned.Count; i++)
+                    {
+                        var identity = spawned[i];
+                        identity.TriggerOnSerialize(data);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                data.SetBitPosition(0);
+            }
+
             var packet = new SpawnPacket
             {
                 sceneId = _sceneId,
                 packetIdx = spawnId,
                 prototype = prototype,
-                localcache = spawned
+                localcache = spawned,
+                customData = new BitData(data)
             };
 
             if (batched)
@@ -1392,7 +1434,9 @@ namespace PurrNet.Modules
 
             if (!_asServer)
             {
-                SendSpawnPacket(default, HierarchyPool.GetFullPrototype(gameObject.transform), null, false);
+                var children = ListPool<NetworkIdentity>.Instantiate();
+                var prototype = HierarchyPool.GetFullPrototype(gameObject.transform, children);
+                SendSpawnPacket(default, prototype, children, false);
             }
             else if (_scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
             {
@@ -1621,7 +1665,9 @@ namespace PurrNet.Modules
                 {
                     int count = batch.spawnPackets.Count;
                     if (player.isServer)
+                    {
                         _playersManager.SendToServer(batch);
+                    }
                     else
                     {
                         _playersManager.Send(player, batch);

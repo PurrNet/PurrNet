@@ -2,7 +2,7 @@
 
 namespace PurrNet.Packing
 {
-    public struct BitData : IDisposable
+    public struct BitData : IDisposable, IDuplicate<BitData>
     {
         public readonly BitPacker packer;
         public Size bitOrigin;
@@ -26,12 +26,21 @@ namespace PurrNet.Packing
 
         public void Dispose()
         {
-            packer.Dispose();
+            packer?.Dispose();
         }
 
         public BitDataScope AutoScope()
         {
             return new BitDataScope(this);
+        }
+
+        public BitData Duplicate()
+        {
+            if (bitLength.value == 0 || packer == null)
+                return default;
+            var newpacker = BitPackerPool.Get();
+            newpacker.Write(this);
+            return new BitData(newpacker);
         }
     }
 }

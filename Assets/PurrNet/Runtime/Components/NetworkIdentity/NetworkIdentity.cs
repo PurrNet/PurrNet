@@ -4,6 +4,7 @@ using System.Reflection;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Modules;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 using UnityEngine;
@@ -618,6 +619,28 @@ namespace PurrNet
 
         [UsedImplicitly]
         public bool IsSpawned(bool asServer) => asServer ? _isSpawnedServer : _isSpawnedClient;
+
+        internal void TriggerOnSerialize(BitPacker packer)
+        {
+            for (int i = 0; i < _externalModulesView.Count; i++)
+                _externalModulesView[i].OnSerialize(packer);
+            OnSerialize(packer);
+        }
+
+        internal void TriggerOnDeserialize(BitPacker packer)
+        {
+            for (int i = 0; i < _externalModulesView.Count; i++)
+                _externalModulesView[i].OnDeserialize(packer);
+            OnDeserialize(packer);
+        }
+
+        protected virtual void OnSerialize(BitPacker packer)
+        {
+        }
+
+        protected virtual void OnDeserialize(BitPacker packer)
+        {
+        }
 
         /// <summary>
         /// Called when this object is spawned
