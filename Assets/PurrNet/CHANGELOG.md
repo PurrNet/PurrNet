@@ -1,3 +1,10 @@
+# [1.20.0-beta.184](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.183...v1.20.0-beta.184) (2026-05-21)
+
+
+### Bug Fixes
+
+* senders serialized customData breadth-first while the receiver deserialized it depth-first. ([29e5daa](https://github.com/PurrNet/PurrNet/commit/29e5daa93a69b94deeef8d2ea9ae50edc7933237))
+
 # [1.20.0-beta.183](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.182...v1.20.0-beta.183) (2026-05-21)
 
 
