@@ -1,3 +1,10 @@
+# [1.20.0-beta.186](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.185...v1.20.0-beta.186) (2026-05-21)
+
+
+### Features
+
+* cache `hasConnectedOwner` (expenssive getter) ([b54bc66](https://github.com/PurrNet/PurrNet/commit/b54bc66d3229ca09d09ee19d8cb943ecc6f7ff9c))
+
 # [1.20.0-beta.185](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.184...v1.20.0-beta.185) (2026-05-21)
 
 
