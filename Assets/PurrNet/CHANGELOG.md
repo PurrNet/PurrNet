@@ -1,3 +1,10 @@
+# [1.20.0-beta.185](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.184...v1.20.0-beta.185) (2026-05-21)
+
+
+### Bug Fixes
+
+* resolve absolute reference before OnObserverAdded events ([0ddeb8d](https://github.com/PurrNet/PurrNet/commit/0ddeb8da48ed24d9725064bde7d48f651aaaa9f7))
+
 # [1.20.0-beta.184](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.183...v1.20.0-beta.184) (2026-05-21)
 
 
