@@ -121,6 +121,9 @@ var hierarchy =
       [ "PurrNet.Transports.PurrTransportLayer", "classPurrNet_1_1Transports_1_1PurrTransportLayer.html", null ]
     ] ],
     [ "PurrNet.Packing.IDuplicate< out T >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", null ],
+    [ "PurrNet.Packing.IDuplicate< BitData >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
+      [ "PurrNet.Packing.BitData", "structPurrNet_1_1Packing_1_1BitData.html", null ]
+    ] ],
     [ "PurrNet.Packing.IDuplicate< BitPacker >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
       [ "PurrNet.Packing.BitPacker", "classPurrNet_1_1Packing_1_1BitPacker.html", null ]
     ] ],
