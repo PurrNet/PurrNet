@@ -1307,7 +1307,7 @@ namespace PurrNet.Modules
 
             try
             {
-                if (player != _playersManager.localPlayerId)
+                if (player != _manager.localPlayer)
                 {
                     for (var i = 0; i < spawned.Count; i++)
                     {
