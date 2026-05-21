@@ -1,3 +1,10 @@
+# [1.20.0-beta.181](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.180...v1.20.0-beta.181) (2026-05-21)
+
+
+### Bug Fixes
+
+* IL processing self references security ([4ed7e5d](https://github.com/PurrNet/PurrNet/commit/4ed7e5dee308ef96502edf28a053eae323215aea))
+
 # [1.20.0-beta.180](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.179...v1.20.0-beta.180) (2026-05-21)
 
 
