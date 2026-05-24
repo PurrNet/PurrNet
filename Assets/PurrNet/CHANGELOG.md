@@ -1,3 +1,10 @@
+# [1.20.0-beta.187](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.186...v1.20.0-beta.187) (2026-05-24)
+
+
+### Bug Fixes
+
+* Move to entity ID for newer versions that support it ([b833696](https://github.com/PurrNet/PurrNet/commit/b83369690f4daa24843ba3e5fbe4f35794b55a01))
+
 # [1.20.0-beta.186](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.185...v1.20.0-beta.186) (2026-05-21)
 
 
