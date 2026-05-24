@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Object = UnityEngine.Object;
+#if UNITY_6000_3_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace PurrNet
 {
@@ -49,18 +54,12 @@ namespace PurrNet
         [SerializeField, HideInInspector] private List<string> _assetGuids = new();
 
         private readonly Dictionary<int, Object> idToAsset = new();
-        private readonly Dictionary<int, int> instanceIdToId = new();
+        private readonly Dictionary<ObjectId, int> objectIdToId = new();
 
-        // Fallback used when a duplicate managed instance of the same source asset shows up
-        // (e.g. Unity 6 IL2CPP dedicated server materializing a second instance of an SO via
-        // the on-demand resource pipeline). The instance-id lookup misses on the duplicate
-        // because its GetInstanceID() differs from the registered instance. We resolve via
-        // (Type, name) — the only signal that's identical between A and B and available in
-        // both editor and player builds, so the editor exactly reflects build behavior.
         private const int AmbiguousMarker = -2;
         private readonly Dictionary<(Type, string), int> typeNameToId = new();
         private HashSet<(Type, string)> _warnedAmbiguous;
-        private HashSet<int> _warnedUnresolved;
+        private HashSet<ObjectId> _warnedUnresolved;
 
         [SerializeField, HideInInspector] private List<int> _bakedIds = new();
         [SerializeField, HideInInspector] private List<Object> _bakedAssets = new();
@@ -71,17 +70,17 @@ namespace PurrNet
         {
             if (!obj) return -1;
 
-            int instanceId = obj.GetInstanceID();
-            if (instanceIdToId.TryGetValue(instanceId, out int id))
+            ObjectId objectId = GetObjectId(obj);
+            if (objectIdToId.TryGetValue(objectId, out int id))
                 return id;
 
             if (TryResolveDuplicate(obj, out id))
             {
-                instanceIdToId[instanceId] = id;
+                objectIdToId[objectId] = id;
                 return id;
             }
 
-            WarnUnresolvedOnce(obj, instanceId);
+            WarnUnresolvedOnce(obj, objectId);
             return -1;
         }
 
@@ -122,14 +121,14 @@ namespace PurrNet
             }
         }
 
-        private void WarnUnresolvedOnce(Object obj, int instanceId)
+        private void WarnUnresolvedOnce(Object obj, ObjectId objectId)
         {
-            _warnedUnresolved ??= new HashSet<int>();
-            if (_warnedUnresolved.Add(instanceId))
+            _warnedUnresolved ??= new HashSet<ObjectId>();
+            if (_warnedUnresolved.Add(objectId))
             {
                 Debug.LogWarning(
                     $"NetworkAssets: could not resolve '{obj.name}' ({obj.GetType().Name}, " +
-                    $"iid={instanceId}) — not registered and no (Type, name) fallback matched.",
+                    $"id={objectId}) - not registered and no (Type, name) fallback matched.",
                     this);
             }
         }
@@ -154,7 +153,7 @@ namespace PurrNet
                 try
                 {
                     idToAsset[id] = obj;
-                    instanceIdToId[obj.GetInstanceID()] = id;
+                    objectIdToId[GetObjectId(obj)] = id;
                     RegisterTypeNameFallback(obj, id);
                 }
                 catch
@@ -170,7 +169,7 @@ namespace PurrNet
         private void ClearLookups()
         {
             idToAsset.Clear();
-            instanceIdToId.Clear();
+            objectIdToId.Clear();
             typeNameToId.Clear();
             _warnedAmbiguous?.Clear();
             _warnedUnresolved?.Clear();
@@ -202,7 +201,7 @@ namespace PurrNet
                 for (int i = 0; i < na.assets.Count; i++)
                 {
                     var obj = na.assets[i];
-                    if (obj && !instanceIdToId.ContainsKey(obj.GetInstanceID()))
+                    if (obj && !objectIdToId.ContainsKey(GetObjectId(obj)))
                         return true;
                 }
 
@@ -227,7 +226,7 @@ namespace PurrNet
             _bakedAssets.Clear();
 
             var visited = new HashSet<NetworkAssets>();
-            var seenInstanceIds = new HashSet<int>();
+            var seenObjectIds = new HashSet<ObjectId>();
             var buffer = new List<(Object asset, string guid)>();
 
             Collect(this);
@@ -235,11 +234,11 @@ namespace PurrNet
             for (int i = 0; i < buffer.Count; i++)
             {
                 var obj = buffer[i].asset;
-                int instanceId = obj.GetInstanceID();
-                if (instanceIdToId.ContainsKey(instanceId)) continue;
+                ObjectId objectId = GetObjectId(obj);
+                if (objectIdToId.ContainsKey(objectId)) continue;
 
                 idToAsset[i] = obj;
-                instanceIdToId[instanceId] = i;
+                objectIdToId[objectId] = i;
 
                 RegisterTypeNameFallback(obj, i);
 
@@ -260,7 +259,7 @@ namespace PurrNet
                 for (int i = 0; i < na.assets.Count; i++)
                 {
                     var obj = na.assets[i];
-                    if (!obj || !seenInstanceIds.Add(obj.GetInstanceID())) continue;
+                    if (!obj || !seenObjectIds.Add(GetObjectId(obj))) continue;
 
                     string guid = (i < na._assetGuids.Count) ? na._assetGuids[i] : null;
                     buffer.Add((obj, guid));
@@ -279,7 +278,7 @@ namespace PurrNet
         {
             if (!obj) return;
 
-            if (instanceIdToId.ContainsKey(obj.GetInstanceID()))
+            if (objectIdToId.ContainsKey(GetObjectId(obj)))
             {
                 if (logIfDuplicate)
                     Debug.LogWarning($"Asset already exists in NetworkAssets: {obj.name}");
@@ -392,6 +391,15 @@ namespace PurrNet
         {
             id = GetIndex(obj);
             return id >= 0;
+        }
+
+        private static ObjectId GetObjectId(Object obj)
+        {
+#if UNITY_6000_3_OR_NEWER
+            return obj.GetEntityId();
+#else
+            return obj.GetInstanceID();
+#endif
         }
     }
 
