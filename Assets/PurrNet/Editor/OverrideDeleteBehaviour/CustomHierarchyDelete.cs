@@ -8,11 +8,18 @@ namespace PurrNet.Editor
     {
         static CustomHierarchyDelete()
         {
-            // Subscribe to the Hierarchy GUI callback
+#if UNITY_6000_5_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyGUI;
+#endif
         }
 
+#if UNITY_6000_5_OR_NEWER
+        private static void OnHierarchyGUI(EntityId entityId, Rect selectionrect)
+#else
         private static void OnHierarchyGUI(int instanceid, Rect selectionrect)
+#endif
         {
             bool isPlaying = Application.isPlaying;
 
@@ -33,11 +40,9 @@ namespace PurrNet.Editor
                     };
                     break;
                 }
-                // Check if Delete or Backspace is pressed
                 case EventType.KeyDown when
                     currentEvent.keyCode is KeyCode.Delete or KeyCode.Backspace:
                 {
-                    // Get the selected objects in the hierarchy
                     var selectedObjects = Selection.objects;
 
                     if (selectedObjects.Length > 0)
