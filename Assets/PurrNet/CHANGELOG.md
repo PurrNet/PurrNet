@@ -1,3 +1,10 @@
+# [1.20.0-beta.188](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.187...v1.20.0-beta.188) (2026-05-24)
+
+
+### Bug Fixes
+
+* Editor in 6.5 different callbacks ([761c34e](https://github.com/PurrNet/PurrNet/commit/761c34eb51c92b03e57c92068cc22ed7bbad7ad5))
+
 # [1.20.0-beta.187](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.186...v1.20.0-beta.187) (2026-05-24)
 
 
