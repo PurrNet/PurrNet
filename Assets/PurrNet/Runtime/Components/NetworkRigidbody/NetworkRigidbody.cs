@@ -116,6 +116,9 @@ namespace PurrNet
         [Tooltip("Pushes the target position forward using velocity and estimated acceleration. The offset is interpolationDelay * predictionFactor, making it identical on all machines regardless of network role. 0 = no prediction, 1 = compensate for interpolation delay, >1 = predict further ahead.")]
         [SerializeField] private float _predictionFactor;
 
+        [Tooltip("Maximum time in seconds a receiver can extrapolate from the newest snapshot before holding the target near that snapshot.")]
+        [SerializeField] private float _maxExtrapolationDuration = 0.25f;
+
         [Tooltip("How aggressively the rigidbody chases the target position. Acts as the natural frequency of a critically-damped spring.")]
         [SerializeField] private float _positionStrength = 5f;
 
@@ -170,6 +173,7 @@ namespace PurrNet
         private Vector3 _lastSyncedLinearVelocity;
         private Vector3 _lastSyncedAngularVelocity;
         private Transform _lastSyncedParent;
+        private bool _lastSyncedWasSettled;
 
         private bool _hasPendingTeleport;
         private bool _isIgnoringParentChanges;
@@ -231,6 +235,7 @@ namespace PurrNet
             _lastSyncedLinearVelocity = linVel;
             _lastSyncedAngularVelocity = angVel;
             _lastSyncedParent = parentTrs;
+            _lastSyncedWasSettled = IsSettledForSync();
 
             _latestRawSnapshotPos = pos;
             _latestRawSnapshotParent = parentTrs;
@@ -421,14 +426,27 @@ namespace PurrNet
 
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
+            bool isSettled = IsSettledForSync();
+            bool shouldSendSettledState = isSettled && !_lastSyncedWasSettled;
 
-            if (!isInForceSyncWindow && !HasStateChanged(parentTrs) && !ShouldSyncWhenStopped())
+            if (!isInForceSyncWindow && !shouldSendSettledState && !HasStateChanged(parentTrs) && !ShouldSyncWhenStopped())
                 return;
+
+            SendCurrentState(shouldSendSettledState, isSettled);
+        }
+        
+        private void SendCurrentState(bool reliable, bool zeroVelocities)
+        {
+            if (!_rigidbody)
+                return;
+
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             var pos = WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
             var rot = ReadRotation(parentTrs);
-            var linVel = ReadLinearVelocity(parentTrs);
-            var angVel = ReadAngularVelocity(parentTrs);
+            var linVel = zeroVelocities ? Vector3.zero : ReadLinearVelocity(parentTrs);
+            var angVel = zeroVelocities ? Vector3.zero : ReadAngularVelocity(parentTrs);
 
             _targetPosition = pos;
             _targetRotation = rot;
@@ -447,16 +465,33 @@ namespace PurrNet
                 parent = parentIdentity
             };
 
-            if (isServer)
-                SyncState(stateData);
+            if (reliable)
+                SendReliableState(stateData);
             else
-                SendStateToServer(stateData);
+                SendUnreliableState(stateData);
 
             _lastSyncedPosition = pos;
             _lastSyncedRotation = rot;
             _lastSyncedLinearVelocity = linVel;
             _lastSyncedAngularVelocity = angVel;
             _lastSyncedParent = parentTrs;
+            _lastSyncedWasSettled = IsSettledState(linVel, angVel);
+        }
+
+        private void SendUnreliableState(RigidbodyStateData stateData)
+        {
+            if (isServer)
+                SyncState(stateData);
+            else
+                SendStateToServer(stateData);
+        }
+
+        private void SendReliableState(RigidbodyStateData stateData)
+        {
+            if (isServer)
+                SyncReliableState(stateData);
+            else
+                SendReliableStateToServer(stateData);
         }
 
         private void NonControllerTick()
@@ -725,13 +760,17 @@ namespace PurrNet
             if (renderTime >= newest.time)
             {
                 float overshoot = (float)(renderTime - newest.time);
-                _targetPosition = newest.position + ToD3(newest.linearVelocity * overshoot);
+                float maxExtrapolation = Mathf.Max(0f, _maxExtrapolationDuration);
+                float extrapolationTime = Mathf.Min(overshoot, maxExtrapolation);
+                bool clamped = overshoot > maxExtrapolation;
+
+                _targetPosition = newest.position + ToD3(newest.linearVelocity * extrapolationTime);
                 _targetRotation = newest.rotation;
-                _targetLinearVelocity = newest.linearVelocity;
-                _targetAngularVelocity = newest.angularVelocity;
+                _targetLinearVelocity = clamped ? Vector3.zero : newest.linearVelocity;
+                _targetAngularVelocity = clamped ? Vector3.zero : newest.angularVelocity;
                 _targetParent = newest.parent;
-                _bufferSampleMode = $"Extrap ({overshoot:F3}s)";
-                _predictionOffset = overshoot;
+                _bufferSampleMode = clamped ? $"Extrap-Clamped ({overshoot:F3}s)" : $"Extrap ({overshoot:F3}s)";
+                _predictionOffset = extrapolationTime;
                 return;
             }
 
@@ -1102,12 +1141,30 @@ namespace PurrNet
                 || angularVelocityDelta > _velocityStopThreshold;
         }
 
+        private bool IsSettledForSync()
+        {
+            if (!_rigidbody)
+                return true;
+
+            if (_rigidbody.isKinematic || _rigidbody.IsSleeping())
+                return true;
+
+            return IsSettledState(GetLinearVelocity(), _rigidbody.angularVelocity);
+        }
+
+        private bool IsSettledState(Vector3 linearVelocity, Vector3 angularVelocity)
+        {
+            float threshold = Mathf.Max(0f, _velocityStopThreshold);
+            float thresholdSqr = threshold * threshold;
+            return linearVelocity.sqrMagnitude < thresholdSqr
+                && angularVelocity.sqrMagnitude < thresholdSqr;
+        }
+
         private bool ShouldSyncWhenStopped()
         {
             if (!_rigidbody)
                 return false;
-            return GetLinearVelocity().magnitude < _velocityStopThreshold
-                && _rigidbody.angularVelocity.magnitude < _velocityStopThreshold
+            return IsSettledState(GetLinearVelocity(), _rigidbody.angularVelocity)
                 && !_rigidbody.IsSleeping();
         }
 
@@ -1443,6 +1500,7 @@ namespace PurrNet
             _lastSyncedLinearVelocity = syncLinVel;
             _lastSyncedAngularVelocity = syncAngVel;
             _lastSyncedParent = parentTrs;
+            _lastSyncedWasSettled = IsSettledState(syncLinVel, syncAngVel);
 
             ClearBuffer();
         }
@@ -1483,6 +1541,7 @@ namespace PurrNet
         /// Opens a force-sync window. While the window is open, the controller bypasses
         /// the change thresholds and ships state every tick, and observers can query
         /// <see cref="isInForceSyncWindow"/> to adjust local correction behaviour.
+        /// Opening the window also sends the current state reliably once.
         /// </summary>
         /// <param name="seconds">Window duration in seconds. Pass -1 (default) for a one-tick window.</param>
         public void ForceSyncFor(float seconds = -1f)
@@ -1499,7 +1558,10 @@ namespace PurrNet
             OpenForceSyncWindowLocal(seconds);
 
             if (isActiveAndEnabled)
+            {
                 SyncForceSyncWindow(seconds);
+                SendCurrentState(true, IsSettledForSync());
+            }
         }
 
         private void OpenForceSyncWindowLocal(float seconds)
@@ -1576,6 +1638,7 @@ namespace PurrNet
             _lastSyncedLinearVelocity = data.linearVelocity;
             _lastSyncedAngularVelocity = data.angularVelocity;
             _lastSyncedParent = parentTrs;
+            _lastSyncedWasSettled = IsSettledState(data.linearVelocity, data.angularVelocity);
 
             ClearBuffer();
             PushSnapshot(data);
@@ -1604,6 +1667,7 @@ namespace PurrNet
             _lastSyncedLinearVelocity = data.linearVelocity;
             _lastSyncedAngularVelocity = data.angularVelocity;
             _lastSyncedParent = parentTrs;
+            _lastSyncedWasSettled = IsSettledState(data.linearVelocity, data.angularVelocity);
 
             ClearBuffer();
             PushSnapshot(data);
@@ -1622,6 +1686,21 @@ namespace PurrNet
         private void SendStateToServer(RigidbodyStateData data)
         {
             SyncState(data);
+        }
+
+        [ObserversRpc(channel: Channel.ReliableOrdered, deltaPacked: true, runLocally: true)]
+        private void SyncReliableState(RigidbodyStateData data)
+        {
+            if (IsController(_ownerAuth))
+                return;
+
+            PushSnapshot(data);
+        }
+
+        [ServerRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
+        private void SendReliableStateToServer(RigidbodyStateData data)
+        {
+            SyncReliableState(data);
         }
 
         [ObserversRpc(runLocally: true, channel: Channel.Unreliable)]
