@@ -1,3 +1,10 @@
+# [1.20.0-beta.190](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.189...v1.20.0-beta.190) (2026-05-25)
+
+
+### Bug Fixes
+
+* mathematic assembly not being loaded ([bbbbf7d](https://github.com/PurrNet/PurrNet/commit/bbbbf7d2fcc28bdbca5e7bd4335d4ed77488e44c))
+
 # [1.20.0-beta.189](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.188...v1.20.0-beta.189) (2026-05-25)
 
 
