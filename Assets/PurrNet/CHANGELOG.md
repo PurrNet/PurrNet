@@ -1,3 +1,10 @@
+# [1.20.0-beta.189](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.188...v1.20.0-beta.189) (2026-05-25)
+
+
+### Bug Fixes
+
+* cap extrapolation and handle state settling ([c7e04c3](https://github.com/PurrNet/PurrNet/commit/c7e04c35a766a3cd174fd8a027d284247e6f65d0))
+
 # [1.20.0-beta.188](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.187...v1.20.0-beta.188) (2026-05-24)
 
 
