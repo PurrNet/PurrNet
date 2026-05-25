@@ -5,4 +5,6 @@
     public double durationInMs;
     public ulong dataSent;
     public ulong dataReceived;
+    public bool measured;
+    public BenchmarkMetrics? benchmark;
 }
