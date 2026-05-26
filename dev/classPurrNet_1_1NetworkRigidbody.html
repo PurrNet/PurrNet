@@ -115,6 +115,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a071345e95ef0ea526a9d8308fbbe3215"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:a071345e95ef0ea526a9d8308fbbe3215"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215">More...</a><br /></td></tr>
 <tr class="separator:a071345e95ef0ea526a9d8308fbbe3215"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#aa2a5ca21fb585d4ae7d0524df9fdcc5f">SetSoftParent</a> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
+<tr class="memdesc:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Soft-parent this rigidbody to <em>identity</em> : its position, rotation and velocity sync in that identity's local frame, exactly as if parented there, but the Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a> while active. Pass null (or call <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487" title="Clears the soft-parent set via SetSoftParent, reverting to the space-derived frame.">ClearSoftParent</a>) to revert.  <a href="classPurrNet_1_1NetworkRigidbody.html#aa2a5ca21fb585d4ae7d0524df9fdcc5f">More...</a><br /></td></tr>
+<tr class="separator:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9178f3aae34e5de1f92f2b75ff281487"><td class="memItemLeft" align="right" valign="top"><a id="a9178f3aae34e5de1f92f2b75ff281487" name="a9178f3aae34e5de1f92f2b75ff281487"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>ClearSoftParent</b> ()</td></tr>
+<tr class="memdesc:a9178f3aae34e5de1f92f2b75ff281487"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears the soft-parent set via <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#aa2a5ca21fb585d4ae7d0524df9fdcc5f" title="Soft-parent this rigidbody to identity : its position, rotation and velocity sync in that identity&#39;s ...">SetSoftParent</a>, reverting to the <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a>-derived frame. <br /></td></tr>
+<tr class="separator:a9178f3aae34e5de1f92f2b75ff281487"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1ffc95a5bccdde85a17488c7d9971050"><td class="memItemLeft" align="right" valign="top"><a id="a1ffc95a5bccdde85a17488c7d9971050" name="a1ffc95a5bccdde85a17488c7d9971050"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StartIgnoringParentChanges</b> ()</td></tr>
 <tr class="separator:a1ffc95a5bccdde85a17488c7d9971050"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -457,6 +464,14 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>ownerAuth</b><code> [
 <tr class="memitem:ac3b56881f9b717cc45ad50d90b5e4ea6"><td class="memItemLeft" align="right" valign="top"><a id="ac3b56881f9b717cc45ad50d90b5e4ea6" name="ac3b56881f9b717cc45ad50d90b5e4ea6"></a>
 new bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code> [get]</code></td></tr>
 <tr class="separator:ac3b56881f9b717cc45ad50d90b5e4ea6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acae9cdee1795e32220bc3a5b9b04aee6"><td class="memItemLeft" align="right" valign="top"><a id="acae9cdee1795e32220bc3a5b9b04aee6" name="acae9cdee1795e32220bc3a5b9b04aee6"></a>
+RigidbodyTransformSpace&#160;</td><td class="memItemRight" valign="bottom"><b>space</b><code> [get]</code></td></tr>
+<tr class="memdesc:acae9cdee1795e32220bc3a5b9b04aee6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configured sync space. Local is relative to the current parent, World is absolute. <br /></td></tr>
+<tr class="separator:acae9cdee1795e32220bc3a5b9b04aee6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e4498a0d42d8f9227cf50021750bbcc"><td class="memItemLeft" align="right" valign="top"><a id="a0e4498a0d42d8f9227cf50021750bbcc" name="a0e4498a0d42d8f9227cf50021750bbcc"></a>
+<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td><td class="memItemRight" valign="bottom"><b>softParent</b><code> [get]</code></td></tr>
+<tr class="memdesc:a0e4498a0d42d8f9227cf50021750bbcc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Active soft-parent: the identity this rigidbody syncs relative to without being a Unity child of it, or null when the sync frame comes from <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a> and the real Unity parent (legacy behaviour). See <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#aa2a5ca21fb585d4ae7d0524df9fdcc5f" title="Soft-parent this rigidbody to identity : its position, rotation and velocity sync in that identity&#39;s ...">SetSoftParent</a>.  <br /></td></tr>
+<tr class="separator:a0e4498a0d42d8f9227cf50021750bbcc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a01926ebaa5263267f803843a49e8d0fe"><td class="memItemLeft" align="right" valign="top"><a id="a01926ebaa5263267f803843a49e8d0fe" name="a01926ebaa5263267f803843a49e8d0fe"></a>
 <a class="el" href="classPurrNet_1_1NetworkRigidbodySettings.html">NetworkRigidbodySettings</a>&#160;</td><td class="memItemRight" valign="bottom"><b>settingsOverride</b><code> [get, set]</code></td></tr>
 <tr class="separator:a01926ebaa5263267f803843a49e8d0fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -905,6 +920,27 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal<
 </dl>
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">PurrNet.ITick</a>.</p>
+
+</div>
+</div>
+<a id="aa2a5ca21fb585d4ae7d0524df9fdcc5f" name="aa2a5ca21fb585d4ae7d0524df9fdcc5f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa2a5ca21fb585d4ae7d0524df9fdcc5f">&#9670;&#160;</a></span>SetSoftParent()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.NetworkRigidbody.SetSoftParent </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td>
+          <td class="paramname"><em>identity</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Soft-parent this rigidbody to <em>identity</em> : its position, rotation and velocity sync in that identity's local frame, exactly as if parented there, but the Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a> while active. Pass null (or call <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487" title="Clears the soft-parent set via SetSoftParent, reverting to the space-derived frame.">ClearSoftParent</a>) to revert. </p>
+<p >Opt-in and backwards compatible: with no soft-parent set the wire format and behaviour are unchanged. Set it on the controller (the owner under client-auth, the server under server-auth); calls from a non-controller are ignored. The flag rides every state packet (<a class="el" href="structPurrNet_1_1RigidbodyStateData.html#afc3c8db195065af4d0b22f193b2016a7" title="True when parent is a soft-parent override the receiver should adopt as its own (vs the real Unity pa...">RigidbodyStateData.isSoftParent</a>), so receivers mirror it, it transfers across an ownership handoff, and late joiners pick it up from their initial state — the new controller keeps the same frame automatically.  </p>
 
 </div>
 </div>
