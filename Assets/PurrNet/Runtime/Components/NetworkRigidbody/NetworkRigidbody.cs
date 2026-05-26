@@ -54,6 +54,9 @@ namespace PurrNet
         public HalfVector3 linearVelocity;
         public HalfVector3 angularVelocity;
         public NetworkIdentity parent;
+        /// <summary>True when <see cref="parent"/> is a soft-parent override the receiver should
+        /// adopt as its own (vs the real Unity parent). Delta-packs away when unused.</summary>
+        public bool isSoftParent;
     }
 
     public struct RigidbodyTeleportData
@@ -199,6 +202,8 @@ namespace PurrNet
         private INetworkRigidbodyPositionTransform _positionTransform;
         private bool _positionTransformExplicit;
 
+        private NetworkIdentity _softParent;
+
         private void Awake()
         {
             _cachedRigidbody = GetComponent<Rigidbody>();
@@ -242,6 +247,9 @@ namespace PurrNet
             ClearBuffer();
 
             EnsureSettingsInstance();
+
+            if (_softParent && IsController(_ownerAuth) && isActiveAndEnabled)
+                SendCurrentState(true, IsSettledForSync());
         }
 
         protected override void OnObserverAdded(PlayerID player)
@@ -255,7 +263,7 @@ namespace PurrNet
             if (_ownerAuth && owner.HasValue && player == owner.Value)
                 return;
 
-            var parentIdentity = GetSyncParentIdentity();
+            var parentIdentity = GetSyncParentIdentity(out var isSoft);
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
@@ -267,7 +275,8 @@ namespace PurrNet
                 rotation = ReadRotation(parentTrs),
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
-                parent = parentIdentity
+                parent = parentIdentity,
+                isSoftParent = isSoft
             };
             SendInitialStateToObserver(player, stateData, GetCurrentSettings());
         }
@@ -278,6 +287,7 @@ namespace PurrNet
             DisposeSettingsInstance();
             _positionTransform = null;
             _positionTransformExplicit = false;
+            _softParent = null;
         }
 
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
@@ -322,7 +332,7 @@ namespace PurrNet
 
         private RigidbodyStateData CaptureCurrentState()
         {
-            var parentIdentity = GetSyncParentIdentity();
+            var parentIdentity = GetSyncParentIdentity(out var isSoft);
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
@@ -334,13 +344,14 @@ namespace PurrNet
                 rotation = ReadRotation(parentTrs),
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
-                parent = parentIdentity
+                parent = parentIdentity,
+                isSoftParent = isSoft
             };
         }
 
         private void AdoptControllerStateFromRigidbody()
         {
-            var parentIdentity = GetSyncParentIdentity();
+            var parentIdentity = GetSyncParentIdentity(out var isSoft);
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             var pos = WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
@@ -375,7 +386,8 @@ namespace PurrNet
                 rotation = rot,
                 linearVelocity = linVel,
                 angularVelocity = angVel,
-                parent = parentIdentity
+                parent = parentIdentity,
+                isSoftParent = isSoft
             });
         }
 
@@ -434,13 +446,13 @@ namespace PurrNet
 
             SendCurrentState(shouldSendSettledState, isSettled);
         }
-        
+
         private void SendCurrentState(bool reliable, bool zeroVelocities)
         {
             if (!_rigidbody)
                 return;
 
-            var parentIdentity = GetSyncParentIdentity();
+            var parentIdentity = GetSyncParentIdentity(out var isSoft);
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             var pos = WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
@@ -462,7 +474,8 @@ namespace PurrNet
                 rotation = rot,
                 linearVelocity = linVel,
                 angularVelocity = angVel,
-                parent = parentIdentity
+                parent = parentIdentity,
+                isSoftParent = isSoft
             };
 
             if (reliable)
@@ -695,6 +708,8 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
+            _softParent = data.isSoftParent ? data.parent : null;
+
             var now = Time.unscaledTimeAsDouble;
 
             if (_bufferCount > 0)
@@ -862,6 +877,55 @@ namespace PurrNet
         public bool ownerAuth => _ownerAuth;
         public new bool isController => IsController(_ownerAuth);
 
+        /// <summary>Configured sync space. Local is relative to the current parent, World is absolute.</summary>
+        public RigidbodyTransformSpace space => _space;
+
+        /// <summary>
+        /// Active soft-parent: the identity this rigidbody syncs relative to without being a
+        /// Unity child of it, or null when the sync frame comes from <see cref="space"/> and the
+        /// real Unity parent (legacy behaviour). See <see cref="SetSoftParent"/>.
+        /// </summary>
+        public NetworkIdentity softParent => (_softParent && _softParent.isSpawned) ? _softParent : null;
+
+        /// <summary>
+        /// Soft-parent this rigidbody to <paramref name="identity"/>: its position, rotation and
+        /// velocity sync in that identity's local frame, exactly as if parented there, but the
+        /// Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides
+        /// <see cref="space"/> while active. Pass null (or call <see cref="ClearSoftParent"/>) to revert.
+        ///
+        /// Opt-in and backwards compatible: with no soft-parent set the wire format and behaviour are
+        /// unchanged. Set it on the controller (the owner under client-auth, the server under
+        /// server-auth); calls from a non-controller are ignored. The flag rides every state packet
+        /// (<see cref="RigidbodyStateData.isSoftParent"/>), so receivers mirror it, it transfers across
+        /// an ownership handoff, and late joiners pick it up from their initial state — the new
+        /// controller keeps the same frame automatically.
+        /// </summary>
+        public void SetSoftParent(NetworkIdentity identity)
+        {
+            if (identity == this)
+            {
+                PurrLogger.LogWarning($"Cannot soft-parent {gameObject.name} to itself. Ignored.", this);
+                return;
+            }
+
+            if (_softParent == identity)
+                return;
+
+            if (isSpawned && !IsController(_ownerAuth))
+            {
+                PurrLogger.LogWarning($"SetSoftParent called on {gameObject.name} from a non-controller. Ignored.", this);
+                return;
+            }
+
+            _softParent = identity;
+
+            if (isSpawned && _rigidbody && isActiveAndEnabled)
+                SendCurrentState(true, IsSettledForSync());
+        }
+
+        /// <summary>Clears the soft-parent set via <see cref="SetSoftParent"/>, reverting to the <see cref="space"/>-derived frame.</summary>
+        public void ClearSoftParent() => SetSoftParent(null);
+
         public void StartIgnoringParentChanges()
         {
             _isIgnoringParentChanges = true;
@@ -894,8 +958,17 @@ namespace PurrNet
 
         #region Helpers
 
-        private NetworkIdentity GetSyncParentIdentity()
+        private NetworkIdentity GetSyncParentIdentity() => GetSyncParentIdentity(out _);
+
+        private NetworkIdentity GetSyncParentIdentity(out bool isSoft)
         {
+            if (_softParent && _softParent.isSpawned)
+            {
+                isSoft = true;
+                return _softParent;
+            }
+
+            isSoft = false;
             if (_space != RigidbodyTransformSpace.Local)
                 return null;
             var parentTrs = transform.parent;
