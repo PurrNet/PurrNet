@@ -275,7 +275,31 @@ namespace PurrNet.Codegen
                     genericWrite.Parameters.Add(new ParameterDefinition(param.Name, param.Attributes,
                         param.ParameterType));
 
+                if (writeType.isDelta)
+                    il.Emit(OpCodes.Dup);
+
                 il.Emit(OpCodes.Call, genericWrite);
+
+                if (writeType.isDelta)
+                {
+                    var nativeDeltaPackerType = module.GetTypeDefinition(typeof(NativeDeltaPacker<>)).Import(module);
+                    var genNativePackerType = new GenericInstanceType(nativeDeltaPackerType);
+                    genNativePackerType.GenericArguments.Add(writeType.type.Import(module));
+
+                    var nativeWrite = genNativePackerType.GetMethod("RegisterWriter", false).Import(module);
+                    var genericNativeWrite = new MethodReference("RegisterWriter", module.TypeSystem.Void, genNativePackerType)
+                    {
+                        HasThis = nativeWrite.HasThis,
+                        ExplicitThis = nativeWrite.ExplicitThis,
+                        CallingConvention = nativeWrite.CallingConvention
+                    };
+
+                    foreach (var param in nativeWrite.Parameters)
+                        genericNativeWrite.Parameters.Add(new ParameterDefinition(param.Name, param.Attributes,
+                            param.ParameterType));
+
+                    il.Emit(OpCodes.Call, genericNativeWrite);
+                }
             }
 
             for (int i = 0; i < readTypes.Count; i++)
@@ -346,7 +370,31 @@ namespace PurrNet.Codegen
                     genericread.Parameters.Add(new ParameterDefinition(param.Name, param.Attributes,
                         param.ParameterType));
 
+                if (readType.isDelta)
+                    il.Emit(OpCodes.Dup);
+
                 il.Emit(OpCodes.Call, genericread);
+
+                if (readType.isDelta)
+                {
+                    var nativeDeltaPackerType = module.GetTypeDefinition(typeof(NativeDeltaPacker<>)).Import(module);
+                    var genNativePackerType = new GenericInstanceType(nativeDeltaPackerType);
+                    genNativePackerType.GenericArguments.Add(typeArgument);
+
+                    var nativeRead = genNativePackerType.GetMethod("RegisterReader", false).Import(module);
+                    var genericNativeRead = new MethodReference("RegisterReader", module.TypeSystem.Void, genNativePackerType)
+                    {
+                        HasThis = nativeRead.HasThis,
+                        ExplicitThis = nativeRead.ExplicitThis,
+                        CallingConvention = nativeRead.CallingConvention
+                    };
+
+                    foreach (var param in nativeRead.Parameters)
+                        genericNativeRead.Parameters.Add(new ParameterDefinition(param.Name, param.Attributes,
+                            param.ParameterType));
+
+                    il.Emit(OpCodes.Call, genericNativeRead);
+                }
             }
 
             if (hasIDuplicate)
