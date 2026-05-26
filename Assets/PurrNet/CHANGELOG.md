@@ -1,3 +1,10 @@
+# [1.20.0-beta.191](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.190...v1.20.0-beta.191) (2026-05-26)
+
+
+### Features
+
+* NetworkRigidbody.cs soft parenting ([c38ea9b](https://github.com/PurrNet/PurrNet/commit/c38ea9b12326142e686818a6b8d81b71f75cfc8c))
+
 # [1.20.0-beta.190](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.189...v1.20.0-beta.190) (2026-05-25)
 
 
