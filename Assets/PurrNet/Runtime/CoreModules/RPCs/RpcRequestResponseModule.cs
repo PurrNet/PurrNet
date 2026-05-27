@@ -25,9 +25,68 @@ namespace PurrNet.Modules
         public float timeSent;
         public float timeout;
 
-        public Action timeoutRequest;
-        public Action<BitPacker> respond;
-        public Action<RpcError> respondError;
+        internal IRpcRequestCompleter completer;
+    }
+
+    internal interface IRpcRequestCompleter
+    {
+        void Respond(BitPacker stream);
+        void Fail(Exception exception);
+    }
+
+    internal sealed class TaskRequestCompleter : IRpcRequestCompleter
+    {
+        private readonly TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+        public Task task => _tcs.Task;
+        public void Respond(BitPacker stream) => _tcs.SetResult(true);
+        public void Fail(Exception exception) => _tcs.SetException(exception);
+    }
+
+    internal sealed class TaskRequestCompleter<T> : IRpcRequestCompleter
+    {
+        private readonly TaskCompletionSource<T> _tcs = new TaskCompletionSource<T>();
+        public Task<T> task => _tcs.Task;
+
+        public void Respond(BitPacker stream)
+        {
+            T response = default;
+            Packer<T>.Read(stream, ref response);
+            _tcs.SetResult(response);
+        }
+
+        public void Fail(Exception exception) => _tcs.SetException(exception);
+    }
+
+    internal sealed class UniTaskRequestCompleter : IRpcRequestCompleter
+    {
+#if !UNITASK_PURRNET_SUPPORT
+        private readonly TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+#else
+        private readonly UniTaskCompletionSource<bool> _tcs = new UniTaskCompletionSource<bool>();
+#endif
+        public RawTask task => _tcs.Task;
+        public void Respond(BitPacker stream) => _tcs.TrySetResult(true);
+        public void Fail(Exception exception) => _tcs.TrySetException(exception);
+    }
+
+    internal sealed class UniTaskRequestCompleter<T> : IRpcRequestCompleter
+    {
+#if !UNITASK_PURRNET_SUPPORT
+        private readonly TaskCompletionSource<T> _tcs = new TaskCompletionSource<T>();
+        public Task<T> task => _tcs.Task;
+#else
+        private readonly UniTaskCompletionSource<T> _tcs = new UniTaskCompletionSource<T>();
+        public UniTask<T> task => _tcs.Task;
+#endif
+
+        public void Respond(BitPacker stream)
+        {
+            T response = default;
+            Packer<T>.Read(stream, ref response);
+            _tcs.TrySetResult(response);
+        }
+
+        public void Fail(Exception exception) => _tcs.TrySetException(exception);
     }
 
     public struct RpcResponse
@@ -68,12 +127,37 @@ namespace PurrNet.Modules
         {
             _playersManager.Subscribe<RpcResponse>(OnRpcResponse);
             _playersManager.Subscribe<RpcRejection>(OnRpcRejection);
+            _playersManager.onPlayerLeft += OnPlayerLeft;
         }
 
         public void Disable(bool asServer)
         {
             _playersManager.Unsubscribe<RpcResponse>(OnRpcResponse);
             _playersManager.Unsubscribe<RpcRejection>(OnRpcRejection);
+            _playersManager.onPlayerLeft -= OnPlayerLeft;
+        }
+
+        private void OnPlayerLeft(PlayerID player, bool asServer)
+        {
+            for (int i = 0; i < _requests.Count; i++)
+            {
+                var request = _requests[i];
+                if (!request.target.HasValue || request.target.Value.isServer || request.target.Value != player)
+                    continue;
+
+                _requests.RemoveAt(i);
+                i--;
+
+                try
+                {
+                    request.completer.Fail(new RpcTargetDisconnectedException(player,
+                        $"Async RPC with request id of '{request.id}' failed because target player '{player}' disconnected."));
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"Error while failing RPC request after target disconnect: {e}");
+                }
+            }
         }
 
         private void OnRpcResponse(PlayerID conn, RpcResponse data, bool asServer)
@@ -106,7 +190,7 @@ namespace PurrNet.Modules
                         stream.WriteBytes(data.data);
                         stream.ResetPosition();
 
-                        request.respond(stream);
+                        request.completer.Respond(stream);
                     }
                     catch (Exception e)
                     {
@@ -144,7 +228,7 @@ namespace PurrNet.Modules
 
                     try
                     {
-                        request.respondError?.Invoke(data.error);
+                        request.completer.Fail(new RpcRejectedException(data.error));
                     }
                     catch (Exception e)
                     {
@@ -307,56 +391,18 @@ namespace PurrNet.Modules
 
         public Task GetNextId(PlayerID? target, float timeout, out RpcRequest request)
         {
-            var tcs = new TaskCompletionSource<bool>();
-            var id = _nextId++;
-
-            request = new RpcRequest
-            {
-                id = id,
-                target = target,
-                timeSent = Time.unscaledTime,
-                timeout = timeout,
-                respond = _ => { tcs.SetResult(true); },
-                respondError = err => { tcs.SetException(new RpcRejectedException(err)); },
-                timeoutRequest = () =>
-                {
-                    tcs.SetException(
-                        new TimeoutException(
-                            $"Async RPC with request id of '{id}' timed out after {timeout} seconds."));
-                }
-            };
-
+            var completer = new TaskRequestCompleter();
+            request = NewRequest(target, timeout, completer);
             _requests.Add(request);
-            return tcs.Task;
+            return completer.task;
         }
 
         public RawTask GetNextIdUniTask(PlayerID? target, float timeout, out RpcRequest request)
         {
-#if !UNITASK_PURRNET_SUPPORT
-            var tcs = new TaskCompletionSource<bool>();
-#else
-            var tcs = new UniTaskCompletionSource<bool>();
-#endif
-            var id = _nextId++;
-
-            request = new RpcRequest
-            {
-                id = id,
-                target = target,
-                timeSent = Time.unscaledTime,
-                timeout = timeout,
-                respond = _ => { tcs.TrySetResult(true); },
-                respondError = err => { tcs.TrySetException(new RpcRejectedException(err)); },
-                timeoutRequest = () =>
-                {
-                    tcs.TrySetException(
-                        new TimeoutException(
-                            $"Async RPC with request id of '{id}' timed out after {timeout} seconds."));
-                }
-            };
-
+            var completer = new UniTaskRequestCompleter();
+            request = NewRequest(target, timeout, completer);
             _requests.Add(request);
-            return tcs.Task;
+            return completer.task;
         }
 
 #if !UNITASK_PURRNET_SUPPORT
@@ -366,66 +412,30 @@ namespace PurrNet.Modules
 #endif
         GetNextIdUniTask<T>(PlayerID? target, float timeout, out RpcRequest request)
         {
-#if !UNITASK_PURRNET_SUPPORT
-            var tcs = new TaskCompletionSource<T>();
-#else
-            var tcs = new UniTaskCompletionSource<T>();
-#endif
-            var id = _nextId++;
-
-            request = new RpcRequest
-            {
-                id = id,
-                target = target,
-                timeSent = Time.unscaledTime,
-                timeout = timeout,
-                respond = stream =>
-                {
-                    T response = default;
-                    Packer<T>.Read(stream, ref response);
-                    tcs.TrySetResult(response);
-                },
-                respondError = err => { tcs.TrySetException(new RpcRejectedException(err)); },
-                timeoutRequest = () =>
-                {
-                    tcs.TrySetException(
-                        new TimeoutException(
-                            $"Async RPC with request id of '{id}' timed out after {timeout} seconds."));
-                }
-            };
-
+            var completer = new UniTaskRequestCompleter<T>();
+            request = NewRequest(target, timeout, completer);
             _requests.Add(request);
-            return tcs.Task;
+            return completer.task;
         }
 
         public Task<T> GetNextId<T>(PlayerID? target, float timeout, out RpcRequest request)
         {
-            var tcs = new TaskCompletionSource<T>();
-            var id = _nextId++;
+            var completer = new TaskRequestCompleter<T>();
+            request = NewRequest(target, timeout, completer);
+            _requests.Add(request);
+            return completer.task;
+        }
 
-            request = new RpcRequest
+        private RpcRequest NewRequest(PlayerID? target, float timeout, IRpcRequestCompleter completer)
+        {
+            return new RpcRequest
             {
-                id = id,
+                id = _nextId++,
                 target = target,
                 timeSent = Time.unscaledTime,
                 timeout = timeout,
-                respond = stream =>
-                {
-                    T response = default;
-                    Packer<T>.Read(stream, ref response);
-                    tcs.SetResult(response);
-                },
-                respondError = err => { tcs.SetException(new RpcRejectedException(err)); },
-                timeoutRequest = () =>
-                {
-                    tcs.SetException(
-                        new TimeoutException(
-                            $"Async RPC with request id of '{id}' timed out after {timeout} seconds."));
-                }
+                completer = completer
             };
-
-            _requests.Add(request);
-            return tcs.Task;
         }
 
         public void FixedUpdate()
@@ -437,7 +447,8 @@ namespace PurrNet.Modules
                 {
                     _requests.RemoveAt(i);
                     i--;
-                    request.timeoutRequest();
+                    request.completer.Fail(new TimeoutException(
+                        $"Async RPC with request id of '{request.id}' timed out after {request.timeout} seconds."));
                 }
             }
         }
