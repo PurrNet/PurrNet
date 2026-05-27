@@ -138,6 +138,7 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
             for (int i = 0; i < _objectCount; i++)
             {
                 var inst = Instantiate(_prefab);
+                inst.gameObject.SetActive(true);
                 inst.transform.position = new Vector3(i, 0, 0);
                 _spawned.Add(inst);
             }
