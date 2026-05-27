@@ -22,10 +22,25 @@ public class Bootstrap : Scenario
     [SerializeField] private NetworkRole _editorRole = NetworkRole.Host;
     [Tooltip("Expected connection count when no -count argument is provided.")]
     [SerializeField] private int _editorExpectedConnections = 2;
+    [Tooltip("Run benchmark mode in the editor (Host + Multiplayer Playmode clients) without the -bench arg.")]
+    [SerializeField] private bool _editorBenchmarkMode;
+
+    [Header("Benchmark")]
+    [Tooltip("Object holding the BenchmarkScenario components. Reorder or disable its children to change which benchmarks run.")]
+    [SerializeField] private Transform _benchmarkScenarios;
+    [Tooltip("Steady-state measurement window in seconds (overridden by -benchSeconds).")]
+    [SerializeField] private float _benchSeconds = 20f;
 
     private NetworkRole _role;
     private int _expectedConnections;
     private string _resultsPath;
+
+    private bool _benchmarkMode;
+    private bool _measured = true;
+    private int? _benchObjects;
+    private float? _benchPingRate;
+    private string _serverHost;
+    private ushort? _port;
 
     private Scenario[] _scenarios;
     private ScenarioDetails?[] _results;
@@ -34,9 +49,40 @@ public class Bootstrap : Scenario
 
     private void Awake()
     {
-        _scenarios = GetComponentsInChildren<Scenario>();
-        _results = new ScenarioDetails?[_scenarios.Length];
         LoadArgs();
+
+        if (_benchmarkMode)
+        {
+            _scenarios = DiscoverBenchmarkScenarios();
+        }
+        else
+        {
+            _scenarios = GetComponentsInChildren<Scenario>();
+        }
+
+        _results = new ScenarioDetails?[_scenarios.Length];
+    }
+
+    private Scenario[] DiscoverBenchmarkScenarios()
+    {
+        if (!_benchmarkScenarios)
+        {
+            Debug.LogError($"Benchmark mode requires '{nameof(_benchmarkScenarios)}' to be assigned on Bootstrap.");
+            return new Scenario[] { this };
+        }
+
+        var authored = _benchmarkScenarios.GetComponentsInChildren<Scenario>();
+        var scenarios = new Scenario[authored.Length + 1];
+        scenarios[0] = this;
+
+        for (var i = 0; i < authored.Length; i++)
+        {
+            scenarios[i + 1] = authored[i];
+            if (authored[i] is BenchmarkScenario bench)
+                bench.ApplyOverrides(_benchObjects, _benchPingRate);
+        }
+
+        return scenarios;
     }
 
     private void Start()
@@ -50,12 +96,16 @@ public class Bootstrap : Scenario
 
         _runCts = new CancellationTokenSource();
 
+        ConfigureTransport();
+
         var ctx = new ScenarioContext
         {
             role = _role,
             expectedConnections = _expectedConnections,
             networkManager = _networkManager,
-            cancellationToken = _runCts.Token
+            cancellationToken = _runCts.Token,
+            benchSeconds = _benchSeconds,
+            measured = _measured
         };
 
         for (var i = 0; i < _scenarios.Length; i++)
@@ -125,6 +175,54 @@ public class Bootstrap : Scenario
         }
 
         CommandLineUtils.TryGetArgument("-results", out _resultsPath);
+
+        LoadBenchmarkArgs();
+    }
+
+    private void LoadBenchmarkArgs()
+    {
+        _benchmarkMode = CommandLineUtils.HasFlag("-bench");
+#if UNITY_EDITOR
+        _benchmarkMode |= _editorBenchmarkMode;
+#endif
+        _measured = !CommandLineUtils.HasFlag("-loadgen");
+
+        if (CommandLineUtils.TryGetArgument("-benchSeconds", out var seconds)
+            && float.TryParse(seconds, out var parsedSeconds))
+            _benchSeconds = parsedSeconds;
+
+        if (CommandLineUtils.TryGetArgument("-benchObjects", out var objects)
+            && int.TryParse(objects, out var parsedObjects))
+            _benchObjects = parsedObjects;
+
+        if (CommandLineUtils.TryGetArgument("-benchPingRate", out var pingRate)
+            && float.TryParse(pingRate, out var parsedPingRate))
+            _benchPingRate = parsedPingRate;
+
+        if (CommandLineUtils.TryGetArgument("-connectTimeout", out var connectTimeout)
+            && float.TryParse(connectTimeout, out var parsedConnectTimeout))
+            _connectionTimeout = parsedConnectTimeout;
+
+        CommandLineUtils.TryGetArgument("-serverHost", out _serverHost);
+
+        if (CommandLineUtils.TryGetArgument("-port", out var port)
+            && ushort.TryParse(port, out var parsedPort))
+            _port = parsedPort;
+    }
+
+    private void ConfigureTransport()
+    {
+        if (_networkManager.transport is not UDPTransport udp)
+            return;
+
+        if (_port.HasValue)
+            udp.serverPort = _port.Value;
+
+        if (_role == NetworkRole.Client && !string.IsNullOrEmpty(_serverHost))
+            udp.address = _serverHost;
+
+        if (_role != NetworkRole.Client)
+            udp.maxConnections = Mathf.Max(udp.maxConnections, _expectedConnections + 8);
     }
 
     private bool TryResolveRole(out NetworkRole resolved)
@@ -206,7 +304,9 @@ public class Bootstrap : Scenario
                 role = _role,
                 expectedConnections = _expectedConnections,
                 networkManager = _networkManager,
-                cancellationToken = _runCts.Token
+                cancellationToken = _runCts.Token,
+                benchSeconds = _benchSeconds,
+                measured = _measured
             };
 
             // Scenario 0 is Bootstrap itself (the connection scenario). It must run
@@ -314,14 +414,20 @@ public class Bootstrap : Scenario
         var elapsedTick = DateTime.Now.Ticks - startTick;
         var elapsedMs = elapsedTick / (double)TimeSpan.TicksPerMillisecond;
 
-        _results[i] = new ScenarioDetails
+        var details = new ScenarioDetails
         {
             name = scenario.GetType().Name,
             result = result,
             durationInMs = elapsedMs,
             dataSent = _dataSent,
-            dataReceived = _dataReceived
+            dataReceived = _dataReceived,
+            measured = _measured
         };
+
+        if (scenario is IBenchmarkScenario bench && bench.LastMetrics.HasValue)
+            details.benchmark = bench.LastMetrics;
+
+        _results[i] = details;
 
         return !result.success;
     }
