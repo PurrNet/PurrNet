@@ -176,21 +176,18 @@ namespace PurrNet
             SendInitialStateToOthers(initialState);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInitialStateToOthers(Dictionary<TKey, TValue> initialState)
         {
-            if (!isServer || isHost)
+            _dict = initialState;
+
+            var initialChang = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Cleared);
+            InvokeChange(initialChang);
+
+            foreach (var kvp in _dict)
             {
-                _dict = initialState;
-
-                var initialChang = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Cleared);
-                InvokeChange(initialChang);
-
-                foreach (var kvp in _dict)
-                {
-                    var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Added, kvp.Key, kvp.Value);
-                    InvokeChange(change);
-                }
+                var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Added, kvp.Key, kvp.Value);
+                InvokeChange(change);
             }
         }
 
@@ -412,15 +409,12 @@ namespace PurrNet
             SendAddToOthers(key, value);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendAddToOthers(TKey key, TValue value)
         {
-            if (!isServer || isHost)
-            {
-                _dict[key] = value;
-                var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Added, key, value);
-                InvokeChange(change);
-            }
+            _dict[key] = value;
+            var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Added, key, value);
+            InvokeChange(change);
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
@@ -441,17 +435,14 @@ namespace PurrNet
             SendRemoveToOthers(key);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendRemoveToOthers(TKey key)
         {
-            if (!isServer || isHost)
+            if (_dict.TryGetValue(key, out TValue value))
             {
-                if (_dict.TryGetValue(key, out TValue value))
-                {
-                    _dict.Remove(key);
-                    var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Removed, key, value);
-                    InvokeChange(change);
-                }
+                _dict.Remove(key);
+                var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Removed, key, value);
+                InvokeChange(change);
             }
         }
 
@@ -475,15 +466,12 @@ namespace PurrNet
             SendClearToOthers();
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendClearToOthers()
         {
-            if (!isServer || isHost)
-            {
-                _dict.Clear();
-                var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Cleared);
-                InvokeChange(change);
-            }
+            _dict.Clear();
+            var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Cleared);
+            InvokeChange(change);
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
@@ -504,16 +492,13 @@ namespace PurrNet
             SendSetToOthers(key, value, isNewKey);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendSetToOthers(TKey key, TValue value, bool isNewKey)
         {
-            if (!isServer || isHost)
-            {
-                _dict[key] = value;
-                var operation = isNewKey ? SyncDictionaryOperation.Added : SyncDictionaryOperation.Set;
-                var change = new SyncDictionaryChange<TKey, TValue>(operation, key, value);
-                InvokeChange(change);
-            }
+            _dict[key] = value;
+            var operation = isNewKey ? SyncDictionaryOperation.Added : SyncDictionaryOperation.Set;
+            var change = new SyncDictionaryChange<TKey, TValue>(operation, key, value);
+            InvokeChange(change);
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
@@ -562,17 +547,14 @@ namespace PurrNet
             SendSetDirtyToOthers(key, value);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendSetDirtyToOthers(TKey key, TValue value)
         {
-            if (!isServer || isHost)
+            if (_dict.ContainsKey(key))
             {
-                if (_dict.ContainsKey(key))
-                {
-                    _dict[key] = value;
-                    var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Set, key, value);
-                    InvokeChange(change);
-                }
+                _dict[key] = value;
+                var change = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Set, key, value);
+                InvokeChange(change);
             }
         }
 
