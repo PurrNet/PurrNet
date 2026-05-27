@@ -1,3 +1,10 @@
+# [1.20.0-beta.194](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.193...v1.20.0-beta.194) (2026-05-27)
+
+
+### Bug Fixes
+
+* dedicated server state missing for owner auth sync types on collections ([9991f3a](https://github.com/PurrNet/PurrNet/commit/9991f3ab1bb505810ad6a575d2a0bc6ca3ccd83c))
+
 # [1.20.0-beta.193](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.192...v1.20.0-beta.193) (2026-05-27)
 
 
