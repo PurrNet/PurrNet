@@ -37,7 +37,8 @@ var hierarchy =
       [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ],
       [ "PurrNet.RpcException", "classPurrNet_1_1RpcException.html", [
         [ "PurrNet.RpcDispatchException", "classPurrNet_1_1RpcDispatchException.html", null ],
-        [ "PurrNet.RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ]
+        [ "PurrNet.RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ],
+        [ "PurrNet.RpcTargetDisconnectedException", "classPurrNet_1_1RpcTargetDisconnectedException.html", null ]
       ] ]
     ] ],
     [ "PurrNet.Modules.GameObjectFrameworkPiece", "structPurrNet_1_1Modules_1_1GameObjectFrameworkPiece.html", null ],

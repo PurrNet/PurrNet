@@ -50,5 +50,6 @@ var searchData=
   ['rpcrules_47',['RpcRules',['../structPurrNet_1_1RpcRules.html',1,'PurrNet']]],
   ['rpcsignature_48',['RPCSignature',['../structPurrNet_1_1RPCSignature.html',1,'PurrNet']]],
   ['rpcssample_49',['RpcsSample',['../structPurrNet_1_1Profiler_1_1RpcsSample.html',1,'PurrNet::Profiler']]],
-  ['rtt_50',['rtt',['../classPurrNet_1_1Modules_1_1TickManager.html#aefdfde0c5e70ba9ce348a0124153d159',1,'PurrNet::Modules::TickManager']]]
+  ['rpctargetdisconnectedexception_50',['RpcTargetDisconnectedException',['../classPurrNet_1_1RpcTargetDisconnectedException.html',1,'PurrNet']]],
+  ['rtt_51',['rtt',['../classPurrNet_1_1Modules_1_1TickManager.html#aefdfde0c5e70ba9ce348a0124153d159',1,'PurrNet::Modules::TickManager']]]
 ];

@@ -125,6 +125,7 @@ var namespacePurrNet =
     [ "RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ],
     [ "RpcRules", "structPurrNet_1_1RpcRules.html", null ],
     [ "RPCSignature", "structPurrNet_1_1RPCSignature.html", null ],
+    [ "RpcTargetDisconnectedException", "classPurrNet_1_1RpcTargetDisconnectedException.html", null ],
     [ "ScaleWithParent", "structPurrNet_1_1ScaleWithParent.html", null ],
     [ "SceneID", "structPurrNet_1_1SceneID.html", null ],
     [ "SerializableDictionary", "classPurrNet_1_1SerializableDictionary.html", null ],
