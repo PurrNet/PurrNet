@@ -547,7 +547,7 @@ MonoBehaviour:
   _timeBetweenScenarios: 0.1
   _editorRole: 2
   _editorExpectedConnections: 2
-  _editorBenchmarkMode: 0
+  _editorBenchmarkMode: 1
   _benchmarkScenarios: {fileID: 2071908760}
   _benchSeconds: 20
 --- !u!1 &358453800
