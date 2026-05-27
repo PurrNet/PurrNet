@@ -55,7 +55,7 @@ namespace PurrNet.Modules
         private readonly List<RpcRequest> _requests = new List<RpcRequest>();
 
         private uint _nextId;
-        private bool _asServer;
+        private readonly bool _asServer;
 
         public RpcRequestResponseModule(NetworkManager manager, PlayersManager playersManager, bool asServer)
         {
