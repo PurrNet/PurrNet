@@ -186,7 +186,7 @@ namespace PurrNet
 
         public void SetDirty()
         {
-            if (_isDirty || !isControllingSyncVar)
+            if (!isControllingSyncVar)
                 return;
 
             _isDirty = true;
