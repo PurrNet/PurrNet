@@ -305,6 +305,139 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
+--- !u!1 &108535981
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 108535982}
+  - component: {fileID: 108535987}
+  - component: {fileID: 108535986}
+  - component: {fileID: 108535985}
+  - component: {fileID: 108535984}
+  - component: {fileID: 108535983}
+  - component: {fileID: 108535988}
+  m_Layer: 0
+  m_Name: SyncTypesOwnerAuth
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &108535982
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 277924963}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &108535983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5d8c0dfbdf1ca04e92553aa582adf8e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncQueueOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &108535984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed60f7d57cc2afd40865a8f5239f0a91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncHashsetOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &108535985
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: deeeb229b2103654db4ebfa39d688aaf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncDictionaryOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &108535986
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8f3facc17ff92141b65527410a6d2d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncArrayOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &108535987
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7541632194e8134d869cbc27edcab9c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncListOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &108535988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67c6fb6a854e4a040b227f9966a48e46, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
 --- !u!1 &120556145
 GameObject:
   m_ObjectHideFlags: 0
@@ -391,6 +524,10 @@ Transform:
   - {fileID: 120556146}
   - {fileID: 491480055}
   - {fileID: 1869161004}
+  - {fileID: 2027560122}
+  - {fileID: 108535982}
+  - {fileID: 1438235316}
+  - {fileID: 1999225764}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &277924964
@@ -1252,6 +1389,105 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _broadcastTimeoutSeconds: 10
+--- !u!1 &1438235315
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1438235316}
+  - component: {fileID: 1438235320}
+  - component: {fileID: 1438235319}
+  - component: {fileID: 1438235318}
+  - component: {fileID: 1438235317}
+  m_Layer: 0
+  m_Name: SyncTypesNiche
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1438235316
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438235315}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 277924963}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1438235317
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438235315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8896f97a5beecc744a4ac2e5f4f0f7a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncLazyRefServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &1438235318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438235315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5af0f45f1995cb04fab4ff1c5c609d4a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncTimerServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &1438235319
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438235315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28ea77e2daf192b4baf613c0d29a382b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncInputScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &1438235320
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438235315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d7fec1023ef1b3429054474c2d39f1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncEventServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
 --- !u!1 &1680343622
 GameObject:
   m_ObjectHideFlags: 0
@@ -1601,6 +1837,221 @@ MonoBehaviour:
   _propagationDelaySeconds: 0.5
   _stayDisconnectedSeconds: 1
   _barrierTimeoutSeconds: 60
+--- !u!1 &1999225763
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1999225764}
+  - component: {fileID: 1999225767}
+  - component: {fileID: 1999225766}
+  - component: {fileID: 1999225765}
+  m_Layer: 0
+  m_Name: SyncTypesFiles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1999225764
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999225763}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 277924963}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1999225765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999225763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c46ebde86513b7409784923e2d185fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncTextureFileServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _transferTimeoutSeconds: 60
+  _doneTimeoutSeconds: 30
+--- !u!114 &1999225766
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999225763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c3ffa8e10fa0c64299232958e230664, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncRawFileServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _transferTimeoutSeconds: 60
+  _doneTimeoutSeconds: 30
+--- !u!114 &1999225767
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999225763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3156d9a205ec80e458eb9826f57652b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncBigDataServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _transferTimeoutSeconds: 60
+  _doneTimeoutSeconds: 30
+--- !u!1 &2027560121
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2027560122}
+  - component: {fileID: 2027560127}
+  - component: {fileID: 2027560126}
+  - component: {fileID: 2027560125}
+  - component: {fileID: 2027560124}
+  - component: {fileID: 2027560123}
+  - component: {fileID: 2027560128}
+  m_Layer: 0
+  m_Name: SyncTypes
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2027560122
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 277924963}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2027560123
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61b4b8dfec0e2a149be0cecc07589130, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncQueueServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &2027560124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aca560070534e6040a9969635c6cacb7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncHashsetServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &2027560125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f85162d91900274fb22dd98b3e66451, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncDictionaryServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &2027560126
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f59535d0bf13454eb7ca8770a6554cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncArrayServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &2027560127
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e49b6904baeb8e544bf135918e43144c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncListServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &2027560128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e58a6cc1c58a0bd4c8c55950f3e18137, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
