@@ -1,3 +1,10 @@
+# [1.20.0-beta.193](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.192...v1.20.0-beta.193) (2026-05-27)
+
+
+### Features
+
+* async RPC fail fast on target disconnect + GC improvements ([d3d28f5](https://github.com/PurrNet/PurrNet/commit/d3d28f551febf2618f273d9c632277c61dfa0436))
+
 # [1.20.0-beta.192](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.191...v1.20.0-beta.192) (2026-05-27)
 
 
