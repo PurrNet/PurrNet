@@ -1,3 +1,10 @@
+# [1.20.0-beta.192](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.191...v1.20.0-beta.192) (2026-05-27)
+
+
+### Bug Fixes
+
+* SyncVar _isDirty hand-off bug ([1da4117](https://github.com/PurrNet/PurrNet/commit/1da411752d1a9fbb510786136b946ed364ae3d97))
+
 # [1.20.0-beta.191](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.190...v1.20.0-beta.191) (2026-05-26)
 
 
