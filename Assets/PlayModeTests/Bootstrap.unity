@@ -119,6 +119,51 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &7157360
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7157361}
+  - component: {fileID: 7157362}
+  m_Layer: 0
+  m_Name: PlayerMovement
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7157361
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7157360}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2071908760}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7157362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7157360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d92fd6fce64477c4088dff8434cad2d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::PlayerMovementBenchmarkScenario
+  _pingsPerSecond: 10
 --- !u!1 &43754047
 GameObject:
   m_ObjectHideFlags: 0
@@ -768,7 +813,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: edd92e6d1d3b92440b0a3c663bd5c4ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::BenchmarkScenario
-  _objectCount: 50
+  _objectCount: 1000
   _pingsPerSecond: 10
 --- !u!1 &926210937
 GameObject:
@@ -1217,7 +1262,7 @@ MonoBehaviour:
   _networkRules: {fileID: 11400000, guid: e0a4aaa8c3ab6ce4dbf625273ef3141b, type: 2}
   _visibilityRules: {fileID: 0}
   _authenticator: {fileID: 0}
-  _tickRate: 20
+  _tickRate: 60
   _mtuExceededBehaviour: 1
   _patchLingeringProcessBug: 0
 --- !u!4 &1216416898
@@ -2149,6 +2194,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 495412351}
+  - {fileID: 7157361}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807

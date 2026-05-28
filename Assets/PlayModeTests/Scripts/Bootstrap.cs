@@ -78,7 +78,7 @@ public class Bootstrap : Scenario
         for (var i = 0; i < authored.Length; i++)
         {
             scenarios[i + 1] = authored[i];
-            if (authored[i] is BenchmarkScenario bench)
+            if (authored[i] is IBenchmarkScenario bench)
                 bench.ApplyOverrides(_benchObjects, _benchPingRate);
         }
 

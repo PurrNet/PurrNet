@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Renders the scaling curve from datapoints emitted by bench-aggregate.sh across runs.
-# Reads size-<N>-server.json / size-<N>-clients.json files and renders one combined table.
+# Renders scaling curves from datapoints emitted by bench-aggregate.sh across runs.
+# Each size-<N>-server.json / size-<N>-clients.json holds per-scenario metrics; this renders
+# one table per benchmark scenario (StateReplication, PlayerMovement, ...).
 #
 # Usage: bench-scaling.sh <datapoints_dir> <window_s> <objects>
 set -euo pipefail
@@ -12,19 +13,16 @@ OBJECTS="${3:-?}"
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
 shopt -s nullglob
-SRV=("$DP_DIR"/size-*-server.json)
-CLI=("$DP_DIR"/size-*-clients.json)
+FILES=("$DP_DIR"/size-*-server.json "$DP_DIR"/size-*-clients.json)
 
 {
   echo "## Benchmark Scaling Curve"
   echo ""
   echo "Window: ${WINDOW}s · Objects: ${OBJECTS}"
   echo ""
-  echo "| Connections | Down payload | Down on-wire | Overhead | CPU | Loop rate | Frame p95 | GC | Heap | Peak RSS | Per-conn down | RTT p95 |"
-  echo "|---|---|---|---|---|---|---|---|---|---|---|---|"
 } >> "$SUMMARY"
 
-if [ ${#SRV[@]} -eq 0 ] && [ ${#CLI[@]} -eq 0 ]; then
+if [ ${#FILES[@]} -eq 0 ]; then
   echo "_No datapoints collected._" >> "$SUMMARY"
   exit 0
 fi
@@ -38,34 +36,39 @@ jq -rs '
   def r2: if . == null then "-" else "\((.*100|floor)/100) ms" end;
   def r1: if . == null then "-" else "\((.*10|floor)/10)%" end;
   def mb: if . == null then "-" else "\((./1048576)|floor) MB" end;
+  def avg(f): if length == 0 then null else (map(f) | add) / length end;
 
-  ([ .[] | select(has("server") and .server != null) ]
-     | map({key: (.connections|tostring), value: .server}) | from_entries) as $srv
-  | ([ .[] | select(has("measured")) ]
-      | map({ key: (.connections|tostring),
-              value: ( (.measured | length) as $n
-                       | if $n == 0 then null else
-                           { recv: ((.measured | map(.receivedBytesPerSec) | add) / $n),
-                             p95:  ((.measured | map(.rttP95Ms) | add) / $n) }
-                         end ) })
-      | from_entries) as $cli
-  | ([ .[].connections ] | unique | sort) as $sizes
-  | $sizes[]
-  | (.|tostring) as $k
-  | ($srv[$k]) as $s
-  | ($cli[$k]) as $c
-  | "| \(.) "
-    + "| \($s.sentBytesPerSec|hbR) "
-    + "| \($s.onWireSentBytesPerSec|hbR) "
-    + "| \($s.framingOverheadPercent|r1) "
-    + "| \($s.serverCpuPercent|r1) "
-    + "| \($s.avgFps|if . == null then "-" else floor end) fps "
-    + "| \($s.p95TickMs|r2) "
-    + "| \($s.gcCollections // "-") "
-    + "| \($s.managedHeapBytes|mb) "
-    + "| \($s.peakMemoryBytes|mb) "
-    + "| \($c.recv|hbR) "
-    + "| \($c.p95|r2) |"
-' "${SRV[@]}" "${CLI[@]}" >> "$SUMMARY" || echo "_Failed to render datapoints._" >> "$SUMMARY"
+  # server[scenario][connections] = server benchmark ; client[scenario][connections] = measured[]
+  (reduce (.[] | select(has("serverScenarios"))) as $f ({};
+     reduce ($f.serverScenarios | to_entries[]) as $e (.;
+       .[$e.key][$f.connections | tostring] = $e.value))) as $srv
+  | (reduce (.[] | select(has("clientScenarios"))) as $f ({};
+       reduce ($f.clientScenarios | to_entries[]) as $e (.;
+         .[$e.key][$f.connections | tostring] = $e.value))) as $cli
+  | ([ $srv, $cli | keys[] ] | unique) as $scenarios
+  | $scenarios[]
+  | . as $name
+  | "### \($name)\n\n"
+    + "| Connections | Down payload | Down on-wire | Overhead | CPU | Loop rate | Frame p95 | GC | Heap | Peak RSS | Per-conn down | RTT p95 |\n"
+    + "|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+    + ( [ (($srv[$name] // {}) + ($cli[$name] // {}) | keys | map(tonumber) | unique | sort)[]
+          | . as $n | ($n|tostring) as $k
+          | ($srv[$name][$k]) as $s
+          | ($cli[$name][$k] // []) as $c
+          | "| \($n) "
+            + "| \($s.sentBytesPerSec|hbR) "
+            + "| \($s.onWireSentBytesPerSec|hbR) "
+            + "| \($s.framingOverheadPercent|r1) "
+            + "| \($s.serverCpuPercent|r1) "
+            + "| \($s.avgFps|if . == null then "-" else floor end) fps "
+            + "| \($s.p95TickMs|r2) "
+            + "| \($s.gcCollections // "-") "
+            + "| \($s.managedHeapBytes|mb) "
+            + "| \($s.peakMemoryBytes|mb) "
+            + "| \($c | avg(.receivedBytesPerSec) | hbR) "
+            + "| \($c | avg(.rttP95Ms) | r2) |"
+        ] | join("\n") )
+    + "\n"
+' "${FILES[@]}" >> "$SUMMARY" || echo "_Failed to render datapoints._" >> "$SUMMARY"
 
 echo "" >> "$SUMMARY"
