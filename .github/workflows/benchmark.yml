@@ -65,7 +65,7 @@ on:
 
 env:
   SERVER_HOST: purrnet-bench-${{ github.run_id }}-${{ inputs.tag }}
-  PORT: "5001"
+  PORT: "7777"
 
 jobs:
   build:
@@ -166,6 +166,18 @@ jobs:
           BIN="$PWD/player/PurrNetTests"
           chmod +x "$BIN"
           mkdir -p results logs
+
+          # Fail fast (and loud) if something already holds the UDP port — otherwise a
+          # failed bind silently turns into a 90s connect-timeout buried in the log file.
+          echo "::group::UDP listeners before bind"
+          ss -lun || true
+          echo "::endgroup::"
+          if ss -lun 2>/dev/null | grep -qE "[:.]${PORT}\b"; then
+            echo "::error::UDP port $PORT is already in use on the runner before the server started"
+            ss -lunp 2>/dev/null || true
+            exit 1
+          fi
+
           RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
           "${RUN[@]}" "$BIN" -batchmode -nographics \
             -role server -count ${{ needs.prep.outputs.total }} \
@@ -174,6 +186,13 @@ jobs:
             -port "$PORT" -connectTimeout 90 \
             -results "$PWD/results/server.json" \
             -logFile "$PWD/logs/server.log"
+
+          # The Unity player writes everything to -logFile, so surface the bind result here.
+          if grep -q "Bind exception" logs/server.log 2>/dev/null; then
+            echo "::error::Server failed to bind UDP port $PORT (see server.log)"
+            grep -n "Bind exception" logs/server.log || true
+            exit 1
+          fi
 
       - name: Tail server log on failure
         if: failure()
@@ -190,7 +209,11 @@ jobs:
 
   clients:
     name: Client ${{ matrix.idx }}
-    needs: [build, prep, server]
+    # NOTE: must NOT depend on `server` — clients run concurrently with it and discover
+    # it via the tailnet hostname poll below. Depending on `server` would serialize them
+    # after the server job finishes, so the server would always wait for connections that
+    # can't exist yet and time out.
+    needs: [build, prep]
     if: ${{ needs.prep.outputs.measured_matrix != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -260,7 +283,8 @@ jobs:
 
   loadgen:
     name: Loadgen ${{ matrix.idx }}
-    needs: [build, prep, server]
+    # See the note on `clients`: run concurrently with the server, don't depend on it.
+    needs: [build, prep]
     if: ${{ needs.prep.outputs.loadgen_matrix != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
