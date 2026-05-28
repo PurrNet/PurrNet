@@ -65,7 +65,10 @@ on:
 
 env:
   SERVER_HOST: purrnet-bench-${{ github.run_id }}-${{ inputs.tag }}
-  PORT: "7777"
+  # NOT named PORT on purpose: a bare `PORT` env var is a magic name that several daemons
+  # (inherited via `sudo -E` during runner setup) auto-bind to, which was stealing the
+  # server's UDP port before Unity could bind it.
+  BENCH_PORT: "7777"
 
 jobs:
   build:
@@ -170,11 +173,11 @@ jobs:
           # Fail fast (and loud) if something already holds the UDP port — otherwise a
           # failed bind silently turns into a 90s connect-timeout buried in the log file.
           echo "::group::UDP listeners before bind"
-          ss -lun || true
+          sudo ss -lunp || ss -lun || true
           echo "::endgroup::"
-          if ss -lun 2>/dev/null | grep -qE "[:.]${PORT}\b"; then
-            echo "::error::UDP port $PORT is already in use on the runner before the server started"
-            ss -lunp 2>/dev/null || true
+          if ss -lun 2>/dev/null | grep -qE "[:.]${BENCH_PORT}\b"; then
+            echo "::error::UDP port $BENCH_PORT is already in use on the runner before the server started"
+            sudo ss -lunp 2>/dev/null || true
             exit 1
           fi
 
@@ -183,13 +186,13 @@ jobs:
             -role server -count ${{ needs.prep.outputs.total }} \
             -bench -benchSeconds ${{ inputs.bench_seconds }} \
             -benchObjects ${{ inputs.bench_objects }} \
-            -port "$PORT" -connectTimeout 90 \
+            -port "$BENCH_PORT" -connectTimeout 90 \
             -results "$PWD/results/server.json" \
             -logFile "$PWD/logs/server.log"
 
           # The Unity player writes everything to -logFile, so surface the bind result here.
           if grep -q "Bind exception" logs/server.log 2>/dev/null; then
-            echo "::error::Server failed to bind UDP port $PORT (see server.log)"
+            echo "::error::Server failed to bind UDP port $BENCH_PORT (see server.log)"
             grep -n "Bind exception" logs/server.log || true
             exit 1
           fi
@@ -264,7 +267,7 @@ jobs:
             -role client -bench -benchSeconds ${{ inputs.bench_seconds }} \
             -benchObjects ${{ inputs.bench_objects }} \
             -benchPingRate ${{ inputs.ping_rate }} \
-            -serverHost "$SERVER_IP" -port "$PORT" -connectTimeout 90 \
+            -serverHost "$SERVER_IP" -port "$BENCH_PORT" -connectTimeout 90 \
             -results "$PWD/results/client-${{ matrix.idx }}.json" \
             -logFile "$PWD/logs/client-${{ matrix.idx }}.log"
 
@@ -334,7 +337,7 @@ jobs:
             "${RUN[@]}" "$BIN" -batchmode -nographics \
               -role client -loadgen -bench -benchSeconds ${{ inputs.bench_seconds }} \
               -benchObjects ${{ inputs.bench_objects }} -benchPingRate 0 \
-              -serverHost "$SERVER_IP" -port "$PORT" -connectTimeout 90 \
+              -serverHost "$SERVER_IP" -port "$BENCH_PORT" -connectTimeout 90 \
               -results "$PWD/results/loadgen-${{ matrix.idx }}-$p.json" \
               -logFile "$PWD/logs/loadgen-${{ matrix.idx }}-$p.log" &
             PIDS+=("$!")
