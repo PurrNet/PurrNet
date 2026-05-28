@@ -22,6 +22,7 @@ public class DestroyDuringSpawnScenario : Scenario
     private const int BarrierEnd = 4201;
 
     private DestroyDuringSpawnIdentity _churnPrefab;
+    private DestroyDuringSpawnIdentity _nestedChurnPrefab;
     private DestroyDuringSpawnMarkerIdentity _markerPrefab;
 
     private static ulong _spawnerIdBroadcast;
@@ -33,6 +34,15 @@ public class DestroyDuringSpawnScenario : Scenario
         _churnPrefab = churnGo.AddComponent<DestroyDuringSpawnIdentity>();
         churnGo.SetActive(false);
 
+        // A multi-identity (parent + child) churn variant so destroy-mid-spawn also exercises
+        // cleanup of a spawn entry with more than one identity.
+        var nestedGo = new GameObject(nameof(DestroyDuringSpawnIdentity) + "Nested");
+        _nestedChurnPrefab = nestedGo.AddComponent<DestroyDuringSpawnIdentity>();
+        var nestedChildGo = new GameObject("Child");
+        nestedChildGo.transform.SetParent(nestedGo.transform);
+        var nestedChild = nestedChildGo.AddComponent<DestroyDuringSpawnChildIdentity>();
+        nestedGo.SetActive(false);
+
         var markerGo = new GameObject(nameof(DestroyDuringSpawnMarkerIdentity));
         _markerPrefab = markerGo.AddComponent<DestroyDuringSpawnMarkerIdentity>();
         markerGo.SetActive(false);
@@ -40,6 +50,8 @@ public class DestroyDuringSpawnScenario : Scenario
         if (_rules)
         {
             _churnPrefab.SetNetworkRules(_rules);
+            _nestedChurnPrefab.SetNetworkRules(_rules);
+            nestedChild.SetNetworkRules(_rules);
             _markerPrefab.SetNetworkRules(_rules);
         }
         else
@@ -62,6 +74,7 @@ public class DestroyDuringSpawnScenario : Scenario
             manager.SetNetworkRules(_rules);
 
         manager.prefabProvider.AddRuntimePrefab(_churnPrefab.name, _churnPrefab.gameObject);
+        manager.prefabProvider.AddRuntimePrefab(_nestedChurnPrefab.name, _nestedChurnPrefab.gameObject);
         manager.prefabProvider.AddRuntimePrefab(_markerPrefab.name, _markerPrefab.gameObject);
     }
 
@@ -114,7 +127,8 @@ public class DestroyDuringSpawnScenario : Scenario
         {
             for (int i = 0; i < _churnCount; i++)
             {
-                var churn = Instantiate(_churnPrefab);
+                // alternate flat (single identity) and nested (parent + child) churn objects
+                var churn = (i % 2 == 0) ? Instantiate(_churnPrefab) : Instantiate(_nestedChurnPrefab);
                 await UniTask.NextFrame();
                 Destroy(churn.gameObject);
                 await UniTask.NextFrame();
