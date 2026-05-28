@@ -243,22 +243,19 @@ namespace PurrNet
             SendInitialStateToOthers(items);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInitialStateToOthers(Queue<T> items)
         {
-            if (!isServer || isHost)
+            _queue.Clear();
+            foreach (var item in items)
             {
-                _queue.Clear();
-                foreach (var item in items)
-                {
-                    _queue.Enqueue(item);
-                }
+                _queue.Enqueue(item);
+            }
 
-                InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Cleared));
-                foreach (var item in items)
-                {
-                    InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Enqueued, item));
-                }
+            InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Cleared));
+            foreach (var item in items)
+            {
+                InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Enqueued, item));
             }
         }
 
@@ -273,14 +270,11 @@ namespace PurrNet
             SendEnqueueToOthers(item);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendEnqueueToOthers(T item)
         {
-            if (!isServer || isHost)
-            {
-                _queue.Enqueue(item);
-                InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Enqueued, item));
-            }
+            _queue.Enqueue(item);
+            InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Enqueued, item));
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
@@ -300,16 +294,13 @@ namespace PurrNet
             SendDequeueToOthers();
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendDequeueToOthers()
         {
-            if (!isServer || isHost)
+            if (_queue.Count > 0)
             {
-                if (_queue.Count > 0)
-                {
-                    T item = _queue.Dequeue();
-                    InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Dequeued, item));
-                }
+                T item = _queue.Dequeue();
+                InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Dequeued, item));
             }
         }
 
@@ -333,14 +324,11 @@ namespace PurrNet
             SendClearToOthers();
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendClearToOthers()
         {
-            if (!isServer || isHost)
-            {
-                _queue.Clear();
-                InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Cleared));
-            }
+            _queue.Clear();
+            InvokeChange(new SyncQueueChange<T>(SyncQueueOperation.Cleared));
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]

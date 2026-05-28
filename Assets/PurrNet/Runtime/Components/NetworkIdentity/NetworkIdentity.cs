@@ -1176,6 +1176,9 @@ namespace PurrNet
             TriggerDespawnEvent(false);
             TriggerDespawnEvent(true);
 
+            _serverHierarchy?.CleanupDestroyedIdentity(this);
+            _clientHierarchy?.CleanupDestroyedIdentity(this);
+
             _ticker = null;
         }
 

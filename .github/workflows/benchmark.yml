@@ -1,0 +1,404 @@
+name: Benchmark
+
+# Distributed load benchmark. One server runner + many client runners connect over a
+# Tailscale overlay (free, direct UDP via WireGuard) and run the sustained state-replication
+# BenchmarkScenario. Only single-instance "measured" client runners feed the perf aggregation;
+# multi-process "loadgen" runners exist purely to apply realistic connection load.
+#
+# Job budget (Team plan = 60 concurrent): build (1) -> server (1) + measured (N) + loadgen (M).
+# Keep measured_clients + loadgen_jobs <= 58.
+
+on:
+  workflow_dispatch:
+    inputs:
+      measured_clients:
+        description: "Single-instance client runners (each reports clean stats)"
+        required: true
+        default: "54"
+      loadgen_jobs:
+        description: "Multi-process client runners (not measured; load only)"
+        required: true
+        default: "4"
+      procs_per_loadgen:
+        description: "Client processes per loadgen runner"
+        required: true
+        default: "12"
+      bench_seconds:
+        description: "Steady-state measurement window, seconds"
+        required: true
+        default: "20"
+      bench_objects:
+        description: "NetworkTransform objects the server replicates"
+        required: true
+        default: "50"
+      ping_rate:
+        description: "RTT pings per second per measured client"
+        required: true
+        default: "10"
+      tag:
+        description: "Run discriminator (used in the server's tailnet hostname)"
+        required: false
+        default: "solo"
+  workflow_call:
+    inputs:
+      measured_clients:
+        type: string
+        required: true
+      loadgen_jobs:
+        type: string
+        required: true
+      procs_per_loadgen:
+        type: string
+        required: true
+      bench_seconds:
+        type: string
+        required: true
+      bench_objects:
+        type: string
+        required: true
+      ping_rate:
+        type: string
+        required: true
+      tag:
+        type: string
+        required: true
+
+env:
+  SERVER_HOST: purrnet-bench-${{ github.run_id }}-${{ inputs.tag }}
+  # NOT named PORT on purpose: a bare `PORT` env var is a magic name that several daemons
+  # (inherited via `sudo -E` during runner setup) auto-bind to, which was stealing the
+  # server's UDP port before Unity could bind it.
+  BENCH_PORT: "7777"
+
+jobs:
+  build:
+    name: Build player
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Library cache
+        id: cache-library
+        uses: actions/cache/restore@v4
+        with:
+          path: Library
+          key: Library-PurrNet-IL2CPP-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-PurrNet-IL2CPP-
+
+      - name: Build StandaloneLinux64 player (IL2CPP)
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: StandaloneLinux64
+          buildName: PurrNetTests
+          buildsPath: build
+          unityVersion: auto
+          customParameters: -standaloneBuildSubtarget Player -scriptingBackend IL2CPP
+
+      - name: Save Library cache
+        if: always() && steps.cache-library.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.cache-library.outputs.cache-primary-key }}
+
+      - name: Upload player artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-player-${{ inputs.tag }}
+          path: build/StandaloneLinux64/
+          retention-days: 1
+
+  prep:
+    name: Compute matrices
+    runs-on: ubuntu-latest
+    outputs:
+      total: ${{ steps.gen.outputs.total }}
+      measured_matrix: ${{ steps.gen.outputs.measured_matrix }}
+      loadgen_matrix: ${{ steps.gen.outputs.loadgen_matrix }}
+    steps:
+      - id: gen
+        run: |
+          set -eu
+          MEASURED=${{ inputs.measured_clients }}
+          LG_JOBS=${{ inputs.loadgen_jobs }}
+          LG_PROCS=${{ inputs.procs_per_loadgen }}
+          TOTAL=$(( MEASURED + LG_JOBS * LG_PROCS ))
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          if [ "$MEASURED" -gt 0 ]; then
+            echo "measured_matrix=$(seq 1 "$MEASURED" | jq -R . | jq -s -c .)" >> "$GITHUB_OUTPUT"
+          else
+            echo "measured_matrix=[]" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$LG_JOBS" -gt 0 ]; then
+            echo "loadgen_matrix=$(seq 1 "$LG_JOBS" | jq -R . | jq -s -c .)" >> "$GITHUB_OUTPUT"
+          else
+            echo "loadgen_matrix=[]" >> "$GITHUB_OUTPUT"
+          fi
+
+  server:
+    name: Server
+    needs: [build, prep]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download player
+        uses: actions/download-artifact@v4
+        with:
+          name: bench-player-${{ inputs.tag }}
+          path: player
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          hostname: ${{ env.SERVER_HOST }}
+
+      - name: Run server
+        run: |
+          set -u
+          sudo apt-get update -qq && sudo apt-get install -y xvfb >/dev/null
+          BIN="$PWD/player/PurrNetTests"
+          chmod +x "$BIN"
+          mkdir -p results logs
+
+          # Fail fast (and loud) if something already holds the UDP port — otherwise a
+          # failed bind silently turns into a 90s connect-timeout buried in the log file.
+          echo "::group::UDP listeners before bind"
+          sudo ss -lunp || ss -lun || true
+          echo "::endgroup::"
+          if ss -lun 2>/dev/null | grep -qE "[:.]${BENCH_PORT}\b"; then
+            echo "::error::UDP port $BENCH_PORT is already in use on the runner before the server started"
+            sudo ss -lunp 2>/dev/null || true
+            exit 1
+          fi
+
+          RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
+          "${RUN[@]}" "$BIN" -batchmode -nographics \
+            -role server -count ${{ needs.prep.outputs.total }} \
+            -bench -benchSeconds ${{ inputs.bench_seconds }} \
+            -benchObjects ${{ inputs.bench_objects }} \
+            -port "$BENCH_PORT" -connectTimeout 90 \
+            -results "$PWD/results/server.json" \
+            -logFile "$PWD/logs/server.log"
+
+          # The Unity player writes everything to -logFile, so surface the bind result here.
+          if grep -q "Bind exception" logs/server.log 2>/dev/null; then
+            echo "::error::Server failed to bind UDP port $BENCH_PORT (see server.log)"
+            grep -n "Bind exception" logs/server.log || true
+            exit 1
+          fi
+
+      - name: Tail server log on failure
+        if: failure()
+        run: tail -n 200 logs/server.log || true
+
+      - name: Upload server result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-result-server-${{ inputs.tag }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  clients:
+    name: Client ${{ matrix.idx }}
+    # NOTE: must NOT depend on `server` — clients run concurrently with it and discover
+    # it via the tailnet hostname poll below. Depending on `server` would serialize them
+    # after the server job finishes, so the server would always wait for connections that
+    # can't exist yet and time out.
+    needs: [build, prep]
+    if: ${{ needs.prep.outputs.measured_matrix != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        idx: ${{ fromJSON(needs.prep.outputs.measured_matrix) }}
+    steps:
+      - name: Download player
+        uses: actions/download-artifact@v4
+        with:
+          name: bench-player-${{ inputs.tag }}
+          path: player
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          hostname: purrnet-cli-${{ github.run_id }}-${{ inputs.tag }}-${{ matrix.idx }}
+
+      - name: Run client
+        run: |
+          set -u
+          sudo apt-get update -qq && sudo apt-get install -y xvfb >/dev/null
+          BIN="$PWD/player/PurrNetTests"
+          chmod +x "$BIN"
+          mkdir -p results logs
+
+          # Wait for the server node to appear in the tailnet, then resolve its IP.
+          # Resolution (tailscale ip) only needs the node in the netmap; the ping is a
+          # reachability check that also depends on the tailnet ACL allowing tag:ci -> tag:ci.
+          SERVER_IP=""
+          REACHABLE=0
+          for i in $(seq 1 60); do
+            IP=$(tailscale ip -4 "$SERVER_HOST" 2>/dev/null | head -n1)
+            if [ -n "$IP" ]; then
+              SERVER_IP="$IP"
+              if tailscale ping -c 1 "$SERVER_HOST" >/dev/null 2>&1; then
+                REACHABLE=1
+                break
+              fi
+            fi
+            sleep 2
+          done
+          if [ -z "$SERVER_IP" ]; then
+            echo "::error::Server node $SERVER_HOST never appeared in the tailnet (registration/timing)"
+            echo "::group::tailscale status"; tailscale status || true; echo "::endgroup::"
+            exit 1
+          fi
+          if [ "$REACHABLE" -ne 1 ]; then
+            echo "::error::Server node $SERVER_HOST is visible ($SERVER_IP) but not reachable — check the tailnet ACL allows tag:ci -> tag:ci"
+            echo "::group::tailscale status / ping"; tailscale status || true; tailscale ping -c 1 "$SERVER_HOST" || true; echo "::endgroup::"
+            exit 1
+          fi
+          echo "Server resolved to $SERVER_IP"
+
+          RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
+          "${RUN[@]}" "$BIN" -batchmode -nographics \
+            -role client -bench -benchSeconds ${{ inputs.bench_seconds }} \
+            -benchObjects ${{ inputs.bench_objects }} \
+            -benchPingRate ${{ inputs.ping_rate }} \
+            -serverHost "$SERVER_IP" -port "$BENCH_PORT" -connectTimeout 90 \
+            -results "$PWD/results/client-${{ matrix.idx }}.json" \
+            -logFile "$PWD/logs/client-${{ matrix.idx }}.log"
+
+      - name: Tail client log on failure
+        if: failure()
+        run: tail -n 200 logs/client-${{ matrix.idx }}.log || true
+
+      - name: Upload client result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-result-client-${{ inputs.tag }}-${{ matrix.idx }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  loadgen:
+    name: Loadgen ${{ matrix.idx }}
+    # See the note on `clients`: run concurrently with the server, don't depend on it.
+    needs: [build, prep]
+    if: ${{ needs.prep.outputs.loadgen_matrix != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        idx: ${{ fromJSON(needs.prep.outputs.loadgen_matrix) }}
+    steps:
+      - name: Download player
+        uses: actions/download-artifact@v4
+        with:
+          name: bench-player-${{ inputs.tag }}
+          path: player
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          hostname: purrnet-lg-${{ github.run_id }}-${{ inputs.tag }}-${{ matrix.idx }}
+
+      - name: Run loadgen clients
+        run: |
+          set -u
+          sudo apt-get update -qq && sudo apt-get install -y xvfb >/dev/null
+          BIN="$PWD/player/PurrNetTests"
+          chmod +x "$BIN"
+          mkdir -p results logs
+
+          SERVER_IP=""
+          REACHABLE=0
+          for i in $(seq 1 60); do
+            IP=$(tailscale ip -4 "$SERVER_HOST" 2>/dev/null | head -n1)
+            if [ -n "$IP" ]; then
+              SERVER_IP="$IP"
+              if tailscale ping -c 1 "$SERVER_HOST" >/dev/null 2>&1; then
+                REACHABLE=1
+                break
+              fi
+            fi
+            sleep 2
+          done
+          if [ "$REACHABLE" -ne 1 ]; then
+            echo "::error::Loadgen could not reach server node $SERVER_HOST (visible=${SERVER_IP:-no}; check tailnet ACL allows tag:ci -> tag:ci)"
+            tailscale status || true
+            exit 1
+          fi
+
+          RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
+          PIDS=()
+          for p in $(seq 1 ${{ inputs.procs_per_loadgen }}); do
+            "${RUN[@]}" "$BIN" -batchmode -nographics \
+              -role client -loadgen -bench -benchSeconds ${{ inputs.bench_seconds }} \
+              -benchObjects ${{ inputs.bench_objects }} -benchPingRate 0 \
+              -serverHost "$SERVER_IP" -port "$BENCH_PORT" -connectTimeout 90 \
+              -results "$PWD/results/loadgen-${{ matrix.idx }}-$p.json" \
+              -logFile "$PWD/logs/loadgen-${{ matrix.idx }}-$p.log" &
+            PIDS+=("$!")
+          done
+          FAIL=0
+          for pid in "${PIDS[@]}"; do
+            wait "$pid" || FAIL=1
+          done
+          # Loadgen exit status is informational; the measured peers decide pass/fail.
+          exit 0
+
+  aggregate:
+    name: Aggregate results
+    needs: [prep, server, clients]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for aggregation scripts)
+        uses: actions/checkout@v4
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bench-result-*-${{ inputs.tag }}*
+          path: all
+          merge-multiple: true
+
+      - name: Render summary
+        run: |
+          bash .github/scripts/bench-aggregate.sh \
+            all \
+            "${{ needs.prep.outputs.total }}" \
+            "${{ inputs.tag }}" \
+            "${{ inputs.bench_seconds }}" \
+            "${{ inputs.bench_objects }}" \
+            scaling
+
+      - name: Upload scaling datapoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-scaling-${{ inputs.tag }}
+          path: scaling/
+          if-no-files-found: ignore
+          retention-days: 14

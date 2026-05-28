@@ -272,7 +272,7 @@ namespace PurrNet
             _clientPendingSubscriptions.Clear();
         }
 
-        public ITransport currentTransport => _transportLayer;
+        public ITransport currentTransport => _transport ? _transport.transport : null;
 
         /// <summary>
         /// The transport of the network manager.

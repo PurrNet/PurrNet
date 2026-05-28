@@ -244,22 +244,19 @@ namespace PurrNet
             SendInitialStateToOthers(items);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInitialStateToOthers(List<T> items)
         {
-            if (!isServer || isHost)
+            _list.Clear();
+            _list.AddRange(items);
+
+            var change = SyncListChange<T>.Cleared();
+            InvokeChange(change);
+
+            for (int i = 0; i < items.Count; i++)
             {
-                _list.Clear();
-                _list.AddRange(items);
-
-                var change = SyncListChange<T>.Cleared();
-                InvokeChange(change);
-
-                for (int i = 0; i < items.Count; i++)
-                {
-                    var changeI = SyncListChange<T>.Added(items[i], i);
-                    InvokeChange(changeI);
-                }
+                var changeI = SyncListChange<T>.Added(items[i], i);
+                InvokeChange(changeI);
             }
         }
 
@@ -498,15 +495,12 @@ namespace PurrNet
             SendAddToOthers(item);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendAddToOthers(T item)
         {
-            if (!isServer || isHost)
-            {
-                _list.Add(item);
-                var change = SyncListChange<T>.Added(item, _list.Count - 1);
-                InvokeChange(change);
-            }
+            _list.Add(item);
+            var change = SyncListChange<T>.Added(item, _list.Count - 1);
+            InvokeChange(change);
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
@@ -527,19 +521,16 @@ namespace PurrNet
             SendRemoveToOthers(item);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendRemoveToOthers(T item)
         {
-            if (!isServer || isHost)
+            int idx = _list.IndexOf(item);
+            if (idx >= 0)
             {
-                int idx = _list.IndexOf(item);
-                if (idx >= 0)
-                {
-                    var oldValue = _list[idx];
-                    _list.RemoveAt(idx);
-                    var change = SyncListChange<T>.Removed(item, oldValue, idx);
-                    InvokeChange(change);
-                }
+                var oldValue = _list[idx];
+                _list.RemoveAt(idx);
+                var change = SyncListChange<T>.Removed(item, oldValue, idx);
+                InvokeChange(change);
             }
         }
 
@@ -566,10 +557,10 @@ namespace PurrNet
             SendRemoveAtToOthers(index);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendRemoveAtToOthers(int index)
         {
-            if ((!isServer || isHost) && index < _list.Count)
+            if (index < _list.Count)
             {
                 var oldValue = _list[index];
                 T item = _list[index];
@@ -599,15 +590,12 @@ namespace PurrNet
             SendClearToOthers();
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendClearToOthers()
         {
-            if (!isServer || isHost)
-            {
-                _list.Clear();
-                var change = SyncListChange<T>.Cleared();
-                InvokeChange(change);
-            }
+            _list.Clear();
+            var change = SyncListChange<T>.Cleared();
+            InvokeChange(change);
         }
 
         [ObserversRpc(Channel.ReliableOrdered)]
@@ -628,10 +616,10 @@ namespace PurrNet
             SendSetToOthers(index, item);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendSetToOthers(int index, T item)
         {
-            if ((!isServer || isHost) && index < _list.Count)
+            if (index < _list.Count)
             {
                 var oldValue = _list[index];
                 _list[index] = item;
@@ -659,10 +647,10 @@ namespace PurrNet
             SendInsertToOthers(index, item);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInsertToOthers(int index, T item)
         {
-            if ((!isServer || isHost) && index <= _list.Count)
+            if (index <= _list.Count)
             {
                 _list.Insert(index, item);
                 var change = SyncListChange<T>.Inserted(item, index);
@@ -688,17 +676,14 @@ namespace PurrNet
             SendSetDirtyToOthers(index, value);
         }
 
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true)]
+        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendSetDirtyToOthers(int index, T value)
         {
-            if (!isServer || isHost)
+            if (index >= 0 && index < _list.Count)
             {
-                if (index >= 0 && index < _list.Count)
-                {
-                    _list[index] = value;
-                    var change = SyncListChange<T>.SetDirty(value, index);
-                    InvokeChange(change);
-                }
+                _list[index] = value;
+                var change = SyncListChange<T>.SetDirty(value, index);
+                InvokeChange(change);
             }
         }
 

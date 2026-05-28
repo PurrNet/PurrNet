@@ -270,6 +270,7 @@ namespace PurrNet.Modules
 
         public void Enable()
         {
+            _enabled = true;
             PurrNetGameObjectUtils.onGameObjectCreated += OnGameObjectCreated;
             _visibility.visibilityChanged += OnVisibilityChanged;
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
@@ -296,6 +297,7 @@ namespace PurrNet.Modules
 
         public void Disable()
         {
+            _enabled = false;
             PurrNetGameObjectUtils.onGameObjectCreated -= OnGameObjectCreated;
             _visibility.visibilityChanged -= OnVisibilityChanged;
             _scenePlayers.onPrePlayerLoadedScene -= OnPlayerLoadedScene;
@@ -363,6 +365,7 @@ namespace PurrNet.Modules
         }
 
         bool _isDisposed;
+        bool _enabled;
 
         public bool Cleanup()
         {
@@ -736,7 +739,10 @@ namespace PurrNet.Modules
                 try
                 {
                     int count = list.Count;
-                    if (count > 0 && (!list[0] || !list[0].isSpawned))
+                    // root destroyed before finishing: drop & dispose, never re-add (re-adding leaks the pooled list)
+                    if (count > 0 && !list[0])
+                        return;
+                    if (count > 0 && !list[0].isSpawned)
                     {
                         _pendingSpawns.Add(packetIdx, list);
                         disposeList = false;
@@ -2032,15 +2038,10 @@ namespace PurrNet.Modules
                 onObserverAdded?.Invoke(player, identity);
                 identity.TriggerOnPreObserverAdded(player, true);
 
-                // Process observer events immediately instead of deferring to PreNetworkMessages.
-                // This ensures SyncVar.OnObserverAdded → SendLatestState queues state data
-                // BEFORE the calling ServerRpc response, so predicted spawn clients receive
-                // SyncVar values before ManualFinalizeSpawn fires OnSpawned.
+
                 identity.TriggerOnObserverAdded(player, true);
                 onLateObserverAdded?.Invoke(player, identity);
 
-                // Fire onSentSpawnPacket so RPCModule replays buffered RPCs
-                // (e.g., ObserversRpc with bufferLast: true) for this observer.
                 if (identity.id.HasValue)
                     onSentSpawnPacket?.Invoke(player, _sceneId, identity.id.Value);
             }
@@ -2100,20 +2101,35 @@ namespace PurrNet.Modules
             }
         }
 
-        /// <summary>
-        /// Attempts to retrieve the <see cref="NetworkIdentity"/> associated with the specified <see cref="NetworkID"/>.
-        /// This operation checks the local hierarchy for the identity and, if running in a server-client scenario,
-        /// delegates the lookup to another hierarchy when necessary.
-        /// </summary>
-        /// <param name="id">The unique identifier of the requested network identity.</param>
-        /// <param name="identity">
-        /// When the method returns, contains the <see cref="NetworkIdentity"/> associated with the specified <see cref="NetworkID"/>
-        /// if the lookup was successful; otherwise, <c>null</c>.
-        /// </param>
-        /// <returns>
-        /// <c>true</c> if the <see cref="NetworkIdentity"/> was successfully retrieved;
-        /// otherwise, <c>false</c>.
-        /// </returns>
+        internal void CleanupDestroyedIdentity(NetworkIdentity identity)
+        {
+            _toSpawnNextFrame.Remove(identity);
+            _toSpawnNextFrameBuffer.Remove(identity);
+
+            var nid = identity.GetNetworkID(_asServer) ?? identity.id;
+            if (!nid.HasValue)
+                return;
+
+            // a proper Despawn already unregistered it; nothing left to clean up
+            if (!_spawnedIdentitiesMap.TryGetValue(nid.Value, out var registered) ||
+                !ReferenceEquals(registered, identity))
+                return;
+
+            if (_enabled && !_isDisposed && _asServer && _playersManager != null && identity.observers.Count > 0)
+            {
+                using var targets = DisposableList<PlayerID>.Create(identity.observers);
+                if (_playersManager.localPlayerId.HasValue)
+                    targets.Remove(_playersManager.localPlayerId.Value);
+                if (targets.Count > 0)
+                    _playersManager.Send(targets, new DespawnPacket { sceneId = _sceneId, parentId = nid.Value });
+            }
+
+            _spawnedIdentities.Remove(identity);
+            _spawnedIdentitiesMap.Remove(nid.Value);
+            onIdentityRemoved?.Invoke(identity);
+        }
+
+
         public bool TryGetIdentity(NetworkID id, out NetworkIdentity identity)
         {
             if (_spawnedIdentitiesMap.TryGetValue(id, out identity))

@@ -112,10 +112,17 @@ namespace PurrNet
                 ratio = Mathf.Clamp01(posError / range);
             }
 
+            var syncParent = GetSyncParentIdentity();
+            string frame = _softParent && _softParent.isSpawned
+                ? $"Soft->{_softParent.name}"
+                : syncParent ? $"Parent->{syncParent.name}"
+                : _space == RigidbodyTransformSpace.Local ? "Local" : "World";
+
             string info = $"<b>NetworkRigidbody</b>\n" +
                           $"Server: {isServer} | Controller: {isController}\n" +
                           $"OwnerAuth: {_ownerAuth}\n" +
                           $"Owner: {(owner.HasValue ? owner.Value.ToString() : "none")}\n" +
+                          $"Frame: {frame}\n" +
                           $"---\n" +
                           $"Pos Error: {posError:F3}m\n" +
                           $"Rot Error: {rotError:F1}deg\n" +

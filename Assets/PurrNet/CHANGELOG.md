@@ -1,3 +1,59 @@
+# [1.20.0-beta.198](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.197...v1.20.0-beta.198) (2026-05-28)
+
+
+### Bug Fixes
+
+* Improve nested traversal of Asset scanners ([71e32df](https://github.com/PurrNet/PurrNet/commit/71e32dfeecbcba62651cbf3c761cc721aaa60a9a))
+
+# [1.20.0-beta.197](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.196...v1.20.0-beta.197) (2026-05-28)
+
+
+### Bug Fixes
+
+* Validated syncvar old value inconsistency ([6473bf1](https://github.com/PurrNet/PurrNet/commit/6473bf1c2167edc6e5280b2c2c4bfdaba88ee698))
+
+# [1.20.0-beta.196](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.195...v1.20.0-beta.196) (2026-05-28)
+
+
+### Bug Fixes
+
+* refactor `currentTransport` to match previous behavior ([0814dd8](https://github.com/PurrNet/PurrNet/commit/0814dd82b2a4554b65e2053846a4dda263a0dfe7))
+
+# [1.20.0-beta.195](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.194...v1.20.0-beta.195) (2026-05-28)
+
+
+### Bug Fixes
+
+* proper cleanup when something is destroyed ([c216d35](https://github.com/PurrNet/PurrNet/commit/c216d35bbab123110063238741c448b96f83fd97))
+
+# [1.20.0-beta.194](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.193...v1.20.0-beta.194) (2026-05-27)
+
+
+### Bug Fixes
+
+* dedicated server state missing for owner auth sync types on collections ([9991f3a](https://github.com/PurrNet/PurrNet/commit/9991f3ab1bb505810ad6a575d2a0bc6ca3ccd83c))
+
+# [1.20.0-beta.193](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.192...v1.20.0-beta.193) (2026-05-27)
+
+
+### Features
+
+* async RPC fail fast on target disconnect + GC improvements ([d3d28f5](https://github.com/PurrNet/PurrNet/commit/d3d28f551febf2618f273d9c632277c61dfa0436))
+
+# [1.20.0-beta.192](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.191...v1.20.0-beta.192) (2026-05-27)
+
+
+### Bug Fixes
+
+* SyncVar _isDirty hand-off bug ([1da4117](https://github.com/PurrNet/PurrNet/commit/1da411752d1a9fbb510786136b946ed364ae3d97))
+
+# [1.20.0-beta.191](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.190...v1.20.0-beta.191) (2026-05-26)
+
+
+### Features
+
+* NetworkRigidbody.cs soft parenting ([c38ea9b](https://github.com/PurrNet/PurrNet/commit/c38ea9b12326142e686818a6b8d81b71f75cfc8c))
+
 # [1.20.0-beta.190](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.189...v1.20.0-beta.190) (2026-05-25)
 
 

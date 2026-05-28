@@ -145,6 +145,162 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// Collects prefab GUIDs already owned by linked NetworkPrefabs.
+        /// </summary>
+        public static HashSet<string> CollectLinkedNetworkPrefabGuids(NetworkPrefabs root)
+        {
+            var guids = new HashSet<string>();
+            var visited = new HashSet<NetworkPrefabs>();
+
+            if (!root || root.linkedNetworkPrefabs == null)
+                return guids;
+
+            visited.Add(root);
+
+            for (int i = 0; i < root.linkedNetworkPrefabs.Count; i++)
+                Collect(root.linkedNetworkPrefabs[i]);
+
+            return guids;
+
+            void Collect(NetworkPrefabs networkPrefabs)
+            {
+                if (!networkPrefabs || !visited.Add(networkPrefabs))
+                    return;
+
+                for (int i = 0; i < networkPrefabs.prefabs.Count; i++)
+                {
+                    var entry = networkPrefabs.prefabs[i];
+                    var guid = entry.guid;
+
+                    if (string.IsNullOrEmpty(guid) && entry.prefab)
+                    {
+                        var path = AssetDatabase.GetAssetPath(entry.prefab);
+                        guid = AssetDatabase.AssetPathToGUID(path);
+                    }
+
+                    if (!string.IsNullOrEmpty(guid))
+                        guids.Add(guid);
+                }
+
+                if (networkPrefabs.linkedNetworkPrefabs == null)
+                    return;
+
+                for (int i = 0; i < networkPrefabs.linkedNetworkPrefabs.Count; i++)
+                    Collect(networkPrefabs.linkedNetworkPrefabs[i]);
+            }
+        }
+
+        /// <summary>
+        /// Collects assets already owned by linked NetworkAssets.
+        /// </summary>
+        public static HashSet<Object> CollectLinkedNetworkAssets(NetworkAssets root)
+        {
+            var linkedAssets = new HashSet<Object>();
+            var visited = new HashSet<NetworkAssets>();
+
+            if (!root || root.linkedNetworkAssets == null)
+                return linkedAssets;
+
+            visited.Add(root);
+
+            for (int i = 0; i < root.linkedNetworkAssets.Count; i++)
+                Collect(root.linkedNetworkAssets[i]);
+
+            return linkedAssets;
+
+            void Collect(NetworkAssets networkAssets)
+            {
+                if (!networkAssets || !visited.Add(networkAssets))
+                    return;
+
+                for (int i = 0; i < networkAssets.assets.Count; i++)
+                {
+                    var asset = networkAssets.assets[i];
+                    if (asset)
+                        linkedAssets.Add(asset);
+                }
+
+                if (networkAssets.linkedNetworkAssets == null)
+                    return;
+
+                for (int i = 0; i < networkAssets.linkedNetworkAssets.Count; i++)
+                    Collect(networkAssets.linkedNetworkAssets[i]);
+            }
+        }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        /// <summary>
+        /// Collects prefab GUIDs already owned by linked AddressableNetworkPrefabs.
+        /// </summary>
+        public static HashSet<string> CollectLinkedAddressablePrefabGuids(AddressableNetworkPrefabs root)
+        {
+            var guids = new HashSet<string>();
+            var visited = new HashSet<AddressableNetworkPrefabs>();
+
+            if (!root || root.linkedAddressablePrefabs == null)
+                return guids;
+
+            visited.Add(root);
+
+            for (int i = 0; i < root.linkedAddressablePrefabs.Count; i++)
+                Collect(root.linkedAddressablePrefabs[i]);
+
+            return guids;
+
+            void Collect(AddressableNetworkPrefabs provider)
+            {
+                if (!provider || !visited.Add(provider))
+                    return;
+
+                var entries = provider.entries;
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    var asset = entries[i].asset;
+                    if (asset != null && asset.RuntimeKeyIsValid() && !string.IsNullOrEmpty(asset.AssetGUID))
+                        guids.Add(asset.AssetGUID);
+                }
+
+                if (provider.linkedAddressablePrefabs == null)
+                    return;
+
+                for (int i = 0; i < provider.linkedAddressablePrefabs.Count; i++)
+                    Collect(provider.linkedAddressablePrefabs[i]);
+            }
+        }
+
+        /// <summary>
+        /// Removes addressable entries whose GUIDs are already owned by linked providers.
+        /// </summary>
+        public static bool RemoveAddressableEntriesByGuid(AddressableNetworkPrefabs target, HashSet<string> guids)
+        {
+            if (!target || guids.Count == 0)
+                return false;
+
+            var serializedTarget = new SerializedObject(target);
+            var entries = serializedTarget.FindProperty("_entries");
+            bool removed = false;
+
+            for (int i = entries.arraySize - 1; i >= 0; i--)
+            {
+                var entry = entries.GetArrayElementAtIndex(i);
+                var asset = entry.FindPropertyRelative("asset");
+                var guid = asset.FindPropertyRelative("m_AssetGUID")?.stringValue;
+
+                if (string.IsNullOrEmpty(guid) || !guids.Contains(guid))
+                    continue;
+
+                entries.DeleteArrayElementAtIndex(i);
+                removed = true;
+            }
+
+            if (removed)
+                serializedTarget.ApplyModifiedProperties();
+
+            return removed;
+        }
+#endif
+
+        /// <summary>
         /// Deterministic comparator: by GUID (ordinal), then by name, then by instance ID.
         /// </summary>
         public static int CompareByGuid(ScanResult a, ScanResult b)

@@ -74,6 +74,26 @@ namespace PurrNet.Transports
 
         public IReadOnlyDictionary<Connection, PeerInfo> peers => _peers;
 
+        /// <summary>
+        /// Toggles LiteNetLib's socket-level statistics on both the client and server managers.
+        /// When enabled the counters below reflect the real bytes/packets handed to the OS socket,
+        /// including LiteNetLib framing, ACKs and MTU pings (but excluding the UDP/IP headers).
+        /// </summary>
+        public void SetStatisticsEnabled(bool enabled)
+        {
+            if (_client != null) _client.EnableStatistics = enabled;
+            if (_server != null) _server.EnableStatistics = enabled;
+        }
+
+        public bool statisticsEnabled => (_client != null && _client.EnableStatistics) ||
+                                         (_server != null && _server.EnableStatistics);
+
+        public long nativeBytesSent => (_client?.Statistics.BytesSent ?? 0) + (_server?.Statistics.BytesSent ?? 0);
+        public long nativeBytesReceived => (_client?.Statistics.BytesReceived ?? 0) + (_server?.Statistics.BytesReceived ?? 0);
+        public long nativePacketsSent => (_client?.Statistics.PacketsSent ?? 0) + (_server?.Statistics.PacketsSent ?? 0);
+        public long nativePacketsReceived => (_client?.Statistics.PacketsReceived ?? 0) + (_server?.Statistics.PacketsReceived ?? 0);
+        public long nativePacketLoss => (_client?.Statistics.PacketLoss ?? 0) + (_server?.Statistics.PacketLoss ?? 0);
+
         private EventBasedNetListener _clientListener;
         private EventBasedNetListener _serverListener;
 
