@@ -1,3 +1,10 @@
+# [1.20.0-beta.198](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.197...v1.20.0-beta.198) (2026-05-28)
+
+
+### Bug Fixes
+
+* Improve nested traversal of Asset scanners ([71e32df](https://github.com/PurrNet/PurrNet/commit/71e32dfeecbcba62651cbf3c761cc721aaa60a9a))
+
 # [1.20.0-beta.197](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.196...v1.20.0-beta.197) (2026-05-28)
 
 
