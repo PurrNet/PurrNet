@@ -51,8 +51,6 @@ namespace PurrNet
 
                 if (isServer)
                 {
-                    _display = value;
-                    TriggerEvents(old, _display, false);
                     ServerValidateAndApply(value);
                     return;
                 }
@@ -118,12 +116,11 @@ namespace PurrNet
             try { onChangedWithOld?.Invoke(oldValue, newValue, serverValidated); } catch (Exception e) { Debug.LogException(e); }
         }
 
-        private void ApplyAuthoritative(T v)
+        private void ApplyAuthoritative(T oldValue, T newValue)
         {
-            var oldDisplay = _display;
-            _authoritative.value = v;
-            _display = v;
-            TriggerEvents(oldDisplay, v, true);
+            _authoritative.value = newValue;
+            _display = newValue;
+            TriggerEvents(oldValue, newValue, true);
         }
 
         private bool RunServerValidators(T oldValue, T newValue)
@@ -141,13 +138,17 @@ namespace PurrNet
             var current = _authoritative.value;
             if (!RunServerValidators(current, proposed))
             {
-                var old = _display;
+                var oldDisplay = _display;
                 _display = current;
-                if (!Equals(old, _display)) TriggerEvents(old, _display, true);
+                if (!Equals(oldDisplay, _display)) TriggerEvents(oldDisplay, _display, true);
                 onValidationFail?.Invoke(proposed, current);
                 return;
             }
-            ApplyAuthoritative(proposed);
+
+            var previousDisplay = _display;
+            _display = proposed;
+            TriggerEvents(previousDisplay, proposed, false);
+            ApplyAuthoritative(previousDisplay, proposed);
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: false)]
@@ -183,9 +184,10 @@ namespace PurrNet
                 }
 
                 _lastAppliedServerId = packetId;
-                ApplyAuthoritative(proposed);
+                ApplyAuthoritative(currentAuth, proposed);
 
                 using var ack = BitPackerPool.Get();
+                Packer<T>.Write(ack, currentAuth);
                 Packer<T>.Write(ack, proposed);
                 AcceptOwner(sender, packetId, ack);
             }
@@ -199,9 +201,10 @@ namespace PurrNet
                 if (isServer) return;
                 if (packetId < _pendingId) return;
 
+                T old = default;
                 T v = default;
+                Packer<T>.Read(payload, ref old);
                 Packer<T>.Read(payload, ref v);
-                var old = _display;
                 _display = v;
                 _pendingId = packetId;
                 _hasPending = false;

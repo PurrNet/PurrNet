@@ -160,12 +160,15 @@ namespace PurrNet
             try
             {
                 var found = AssetScannerUtility.ScanPrefabs(target.folder, true, target.searchAllIfNoFolder);
+                var linkedGuids = AssetScannerUtility.CollectLinkedAddressablePrefabGuids(target);
+                if (linkedGuids.Count > 0)
+                    found.RemoveAll(scan => linkedGuids.Contains(scan.guid));
 
                 if (found.Count == 0 && target.folder == null && !target.searchAllIfNoFolder)
                     return;
 
+                bool changed = AssetScannerUtility.RemoveAddressableEntriesByGuid(target, linkedGuids);
                 var existingGuids = target.GetExistingGuids();
-                bool changed = false;
 
                 foreach (var scan in found)
                 {
@@ -198,6 +201,7 @@ namespace PurrNet
                 _generating = false;
             }
         }
+
     }
 }
 #endif
