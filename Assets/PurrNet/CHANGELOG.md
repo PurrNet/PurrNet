@@ -1,3 +1,10 @@
+# [1.20.0-beta.196](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.195...v1.20.0-beta.196) (2026-05-28)
+
+
+### Bug Fixes
+
+* refactor `currentTransport` to match previous behavior ([0814dd8](https://github.com/PurrNet/PurrNet/commit/0814dd82b2a4554b65e2053846a4dda263a0dfe7))
+
 # [1.20.0-beta.195](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.194...v1.20.0-beta.195) (2026-05-28)
 
 
