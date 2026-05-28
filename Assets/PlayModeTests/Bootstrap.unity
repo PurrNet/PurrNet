@@ -813,8 +813,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: edd92e6d1d3b92440b0a3c663bd5c4ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::BenchmarkScenario
-  _objectCount: 1000
   _pingsPerSecond: 10
+  _objectCount: 1000
 --- !u!1 &926210937
 GameObject:
   m_ObjectHideFlags: 0

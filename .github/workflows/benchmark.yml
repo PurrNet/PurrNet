@@ -5,8 +5,9 @@ name: Benchmark
 # BenchmarkScenario. Only single-instance "measured" client runners feed the perf aggregation;
 # multi-process "loadgen" runners exist purely to apply realistic connection load.
 #
-# Job budget (Team plan = 60 concurrent): build (1) -> server (1) + measured (N) + loadgen (M).
-# Keep measured_clients + loadgen_jobs <= 58.
+# Job budget (Team plan = 60 concurrent): build (1) -> server (1) + measured (N) + loadgen (M)
+# + network-tests (2, when run_tests). To fit everything at once keep
+# measured_clients + loadgen_jobs <= 57 (server + 2 test jobs take the other 3 of 60).
 
 on:
   workflow_dispatch:
@@ -14,7 +15,7 @@ on:
       measured_clients:
         description: "Single-instance client runners (each reports clean stats)"
         required: true
-        default: "54"
+        default: "52"
       loadgen_jobs:
         description: "Multi-process client runners (not measured; load only)"
         required: true
@@ -39,6 +40,11 @@ on:
         description: "Run discriminator (used in the server's tailnet hostname)"
         required: false
         default: "solo"
+      run_tests:
+        description: "Also run the network-tests (server+host) on the same build, in parallel"
+        type: boolean
+        required: false
+        default: true
   workflow_call:
     inputs:
       measured_clients:
@@ -62,6 +68,10 @@ on:
       tag:
         type: string
         required: true
+      run_tests:
+        type: boolean
+        required: false
+        default: false
 
 env:
   SERVER_HOST: purrnet-bench-${{ github.run_id }}-${{ inputs.tag }}
@@ -114,6 +124,20 @@ jobs:
           name: bench-player-${{ inputs.tag }}
           path: build/StandaloneLinux64/
           retention-days: 1
+
+  # Run the correctness scenarios (server + host) on the SAME build, in parallel with the
+  # benchmark. Reuses the player artifact so we don't pay for a second IL2CPP build.
+  network_tests:
+    name: Network tests
+    needs: build
+    if: ${{ inputs.run_tests }}
+    uses: ./.github/workflows/network-tests.yml
+    secrets: inherit
+    with:
+      player_artifact: bench-player-${{ inputs.tag }}
+      clientCount: "4"
+      connectionDelaySeconds: "1"
+      timeoutMinutes: "30"
 
   prep:
     name: Compute matrices

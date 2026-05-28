@@ -15,6 +15,25 @@ on:
         description: "Hard timeout for the whole job, in minutes"
         required: true
         default: "30"
+  workflow_call:
+    inputs:
+      clientCount:
+        type: string
+        required: false
+        default: "3"
+      connectionDelaySeconds:
+        type: string
+        required: false
+        default: "1"
+      timeoutMinutes:
+        type: string
+        required: false
+        default: "30"
+      player_artifact:
+        description: "Name of a prebuilt StandaloneLinux64 player artifact to reuse instead of building."
+        type: string
+        required: false
+        default: ""
 
 jobs:
   network-tests:
@@ -32,10 +51,20 @@ jobs:
         mode: [server, host]
 
     steps:
+      # Reuse a player built upstream (e.g. by the benchmark workflow) instead of building again.
+      - name: Download prebuilt player
+        if: inputs.player_artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.player_artifact }}
+          path: build/StandaloneLinux64
+
       - name: Checkout
+        if: inputs.player_artifact == ''
         uses: actions/checkout@v4
 
       - name: Restore Library cache
+        if: inputs.player_artifact == ''
         id: cache-library
         uses: actions/cache/restore@v4
         with:
@@ -45,6 +74,7 @@ jobs:
             Library-PurrNet-IL2CPP-
 
       - name: Build StandaloneLinux64 player (IL2CPP)
+        if: inputs.player_artifact == ''
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -62,7 +92,7 @@ jobs:
           customParameters: -standaloneBuildSubtarget Player -scriptingBackend IL2CPP
 
       - name: Save Library cache
-        if: always() && steps.cache-library.outputs.cache-hit != 'true'
+        if: always() && inputs.player_artifact == '' && steps.cache-library.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: Library
@@ -79,6 +109,7 @@ jobs:
         run: |
           set -u
           BIN="$PWD/build/StandaloneLinux64/PurrNetTests"
+          chmod +x "$BIN"
           RESULTS_DIR="$PWD/test-results"
           LOGS_DIR="$PWD/test-logs"
           mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
