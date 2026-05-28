@@ -61,8 +61,7 @@ if [ -f "$SERVER_FILE" ]; then
       + "| Avg frame | \($s.avgTickMs|r2) |\n"
       + "| Frame p95 / p99 | \($s.p95TickMs|r2) / \($s.p99TickMs|r2) |\n"
       + "| Max frame | \($s.maxTickMs|r2) |\n"
-      + "| GC gen0 / gen1 / gen2 | \($s.gcGen0) / \($s.gcGen1) / \($s.gcGen2) |\n"
-      + "| Main-thread alloc | \($s.mainThreadAllocBytesPerSec|hbR) |\n"
+      + "| GC collections | \($s.gcCollections) |\n"
       + "| Managed heap | \(($s.managedHeapBytes/1048576)|floor) MB |\n"
       + "| Peak RSS | \(($s.peakMemoryBytes/1048576)|floor) MB |\n"
       end

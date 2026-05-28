@@ -165,11 +165,7 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
             avgFps = load.avgFps,
             peakMemoryBytes = load.peakMemoryBytes,
             managedHeapBytes = load.managedHeapBytes,
-
-            gcGen0 = load.gcGen0,
-            gcGen1 = load.gcGen1,
-            gcGen2 = load.gcGen2,
-            mainThreadAllocBytesPerSec = load.mainThreadAllocBytes / windowSeconds,
+            gcCollections = load.gcCollections,
 
             bandwidthBreakdown = breakdown.ToArray()
         };

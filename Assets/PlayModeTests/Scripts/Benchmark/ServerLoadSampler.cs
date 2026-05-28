@@ -16,10 +16,10 @@ public struct ServerLoadStats
     public long peakMemoryBytes;
     public int frameCount;
 
-    public int gcGen0;
-    public int gcGen1;
-    public int gcGen2;
-    public long mainThreadAllocBytes;
+    // Number of GC collections during the window. Under IL2CPP's (non-generational) Boehm GC
+    // all generations report the same count, so this is the single meaningful GC-pressure proxy;
+    // a true allocation rate (bytes/s) isn't available in a release IL2CPP build.
+    public int gcCollections;
     public long managedHeapBytes;
 }
 
@@ -29,8 +29,7 @@ public class ServerLoadSampler
     private double _startWallSeconds;
     private readonly List<float> _frameMs = new();
 
-    private int _startGcGen0, _startGcGen1, _startGcGen2;
-    private long _startAllocatedBytes;
+    private int _startGcCollections;
 
     public void Begin()
     {
@@ -38,10 +37,7 @@ public class ServerLoadSampler
         _startWallSeconds = NowSeconds();
         _frameMs.Clear();
 
-        _startGcGen0 = GC.CollectionCount(0);
-        _startGcGen1 = GC.CollectionCount(1);
-        _startGcGen2 = GC.CollectionCount(2);
-        _startAllocatedBytes = ReadAllocatedBytes();
+        _startGcCollections = GC.CollectionCount(0);
     }
 
     public void SampleFrame()
@@ -59,10 +55,7 @@ public class ServerLoadSampler
             cpuPercent = wall > 0 ? cpu / wall * 100.0 : 0,
             peakMemoryBytes = ReadPeakResidentBytes(),
             frameCount = _frameMs.Count,
-            gcGen0 = GC.CollectionCount(0) - _startGcGen0,
-            gcGen1 = GC.CollectionCount(1) - _startGcGen1,
-            gcGen2 = GC.CollectionCount(2) - _startGcGen2,
-            mainThreadAllocBytes = Math.Max(0, ReadAllocatedBytes() - _startAllocatedBytes),
+            gcCollections = GC.CollectionCount(0) - _startGcCollections,
             managedHeapBytes = GC.GetTotalMemory(false)
         };
 
@@ -98,18 +91,6 @@ public class ServerLoadSampler
             return sorted[lo];
 
         return sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo);
-    }
-
-    private static long ReadAllocatedBytes()
-    {
-        try
-        {
-            return GC.GetAllocatedBytesForCurrentThread();
-        }
-        catch
-        {
-            return GC.GetTotalMemory(false);
-        }
     }
 
     private static double NowSeconds() => DateTime.UtcNow.Ticks / (double)TimeSpan.TicksPerSecond;

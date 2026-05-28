@@ -35,11 +35,7 @@ public struct BenchmarkMetrics
     public double avgFps;
     public long peakMemoryBytes;
     public long managedHeapBytes;
-
-    public int gcGen0;
-    public int gcGen1;
-    public int gcGen2;
-    public double mainThreadAllocBytesPerSec;
+    public int gcCollections;
 
     public int rttSamples;
     public double rttP50Ms;

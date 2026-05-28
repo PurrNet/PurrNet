@@ -20,7 +20,7 @@ CLI=("$DP_DIR"/size-*-clients.json)
   echo ""
   echo "Window: ${WINDOW}s · Objects: ${OBJECTS}"
   echo ""
-  echo "| Connections | Down payload | Down on-wire | Overhead | CPU | Loop rate | Frame p95 | Alloc/s | Heap | Peak RSS | Per-conn down | RTT p95 |"
+  echo "| Connections | Down payload | Down on-wire | Overhead | CPU | Loop rate | Frame p95 | GC | Heap | Peak RSS | Per-conn down | RTT p95 |"
   echo "|---|---|---|---|---|---|---|---|---|---|---|---|"
 } >> "$SUMMARY"
 
@@ -61,7 +61,7 @@ jq -rs '
     + "| \($s.serverCpuPercent|r1) "
     + "| \($s.avgFps|if . == null then "-" else floor end) fps "
     + "| \($s.p95TickMs|r2) "
-    + "| \($s.mainThreadAllocBytesPerSec|hbR) "
+    + "| \($s.gcCollections // "-") "
     + "| \($s.managedHeapBytes|mb) "
     + "| \($s.peakMemoryBytes|mb) "
     + "| \($c.recv|hbR) "
