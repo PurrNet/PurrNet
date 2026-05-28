@@ -145,6 +145,7 @@ public class ServerLoadSampler
         }
         catch
         {
+            // ignored
         }
 
         return 0;
