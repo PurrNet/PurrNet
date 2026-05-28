@@ -248,16 +248,29 @@ jobs:
           mkdir -p results logs
 
           # Wait for the server node to appear in the tailnet, then resolve its IP.
+          # Resolution (tailscale ip) only needs the node in the netmap; the ping is a
+          # reachability check that also depends on the tailnet ACL allowing tag:ci -> tag:ci.
           SERVER_IP=""
+          REACHABLE=0
           for i in $(seq 1 60); do
-            if tailscale ping -c 1 "$SERVER_HOST" >/dev/null 2>&1; then
-              SERVER_IP=$(tailscale ip -4 "$SERVER_HOST" 2>/dev/null | head -n1)
-              [ -n "$SERVER_IP" ] && break
+            IP=$(tailscale ip -4 "$SERVER_HOST" 2>/dev/null | head -n1)
+            if [ -n "$IP" ]; then
+              SERVER_IP="$IP"
+              if tailscale ping -c 1 "$SERVER_HOST" >/dev/null 2>&1; then
+                REACHABLE=1
+                break
+              fi
             fi
             sleep 2
           done
           if [ -z "$SERVER_IP" ]; then
-            echo "::error::Could not reach server node $SERVER_HOST over Tailscale"
+            echo "::error::Server node $SERVER_HOST never appeared in the tailnet (registration/timing)"
+            echo "::group::tailscale status"; tailscale status || true; echo "::endgroup::"
+            exit 1
+          fi
+          if [ "$REACHABLE" -ne 1 ]; then
+            echo "::error::Server node $SERVER_HOST is visible ($SERVER_IP) but not reachable — check the tailnet ACL allows tag:ci -> tag:ci"
+            echo "::group::tailscale status / ping"; tailscale status || true; tailscale ping -c 1 "$SERVER_HOST" || true; echo "::endgroup::"
             exit 1
           fi
           echo "Server resolved to $SERVER_IP"
@@ -319,15 +332,21 @@ jobs:
           mkdir -p results logs
 
           SERVER_IP=""
+          REACHABLE=0
           for i in $(seq 1 60); do
-            if tailscale ping -c 1 "$SERVER_HOST" >/dev/null 2>&1; then
-              SERVER_IP=$(tailscale ip -4 "$SERVER_HOST" 2>/dev/null | head -n1)
-              [ -n "$SERVER_IP" ] && break
+            IP=$(tailscale ip -4 "$SERVER_HOST" 2>/dev/null | head -n1)
+            if [ -n "$IP" ]; then
+              SERVER_IP="$IP"
+              if tailscale ping -c 1 "$SERVER_HOST" >/dev/null 2>&1; then
+                REACHABLE=1
+                break
+              fi
             fi
             sleep 2
           done
-          if [ -z "$SERVER_IP" ]; then
-            echo "::error::Loadgen could not reach server node $SERVER_HOST"
+          if [ "$REACHABLE" -ne 1 ]; then
+            echo "::error::Loadgen could not reach server node $SERVER_HOST (visible=${SERVER_IP:-no}; check tailnet ACL allows tag:ci -> tag:ci)"
+            tailscale status || true
             exit 1
           fi
 
