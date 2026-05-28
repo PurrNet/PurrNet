@@ -1,3 +1,10 @@
+# [1.20.0-beta.195](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.194...v1.20.0-beta.195) (2026-05-28)
+
+
+### Bug Fixes
+
+* proper cleanup when something is destroyed ([c216d35](https://github.com/PurrNet/PurrNet/commit/c216d35bbab123110063238741c448b96f83fd97))
+
 # [1.20.0-beta.194](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.193...v1.20.0-beta.194) (2026-05-27)
 
 
