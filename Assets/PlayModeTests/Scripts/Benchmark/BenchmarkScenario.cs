@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
+using PurrNet.Profiler;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -42,9 +43,15 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
         manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
     }
 
+    // Per-datagram UDP + IPv4 header overhead, added on top of LiteNetLib's socket-byte count
+    // to estimate true on-wire usage. LiteNetLib counts framing but not the IP/UDP headers.
+    private const long UDP_IPV4_HEADER_BYTES = 28;
+
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
         var transport = ctx.networkManager.transport.transport;
+        var udp = transport as UDPTransport;
+        udp?.SetStatisticsEnabled(true);
 
         ulong sent = 0, received = 0;
         OnDataSent onSent = (_, d, _) => sent += (ulong)d.length;
@@ -59,6 +66,13 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
         var sampler = new ServerLoadSampler();
         sampler.Begin();
         BenchmarkPing.BeginCollection();
+        Statistics.BeginAggregation();
+
+        long nativeSent0 = udp?.nativeBytesSent ?? 0;
+        long nativeRecv0 = udp?.nativeBytesReceived ?? 0;
+        long nativePktSent0 = udp?.nativePacketsSent ?? 0;
+        long nativePktRecv0 = udp?.nativePacketsReceived ?? 0;
+        long nativeLoss0 = udp?.nativePacketLoss ?? 0;
 
         transport.onDataSent += onSent;
         transport.onDataReceived += onRecv;
@@ -76,11 +90,10 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
                 float dt = Time.unscaledDeltaTime;
                 elapsed += dt;
 
+                sampler.SampleFrame();
+
                 if (ctx.isServer)
-                {
-                    sampler.SampleFrame();
                     MutateObjects((float)elapsed);
-                }
 
                 if (ctx.isClient && pingInterval > 0)
                 {
@@ -99,8 +112,15 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
             transport.onDataReceived -= onRecv;
         }
 
-        sampler.End(out var cpu, out var avgTick, out var maxTick, out var peakMem);
+        var load = sampler.End();
         var rtts = BenchmarkPing.StopAndGet();
+        var breakdown = Statistics.EndAggregation();
+
+        long nativeSent = (udp?.nativeBytesSent ?? 0) - nativeSent0;
+        long nativeRecv = (udp?.nativeBytesReceived ?? 0) - nativeRecv0;
+        long nativePktSent = (udp?.nativePacketsSent ?? 0) - nativePktSent0;
+        long nativePktRecv = (udp?.nativePacketsReceived ?? 0) - nativePktRecv0;
+        long nativeLoss = (udp?.nativePacketLoss ?? 0) - nativeLoss0;
 
         await ScenarioBarrier.Wait(ctx, BARRIER_END, BARRIER_TIMEOUT);
 
@@ -115,19 +135,43 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
             windowBytesReceived = received,
             sentBytesPerSec = sent / windowSeconds,
             receivedBytesPerSec = received / windowSeconds,
+
+            nativeSentBytesPerSec = nativeSent / windowSeconds,
+            nativeReceivedBytesPerSec = nativeRecv / windowSeconds,
+            nativePacketsSentPerSec = nativePktSent / windowSeconds,
+            nativePacketsReceivedPerSec = nativePktRecv / windowSeconds,
+            onWireSentBytesPerSec = (nativeSent + nativePktSent * UDP_IPV4_HEADER_BYTES) / windowSeconds,
+            onWireReceivedBytesPerSec = (nativeRecv + nativePktRecv * UDP_IPV4_HEADER_BYTES) / windowSeconds,
+            framingOverheadPercent = sent > 0 ? ((double)nativeSent / sent - 1.0) * 100.0 : 0,
+            packetLoss = nativeLoss,
+
             connectionCount = ctx.networkManager.playerCount,
             objectCount = ctx.isServer ? _spawned.Count : _objectCount,
-            serverCpuPercent = ctx.isServer ? cpu : 0,
-            avgTickMs = avgTick,
-            maxTickMs = maxTick,
-            peakMemoryBytes = peakMem
+
+            serverCpuPercent = load.cpuPercent,
+            avgTickMs = load.avgFrameMs,
+            maxTickMs = load.maxFrameMs,
+            minTickMs = load.minFrameMs,
+            p95TickMs = load.p95FrameMs,
+            p99TickMs = load.p99FrameMs,
+            avgFps = load.avgFps,
+            peakMemoryBytes = load.peakMemoryBytes,
+            managedHeapBytes = load.managedHeapBytes,
+
+            gcGen0 = load.gcGen0,
+            gcGen1 = load.gcGen1,
+            gcGen2 = load.gcGen2,
+            mainThreadAllocBytesPerSec = load.mainThreadAllocBytes / windowSeconds,
+
+            bandwidthBreakdown = breakdown.ToArray()
         };
 
         FillRttPercentiles(rtts, ref metrics);
         LastMetrics = metrics;
 
         return ScenarioResult.Ok(
-            $"conns={metrics.connectionCount} sent={metrics.sentBytesPerSec:F0}B/s recv={metrics.receivedBytesPerSec:F0}B/s cpu={metrics.serverCpuPercent:F1}% rttP95={metrics.rttP95Ms:F1}ms");
+            $"conns={metrics.connectionCount} payload={metrics.sentBytesPerSec:F0}B/s native={metrics.nativeSentBytesPerSec:F0}B/s " +
+            $"overhead={metrics.framingOverheadPercent:F0}% cpu={metrics.serverCpuPercent:F1}% fps={metrics.avgFps:F0} rttP95={metrics.rttP95Ms:F1}ms");
     }
 
     private void SpawnObjects()

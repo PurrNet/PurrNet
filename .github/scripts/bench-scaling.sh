@@ -20,8 +20,8 @@ CLI=("$DP_DIR"/size-*-clients.json)
   echo ""
   echo "Window: ${WINDOW}s · Objects: ${OBJECTS}"
   echo ""
-  echo "| Connections | Server downstream | Server CPU | Avg frame | Max frame | Peak RSS | Per-conn downstream | RTT p95 |"
-  echo "|---|---|---|---|---|---|---|---|"
+  echo "| Connections | Down payload | Down on-wire | Overhead | CPU | Loop rate | Frame p95 | Alloc/s | Heap | Peak RSS | Per-conn down | RTT p95 |"
+  echo "|---|---|---|---|---|---|---|---|---|---|---|---|"
 } >> "$SUMMARY"
 
 if [ ${#SRV[@]} -eq 0 ] && [ ${#CLI[@]} -eq 0 ]; then
@@ -56,9 +56,13 @@ jq -rs '
   | ($cli[$k]) as $c
   | "| \(.) "
     + "| \($s.sentBytesPerSec|hbR) "
+    + "| \($s.onWireSentBytesPerSec|hbR) "
+    + "| \($s.framingOverheadPercent|r1) "
     + "| \($s.serverCpuPercent|r1) "
-    + "| \($s.avgTickMs|r2) "
-    + "| \($s.maxTickMs|r2) "
+    + "| \($s.avgFps|if . == null then "-" else floor end) fps "
+    + "| \($s.p95TickMs|r2) "
+    + "| \($s.mainThreadAllocBytesPerSec|hbR) "
+    + "| \($s.managedHeapBytes|mb) "
     + "| \($s.peakMemoryBytes|mb) "
     + "| \($c.recv|hbR) "
     + "| \($c.p95|r2) |"

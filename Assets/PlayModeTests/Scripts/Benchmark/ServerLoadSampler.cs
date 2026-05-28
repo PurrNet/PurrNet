@@ -1,42 +1,115 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using UnityEngine;
+
+public struct ServerLoadStats
+{
+    public double cpuPercent;
+    public double avgFrameMs;
+    public double minFrameMs;
+    public double maxFrameMs;
+    public double p95FrameMs;
+    public double p99FrameMs;
+    public double avgFps;
+    public long peakMemoryBytes;
+    public int frameCount;
+
+    public int gcGen0;
+    public int gcGen1;
+    public int gcGen2;
+    public long mainThreadAllocBytes;
+    public long managedHeapBytes;
+}
 
 public class ServerLoadSampler
 {
     private double _startCpuSeconds;
     private double _startWallSeconds;
-    private float _maxFrameMs;
-    private double _sumFrameMs;
-    private int _frames;
+    private readonly List<float> _frameMs = new();
+
+    private int _startGcGen0, _startGcGen1, _startGcGen2;
+    private long _startAllocatedBytes;
 
     public void Begin()
     {
         _startCpuSeconds = ReadProcessCpuSeconds();
         _startWallSeconds = NowSeconds();
-        _maxFrameMs = 0;
-        _sumFrameMs = 0;
-        _frames = 0;
+        _frameMs.Clear();
+
+        _startGcGen0 = GC.CollectionCount(0);
+        _startGcGen1 = GC.CollectionCount(1);
+        _startGcGen2 = GC.CollectionCount(2);
+        _startAllocatedBytes = ReadAllocatedBytes();
     }
 
     public void SampleFrame()
     {
-        float ms = Time.unscaledDeltaTime * 1000f;
-        _sumFrameMs += ms;
-        _frames++;
-        if (ms > _maxFrameMs)
-            _maxFrameMs = ms;
+        _frameMs.Add(Time.unscaledDeltaTime * 1000f);
     }
 
-    public void End(out double cpuPercent, out double avgTickMs, out double maxTickMs, out long peakMemoryBytes)
+    public ServerLoadStats End()
     {
         double cpu = ReadProcessCpuSeconds() - _startCpuSeconds;
         double wall = NowSeconds() - _startWallSeconds;
-        cpuPercent = wall > 0 ? cpu / wall * 100.0 : 0;
-        avgTickMs = _frames > 0 ? _sumFrameMs / _frames : 0;
-        maxTickMs = _maxFrameMs;
-        peakMemoryBytes = ReadPeakResidentBytes();
+
+        var stats = new ServerLoadStats
+        {
+            cpuPercent = wall > 0 ? cpu / wall * 100.0 : 0,
+            peakMemoryBytes = ReadPeakResidentBytes(),
+            frameCount = _frameMs.Count,
+            gcGen0 = GC.CollectionCount(0) - _startGcGen0,
+            gcGen1 = GC.CollectionCount(1) - _startGcGen1,
+            gcGen2 = GC.CollectionCount(2) - _startGcGen2,
+            mainThreadAllocBytes = Math.Max(0, ReadAllocatedBytes() - _startAllocatedBytes),
+            managedHeapBytes = GC.GetTotalMemory(false)
+        };
+
+        if (_frameMs.Count > 0)
+        {
+            double sum = 0;
+            for (int i = 0; i < _frameMs.Count; i++)
+                sum += _frameMs[i];
+
+            var sorted = new List<float>(_frameMs);
+            sorted.Sort();
+
+            stats.avgFrameMs = sum / _frameMs.Count;
+            stats.minFrameMs = sorted[0];
+            stats.maxFrameMs = sorted[^1];
+            stats.p95FrameMs = Percentile(sorted, 0.95);
+            stats.p99FrameMs = Percentile(sorted, 0.99);
+            stats.avgFps = stats.avgFrameMs > 0 ? 1000.0 / stats.avgFrameMs : 0;
+        }
+
+        return stats;
+    }
+
+    private static double Percentile(List<float> sorted, double p)
+    {
+        if (sorted.Count == 1)
+            return sorted[0];
+
+        double rank = p * (sorted.Count - 1);
+        int lo = (int)Math.Floor(rank);
+        int hi = (int)Math.Ceiling(rank);
+        if (lo == hi)
+            return sorted[lo];
+
+        return sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo);
+    }
+
+    private static long ReadAllocatedBytes()
+    {
+        try
+        {
+            return GC.GetAllocatedBytesForCurrentThread();
+        }
+        catch
+        {
+            return GC.GetTotalMemory(false);
+        }
     }
 
     private static double NowSeconds() => DateTime.UtcNow.Ticks / (double)TimeSpan.TicksPerSecond;

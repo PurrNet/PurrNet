@@ -1,0 +1,176 @@
+using System;
+using Cysharp.Threading.Tasks;
+using PurrNet;
+using UnityEngine;
+
+// Regression coverage for the destroy-during-spawn pipeline wedge: a networked object destroyed
+// while its client->server spawn handshake is still in flight must not leave the spawn pipeline
+// broken. A picked client spawns a burst of churn objects (each destroyed on the server the instant
+// it is created), then one marker object. The marker must still replicate to every peer.
+public class DestroyDuringSpawnScenario : Scenario
+{
+    [Tooltip("NetworkRules asset with spawnAuth=Everyone so a non-server client can spawn. " +
+             "Same asset ClientSpawnScenario uses.")]
+    [SerializeField] private NetworkRules _rules;
+
+    [SerializeField] private int _churnCount = 16;
+    [SerializeField] private float _playersTimeoutSeconds = 30f;
+    [SerializeField] private float _spawnTimeoutSeconds = 20f;
+    [SerializeField] private float _barrierTimeoutSeconds = 60f;
+
+    private const int BarrierStart = 4200;
+    private const int BarrierEnd = 4201;
+
+    private DestroyDuringSpawnIdentity _churnPrefab;
+    private DestroyDuringSpawnMarkerIdentity _markerPrefab;
+
+    private static ulong _spawnerIdBroadcast;
+    private static bool _spawnerIdReceived;
+
+    void CreatePrefab()
+    {
+        var churnGo = new GameObject(nameof(DestroyDuringSpawnIdentity));
+        _churnPrefab = churnGo.AddComponent<DestroyDuringSpawnIdentity>();
+        churnGo.SetActive(false);
+
+        var markerGo = new GameObject(nameof(DestroyDuringSpawnMarkerIdentity));
+        _markerPrefab = markerGo.AddComponent<DestroyDuringSpawnMarkerIdentity>();
+        markerGo.SetActive(false);
+
+        if (_rules)
+        {
+            _churnPrefab.SetNetworkRules(_rules);
+            _markerPrefab.SetNetworkRules(_rules);
+        }
+        else
+        {
+            Debug.LogError("[DestroyDuringSpawnScenario] _rules is not assigned; the default rules likely " +
+                           "have spawnAuth=Server and the client-side spawn will be rejected.");
+        }
+
+        DestroyDuringSpawnIdentity.ResetAll();
+        DestroyDuringSpawnMarkerIdentity.ResetAll();
+        _spawnerIdBroadcast = 0;
+        _spawnerIdReceived = false;
+    }
+
+    public override void Setup(ScenarioContext ctx, NetworkManager manager)
+    {
+        CreatePrefab();
+
+        if (_rules)
+            manager.SetNetworkRules(_rules);
+
+        manager.prefabProvider.AddRuntimePrefab(_churnPrefab.name, _churnPrefab.gameObject);
+        manager.prefabProvider.AddRuntimePrefab(_markerPrefab.name, _markerPrefab.gameObject);
+    }
+
+    public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => ctx.networkManager.players.Count >= ctx.expectedConnections,
+                _playersTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail(
+                $"players-sync timeout: have {ctx.networkManager.players.Count}/{ctx.expectedConnections}");
+        }
+
+        await ScenarioBarrier.Wait(ctx, BarrierStart, _barrierTimeoutSeconds);
+
+        // Server-only pick + broadcast: pure clients can't identify the host-local id themselves.
+        if (ctx.isServer)
+        {
+            var picked = PickSpawner(ctx);
+            if (!picked.HasValue)
+                return ScenarioResult.Fail("no eligible non-host client to act as spawner");
+            BroadcastSpawnerId(picked.Value.id.value);
+        }
+
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => _spawnerIdReceived,
+                _playersTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail("spawner-id broadcast not received");
+        }
+
+        var spawnerId = _spawnerIdBroadcast;
+        bool isLocalSpawner = ctx.networkManager.isLocalPlayerReady
+                              && ctx.networkManager.localPlayer.id.value == spawnerId;
+
+        // The spawner spawns each churn object and destroys it ~a frame later, while its spawn
+        // handshake is still completing on the server. Then it spawns one marker that must still
+        // replicate everywhere: a destroy mid-handshake must not wedge the pipeline.
+        if (isLocalSpawner)
+        {
+            for (int i = 0; i < _churnCount; i++)
+            {
+                var churn = Instantiate(_churnPrefab);
+                await UniTask.NextFrame();
+                Destroy(churn.gameObject);
+                await UniTask.NextFrame();
+            }
+
+            Instantiate(_markerPrefab);
+        }
+
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => DestroyDuringSpawnMarkerIdentity.LocalInstance != null,
+                _spawnTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            Debug.LogError(
+                $"[DestroyDuringSpawn] marker never replicated (pipeline wedged?): role={ctx.role} " +
+                $"isLocalSpawner={isLocalSpawner} serverSaw={DestroyDuringSpawnIdentity.ServerSawCount} " +
+                $"players={ctx.networkManager.players.Count}/{ctx.expectedConnections}");
+            await ScenarioBarrier.Wait(ctx, BarrierEnd, _barrierTimeoutSeconds);
+            return ScenarioResult.Fail("marker never replicated after destroy-during-spawn churn");
+        }
+
+        await ScenarioBarrier.Wait(ctx, BarrierEnd, _barrierTimeoutSeconds);
+
+        return ScenarioResult.Ok(
+            $"marker replicated after {_churnCount} destroy-during-spawn cycles " +
+            $"(serverSaw={DestroyDuringSpawnIdentity.ServerSawCount})");
+    }
+
+    private static PlayerID? PickSpawner(ScenarioContext ctx)
+    {
+        var manager = ctx.networkManager;
+        var hostLocal = manager.isLocalPlayerReady && ctx.role == NetworkRole.Host
+            ? manager.localPlayer
+            : (PlayerID?)null;
+
+        PlayerID? best = null;
+        var players = manager.players;
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p.isServer) continue;
+            if (hostLocal.HasValue && hostLocal.Value == p) continue;
+            if (!best.HasValue || p.id.value < best.Value.id.value)
+                best = p;
+        }
+        return best;
+    }
+
+    [ObserversRpc(bufferLast: true, runLocally: true)]
+    private static void BroadcastSpawnerId(ulong spawnerId)
+    {
+        _spawnerIdBroadcast = spawnerId;
+        _spawnerIdReceived = true;
+    }
+}

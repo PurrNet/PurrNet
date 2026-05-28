@@ -25,6 +25,11 @@ def hbR:
   elif . < 1024 then "\(.|floor) B/s"
   elif . < 1048576 then "\((.*10/1024|floor)/10) KB/s"
   else "\((.*100/1048576|floor)/100) MB/s" end;
+def hbT:
+  if . == null then "-"
+  elif . < 1024 then "\(.|floor) B"
+  elif . < 1048576 then "\((.*10/1024|floor)/10) KB"
+  else "\((.*100/1048576|floor)/100) MB" end;
 def r2: if . == null then "-" else "\((.*100|floor)/100) ms" end;
 def r1: if . == null then "-" else "\((.*10|floor)/10)%" end;
 def benchOf: [ .[] | select(.benchmark != null) | .benchmark ] | (if length > 0 then .[0] else null end);
@@ -42,14 +47,37 @@ if [ -f "$SERVER_FILE" ]; then
     benchOf as $s
     | if $s == null then "_No server benchmark data._\n" else
       "### Server\n\n| Metric | Value |\n|---|---|\n"
-      + "| Downstream (to clients) | \($s.sentBytesPerSec|hbR) |\n"
-      + "| Upstream (from clients) | \($s.receivedBytesPerSec|hbR) |\n"
+      + "| Downstream payload | \($s.sentBytesPerSec|hbR) |\n"
+      + "| Downstream on-wire | \($s.onWireSentBytesPerSec|hbR) |\n"
+      + "| Upstream payload | \($s.receivedBytesPerSec|hbR) |\n"
+      + "| Upstream on-wire | \($s.onWireReceivedBytesPerSec|hbR) |\n"
+      + "| Framing overhead | \($s.framingOverheadPercent|r1) |\n"
+      + "| Packets sent | \($s.nativePacketsSentPerSec|floor)/s |\n"
+      + "| Packet loss | \($s.packetLoss) |\n"
       + "| Connections | \($s.connectionCount) |\n"
       + "| Replicated objects | \($s.objectCount) |\n"
       + "| CPU | \($s.serverCpuPercent|r1) |\n"
+      + "| Loop rate | \($s.avgFps|floor) fps |\n"
       + "| Avg frame | \($s.avgTickMs|r2) |\n"
+      + "| Frame p95 / p99 | \($s.p95TickMs|r2) / \($s.p99TickMs|r2) |\n"
       + "| Max frame | \($s.maxTickMs|r2) |\n"
+      + "| GC gen0 / gen1 / gen2 | \($s.gcGen0) / \($s.gcGen1) / \($s.gcGen2) |\n"
+      + "| Main-thread alloc | \($s.mainThreadAllocBytesPerSec|hbR) |\n"
+      + "| Managed heap | \(($s.managedHeapBytes/1048576)|floor) MB |\n"
       + "| Peak RSS | \(($s.peakMemoryBytes/1048576)|floor) MB |\n"
+      end
+  ' "$SERVER_FILE" >> "$SUMMARY"
+  echo "" >> "$SUMMARY"
+
+  # Bandwidth attribution: which RPC/broadcast types account for the traffic.
+  jq -r "$JQ_LIB"'
+    benchOf as $s
+    | ($s.bandwidthBreakdown // []) as $b
+    | if ($b | length) == 0 then "" else
+      "#### Bandwidth by type (server, window total)\n\n"
+      + "| Kind | Type | Sent (msgs) | Sent | Recv (msgs) | Recv |\n|---|---|---|---|---|---|\n"
+      + ( [ limit(15; $b[]) | "| \(.kind) | \(.name) | \(.sentCount) | \(.sentBytes|hbT) | \(.recvCount) | \(.recvBytes|hbT) |" ] | join("\n") )
+      + "\n"
       end
   ' "$SERVER_FILE" >> "$SUMMARY"
   echo "" >> "$SUMMARY"
@@ -65,15 +93,19 @@ if [ ${#CLIENT_FILES[@]} -gt 0 ]; then
     | if $n == 0 then "_No measured client data._\n" else
       ($b | map(.receivedBytesPerSec) | add / $n) as $recv
     | ($b | map(.sentBytesPerSec) | add / $n) as $sent
+    | ($b | map(.onWireReceivedBytesPerSec) | add / $n) as $recvWire
+    | ($b | map(.packetLoss) | add) as $loss
     | ($b | map(.rttP50Ms) | add / $n) as $p50
     | ($b | map(.rttP95Ms) | add / $n) as $p95
     | ($b | map(.rttP99Ms) | add / $n) as $p99
     | "### Measured clients (avg of \($n))\n\n| Metric | Value |\n|---|---|\n"
-      + "| Per-conn downstream | \($recv|hbR) |\n"
-      + "| Per-conn upstream | \($sent|hbR) |\n"
+      + "| Per-conn downstream (payload) | \($recv|hbR) |\n"
+      + "| Per-conn downstream (on-wire) | \($recvWire|hbR) |\n"
+      + "| Per-conn upstream (payload) | \($sent|hbR) |\n"
       + "| RTT p50 | \($p50|r2) |\n"
       + "| RTT p95 | \($p95|r2) |\n"
       + "| RTT p99 | \($p99|r2) |\n"
+      + "| Total packet loss (all clients) | \($loss) |\n"
       end
   ' "${CLIENT_FILES[@]}" >> "$SUMMARY"
   echo "" >> "$SUMMARY"

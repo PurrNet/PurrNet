@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 28e93bf2b6064364aa5fd430134916ac, type: 3}
   m_Name: AnyoneCanSpawn
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _hostMigrationRules:
     enabled: 0
     migrateAsHost: 1
@@ -19,7 +19,7 @@ MonoBehaviour:
     scenesAlwaysPublic: 1
   _defaultSpawnRules:
     spawnAuth: 1
-    despawnAuth: 1
+    despawnAuth: -1
     defaultOwner: 1
     propagateOwnershipByDefault: 1
     despawnIfOwnerDisconnects: 1

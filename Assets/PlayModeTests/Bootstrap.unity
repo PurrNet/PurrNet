@@ -547,7 +547,7 @@ MonoBehaviour:
   _timeBetweenScenarios: 0.1
   _editorRole: 2
   _editorExpectedConnections: 2
-  _editorBenchmarkMode: 1
+  _editorBenchmarkMode: 0
   _benchmarkScenarios: {fileID: 2071908760}
   _benchSeconds: 20
 --- !u!1 &358453800
@@ -1561,6 +1561,7 @@ GameObject:
   - component: {fileID: 1680343635}
   - component: {fileID: 1680343637}
   - component: {fileID: 1680343638}
+  - component: {fileID: 1680343639}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -1835,6 +1836,23 @@ MonoBehaviour:
   _observeTimeoutSeconds: 5
   _blipCycles: 3
   _advanceMargin: 2
+--- !u!114 &1680343639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73968d48c2ecb7c40b9c4fdfe053dad8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::DestroyDuringSpawnScenario
+  _rules: {fileID: 11400000, guid: c2f4a3e58d9b4f428a31e6d075c0b3a9, type: 2}
+  _churnCount: 16
+  _playersTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _barrierTimeoutSeconds: 60
 --- !u!1 &1869161003
 GameObject:
   m_ObjectHideFlags: 0
