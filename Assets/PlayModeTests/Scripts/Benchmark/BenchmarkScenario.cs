@@ -53,6 +53,12 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
         var udp = transport as UDPTransport;
         udp?.SetStatisticsEnabled(true);
 
+        if (ctx.networkManager.TryGetModule<TickManager>(ctx.isServer, out var tickManager) && tickManager.tickRate > 0)
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = tickManager.tickRate;
+        }
+
         ulong sent = 0, received = 0;
         OnDataSent onSent = (_, d, _) => sent += (ulong)d.length;
         OnDataReceived onRecv = (_, d, _) => received += (ulong)d.length;
@@ -122,6 +128,8 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
         long nativePktRecv = (udp?.nativePacketsReceived ?? 0) - nativePktRecv0;
         long nativeLoss = (udp?.nativePacketLoss ?? 0) - nativeLoss0;
 
+        int replicatedObjects = ctx.isServer ? _spawned.Count : _objectCount;
+
         await ScenarioBarrier.Wait(ctx, BARRIER_END, BARRIER_TIMEOUT);
 
         if (ctx.isServer)
@@ -146,7 +154,7 @@ public class BenchmarkScenario : Scenario, IBenchmarkScenario
             packetLoss = nativeLoss,
 
             connectionCount = ctx.networkManager.playerCount,
-            objectCount = ctx.isServer ? _spawned.Count : _objectCount,
+            objectCount = replicatedObjects,
 
             serverCpuPercent = load.cpuPercent,
             avgTickMs = load.avgFrameMs,
