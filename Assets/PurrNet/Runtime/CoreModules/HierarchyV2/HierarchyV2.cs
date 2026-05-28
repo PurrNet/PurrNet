@@ -217,9 +217,12 @@ namespace PurrNet.Modules
             for (int i = 0; i < count; i++)
             {
                 var identity = allSceneIdentities[i];
+                if (!identity)
+                    continue;
+
                 var root = identity.GetRootIdentity();
 
-                if (!roots.Add(root))
+                if (!root || !roots.Add(root))
                     continue;
 
                 onPreSpawn?.Invoke(root.gameObject, true);
@@ -326,6 +329,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var nid = _spawnedIdentities[i];
+                if (!nid)
+                    continue;
+
                 var root = nid.GetRootIdentity();
 
                 if (!root)
@@ -1131,7 +1137,7 @@ namespace PurrNet.Modules
 
                 var root = id.GetRootIdentity();
 
-                if (!roots.Add(root))
+                if (!root || !roots.Add(root))
                     continue;
 
                 _visibility.RefreshVisibilityForGameObject(player, root.transform);
