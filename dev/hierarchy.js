@@ -17,6 +17,7 @@ var hierarchy =
       [ "PurrNet.Authentication.SimpleAuthenticator", "classPurrNet_1_1Authentication_1_1SimpleAuthenticator.html", null ]
     ] ],
     [ "PurrNet.Transports.AutomaticCloudSetups", "classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html", null ],
+    [ "PurrNet.Profiler.BandwidthEntry", "structPurrNet_1_1Profiler_1_1BandwidthEntry.html", null ],
     [ "PurrNet.BoneInfo", "structPurrNet_1_1BoneInfo.html", null ],
     [ "PurrNet.Transports.ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
     [ "PurrNet.Modules.DeltaCache", "classPurrNet_1_1Modules_1_1DeltaCache.html", null ],

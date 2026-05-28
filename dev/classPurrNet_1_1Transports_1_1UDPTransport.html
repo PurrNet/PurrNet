@@ -115,6 +115,10 @@ Inheritance diagram for PurrNet.Transports.UDPTransport:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a7171a33e296bd3dbf64762f603277021"><td class="memItemLeft" align="right" valign="top"><a id="a7171a33e296bd3dbf64762f603277021" name="a7171a33e296bd3dbf64762f603277021"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetStatisticsEnabled</b> (bool enabled)</td></tr>
+<tr class="memdesc:a7171a33e296bd3dbf64762f603277021"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggles LiteNetLib's socket-level statistics on both the client and server managers. When enabled the counters below reflect the real bytes/packets handed to the OS socket, including LiteNetLib framing, ACKs and MTU pings (but excluding the UDP/IP headers).  <br /></td></tr>
+<tr class="separator:a7171a33e296bd3dbf64762f603277021"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abd08478013c70de9c20215661a35cf58"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1UDPTransport.html#abd08478013c70de9c20215661a35cf58">SupportsChannel</a> (Channel channel)</td></tr>
 <tr class="separator:abd08478013c70de9c20215661a35cf58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acb464468e51462aa8b913ba1991d8159"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1UDPTransport.html#acb464468e51462aa8b913ba1991d8159">GetMTU</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> target, Channel channel, bool asServer)</td></tr>
@@ -254,6 +258,24 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>maxConnections</b><cod
 <tr class="memitem:a4a907601adaff6c7c42e13628cc58053"><td class="memItemLeft" align="right" valign="top"><a id="a4a907601adaff6c7c42e13628cc58053" name="a4a907601adaff6c7c42e13628cc58053"></a>
 IReadOnlyDictionary&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="classPurrNet_1_1Transports_1_1PeerInfo.html">PeerInfo</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>peers</b><code> [get]</code></td></tr>
 <tr class="separator:a4a907601adaff6c7c42e13628cc58053"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a626ccd84d150aa418c99b89eb64dc50d"><td class="memItemLeft" align="right" valign="top"><a id="a626ccd84d150aa418c99b89eb64dc50d" name="a626ccd84d150aa418c99b89eb64dc50d"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>statisticsEnabled</b><code> [get]</code></td></tr>
+<tr class="separator:a626ccd84d150aa418c99b89eb64dc50d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd2abc9897dafb579e32ab64c7520586"><td class="memItemLeft" align="right" valign="top"><a id="afd2abc9897dafb579e32ab64c7520586" name="afd2abc9897dafb579e32ab64c7520586"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>nativeBytesSent</b><code> [get]</code></td></tr>
+<tr class="separator:afd2abc9897dafb579e32ab64c7520586"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa08da661e5fffc938194cb52ddc61350"><td class="memItemLeft" align="right" valign="top"><a id="aa08da661e5fffc938194cb52ddc61350" name="aa08da661e5fffc938194cb52ddc61350"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>nativeBytesReceived</b><code> [get]</code></td></tr>
+<tr class="separator:aa08da661e5fffc938194cb52ddc61350"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac63ac07a436a17a00375e8d5858e4daa"><td class="memItemLeft" align="right" valign="top"><a id="ac63ac07a436a17a00375e8d5858e4daa" name="ac63ac07a436a17a00375e8d5858e4daa"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>nativePacketsSent</b><code> [get]</code></td></tr>
+<tr class="separator:ac63ac07a436a17a00375e8d5858e4daa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a923960e04ae948ab7fe719505095736e"><td class="memItemLeft" align="right" valign="top"><a id="a923960e04ae948ab7fe719505095736e" name="a923960e04ae948ab7fe719505095736e"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>nativePacketsReceived</b><code> [get]</code></td></tr>
+<tr class="separator:a923960e04ae948ab7fe719505095736e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a779b7ff02b0be04b1f9127e801c3db7a"><td class="memItemLeft" align="right" valign="top"><a id="a779b7ff02b0be04b1f9127e801c3db7a" name="a779b7ff02b0be04b1f9127e801c3db7a"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>nativePacketLoss</b><code> [get]</code></td></tr>
+<tr class="separator:a779b7ff02b0be04b1f9127e801c3db7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac358e48bdb1149bc02d234039912360a"><td class="memItemLeft" align="right" valign="top">ConnectionState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1UDPTransport.html#ac358e48bdb1149bc02d234039912360a">clientState</a> = ConnectionState.Disconnected<code> [get]</code></td></tr>
 <tr class="separator:ac358e48bdb1149bc02d234039912360a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5b47471dfd6aef344616b5eb96d5075d"><td class="memItemLeft" align="right" valign="top">ConnectionState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1UDPTransport.html#a5b47471dfd6aef344616b5eb96d5075d">listenerState</a> = ConnectionState.Disconnected<code> [get]</code></td></tr>

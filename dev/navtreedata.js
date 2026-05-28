@@ -56,8 +56,8 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6",
 "classPurrNet_1_1StateMachine_1_1StateMachine.html#ab319ad487487aab366fb01bc4cb8a27a",
 "classPurrNet_1_1Transports_1_1PurrTransport.html#a9c1074a3457b1be31fbf09f912e17661",
-"structPurrNet_1_1HalfQuaternion.html",
-"structPurrNet_1_1RigidbodyStateData.html"
+"structPurrNet_1_1GlobalNetworkID.html",
+"structPurrNet_1_1RigidbodyCorrectionContext.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
