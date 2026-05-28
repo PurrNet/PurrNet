@@ -180,8 +180,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualAddObserver</b>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualRemoveObserver</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a1b830c7831269515ba72eb25fd9613f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Manually remove an observer from the identity.  <br /></td></tr>
 <tr class="separator:a1b830c7831269515ba72eb25fd9613f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a">TryGetIdentity</a> (<a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
-<tr class="memdesc:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attempts to retrieve the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>. This operation checks the local hierarchy for the identity and, if running in a server-client scenario, delegates the lookup to another hierarchy when necessary.   <a href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a">More...</a><br /></td></tr>
+<tr class="memitem:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memItemLeft" align="right" valign="top"><a id="a97c5b0bfa1419d9278723876d1dc3e7a" name="a97c5b0bfa1419d9278723876d1dc3e7a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetIdentity</b> (<a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
 <tr class="separator:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
@@ -348,44 +348,6 @@ static SpawnDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPre
   </table>
   </dd>
 </dl>
-
-</div>
-</div>
-<a id="a97c5b0bfa1419d9278723876d1dc3e7a" name="a97c5b0bfa1419d9278723876d1dc3e7a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a97c5b0bfa1419d9278723876d1dc3e7a">&#9670;&#160;</a></span>TryGetIdentity()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool PurrNet.Modules.HierarchyV2.TryGetIdentity </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>&#160;</td>
-          <td class="paramname"><em>id</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td>
-          <td class="paramname"><em>identity</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Attempts to retrieve the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>. This operation checks the local hierarchy for the identity and, if running in a server-client scenario, delegates the lookup to another hierarchy when necessary.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">id</td><td>The unique identifier of the requested network identity.</td></tr>
-    <tr><td class="paramname">identity</td><td>When the method returns, contains the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> if the lookup was successful; otherwise, <code>null</code>. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd><code>true</code> if the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> was successfully retrieved; otherwise, <code>false</code>. </dd></dl>
 
 </div>
 </div>

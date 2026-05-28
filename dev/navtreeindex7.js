@@ -1,7 +1,5 @@
 var NAVTREEINDEX7 =
 {
-"structPurrNet_1_1RigidbodySettingsData.html":[0,0,0,113],
-"structPurrNet_1_1RigidbodyStateData.html":[1,0,0,114],
 "structPurrNet_1_1RigidbodyStateData.html":[0,0,0,114],
 "structPurrNet_1_1RigidbodyStateData.html#a663a74dabb08b151658e5a77ff27d625":[1,0,0,114,3],
 "structPurrNet_1_1RigidbodyStateData.html#a663a74dabb08b151658e5a77ff27d625":[0,0,0,114,3],

@@ -9,7 +9,6 @@ var classPurrNet_1_1Modules_1_1HierarchyV2 =
     [ "ManualEarlySpawn", "classPurrNet_1_1Modules_1_1HierarchyV2.html#a5340886582f3249661b41dde044b3029", null ],
     [ "ManualFinalizeSpawn", "classPurrNet_1_1Modules_1_1HierarchyV2.html#ab814d5d8840650267d4746b3ccd1de13", null ],
     [ "ManualRemoveObserver", "classPurrNet_1_1Modules_1_1HierarchyV2.html#a1b830c7831269515ba72eb25fd9613f3", null ],
-    [ "TryGetIdentity", "classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a", null ],
     [ "isReadyToSpawn", "classPurrNet_1_1Modules_1_1HierarchyV2.html#aeb8e18a11c7924834a30a3b0ab39053f", null ],
     [ "onClientSpawnValidate", "classPurrNet_1_1Modules_1_1HierarchyV2.html#a0783729a0b49a2e30cadbc335a948f58", null ],
     [ "onEarlyIdentityAdded", "classPurrNet_1_1Modules_1_1HierarchyV2.html#ad2e7ac7352bbce58511f1c562dd8d013", null ],

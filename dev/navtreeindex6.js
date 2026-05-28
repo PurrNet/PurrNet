@@ -1,7 +1,5 @@
 var NAVTREEINDEX6 =
 {
-"structPurrNet_1_1GlobalNetworkID.html":[0,0,0,26],
-"structPurrNet_1_1HalfQuaternion.html":[1,0,0,28],
 "structPurrNet_1_1HalfQuaternion.html":[0,0,0,28],
 "structPurrNet_1_1HostMigrationRules.html":[1,0,0,29],
 "structPurrNet_1_1HostMigrationRules.html":[0,0,0,29],
@@ -249,5 +247,7 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1ReflectionMethodData.html":[0,0,0,108],
 "structPurrNet_1_1RigidbodyCorrectionContext.html":[1,0,0,112],
 "structPurrNet_1_1RigidbodyCorrectionContext.html":[0,0,0,112],
-"structPurrNet_1_1RigidbodySettingsData.html":[1,0,0,113]
+"structPurrNet_1_1RigidbodySettingsData.html":[1,0,0,113],
+"structPurrNet_1_1RigidbodySettingsData.html":[0,0,0,113],
+"structPurrNet_1_1RigidbodyStateData.html":[1,0,0,114]
 };

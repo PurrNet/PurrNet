@@ -1,7 +1,5 @@
 var NAVTREEINDEX5 =
 {
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a6b359d220a83037363b8914f15949953":[1,0,0,9,14,8],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a9c1074a3457b1be31fbf09f912e17661":[1,0,0,9,14,0],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#a9c1074a3457b1be31fbf09f912e17661":[0,0,0,9,14,0],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ab6765727ea69bff54704c3bd7c4e3233":[1,0,0,9,14,7],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ab6765727ea69bff54704c3bd7c4e3233":[0,0,0,9,14,7],
@@ -249,5 +247,7 @@ var NAVTREEINDEX5 =
 "structPurrNet_1_1ChildRPCPacket.html":[0,0,0,18],
 "structPurrNet_1_1GenericRPCHeader.html":[1,0,0,25],
 "structPurrNet_1_1GenericRPCHeader.html":[0,0,0,25],
-"structPurrNet_1_1GlobalNetworkID.html":[1,0,0,26]
+"structPurrNet_1_1GlobalNetworkID.html":[1,0,0,26],
+"structPurrNet_1_1GlobalNetworkID.html":[0,0,0,26],
+"structPurrNet_1_1HalfQuaternion.html":[1,0,0,28]
 };
