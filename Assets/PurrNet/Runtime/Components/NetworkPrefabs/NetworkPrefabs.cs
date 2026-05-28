@@ -203,6 +203,9 @@ namespace PurrNet
                 }
 
                 var found = AssetScannerUtility.ScanPrefabs(folder, networkOnly, searchAllIfNoFolder);
+                var linkedGuids = AssetScannerUtility.CollectLinkedNetworkPrefabGuids(this);
+                if (linkedGuids.Count > 0)
+                    found.RemoveAll(scan => linkedGuids.Contains(scan.guid));
 
                 // Update GUIDs on existing entries
                 for (int i = 0; i < prefabs.Count; i++)

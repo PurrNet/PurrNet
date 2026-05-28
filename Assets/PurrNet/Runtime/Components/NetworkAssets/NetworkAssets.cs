@@ -314,13 +314,25 @@ namespace PurrNet
         {
             var enabledTypes = enabledTypeNames.Select(Type.GetType).Where(t => t != null).ToArray();
             var found = AssetScannerUtility.ScanAssets(folder, enabledTypes, searchAllIfNoFolder);
+            var linkedAssets = AssetScannerUtility.CollectLinkedNetworkAssets(this);
+            if (linkedAssets.Count > 0)
+                found.RemoveAll(scan => linkedAssets.Contains(scan.asset));
 
             if (found.Count == 0 && folder == null && !searchAllIfNoFolder)
                 return;
 
-            // Add newly found assets not already in the list
             var existingSet = new HashSet<Object>(assets);
             bool changed = false;
+
+            if (linkedAssets.Count > 0)
+            {
+                int removed = assets.RemoveAll(asset => asset && linkedAssets.Contains(asset));
+                if (removed > 0)
+                {
+                    existingSet = new HashSet<Object>(assets);
+                    changed = true;
+                }
+            }
 
             foreach (var scan in found)
             {
