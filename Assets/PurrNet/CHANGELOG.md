@@ -1,3 +1,10 @@
+# [1.20.0-beta.197](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.196...v1.20.0-beta.197) (2026-05-28)
+
+
+### Bug Fixes
+
+* Validated syncvar old value inconsistency ([6473bf1](https://github.com/PurrNet/PurrNet/commit/6473bf1c2167edc6e5280b2c2c4bfdaba88ee698))
+
 # [1.20.0-beta.196](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.195...v1.20.0-beta.196) (2026-05-28)
 
 
