@@ -1,3 +1,10 @@
+# [1.20.0-beta.199](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.198...v1.20.0-beta.199) (2026-05-28)
+
+
+### Bug Fixes
+
+* Add null safety to hierarchy ([7722f33](https://github.com/PurrNet/PurrNet/commit/7722f3341e416f835ca5e10e531c1c3a6916a387))
+
 # [1.20.0-beta.198](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.197...v1.20.0-beta.198) (2026-05-28)
 
 

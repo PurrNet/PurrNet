@@ -385,6 +385,9 @@ namespace PurrNet
 
         public NetworkIdentity GetRootIdentity()
         {
+            if (!this)
+                return null;
+
             var lastKnown = gameObject.GetComponent<NetworkIdentity>();
             var currentParent = parent;
 
