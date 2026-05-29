@@ -1,3 +1,10 @@
+# [1.20.0-beta.203](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.202...v1.20.0-beta.203) (2026-05-29)
+
+
+### Bug Fixes
+
+* NRE resilience when despawning ([a8b788d](https://github.com/PurrNet/PurrNet/commit/a8b788d2abe608fc6f78d8e7d0de08ceae5d3c35))
+
 # [1.20.0-beta.202](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.201...v1.20.0-beta.202) (2026-05-29)
 
 
