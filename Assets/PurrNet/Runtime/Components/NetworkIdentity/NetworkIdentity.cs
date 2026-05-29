@@ -1176,6 +1176,9 @@ namespace PurrNet
             if (ApplicationContext.isQuitting)
                 return;
 
+            if (parent)
+                parent.RemoveDirectChild(this);
+
             TriggerDespawnEvent(false);
             TriggerDespawnEvent(true);
 
