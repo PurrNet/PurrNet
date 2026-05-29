@@ -381,7 +381,7 @@ namespace PurrNet.Modules
             bool isDefaultParent = transform.parent == rootId.defaultParent;
 
             var rootPair = new TransformIdentityPair(transform, rootId);
-            if (!rootPair.HasObserver(scope))
+            if (!rootPair.HasObserver(scope) || !rootId.id.HasValue)
             {
                 prototype = default;
                 framework.Dispose();
@@ -405,7 +405,7 @@ namespace PurrNet.Modules
                 {
                     var child = children[i];
 
-                    if (child.HasObserver(scope))
+                    if (child.HasObserver(scope) && child.identity.id.HasValue)
                     {
                         var childPair = GetRuntimePair(trs, child.identity);
                         queue.Enqueue(childPair);
@@ -470,11 +470,15 @@ namespace PurrNet.Modules
                 var children = current.children;
                 var trs = current.identity.transform;
 
+                int actualChildCount = 0;
                 for (var i = 0; i < children.Count; i++)
                 {
                     var child = children[i];
+                    if (!child.identity.id.HasValue)
+                        continue;
                     var childPair = GetRuntimePair(trs, child.identity);
                     queue.Enqueue(childPair);
+                    ++actualChildCount;
                 }
 
                 var pid = new PrefabPieceID(current.identity.prefabId, current.identity.componentIndex);
@@ -485,7 +489,7 @@ namespace PurrNet.Modules
                     localTrs,
                     pid,
                     current.identity.id ?? default,
-                    children.Count,
+                    actualChildCount,
                     current.identity.gameObject.activeSelf,
                     current.identity.invertedPathToNearestParent
                 );
