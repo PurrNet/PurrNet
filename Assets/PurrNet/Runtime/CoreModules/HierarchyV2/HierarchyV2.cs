@@ -1508,6 +1508,9 @@ namespace PurrNet.Modules
 
         public static void GetComponentsInChildren(GameObject go, List<NetworkIdentity> list)
         {
+            if (!go)
+                return;
+
             // workaround for the fact that GetComponents clears the list
             var tmpList = ListPool<NetworkIdentity>.Instantiate();
             int startIdx = list.Count;
@@ -1523,7 +1526,12 @@ namespace PurrNet.Modules
             var dcount = children.Count;
 
             for (int j = 0; j < dcount; j++)
-                GetComponentsInChildren(children[j].gameObject, list);
+            {
+                var child = children[j];
+                if (!child)
+                    continue;
+                GetComponentsInChildren(child.gameObject, list);
+            }
         }
 
         public void Despawn(GameObject gameObject, bool bypassPermissions = false, bool bypassBroadcast = false)

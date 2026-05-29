@@ -98,6 +98,8 @@ namespace PurrNet.Modules
                 for (var i = 0; i < current.directChildren.Count; i++)
                 {
                     var child = current.directChildren[i];
+                    if (!child)
+                        continue;
                     queue.Enqueue(child);
                 }
             }
@@ -682,7 +684,11 @@ namespace PurrNet.Modules
             var pair = new GameObjectRuntimePair(parent, rootId, children);
 
             foreach (var c in rootId.directChildren)
+            {
+                if (!c)
+                    continue;
                 children.Add(new TransformIdentityPair(c.transform, c));
+            }
             return pair;
         }
 
