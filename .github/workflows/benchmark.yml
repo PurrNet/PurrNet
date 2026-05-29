@@ -115,16 +115,18 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          # Development build => PurrNet ProfilerMarkers are live => CPU-by-phase breakdown.
-          PURR_DEV_BUILD: ${{ inputs.profiling && '1' || '0' }}
         with:
           targetPlatform: StandaloneLinux64
           buildName: PurrNetTests
           buildsPath: build
           unityVersion: auto
           # Custom method (CIBuild.BuildLinuxPlayer) because game-ci v4 has no development-build
-          # toggle; it reads PURR_DEV_BUILD and sets BuildOptions.Development + IL2CPP itself.
+          # toggle; it sets BuildOptions.Development + IL2CPP itself. The -purrDevBuild flag is
+          # passed via customParameters (NOT env: game-ci's container only forwards an allowlist of
+          # env vars, so a custom env var never reaches the build process) and read from the Unity
+          # command line. Development build => PurrNet ProfilerMarkers are live => CPU breakdown.
           buildMethod: CIBuild.BuildLinuxPlayer
+          customParameters: ${{ inputs.profiling && '-purrDevBuild' || '' }}
 
       - name: Save Library cache
         if: always() && steps.cache-library.outputs.cache-hit != 'true'

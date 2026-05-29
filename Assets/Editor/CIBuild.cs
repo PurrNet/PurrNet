@@ -14,7 +14,10 @@ public static class CIBuild
 
     public static void BuildLinuxPlayer()
     {
-        bool dev = Environment.GetEnvironmentVariable("PURR_DEV_BUILD") == "1";
+        // Read from the Unity command line (passed via game-ci customParameters) rather than an env
+        // var — game-ci runs the build in a container that only forwards an allowlisted set of env
+        // vars, so a custom env var never reaches this process.
+        bool dev = Array.IndexOf(Environment.GetCommandLineArgs(), "-purrDevBuild") >= 0;
 
         var scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
