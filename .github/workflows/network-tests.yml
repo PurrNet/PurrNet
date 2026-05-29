@@ -69,9 +69,11 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: Library
-          key: Library-PurrNet-IL2CPP-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          # Standalone network-tests always build release IL2CPP -> share the 'rel' cache with the
+          # release benchmark build (dev builds use a separate 'dev' cache; see benchmark.yml).
+          key: Library-PurrNet-IL2CPP-rel-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
-            Library-PurrNet-IL2CPP-
+            Library-PurrNet-IL2CPP-rel-
 
       - name: Build StandaloneLinux64 player (IL2CPP)
         if: inputs.player_artifact == ''

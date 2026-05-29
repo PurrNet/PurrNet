@@ -112,9 +112,12 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: Library
-          key: Library-PurrNet-IL2CPP-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          # Dev and release IL2CPP builds emit different generated C++ (DEVELOPMENT_BUILD /
+          # ENABLE_PROFILER), so they get separate caches — otherwise they share one key, only the
+          # first config ever saves (save runs on a key miss), and their build artifacts thrash.
+          key: Library-PurrNet-IL2CPP-${{ inputs.profiling && 'dev' || 'rel' }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
-            Library-PurrNet-IL2CPP-
+            Library-PurrNet-IL2CPP-${{ inputs.profiling && 'dev' || 'rel' }}-
 
       - name: Build StandaloneLinux64 player (IL2CPP)
         uses: game-ci/unity-builder@v4
