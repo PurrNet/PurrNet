@@ -43,4 +43,7 @@ public struct BenchmarkMetrics
     public double rttP99Ms;
 
     public BandwidthEntry[] bandwidthBreakdown;
+
+    // CPU time attribution by PurrNet ProfilerMarker (Development build only; empty otherwise).
+    public CpuMarker[] cpuMarkers;
 }

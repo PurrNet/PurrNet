@@ -45,6 +45,11 @@ on:
         type: boolean
         required: false
         default: true
+      profiling:
+        description: "Development build so PurrNet ProfilerMarkers are live (adds the CPU-by-phase breakdown; dev-build numbers are ~comparative, not shipping-absolute)"
+        type: boolean
+        required: false
+        default: true
   workflow_call:
     inputs:
       measured_clients:
@@ -69,6 +74,12 @@ on:
         type: string
         required: true
       run_tests:
+        type: boolean
+        required: false
+        default: false
+      # Default off for workflow_call so the scaling curve uses clean release builds; the manual
+      # single-benchmark dispatch defaults on to get the CPU-by-phase breakdown.
+      profiling:
         type: boolean
         required: false
         default: false
@@ -104,12 +115,16 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          # Development build => PurrNet ProfilerMarkers are live => CPU-by-phase breakdown.
+          PURR_DEV_BUILD: ${{ inputs.profiling && '1' || '0' }}
         with:
           targetPlatform: StandaloneLinux64
           buildName: PurrNetTests
           buildsPath: build
           unityVersion: auto
-          customParameters: -standaloneBuildSubtarget Player -scriptingBackend IL2CPP
+          # Custom method (CIBuild.BuildLinuxPlayer) because game-ci v4 has no development-build
+          # toggle; it reads PURR_DEV_BUILD and sets BuildOptions.Development + IL2CPP itself.
+          buildMethod: CIBuild.BuildLinuxPlayer
 
       - name: Save Library cache
         if: always() && steps.cache-library.outputs.cache-hit != 'true'

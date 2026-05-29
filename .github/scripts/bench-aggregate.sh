@@ -52,13 +52,38 @@ def serverTable($name; $s):
   + "| GC collections | \($s.gcCollections) |\n"
   + "| Managed heap | \(($s.managedHeapBytes/1048576)|floor) MB |\n"
   + "| Peak RSS | \(($s.peakMemoryBytes/1048576)|floor) MB |\n";
+def rep($ch; $n): if $n > 0 then $ch * $n else "" end;
+def barOf($frac): ($frac * 20 | floor) as $f | rep("█"; $f) + rep("░"; 20 - $f);
 def breakdownTable($s):
   ($s.bandwidthBreakdown // []) as $b
+  | ($b | map(.sentBytes) | add) as $tot
   | if ($b | length) == 0 then "" else
-    "\n#### Bandwidth by type (server, window total)\n\n"
-    + "| Kind | Type | Sent (msgs) | Sent | Recv (msgs) | Recv |\n|---|---|---|---|---|---|\n"
-    + ( [ limit(15; $b[]) | "| \(.kind) | \(.name) | \(.sentCount) | \(.sentBytes|hbT) | \(.recvCount) | \(.recvBytes|hbT) |" ] | join("\n") )
+    "\n#### Bandwidth by type (server, window total — sorted by share of sent)\n\n"
+    + "| Kind | Type | Share of sent | Sent | Sent (msgs) | Recv | Recv (msgs) |\n|---|---|---|---|---|---|---|\n"
+    + ( [ limit(15; $b[])
+          | (if $tot > 0 then .sentBytes / $tot else 0 end) as $frac
+          | "| \(.kind) | \(.name) | `\(barOf($frac))` \(($frac*1000|floor)/10)% | \(.sentBytes|hbT) | \(.sentCount) | \(.recvBytes|hbT) | \(.recvCount) |" ] | join("\n") )
     + "\n"
+    end;
+# CPU time attribution from PurrNet ProfilerMarkers (Development build only). The bar is relative to
+# the hottest marker (markers nest, so this is magnitude, not % of frame). Top 8 also drawn as a chart.
+def cpuSection($name; $s):
+  ($s.cpuMarkers // []) as $m
+  | if ($m | length) == 0 then "" else
+    ($m | map(.totalMs) | max) as $maxMs
+    | ($m | map({n: (.name | split(".") | .[-1]), v: (.perFrameMs * 1000 | floor)})[0:8]) as $top
+    | ($top | map(.v) | max) as $vmax
+    | "\n#### CPU by marker — \($name) (Development build)\n\n"
+    + "| Marker | Per-frame | Total | Calls | Relative |\n|---|---|---|---|---|\n"
+    + ( [ limit(20; $m[])
+          | (if $maxMs > 0 then .totalMs / $maxMs else 0 end) as $frac
+          | "| \(.name) | \(.perFrameMs*1000|floor) µs | \((.totalMs*100|floor)/100) ms | \(.calls) | `\(barOf($frac))` |" ] | join("\n") )
+    + "\n\n```mermaid\nxychart-beta\n"
+    + "    title \"CPU per-frame µs by marker — \($name)\"\n"
+    + "    x-axis [\($top | map("\"" + .n + "\"") | join(", "))]\n"
+    + "    y-axis \"µs/frame\" 0 --> \((($vmax * 1.1) | floor) + 1)\n"
+    + "    bar [\($top | map(.v | tostring) | join(", "))]\n"
+    + "```\n"
     end;
 '
 
@@ -73,7 +98,7 @@ if [ -f "$SERVER_FILE" ]; then
   jq -r "$JQ_LIB"'
     [ .[] | select(.benchmark != null) ] as $entries
     | if ($entries | length) == 0 then "_No server benchmark data._\n" else
-      ( $entries[] | serverTable(.name; .benchmark) + breakdownTable(.benchmark) + "\n" )
+      ( $entries[] | serverTable(.name; .benchmark) + breakdownTable(.benchmark) + cpuSection(.name; .benchmark) + "\n" )
       end
   ' "$SERVER_FILE" >> "$SUMMARY"
   echo "" >> "$SUMMARY"

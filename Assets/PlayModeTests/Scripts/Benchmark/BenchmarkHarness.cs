@@ -53,7 +53,9 @@ public static class BenchmarkHarness
         await ScenarioBarrier.Wait(ctx, barrierStart, BARRIER_TIMEOUT);
 
         var sampler = new ServerLoadSampler();
+        var cpu = new CpuProfileSampler();
         sampler.Begin();
+        cpu.Begin();
         BenchmarkPing.BeginCollection();
         Statistics.BeginAggregation();
 
@@ -80,6 +82,7 @@ public static class BenchmarkHarness
                 elapsed += dt;
 
                 sampler.SampleFrame();
+                cpu.Sample();
                 onTick?.Invoke((float)elapsed, dt);
 
                 if (ctx.isClient && pingInterval > 0)
@@ -100,6 +103,7 @@ public static class BenchmarkHarness
         }
 
         var load = sampler.End();
+        var cpuMarkers = cpu.End();
         var rtts = BenchmarkPing.StopAndGet();
         var breakdown = Statistics.EndAggregation();
 
@@ -147,7 +151,8 @@ public static class BenchmarkHarness
             managedHeapBytes = load.managedHeapBytes,
             gcCollections = load.gcCollections,
 
-            bandwidthBreakdown = breakdown.ToArray()
+            bandwidthBreakdown = breakdown.ToArray(),
+            cpuMarkers = cpuMarkers
         };
 
         FillRttPercentiles(rtts, ref metrics);
