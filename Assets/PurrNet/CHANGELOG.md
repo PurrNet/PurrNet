@@ -1,3 +1,10 @@
+# [1.20.0-beta.202](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.201...v1.20.0-beta.202) (2026-05-29)
+
+
+### Bug Fixes
+
+* skip unspawned network identities when building game object framework ([25f04a7](https://github.com/PurrNet/PurrNet/commit/25f04a7d484040961a53a4775b3f534402595896))
+
 # [1.20.0-beta.201](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.200...v1.20.0-beta.201) (2026-05-29)
 
 
