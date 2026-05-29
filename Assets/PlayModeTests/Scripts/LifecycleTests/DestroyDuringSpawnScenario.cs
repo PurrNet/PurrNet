@@ -23,6 +23,8 @@ public class DestroyDuringSpawnScenario : Scenario
 
     private DestroyDuringSpawnIdentity _churnPrefab;
     private DestroyDuringSpawnIdentity _nestedChurnPrefab;
+    private DestroyDuringSpawnIdentity _immediateDestroyPrefab;
+    private DestroyDuringSpawnIdentity[] _callbackDestroyPrefabs;
     private DestroyDuringSpawnMarkerIdentity _markerPrefab;
 
     private static ulong _spawnerIdBroadcast;
@@ -47,11 +49,26 @@ public class DestroyDuringSpawnScenario : Scenario
         _markerPrefab = markerGo.AddComponent<DestroyDuringSpawnMarkerIdentity>();
         markerGo.SetActive(false);
 
+        _immediateDestroyPrefab = CreateDestroyPrefab("Immediate", DestroyDuringSpawnStage.None);
+        _callbackDestroyPrefabs = new[]
+        {
+            CreateDestroyPrefab("Awake", DestroyDuringSpawnStage.Awake),
+            CreateDestroyPrefab("EarlySpawn", DestroyDuringSpawnStage.EarlySpawn),
+            CreateDestroyPrefab("EarlySpawnAsServer", DestroyDuringSpawnStage.EarlySpawnAsServer),
+            CreateDestroyPrefab("Spawned", DestroyDuringSpawnStage.Spawned),
+            CreateDestroyPrefab("SpawnedAsServer", DestroyDuringSpawnStage.SpawnedAsServer),
+            CreateDestroyPrefab("Despawned", DestroyDuringSpawnStage.Despawned),
+            CreateDestroyPrefab("DespawnedAsServer", DestroyDuringSpawnStage.DespawnedAsServer)
+        };
+
         if (_rules)
         {
-            _churnPrefab.SetNetworkRules(_rules);
-            _nestedChurnPrefab.SetNetworkRules(_rules);
+            ApplyRules(_churnPrefab);
+            ApplyRules(_nestedChurnPrefab);
             nestedChild.SetNetworkRules(_rules);
+            ApplyRules(_immediateDestroyPrefab);
+            for (int i = 0; i < _callbackDestroyPrefabs.Length; i++)
+                ApplyRules(_callbackDestroyPrefabs[i]);
             _markerPrefab.SetNetworkRules(_rules);
         }
         else
@@ -75,6 +92,9 @@ public class DestroyDuringSpawnScenario : Scenario
 
         manager.prefabProvider.AddRuntimePrefab(_churnPrefab.name, _churnPrefab.gameObject);
         manager.prefabProvider.AddRuntimePrefab(_nestedChurnPrefab.name, _nestedChurnPrefab.gameObject);
+        manager.prefabProvider.AddRuntimePrefab(_immediateDestroyPrefab.name, _immediateDestroyPrefab.gameObject);
+        for (int i = 0; i < _callbackDestroyPrefabs.Length; i++)
+            manager.prefabProvider.AddRuntimePrefab(_callbackDestroyPrefabs[i].name, _callbackDestroyPrefabs[i].gameObject);
         manager.prefabProvider.AddRuntimePrefab(_markerPrefab.name, _markerPrefab.gameObject);
     }
 
@@ -125,6 +145,8 @@ public class DestroyDuringSpawnScenario : Scenario
         // replicate everywhere: a destroy mid-handshake must not wedge the pipeline.
         if (isLocalSpawner)
         {
+            await RunDestroyStageCases();
+
             for (int i = 0; i < _churnCount; i++)
             {
                 // alternate flat (single identity) and nested (parent + child) churn objects
@@ -158,7 +180,46 @@ public class DestroyDuringSpawnScenario : Scenario
 
         return ScenarioResult.Ok(
             $"marker replicated after {_churnCount} destroy-during-spawn cycles " +
-            $"(serverSaw={DestroyDuringSpawnIdentity.ServerSawCount})");
+            $"(serverSaw={DestroyDuringSpawnIdentity.ServerSawCount}, destroyCalls={DestroyDuringSpawnIdentity.DestroyCallCount})");
+    }
+
+    private DestroyDuringSpawnIdentity CreateDestroyPrefab(string suffix, DestroyDuringSpawnStage stage)
+    {
+        var go = new GameObject($"{nameof(DestroyDuringSpawnIdentity)}{suffix}");
+        var identity = go.AddComponent<DestroyDuringSpawnIdentity>();
+        identity.Configure(stage);
+        go.SetActive(false);
+        return identity;
+    }
+
+    private void ApplyRules(DestroyDuringSpawnIdentity identity)
+    {
+        identity.SetNetworkRules(_rules);
+    }
+
+    private async UniTask RunDestroyStageCases()
+    {
+        var immediate = Instantiate(_immediateDestroyPrefab);
+        Destroy(immediate.gameObject);
+        await UniTask.NextFrame();
+        await UniTask.NextFrame();
+
+        for (int i = 0; i < _callbackDestroyPrefabs.Length; i++)
+        {
+            var spawned = Instantiate(_callbackDestroyPrefabs[i]);
+            await UniTask.NextFrame();
+
+            if (spawned && ShouldDestroyAfterSpawn(spawned))
+                Destroy(spawned.gameObject);
+
+            await UniTask.NextFrame();
+            await UniTask.NextFrame();
+        }
+    }
+
+    private static bool ShouldDestroyAfterSpawn(DestroyDuringSpawnIdentity identity)
+    {
+        return identity.Stage is DestroyDuringSpawnStage.Despawned or DestroyDuringSpawnStage.DespawnedAsServer;
     }
 
     private static PlayerID? PickSpawner(ScenarioContext ctx)
