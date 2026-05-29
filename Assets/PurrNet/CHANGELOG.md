@@ -1,3 +1,10 @@
+# [1.20.0-beta.201](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.200...v1.20.0-beta.201) (2026-05-29)
+
+
+### Bug Fixes
+
+* Visibility safeguard for null ([ce62c74](https://github.com/PurrNet/PurrNet/commit/ce62c7419da14050c37cf63825be2e7d6c39d266))
+
 # [1.20.0-beta.200](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.199...v1.20.0-beta.200) (2026-05-29)
 
 
