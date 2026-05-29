@@ -111,7 +111,11 @@ jobs:
         run: |
           set -u
           BIN="$PWD/build/StandaloneLinux64/PurrNetTests"
-          chmod +x "$BIN"
+          # The IL2CPP player is produced inside the unity-builder Docker container as a non-runner
+          # user (e.g. 'packer') and is already +x. A plain chmod by the runner user fails with
+          # EPERM ("Operation not permitted") and, under set -e, aborts the whole step before any
+          # process launches. sudo (passwordless on GitHub runners) chmods regardless of owner.
+          sudo chmod +x "$BIN" || chmod +x "$BIN" || true
           RESULTS_DIR="$PWD/test-results"
           LOGS_DIR="$PWD/test-logs"
           mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
