@@ -1,3 +1,11 @@
+# [1.20.0-beta.200](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.199...v1.20.0-beta.200) (2026-05-29)
+
+
+### Bug Fixes
+
+* bump version ([69d7880](https://github.com/PurrNet/PurrNet/commit/69d7880dcf6f86872155a9f53137167b52956810))
+* Nakama transport ([f68a4ea](https://github.com/PurrNet/PurrNet/commit/f68a4eaa9d6034d1aba15ed2d343adb7827a39a2))
+
 # [1.20.0-beta.199](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.198...v1.20.0-beta.199) (2026-05-28)
 
 
