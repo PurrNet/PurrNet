@@ -3,6 +3,9 @@ name: Benchmark Scaling Curve
 # Runs the distributed benchmark at increasing connection counts (10 / 25 / 50 / ~100),
 # one size at a time (sequential to stay under the 60-concurrent-job cap and to avoid
 # tailnet hostname collisions), then renders a combined scaling table.
+#
+# size-10 builds the player once; the larger sizes reuse that artifact (player_artifact)
+# instead of rebuilding the identical ~2.5GB IL2CPP player four times.
 
 on:
   workflow_dispatch:
@@ -45,6 +48,7 @@ jobs:
       bench_objects: ${{ inputs.bench_objects }}
       ping_rate: ${{ inputs.ping_rate }}
       tag: "s25"
+      player_artifact: "bench-player-s10"
 
   size-50:
     needs: size-25
@@ -58,6 +62,7 @@ jobs:
       bench_objects: ${{ inputs.bench_objects }}
       ping_rate: ${{ inputs.ping_rate }}
       tag: "s50"
+      player_artifact: "bench-player-s10"
 
   size-100:
     needs: size-50
@@ -71,6 +76,7 @@ jobs:
       bench_objects: ${{ inputs.bench_objects }}
       ping_rate: ${{ inputs.ping_rate }}
       tag: "s100"
+      player_artifact: "bench-player-s10"
 
   combine:
     needs: [size-10, size-25, size-50, size-100]

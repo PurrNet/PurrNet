@@ -83,6 +83,12 @@ on:
         type: boolean
         required: false
         default: false
+      # When set, reuse this prebuilt player artifact instead of building (lets the scaling curve
+      # build once and run every size off the same player). Empty => this run builds its own.
+      player_artifact:
+        type: string
+        required: false
+        default: ""
 
 env:
   SERVER_HOST: purrnet-bench-${{ github.run_id }}-${{ inputs.tag }}
@@ -94,6 +100,8 @@ env:
 jobs:
   build:
     name: Build player
+    # Skip when handed a prebuilt player (e.g. the scaling curve reusing size-10's build).
+    if: ${{ inputs.player_artifact == '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -146,12 +154,12 @@ jobs:
   # benchmark. Reuses the player artifact so we don't pay for a second IL2CPP build.
   network_tests:
     name: Network tests
-    needs: build
-    if: ${{ inputs.run_tests }}
+    needs: [build, prep]
+    if: ${{ !cancelled() && inputs.run_tests && needs.prep.result == 'success' && needs.build.result != 'failure' }}
     uses: ./.github/workflows/network-tests.yml
     secrets: inherit
     with:
-      player_artifact: bench-player-${{ inputs.tag }}
+      player_artifact: ${{ needs.prep.outputs.player }}
       clientCount: "4"
       connectionDelaySeconds: "1"
       timeoutMinutes: "30"
@@ -163,6 +171,7 @@ jobs:
       total: ${{ steps.gen.outputs.total }}
       measured_matrix: ${{ steps.gen.outputs.measured_matrix }}
       loadgen_matrix: ${{ steps.gen.outputs.loadgen_matrix }}
+      player: ${{ steps.gen.outputs.player }}
     steps:
       - id: gen
         run: |
@@ -172,6 +181,12 @@ jobs:
           LG_PROCS=${{ inputs.procs_per_loadgen }}
           TOTAL=$(( MEASURED + LG_JOBS * LG_PROCS ))
           echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          # Resolve the player artifact name: the one we were handed, else the one build uploads.
+          if [ -n "${{ inputs.player_artifact }}" ]; then
+            echo "player=${{ inputs.player_artifact }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "player=bench-player-${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
           if [ "$MEASURED" -gt 0 ]; then
             echo "measured_matrix=$(seq 1 "$MEASURED" | jq -R . | jq -s -c .)" >> "$GITHUB_OUTPUT"
           else
@@ -186,13 +201,15 @@ jobs:
   server:
     name: Server
     needs: [build, prep]
+    # build is skipped when a prebuilt artifact was provided; allow that.
+    if: ${{ !cancelled() && needs.prep.result == 'success' && needs.build.result != 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Download player
         uses: actions/download-artifact@v4
         with:
-          name: bench-player-${{ inputs.tag }}
+          name: ${{ needs.prep.outputs.player }}
           path: player
 
       - name: Connect Tailscale
@@ -258,7 +275,7 @@ jobs:
     # after the server job finishes, so the server would always wait for connections that
     # can't exist yet and time out.
     needs: [build, prep]
-    if: ${{ needs.prep.outputs.measured_matrix != '[]' }}
+    if: ${{ !cancelled() && needs.prep.result == 'success' && needs.build.result != 'failure' && needs.prep.outputs.measured_matrix != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -269,7 +286,7 @@ jobs:
       - name: Download player
         uses: actions/download-artifact@v4
         with:
-          name: bench-player-${{ inputs.tag }}
+          name: ${{ needs.prep.outputs.player }}
           path: player
 
       - name: Connect Tailscale
@@ -342,7 +359,7 @@ jobs:
     name: Loadgen ${{ matrix.idx }}
     # See the note on `clients`: run concurrently with the server, don't depend on it.
     needs: [build, prep]
-    if: ${{ needs.prep.outputs.loadgen_matrix != '[]' }}
+    if: ${{ !cancelled() && needs.prep.result == 'success' && needs.build.result != 'failure' && needs.prep.outputs.loadgen_matrix != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -353,7 +370,7 @@ jobs:
       - name: Download player
         uses: actions/download-artifact@v4
         with:
-          name: bench-player-${{ inputs.tag }}
+          name: ${{ needs.prep.outputs.player }}
           path: player
 
       - name: Connect Tailscale
