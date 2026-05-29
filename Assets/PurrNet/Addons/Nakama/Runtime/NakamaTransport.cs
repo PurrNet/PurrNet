@@ -21,6 +21,9 @@ namespace PurrNet.Nakama
         [Tooltip("Base op code used for PurrNet data frames. Two consecutive op codes are reserved: this one for server→client traffic and (this + 1) for client→server traffic. Pick a base value such that neither collides with other systems sharing this match (e.g. PurrLobby uses 1-8).")]
         [SerializeField] private long _opCode = 100;
 
+        [Tooltip("Optional. The user id of the presence to treat as the host when joining as a client. When empty, the first non-self presence is assumed to be the host. Set this for lobby/host-migration flows where the host is not necessarily the first presence in the match.")]
+        [SerializeField] private string _hostUserId;
+
 #if NAKAMA
         // Distinct op code for client→host traffic so host+client mode (single socket, self-echoed
         // state) can tell which side a message was sent from.
@@ -37,6 +40,17 @@ namespace PurrNet.Nakama
         {
             get => _opCode;
             set => _opCode = value;
+        }
+
+        /// <summary>
+        /// Optional user id of the presence to bind to as the host when joining as a client. When
+        /// null/empty, the first non-self presence is assumed to be the host. Set this before
+        /// connecting in flows where the host can change (e.g. lobby host migration).
+        /// </summary>
+        public string hostUserId
+        {
+            get => _hostUserId;
+            set => _hostUserId = value;
         }
 
 #if NAKAMA
@@ -307,20 +321,7 @@ namespace PurrNet.Nakama
             match = joined;
             _self = joined.Self;
 
-            // PurrNet usage assumes the host created the match before any client joins, so the
-            // first non-self presence is the host.
-            _hostPresence = null;
-            if (joined.Presences != null)
-            {
-                foreach (var p in joined.Presences)
-                {
-                    if (_self == null || p.SessionId != _self.SessionId)
-                    {
-                        _hostPresence = p;
-                        break;
-                    }
-                }
-            }
+            _hostPresence = ResolveHostPresence(joined);
 
             if (_hostPresence == null)
             {
@@ -332,6 +333,36 @@ namespace PurrNet.Nakama
 
             clientState = ConnectionState.Connected;
             onConnected?.Invoke(new Connection(0), false);
+        }
+
+        private IUserPresence ResolveHostPresence(IMatch joined)
+        {
+            if (joined.Presences == null)
+                return null;
+
+            // When a host user id is provided (e.g. by a lobby or host-migration system), bind to
+            // that exact presence so the client connects to the elected host rather than guessing.
+            if (!string.IsNullOrEmpty(_hostUserId))
+            {
+                foreach (var p in joined.Presences)
+                {
+                    if (p.UserId != _hostUserId)
+                        continue;
+                    if (_self != null && p.SessionId == _self.SessionId)
+                        continue;
+                    return p;
+                }
+            }
+
+            // Fallback: assume the first non-self presence is the host. Holds when the host created
+            // the match before any client joined and no explicit host id was provided.
+            foreach (var p in joined.Presences)
+            {
+                if (_self == null || p.SessionId != _self.SessionId)
+                    return p;
+            }
+
+            return null;
         }
 
         private async System.Threading.Tasks.Task LeaveMatchSafe(string id)

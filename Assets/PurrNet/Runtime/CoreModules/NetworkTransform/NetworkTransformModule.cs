@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
+using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
@@ -19,6 +20,10 @@ namespace PurrNet.Modules
 
     public class NetworkTransformModule : INetworkModule, IPromoteToServerModule
     {
+        static readonly ProfilerMarker _postFixedUpdateMarker = new ProfilerMarker("NetworkTransform.PostFixedUpdate");
+        static readonly ProfilerMarker _gatherStateMarker = new ProfilerMarker("NetworkTransform.GatherState");
+        static readonly ProfilerMarker _prepareDeltaMarker = new ProfilerMarker("NetworkTransform.PrepareDeltaState");
+
         private readonly List<NetworkTransform> _networkTransforms = new();
         private readonly ScenePlayersModule _scenePlayers;
         private readonly PlayersBroadcaster _broadcaster;
@@ -97,6 +102,8 @@ namespace PurrNet.Modules
 
         private bool PrepareDeltaState(BitPacker packer, PlayerID player)
         {
+            using var _ = _prepareDeltaMarker.Auto();
+
             var localPlayer = GetLocalPlayer();
             int ntCount = _networkTransforms.Count;
             bool anyWritten = false;
@@ -211,16 +218,20 @@ namespace PurrNet.Modules
 
         public void PostFixedUpdate()
         {
+            using var _ = _postFixedUpdateMarker.Auto();
+
             var localPlayer = GetLocalPlayer();
 
             int ntCount = _networkTransforms.Count;
 
+            _gatherStateMarker.Begin();
             for (var i = 0; i < ntCount; i++)
             {
                 var nt = _networkTransforms[i];
                 if (nt.IsControlling(localPlayer, _asServer))
                     nt.GatherState();
             }
+            _gatherStateMarker.End();
 
             if (!_asServer)
             {
