@@ -364,6 +364,7 @@ GameObject:
   - component: {fileID: 108535985}
   - component: {fileID: 108535984}
   - component: {fileID: 108535983}
+  - component: {fileID: 108535989}
   - component: {fileID: 108535988}
   m_Layer: 0
   m_Name: SyncTypesOwnerAuth
@@ -479,6 +480,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67c6fb6a854e4a040b227f9966a48e46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &108535989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0d1893a8cf145d1966ae69d6cf5506b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StateMachineOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
   _stateTimeoutSeconds: 30
@@ -2096,6 +2113,7 @@ GameObject:
   - component: {fileID: 2027560125}
   - component: {fileID: 2027560124}
   - component: {fileID: 2027560123}
+  - component: {fileID: 2027560129}
   - component: {fileID: 2027560128}
   m_Layer: 0
   m_Name: SyncTypes
@@ -2211,6 +2229,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e58a6cc1c58a0bd4c8c55950f3e18137, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+--- !u!114 &2027560129
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5d7729c94544d7bb24b5f9899266144, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::StateMachineServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
   _stateTimeoutSeconds: 30
