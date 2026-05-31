@@ -1,3 +1,10 @@
+# [1.20.0-beta.206](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.205...v1.20.0-beta.206) (2026-05-31)
+
+
+### Bug Fixes
+
+* Add server transport startup control to composite transport ([e0c4a0c](https://github.com/PurrNet/PurrNet/commit/e0c4a0ca68620e6a831da702a07619f399a39671))
+
 # [1.20.0-beta.205](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.204...v1.20.0-beta.205) (2026-05-31)
 
 
