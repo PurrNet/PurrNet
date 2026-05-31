@@ -140,10 +140,10 @@ public class StateMachineOwnerAuthScenario : Scenario
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
-            inst.MatchesInsertedCurrent,
+            designated ? inst.MatchesInsertedCurrent : inst.OwnerMutationStarted,
             _stateTimeoutSeconds,
             failures,
-            () => $"never saw inserted-current state; got {inst.Describe()}");
+            () => $"never saw first owner mutation; got {inst.Describe()}");
 
         if (failures.Count > 0)
             return ScenarioResult.Fail(string.Join(" | ", failures));

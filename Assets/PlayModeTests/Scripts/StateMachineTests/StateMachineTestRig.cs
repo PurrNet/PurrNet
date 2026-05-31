@@ -92,6 +92,14 @@ public class StateMachineTestRig : NetworkIdentity
     /// <summary>Returns whether the state list reached the initial state order.</summary>
     public bool MatchesInitial() => SequenceEquals(_machine.states, InitialKeys);
 
+    /// <summary>Returns whether the first owner mutation has reached this peer.</summary>
+    public bool OwnerMutationStarted()
+    {
+        return !SequenceEquals(_machine.states, InitialKeys) ||
+               currentKey != 0 ||
+               currentStateId != 0;
+    }
+
     /// <summary>Returns whether the inserted state was removed while preserving the current state.</summary>
     public bool MatchesPhaseOne()
     {
