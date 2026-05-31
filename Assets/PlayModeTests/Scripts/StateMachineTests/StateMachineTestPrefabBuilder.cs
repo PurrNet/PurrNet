@@ -37,19 +37,39 @@ internal static class StateMachineTestPrefabBuilder
 
         var insertedState = CreateNode(machineRoot.transform, 100);
         var addedState = CreateNode(machineRoot.transform, 101);
+        var removeByReferenceState = CreateNode(machineRoot.transform, 102);
+        var payloadState = CreatePayloadNode(machineRoot.transform, 200);
+        var blockedState = CreateNode(machineRoot.transform, 201, canEnter: false);
 
         OwnerAuthField.SetValue(machine, ownerAuth);
         StatesField.SetValue(machine, states);
-        rig.Configure(name, machine, initialStates, insertedState, addedState);
+        rig.Configure(
+            name,
+            machine,
+            initialStates,
+            insertedState,
+            addedState,
+            removeByReferenceState,
+            payloadState,
+            blockedState);
 
         return rig;
     }
 
-    private static StateMachineTestNode CreateNode(Transform parent, int key)
+    private static StateMachineTestNode CreateNode(Transform parent, int key, bool canEnter = true)
     {
         var go = new GameObject($"State {key}");
         go.transform.SetParent(parent);
         var node = go.AddComponent<StateMachineTestNode>();
+        node.Configure(key, canEnter);
+        return node;
+    }
+
+    private static StateMachinePayloadTestNode CreatePayloadNode(Transform parent, int key)
+    {
+        var go = new GameObject($"State {key}");
+        go.transform.SetParent(parent);
+        var node = go.AddComponent<StateMachinePayloadTestNode>();
         node.Configure(key);
         return node;
     }

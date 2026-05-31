@@ -15,6 +15,7 @@ public class StateMachineServerAuthScenario : Scenario
     private const int BarrierPhaseOne = 5502;
     private const int BarrierAddedCurrent = 5503;
     private const int BarrierFinal = 5504;
+    private const int BarrierExpandedBase = 5520;
     private const float BarrierTimeoutSeconds = 60f;
 
     private StateMachineTestRig _prefab;
@@ -81,6 +82,8 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw inserted-current state; got {inst.Describe()}");
 
+        inst.CaptureStateChangeCount();
+
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierInsertedCurrent,
@@ -120,6 +123,8 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw added-current state; got {inst.Describe()}");
 
+        inst.CaptureStateChangeCount();
+
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierAddedCurrent,
@@ -143,6 +148,15 @@ public class StateMachineServerAuthScenario : Scenario
             BarrierTimeoutSeconds,
             failures,
             () => $"final barrier timeout: {inst.Describe()}");
+
+        await StateMachineScenarioOps.RunExpandedChecks(
+            ctx,
+            inst,
+            ctx.isServer,
+            BarrierExpandedBase,
+            _stateTimeoutSeconds,
+            BarrierTimeoutSeconds,
+            failures);
 
         if (ctx.role == NetworkRole.Client && inst.MachineIsController(false))
             failures.Add("pure client reports IsController(ownerAuth:false)=true for a server-auth state machine");
