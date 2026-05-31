@@ -12,6 +12,11 @@ public class StateMachineOwnerAuthScenario : Scenario
     [SerializeField] private float _stateTimeoutSeconds = 30f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
+    private const int BarrierReady = 5510;
+    private const int BarrierPhaseOne = 5511;
+    private const int BarrierFinal = 5512;
+    private const float BarrierTimeoutSeconds = 60f;
+
     private StateMachineTestRig _prefab;
 
     void CreatePrefab()
@@ -44,88 +49,34 @@ public class StateMachineOwnerAuthScenario : Scenario
             _spawnTimeoutSeconds,
             ctx.cancellationToken);
 
+        var failures = new List<string>();
+        var inst = StateMachineTestRig.LocalInstance;
+
+        await ScenarioBarrier.Wait(ctx, BarrierReady, BarrierTimeoutSeconds);
+
+        if (ctx.isServer)
+        {
+            var owner = PickOwner(ctx);
+            if (!owner.HasValue)
+                return ScenarioResult.Fail("no eligible non-server / non-host client to own the state machine");
+
+            inst.GiveOwnership(owner.Value, propagateToChildren: true);
+            BroadcastOwner(owner.Value.id.value);
+        }
+
         if (ctx.isClient)
-            StateMachineTestRig.LocalInstance.SignalReady();
-
-        return await RunSplit(ctx, RunAsClient, RunAsServer);
-    }
-
-    private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)
-    {
-        var failures = new List<string>();
-        var inst = StateMachineTestRig.LocalInstance;
-
-        try
         {
-            await UniTaskUtils.WaitWithTimeout(
-                () => StateMachineTestRig.ServerReadyCount >= ctx.expectedConnections,
-                _readyTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail(
-                $"ready timeout: {StateMachineTestRig.ServerReadyCount}/{ctx.expectedConnections}");
-        }
-
-        var owner = PickOwner(ctx);
-        if (!owner.HasValue)
-            return ScenarioResult.Fail("no eligible non-server / non-host client to own the state machine");
-
-        inst.GiveOwnership(owner.Value, propagateToChildren: true);
-        inst.BroadcastOwner(owner.Value.id.value);
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.PhaseOneMatchCount >= ctx.expectedConnections,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"phase-one convergence timeout: phaseOne={StateMachineTestRig.PhaseOneMatchCount}/{ctx.expectedConnections}; server={inst.Describe()}");
-
-        inst.BroadcastPhaseOneReleased();
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.FinalMatchCount >= ctx.expectedConnections,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"final convergence timeout: final={StateMachineTestRig.FinalMatchCount}/{ctx.expectedConnections}; server={inst.Describe()}");
-
-        if (!inst.MatchesFinal())
-            failures.Add($"server local state machine != expected final: {inst.Describe()}");
-
-        if (inst.MachineIsController(true))
-            failures.Add("server reports IsController(ownerAuth:true)=true for a client-owned state machine");
-
-        inst.BroadcastPhaseDone();
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.ServerDoneCount >= ctx.expectedConnections,
-            _doneTimeoutSeconds,
-            failures,
-            () => $"done timeout: done={StateMachineTestRig.ServerDoneCount}/{ctx.expectedConnections}");
-
-        return failures.Count == 0
-            ? ScenarioResult.Ok($"owner={owner.Value.id.value}, final={inst.Describe()}")
-            : ScenarioResult.Fail(string.Join(" | ", failures));
-    }
-
-    private async UniTask<ScenarioResult> RunAsClient(ScenarioContext ctx)
-    {
-        var failures = new List<string>();
-        var inst = StateMachineTestRig.LocalInstance;
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => StateMachineTestRig.OwnerIdReceived,
-                _readyTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail("client did not receive BroadcastOwner");
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => StateMachineTestRig.OwnerIdReceived,
+                    _readyTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                failures.Add("client did not receive BroadcastOwner");
+            }
         }
 
         var designated = ctx.networkManager.isLocalPlayerReady &&
@@ -141,60 +92,37 @@ public class StateMachineOwnerAuthScenario : Scenario
                 () => "designated owner never became controller");
 
             if (failures.Count == 0)
-            {
                 await StateMachineScenarioOps.RunPhaseOne(ctx, inst, failures, _stateTimeoutSeconds);
-
-                if (inst.MatchesPhaseOne())
-                    inst.SignalPhaseOneMatched();
-
-                await StateMachineScenarioOps.WaitOrFail(
-                    ctx,
-                    () => StateMachineTestRig.PhaseOneReleased,
-                    _stateTimeoutSeconds,
-                    failures,
-                    () => "owner did not receive phase-one release");
-
-                await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
-
-                if (inst.MatchesFinal())
-                    inst.SignalFinalMatched();
-            }
         }
-        else
-        {
-            await StateMachineScenarioOps.WaitOrFail(
-                ctx,
-                inst.MatchesPhaseOne,
-                _stateTimeoutSeconds,
-                failures,
-                () => $"never saw phase-one remap; got {inst.Describe()}");
-
-            if (inst.MatchesPhaseOne())
-                inst.SignalPhaseOneMatched();
-
-            await StateMachineScenarioOps.WaitOrFail(
-                ctx,
-                inst.MatchesFinal,
-                _stateTimeoutSeconds,
-                failures,
-                () => $"never saw final remap; got {inst.Describe()}");
-
-            if (inst.MatchesFinal())
-                inst.SignalFinalMatched();
-        }
-
-        if (inst.MachineIsController(true) != inst.machine.isOwner)
-            failures.Add($"IsController(true)={inst.MachineIsController(true)} but isOwner={inst.machine.isOwner}");
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
-            () => StateMachineTestRig.PhaseDoneReceived,
-            _doneTimeoutSeconds,
+            inst.MatchesPhaseOne,
+            _stateTimeoutSeconds,
             failures,
-            () => "client did not receive BroadcastPhaseDone");
+            () => $"never saw phase-one remap; got {inst.Describe()}");
 
-        if (StateMachineTestRig.LocalInstance != null)
-            StateMachineTestRig.LocalInstance.SignalDone();
+        await ScenarioBarrier.Wait(ctx, BarrierPhaseOne, BarrierTimeoutSeconds);
+
+        if (designated)
+        {
+            await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
+        }
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesFinal,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw final remap; got {inst.Describe()}");
+
+        await ScenarioBarrier.Wait(ctx, BarrierFinal, BarrierTimeoutSeconds);
+
+        if (ctx.isServer && inst.MachineIsController(true))
+            failures.Add("server reports IsController(ownerAuth:true)=true for a client-owned state machine");
+
+        if (ctx.isClient && inst.MachineIsController(true) != inst.machine.isOwner)
+            failures.Add($"IsController(true)={inst.MachineIsController(true)} but isOwner={inst.machine.isOwner}");
 
         return failures.Count == 0
             ? ScenarioResult.Ok(designated ? "owner" : "observer")
@@ -224,5 +152,12 @@ public class StateMachineOwnerAuthScenario : Scenario
         }
 
         return best;
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private static void BroadcastOwner(ulong ownerId)
+    {
+        StateMachineTestRig.OwnerId = ownerId;
+        StateMachineTestRig.OwnerIdReceived = true;
     }
 }

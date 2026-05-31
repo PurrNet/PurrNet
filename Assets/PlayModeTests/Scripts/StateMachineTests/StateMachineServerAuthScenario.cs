@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
@@ -10,6 +9,11 @@ public class StateMachineServerAuthScenario : Scenario
     [SerializeField] private float _readyTimeoutSeconds = 30f;
     [SerializeField] private float _stateTimeoutSeconds = 30f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
+
+    private const int BarrierInitial = 5500;
+    private const int BarrierPhaseOne = 5501;
+    private const int BarrierFinal = 5502;
+    private const float BarrierTimeoutSeconds = 60f;
 
     private StateMachineTestRig _prefab;
 
@@ -39,69 +43,6 @@ public class StateMachineServerAuthScenario : Scenario
             _spawnTimeoutSeconds,
             ctx.cancellationToken);
 
-        if (ctx.isClient)
-            StateMachineTestRig.LocalInstance.SignalReady();
-
-        return await RunSplit(ctx, RunAsClient, RunAsServer);
-    }
-
-    private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)
-    {
-        var failures = new List<string>();
-        var inst = StateMachineTestRig.LocalInstance;
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => StateMachineTestRig.ServerReadyCount >= ctx.expectedConnections &&
-                      StateMachineTestRig.InitialMatchCount >= ctx.expectedConnections,
-                _readyTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail(
-                $"ready/initial timeout: ready={StateMachineTestRig.ServerReadyCount}, " +
-                $"initial={StateMachineTestRig.InitialMatchCount}, expected={ctx.expectedConnections}");
-        }
-
-        await StateMachineScenarioOps.RunPhaseOne(ctx, inst, failures, _stateTimeoutSeconds);
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.PhaseOneMatchCount >= ctx.expectedConnections,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"phase-one convergence timeout: phaseOne={StateMachineTestRig.PhaseOneMatchCount}/{ctx.expectedConnections}");
-
-        await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.FinalMatchCount >= ctx.expectedConnections,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"final convergence timeout: final={StateMachineTestRig.FinalMatchCount}/{ctx.expectedConnections}");
-
-        if (!inst.MatchesFinal())
-            failures.Add($"server local state machine != expected final: {inst.Describe()}");
-
-        inst.BroadcastPhaseDone();
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.ServerDoneCount >= ctx.expectedConnections,
-            _doneTimeoutSeconds,
-            failures,
-            () => $"done timeout: done={StateMachineTestRig.ServerDoneCount}/{ctx.expectedConnections}");
-
-        return failures.Count == 0
-            ? ScenarioResult.Ok($"final={inst.Describe()}")
-            : ScenarioResult.Fail(string.Join(" | ", failures));
-    }
-
-    private async UniTask<ScenarioResult> RunAsClient(ScenarioContext ctx)
-    {
         var failures = new List<string>();
         var inst = StateMachineTestRig.LocalInstance;
 
@@ -112,8 +53,10 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw initial state list; got {inst.Describe()}");
 
-        if (failures.Count == 0)
-            inst.SignalInitialMatched();
+        await ScenarioBarrier.Wait(ctx, BarrierInitial, BarrierTimeoutSeconds);
+
+        if (ctx.isServer)
+            await StateMachineScenarioOps.RunPhaseOne(ctx, inst, failures, _stateTimeoutSeconds);
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -122,8 +65,10 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw phase-one remap; got {inst.Describe()}");
 
-        if (inst.MatchesPhaseOne())
-            inst.SignalPhaseOneMatched();
+        await ScenarioBarrier.Wait(ctx, BarrierPhaseOne, BarrierTimeoutSeconds);
+
+        if (ctx.isServer)
+            await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -132,21 +77,10 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw final remap; got {inst.Describe()}");
 
-        if (inst.MatchesFinal())
-            inst.SignalFinalMatched();
+        await ScenarioBarrier.Wait(ctx, BarrierFinal, BarrierTimeoutSeconds);
 
         if (ctx.role == NetworkRole.Client && inst.MachineIsController(false))
             failures.Add("pure client reports IsController(ownerAuth:false)=true for a server-auth state machine");
-
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            () => StateMachineTestRig.PhaseDoneReceived,
-            _doneTimeoutSeconds,
-            failures,
-            () => "client did not receive BroadcastPhaseDone");
-
-        if (StateMachineTestRig.LocalInstance != null)
-            StateMachineTestRig.LocalInstance.SignalDone();
 
         return failures.Count == 0
             ? ScenarioResult.Ok()
