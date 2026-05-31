@@ -367,6 +367,7 @@ namespace PurrNet.StateMachine
         [ServerRpc]
         private void RpcStateChange_Server<T>(StateMachineState state, bool hasData, T data)
         {
+            ApplyRpcStateChange(state, hasData, data);
             RpcStateChange<T>(state, hasData, data);
         }
 
