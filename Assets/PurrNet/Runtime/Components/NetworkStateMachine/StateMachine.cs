@@ -41,6 +41,8 @@ namespace PurrNet.StateMachine
         private int _previousStateId = -1;
         private StateNode _currentStateNode;
         private StateNode _previousStateNode;
+        private int _pendingStateChangeId = -1;
+        private Action _pendingStateChange;
 
         public StateMachineState currentState => _currentState;
         public int previousStateId => _previousStateId;
@@ -326,6 +328,7 @@ namespace PurrNet.StateMachine
             }
 
             UpdateStateIdsAfterListChange(change);
+            TryApplyPendingStateChange();
         }
 
         private void UpdateStateIdsAfterListChange(SyncListChange<StateNode> change)
@@ -370,18 +373,21 @@ namespace PurrNet.StateMachine
         [ObserversRpc(bufferLast: true)]
         private void RpcStateChange<T>(StateMachineState state, bool hasData, T data)
         {
+            ApplyRpcStateChange(state, hasData, data);
+        }
+
+        private void ApplyRpcStateChange<T>(StateMachineState state, bool hasData, T data)
+        {
             if (IsController(_ownerAuth)) return;
             
-            if (state.stateId < 0 || state.stateId >= _syncedStates.Count)
+            if (state.stateId >= _syncedStates.Count)
             {
-                _currentState = state;
-                _currentState.data = data;
-
-                if (TryUpdateCurrentStateNode())
-                    onReceivedNewData?.Invoke();
-
+                StorePendingStateChange(state, hasData, data);
                 return;
             }
+
+            _pendingStateChange = null;
+            _pendingStateChangeId = -1;
 
             if(_currentState.stateId > -1 && _syncedStates.Count > _currentState.stateId)
                 UpdateStateId(_syncedStates[_currentState.stateId]);
@@ -444,9 +450,18 @@ namespace PurrNet.StateMachine
         {
             if (IsController(_ownerAuth)) return;
 
+            var receivedStateId = state.stateId;
+
+            if (state.stateId >= _syncedStates.Count)
+            {
+                StorePendingStateChange(state, hasData, data);
+                return;
+            }
+
+            _pendingStateChange = null;
+            _pendingStateChangeId = -1;
             _currentState = state;
             _currentState.data = data;
-            var receivedStateId = _currentState.stateId;
 
             if (!TryUpdateCurrentStateNode())
                 return;
@@ -459,6 +474,23 @@ namespace PurrNet.StateMachine
 
             HandleStateChangeQueue();
             onReceivedNewData?.Invoke();
+        }
+
+        private void StorePendingStateChange<T>(StateMachineState state, bool hasData, T data)
+        {
+            _pendingStateChangeId = state.stateId;
+            _pendingStateChange = () => ApplyRpcStateChange(state, hasData, data);
+        }
+
+        private void TryApplyPendingStateChange()
+        {
+            if (_pendingStateChangeId < 0 || _pendingStateChangeId >= _syncedStates.Count)
+                return;
+
+            var pending = _pendingStateChange;
+            _pendingStateChange = null;
+            _pendingStateChangeId = -1;
+            pending?.Invoke();
         }
 
         private bool TryUpdateCurrentStateNode()
