@@ -4,7 +4,7 @@ using Cysharp.Threading.Tasks;
 
 internal static class StateMachineScenarioOps
 {
-    internal static async UniTask RunExpandedChecks(
+    internal static async UniTask<bool> RunExpandedChecks(
         ScenarioContext ctx,
         StateMachineTestRig inst,
         bool isController,
@@ -18,13 +18,19 @@ internal static class StateMachineScenarioOps
             inst.AddPayloadState();
 
             if (inst.TrySetPayloadWithInvalidData())
+            {
                 failures.Add("SetState to payload state with invalid data returned true");
+                return false;
+            }
 
             if (!inst.SetStateToPayload())
+            {
                 failures.Add("SetState to payload state returned false");
+                return false;
+            }
         }
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesPayloadCurrent,
@@ -32,21 +38,23 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "payload-current");
+            "payload-current"))
+            return false;
 
         inst.CaptureStateChangeCount();
 
-        await WaitBarrierOrFail(
+        if (!await WaitBarrierOrFail(
             ctx,
             barrierBase + 1,
             barrierTimeoutSeconds,
             failures,
-            () => $"payload baseline barrier timeout: {inst.Describe()}");
+            () => $"payload baseline barrier timeout: {inst.Describe()}"))
+            return false;
 
         if (isController)
             inst.InsertAfterCurrentStates();
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesInsertedAfterCurrent,
@@ -54,12 +62,16 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "insert-after-current");
+            "insert-after-current"))
+            return false;
 
         if (isController && !inst.NextValid())
+        {
             failures.Add("NextValid returned false");
+            return false;
+        }
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesNextValid,
@@ -67,12 +79,16 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "next-valid");
+            "next-valid"))
+            return false;
 
         if (isController && !inst.PreviousValid())
+        {
             failures.Add("PreviousValid returned false");
+            return false;
+        }
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesPreviousValid,
@@ -80,12 +96,16 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "previous-valid");
+            "previous-valid"))
+            return false;
 
         if (isController && !inst.Previous())
+        {
             failures.Add("Previous returned false");
+            return false;
+        }
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesPrevious,
@@ -93,12 +113,16 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "previous");
+            "previous"))
+            return false;
 
         if (isController && !inst.Next())
+        {
             failures.Add("Next returned false");
+            return false;
+        }
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesNext,
@@ -106,21 +130,26 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "next");
+            "next"))
+            return false;
 
         inst.CaptureStateChangeCount();
 
-        await WaitBarrierOrFail(
+        if (!await WaitBarrierOrFail(
             ctx,
             barrierBase + 7,
             barrierTimeoutSeconds,
             failures,
-            () => $"remove-by-reference baseline barrier timeout: {inst.Describe()}");
+            () => $"remove-by-reference baseline barrier timeout: {inst.Describe()}"))
+            return false;
 
         if (isController && !inst.RemoveLaterStateByReference())
+        {
             failures.Add("RemoveState for later state returned false");
+            return false;
+        }
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesRemovedByReference,
@@ -128,21 +157,23 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "remove-by-reference");
+            "remove-by-reference"))
+            return false;
 
         inst.CaptureStateChangeCount();
 
-        await WaitBarrierOrFail(
+        if (!await WaitBarrierOrFail(
             ctx,
             barrierBase + 9,
             barrierTimeoutSeconds,
             failures,
-            () => $"remove-at baseline barrier timeout: {inst.Describe()}");
+            () => $"remove-at baseline barrier timeout: {inst.Describe()}"))
+            return false;
 
         if (isController)
             inst.RemoveLaterStateAt();
 
-        await WaitStateAndBarrier(
+        if (!await WaitStateAndBarrier(
             ctx,
             inst,
             inst.MatchesExpandedFinal,
@@ -150,13 +181,19 @@ internal static class StateMachineScenarioOps
             stateTimeoutSeconds,
             barrierTimeoutSeconds,
             failures,
-            "remove-at");
+            "remove-at"))
+            return false;
 
         if (!isController && inst.receivedNewDataCount == 0)
+        {
             failures.Add("observer did not receive any state machine data callbacks");
+            return false;
+        }
+
+        return true;
     }
 
-    internal static async UniTask WaitOrFail(
+    internal static async UniTask<bool> WaitOrFail(
         ScenarioContext ctx,
         Func<bool> condition,
         float timeoutSeconds,
@@ -166,14 +203,16 @@ internal static class StateMachineScenarioOps
         try
         {
             await UniTaskUtils.WaitWithTimeout(condition, timeoutSeconds, ctx.cancellationToken);
+            return true;
         }
         catch (TimeoutException)
         {
             failures.Add(message());
+            return false;
         }
     }
 
-    internal static async UniTask WaitBarrierOrFail(
+    internal static async UniTask<bool> WaitBarrierOrFail(
         ScenarioContext ctx,
         int barrierId,
         float timeoutSeconds,
@@ -183,14 +222,16 @@ internal static class StateMachineScenarioOps
         try
         {
             await ScenarioBarrier.Wait(ctx, barrierId, timeoutSeconds);
+            return true;
         }
         catch (TimeoutException)
         {
             failures.Add(message());
+            return false;
         }
     }
 
-    private static async UniTask WaitStateAndBarrier(
+    private static async UniTask<bool> WaitStateAndBarrier(
         ScenarioContext ctx,
         StateMachineTestRig inst,
         Func<bool> condition,
@@ -200,18 +241,22 @@ internal static class StateMachineScenarioOps
         List<string> failures,
         string name)
     {
-        await WaitOrFail(
+        if (!await WaitOrFail(
             ctx,
             condition,
             stateTimeoutSeconds,
             failures,
-            () => $"never saw {name}; got {inst.Describe()}");
+            () => $"never saw {name}; got {inst.Describe()}"))
+            return false;
 
-        await WaitBarrierOrFail(
+        if (!await WaitBarrierOrFail(
             ctx,
             barrierId,
             barrierTimeoutSeconds,
             failures,
-            () => $"{name} barrier timeout: {inst.Describe()}");
+            () => $"{name} barrier timeout: {inst.Describe()}"))
+            return false;
+
+        return true;
     }
 }

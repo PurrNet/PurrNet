@@ -17,6 +17,7 @@ public class StateMachineOwnerAuthScenario : Scenario
     private const int BarrierPhaseOne = 5512;
     private const int BarrierAddedCurrent = 5513;
     private const int BarrierFinal = 5514;
+    private const int BarrierOwnerReady = 5515;
     private const int BarrierExpandedBase = 5620;
     private const float BarrierTimeoutSeconds = 60f;
 
@@ -54,6 +55,9 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"spawn timeout: role={ctx.role}, players={ctx.networkManager.playerCount}/{ctx.expectedConnections}");
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         var inst = StateMachineTestRig.GetLocalInstance(_prefab.name);
 
         if (inst == null)
@@ -65,6 +69,9 @@ public class StateMachineOwnerAuthScenario : Scenario
             BarrierTimeoutSeconds,
             failures,
             () => $"ready barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         if (ctx.isServer)
         {
@@ -91,6 +98,9 @@ public class StateMachineOwnerAuthScenario : Scenario
             }
         }
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         var designated = ctx.networkManager.isLocalPlayerReady &&
                          ctx.networkManager.localPlayer.id.value == StateMachineTestRig.OwnerId;
 
@@ -102,15 +112,31 @@ public class StateMachineOwnerAuthScenario : Scenario
                 _stateTimeoutSeconds,
                 failures,
                 () => "designated owner never became controller");
-
-            if (failures.Count == 0)
-            {
-                inst.InsertRegressionState();
-
-                if (!inst.SetStateToOriginalLast())
-                    failures.Add("SetState to original last state returned false");
-            }
         }
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierOwnerReady,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"owner-ready barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        if (designated)
+        {
+            inst.InsertRegressionState();
+
+            if (!inst.SetStateToOriginalLast())
+                failures.Add("SetState to original last state returned false");
+        }
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -119,6 +145,9 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw inserted-current state; got {inst.Describe()}");
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierInsertedCurrent,
@@ -126,8 +155,14 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"inserted-current barrier timeout: {inst.Describe()}");
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         if (designated && !inst.RemoveRegressionState())
             failures.Add("RemoveState for inserted state returned false");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -136,12 +171,18 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw phase-one remap; got {inst.Describe()}");
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierPhaseOne,
             BarrierTimeoutSeconds,
             failures,
             () => $"phase-one barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         if (designated)
         {
@@ -151,6 +192,9 @@ public class StateMachineOwnerAuthScenario : Scenario
                 failures.Add("SetState to added state returned false");
         }
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
             inst.MatchesAddedCurrent,
@@ -158,12 +202,18 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw added-current state; got {inst.Describe()}");
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierAddedCurrent,
             BarrierTimeoutSeconds,
             failures,
             () => $"added-current barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         if (designated)
             inst.RemoveFirstState();
@@ -175,12 +225,18 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw final remap; got {inst.Describe()}");
 
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierFinal,
             BarrierTimeoutSeconds,
             failures,
             () => $"final barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         await StateMachineScenarioOps.RunExpandedChecks(
             ctx,
@@ -190,6 +246,9 @@ public class StateMachineOwnerAuthScenario : Scenario
             _stateTimeoutSeconds,
             BarrierTimeoutSeconds,
             failures);
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         if (ctx.isServer && inst.MachineIsController(true))
             failures.Add("server reports IsController(ownerAuth:true)=true for a client-owned state machine");
