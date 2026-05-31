@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
-using PurrNet.StateMachine;
 using UnityEngine;
 
 public class StateMachineOwnerAuthScenario : Scenario
@@ -13,7 +12,7 @@ public class StateMachineOwnerAuthScenario : Scenario
     [SerializeField] private float _stateTimeoutSeconds = 30f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
-    private StateMachine _prefab;
+    private StateMachineTestRig _prefab;
 
     void CreatePrefab()
     {
@@ -36,7 +35,7 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (ctx.isServer)
         {
             HierarchyV2.SupressAutoOwner();
-            try { Instantiate(_prefab).gameObject.SetActive(true); }
+            try { Instantiate(_prefab); }
             finally { HierarchyV2.ResumeAutoOwner(); }
         }
 
@@ -46,7 +45,7 @@ public class StateMachineOwnerAuthScenario : Scenario
             ctx.cancellationToken);
 
         if (ctx.isClient)
-            StateMachineTestSignals.SignalReady();
+            StateMachineTestRig.LocalInstance.SignalReady();
 
         return await RunSplit(ctx, RunAsClient, RunAsServer);
     }
@@ -73,8 +72,8 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (!owner.HasValue)
             return ScenarioResult.Fail("no eligible non-server / non-host client to own the state machine");
 
-        inst.machine.GiveOwnership(owner.Value, propagateToChildren: true);
-        StateMachineTestSignals.BroadcastOwner(owner.Value.id.value);
+        inst.GiveOwnership(owner.Value, propagateToChildren: true);
+        inst.BroadcastOwner(owner.Value.id.value);
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -83,7 +82,7 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"phase-one convergence timeout: phaseOne={StateMachineTestRig.PhaseOneMatchCount}/{ctx.expectedConnections}; server={inst.Describe()}");
 
-        StateMachineTestSignals.BroadcastPhaseOneReleased();
+        inst.BroadcastPhaseOneReleased();
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -98,7 +97,7 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (inst.MachineIsController(true))
             failures.Add("server reports IsController(ownerAuth:true)=true for a client-owned state machine");
 
-        StateMachineTestSignals.BroadcastPhaseDone();
+        inst.BroadcastPhaseDone();
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -146,7 +145,7 @@ public class StateMachineOwnerAuthScenario : Scenario
                 await StateMachineScenarioOps.RunPhaseOne(ctx, inst, failures, _stateTimeoutSeconds);
 
                 if (inst.MatchesPhaseOne())
-                    StateMachineTestSignals.SignalPhaseOneMatched();
+                    inst.SignalPhaseOneMatched();
 
                 await StateMachineScenarioOps.WaitOrFail(
                     ctx,
@@ -158,7 +157,7 @@ public class StateMachineOwnerAuthScenario : Scenario
                 await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
 
                 if (inst.MatchesFinal())
-                    StateMachineTestSignals.SignalFinalMatched();
+                    inst.SignalFinalMatched();
             }
         }
         else
@@ -171,7 +170,7 @@ public class StateMachineOwnerAuthScenario : Scenario
                 () => $"never saw phase-one remap; got {inst.Describe()}");
 
             if (inst.MatchesPhaseOne())
-                StateMachineTestSignals.SignalPhaseOneMatched();
+                inst.SignalPhaseOneMatched();
 
             await StateMachineScenarioOps.WaitOrFail(
                 ctx,
@@ -181,7 +180,7 @@ public class StateMachineOwnerAuthScenario : Scenario
                 () => $"never saw final remap; got {inst.Describe()}");
 
             if (inst.MatchesFinal())
-                StateMachineTestSignals.SignalFinalMatched();
+                inst.SignalFinalMatched();
         }
 
         if (inst.MachineIsController(true) != inst.machine.isOwner)
@@ -195,7 +194,7 @@ public class StateMachineOwnerAuthScenario : Scenario
             () => "client did not receive BroadcastPhaseDone");
 
         if (StateMachineTestRig.LocalInstance != null)
-            StateMachineTestSignals.SignalDone();
+            StateMachineTestRig.LocalInstance.SignalDone();
 
         return failures.Count == 0
             ? ScenarioResult.Ok(designated ? "owner" : "observer")

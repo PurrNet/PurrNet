@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
-using PurrNet.StateMachine;
 using UnityEngine;
 
 public class StateMachineServerAuthScenario : Scenario
@@ -12,7 +11,7 @@ public class StateMachineServerAuthScenario : Scenario
     [SerializeField] private float _stateTimeoutSeconds = 30f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
-    private StateMachine _prefab;
+    private StateMachineTestRig _prefab;
 
     void CreatePrefab()
     {
@@ -33,7 +32,7 @@ public class StateMachineServerAuthScenario : Scenario
         StateMachineTestRig.ResetAll();
 
         if (ctx.isServer)
-            Instantiate(_prefab).gameObject.SetActive(true);
+            Instantiate(_prefab);
 
         await UniTaskUtils.WaitWithTimeout(
             () => StateMachineTestRig.LocalInstance != null,
@@ -41,7 +40,7 @@ public class StateMachineServerAuthScenario : Scenario
             ctx.cancellationToken);
 
         if (ctx.isClient)
-            StateMachineTestSignals.SignalReady();
+            StateMachineTestRig.LocalInstance.SignalReady();
 
         return await RunSplit(ctx, RunAsClient, RunAsServer);
     }
@@ -87,7 +86,7 @@ public class StateMachineServerAuthScenario : Scenario
         if (!inst.MatchesFinal())
             failures.Add($"server local state machine != expected final: {inst.Describe()}");
 
-        StateMachineTestSignals.BroadcastPhaseDone();
+        inst.BroadcastPhaseDone();
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -114,7 +113,7 @@ public class StateMachineServerAuthScenario : Scenario
             () => $"never saw initial state list; got {inst.Describe()}");
 
         if (failures.Count == 0)
-            StateMachineTestSignals.SignalInitialMatched();
+            inst.SignalInitialMatched();
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -124,7 +123,7 @@ public class StateMachineServerAuthScenario : Scenario
             () => $"never saw phase-one remap; got {inst.Describe()}");
 
         if (inst.MatchesPhaseOne())
-            StateMachineTestSignals.SignalPhaseOneMatched();
+            inst.SignalPhaseOneMatched();
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -134,7 +133,7 @@ public class StateMachineServerAuthScenario : Scenario
             () => $"never saw final remap; got {inst.Describe()}");
 
         if (inst.MatchesFinal())
-            StateMachineTestSignals.SignalFinalMatched();
+            inst.SignalFinalMatched();
 
         if (ctx.role == NetworkRole.Client && inst.MachineIsController(false))
             failures.Add("pure client reports IsController(ownerAuth:false)=true for a server-auth state machine");
@@ -147,7 +146,7 @@ public class StateMachineServerAuthScenario : Scenario
             () => "client did not receive BroadcastPhaseDone");
 
         if (StateMachineTestRig.LocalInstance != null)
-            StateMachineTestSignals.SignalDone();
+            StateMachineTestRig.LocalInstance.SignalDone();
 
         return failures.Count == 0
             ? ScenarioResult.Ok()

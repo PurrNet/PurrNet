@@ -3,7 +3,7 @@ using PurrNet;
 using PurrNet.StateMachine;
 using UnityEngine;
 
-public class StateMachineTestRig : MonoBehaviour
+public class StateMachineTestRig : NetworkIdentity
 {
     public static readonly int[] InitialKeys = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     public static readonly int[] PhaseOneKeys = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -27,6 +27,7 @@ public class StateMachineTestRig : MonoBehaviour
     public static bool PhaseOneReleased;
     public static bool PhaseDoneReceived;
 
+    /// <summary>State machine under test.</summary>
     public StateMachine machine => _machine;
 
     /// <summary>Current state id reported by the state machine.</summary>
@@ -143,8 +144,43 @@ public class StateMachineTestRig : MonoBehaviour
         return true;
     }
 
-    private void OnEnable()
+    protected override void OnEarlySpawn() => gameObject.SetActive(true);
+
+    protected override void OnSpawned(bool asServer) => LocalInstance = this;
+
+    /// <summary>Signals that this peer spawned the state machine rig.</summary>
+    [ServerRpc(requireOwnership: false)]
+    public void SignalReady(RPCInfo info = default) => ServerReadyCount++;
+
+    /// <summary>Signals that this peer received the initial state order.</summary>
+    [ServerRpc(requireOwnership: false)]
+    public void SignalInitialMatched(RPCInfo info = default) => InitialMatchCount++;
+
+    /// <summary>Signals that this peer matched the insert/remove remap phase.</summary>
+    [ServerRpc(requireOwnership: false)]
+    public void SignalPhaseOneMatched(RPCInfo info = default) => PhaseOneMatchCount++;
+
+    /// <summary>Signals that this peer matched the final add/remove-at phase.</summary>
+    [ServerRpc(requireOwnership: false)]
+    public void SignalFinalMatched(RPCInfo info = default) => FinalMatchCount++;
+
+    /// <summary>Signals that this peer completed the scenario.</summary>
+    [ServerRpc(requireOwnership: false)]
+    public void SignalDone(RPCInfo info = default) => ServerDoneCount++;
+
+    /// <summary>Broadcasts which player should own the owner-authoritative state machine.</summary>
+    [ObserversRpc(runLocally: true)]
+    public void BroadcastOwner(ulong ownerId)
     {
-        LocalInstance = this;
+        OwnerId = ownerId;
+        OwnerIdReceived = true;
     }
+
+    /// <summary>Releases the owner to run the final phase after all observers matched phase one.</summary>
+    [ObserversRpc(runLocally: true)]
+    public void BroadcastPhaseOneReleased() => PhaseOneReleased = true;
+
+    /// <summary>Broadcasts that the scenario is complete.</summary>
+    [ObserversRpc(runLocally: true)]
+    public void BroadcastPhaseDone() => PhaseDoneReceived = true;
 }

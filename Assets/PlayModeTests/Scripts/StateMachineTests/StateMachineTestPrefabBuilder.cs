@@ -14,32 +14,35 @@ internal static class StateMachineTestPrefabBuilder
         "_ownerAuth",
         BindingFlags.Instance | BindingFlags.NonPublic);
 
-    internal static StateMachine Create(string name, bool ownerAuth)
+    internal static StateMachineTestRig Create(string name, bool ownerAuth)
     {
         if (StatesField == null || OwnerAuthField == null)
             throw new MissingFieldException(nameof(StateMachine), "_states/_ownerAuth");
 
         var root = new GameObject(name);
-        var machine = root.AddComponent<StateMachine>();
+        root.SetActive(false);
+
         var rig = root.AddComponent<StateMachineTestRig>();
+        var machineRoot = new GameObject("Machine");
+        machineRoot.transform.SetParent(root.transform);
+        var machine = machineRoot.AddComponent<StateMachine>();
 
         var initialStates = new StateMachineTestNode[10];
         var states = new List<StateNode>(initialStates.Length);
         for (var i = 0; i < initialStates.Length; i++)
         {
-            initialStates[i] = CreateNode(root.transform, i);
+            initialStates[i] = CreateNode(machineRoot.transform, i);
             states.Add(initialStates[i]);
         }
 
-        var insertedState = CreateNode(root.transform, 100);
-        var addedState = CreateNode(root.transform, 101);
+        var insertedState = CreateNode(machineRoot.transform, 100);
+        var addedState = CreateNode(machineRoot.transform, 101);
 
         OwnerAuthField.SetValue(machine, ownerAuth);
         StatesField.SetValue(machine, states);
         rig.Configure(machine, initialStates, insertedState, addedState);
 
-        root.SetActive(false);
-        return machine;
+        return rig;
     }
 
     private static StateMachineTestNode CreateNode(Transform parent, int key)
