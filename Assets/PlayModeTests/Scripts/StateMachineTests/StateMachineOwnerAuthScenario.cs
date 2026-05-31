@@ -135,7 +135,7 @@ public class StateMachineOwnerAuthScenario : Scenario
         {
             await StateMachineScenarioOps.WaitOrFail(
                 ctx,
-                () => inst.isOwner && inst.MachineIsController(true),
+                () => inst.machine.isOwner && inst.MachineIsController(true),
                 _stateTimeoutSeconds,
                 failures,
                 () => "designated owner never became controller");
@@ -183,8 +183,8 @@ public class StateMachineOwnerAuthScenario : Scenario
                 StateMachineTestSignals.SignalFinalMatched();
         }
 
-        if (inst.MachineIsController(true) != inst.isOwner)
-            failures.Add($"IsController(true)={inst.MachineIsController(true)} but isOwner={inst.isOwner}");
+        if (inst.MachineIsController(true) != inst.machine.isOwner)
+            failures.Add($"IsController(true)={inst.MachineIsController(true)} but isOwner={inst.machine.isOwner}");
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
