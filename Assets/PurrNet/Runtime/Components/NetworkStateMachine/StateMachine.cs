@@ -39,6 +39,8 @@ namespace PurrNet.StateMachine
         private Queue<IStateCommand> _stateCommandQueue = new();
         StateMachineState _currentState;
         private int _previousStateId = -1;
+        private StateNode _currentStateNode;
+        private StateNode _previousStateNode;
 
         public StateMachineState currentState => _currentState;
         public int previousStateId => _previousStateId;
@@ -315,25 +317,6 @@ namespace PurrNet.StateMachine
         {
             _states = _syncedStates.ToList();
 
-            if (change.operation == SyncListOperation.Insert && change.index <= _currentState.stateId)
-                _currentState.stateId++;
-
-            if (change.operation == SyncListOperation.Insert && change.index <= _previousStateId)
-                _previousStateId++;
-
-            if (change.operation == SyncListOperation.Removed)
-            {
-                if (change.index < _currentState.stateId)
-                    _currentState.stateId--;
-                else if (change.index == _currentState.stateId)
-                    _currentState.stateId = -1;
-
-                if (change.index < _previousStateId)
-                    _previousStateId--;
-                else if (change.index == _previousStateId)
-                    _previousStateId = -1;
-            }
-
             if (change.operation == SyncListOperation.Insert || 
                 change.operation == SyncListOperation.Added || 
                 change.operation == SyncListOperation.Set)
@@ -341,6 +324,41 @@ namespace PurrNet.StateMachine
                 if(change.value)
                     change.value.Setup(this);
             }
+
+            UpdateStateIdsAfterListChange(change);
+        }
+
+        private void UpdateStateIdsAfterListChange(SyncListChange<StateNode> change)
+        {
+            if (_currentStateNode)
+                _currentState.stateId = _syncedStates.IndexOf(_currentStateNode);
+            else
+                UpdateStateIdAfterListChange(ref _currentState.stateId, change);
+
+            if (_previousStateNode)
+                _previousStateId = _syncedStates.IndexOf(_previousStateNode);
+            else
+                UpdateStateIdAfterListChange(ref _previousStateId, change);
+
+            if (_currentState.stateId >= 0 && _currentState.stateId < _syncedStates.Count)
+                _currentStateNode = _syncedStates[_currentState.stateId];
+
+            if (_previousStateId >= 0 && _previousStateId < _syncedStates.Count)
+                _previousStateNode = _syncedStates[_previousStateId];
+        }
+
+        private static void UpdateStateIdAfterListChange(ref int stateId, SyncListChange<StateNode> change)
+        {
+            if (change.operation == SyncListOperation.Insert && change.index <= stateId)
+                stateId++;
+
+            if (change.operation != SyncListOperation.Removed)
+                return;
+
+            if (change.index < stateId)
+                stateId--;
+            else if (change.index == stateId)
+                stateId = -1;
         }
 
         [ServerRpc]
@@ -354,15 +372,26 @@ namespace PurrNet.StateMachine
         {
             if (IsController(_ownerAuth)) return;
             
+            if (state.stateId < 0 || state.stateId >= _syncedStates.Count)
+            {
+                _currentState = state;
+                _currentState.data = data;
+
+                if (TryUpdateCurrentStateNode())
+                    onReceivedNewData?.Invoke();
+
+                return;
+            }
+
             if(_currentState.stateId > -1 && _syncedStates.Count > _currentState.stateId)
                 UpdateStateId(_syncedStates[_currentState.stateId]);
             _currentState = state;
             _currentState.data = data;
 
-            if (_currentState.stateId < 0 || _currentState.stateId >= _syncedStates.Count)
+            if (!TryUpdateCurrentStateNode())
                 return;
 
-            var newState = _syncedStates[_currentState.stateId];
+            var newState = _currentStateNode;
             var prevState = previousStateNode;
 
             try
@@ -417,12 +446,43 @@ namespace PurrNet.StateMachine
 
             _currentState = state;
             _currentState.data = data;
+            var receivedStateId = _currentState.stateId;
 
-            if (_currentState.stateId < 0 || _currentState.stateId >= _syncedStates.Count)
+            if (!TryUpdateCurrentStateNode())
                 return;
+
+            if (receivedStateId < 0 || receivedStateId >= _syncedStates.Count)
+            {
+                onReceivedNewData?.Invoke();
+                return;
+            }
 
             HandleStateChangeQueue();
             onReceivedNewData?.Invoke();
+        }
+
+        private bool TryUpdateCurrentStateNode()
+        {
+            if (_currentState.stateId >= 0 && _currentState.stateId < _syncedStates.Count)
+            {
+                _currentStateNode = _syncedStates[_currentState.stateId];
+                return true;
+            }
+
+            if (_currentStateNode)
+            {
+                var remappedStateId = _syncedStates.IndexOf(_currentStateNode);
+
+                if (remappedStateId >= 0)
+                {
+                    _currentState.stateId = remappedStateId;
+                    return true;
+                }
+            }
+
+            _currentState.stateId = -1;
+            _currentStateNode = null;
+            return false;
         }
 
         private void UpdateStateId(StateNode node)
@@ -455,7 +515,9 @@ namespace PurrNet.StateMachine
             }
 
             _previousStateId = _currentState.stateId;
+            _previousStateNode = oldState;
             _currentState.stateId = newStateId;
+            _currentStateNode = newStateId < 0 ? null : node;
         }
 
         /// <summary>
