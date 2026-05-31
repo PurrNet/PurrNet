@@ -105,6 +105,8 @@ namespace PurrNet.Transports
         [SerializeField, HideInInspector] private GenericTransport[] _transports = { };
 
         private GenericTransport _clientTransport;
+        private readonly HashSet<GenericTransport> _serverTransportFilter = new HashSet<GenericTransport>();
+        private bool _hasServerTransportFilter;
 
         public GenericTransport clientTransport => _clientTransport;
 
@@ -115,6 +117,38 @@ namespace PurrNet.Transports
         public event OnConnectionState onConnectionState;
 
         public IReadOnlyList<GenericTransport> transports => _transports;
+
+        /// <summary>
+        /// Limits which child transports the composite starts when listening.
+        /// </summary>
+        public void SetServerTransportFilter(IReadOnlyList<GenericTransport> transports)
+        {
+            _serverTransportFilter.Clear();
+
+            if (transports == null)
+            {
+                _hasServerTransportFilter = false;
+                return;
+            }
+
+            for (int i = 0; i < transports.Count; i++)
+            {
+                var transport = transports[i];
+                if (transport)
+                    _serverTransportFilter.Add(transport);
+            }
+
+            _hasServerTransportFilter = true;
+        }
+
+        /// <summary>
+        /// Clears the server transport filter so every assigned child transport can listen again.
+        /// </summary>
+        public void ClearServerTransportFilter()
+        {
+            _serverTransportFilter.Clear();
+            _hasServerTransportFilter = false;
+        }
 
         public IReadOnlyList<Connection> connections => _connections;
 
@@ -414,7 +448,7 @@ namespace PurrNet.Transports
 
             for (int i = 0; i < _transports.Length; i++)
             {
-                if (_transports[i])
+                if (_transports[i] && ShouldStartServerTransport(_transports[i]))
                 {
                     var e = _events[i];
                     if (!e.isSubscribed)
@@ -435,6 +469,11 @@ namespace PurrNet.Transports
             }
 
             TriggerConnectionStateEvent(true);
+        }
+
+        private bool ShouldStartServerTransport(GenericTransport transport)
+        {
+            return !_hasServerTransportFilter || _serverTransportFilter.Contains(transport);
         }
 
         public void Listen(ushort port)
@@ -469,6 +508,7 @@ namespace PurrNet.Transports
             _connections.Clear();
             _router.Clear();
             _rawConnections.Clear();
+            ClearServerTransportFilter();
         }
 
         public void Disconnect()
