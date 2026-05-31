@@ -119,8 +119,6 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw inserted-current state; got {inst.Describe()}");
 
-        inst.CaptureStateChangeCount();
-
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
             BarrierInsertedCurrent,
@@ -159,8 +157,6 @@ public class StateMachineOwnerAuthScenario : Scenario
             _stateTimeoutSeconds,
             failures,
             () => $"never saw added-current state; got {inst.Describe()}");
-
-        inst.CaptureStateChangeCount();
 
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,

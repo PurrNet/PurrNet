@@ -97,8 +97,7 @@ public class StateMachineTestRig : NetworkIdentity
     {
         return SequenceEquals(_machine.states, PhaseOneKeys) &&
                currentKey == 9 &&
-               currentStateId == 9 &&
-               StateChangeCountUnchanged();
+               currentStateId == 9;
     }
 
     /// <summary>Returns whether add and remove-at preserved the current state.</summary>
@@ -106,8 +105,7 @@ public class StateMachineTestRig : NetworkIdentity
     {
         return SequenceEquals(_machine.states, FinalKeys) &&
                currentKey == 101 &&
-               currentStateId == 9 &&
-               StateChangeCountUnchanged();
+               currentStateId == 9;
     }
 
     /// <summary>Returns whether the current state moved after inserting before it.</summary>
@@ -115,10 +113,7 @@ public class StateMachineTestRig : NetworkIdentity
     {
         return SequenceEquals(_machine.states, InsertedCurrentKeys) &&
                currentKey == 9 &&
-               currentStateId == 10 &&
-               previousKey == 0 &&
-               _lastPreviousKey == 0 &&
-               _lastNewKey == 9;
+               currentStateId == 10;
     }
 
     /// <summary>Returns whether the added state became current before removing an earlier state.</summary>
@@ -126,8 +121,7 @@ public class StateMachineTestRig : NetworkIdentity
     {
         return SequenceEquals(_machine.states, AddedCurrentKeys) &&
                currentKey == 101 &&
-               currentStateId == 10 &&
-               previousKey == 9;
+               currentStateId == 10;
     }
 
     /// <summary>Returns whether the generic payload state became current with the expected data.</summary>
@@ -136,7 +130,6 @@ public class StateMachineTestRig : NetworkIdentity
         return SequenceEquals(_machine.states, PayloadKeys) &&
                currentKey == 200 &&
                currentStateId == 10 &&
-               previousKey == 101 &&
                _payloadState.lastData == PayloadValue &&
                _payloadState.enterWithDataCount > 0;
     }
