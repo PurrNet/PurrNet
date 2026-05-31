@@ -6,7 +6,7 @@ internal static class StateMachineScenarioOps
 {
     internal static async UniTask RunPhaseOne(
         ScenarioContext ctx,
-        StateMachineTestIdentity inst,
+        StateMachineTestRig inst,
         List<string> failures,
         float timeoutSeconds)
     {
@@ -35,7 +35,7 @@ internal static class StateMachineScenarioOps
 
     internal static async UniTask RunFinalPhase(
         ScenarioContext ctx,
-        StateMachineTestIdentity inst,
+        StateMachineTestRig inst,
         List<string> failures,
         float timeoutSeconds)
     {
