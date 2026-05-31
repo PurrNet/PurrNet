@@ -14,7 +14,7 @@ internal static class StateMachineTestPrefabBuilder
         "_ownerAuth",
         BindingFlags.Instance | BindingFlags.NonPublic);
 
-    internal static StateMachineTestRig Create(string name, bool ownerAuth)
+    internal static StateMachine Create(string name, bool ownerAuth)
     {
         if (StatesField == null || OwnerAuthField == null)
             throw new MissingFieldException(nameof(StateMachine), "_states/_ownerAuth");
@@ -39,7 +39,7 @@ internal static class StateMachineTestPrefabBuilder
         rig.Configure(machine, initialStates, insertedState, addedState);
 
         root.SetActive(false);
-        return rig;
+        return machine;
     }
 
     private static StateMachineTestNode CreateNode(Transform parent, int key)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
+using PurrNet.StateMachine;
 using UnityEngine;
 
 public class StateMachineOwnerAuthScenario : Scenario
@@ -12,7 +13,7 @@ public class StateMachineOwnerAuthScenario : Scenario
     [SerializeField] private float _stateTimeoutSeconds = 30f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
-    private StateMachineTestRig _prefab;
+    private StateMachine _prefab;
 
     void CreatePrefab()
     {
