@@ -1,3 +1,10 @@
+# [1.20.0-beta.207](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.206...v1.20.0-beta.207) (2026-05-31)
+
+
+### Bug Fixes
+
+* State machine race condition ([6cdd8e7](https://github.com/PurrNet/PurrNet/commit/6cdd8e7ba7117b7519088e42f6b6baad89b202ca))
+
 # [1.20.0-beta.206](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.205...v1.20.0-beta.206) (2026-05-31)
 
 
