@@ -1,5 +1,9 @@
 var NAVTREEINDEX7 =
 {
+"structPurrNet_1_1ReflectionData.html":[0,0,0,107],
+"structPurrNet_1_1ReflectionMethodData.html":[1,0,0,108],
+"structPurrNet_1_1ReflectionMethodData.html":[0,0,0,108],
+"structPurrNet_1_1RigidbodyCorrectionContext.html":[1,0,0,112],
 "structPurrNet_1_1RigidbodyCorrectionContext.html":[0,0,0,112],
 "structPurrNet_1_1RigidbodySettingsData.html":[1,0,0,113],
 "structPurrNet_1_1RigidbodySettingsData.html":[0,0,0,113],

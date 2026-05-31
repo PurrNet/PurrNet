@@ -3,7 +3,7 @@ var namespacePurrNet_1_1Transports =
     [ "AutomaticCloudSetups", "classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html", null ],
     [ "ByteData", "structPurrNet_1_1Transports_1_1ByteData.html", null ],
     [ "ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
-    [ "CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", null ],
+    [ "CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", "classPurrNet_1_1Transports_1_1CompositeTransport" ],
     [ "Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ],
     [ "FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", "classPurrNet_1_1Transports_1_1FragmentationLayer" ],
     [ "GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", "classPurrNet_1_1Transports_1_1GenericTransport" ],

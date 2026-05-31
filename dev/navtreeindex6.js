@@ -1,5 +1,9 @@
 var NAVTREEINDEX6 =
 {
+"structPurrNet_1_1ChildRPCPacket.html":[0,0,0,18],
+"structPurrNet_1_1GenericRPCHeader.html":[1,0,0,25],
+"structPurrNet_1_1GenericRPCHeader.html":[0,0,0,25],
+"structPurrNet_1_1GlobalNetworkID.html":[1,0,0,26],
 "structPurrNet_1_1GlobalNetworkID.html":[0,0,0,26],
 "structPurrNet_1_1HalfQuaternion.html":[0,0,0,28],
 "structPurrNet_1_1HalfQuaternion.html":[1,0,0,28],
@@ -245,9 +249,5 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1RPCPacket.html":[1,0,0,121],
 "structPurrNet_1_1RPCSignature.html":[0,0,0,124],
 "structPurrNet_1_1RPCSignature.html":[1,0,0,124],
-"structPurrNet_1_1ReflectionData.html":[1,0,0,107],
-"structPurrNet_1_1ReflectionData.html":[0,0,0,107],
-"structPurrNet_1_1ReflectionMethodData.html":[1,0,0,108],
-"structPurrNet_1_1ReflectionMethodData.html":[0,0,0,108],
-"structPurrNet_1_1RigidbodyCorrectionContext.html":[1,0,0,112]
+"structPurrNet_1_1ReflectionData.html":[1,0,0,107]
 };
