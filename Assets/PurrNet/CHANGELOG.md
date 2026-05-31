@@ -1,3 +1,10 @@
+# [1.20.0-beta.204](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.203...v1.20.0-beta.204) (2026-05-31)
+
+
+### Bug Fixes
+
+* StateMachine insertion ([048c557](https://github.com/PurrNet/PurrNet/commit/048c557cb3e2cb527fa3c4901d7161459d495b07))
+
 # [1.20.0-beta.203](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.202...v1.20.0-beta.203) (2026-05-29)
 
 
