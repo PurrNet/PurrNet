@@ -1,3 +1,11 @@
+# [1.20.0-beta.205](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.204...v1.20.0-beta.205) (2026-05-31)
+
+
+### Bug Fixes
+
+* Ownership missing identity safety ([f6f9232](https://github.com/PurrNet/PurrNet/commit/f6f923235f517dc7675a6089ae02a42f26c45ce4))
+* State machine dedicated server state handling ([7659953](https://github.com/PurrNet/PurrNet/commit/7659953f6802dff9a906a8eab930dc20c527ee0d))
+
 # [1.20.0-beta.204](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.203...v1.20.0-beta.204) (2026-05-31)
 
 
