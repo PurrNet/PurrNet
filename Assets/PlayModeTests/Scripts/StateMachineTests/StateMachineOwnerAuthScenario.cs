@@ -13,8 +13,10 @@ public class StateMachineOwnerAuthScenario : Scenario
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
     private const int BarrierReady = 5510;
-    private const int BarrierPhaseOne = 5511;
-    private const int BarrierFinal = 5512;
+    private const int BarrierInsertedCurrent = 5511;
+    private const int BarrierPhaseOne = 5512;
+    private const int BarrierAddedCurrent = 5513;
+    private const int BarrierFinal = 5514;
     private const float BarrierTimeoutSeconds = 60f;
 
     private StateMachineTestRig _prefab;
@@ -101,8 +103,30 @@ public class StateMachineOwnerAuthScenario : Scenario
                 () => "designated owner never became controller");
 
             if (failures.Count == 0)
-                await StateMachineScenarioOps.RunPhaseOne(ctx, inst, failures, _stateTimeoutSeconds);
+            {
+                inst.InsertRegressionState();
+
+                if (!inst.SetStateToOriginalLast())
+                    failures.Add("SetState to original last state returned false");
+            }
         }
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesInsertedCurrent,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw inserted-current state; got {inst.Describe()}");
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierInsertedCurrent,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"inserted-current barrier timeout: {inst.Describe()}");
+
+        if (designated && !inst.RemoveRegressionState())
+            failures.Add("RemoveState for inserted state returned false");
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -120,8 +144,28 @@ public class StateMachineOwnerAuthScenario : Scenario
 
         if (designated)
         {
-            await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
+            inst.AddExtraState();
+
+            if (!inst.SetStateToAdded())
+                failures.Add("SetState to added state returned false");
         }
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesAddedCurrent,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw added-current state; got {inst.Describe()}");
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierAddedCurrent,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"added-current barrier timeout: {inst.Describe()}");
+
+        if (designated)
+            inst.RemoveFirstState();
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
