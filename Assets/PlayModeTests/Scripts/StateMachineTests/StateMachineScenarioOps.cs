@@ -11,8 +11,18 @@ internal static class StateMachineScenarioOps
         int barrierBase,
         float stateTimeoutSeconds,
         float barrierTimeoutSeconds,
-        List<string> failures)
+        List<string> failures,
+        bool observerFinalOnly = false)
     {
+        if (!isController && observerFinalOnly)
+            return await RunObserverFinalOnlyChecks(
+                ctx,
+                inst,
+                barrierBase,
+                stateTimeoutSeconds,
+                barrierTimeoutSeconds,
+                failures);
+
         if (isController)
         {
             inst.AddPayloadState();
@@ -185,6 +195,42 @@ internal static class StateMachineScenarioOps
             return false;
 
         if (!isController && inst.receivedNewDataCount == 0)
+        {
+            failures.Add("observer did not receive any state machine data callbacks");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static async UniTask<bool> RunObserverFinalOnlyChecks(
+        ScenarioContext ctx,
+        StateMachineTestRig inst,
+        int barrierBase,
+        float stateTimeoutSeconds,
+        float barrierTimeoutSeconds,
+        List<string> failures)
+    {
+        for (var i = 0; i <= 10; i++)
+        {
+            if (!await WaitBarrierOrFail(
+                ctx,
+                barrierBase + i,
+                barrierTimeoutSeconds,
+                failures,
+                () => $"expanded observer barrier timeout: barrier={barrierBase + i}, {inst.Describe()}"))
+                return false;
+        }
+
+        if (!await WaitOrFail(
+            ctx,
+            inst.MatchesExpandedFinal,
+            stateTimeoutSeconds,
+            failures,
+            () => $"never saw expanded final state; got {inst.Describe()}"))
+            return false;
+
+        if (inst.receivedNewDataCount == 0)
         {
             failures.Add("observer did not receive any state machine data callbacks");
             return false;

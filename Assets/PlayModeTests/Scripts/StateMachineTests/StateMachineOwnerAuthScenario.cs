@@ -18,6 +18,7 @@ public class StateMachineOwnerAuthScenario : Scenario
     private const int BarrierAddedCurrent = 5513;
     private const int BarrierFinal = 5514;
     private const int BarrierOwnerReady = 5515;
+    private const int BarrierFinalObserved = 5516;
     private const int BarrierExpandedBase = 5620;
     private const float BarrierTimeoutSeconds = 60f;
 
@@ -164,15 +165,18 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (failures.Count > 0)
             return ScenarioResult.Fail(string.Join(" | ", failures));
 
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            inst.MatchesPhaseOne,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"never saw phase-one remap; got {inst.Describe()}");
+        if (designated)
+        {
+            await StateMachineScenarioOps.WaitOrFail(
+                ctx,
+                inst.MatchesPhaseOne,
+                _stateTimeoutSeconds,
+                failures,
+                () => $"never saw phase-one remap; got {inst.Describe()}");
 
-        if (failures.Count > 0)
-            return ScenarioResult.Fail(string.Join(" | ", failures));
+            if (failures.Count > 0)
+                return ScenarioResult.Fail(string.Join(" | ", failures));
+        }
 
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
@@ -195,15 +199,18 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (failures.Count > 0)
             return ScenarioResult.Fail(string.Join(" | ", failures));
 
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            inst.MatchesAddedCurrent,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"never saw added-current state; got {inst.Describe()}");
+        if (designated)
+        {
+            await StateMachineScenarioOps.WaitOrFail(
+                ctx,
+                inst.MatchesAddedCurrent,
+                _stateTimeoutSeconds,
+                failures,
+                () => $"never saw added-current state; got {inst.Describe()}");
 
-        if (failures.Count > 0)
-            return ScenarioResult.Fail(string.Join(" | ", failures));
+            if (failures.Count > 0)
+                return ScenarioResult.Fail(string.Join(" | ", failures));
+        }
 
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
@@ -218,15 +225,18 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (designated)
             inst.RemoveFirstState();
 
-        await StateMachineScenarioOps.WaitOrFail(
-            ctx,
-            inst.MatchesFinal,
-            _stateTimeoutSeconds,
-            failures,
-            () => $"never saw final remap; got {inst.Describe()}");
+        if (designated)
+        {
+            await StateMachineScenarioOps.WaitOrFail(
+                ctx,
+                inst.MatchesFinal,
+                _stateTimeoutSeconds,
+                failures,
+                () => $"never saw final remap; got {inst.Describe()}");
 
-        if (failures.Count > 0)
-            return ScenarioResult.Fail(string.Join(" | ", failures));
+            if (failures.Count > 0)
+                return ScenarioResult.Fail(string.Join(" | ", failures));
+        }
 
         await StateMachineScenarioOps.WaitBarrierOrFail(
             ctx,
@@ -238,6 +248,29 @@ public class StateMachineOwnerAuthScenario : Scenario
         if (failures.Count > 0)
             return ScenarioResult.Fail(string.Join(" | ", failures));
 
+        if (!designated)
+        {
+            await StateMachineScenarioOps.WaitOrFail(
+                ctx,
+                inst.MatchesFinal,
+                _stateTimeoutSeconds,
+                failures,
+                () => $"never saw final remap; got {inst.Describe()}");
+
+            if (failures.Count > 0)
+                return ScenarioResult.Fail(string.Join(" | ", failures));
+        }
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierFinalObserved,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"final-observed barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
         await StateMachineScenarioOps.RunExpandedChecks(
             ctx,
             inst,
@@ -245,7 +278,8 @@ public class StateMachineOwnerAuthScenario : Scenario
             BarrierExpandedBase,
             _stateTimeoutSeconds,
             BarrierTimeoutSeconds,
-            failures);
+            failures,
+            observerFinalOnly: true);
 
         if (failures.Count > 0)
             return ScenarioResult.Fail(string.Join(" | ", failures));
