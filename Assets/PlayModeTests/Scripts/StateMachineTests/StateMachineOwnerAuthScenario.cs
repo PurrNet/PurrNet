@@ -21,8 +21,8 @@ public class StateMachineOwnerAuthScenario : Scenario
 
     void CreatePrefab()
     {
+        StateMachineTestRig.ResetAll(nameof(StateMachineOwnerAuthScenario));
         _prefab = StateMachineTestPrefabBuilder.Create(nameof(StateMachineOwnerAuthScenario), ownerAuth: true);
-        StateMachineTestRig.ResetAll();
     }
 
     /// <summary>Creates and registers the owner-authoritative state machine test prefab.</summary>
@@ -35,8 +35,6 @@ public class StateMachineOwnerAuthScenario : Scenario
     /// <summary>Runs state machine list mutation checks with owner authority.</summary>
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
-        StateMachineTestRig.ResetAll();
-
         if (ctx.isServer)
         {
             HierarchyV2.SupressAutoOwner();
@@ -44,15 +42,26 @@ public class StateMachineOwnerAuthScenario : Scenario
             finally { HierarchyV2.ResumeAutoOwner(); }
         }
 
-        await UniTaskUtils.WaitWithTimeout(
-            () => StateMachineTestRig.LocalInstance != null,
-            _spawnTimeoutSeconds,
-            ctx.cancellationToken);
-
         var failures = new List<string>();
-        var inst = StateMachineTestRig.LocalInstance;
 
-        await ScenarioBarrier.Wait(ctx, BarrierReady, BarrierTimeoutSeconds);
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            () => StateMachineTestRig.GetLocalInstance(_prefab.name) != null,
+            _spawnTimeoutSeconds,
+            failures,
+            () => $"spawn timeout: role={ctx.role}, players={ctx.networkManager.playerCount}/{ctx.expectedConnections}");
+
+        var inst = StateMachineTestRig.GetLocalInstance(_prefab.name);
+
+        if (inst == null)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierReady,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"ready barrier timeout: {inst.Describe()}");
 
         if (ctx.isServer)
         {
@@ -102,7 +111,12 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw phase-one remap; got {inst.Describe()}");
 
-        await ScenarioBarrier.Wait(ctx, BarrierPhaseOne, BarrierTimeoutSeconds);
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierPhaseOne,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"phase-one barrier timeout: {inst.Describe()}");
 
         if (designated)
         {
@@ -116,7 +130,12 @@ public class StateMachineOwnerAuthScenario : Scenario
             failures,
             () => $"never saw final remap; got {inst.Describe()}");
 
-        await ScenarioBarrier.Wait(ctx, BarrierFinal, BarrierTimeoutSeconds);
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierFinal,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"final barrier timeout: {inst.Describe()}");
 
         if (ctx.isServer && inst.MachineIsController(true))
             failures.Add("server reports IsController(ownerAuth:true)=true for a client-owned state machine");
@@ -154,7 +173,7 @@ public class StateMachineOwnerAuthScenario : Scenario
         return best;
     }
 
-    [ObserversRpc(runLocally: true)]
+    [ObserversRpc(bufferLast: true, runLocally: true)]
     private static void BroadcastOwner(ulong ownerId)
     {
         StateMachineTestRig.OwnerId = ownerId;

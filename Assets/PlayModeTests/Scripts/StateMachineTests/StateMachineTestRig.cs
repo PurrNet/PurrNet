@@ -11,12 +11,14 @@ public class StateMachineTestRig : NetworkIdentity
     public static readonly int[] AddedCurrentKeys = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 101 };
     public static readonly int[] FinalKeys = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 101 };
 
+    [SerializeField] private string _scenarioName;
     [SerializeField] private StateMachine _machine;
     [SerializeField] private StateMachineTestNode[] _initialStates;
     [SerializeField] private StateMachineTestNode _insertedState;
     [SerializeField] private StateMachineTestNode _addedState;
 
-    public static StateMachineTestRig LocalInstance;
+    private static readonly Dictionary<string, StateMachineTestRig> LocalInstances = new();
+
     public static ulong OwnerId;
     public static bool OwnerIdReceived;
 
@@ -30,11 +32,13 @@ public class StateMachineTestRig : NetworkIdentity
     public int currentKey => _machine.currentStateNode is StateMachineTestNode node ? node.key : -1;
 
     internal void Configure(
+        string scenarioName,
         StateMachine machine,
         StateMachineTestNode[] initialStates,
         StateMachineTestNode insertedState,
         StateMachineTestNode addedState)
     {
+        _scenarioName = scenarioName;
         _machine = machine;
         _initialStates = initialStates;
         _insertedState = insertedState;
@@ -42,11 +46,18 @@ public class StateMachineTestRig : NetworkIdentity
     }
 
     /// <summary>Clears shared scenario counters before a state machine scenario starts.</summary>
-    public static void ResetAll()
+    public static void ResetAll(string scenarioName)
     {
-        LocalInstance = null;
+        LocalInstances.Remove(scenarioName);
         OwnerId = 0;
         OwnerIdReceived = false;
+    }
+
+    /// <summary>Returns the local rig for a specific state machine scenario.</summary>
+    public static StateMachineTestRig GetLocalInstance(string scenarioName)
+    {
+        LocalInstances.TryGetValue(scenarioName, out var instance);
+        return instance;
     }
 
     /// <summary>Returns whether the state list reached the initial state order.</summary>
@@ -132,5 +143,5 @@ public class StateMachineTestRig : NetworkIdentity
 
     protected override void OnEarlySpawn() => gameObject.SetActive(true);
 
-    protected override void OnSpawned(bool asServer) => LocalInstance = this;
+    protected override void OnSpawned(bool asServer) => LocalInstances[_scenarioName] = this;
 }

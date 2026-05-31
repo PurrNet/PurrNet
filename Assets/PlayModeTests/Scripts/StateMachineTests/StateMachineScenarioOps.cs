@@ -77,4 +77,21 @@ internal static class StateMachineScenarioOps
             failures.Add(message());
         }
     }
+
+    internal static async UniTask WaitBarrierOrFail(
+        ScenarioContext ctx,
+        int barrierId,
+        float timeoutSeconds,
+        List<string> failures,
+        Func<string> message)
+    {
+        try
+        {
+            await ScenarioBarrier.Wait(ctx, barrierId, timeoutSeconds);
+        }
+        catch (TimeoutException)
+        {
+            failures.Add(message());
+        }
+    }
 }

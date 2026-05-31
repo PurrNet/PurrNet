@@ -19,8 +19,8 @@ public class StateMachineServerAuthScenario : Scenario
 
     void CreatePrefab()
     {
+        StateMachineTestRig.ResetAll(nameof(StateMachineServerAuthScenario));
         _prefab = StateMachineTestPrefabBuilder.Create(nameof(StateMachineServerAuthScenario), ownerAuth: false);
-        StateMachineTestRig.ResetAll();
     }
 
     /// <summary>Creates and registers the server-authoritative state machine test prefab.</summary>
@@ -33,18 +33,22 @@ public class StateMachineServerAuthScenario : Scenario
     /// <summary>Runs state machine list mutation checks with server authority.</summary>
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
-        StateMachineTestRig.ResetAll();
-
         if (ctx.isServer)
             Instantiate(_prefab);
 
-        await UniTaskUtils.WaitWithTimeout(
-            () => StateMachineTestRig.LocalInstance != null,
-            _spawnTimeoutSeconds,
-            ctx.cancellationToken);
-
         var failures = new List<string>();
-        var inst = StateMachineTestRig.LocalInstance;
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            () => StateMachineTestRig.GetLocalInstance(_prefab.name) != null,
+            _spawnTimeoutSeconds,
+            failures,
+            () => $"spawn timeout: role={ctx.role}, players={ctx.networkManager.playerCount}/{ctx.expectedConnections}");
+
+        var inst = StateMachineTestRig.GetLocalInstance(_prefab.name);
+
+        if (inst == null)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
 
         await StateMachineScenarioOps.WaitOrFail(
             ctx,
@@ -53,7 +57,12 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw initial state list; got {inst.Describe()}");
 
-        await ScenarioBarrier.Wait(ctx, BarrierInitial, BarrierTimeoutSeconds);
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierInitial,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"initial barrier timeout: {inst.Describe()}");
 
         if (ctx.isServer)
             await StateMachineScenarioOps.RunPhaseOne(ctx, inst, failures, _stateTimeoutSeconds);
@@ -65,7 +74,12 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw phase-one remap; got {inst.Describe()}");
 
-        await ScenarioBarrier.Wait(ctx, BarrierPhaseOne, BarrierTimeoutSeconds);
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierPhaseOne,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"phase-one barrier timeout: {inst.Describe()}");
 
         if (ctx.isServer)
             await StateMachineScenarioOps.RunFinalPhase(ctx, inst, failures, _stateTimeoutSeconds);
@@ -77,7 +91,12 @@ public class StateMachineServerAuthScenario : Scenario
             failures,
             () => $"never saw final remap; got {inst.Describe()}");
 
-        await ScenarioBarrier.Wait(ctx, BarrierFinal, BarrierTimeoutSeconds);
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierFinal,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"final barrier timeout: {inst.Describe()}");
 
         if (ctx.role == NetworkRole.Client && inst.MachineIsController(false))
             failures.Add("pure client reports IsController(ownerAuth:false)=true for a server-auth state machine");

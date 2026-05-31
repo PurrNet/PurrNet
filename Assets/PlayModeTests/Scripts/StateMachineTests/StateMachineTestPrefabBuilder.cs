@@ -40,7 +40,7 @@ internal static class StateMachineTestPrefabBuilder
 
         OwnerAuthField.SetValue(machine, ownerAuth);
         StatesField.SetValue(machine, states);
-        rig.Configure(machine, initialStates, insertedState, addedState);
+        rig.Configure(name, machine, initialStates, insertedState, addedState);
 
         return rig;
     }
