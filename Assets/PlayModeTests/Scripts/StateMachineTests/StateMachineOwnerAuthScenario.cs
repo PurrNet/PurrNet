@@ -12,13 +12,13 @@ public class StateMachineOwnerAuthScenario : Scenario
     [SerializeField] private float _stateTimeoutSeconds = 30f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
 
-    private const int BarrierReady = 5510;
-    private const int BarrierInsertedCurrent = 5511;
-    private const int BarrierPhaseOne = 5512;
-    private const int BarrierAddedCurrent = 5513;
-    private const int BarrierFinal = 5514;
-    private const int BarrierOwnerReady = 5515;
-    private const int BarrierFinalObserved = 5516;
+    private const int BarrierReady = 5600;
+    private const int BarrierOwnerReady = 5601;
+    private const int BarrierInsertedCurrent = 5602;
+    private const int BarrierPhaseOne = 5603;
+    private const int BarrierAddedCurrent = 5604;
+    private const int BarrierFinal = 5605;
+    private const int BarrierFinalObserved = 5606;
     private const int BarrierExpandedBase = 5620;
     private const float BarrierTimeoutSeconds = 60f;
 
