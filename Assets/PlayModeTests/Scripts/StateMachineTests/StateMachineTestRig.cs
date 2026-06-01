@@ -199,10 +199,16 @@ public class StateMachineTestRig : NetworkIdentity
     /// <summary>Returns whether removing a later state by index preserved the current state.</summary>
     public bool MatchesExpandedFinal()
     {
+        return MatchesExpandedFinalState() &&
+               StateChangeCountUnchanged();
+    }
+
+    /// <summary>Returns whether the expanded checks reached their final state.</summary>
+    public bool MatchesExpandedFinalState()
+    {
         return SequenceEquals(_machine.states, ExpandedFinalKeys) &&
                currentKey == 200 &&
-               currentStateId == 10 &&
-               StateChangeCountUnchanged();
+               currentStateId == 10;
     }
 
     /// <summary>Describes the current state id, current key, and state order.</summary>

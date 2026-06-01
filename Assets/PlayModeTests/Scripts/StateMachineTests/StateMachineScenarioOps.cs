@@ -224,7 +224,7 @@ internal static class StateMachineScenarioOps
 
         if (!await WaitOrFail(
             ctx,
-            inst.MatchesExpandedFinal,
+            inst.MatchesExpandedFinalState,
             stateTimeoutSeconds,
             failures,
             () => $"never saw expanded final state; got {inst.Describe()}"))
