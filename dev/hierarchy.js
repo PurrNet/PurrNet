@@ -337,6 +337,9 @@ var hierarchy =
       ] ],
       [ "PurrNet.SyncQueue< T >", "classPurrNet_1_1SyncQueue.html", null ]
     ] ],
+    [ "IReadOnlyDictionary", null, [
+      [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >", "structPurrNet_1_1Pooling_1_1DisposableDictionary.html", null ]
+    ] ],
     [ "IReadOnlyList", null, [
       [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ]
