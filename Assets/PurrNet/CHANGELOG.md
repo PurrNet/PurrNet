@@ -1,3 +1,11 @@
+# [1.20.0-beta.208](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.207...v1.20.0-beta.208) (2026-06-04)
+
+
+### Bug Fixes
+
+* PurrNet packages window improvements ([ea1db92](https://github.com/PurrNet/PurrNet/commit/ea1db92c35699c60f1b4aaee82b3f5b7725bc28b))
+* Rebuild ([042fd1a](https://github.com/PurrNet/PurrNet/commit/042fd1a87d507fef7da532077045f236dd42b919))
+
 # [1.20.0-beta.207](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.206...v1.20.0-beta.207) (2026-05-31)
 
 
