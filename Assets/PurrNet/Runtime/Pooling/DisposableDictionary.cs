@@ -6,7 +6,7 @@ using PurrNet.Packing;
 
 namespace PurrNet.Pooling
 {
-    public struct DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDisposable, IDuplicate<DisposableDictionary<TKey, TValue>>,
+    public struct DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDisposable, IDuplicate<DisposableDictionary<TKey, TValue>>,
         IEquatable<DisposableDictionary<TKey, TValue>>
         where TKey : notnull
     {
@@ -251,6 +251,10 @@ namespace PurrNet.Pooling
         {
             get => throw new NotSupportedException("Values may be mismatched with keys. Use dictionary.Values directly if needed.");
         }
+
+        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => Keys;
+
+        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values;
 
         public TValue GetValueOrDefault(TKey key)
         {
