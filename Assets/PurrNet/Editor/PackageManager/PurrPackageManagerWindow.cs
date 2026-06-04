@@ -30,6 +30,7 @@ namespace PurrNet.Editor
         private bool _devPopupTouched;
         private bool _isUpdatingAll;
         private int _updatableCount;
+        private readonly HashSet<string> _activePackageOperations = new();
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
@@ -75,8 +76,9 @@ namespace PurrNet.Editor
         private const float CategoryHeaderHeight = 20f;
         private const float CategoryGap = 8f;
         private const float SplitterWidth = 6f;
+        private static readonly string[] _busyFrames = { "|", "/", "-", "\\" };
 
-        [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -99)]
+        [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -101)]
         public static void ShowWindow()
         {
             var window = GetWindow<PurrPackageManagerWindow>();
@@ -101,6 +103,12 @@ namespace PurrNet.Editor
             LoadData();
         }
 
+        private void OnInspectorUpdate()
+        {
+            if (_isUpdatingAll || _activePackageOperations.Count > 0)
+                Repaint();
+        }
+
         private void OnDisable()
         {
             PurrPackageManagerAuth.onAuthChanged -= onAuthChanged;
@@ -114,6 +122,55 @@ namespace PurrNet.Editor
             _userProfile?.Refresh();
             LoadData();
             Repaint();
+        }
+
+        private bool HasActivePackageOperation()
+        {
+            return _activePackageOperations.Count > 0;
+        }
+
+        private bool CanStartPackageOperation()
+        {
+            return !_isLoading && !_isUpdatingAll && !HasActivePackageOperation();
+        }
+
+        private bool TryBeginPackageOperation(string operationKey)
+        {
+            if (_isLoading || _isUpdatingAll || HasActivePackageOperation() || string.IsNullOrEmpty(operationKey))
+                return false;
+
+            _activePackageOperations.Add(operationKey);
+            Repaint();
+            return true;
+        }
+
+        private void EndPackageOperation(string operationKey)
+        {
+            if (!string.IsNullOrEmpty(operationKey))
+                _activePackageOperations.Remove(operationKey);
+
+            Repaint();
+        }
+
+        private bool IsPackageOperationActive(string operationKey)
+        {
+            return !string.IsNullOrEmpty(operationKey) && _activePackageOperations.Contains(operationKey);
+        }
+
+        private static string GetPackageOperationKey(PackageInfo package, VersionInfo version)
+        {
+            return $"{package?.Id ?? package?.GetUpmPackageName() ?? "unknown"}:{version?.Id ?? version?.Version ?? "unknown"}";
+        }
+
+        private static string GetPackageOperationKey(PackageInfo package, string channelLabel)
+        {
+            return $"{package?.Id ?? package?.GetUpmPackageName() ?? "unknown"}:{channelLabel}";
+        }
+
+        private static string BusyLabel(string label)
+        {
+            var frame = _busyFrames[(int)(EditorApplication.timeSinceStartup * 8d) % _busyFrames.Length];
+            return $"{frame} {label}";
         }
 
         private static string FormatTierName(string tier)
@@ -341,7 +398,7 @@ namespace PurrNet.Editor
 
             // Refresh button (rightmost)
             var refreshRect = new Rect(headerRect.xMax - 78, headerRect.y + 10, 68, 22);
-            GUI.enabled = !_isLoading && !_isUpdatingAll;
+            GUI.enabled = !_isLoading && !_isUpdatingAll && !HasActivePackageOperation();
             if (GUI.Button(refreshRect, "Refresh"))
             {
                 PurrPackageManagerCache.Invalidate();
@@ -357,11 +414,11 @@ namespace PurrNet.Editor
                 float profileWidth = _userProfile.DrawProfileBar(profileAnchor);
 
                 // Update All button (to the left of profile)
-                if (_updatableCount > 0)
+                if (_updatableCount > 0 || _isUpdatingAll)
                 {
-                    var updateLabel = $"Update All ({_updatableCount})";
+                    var updateLabel = _isUpdatingAll ? BusyLabel("Updating") : $"Update All ({_updatableCount})";
                     var updateRect = new Rect(profileAnchor.xMax - profileWidth - 104, headerRect.y + 10, 100, 22);
-                    GUI.enabled = !_isLoading && !_isUpdatingAll;
+                    GUI.enabled = !_isLoading && !_isUpdatingAll && !HasActivePackageOperation();
                     GUI.color = _updateColor;
                     if (GUI.Button(updateRect, updateLabel))
                         UpdateAllPackages();
@@ -843,8 +900,10 @@ namespace PurrNet.Editor
                     EditorGUILayout.BeginHorizontal();
                     GUILayout.Space(8);
                     GUI.color = _frozenColor;
+                    GUI.enabled = CanStartPackageOperation();
                     if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
                         PurrPackageManagerInstaller.Remove(package);
+                    GUI.enabled = true;
                     GUI.color = Color.white;
                     GUILayout.Space(8);
                     EditorGUILayout.EndHorizontal();
@@ -916,8 +975,10 @@ namespace PurrNet.Editor
             {
                 EditorGUILayout.Space(8);
                 GUI.color = _frozenColor;
+                GUI.enabled = CanStartPackageOperation();
                 if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
                     PurrPackageManagerInstaller.Remove(package);
+                GUI.enabled = true;
                 GUI.color = Color.white;
             }
 
@@ -1020,18 +1081,23 @@ namespace PurrNet.Editor
             }
             popupIndex = Mathf.Clamp(popupIndex, 0, labels.Length - 1);
 
+            GUI.enabled = CanStartPackageOperation();
             int newIndex = EditorGUILayout.Popup(popupIndex, labels, GUILayout.Height(20));
+            GUI.enabled = true;
             if (newIndex != popupIndex)
                 popupTouched = true;
             popupIndex = newIndex;
 
             var selected = versions[popupIndex];
             bool isSelectedInstalled = isInstalled && installedVersion == selected.Version;
+            var operationKey = GetPackageOperationKey(package, selected);
+            bool isActive = IsPackageOperationActive(operationKey);
+            var buttonLabel = isSelectedInstalled ? "Installed" : isActive ? BusyLabel("Installing") : "Install";
 
-            GUI.enabled = !isSelectedInstalled;
+            GUI.enabled = !isSelectedInstalled && !isActive && CanStartPackageOperation();
             GUI.color = color;
-            if (GUILayout.Button(isSelectedInstalled ? "Installed" : "Install", GUILayout.Width(66), GUILayout.Height(20)))
-                InstallPackage(package, selected);
+            if (GUILayout.Button(buttonLabel, GUILayout.Width(66), GUILayout.Height(20)))
+                InstallPackage(package, selected, operationKey);
             GUI.color = Color.white;
             GUI.enabled = true;
 
@@ -1061,14 +1127,28 @@ namespace PurrNet.Editor
             {
                 GUI.color = buttonColor;
                 string label;
+                string activeLabel;
                 if (!isInstalled)
+                {
                     label = $"Install {channelLabel} v{version.Version}";
+                    activeLabel = "Installing";
+                }
                 else if (IsInstalledOnChannel(package, version.Channel, installedVersion))
+                {
                     label = $"Update to {channelLabel} v{version.Version}";
+                    activeLabel = "Updating";
+                }
                 else
+                {
                     label = $"Switch to {channelLabel} v{version.Version}";
-                if (GUILayout.Button(label, GUILayout.Height(26)))
-                    InstallPackage(package, version);
+                    activeLabel = "Switching";
+                }
+                var operationKey = GetPackageOperationKey(package, version);
+                bool isActive = IsPackageOperationActive(operationKey);
+                GUI.enabled = !isActive && CanStartPackageOperation();
+                if (GUILayout.Button(isActive ? BusyLabel(activeLabel) : label, GUILayout.Height(26)))
+                    InstallPackage(package, version, operationKey);
+                GUI.enabled = true;
                 GUI.color = Color.white;
             }
         }
@@ -1095,9 +1175,13 @@ namespace PurrNet.Editor
                                       && !HashesMatch(installedHash, latestCommit);
                 if (hasNewerCommit)
                 {
+                    var operationKey = GetPackageOperationKey(package, channelLabel);
+                    bool isActive = IsPackageOperationActive(operationKey);
                     GUI.color = _updateColor;
-                    if (GUILayout.Button($"Update {channelLabel}", GUILayout.Height(26)))
-                        PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                    GUI.enabled = !isActive && CanStartPackageOperation();
+                    if (GUILayout.Button(isActive ? BusyLabel("Updating") : $"Update {channelLabel}", GUILayout.Height(26)))
+                        InstallExternalPackage(package, gitUrl, operationKey);
+                    GUI.enabled = true;
                     GUI.color = Color.white;
                 }
                 else
@@ -1110,9 +1194,15 @@ namespace PurrNet.Editor
             }
 
             // Not installed at all, or installed from the other channel.
+            var externalOperationKey = GetPackageOperationKey(package, channelLabel);
+            bool isExternalActive = IsPackageOperationActive(externalOperationKey);
+            var externalLabel = isInstalled ? $"Switch to {channelLabel}" : $"Install {channelLabel}";
+            var externalBusyLabel = isInstalled ? "Switching" : "Installing";
             GUI.color = buttonColor;
-            if (GUILayout.Button(isInstalled ? $"Switch to {channelLabel}" : $"Install {channelLabel}", GUILayout.Height(26)))
-                PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+            GUI.enabled = !isExternalActive && CanStartPackageOperation();
+            if (GUILayout.Button(isExternalActive ? BusyLabel(externalBusyLabel) : externalLabel, GUILayout.Height(26)))
+                InstallExternalPackage(package, gitUrl, externalOperationKey);
+            GUI.enabled = true;
             GUI.color = Color.white;
         }
 
@@ -1469,39 +1559,48 @@ namespace PurrNet.Editor
             var apiKey = PurrPackageManagerAuth.GetApiKey();
             var errors = new List<string>();
 
-            for (int i = 0; i < updates.Count; i++)
+            try
             {
-                var (pkg, version, gitUrl) = updates[i];
-                EditorUtility.DisplayProgressBar("Updating All Packages",
-                    $"Updating {pkg.DisplayName} ({i + 1}/{updates.Count})...",
-                    (float)(i + 1) / updates.Count);
+                for (int i = 0; i < updates.Count; i++)
+                {
+                    var (pkg, version, gitUrl) = updates[i];
+                    EditorUtility.DisplayProgressBar("Updating All Packages",
+                        $"Updating {pkg.DisplayName} ({i + 1}/{updates.Count})...",
+                        (float)(i + 1) / updates.Count);
 
-                try
-                {
-                    if (gitUrl != null)
+                    try
                     {
-                        PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl, false);
+                        if (gitUrl != null)
+                        {
+                            PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl, false);
+                        }
+                        else if (version != null)
+                        {
+                            var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version, false);
+                            if (!result.Success)
+                                errors.Add($"{pkg.DisplayName}: {result.Error}");
+                        }
                     }
-                    else if (version != null)
+                    catch (Exception e)
                     {
-                        var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version, false);
-                        if (!result.Success)
-                            errors.Add($"{pkg.DisplayName}: {result.Error}");
+                        errors.Add($"{pkg.DisplayName}: {e.Message}");
                     }
                 }
-                catch (Exception e)
-                {
-                    errors.Add($"{pkg.DisplayName}: {e.Message}");
-                }
+
+                PurrPackageManagerCache.Invalidate();
+                UnityEditor.PackageManager.Client.Resolve();
+                AssetDatabase.Refresh();
             }
-
-            EditorUtility.ClearProgressBar();
-
-            PurrPackageManagerCache.Invalidate();
-            UnityEditor.PackageManager.Client.Resolve();
-            AssetDatabase.Refresh();
-
-            _isUpdatingAll = false;
+            catch (Exception e)
+            {
+                errors.Add(e.Message);
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+                _isUpdatingAll = false;
+                Repaint();
+            }
 
             if (errors.Count > 0)
                 EditorUtility.DisplayDialog("Update Failed",
@@ -1578,8 +1677,39 @@ namespace PurrNet.Editor
             }
         }
 
-        private async void InstallPackage(PackageInfo package, VersionInfo version)
+        private void InstallExternalPackage(PackageInfo package, string gitUrl, string operationKey)
         {
+            if (!TryBeginPackageOperation(operationKey))
+                return;
+
+            EditorApplication.delayCall += () =>
+            {
+                try
+                {
+                    PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                    LoadData();
+                }
+                catch (Exception e)
+                {
+                    EditorUtility.ClearProgressBar();
+                    EditorUtility.DisplayDialog("Install Failed", e.Message, "Ok");
+                    Repaint();
+                }
+                finally
+                {
+                    EndPackageOperation(operationKey);
+                }
+            };
+        }
+
+        private async void InstallPackage(PackageInfo package, VersionInfo version, string operationKey = null)
+        {
+            if (string.IsNullOrEmpty(operationKey))
+                operationKey = GetPackageOperationKey(package, version);
+
+            if (!TryBeginPackageOperation(operationKey))
+                return;
+
             try
             {
                 var apiKey = PurrPackageManagerAuth.GetApiKey();
@@ -1599,6 +1729,10 @@ namespace PurrNet.Editor
                 EditorUtility.ClearProgressBar();
                 EditorUtility.DisplayDialog("Install Failed", e.Message, "Ok");
                 Repaint();
+            }
+            finally
+            {
+                EndPackageOperation(operationKey);
             }
         }
     }
