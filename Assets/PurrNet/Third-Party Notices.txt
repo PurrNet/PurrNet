@@ -2,5 +2,4 @@ Asset uses LZMA SDK under Public Domain license;
 LiteNetLib under MIT license;
 SimpleWebTransport under MIT license;
 UniTask under MIT license;
-Octokit.Net under MIT license;
 see Third-Party Notices.txt file in the package for details.
