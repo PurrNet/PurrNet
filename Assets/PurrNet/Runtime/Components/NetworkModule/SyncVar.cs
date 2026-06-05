@@ -80,6 +80,7 @@ namespace PurrNet
             _wasLastDirty = false;
             _id = 0;
             _ignoreServerUpdates = false;
+            _value = _initialValue;
         }
 
         public override void OnOwnerDisconnected(PlayerID ownerId)
@@ -248,9 +249,11 @@ namespace PurrNet
 
         private ulong _id;
         private bool _wasLastDirty;
+        private readonly T _initialValue;
 
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
         {
+            _initialValue = initialValue;
             _value = initialValue;
             _sendIntervalInSeconds = sendIntervalInSeconds;
             _ownerAuth = ownerAuth;
