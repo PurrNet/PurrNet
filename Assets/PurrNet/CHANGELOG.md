@@ -1,3 +1,10 @@
+# [1.20.0-beta.209](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.208...v1.20.0-beta.209) (2026-06-05)
+
+
+### Bug Fixes
+
+* Network RB handoff on ownership change ([184d1b9](https://github.com/PurrNet/PurrNet/commit/184d1b9bd23eb83922cd0bcac9cec7a7e9e37d72))
+
 # [1.20.0-beta.208](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.207...v1.20.0-beta.208) (2026-06-04)
 
 
