@@ -273,6 +273,22 @@ namespace PurrNet.Packing
             value.w = *(float*)&wbits;
         }
 
+        #if UNITY_2021_1_OR_NEWER
+        [UsedByIL]
+        public static void Write(this BitPacker packer, Pose value)
+        {
+            packer.Write(value.position);
+            packer.Write(value.rotation);
+        }
+
+        [UsedByIL]
+        public static void Read(this BitPacker packer, ref Pose value)
+        {
+            packer.Read(ref value.position);
+            packer.Read(ref value.rotation);
+        }
+        #endif
+
         [UsedByIL]
         public static void Write(this BitPacker packer, Color32 value)
         {
