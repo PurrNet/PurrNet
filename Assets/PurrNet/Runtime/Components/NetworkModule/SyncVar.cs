@@ -90,6 +90,9 @@ namespace PurrNet
         public override void OnOwnerReconnected(PlayerID ownerId)
         {
             InvalidateIsController();
+
+            if (_ownerAuth && isServer)
+                SendLatestState(ownerId, _id, _value);
         }
 
         public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawnEvent, bool asServer)

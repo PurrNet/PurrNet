@@ -161,7 +161,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d92fd6fce64477c4088dff8434cad2d0, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PlayerMovementBenchmarkScenario
   _pingsPerSecond: 10
 --- !u!1 &43754047
@@ -366,6 +366,7 @@ GameObject:
   - component: {fileID: 108535983}
   - component: {fileID: 108535989}
   - component: {fileID: 108535988}
+  - component: {fileID: 108535990}
   m_Layer: 0
   m_Name: SyncTypesOwnerAuth
   m_TagString: Untagged
@@ -500,6 +501,28 @@ MonoBehaviour:
   _readyTimeoutSeconds: 30
   _stateTimeoutSeconds: 30
   _doneTimeoutSeconds: 30
+--- !u!114 &108535990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 108535981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0a41983f4d34e4b9c9e62179c287301, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncCollectionsOwnerReconnectScenario
+  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _preStateTimeoutSeconds: 30
+  _disconnectTimeoutSeconds: 30
+  _reconnectTimeoutSeconds: 30
+  _finalStateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
+  _stayDisconnectedSeconds: 1
 --- !u!1 &120556145
 GameObject:
   m_ObjectHideFlags: 0
