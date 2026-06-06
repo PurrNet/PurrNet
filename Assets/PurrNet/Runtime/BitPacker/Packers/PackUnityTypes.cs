@@ -273,7 +273,7 @@ namespace PurrNet.Packing
             value.w = *(float*)&wbits;
         }
 
-        #if UNITY_2021_1_OR_NEWER
+        #if UNITY_2017_3_OR_NEWER
         [UsedByIL]
         public static void Write(this BitPacker packer, Pose value)
         {
