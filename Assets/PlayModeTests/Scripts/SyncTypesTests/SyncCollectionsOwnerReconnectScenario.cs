@@ -123,6 +123,8 @@ public class SyncCollectionsOwnerReconnectScenario : Scenario
                 $"owner {owner.Value.id.value} did not reconnect and signal return within {_reconnectTimeoutSeconds}s");
         }
 
+        ValidateOwnerReconnectCallbacks(ctx, owner.Value.id.value, failures, "before post-reconnect collection state");
+
         try
         {
             await UniTaskUtils.WaitWithTimeout(
@@ -232,6 +234,30 @@ public class SyncCollectionsOwnerReconnectScenario : Scenario
             failures.Add("client did not receive BroadcastPhaseDone");
         }
 
+        if (!isOwnerPeer)
+        {
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => SyncCollectionsOwnerReconnectIdentity.DisconnectCalls.Contains(SyncCollectionsOwnerReconnectIdentity.OwnerId)
+                          && SyncCollectionsOwnerReconnectIdentity.ReconnectCalls.Contains(SyncCollectionsOwnerReconnectIdentity.OwnerId),
+                    _reconnectTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                failures.Add(
+                    $"bystander did not observe OnOwnerDisconnected+Reconnected for owner {SyncCollectionsOwnerReconnectIdentity.OwnerId} " +
+                    $"(disconnects=[{string.Join(",", SyncCollectionsOwnerReconnectIdentity.DisconnectCalls)}], " +
+                    $"reconnects=[{string.Join(",", SyncCollectionsOwnerReconnectIdentity.ReconnectCalls)}])");
+            }
+
+            if (SyncCollectionsOwnerReconnectIdentity.DisconnectCacheWrong)
+                failures.Add("bystander: hasConnectedOwner was true inside OnOwnerDisconnected (stale cache)");
+            if (SyncCollectionsOwnerReconnectIdentity.ReconnectCacheWrong)
+                failures.Add("bystander: hasConnectedOwner was false inside OnOwnerReconnected (stale cache)");
+        }
+
         inst = SyncCollectionsOwnerReconnectIdentity.LocalInstance;
         try
         {
@@ -304,5 +330,41 @@ public class SyncCollectionsOwnerReconnectScenario : Scenario
         }
 
         return best;
+    }
+
+    private static void ValidateOwnerReconnectCallbacks(
+        ScenarioContext ctx, ulong ownerId, List<string> failures, string phase)
+    {
+        int expectedCallbacks = ctx.role == NetworkRole.Host ? 2 : 1;
+        int disconnectsForOwner = CountCalls(SyncCollectionsOwnerReconnectIdentity.DisconnectCalls, ownerId);
+        int reconnectsForOwner = CountCalls(SyncCollectionsOwnerReconnectIdentity.ReconnectCalls, ownerId);
+
+        if (disconnectsForOwner != expectedCallbacks)
+        {
+            failures.Add(
+                $"{phase}: OnOwnerDisconnected for owner {ownerId}: count={disconnectsForOwner}, expected {expectedCallbacks} " +
+                $"(disconnects=[{string.Join(",", SyncCollectionsOwnerReconnectIdentity.DisconnectCalls)}])");
+        }
+
+        if (reconnectsForOwner != expectedCallbacks)
+        {
+            failures.Add(
+                $"{phase}: OnOwnerReconnected for owner {ownerId}: count={reconnectsForOwner}, expected {expectedCallbacks}; " +
+                $"owner-auth collection resync cannot be trusted until this path fires " +
+                $"(reconnects=[{string.Join(",", SyncCollectionsOwnerReconnectIdentity.ReconnectCalls)}])");
+        }
+
+        if (SyncCollectionsOwnerReconnectIdentity.DisconnectCacheWrong)
+            failures.Add("server: hasConnectedOwner was true inside OnOwnerDisconnected (stale cache)");
+        if (SyncCollectionsOwnerReconnectIdentity.ReconnectCacheWrong)
+            failures.Add("server: hasConnectedOwner was false inside OnOwnerReconnected (stale cache)");
+    }
+
+    private static int CountCalls(List<ulong> calls, ulong ownerId)
+    {
+        int count = 0;
+        for (int i = 0; i < calls.Count; i++)
+            if (calls[i] == ownerId) count++;
+        return count;
     }
 }

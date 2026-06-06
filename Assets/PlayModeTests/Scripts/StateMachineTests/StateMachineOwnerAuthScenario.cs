@@ -10,7 +10,6 @@ public class StateMachineOwnerAuthScenario : Scenario
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
     [SerializeField] private float _readyTimeoutSeconds = 30f;
     [SerializeField] private float _stateTimeoutSeconds = 30f;
-    [SerializeField] private float _doneTimeoutSeconds = 30f;
 
     private const int BarrierReady = 5600;
     private const int BarrierOwnerReady = 5601;

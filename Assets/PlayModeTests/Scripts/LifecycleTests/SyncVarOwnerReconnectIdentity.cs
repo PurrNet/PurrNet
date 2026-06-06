@@ -1,15 +1,14 @@
+using System.Reflection;
 using PurrNet;
 using UnityEngine;
 
 /// <summary>
 /// Owner-authoritative SyncVar used to reproduce reconnect packet-id drift. The owner sends a burst
-/// before disconnecting, then dirties its freshly-spawned reconnect copy before the server asks for
-/// a small post-reconnect burst.
+/// before disconnecting, waits for the reconnect copy to restore that value, then sends one more
+/// owner-auth value.
 /// </summary>
 public class SyncVarOwnerReconnectIdentity : NetworkIdentity
 {
-    public const int ReconnectPrimeValue = 1500;
-
     [SerializeField] private SyncVar<int> _value = new(0, sendIntervalInSeconds: 0f, ownerAuth: true);
 
     public static SyncVarOwnerReconnectIdentity LocalInstance;
@@ -21,8 +20,20 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
     public static bool DisconnectCommandReceived;
     public static bool PostReconnectBurstReceived;
     public static bool PhaseDoneReceived;
-    public static bool PrimeOnNextOwnerSpawn;
-    public static bool PrimedAfterReconnect;
+    public static bool RestoredAfterReconnect;
+    public static int BurstReportCount;
+    public static ulong BurstReportSender;
+    public static int BurstReportValueBefore;
+    public static int BurstReportValueAfter;
+    public static ulong BurstReportPacketIdBefore;
+    public static ulong BurstReportPacketIdAfter;
+    public static bool BurstReportIgnoreServerUpdatesAfter;
+
+    private static readonly FieldInfo PacketIdField = typeof(SyncVar<int>).GetField(
+        "_id", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    private static readonly FieldInfo IgnoreServerUpdatesField = typeof(SyncVar<int>).GetField(
+        "_ignoreServerUpdates", BindingFlags.Instance | BindingFlags.NonPublic);
 
     public static void ResetAll()
     {
@@ -35,11 +46,30 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
         DisconnectCommandReceived = false;
         PostReconnectBurstReceived = false;
         PhaseDoneReceived = false;
-        PrimeOnNextOwnerSpawn = false;
-        PrimedAfterReconnect = false;
+        RestoredAfterReconnect = false;
+        BurstReportCount = 0;
+        BurstReportSender = 0;
+        BurstReportValueBefore = 0;
+        BurstReportValueAfter = 0;
+        BurstReportPacketIdBefore = 0;
+        BurstReportPacketIdAfter = 0;
+        BurstReportIgnoreServerUpdatesAfter = false;
     }
 
     public int currentValue => _value.value;
+
+    public ulong debugPacketId => PacketIdField != null ? (ulong)PacketIdField.GetValue(_value) : ulong.MaxValue;
+
+    public bool debugIgnoreServerUpdates =>
+        IgnoreServerUpdatesField != null && (bool)IgnoreServerUpdatesField.GetValue(_value);
+
+    public string DescribeLocalSyncVar() =>
+        $"value={currentValue}, packetId={debugPacketId}, ignoreServerUpdates={debugIgnoreServerUpdates}";
+
+    public static string DescribeBurstReport() =>
+        $"count={BurstReportCount}, sender={BurstReportSender}, beforeValue={BurstReportValueBefore}, " +
+        $"afterValue={BurstReportValueAfter}, packetIdBefore={BurstReportPacketIdBefore}, " +
+        $"packetIdAfter={BurstReportPacketIdAfter}, ignoreServerUpdatesAfter={BurstReportIgnoreServerUpdatesAfter}";
 
     protected override void OnEarlySpawn()
     {
@@ -51,11 +81,6 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
         LocalInstance = this;
     }
 
-    private void Update()
-    {
-        TryPrimeAfterReconnect();
-    }
-
     public void RunOwnerBurst(int firstValue, int count)
     {
         for (int i = 0; i < count; i++)
@@ -63,17 +88,6 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
             _value.value = firstValue + i;
             _value.FlushImmediately();
         }
-    }
-
-    private void TryPrimeAfterReconnect()
-    {
-        if (!PrimeOnNextOwnerSpawn || !isSpawned || !isOwner)
-            return;
-
-        PrimeOnNextOwnerSpawn = false;
-        _value.value = ReconnectPrimeValue;
-        _value.FlushImmediately();
-        PrimedAfterReconnect = true;
     }
 
     [ServerRpc(requireOwnership: false)]
@@ -84,6 +98,20 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
 
     [ServerRpc(requireOwnership: false)]
     public void SignalVictimReturned(RPCInfo info = default) => VictimReturnedCount++;
+
+    [ServerRpc(requireOwnership: false)]
+    private void ReportOwnerBurstSent(
+        int valueBefore, int valueAfter, ulong packetIdBefore, ulong packetIdAfter,
+        bool ignoreServerUpdatesAfter, RPCInfo info = default)
+    {
+        BurstReportCount++;
+        BurstReportSender = info.sender.id.value;
+        BurstReportValueBefore = valueBefore;
+        BurstReportValueAfter = valueAfter;
+        BurstReportPacketIdBefore = packetIdBefore;
+        BurstReportPacketIdAfter = packetIdAfter;
+        BurstReportIgnoreServerUpdatesAfter = ignoreServerUpdatesAfter;
+    }
 
     [ObserversRpc(runLocally: true, bufferLast: true)]
     public void BroadcastOwner(ulong ownerId)
@@ -106,7 +134,11 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
         if (!networkManager.isLocalPlayerReady || networkManager.localPlayer.id.value != OwnerId)
             return;
 
+        int valueBefore = currentValue;
+        ulong packetIdBefore = debugPacketId;
         RunOwnerBurst(firstValue, count);
+        ReportOwnerBurstSent(
+            valueBefore, currentValue, packetIdBefore, debugPacketId, debugIgnoreServerUpdates);
     }
 
     [ObserversRpc(runLocally: true)]

@@ -27,8 +27,12 @@ public class SyncCollectionsOwnerReconnectIdentity : NetworkIdentity
     public static bool PhaseDoneReceived;
     public static bool RunFinalOnNextOwnerSpawn;
     public static bool FinalRanAfterReconnect;
+    public static readonly List<ulong> DisconnectCalls = new();
+    public static readonly List<ulong> ReconnectCalls = new();
+    public static bool DisconnectCacheWrong;
+    public static bool ReconnectCacheWrong;
 
-    private static readonly int[] PreList = { 11, 12, 13 };
+    private static readonly int[] PreList = { 10, 11, 12, 13 };
     private static readonly int[] PreSet = { 1, 3 };
     private static readonly int[] PreArray = { 21, 22, 23 };
     private static readonly int[] PreQueue = { 32, 33 };
@@ -50,6 +54,10 @@ public class SyncCollectionsOwnerReconnectIdentity : NetworkIdentity
         PhaseDoneReceived = false;
         RunFinalOnNextOwnerSpawn = false;
         FinalRanAfterReconnect = false;
+        DisconnectCalls.Clear();
+        ReconnectCalls.Clear();
+        DisconnectCacheWrong = false;
+        ReconnectCacheWrong = false;
     }
 
     protected override void OnEarlySpawn()
@@ -60,6 +68,20 @@ public class SyncCollectionsOwnerReconnectIdentity : NetworkIdentity
     protected override void OnSpawned(bool asServer)
     {
         LocalInstance = this;
+    }
+
+    protected override void OnOwnerDisconnected(PlayerID ownerId)
+    {
+        DisconnectCalls.Add(ownerId.id.value);
+        if (hasConnectedOwner)
+            DisconnectCacheWrong = true;
+    }
+
+    protected override void OnOwnerReconnected(PlayerID ownerId)
+    {
+        ReconnectCalls.Add(ownerId.id.value);
+        if (!hasConnectedOwner)
+            ReconnectCacheWrong = true;
     }
 
     private void Update()

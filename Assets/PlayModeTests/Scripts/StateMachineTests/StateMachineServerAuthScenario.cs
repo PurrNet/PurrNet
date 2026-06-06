@@ -6,9 +6,7 @@ using UnityEngine;
 public class StateMachineServerAuthScenario : Scenario
 {
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
-    [SerializeField] private float _readyTimeoutSeconds = 30f;
     [SerializeField] private float _stateTimeoutSeconds = 30f;
-    [SerializeField] private float _doneTimeoutSeconds = 30f;
 
     private const int BarrierInitial = 5500;
     private const int BarrierInsertedCurrent = 5501;

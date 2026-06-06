@@ -396,7 +396,7 @@ public class Bootstrap : Scenario
 
 #if UNITY_EDITOR
             if (anyResultFailed || anyFailed)
-                Debug.LogError("Some tests failed to run.");
+                WriteFailedResults();
 #else
             Application.Quit(anyResultFailed || anyFailed ? -1 : 0);
 #endif
@@ -468,5 +468,34 @@ public class Bootstrap : Scenario
         {
             Debug.LogError($"Failed to write results to '{_resultsPath}': {e}");
         }
+    }
+
+    private void WriteFailedResults()
+    {
+        var failedResults = new JArray();
+
+        for (var i = 0; i < _results.Length; i++)
+        {
+            if (_results[i].HasValue)
+            {
+                var details = _results[i].Value;
+                if (!details.result.success)
+                    failedResults.Add(JObject.FromObject(details));
+
+                continue;
+            }
+
+            failedResults.Add(JObject.FromObject(new ScenarioDetails
+            {
+                name = _scenarios[i].GetType().Name,
+                result = ScenarioResult.Fail("Scenario did not run."),
+                durationInMs = 0,
+                dataSent = 0,
+                dataReceived = 0,
+                measured = _measured
+            }));
+        }
+
+        Debug.LogError("Failed test results:\n" + failedResults.ToString(Formatting.Indented));
     }
 }

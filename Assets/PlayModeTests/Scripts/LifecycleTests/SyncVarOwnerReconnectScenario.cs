@@ -9,14 +9,14 @@ using UnityEngine;
 /// <summary>
 /// Reconnect reproducer for owner-authoritative SyncVars. The suspected failure mode is that the
 /// reconnecting owner's local SyncVar packet id restarts below the server's retained packet id, so
-/// the server drops owner updates until the local counter catches up.
+/// the first owner update after reconnect is dropped.
 /// </summary>
 public class SyncVarOwnerReconnectScenario : Scenario
 {
     private const int PreReconnectFirstValue = 1000;
     private const int PreReconnectBurstCount = 96;
     private const int PostReconnectFirstValue = 2000;
-    private const int PostReconnectBurstCount = 8;
+    private const int PostReconnectBurstCount = 1;
 
     [SerializeField] private NetworkRules _rules;
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
@@ -24,7 +24,7 @@ public class SyncVarOwnerReconnectScenario : Scenario
     [SerializeField] private float _preSyncTimeoutSeconds = 30f;
     [SerializeField] private float _disconnectTimeoutSeconds = 30f;
     [SerializeField] private float _reconnectTimeoutSeconds = 30f;
-    [SerializeField] private float _postSyncTimeoutSeconds = 3f;
+    [SerializeField] private float _postSyncTimeoutSeconds = 10f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
     [SerializeField] private float _propagationDelaySeconds = 0.5f;
     [SerializeField] private float _stayDisconnectedSeconds = 1f;
@@ -133,6 +133,21 @@ public class SyncVarOwnerReconnectScenario : Scenario
         try
         {
             await UniTaskUtils.WaitWithTimeout(
+                () => SyncVarOwnerReconnectIdentity.BurstReportCount >= 1,
+                _postSyncTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            failures.Add(
+                "owner did not report receiving/sending the post-reconnect burst; " +
+                $"server={inst.DescribeLocalSyncVar()}; " +
+                $"burst=({SyncVarOwnerReconnectIdentity.DescribeBurstReport()})");
+        }
+
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
                 () => inst.currentValue >= PostReconnectLastValue,
                 _postSyncTimeoutSeconds,
                 ctx.cancellationToken);
@@ -140,8 +155,10 @@ public class SyncVarOwnerReconnectScenario : Scenario
         catch (TimeoutException)
         {
             failures.Add(
-                $"post-reconnect owner burst did not reach server: value={inst.currentValue}, " +
-                $"expected>={PostReconnectLastValue}. This matches a stale owner packet-id drop.");
+                $"post-reconnect owner burst did not reach server: server={inst.DescribeLocalSyncVar()}, " +
+                $"expectedValue>={PostReconnectLastValue}; " +
+                $"burst=({SyncVarOwnerReconnectIdentity.DescribeBurstReport()}). " +
+                "If the owner packetIdBefore/After values are <= the server packetId, this is a stale owner packet-id drop.");
         }
 
         inst.BroadcastPhaseDone();
@@ -210,7 +227,12 @@ public class SyncVarOwnerReconnectScenario : Scenario
             }
             catch (TimeoutException)
             {
-                failures.Add("owner peer did not complete disconnect/reconnect phase");
+                var currentInst = SyncVarOwnerReconnectIdentity.LocalInstance;
+                failures.Add(
+                    "owner peer did not complete disconnect/reconnect phase " +
+                    $"(restored={SyncVarOwnerReconnectIdentity.RestoredAfterReconnect}, " +
+                    $"value={(currentInst ? currentInst.currentValue.ToString() : "<missing>")}, " +
+                    $"expectedRestored={PreReconnectLastValue})");
             }
         }
 
@@ -238,8 +260,7 @@ public class SyncVarOwnerReconnectScenario : Scenario
     {
         var manager = ctx.networkManager;
 
-        SyncVarOwnerReconnectIdentity.PrimeOnNextOwnerSpawn = true;
-        SyncVarOwnerReconnectIdentity.PrimedAfterReconnect = false;
+        SyncVarOwnerReconnectIdentity.RestoredAfterReconnect = false;
 
         manager.StopClient();
 
@@ -259,9 +280,11 @@ public class SyncVarOwnerReconnectScenario : Scenario
 
         await UniTaskUtils.WaitWithTimeout(
             () => SyncVarOwnerReconnectIdentity.LocalInstance != null
-                  && SyncVarOwnerReconnectIdentity.PrimedAfterReconnect,
+                  && SyncVarOwnerReconnectIdentity.LocalInstance.currentValue == PreReconnectLastValue,
             _reconnectTimeoutSeconds,
             ctx.cancellationToken);
+
+        SyncVarOwnerReconnectIdentity.RestoredAfterReconnect = true;
 
         SyncVarOwnerReconnectIdentity.LocalInstance.SignalVictimReturned();
     }
