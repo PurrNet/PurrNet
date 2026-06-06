@@ -1,3 +1,54 @@
+# [1.20.0-beta.209](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.208...v1.20.0-beta.209) (2026-06-05)
+
+
+### Bug Fixes
+
+* Network RB handoff on ownership change ([184d1b9](https://github.com/PurrNet/PurrNet/commit/184d1b9bd23eb83922cd0bcac9cec7a7e9e37d72))
+
+# [1.20.0-beta.208](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.207...v1.20.0-beta.208) (2026-06-04)
+
+
+### Bug Fixes
+
+* PurrNet packages window improvements ([ea1db92](https://github.com/PurrNet/PurrNet/commit/ea1db92c35699c60f1b4aaee82b3f5b7725bc28b))
+* Rebuild ([042fd1a](https://github.com/PurrNet/PurrNet/commit/042fd1a87d507fef7da532077045f236dd42b919))
+
+# [1.20.0-beta.207](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.206...v1.20.0-beta.207) (2026-05-31)
+
+
+### Bug Fixes
+
+* State machine race condition ([6cdd8e7](https://github.com/PurrNet/PurrNet/commit/6cdd8e7ba7117b7519088e42f6b6baad89b202ca))
+
+# [1.20.0-beta.206](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.205...v1.20.0-beta.206) (2026-05-31)
+
+
+### Bug Fixes
+
+* Add server transport startup control to composite transport ([e0c4a0c](https://github.com/PurrNet/PurrNet/commit/e0c4a0ca68620e6a831da702a07619f399a39671))
+
+# [1.20.0-beta.205](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.204...v1.20.0-beta.205) (2026-05-31)
+
+
+### Bug Fixes
+
+* Ownership missing identity safety ([f6f9232](https://github.com/PurrNet/PurrNet/commit/f6f923235f517dc7675a6089ae02a42f26c45ce4))
+* State machine dedicated server state handling ([7659953](https://github.com/PurrNet/PurrNet/commit/7659953f6802dff9a906a8eab930dc20c527ee0d))
+
+# [1.20.0-beta.204](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.203...v1.20.0-beta.204) (2026-05-31)
+
+
+### Bug Fixes
+
+* StateMachine insertion ([048c557](https://github.com/PurrNet/PurrNet/commit/048c557cb3e2cb527fa3c4901d7161459d495b07))
+
+# [1.20.0-beta.203](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.202...v1.20.0-beta.203) (2026-05-29)
+
+
+### Bug Fixes
+
+* NRE resilience when despawning ([a8b788d](https://github.com/PurrNet/PurrNet/commit/a8b788d2abe608fc6f78d8e7d0de08ceae5d3c35))
+
 # [1.20.0-beta.202](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.201...v1.20.0-beta.202) (2026-05-29)
 
 

@@ -304,7 +304,9 @@ namespace PurrNet
 
             if (asServer)
             {
-                var handoff = CaptureCurrentState();
+                var handoff = IsController(_ownerAuth)
+                    ? CaptureCurrentState()
+                    : CaptureTargetState();
 
                 if (newOwner.HasValue && newOwner != localPlayer)
                     SendHandoffState(newOwner.Value, handoff);
@@ -328,6 +330,30 @@ namespace PurrNet
                 _forceSyncWindowEndTime = double.NegativeInfinity;
                 _wasInForceSyncWindow = false;
             }
+        }
+
+        private RigidbodyStateData CaptureTargetState()
+        {
+            var parentIdentity = _targetParent ? _targetParent.GetComponent<NetworkIdentity>() : null;
+            var isSoft = parentIdentity && _softParent == parentIdentity;
+
+            var frame = _targetParent
+                ? RigidbodyPositionFrame.ParentLocal
+                : _positionTransform != null
+                    ? RigidbodyPositionFrame.Absolute
+                    : RigidbodyPositionFrame.World;
+
+            return new RigidbodyStateData
+            {
+                position = frame == RigidbodyPositionFrame.Absolute ? default : (CompressedVector3)ToV3(_targetPosition),
+                absolutePosition = frame == RigidbodyPositionFrame.Absolute ? _targetPosition : default,
+                positionFrame = frame,
+                rotation = _targetRotation,
+                linearVelocity = _targetLinearVelocity,
+                angularVelocity = _targetAngularVelocity,
+                parent = parentIdentity,
+                isSoftParent = isSoft
+            };
         }
 
         private RigidbodyStateData CaptureCurrentState()

@@ -36,6 +36,7 @@
 ExportedObj/
 .consulo/
 *.csproj
+/[Aa]ssets/PurrNet/PurrNetApi.csproj.meta
 *.unityproj
 *.sln
 *.suo

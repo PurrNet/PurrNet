@@ -39,6 +39,11 @@ namespace PurrNet.StateMachine
         private Queue<IStateCommand> _stateCommandQueue = new();
         StateMachineState _currentState;
         private int _previousStateId = -1;
+        private StateNode _currentStateNode;
+        private StateNode _previousStateNode;
+        private int _pendingStateChangeId = -1;
+        private StateNode _pendingStateChangeNode;
+        private Action _pendingStateChange;
 
         public StateMachineState currentState => _currentState;
         public int previousStateId => _previousStateId;
@@ -153,11 +158,11 @@ namespace PurrNet.StateMachine
     
             if (dataType != null && _currentState.data != null && dataType.IsInstanceOfType(_currentState.data))
             {
-                RpcStateChange_Target(player, _currentState, true, _currentState.data);
+                RpcStateChange_Target(player, _currentState, stateNode, true, _currentState.data);
             }
             else
             {
-                RpcStateChange_Target<ushort>(player, _currentState, false, 0);
+                RpcStateChange_Target<ushort>(player, _currentState, stateNode, false, 0);
             }
         }
 
@@ -315,25 +320,6 @@ namespace PurrNet.StateMachine
         {
             _states = _syncedStates.ToList();
 
-            if (change.operation == SyncListOperation.Insert && change.index <= _currentState.stateId)
-                _currentState.stateId++;
-
-            if (change.operation == SyncListOperation.Insert && change.index <= _previousStateId)
-                _previousStateId++;
-
-            if (change.operation == SyncListOperation.Removed)
-            {
-                if (change.index < _currentState.stateId)
-                    _currentState.stateId--;
-                else if (change.index == _currentState.stateId)
-                    _currentState.stateId = -1;
-
-                if (change.index < _previousStateId)
-                    _previousStateId--;
-                else if (change.index == _previousStateId)
-                    _previousStateId = -1;
-            }
-
             if (change.operation == SyncListOperation.Insert || 
                 change.operation == SyncListOperation.Added || 
                 change.operation == SyncListOperation.Set)
@@ -341,28 +327,87 @@ namespace PurrNet.StateMachine
                 if(change.value)
                     change.value.Setup(this);
             }
+
+            UpdateStateIdsAfterListChange(change);
+            TryApplyPendingStateChange();
+        }
+
+        private void UpdateStateIdsAfterListChange(SyncListChange<StateNode> change)
+        {
+            if (_currentStateNode)
+                _currentState.stateId = _syncedStates.IndexOf(_currentStateNode);
+            else
+                UpdateStateIdAfterListChange(ref _currentState.stateId, change);
+
+            if (_previousStateNode)
+                _previousStateId = _syncedStates.IndexOf(_previousStateNode);
+            else
+                UpdateStateIdAfterListChange(ref _previousStateId, change);
+
+            if (_currentState.stateId >= 0 && _currentState.stateId < _syncedStates.Count)
+                _currentStateNode = _syncedStates[_currentState.stateId];
+
+            if (_previousStateId >= 0 && _previousStateId < _syncedStates.Count)
+                _previousStateNode = _syncedStates[_previousStateId];
+        }
+
+        private static void UpdateStateIdAfterListChange(ref int stateId, SyncListChange<StateNode> change)
+        {
+            if (change.operation == SyncListOperation.Insert && change.index <= stateId)
+                stateId++;
+
+            if (change.operation != SyncListOperation.Removed)
+                return;
+
+            if (change.index < stateId)
+                stateId--;
+            else if (change.index == stateId)
+                stateId = -1;
         }
 
         [ServerRpc]
-        private void RpcStateChange_Server<T>(StateMachineState state, bool hasData, T data)
+        private void RpcStateChange_Server<T>(StateMachineState state, StateNode stateNode, bool hasData, T data)
         {
-            RpcStateChange<T>(state, hasData, data);
+            ApplyRpcStateChange(state, stateNode, hasData, data);
+            RpcStateChange<T>(state, stateNode, hasData, data);
         }
 
         [ObserversRpc(bufferLast: true)]
-        private void RpcStateChange<T>(StateMachineState state, bool hasData, T data)
+        private void RpcStateChange<T>(StateMachineState state, StateNode stateNode, bool hasData, T data)
+        {
+            ApplyRpcStateChange(state, stateNode, hasData, data);
+        }
+
+        private void ApplyRpcStateChange<T>(StateMachineState state, StateNode stateNode, bool hasData, T data)
         {
             if (IsController(_ownerAuth)) return;
+
+            if (stateNode)
+            {
+                var stateIndex = _syncedStates.IndexOf(stateNode);
+                if (stateIndex >= 0)
+                    state.stateId = stateIndex;
+            }
             
+            if (state.stateId >= _syncedStates.Count)
+            {
+                StorePendingStateChange(state, stateNode, hasData, data);
+                return;
+            }
+
+            _pendingStateChange = null;
+            _pendingStateChangeId = -1;
+            _pendingStateChangeNode = null;
+
             if(_currentState.stateId > -1 && _syncedStates.Count > _currentState.stateId)
                 UpdateStateId(_syncedStates[_currentState.stateId]);
             _currentState = state;
             _currentState.data = data;
 
-            if (_currentState.stateId < 0 || _currentState.stateId >= _syncedStates.Count)
+            if (!TryUpdateCurrentStateNode())
                 return;
 
-            var newState = _syncedStates[_currentState.stateId];
+            var newState = _currentStateNode;
             var prevState = previousStateNode;
 
             try
@@ -411,18 +456,88 @@ namespace PurrNet.StateMachine
         }
 
         [TargetRpc]
-        private void RpcStateChange_Target<T>(PlayerID target, StateMachineState state, bool hasData, T data)
+        private void RpcStateChange_Target<T>(PlayerID target, StateMachineState state, StateNode stateNode, bool hasData, T data)
         {
             if (IsController(_ownerAuth)) return;
 
+            if (stateNode)
+            {
+                var stateIndex = _syncedStates.IndexOf(stateNode);
+                if (stateIndex >= 0)
+                    state.stateId = stateIndex;
+            }
+
+            var receivedStateId = state.stateId;
+
+            if (state.stateId >= _syncedStates.Count)
+            {
+                StorePendingStateChange(state, stateNode, hasData, data);
+                return;
+            }
+
+            _pendingStateChange = null;
+            _pendingStateChangeId = -1;
+            _pendingStateChangeNode = null;
             _currentState = state;
             _currentState.data = data;
 
-            if (_currentState.stateId < 0 || _currentState.stateId >= _syncedStates.Count)
+            if (!TryUpdateCurrentStateNode())
                 return;
+
+            if (receivedStateId < 0 || receivedStateId >= _syncedStates.Count)
+            {
+                onReceivedNewData?.Invoke();
+                return;
+            }
 
             HandleStateChangeQueue();
             onReceivedNewData?.Invoke();
+        }
+
+        private void StorePendingStateChange<T>(StateMachineState state, StateNode stateNode, bool hasData, T data)
+        {
+            _pendingStateChangeId = state.stateId;
+            _pendingStateChangeNode = stateNode;
+            _pendingStateChange = () => ApplyRpcStateChange(state, stateNode, hasData, data);
+        }
+
+        private void TryApplyPendingStateChange()
+        {
+            if (!_pendingStateChangeNode && (_pendingStateChangeId < 0 || _pendingStateChangeId >= _syncedStates.Count))
+                return;
+
+            if (_pendingStateChangeNode && _syncedStates.IndexOf(_pendingStateChangeNode) < 0)
+                return;
+
+            var pending = _pendingStateChange;
+            _pendingStateChange = null;
+            _pendingStateChangeId = -1;
+            _pendingStateChangeNode = null;
+            pending?.Invoke();
+        }
+
+        private bool TryUpdateCurrentStateNode()
+        {
+            if (_currentState.stateId >= 0 && _currentState.stateId < _syncedStates.Count)
+            {
+                _currentStateNode = _syncedStates[_currentState.stateId];
+                return true;
+            }
+
+            if (_currentStateNode)
+            {
+                var remappedStateId = _syncedStates.IndexOf(_currentStateNode);
+
+                if (remappedStateId >= 0)
+                {
+                    _currentState.stateId = remappedStateId;
+                    return true;
+                }
+            }
+
+            _currentState.stateId = -1;
+            _currentStateNode = null;
+            return false;
         }
 
         private void UpdateStateId(StateNode node)
@@ -455,7 +570,9 @@ namespace PurrNet.StateMachine
             }
 
             _previousStateId = _currentState.stateId;
+            _previousStateNode = oldState;
             _currentState.stateId = newStateId;
+            _currentStateNode = newStateId < 0 ? null : node;
         }
 
         /// <summary>
@@ -491,9 +608,9 @@ namespace PurrNet.StateMachine
             var prevState = previousStateNode;
 
             if (isServer)
-                RpcStateChange(_currentState, true, data);
+                RpcStateChange(_currentState, state, true, data);
             else
-                RpcStateChange_Server(_currentState, true, data);
+                RpcStateChange_Server(_currentState, state, true, data);
 
             try
             {
@@ -549,9 +666,9 @@ namespace PurrNet.StateMachine
             var prevState = previousStateNode;
             
             if (isServer)
-                RpcStateChange<ushort>(_currentState, false, 0);
+                RpcStateChange<ushort>(_currentState, state, false, 0);
             else
-                RpcStateChange_Server<ushort>(_currentState, false, 0);
+                RpcStateChange_Server<ushort>(_currentState, state, false, 0);
 
             try
             {

@@ -442,6 +442,9 @@ namespace PurrNet.Modules
         public void GiveOwnership(NetworkIdentity nid, PlayerID player, bool? propagateToChildren = null,
             bool? overrideExistingOwners = null, bool silent = false, bool isSpawner = false)
         {
+            if (!nid)
+                return;
+
             if (!nid.id.HasValue)
             {
                 if (!silent)
@@ -929,11 +932,19 @@ namespace PurrNet.Modules
 
         static void GetAllChildrenOrSelf(NetworkIdentity id, List<NetworkIdentity> result, bool? propagateToChildren)
         {
+            if (!id)
+                return;
+
             bool shouldPropagate = propagateToChildren ?? id.ShouldPropagateToChildren();
 
             if (shouldPropagate && id.HasPropagateOwnershipAuthority())
             {
                 HierarchyV2.GetComponentsInChildren(id.gameObject, result);
+                for (int i = result.Count - 1; i >= 0; i--)
+                {
+                    if (!result[i])
+                        result.RemoveAt(i);
+                }
             }
             else
             {
