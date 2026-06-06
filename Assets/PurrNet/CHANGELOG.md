@@ -1,3 +1,10 @@
+# [1.20.0-beta.210](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.209...v1.20.0-beta.210) (2026-06-06)
+
+
+### Bug Fixes
+
+* SyncVar reconnect sync issues ([c6d9cbb](https://github.com/PurrNet/PurrNet/commit/c6d9cbbdbc22e9ee392b1b863584a1dc52440d46))
+
 # [1.20.0-beta.209](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.208...v1.20.0-beta.209) (2026-06-05)
 
 
