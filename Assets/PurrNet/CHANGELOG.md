@@ -1,3 +1,10 @@
+# [1.20.0-beta.211](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.210...v1.20.0-beta.211) (2026-06-06)
+
+
+### Bug Fixes
+
+* dedicated server syncvar tests were failing on reconnection ([24ef538](https://github.com/PurrNet/PurrNet/commit/24ef538220b194a9d4bcfc959f7d53fac93f4fd6))
+
 # [1.20.0-beta.210](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.209...v1.20.0-beta.210) (2026-06-06)
 
 
