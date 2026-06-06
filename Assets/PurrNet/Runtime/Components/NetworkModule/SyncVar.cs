@@ -105,7 +105,8 @@ namespace PurrNet
 
             if (_ownerAuth)
             {
-                _id = 0;
+                if (asServer || !isOwner)
+                    _id = 0;
 
                 if (isOwner)
                     SetDirty();

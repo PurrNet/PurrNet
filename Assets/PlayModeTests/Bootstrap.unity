@@ -161,7 +161,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d92fd6fce64477c4088dff8434cad2d0, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PlayerMovementBenchmarkScenario
   _pingsPerSecond: 10
 --- !u!1 &43754047
@@ -183,7 +183,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &43754048
 Transform:
   m_ObjectHideFlags: 0
@@ -209,7 +209,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c86d70b84e48c2e4a9a8aed561cb74b2, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleSerializeScenario
   _spawnTimeoutSeconds: 15
   _serializeTimeoutSeconds: 30
@@ -224,7 +224,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9c19b6a143b0f864ea2d7f54d99f2a05, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::MultiSerializeScenario
   _spawnTimeoutSeconds: 15
   _doneTimeoutSeconds: 30
@@ -238,7 +238,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a7448bbf157477e4e983c091a3d0351e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NestedSerializeScenario
   _spawnTimeoutSeconds: 15
   _doneTimeoutSeconds: 30
@@ -276,7 +276,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &54853818
 Transform:
   m_ObjectHideFlags: 0
@@ -373,7 +373,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &108535982
 Transform:
   m_ObjectHideFlags: 0
@@ -495,7 +495,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d0d1893a8cf145d1966ae69d6cf5506b, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StateMachineOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -510,7 +510,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0a41983f4d34e4b9c9e62179c287301, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncCollectionsOwnerReconnectScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _spawnTimeoutSeconds: 15
@@ -538,7 +538,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &120556146
 Transform:
   m_ObjectHideFlags: 0
@@ -599,7 +599,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 505097978}
   - {fileID: 1680343623}
   - {fileID: 1128545787}
   - {fileID: 1354744830}
@@ -778,7 +777,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &491480055
 Transform:
   m_ObjectHideFlags: 0
@@ -855,60 +854,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::BenchmarkScenario
   _pingsPerSecond: 10
   _objectCount: 1000
---- !u!1 &505097977
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 505097978}
-  - component: {fileID: 505097979}
-  m_Layer: 0
-  m_Name: --
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &505097978
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 505097977}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 277924963}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &505097979
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 505097977}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4f0c14b8ef54d7e9a3120f62d93b6c1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerReconnectScenario
-  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
-  _spawnTimeoutSeconds: 15
-  _readyTimeoutSeconds: 30
-  _preSyncTimeoutSeconds: 30
-  _disconnectTimeoutSeconds: 30
-  _reconnectTimeoutSeconds: 30
-  _postSyncTimeoutSeconds: 10
-  _doneTimeoutSeconds: 30
-  _propagationDelaySeconds: 0.5
-  _stayDisconnectedSeconds: 1
 --- !u!1 &926210937
 GameObject:
   m_ObjectHideFlags: 0
@@ -1012,7 +957,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: 
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
@@ -1065,7 +1010,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &961530343
 Transform:
   m_ObjectHideFlags: 0
@@ -1160,7 +1105,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1128545787
 Transform:
   m_ObjectHideFlags: 0
@@ -1506,7 +1451,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1354744830
 Transform:
   m_ObjectHideFlags: 0
@@ -1596,7 +1541,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1438235316
 Transform:
   m_ObjectHideFlags: 0
@@ -1711,7 +1656,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1680343623
 Transform:
   m_ObjectHideFlags: 0
@@ -2082,7 +2027,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1869161004
 Transform:
   m_ObjectHideFlags: 0
@@ -2135,7 +2080,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1999225764
 Transform:
   m_ObjectHideFlags: 0
@@ -2221,7 +2166,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2027560122
 Transform:
   m_ObjectHideFlags: 0
@@ -2343,7 +2288,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b5d7729c94544d7bb24b5f9899266144, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StateMachineServerAuthScenario
   _spawnTimeoutSeconds: 15
   _stateTimeoutSeconds: 30

@@ -128,6 +128,20 @@ public class SyncVarOwnerReconnectScenario : Scenario
                 $"owner {owner.Value.id.value} did not reconnect and signal return within {_reconnectTimeoutSeconds}s");
         }
 
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => SyncVarOwnerReconnectIdentity.OwnerReconnectCheckpointCount >= 1,
+                _postSyncTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            failures.Add(
+                "owner did not report reconnect checkpoint; " +
+                $"server={inst.DescribeLocalSyncVar()}");
+        }
+
         inst.BroadcastPostReconnectBurst(PostReconnectFirstValue, PostReconnectBurstCount);
 
         try
@@ -157,6 +171,7 @@ public class SyncVarOwnerReconnectScenario : Scenario
             failures.Add(
                 $"post-reconnect owner burst did not reach server: server={inst.DescribeLocalSyncVar()}, " +
                 $"expectedValue>={PostReconnectLastValue}; " +
+                $"reconnect=({SyncVarOwnerReconnectIdentity.DescribeReconnectCheckpoint()}); " +
                 $"burst=({SyncVarOwnerReconnectIdentity.DescribeBurstReport()}). " +
                 "If the owner packetIdBefore/After values are <= the server packetId, this is a stale owner packet-id drop.");
         }
@@ -284,8 +299,12 @@ public class SyncVarOwnerReconnectScenario : Scenario
             _reconnectTimeoutSeconds,
             ctx.cancellationToken);
 
+        await UniTask.NextFrame(ctx.cancellationToken);
+        await UniTask.NextFrame(ctx.cancellationToken);
+
         SyncVarOwnerReconnectIdentity.RestoredAfterReconnect = true;
 
+        SyncVarOwnerReconnectIdentity.LocalInstance.ReportOwnerReconnectCheckpoint();
         SyncVarOwnerReconnectIdentity.LocalInstance.SignalVictimReturned();
     }
 

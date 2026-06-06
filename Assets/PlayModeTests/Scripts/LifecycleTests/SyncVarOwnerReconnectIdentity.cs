@@ -28,6 +28,11 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
     public static ulong BurstReportPacketIdBefore;
     public static ulong BurstReportPacketIdAfter;
     public static bool BurstReportIgnoreServerUpdatesAfter;
+    public static int OwnerReconnectCheckpointCount;
+    public static ulong OwnerReconnectCheckpointSender;
+    public static int OwnerReconnectCheckpointValue;
+    public static ulong OwnerReconnectCheckpointPacketId;
+    public static bool OwnerReconnectCheckpointIgnoreServerUpdates;
 
     private static readonly FieldInfo PacketIdField = typeof(SyncVar<int>).GetField(
         "_id", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -54,6 +59,11 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
         BurstReportPacketIdBefore = 0;
         BurstReportPacketIdAfter = 0;
         BurstReportIgnoreServerUpdatesAfter = false;
+        OwnerReconnectCheckpointCount = 0;
+        OwnerReconnectCheckpointSender = 0;
+        OwnerReconnectCheckpointValue = 0;
+        OwnerReconnectCheckpointPacketId = 0;
+        OwnerReconnectCheckpointIgnoreServerUpdates = false;
     }
 
     public int currentValue => _value.value;
@@ -70,6 +80,11 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
         $"count={BurstReportCount}, sender={BurstReportSender}, beforeValue={BurstReportValueBefore}, " +
         $"afterValue={BurstReportValueAfter}, packetIdBefore={BurstReportPacketIdBefore}, " +
         $"packetIdAfter={BurstReportPacketIdAfter}, ignoreServerUpdatesAfter={BurstReportIgnoreServerUpdatesAfter}";
+
+    public static string DescribeReconnectCheckpoint() =>
+        $"count={OwnerReconnectCheckpointCount}, sender={OwnerReconnectCheckpointSender}, " +
+        $"value={OwnerReconnectCheckpointValue}, packetId={OwnerReconnectCheckpointPacketId}, " +
+        $"ignoreServerUpdates={OwnerReconnectCheckpointIgnoreServerUpdates}";
 
     protected override void OnEarlySpawn()
     {
@@ -111,6 +126,25 @@ public class SyncVarOwnerReconnectIdentity : NetworkIdentity
         BurstReportPacketIdBefore = packetIdBefore;
         BurstReportPacketIdAfter = packetIdAfter;
         BurstReportIgnoreServerUpdatesAfter = ignoreServerUpdatesAfter;
+    }
+
+    public void ReportOwnerReconnectCheckpoint()
+    {
+        ReportOwnerReconnectCheckpoint(
+            currentValue,
+            debugPacketId,
+            debugIgnoreServerUpdates);
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private void ReportOwnerReconnectCheckpoint(
+        int value, ulong packetId, bool ignoreServerUpdates, RPCInfo info = default)
+    {
+        OwnerReconnectCheckpointCount++;
+        OwnerReconnectCheckpointSender = info.sender.id.value;
+        OwnerReconnectCheckpointValue = value;
+        OwnerReconnectCheckpointPacketId = packetId;
+        OwnerReconnectCheckpointIgnoreServerUpdates = ignoreServerUpdates;
     }
 
     [ObserversRpc(runLocally: true, bufferLast: true)]
