@@ -1,3 +1,10 @@
+# [1.20.0-beta.212](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.211...v1.20.0-beta.212) (2026-06-06)
+
+
+### Bug Fixes
+
+* syncvar issue + tests ([cba8532](https://github.com/PurrNet/PurrNet/commit/cba85326268297df4bae80e3342b0f27f97fa9b0))
+
 # [1.20.0-beta.211](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.210...v1.20.0-beta.211) (2026-06-06)
 
 
