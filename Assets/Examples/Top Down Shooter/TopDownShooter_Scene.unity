@@ -2540,11 +2540,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _stopPlayingOnDisconnect: 0
-  _startServerFlags: 9
-  _startClientFlags: 7
+  _startServerFlags: 0
+  _startClientFlags: 0
   _cookieScope: 1
   _dontDestroyOnLoad: 1
-  _transport: {fileID: 1216416912}
+  _transport: {fileID: 1216416902}
   _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
   _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
@@ -2681,6 +2681,7 @@ MonoBehaviour:
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
   _useNat: 1
+  _natResolveTimeout: 8
   _networkSimulation:
     includeInBuild: 0
     simulateLatency: 0
@@ -3970,6 +3971,7 @@ MonoBehaviour:
   _settingsOverride: {fileID: 0}
   _interpolationDelay: 0.05
   _predictionFactor: 0
+  _maxExtrapolationDuration: 0.25
   _positionStrength: 5
   _correctionRange: 2
   _rotationStrength: 3

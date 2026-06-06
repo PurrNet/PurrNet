@@ -1610,6 +1610,7 @@ GameObject:
   - component: {fileID: 1680343638}
   - component: {fileID: 1680343639}
   - component: {fileID: 1680343642}
+  - component: {fileID: 1680343643}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -1949,6 +1950,28 @@ MonoBehaviour:
   _spawnTimeoutSeconds: 20
   _despawnTimeoutSeconds: 20
   _barrierTimeoutSeconds: 60
+--- !u!114 &1680343643
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f0c14b8ef54d7e9a3120f62d93b6c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerReconnectScenario
+  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _preSyncTimeoutSeconds: 30
+  _disconnectTimeoutSeconds: 30
+  _reconnectTimeoutSeconds: 30
+  _postSyncTimeoutSeconds: 3
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
+  _stayDisconnectedSeconds: 1
 --- !u!1 &1869161003
 GameObject:
   m_ObjectHideFlags: 0

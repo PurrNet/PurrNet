@@ -263,7 +263,11 @@ namespace PurrNet
                 return;
 
             if (_ignoreServerUpdates)
+            {
+                if (packetId.value > _id)
+                    _id = packetId.value;
                 return;
+            }
 
             _id = packetId.value;
 
