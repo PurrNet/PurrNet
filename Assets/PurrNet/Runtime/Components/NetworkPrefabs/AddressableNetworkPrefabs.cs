@@ -10,7 +10,7 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace PurrNet
 {
     [CreateAssetMenu(fileName = "AddressableNetworkPrefabs", menuName = "PurrNet/Network Prefabs/Addressable Network Prefabs", order = -200)]
-    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAsyncPrefabProvider
+    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAsyncPrefabProvider, IPersistentPrefabProvider
     {
         [Serializable]
         public struct Entry
@@ -67,6 +67,7 @@ namespace PurrNet
         }
 
         public override IEnumerable<PrefabData> allPrefabs => _prefabLookup.Values;
+        public IEnumerable<string> persistentIds => _guidToId.Keys;
 
         /// <summary>
         /// Tries to get the loaded prefab data for a given asset GUID.
@@ -79,6 +80,11 @@ namespace PurrNet
 
             prefabData = default;
             return false;
+        }
+
+        public bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData)
+        {
+            return TryGetPrefabDataByGuid(persistentId, out prefabData);
         }
 
         public override bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
@@ -145,6 +151,32 @@ namespace PurrNet
         public bool TryGetGuid(int localPrefabId, out string assetGuid)
         {
             return _idToGuid.TryGetValue(localPrefabId, out assetGuid);
+        }
+
+        public bool TryGetPersistentId(int prefabId, out string persistentId)
+        {
+            return TryGetGuid(prefabId, out persistentId);
+        }
+
+        public bool TryGetPersistentId(GameObject prefab, out string persistentId)
+        {
+            if (TryGetPrefabData(prefab, out var prefabData))
+                return TryGetPersistentId(prefabData.prefabId, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPrefabByPersistentId(string persistentId, out GameObject prefab)
+        {
+            if (TryGetPrefabDataByPersistentId(persistentId, out var prefabData))
+            {
+                prefab = prefabData.prefab;
+                return prefab;
+            }
+
+            prefab = null;
+            return false;
         }
 
         public static event Action<string, bool> onLoadStateChanged;

@@ -93,6 +93,7 @@ namespace PurrNet
                     int index = list.count;
                     list.serializedProperty.arraySize++;
                     var element = list.serializedProperty.GetArrayElementAtIndex(index);
+                    element.FindPropertyRelative("guid").stringValue = string.Empty;
                     element.FindPropertyRelative("prefab").objectReferenceValue = null;
                     element.FindPropertyRelative("pooled").boolValue = networkPrefabs.poolByDefault;
                     element.FindPropertyRelative("warmupCount").intValue = 5;
@@ -111,6 +112,8 @@ namespace PurrNet
                             int index = list.count;
                             list.serializedProperty.arraySize++;
                             var element = list.serializedProperty.GetArrayElementAtIndex(index);
+                            string path = AssetDatabase.GetAssetPath(obj);
+                            element.FindPropertyRelative("guid").stringValue = AssetDatabase.AssetPathToGUID(path);
                             element.FindPropertyRelative("prefab").objectReferenceValue = obj;
                             element.FindPropertyRelative("pooled").boolValue = networkPrefabs.poolByDefault;
                             element.FindPropertyRelative("warmupCount").intValue = 5;
@@ -196,6 +199,7 @@ namespace PurrNet
 
             if (GUI.changed)
             {
+                networkPrefabs.Refresh();
                 EditorUtility.SetDirty(networkPrefabs);
             }
         }

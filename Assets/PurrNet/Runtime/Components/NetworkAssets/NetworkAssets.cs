@@ -48,13 +48,17 @@ namespace PurrNet
         public IReadOnlyList<string> AvailableTypeNames => _availableTypeNames;
 
         /// <summary>
-        /// GUIDs for each asset in the assets list, used for deterministic ID assignment.
+        /// GUIDs for each asset in the assets list, used for persistent ID lookup.
         /// Populated during GenerateAssets() in editor.
         /// </summary>
         [SerializeField, HideInInspector] private List<string> _assetGuids = new();
 
         private readonly Dictionary<int, Object> idToAsset = new();
         private readonly Dictionary<ObjectId, int> objectIdToId = new();
+        private readonly Dictionary<string, Object> persistentIdToAsset = new();
+        private readonly Dictionary<string, int> persistentIdToId = new();
+        private readonly Dictionary<int, string> idToPersistentId = new();
+        private readonly Dictionary<ObjectId, string> objectIdToPersistentId = new();
 
         private const int AmbiguousMarker = -2;
         private readonly Dictionary<(Type, string), int> typeNameToId = new();
@@ -63,8 +67,16 @@ namespace PurrNet
 
         [SerializeField, HideInInspector] private List<int> _bakedIds = new();
         [SerializeField, HideInInspector] private List<Object> _bakedAssets = new();
+        [SerializeField, HideInInspector] private List<string> _bakedPersistentIds = new();
 
         public Object GetAsset(int index) => idToAsset.GetValueOrDefault(index);
+        public Object GetAssetByPersistentId(string persistentId)
+        {
+            return !string.IsNullOrEmpty(persistentId) &&
+                   persistentIdToAsset.TryGetValue(persistentId, out var obj)
+                ? obj
+                : null;
+        }
 
         public int GetIndex(Object obj)
         {
@@ -82,6 +94,46 @@ namespace PurrNet
 
             WarnUnresolvedOnce(obj, objectId);
             return -1;
+        }
+
+        public bool TryGetPersistentId(Object obj, out string persistentId)
+        {
+            persistentId = null;
+            if (!obj) return false;
+
+            ObjectId objectId = GetObjectId(obj);
+            if (objectIdToPersistentId.TryGetValue(objectId, out persistentId))
+                return true;
+
+            if (!TryResolveDuplicate(obj, out int id))
+                return false;
+
+            return TryGetPersistentId(id, out persistentId);
+        }
+
+        public bool TryGetPersistentId(int id, out string persistentId)
+        {
+            return idToPersistentId.TryGetValue(id, out persistentId);
+        }
+
+        public bool TryGetAssetByPersistentId(string persistentId, out Object obj)
+        {
+            if (!string.IsNullOrEmpty(persistentId) &&
+                persistentIdToAsset.TryGetValue(persistentId, out obj))
+                return true;
+
+            obj = null;
+            return false;
+        }
+
+        public bool TryGetIdByPersistentId(string persistentId, out int id)
+        {
+            if (!string.IsNullOrEmpty(persistentId) &&
+                persistentIdToId.TryGetValue(persistentId, out id))
+                return true;
+
+            id = -1;
+            return false;
         }
 
         private bool TryResolveDuplicate(Object obj, out int id)
@@ -148,6 +200,7 @@ namespace PurrNet
             {
                 var obj = _bakedAssets[i];
                 int id = _bakedIds[i];
+                string persistentId = i < _bakedPersistentIds.Count ? _bakedPersistentIds[i] : null;
                 if (!obj) continue;
 
                 try
@@ -155,6 +208,7 @@ namespace PurrNet
                     idToAsset[id] = obj;
                     objectIdToId[GetObjectId(obj)] = id;
                     RegisterTypeNameFallback(obj, id);
+                    RegisterPersistentId(obj, id, persistentId);
                 }
                 catch
                 {
@@ -162,7 +216,7 @@ namespace PurrNet
                 }
             }
 
-            if (IsBakeStale())
+            if (IsBakeStale() || _bakedPersistentIds.Count != _bakedAssets.Count)
                 Refresh();
         }
 
@@ -170,9 +224,28 @@ namespace PurrNet
         {
             idToAsset.Clear();
             objectIdToId.Clear();
+            persistentIdToAsset.Clear();
+            persistentIdToId.Clear();
+            idToPersistentId.Clear();
+            objectIdToPersistentId.Clear();
             typeNameToId.Clear();
             _warnedAmbiguous?.Clear();
             _warnedUnresolved?.Clear();
+        }
+
+        private void RegisterPersistentId(Object obj, int id, string persistentId)
+        {
+            if (!obj || string.IsNullOrEmpty(persistentId))
+                return;
+
+            if (!persistentIdToAsset.ContainsKey(persistentId))
+            {
+                persistentIdToAsset.Add(persistentId, obj);
+                persistentIdToId.Add(persistentId, id);
+            }
+
+            idToPersistentId[id] = persistentId;
+            objectIdToPersistentId[GetObjectId(obj)] = persistentId;
         }
 
         private void RegisterTypeNameFallback(Object obj, int id)
@@ -218,12 +291,21 @@ namespace PurrNet
 
         public IReadOnlyList<Object> AllAssets => assets;
         public IReadOnlyDictionary<int, Object> IndexToAsset => idToAsset;
+        public IReadOnlyDictionary<string, Object> PersistentIdToAsset => persistentIdToAsset;
 
         public void Refresh()
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                if (RebuildGuids())
+                    UnityEditor.EditorUtility.SetDirty(this);
+            }
+#endif
             ClearLookups();
             _bakedIds.Clear();
             _bakedAssets.Clear();
+            _bakedPersistentIds.Clear();
 
             var visited = new HashSet<NetworkAssets>();
             var seenObjectIds = new HashSet<ObjectId>();
@@ -241,9 +323,11 @@ namespace PurrNet
                 objectIdToId[objectId] = i;
 
                 RegisterTypeNameFallback(obj, i);
+                RegisterPersistentId(obj, i, buffer[i].guid);
 
                 _bakedIds.Add(i);
                 _bakedAssets.Add(obj);
+                _bakedPersistentIds.Add(buffer[i].guid);
             }
 
 #if UNITY_EDITOR
@@ -255,6 +339,11 @@ namespace PurrNet
             void Collect(NetworkAssets na)
             {
                 if (!na || !visited.Add(na)) return;
+
+#if UNITY_EDITOR
+                if (!Application.isPlaying && na.RebuildGuids())
+                    UnityEditor.EditorUtility.SetDirty(na);
+#endif
 
                 for (int i = 0; i < na.assets.Count; i++)
                 {
@@ -344,9 +433,9 @@ namespace PurrNet
             }
 
             // Update GUIDs list to match assets list
-            RebuildGuids();
+            bool guidsChanged = RebuildGuids();
 
-            if (changed)
+            if (changed || guidsChanged)
             {
                 Refresh();
                 UnityEditor.EditorUtility.SetDirty(this);
@@ -359,15 +448,17 @@ namespace PurrNet
         /// <summary>
         /// Rebuilds the _assetGuids list from the current assets list using AssetDatabase.
         /// </summary>
-        private void RebuildGuids()
+        private bool RebuildGuids()
         {
-            _assetGuids.Clear();
+            var previous = _assetGuids;
+            var rebuilt = new List<string>(assets.Count);
+
             for (int i = 0; i < assets.Count; i++)
             {
                 var obj = assets[i];
                 if (!obj)
                 {
-                    _assetGuids.Add(null);
+                    rebuilt.Add(null);
                     continue;
                 }
 
@@ -381,8 +472,24 @@ namespace PurrNet
                         guid = $"{guid}_{localId}";
                 }
 
-                _assetGuids.Add(guid);
+                rebuilt.Add(guid);
             }
+
+            bool changed = previous.Count != rebuilt.Count;
+            if (!changed)
+            {
+                for (int i = 0; i < rebuilt.Count; i++)
+                {
+                    if (previous[i] == rebuilt[i]) continue;
+                    changed = true;
+                    break;
+                }
+            }
+
+            if (changed)
+                _assetGuids = rebuilt;
+
+            return changed;
         }
 
         private void CleanupNullEntries()

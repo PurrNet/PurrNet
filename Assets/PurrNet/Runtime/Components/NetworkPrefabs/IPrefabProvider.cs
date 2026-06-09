@@ -31,6 +31,17 @@ namespace PurrNet
         }
     }
 
+    public interface IPersistentPrefabProvider
+    {
+        IEnumerable<string> persistentIds { get; }
+
+        bool TryGetPersistentId(int prefabId, out string persistentId);
+
+        bool TryGetPersistentId(GameObject prefab, out string persistentId);
+
+        bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData);
+    }
+
     public interface IPrefabProvider
     {
         IEnumerable<PrefabData> allPrefabs { get; }

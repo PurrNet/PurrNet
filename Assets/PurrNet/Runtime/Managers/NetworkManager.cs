@@ -184,6 +184,51 @@ namespace PurrNet
         /// </summary>
         public IPrefabProvider prefabProvider { get; private set; }
 
+        public bool TryGetPrefabPersistentId(int prefabId, out string persistentId)
+        {
+            if (prefabProvider is IPersistentPrefabProvider persistentProvider)
+                return persistentProvider.TryGetPersistentId(prefabId, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPrefabPersistentId(GameObject prefab, out string persistentId)
+        {
+            if (prefabProvider is IPersistentPrefabProvider persistentProvider)
+                return persistentProvider.TryGetPersistentId(prefab, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData)
+        {
+            if (prefabProvider is IPersistentPrefabProvider persistentProvider)
+                return persistentProvider.TryGetPrefabDataByPersistentId(persistentId, out prefabData);
+
+            prefabData = default;
+            return false;
+        }
+
+        public bool TryGetNetworkAssetPersistentId(UnityEngine.Object asset, out string persistentId)
+        {
+            if (_networkAssets)
+                return _networkAssets.TryGetPersistentId(asset, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetNetworkAssetByPersistentId(string persistentId, out UnityEngine.Object asset)
+        {
+            if (_networkAssets)
+                return _networkAssets.TryGetAssetByPersistentId(persistentId, out asset);
+
+            asset = null;
+            return false;
+        }
+
 #if ADDRESSABLES_PURRNET_SUPPORT
         /// <summary>
         /// The Addressable network prefabs configuration, if assigned.

@@ -11,7 +11,7 @@ using UnityEditor;
 namespace PurrNet
 {
     [CreateAssetMenu(fileName = "NetworkPrefabs", menuName = "PurrNet/Network Prefabs/Prefabs", order = -201)]
-    public class NetworkPrefabs : PrefabProviderScriptable
+    public class NetworkPrefabs : PrefabProviderScriptable, IPersistentPrefabProvider
     {
         public bool autoGenerate = true;
         public bool networkOnly = true;
@@ -33,8 +33,12 @@ namespace PurrNet
         }
 
         public override IEnumerable<PrefabData> allPrefabs => prefabLookup.Values;
+        public IEnumerable<string> persistentIds => persistentIdToPrefabData.Keys;
 
         private readonly Dictionary<int, PrefabData> prefabLookup = new();
+        private readonly Dictionary<string, PrefabData> persistentIdToPrefabData = new();
+        private readonly Dictionary<int, string> prefabIdToPersistentId = new();
+        private readonly Dictionary<GameObject, string> prefabToPersistentId = new();
 
         public override bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
         {
@@ -84,6 +88,45 @@ namespace PurrNet
             return false;
         }
 
+        public bool TryGetPersistentId(int prefabId, out string persistentId)
+        {
+            return prefabIdToPersistentId.TryGetValue(prefabId, out persistentId);
+        }
+
+        public bool TryGetPersistentId(GameObject prefab, out string persistentId)
+        {
+            if (prefab && prefabToPersistentId.TryGetValue(prefab, out persistentId))
+                return true;
+
+            if (TryGetPrefabData(prefab, out var prefabData))
+                return TryGetPersistentId(prefabData.prefabId, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData)
+        {
+            if (!string.IsNullOrEmpty(persistentId) &&
+                persistentIdToPrefabData.TryGetValue(persistentId, out prefabData))
+                return true;
+
+            prefabData = default;
+            return false;
+        }
+
+        public bool TryGetPrefabByPersistentId(string persistentId, out GameObject prefab)
+        {
+            if (TryGetPrefabDataByPersistentId(persistentId, out var prefabData))
+            {
+                prefab = prefabData.prefab;
+                return prefab;
+            }
+
+            prefab = null;
+            return false;
+        }
+
         public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
         {
             prefabs.Add(new UserPrefabData
@@ -99,6 +142,10 @@ namespace PurrNet
 
         public override void Refresh()
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                UpdatePrefabGuids();
+#endif
             RegeneratePrefabLookup();
         }
 
@@ -107,6 +154,9 @@ namespace PurrNet
 
         private void OnValidate()
         {
+#if UNITY_EDITOR
+            UpdatePrefabGuids();
+#endif
             if (autoGenerate)
             {
                 // schedule for next editor update
@@ -123,6 +173,9 @@ namespace PurrNet
         private void RegeneratePrefabLookup()
         {
             prefabLookup.Clear();
+            persistentIdToPrefabData.Clear();
+            prefabIdToPersistentId.Clear();
+            prefabToPersistentId.Clear();
 
             var visited = new HashSet<NetworkPrefabs>();
             var seenGuid = new HashSet<string>();
@@ -166,15 +219,61 @@ namespace PurrNet
             for (int i = 0; i < buffer.Count; i++)
             {
                 var ud = buffer[i];
-                prefabLookup.Add(i, new PrefabData
+                var data = new PrefabData
                 {
                     prefabId = i,
                     prefab = ud.prefab,
                     pooled = ud.pooled,
                     warmupCount = ud.warmupCount
-                });
+                };
+
+                prefabLookup.Add(i, data);
+                RegisterPersistentId(ud.guid, data);
             }
         }
+
+        private void RegisterPersistentId(string persistentId, PrefabData prefabData)
+        {
+            if (string.IsNullOrEmpty(persistentId))
+                return;
+
+            if (!persistentIdToPrefabData.ContainsKey(persistentId))
+                persistentIdToPrefabData.Add(persistentId, prefabData);
+
+            prefabIdToPersistentId[prefabData.prefabId] = persistentId;
+
+            if (prefabData.prefab)
+                prefabToPersistentId[prefabData.prefab] = persistentId;
+        }
+
+#if UNITY_EDITOR
+        private void UpdatePrefabGuids()
+        {
+            bool changed = false;
+
+            for (int i = 0; i < prefabs.Count; i++)
+            {
+                var entry = prefabs[i];
+                if (!entry.prefab)
+                    continue;
+
+                string path = AssetDatabase.GetAssetPath(entry.prefab);
+                if (string.IsNullOrEmpty(path))
+                    continue;
+
+                string guid = AssetDatabase.AssetPathToGUID(path);
+                if (string.IsNullOrEmpty(guid) || entry.guid == guid)
+                    continue;
+
+                entry.guid = guid;
+                prefabs[i] = entry;
+                changed = true;
+            }
+
+            if (changed)
+                EditorUtility.SetDirty(this);
+        }
+#endif
 
         /// <summary>
         /// Editor only method to generate network prefabs from a specified folder.
