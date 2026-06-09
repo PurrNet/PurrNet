@@ -1,3 +1,10 @@
+# [1.20.0-beta.213](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.212...v1.20.0-beta.213) (2026-06-09)
+
+
+### Features
+
+* IPersistentPrefabProvider and PersistentId ([85b2d18](https://github.com/PurrNet/PurrNet/commit/85b2d18ee5c661bbe7cfee589a013fc16502248e))
+
 # [1.20.0-beta.212](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.211...v1.20.0-beta.212) (2026-06-06)
 
 
