@@ -210,6 +210,7 @@ var annotated_dup =
       [ "Interpolated", "classPurrNet_1_1Interpolated.html", null ],
       [ "InterpolatedWithDispose", "classPurrNet_1_1InterpolatedWithDispose.html", null ],
       [ "IOwnerAuth", "interfacePurrNet_1_1IOwnerAuth.html", null ],
+      [ "IPersistentPrefabProvider", "interfacePurrNet_1_1IPersistentPrefabProvider.html", null ],
       [ "IPlayerAuthenticator", "interfacePurrNet_1_1IPlayerAuthenticator.html", null ],
       [ "IPlayerBroadcaster", "interfacePurrNet_1_1IPlayerBroadcaster.html", null ],
       [ "IPlayerEvents", "interfacePurrNet_1_1IPlayerEvents.html", null ],

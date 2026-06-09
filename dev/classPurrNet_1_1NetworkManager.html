@@ -152,6 +152,21 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ae2bc097590e198beb7b31719d0d46fb4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#ae2bc097590e198beb7b31719d0d46fb4">SendToAll&lt; T &gt;</a> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
 <tr class="memdesc:ae2bc097590e198beb7b31719d0d46fb4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send a broadcast to everyone listening. Only possible as the server   <a href="classPurrNet_1_1NetworkManager.html#ae2bc097590e198beb7b31719d0d46fb4">More...</a><br /></td></tr>
 <tr class="separator:ae2bc097590e198beb7b31719d0d46fb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a56b78dfe383fe18bc945580d2b5c85ef"><td class="memItemLeft" align="right" valign="top"><a id="a56b78dfe383fe18bc945580d2b5c85ef" name="a56b78dfe383fe18bc945580d2b5c85ef"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabPersistentId</b> (int prefabId, out string persistentId)</td></tr>
+<tr class="separator:a56b78dfe383fe18bc945580d2b5c85ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad14aa7fbd1bf2e7fbddf30f67b36557c"><td class="memItemLeft" align="right" valign="top"><a id="ad14aa7fbd1bf2e7fbddf30f67b36557c" name="ad14aa7fbd1bf2e7fbddf30f67b36557c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabPersistentId</b> (GameObject prefab, out string persistentId)</td></tr>
+<tr class="separator:ad14aa7fbd1bf2e7fbddf30f67b36557c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9c3e8bf9dcbc5f6bf10da4b04156dc70"><td class="memItemLeft" align="right" valign="top"><a id="a9c3e8bf9dcbc5f6bf10da4b04156dc70" name="a9c3e8bf9dcbc5f6bf10da4b04156dc70"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabDataByPersistentId</b> (string persistentId, out <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> prefabData)</td></tr>
+<tr class="separator:a9c3e8bf9dcbc5f6bf10da4b04156dc70"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a446ea242bd6a63920209799b706ca4c5"><td class="memItemLeft" align="right" valign="top"><a id="a446ea242bd6a63920209799b706ca4c5" name="a446ea242bd6a63920209799b706ca4c5"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetNetworkAssetPersistentId</b> (UnityEngine.Object asset, out string persistentId)</td></tr>
+<tr class="separator:a446ea242bd6a63920209799b706ca4c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25ccf044ab740b39909609025f820223"><td class="memItemLeft" align="right" valign="top"><a id="a25ccf044ab740b39909609025f820223" name="a25ccf044ab740b39909609025f820223"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetNetworkAssetByPersistentId</b> (string persistentId, out UnityEngine.Object asset)</td></tr>
+<tr class="separator:a25ccf044ab740b39909609025f820223"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a11d134561fa4f5c995dd621d5668ecb6"><td class="memItemLeft" align="right" valign="top"><a id="a11d134561fa4f5c995dd621d5668ecb6" name="a11d134561fa4f5c995dd621d5668ecb6"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ResetInternalState</b> ()</td></tr>
 <tr class="memdesc:a11d134561fa4f5c995dd621d5668ecb6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unsubscribes all listeners and any other internal state. This is meant to be called manually if you encounter any caching issues due to bad unsubscribing.  <br /></td></tr>

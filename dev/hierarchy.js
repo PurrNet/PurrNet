@@ -307,6 +307,10 @@ var hierarchy =
       [ "PurrNet.UnionRPCHeader", "structPurrNet_1_1UnionRPCHeader.html", null ]
     ] ],
     [ "PurrNet.Packing.IPackedSimple", "interfacePurrNet_1_1Packing_1_1IPackedSimple.html", null ],
+    [ "PurrNet.IPersistentPrefabProvider", "interfacePurrNet_1_1IPersistentPrefabProvider.html", [
+      [ "PurrNet.CompositePrefabProvider", "classPurrNet_1_1CompositePrefabProvider.html", null ],
+      [ "PurrNet.NetworkPrefabs", "classPurrNet_1_1NetworkPrefabs.html", null ]
+    ] ],
     [ "PurrNet.IPlayerAuthenticator", "interfacePurrNet_1_1IPlayerAuthenticator.html", null ],
     [ "PurrNet.IPlayerBroadcaster", "interfacePurrNet_1_1IPlayerBroadcaster.html", [
       [ "PurrNet.Modules.PlayersManager", "classPurrNet_1_1Modules_1_1PlayersManager.html", null ],

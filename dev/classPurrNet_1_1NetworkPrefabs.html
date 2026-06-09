@@ -105,8 +105,9 @@ Inheritance diagram for PurrNet.NetworkPrefabs:</div>
  <div class="center">
   <img src="classPurrNet_1_1NetworkPrefabs.png" usemap="#PurrNet.NetworkPrefabs_map" alt=""/>
   <map id="PurrNet.NetworkPrefabs_map" name="PurrNet.NetworkPrefabs_map">
-<area href="classPurrNet_1_1PrefabProviderScriptable.html" alt="PurrNet.PrefabProviderScriptable" shape="rect" coords="107,56,311,80"/>
-<area href="interfacePurrNet_1_1IPrefabProvider.html" alt="PurrNet.IPrefabProvider" shape="rect" coords="214,0,418,24"/>
+<area href="classPurrNet_1_1PrefabProviderScriptable.html" alt="PurrNet.PrefabProviderScriptable" shape="rect" coords="107,56,312,80"/>
+<area href="interfacePurrNet_1_1IPersistentPrefabProvider.html" alt="PurrNet.IPersistentPrefabProvider" shape="rect" coords="322,56,527,80"/>
+<area href="interfacePurrNet_1_1IPrefabProvider.html" alt="PurrNet.IPrefabProvider" shape="rect" coords="215,0,420,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -121,6 +122,15 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a40d98ecc21a3c369d45069de173915be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af09cf661477805d42ac6c885deba90f9"><td class="memItemLeft" align="right" valign="top">override bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#af09cf661477805d42ac6c885deba90f9">TryGetPrefabData</a> (GameObject prefab, out <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> prefabData)</td></tr>
 <tr class="separator:af09cf661477805d42ac6c885deba90f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9285901601987ccf75e6ab3afc21246"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#aa9285901601987ccf75e6ab3afc21246">TryGetPersistentId</a> (int prefabId, out string persistentId)</td></tr>
+<tr class="separator:aa9285901601987ccf75e6ab3afc21246"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aab2e7736e1c557024e4845b37ddcf96f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#aab2e7736e1c557024e4845b37ddcf96f">TryGetPersistentId</a> (GameObject prefab, out string persistentId)</td></tr>
+<tr class="separator:aab2e7736e1c557024e4845b37ddcf96f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2263bf3688b7a89311e5d03b0bd2dcca"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#a2263bf3688b7a89311e5d03b0bd2dcca">TryGetPrefabDataByPersistentId</a> (string persistentId, out <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> prefabData)</td></tr>
+<tr class="separator:a2263bf3688b7a89311e5d03b0bd2dcca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b4a56c9e0cb19b1b28244ea8804098c"><td class="memItemLeft" align="right" valign="top"><a id="a5b4a56c9e0cb19b1b28244ea8804098c" name="a5b4a56c9e0cb19b1b28244ea8804098c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabByPersistentId</b> (string persistentId, out GameObject prefab)</td></tr>
+<tr class="separator:a5b4a56c9e0cb19b1b28244ea8804098c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f9da85830913faffd161f7a341bc26f"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#a7f9da85830913faffd161f7a341bc26f">AddRuntimePrefab</a> (string uniqueName, GameObject prefab, bool pooled=false, int warmup=5)</td></tr>
 <tr class="separator:a7f9da85830913faffd161f7a341bc26f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1a50b4825877a8645c9997a767cf2bb8"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#a1a50b4825877a8645c9997a767cf2bb8">Refresh</a> ()</td></tr>
@@ -148,6 +158,15 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>AddRuntimePrefab</b> 
 <tr class="separator:a6cfcec7a3859b93c0118e6032eea05c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ade974e6d0a4ee7c9292c9e2153908d09"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1IPrefabProvider.html#ade974e6d0a4ee7c9292c9e2153908d09">Refresh</a> ()</td></tr>
 <tr class="separator:ade974e6d0a4ee7c9292c9e2153908d09"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a13a2b55d872c83cc1906f05584b2530c"><td class="memItemLeft" align="right" valign="top"><a id="a13a2b55d872c83cc1906f05584b2530c" name="a13a2b55d872c83cc1906f05584b2530c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPersistentId</b> (int prefabId, out string persistentId)</td></tr>
+<tr class="separator:a13a2b55d872c83cc1906f05584b2530c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f09024c73ca023b39ad49b586fadf74"><td class="memItemLeft" align="right" valign="top"><a id="a6f09024c73ca023b39ad49b586fadf74" name="a6f09024c73ca023b39ad49b586fadf74"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPersistentId</b> (GameObject prefab, out string persistentId)</td></tr>
+<tr class="separator:a6f09024c73ca023b39ad49b586fadf74"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad7c671c947029290b4acbb160b54745a"><td class="memItemLeft" align="right" valign="top"><a id="ad7c671c947029290b4acbb160b54745a" name="ad7c671c947029290b4acbb160b54745a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabDataByPersistentId</b> (string persistentId, out <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> prefabData)</td></tr>
+<tr class="separator:ad7c671c947029290b4acbb160b54745a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -177,6 +196,8 @@ List&lt; <a class="el" href="structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.h
 Properties</h2></td></tr>
 <tr class="memitem:ad2646d1846c6be83f843e0203eb0d265"><td class="memItemLeft" align="right" valign="top">override IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#ad2646d1846c6be83f843e0203eb0d265">allPrefabs</a><code> [get]</code></td></tr>
 <tr class="separator:ad2646d1846c6be83f843e0203eb0d265"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af93fa6b69c5536f56b49da9e6963f904"><td class="memItemLeft" align="right" valign="top">IEnumerable&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkPrefabs.html#af93fa6b69c5536f56b49da9e6963f904">persistentIds</a><code> [get]</code></td></tr>
+<tr class="separator:af93fa6b69c5536f56b49da9e6963f904"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_classPurrNet_1_1PrefabProviderScriptable"><td colspan="2" onclick="javascript:toggleInherit('properties_classPurrNet_1_1PrefabProviderScriptable')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classPurrNet_1_1PrefabProviderScriptable.html">PurrNet.PrefabProviderScriptable</a></td></tr>
 <tr class="memitem:a674e3195d1f40a5d5837cbe4d2e1d92e inherit properties_classPurrNet_1_1PrefabProviderScriptable"><td class="memItemLeft" align="right" valign="top">abstract IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1PrefabProviderScriptable.html#a674e3195d1f40a5d5837cbe4d2e1d92e">allPrefabs</a><code> [get]</code></td></tr>
 <tr class="separator:a674e3195d1f40a5d5837cbe4d2e1d92e inherit properties_classPurrNet_1_1PrefabProviderScriptable"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -184,6 +205,10 @@ Properties</h2></td></tr>
 <tr class="memitem:a8f1214b6fbcc8cc7577d675df6d5cf32 inherit properties_interfacePurrNet_1_1IPrefabProvider"><td class="memItemLeft" align="right" valign="top"><a id="a8f1214b6fbcc8cc7577d675df6d5cf32" name="a8f1214b6fbcc8cc7577d675df6d5cf32"></a>
 IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>allPrefabs</b><code> [get]</code></td></tr>
 <tr class="separator:a8f1214b6fbcc8cc7577d675df6d5cf32 inherit properties_interfacePurrNet_1_1IPrefabProvider"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header properties_interfacePurrNet_1_1IPersistentPrefabProvider"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1IPersistentPrefabProvider')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1IPersistentPrefabProvider.html">PurrNet.IPersistentPrefabProvider</a></td></tr>
+<tr class="memitem:a413c49dcd6c154ed849f41d619cc6772 inherit properties_interfacePurrNet_1_1IPersistentPrefabProvider"><td class="memItemLeft" align="right" valign="top"><a id="a413c49dcd6c154ed849f41d619cc6772" name="a413c49dcd6c154ed849f41d619cc6772"></a>
+IEnumerable&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>persistentIds</b><code> [get]</code></td></tr>
+<tr class="separator:a413c49dcd6c154ed849f41d619cc6772 inherit properties_interfacePurrNet_1_1IPersistentPrefabProvider"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="a7f9da85830913faffd161f7a341bc26f" name="a7f9da85830913faffd161f7a341bc26f"></a>
@@ -263,6 +288,66 @@ IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData
 
 </div>
 </div>
+<a id="aab2e7736e1c557024e4845b37ddcf96f" name="aab2e7736e1c557024e4845b37ddcf96f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aab2e7736e1c557024e4845b37ddcf96f">&#9670;&#160;</a></span>TryGetPersistentId() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.NetworkPrefabs.TryGetPersistentId </td>
+          <td>(</td>
+          <td class="paramtype">GameObject&#160;</td>
+          <td class="paramname"><em>prefab</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">out string&#160;</td>
+          <td class="paramname"><em>persistentId</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IPersistentPrefabProvider.html">PurrNet.IPersistentPrefabProvider</a>.</p>
+
+</div>
+</div>
+<a id="aa9285901601987ccf75e6ab3afc21246" name="aa9285901601987ccf75e6ab3afc21246"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa9285901601987ccf75e6ab3afc21246">&#9670;&#160;</a></span>TryGetPersistentId() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.NetworkPrefabs.TryGetPersistentId </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>prefabId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">out string&#160;</td>
+          <td class="paramname"><em>persistentId</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IPersistentPrefabProvider.html">PurrNet.IPersistentPrefabProvider</a>.</p>
+
+</div>
+</div>
 <a id="af09cf661477805d42ac6c885deba90f9" name="af09cf661477805d42ac6c885deba90f9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af09cf661477805d42ac6c885deba90f9">&#9670;&#160;</a></span>TryGetPrefabData() <span class="overload">[1/2]</span></h2>
 
@@ -339,6 +424,36 @@ IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData
 
 </div>
 </div>
+<a id="a2263bf3688b7a89311e5d03b0bd2dcca" name="a2263bf3688b7a89311e5d03b0bd2dcca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2263bf3688b7a89311e5d03b0bd2dcca">&#9670;&#160;</a></span>TryGetPrefabDataByPersistentId()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.NetworkPrefabs.TryGetPrefabDataByPersistentId </td>
+          <td>(</td>
+          <td class="paramtype">string&#160;</td>
+          <td class="paramname"><em>persistentId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">out <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData</a>&#160;</td>
+          <td class="paramname"><em>prefabData</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IPersistentPrefabProvider.html">PurrNet.IPersistentPrefabProvider</a>.</p>
+
+</div>
+</div>
 <h2 class="groupheader">Property Documentation</h2>
 <a id="ad2646d1846c6be83f843e0203eb0d265" name="ad2646d1846c6be83f843e0203eb0d265"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad2646d1846c6be83f843e0203eb0d265">&#9670;&#160;</a></span>allPrefabs</h2>
@@ -361,6 +476,30 @@ IEnumerable&lt; <a class="el" href="structPurrNet_1_1PrefabData.html">PrefabData
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1IPrefabProvider.html">PurrNet.IPrefabProvider</a>.</p>
+
+</div>
+</div>
+<a id="af93fa6b69c5536f56b49da9e6963f904" name="af93fa6b69c5536f56b49da9e6963f904"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af93fa6b69c5536f56b49da9e6963f904">&#9670;&#160;</a></span>persistentIds</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">IEnumerable&lt;string&gt; PurrNet.NetworkPrefabs.persistentIds</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1IPersistentPrefabProvider.html">PurrNet.IPersistentPrefabProvider</a>.</p>
 
 </div>
 </div>
