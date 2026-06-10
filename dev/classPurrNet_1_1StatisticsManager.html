@@ -93,8 +93,10 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1StatisticsManager.html
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-types">Public Types</a> &#124;
+<a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#properties">Properties</a> &#124;
+<a href="#events">Events</a> &#124;
 <a href="classPurrNet_1_1StatisticsManager-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.StatisticsManager Class Reference</div></div>
 </div><!--header-->
@@ -122,6 +124,21 @@ Public Types</h2></td></tr>
 <tr class="memitem:ac49be76056d113e6ecfa15d3fba39250"><td class="memItemLeft" align="right" valign="top"><a id="ac49be76056d113e6ecfa15d3fba39250" name="ac49be76056d113e6ecfa15d3fba39250"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><b>StatisticsDisplayTarget</b> </td></tr>
 <tr class="separator:ac49be76056d113e6ecfa15d3fba39250"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:ac0bba6a4e21f20271ab6321557cb4ea8"><td class="memItemLeft" align="right" valign="top"><a id="ac0bba6a4e21f20271ab6321557cb4ea8" name="ac0bba6a4e21f20271ab6321557cb4ea8"></a>
+delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>HighPingChanged</b> (bool isHigh, int ping)</td></tr>
+<tr class="separator:ac0bba6a4e21f20271ab6321557cb4ea8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b5f8676dadaff00f5086b97582f62cb"><td class="memItemLeft" align="right" valign="top"><a id="a5b5f8676dadaff00f5086b97582f62cb" name="a5b5f8676dadaff00f5086b97582f62cb"></a>
+delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>HighJitterChanged</b> (bool isHigh, int jitter)</td></tr>
+<tr class="separator:a5b5f8676dadaff00f5086b97582f62cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0b7d76b5b63e5aad25842f40f4c6ac11"><td class="memItemLeft" align="right" valign="top"><a id="a0b7d76b5b63e5aad25842f40f4c6ac11" name="a0b7d76b5b63e5aad25842f40f4c6ac11"></a>
+delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>HighPacketLossChanged</b> (bool isHigh, int packetLoss)</td></tr>
+<tr class="separator:a0b7d76b5b63e5aad25842f40f4c6ac11"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ca70042b4b645c21ce5187bcf664b95"><td class="memItemLeft" align="right" valign="top"><a id="a6ca70042b4b645c21ce5187bcf664b95" name="a6ca70042b4b645c21ce5187bcf664b95"></a>
+delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>ConnectionStalledChanged</b> (bool isStalled, float secondsSinceLastReceived)</td></tr>
+<tr class="separator:a6ca70042b4b645c21ce5187bcf664b95"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a3a6836a03b0d287fdcfc4fff222eeb15"><td class="memItemLeft" align="right" valign="top"><a id="a3a6836a03b0d287fdcfc4fff222eeb15" name="a3a6836a03b0d287fdcfc4fff222eeb15"></a>
@@ -145,12 +162,39 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>upload</b><code> [ge
 <tr class="memitem:a9bf4267bf3a99439505fd87377a60a7d"><td class="memItemLeft" align="right" valign="top"><a id="a9bf4267bf3a99439505fd87377a60a7d" name="a9bf4267bf3a99439505fd87377a60a7d"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>download</b><code> [get]</code></td></tr>
 <tr class="separator:a9bf4267bf3a99439505fd87377a60a7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf24651fe038e0996d13441a81174648"><td class="memItemLeft" align="right" valign="top"><a id="adf24651fe038e0996d13441a81174648" name="adf24651fe038e0996d13441a81174648"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isHighPing</b><code> [get]</code></td></tr>
+<tr class="separator:adf24651fe038e0996d13441a81174648"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0d66704f8e5466e04a0fad803ec8cf45"><td class="memItemLeft" align="right" valign="top"><a id="a0d66704f8e5466e04a0fad803ec8cf45" name="a0d66704f8e5466e04a0fad803ec8cf45"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isHighJitter</b><code> [get]</code></td></tr>
+<tr class="separator:a0d66704f8e5466e04a0fad803ec8cf45"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93b6d582290e835295dc621a9edf4c5a"><td class="memItemLeft" align="right" valign="top"><a id="a93b6d582290e835295dc621a9edf4c5a" name="a93b6d582290e835295dc621a9edf4c5a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isHighPacketLoss</b><code> [get]</code></td></tr>
+<tr class="separator:a93b6d582290e835295dc621a9edf4c5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2b45e6997ccc5315593e6534325992c"><td class="memItemLeft" align="right" valign="top"><a id="ae2b45e6997ccc5315593e6534325992c" name="ae2b45e6997ccc5315593e6534325992c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isConnectionStalled</b><code> [get]</code></td></tr>
+<tr class="separator:ae2b45e6997ccc5315593e6534325992c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a48dd2e20b03c90a5064fe7603abc6ec0"><td class="memItemLeft" align="right" valign="top"><a id="a48dd2e20b03c90a5064fe7603abc6ec0" name="a48dd2e20b03c90a5064fe7603abc6ec0"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>connectedServer</b><code> [get]</code></td></tr>
 <tr class="separator:a48dd2e20b03c90a5064fe7603abc6ec0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aca2fc8b2cb0ec6353d22e0f7069773be"><td class="memItemLeft" align="right" valign="top"><a id="aca2fc8b2cb0ec6353d22e0f7069773be" name="aca2fc8b2cb0ec6353d22e0f7069773be"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>connectedClient</b><code> [get]</code></td></tr>
 <tr class="separator:aca2fc8b2cb0ec6353d22e0f7069773be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
+Events</h2></td></tr>
+<tr class="memitem:aafe5f5719d1dcbafaa4bc6a5f8205ec8"><td class="memItemLeft" align="right" valign="top"><a id="aafe5f5719d1dcbafaa4bc6a5f8205ec8" name="aafe5f5719d1dcbafaa4bc6a5f8205ec8"></a>
+HighPingChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onHighPingChanged</b></td></tr>
+<tr class="separator:aafe5f5719d1dcbafaa4bc6a5f8205ec8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7d4bd937369fe240108b0122dc3f24e"><td class="memItemLeft" align="right" valign="top"><a id="ae7d4bd937369fe240108b0122dc3f24e" name="ae7d4bd937369fe240108b0122dc3f24e"></a>
+HighJitterChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onHighJitterChanged</b></td></tr>
+<tr class="separator:ae7d4bd937369fe240108b0122dc3f24e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2b0b178af691fc85a4ce3ef2d7b7233"><td class="memItemLeft" align="right" valign="top"><a id="ae2b0b178af691fc85a4ce3ef2d7b7233" name="ae2b0b178af691fc85a4ce3ef2d7b7233"></a>
+HighPacketLossChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onHighPacketLossChanged</b></td></tr>
+<tr class="separator:ae2b0b178af691fc85a4ce3ef2d7b7233"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5837cceaddd4124dfed1a9211653339c"><td class="memItemLeft" align="right" valign="top"><a id="a5837cceaddd4124dfed1a9211653339c" name="a5837cceaddd4124dfed1a9211653339c"></a>
+ConnectionStalledChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onConnectionStalledChanged</b></td></tr>
+<tr class="separator:a5837cceaddd4124dfed1a9211653339c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>Assets/PurrNet/Runtime/Managers/StatisticsManager.cs</li>
