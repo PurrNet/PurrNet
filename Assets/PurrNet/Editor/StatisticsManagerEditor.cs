@@ -13,7 +13,16 @@ namespace PurrNet.Editor
         private SerializedProperty _displayTargetProp;
         private SerializedProperty _fontSizeProp;
         private SerializedProperty _textColorProp;
+        private SerializedProperty _highPingThresholdProp;
+        private SerializedProperty _highPingRecoveryThresholdProp;
+        private SerializedProperty _highJitterThresholdProp;
+        private SerializedProperty _highJitterRecoveryThresholdProp;
+        private SerializedProperty _highPacketLossThresholdProp;
+        private SerializedProperty _highPacketLossRecoveryThresholdProp;
+        private SerializedProperty _qualityChangeDurationProp;
+        private SerializedProperty _connectionStallThresholdProp;
         private bool _displaySettingsFoldout = true;
+        private bool _networkConditionsFoldout;
 
         private void OnEnable()
         {
@@ -23,6 +32,14 @@ namespace PurrNet.Editor
             _displayTargetProp = serializedObject.FindProperty("_displayTarget");
             _fontSizeProp = serializedObject.FindProperty("fontSize");
             _textColorProp = serializedObject.FindProperty("textColor");
+            _highPingThresholdProp = serializedObject.FindProperty("_highPingThreshold");
+            _highPingRecoveryThresholdProp = serializedObject.FindProperty("_highPingRecoveryThreshold");
+            _highJitterThresholdProp = serializedObject.FindProperty("_highJitterThreshold");
+            _highJitterRecoveryThresholdProp = serializedObject.FindProperty("_highJitterRecoveryThreshold");
+            _highPacketLossThresholdProp = serializedObject.FindProperty("_highPacketLossThreshold");
+            _highPacketLossRecoveryThresholdProp = serializedObject.FindProperty("_highPacketLossRecoveryThreshold");
+            _qualityChangeDurationProp = serializedObject.FindProperty("_qualityChangeDuration");
+            _connectionStallThresholdProp = serializedObject.FindProperty("_connectionStallThreshold");
         }
 
         public override void OnInspectorGUI()
@@ -38,6 +55,30 @@ namespace PurrNet.Editor
             EditorGUILayout.LabelField("Collection Settings", EditorStyles.boldLabel);
             statisticsManager.checkInterval =
                 EditorGUILayout.Slider("Check Rate In Seconds", statisticsManager.checkInterval, 0.05f, 1f);
+
+            GUILayout.Space(10);
+            _networkConditionsFoldout = EditorGUILayout.Foldout(_networkConditionsFoldout, "Network Condition Settings", true);
+            if (_networkConditionsFoldout)
+            {
+                EditorGUI.indentLevel++;
+
+                EditorGUILayout.HelpBox("These settings control when the network condition callbacks are triggered.", MessageType.Info);
+
+                EditorGUI.BeginChangeCheck();
+                EditorGUILayout.PropertyField(_highPingThresholdProp, new GUIContent("High Ping Threshold"));
+                EditorGUILayout.PropertyField(_highPingRecoveryThresholdProp, new GUIContent("High Ping Recovery"));
+                EditorGUILayout.PropertyField(_highJitterThresholdProp, new GUIContent("High Jitter Threshold"));
+                EditorGUILayout.PropertyField(_highJitterRecoveryThresholdProp, new GUIContent("High Jitter Recovery"));
+                EditorGUILayout.PropertyField(_highPacketLossThresholdProp, new GUIContent("Packet Loss Threshold"));
+                EditorGUILayout.PropertyField(_highPacketLossRecoveryThresholdProp, new GUIContent("Packet Loss Recovery"));
+                EditorGUILayout.PropertyField(_qualityChangeDurationProp, new GUIContent("Change Duration"));
+                EditorGUILayout.PropertyField(_connectionStallThresholdProp, new GUIContent("Connection Stall Threshold"));
+
+                if (EditorGUI.EndChangeCheck())
+                    serializedObject.ApplyModifiedProperties();
+
+                EditorGUI.indentLevel--;
+            }
 
             GUILayout.Space(10);
             _displaySettingsFoldout = EditorGUILayout.Foldout(_displaySettingsFoldout, "Display Settings", true);
@@ -87,8 +128,6 @@ namespace PurrNet.Editor
 
         private void RenderStatistics(StatisticsManager statisticsManager)
         {
-            serializedObject.Update();
-
             if (!statisticsManager.connectedServer && !statisticsManager.connectedClient)
             {
                 EditorGUILayout.LabelField("Awaiting connection");

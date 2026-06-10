@@ -15,12 +15,34 @@ namespace PurrNet
         [SerializeField] private StatisticsDisplayTarget _displayTarget = StatisticsDisplayTarget.Editor | StatisticsDisplayTarget.Build;
         [SerializeField] private float fontSize = 13f;
         [SerializeField] private Color textColor = Color.white;
+        [SerializeField] private int _highPingThreshold = 250;
+        [SerializeField] private int _highPingRecoveryThreshold = 180;
+        [SerializeField] private int _highJitterThreshold = 80;
+        [SerializeField] private int _highJitterRecoveryThreshold = 50;
+        [SerializeField, Range(0, 100)] private int _highPacketLossThreshold = 10;
+        [SerializeField, Range(0, 100)] private int _highPacketLossRecoveryThreshold = 5;
+        [SerializeField] private float _qualityChangeDuration = 2f;
+        [SerializeField] private float _connectionStallThreshold = 2f;
 
         public int ping { get; private set; }
         public int jitter { get; private set; }
         public int packetLoss { get; private set; }
         public float upload { get; private set; }
         public float download { get; private set; }
+        public bool isHighPing => _isHighPing;
+        public bool isHighJitter => _isHighJitter;
+        public bool isHighPacketLoss => _isHighPacketLoss;
+        public bool isConnectionStalled => _isConnectionStalled;
+
+        public delegate void HighPingChanged(bool isHigh, int ping);
+        public delegate void HighJitterChanged(bool isHigh, int jitter);
+        public delegate void HighPacketLossChanged(bool isHigh, int packetLoss);
+        public delegate void ConnectionStalledChanged(bool isStalled, float secondsSinceLastReceived);
+
+        public event HighPingChanged onHighPingChanged;
+        public event HighJitterChanged onHighJitterChanged;
+        public event HighPacketLossChanged onHighPacketLossChanged;
+        public event ConnectionStalledChanged onConnectionStalledChanged;
 
         private NetworkManager _networkManager;
         private PlayersBroadcaster _playersClientBroadcaster;
@@ -61,6 +83,15 @@ namespace PurrNet
         private float _totalDataReceived;
         private float _totalDataSent;
         private float _lastDataCheckTime;
+        private float _lastClientDataReceivedTime;
+
+        private bool _isHighPing;
+        private bool _isHighJitter;
+        private bool _isHighPacketLoss;
+        private bool _isConnectionStalled;
+        private float _highPingTransitionStarted = -1f;
+        private float _highJitterTransitionStarted = -1f;
+        private float _highPacketLossTransitionStarted = -1f;
 
         private int _cachedPing = -1;
         private int _cachedJitter = -1;
@@ -108,6 +139,15 @@ namespace PurrNet
 
         private void OnValidate()
         {
+            _highPingThreshold = Mathf.Max(0, _highPingThreshold);
+            _highPingRecoveryThreshold = Mathf.Clamp(_highPingRecoveryThreshold, 0, _highPingThreshold);
+            _highJitterThreshold = Mathf.Max(0, _highJitterThreshold);
+            _highJitterRecoveryThreshold = Mathf.Clamp(_highJitterRecoveryThreshold, 0, _highJitterThreshold);
+            _highPacketLossThreshold = Mathf.Clamp(_highPacketLossThreshold, 0, 100);
+            _highPacketLossRecoveryThreshold = Mathf.Clamp(_highPacketLossRecoveryThreshold, 0, _highPacketLossThreshold);
+            _qualityChangeDuration = Mathf.Max(0f, _qualityChangeDuration);
+            _connectionStallThreshold = Mathf.Max(0f, _connectionStallThreshold);
+
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
@@ -369,7 +409,10 @@ namespace PurrNet
             }
 
             if (connectedClient)
+            {
                 CalculatePacketLoss();
+                UpdateNetworkQuality();
+            }
 
             ServerStatsUpdate();
         }
@@ -468,6 +511,7 @@ namespace PurrNet
             _seqHead = 0;
             _seqCount = 0;
             _packetSequence = 0;
+            _lastClientDataReceivedTime = Time.unscaledTime;
 
             for (int i = 0; i < MAX_SEQUENCE_TRACKING; i++)
             {
@@ -481,6 +525,7 @@ namespace PurrNet
             _cachedUpload = -1f;
             _cachedDownload = -1f;
 
+            ResetNetworkQuality();
             ResetStatistics_ServerStats();
         }
 
@@ -608,6 +653,100 @@ namespace PurrNet
                 packetLoss = 0;
         }
 
+        private void UpdateNetworkQuality()
+        {
+            float now = Time.unscaledTime;
+
+            if (UpdateQualityState(ping, _highPingThreshold, _highPingRecoveryThreshold, now, ref _isHighPing, ref _highPingTransitionStarted))
+                onHighPingChanged?.Invoke(_isHighPing, ping);
+
+            if (UpdateQualityState(jitter, _highJitterThreshold, _highJitterRecoveryThreshold, now, ref _isHighJitter, ref _highJitterTransitionStarted))
+                onHighJitterChanged?.Invoke(_isHighJitter, jitter);
+
+            if (UpdateQualityState(packetLoss, _highPacketLossThreshold, _highPacketLossRecoveryThreshold, now, ref _isHighPacketLoss, ref _highPacketLossTransitionStarted))
+                onHighPacketLossChanged?.Invoke(_isHighPacketLoss, packetLoss);
+
+            UpdateConnectionStall(now);
+        }
+
+        private bool UpdateQualityState(int value, int threshold, int recoveryThreshold, float now, ref bool isActive, ref float transitionStarted)
+        {
+            bool shouldChange = isActive ? value <= recoveryThreshold : value >= threshold;
+
+            if (!shouldChange)
+            {
+                transitionStarted = -1f;
+                return false;
+            }
+
+            if (_qualityChangeDuration <= 0f)
+            {
+                isActive = !isActive;
+                transitionStarted = -1f;
+                return true;
+            }
+
+            if (transitionStarted < 0f)
+                transitionStarted = now;
+
+            if (now - transitionStarted < _qualityChangeDuration)
+                return false;
+
+            isActive = !isActive;
+            transitionStarted = -1f;
+            return true;
+        }
+
+        private void UpdateConnectionStall(float now)
+        {
+            if (_connectionStallThreshold <= 0f)
+            {
+                SetConnectionStalled(false, 0f);
+                return;
+            }
+
+            float secondsSinceLastReceived = now - _lastClientDataReceivedTime;
+
+            if (!_isConnectionStalled && secondsSinceLastReceived >= _connectionStallThreshold)
+                SetConnectionStalled(true, secondsSinceLastReceived);
+        }
+
+        private void SetConnectionStalled(bool isStalled, float secondsSinceLastReceived)
+        {
+            if (_isConnectionStalled == isStalled)
+                return;
+
+            _isConnectionStalled = isStalled;
+            onConnectionStalledChanged?.Invoke(isStalled, secondsSinceLastReceived);
+        }
+
+        private void ResetNetworkQuality()
+        {
+            _highPingTransitionStarted = -1f;
+            _highJitterTransitionStarted = -1f;
+            _highPacketLossTransitionStarted = -1f;
+
+            if (_isHighPing)
+            {
+                _isHighPing = false;
+                onHighPingChanged?.Invoke(false, ping);
+            }
+
+            if (_isHighJitter)
+            {
+                _isHighJitter = false;
+                onHighJitterChanged?.Invoke(false, jitter);
+            }
+
+            if (_isHighPacketLoss)
+            {
+                _isHighPacketLoss = false;
+                onHighPacketLossChanged?.Invoke(false, packetLoss);
+            }
+
+            SetConnectionStalled(false, 0f);
+        }
+
         private void ReceivePacket(PlayerID sender, PacketMessage msg, bool asServer)
         {
             if (asServer)
@@ -629,6 +768,12 @@ namespace PurrNet
         private void OnDataReceived(Connection conn, ByteData data, bool asServer)
         {
             _totalDataReceived += data.length;
+
+            if (asServer)
+                return;
+
+            _lastClientDataReceivedTime = Time.unscaledTime;
+            SetConnectionStalled(false, 0f);
         }
 
         private void OnDataSent(Connection conn, ByteData data, bool asServer)
