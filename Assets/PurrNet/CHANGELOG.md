@@ -1,3 +1,10 @@
+# [1.20.0-beta.214](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.213...v1.20.0-beta.214) (2026-06-10)
+
+
+### Bug Fixes
+
+* Add network condition change callbacks ([1436536](https://github.com/PurrNet/PurrNet/commit/14365369d12433ad67881f2ac5f15d3b1b0fbd1f))
+
 # [1.20.0-beta.213](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.212...v1.20.0-beta.213) (2026-06-09)
 
 
