@@ -143,7 +143,7 @@ namespace PurrNet
                 return;
 
             var controller = animator.runtimeAnimatorController;
-            if (controller && assets.GetIndex(controller) != -1)
+            if (controller && assets.TryGetIndex(controller, out _))
             {
                 actions.Add(new NetAnimatorRPC(new SetRuntimeAnimatorController
                 {
@@ -152,7 +152,7 @@ namespace PurrNet
             }
 
             var avatar = animator.avatar;
-            if (avatar && assets.GetIndex(avatar) != -1)
+            if (avatar && assets.TryGetIndex(avatar, out _))
             {
                 actions.Add(new NetAnimatorRPC(new SetAvatar
                 {
@@ -192,11 +192,11 @@ namespace PurrNet
             if (!animator.runtimeAnimatorController)
                 return;
 
-            int paramCount = animator.parameterCount;
+            var parameters = animator.parameters;
 
-            for (var i = 0; i < paramCount; i++)
+            for (var i = 0; i < parameters.Length; i++)
             {
-                var param = animator.parameters[i];
+                var param = parameters[i];
 
                 if (ignoreHashes.Contains(param.nameHash))
                     continue;
@@ -207,8 +207,9 @@ namespace PurrNet
                     {
                         var setBool = new SetBool
                         {
-                            value = animator.GetBool(param.name),
-                            nameHash = param.nameHash
+                            value = animator.GetBool(param.nameHash),
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         actions.Add(new NetAnimatorRPC(setBool));
@@ -218,8 +219,9 @@ namespace PurrNet
                     {
                         var setFloat = new SetFloat
                         {
-                            value = animator.GetFloat(param.name),
-                            nameHash = param.nameHash
+                            value = animator.GetFloat(param.nameHash),
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         actions.Add(new NetAnimatorRPC(setFloat));
@@ -229,8 +231,9 @@ namespace PurrNet
                     {
                         var setInteger = new SetInteger
                         {
-                            value = animator.GetInteger(param.name),
-                            nameHash = param.nameHash
+                            value = animator.GetInteger(param.nameHash),
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         actions.Add(new NetAnimatorRPC(setInteger));

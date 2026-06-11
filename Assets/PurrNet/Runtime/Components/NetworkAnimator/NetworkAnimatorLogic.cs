@@ -111,47 +111,50 @@ namespace PurrNet
                 {
                     case NetAnimatorAction.SetBool:
                     {
-                        RemovePast(i, action, (a, b)
+                        i -= RemovePast(i, action, (a, b)
                             => a._bool.nameHash == b._bool.nameHash);
                         break;
                     }
                     case NetAnimatorAction.SetFloat:
                     {
-                        RemovePast(i, action, (a, b)
+                        i -= RemovePast(i, action, (a, b)
                             => a._float.nameHash == b._float.nameHash);
                         break;
                     }
                     case NetAnimatorAction.SetInteger:
                     {
-                        RemovePast(i, action, (a, b)
+                        i -= RemovePast(i, action, (a, b)
                             => a._integer.nameHash == b._integer.nameHash);
                         break;
                     }
                     case NetAnimatorAction.SetTrigger:
                     {
-                        RemovePast(i, action, (a, b)
+                        i -= RemovePast(i, action, (a, b)
                             => a._trigger.nameHash == b._trigger.nameHash);
                         break;
                     }
                     case NetAnimatorAction.SetSpeed:
                     {
-                        RemovePast(i, action, (_, _) => true);
+                        i -= RemovePast(i, action, (_, _) => true);
                         break;
                     }
                 }
             }
         }
 
-        private void RemovePast(int i, NetAnimatorRPC action, Func<NetAnimatorRPC, NetAnimatorRPC, bool> match)
+        private int RemovePast(int i, NetAnimatorRPC action, Func<NetAnimatorRPC, NetAnimatorRPC, bool> match)
         {
+            int removed = 0;
             for (var j = i - 1; j >= 0; j--)
             {
                 if (_dirty[j].type == action.type && match(_dirty[j], action))
                 {
-                    _dirty.RemoveAt(i);
-                    break;
+                    _dirty.RemoveAt(j);
+                    removed++;
                 }
             }
+
+            return removed;
         }
 
         private void SendDirtyActions()
@@ -253,7 +256,12 @@ namespace PurrNet
 
             for (var i = 0; i < actions.actions.Count; i++)
             {
-                bool isIk = actions.actions[i].type is
+                var action = actions.actions[i];
+
+                if (!ResolveParamRef(ref action))
+                    continue;
+
+                bool isIk = action.type is
                     NetAnimatorAction.SetIKPosition or NetAnimatorAction.SetIKRotation or
                     NetAnimatorAction.SetIKHintPosition or NetAnimatorAction.SetLookAtPosition or
                     NetAnimatorAction.SetBoneLocalRotation or NetAnimatorAction.SetIKHintPositionWeight or
@@ -262,9 +270,43 @@ namespace PurrNet
                     NetAnimatorAction.SetLookAtWeight;
 
                 if (!isIk)
-                    actions.actions[i].Apply(_animator);
-                else _ikActions.Add(actions.actions[i]);
+                    action.Apply(_animator);
+                else _ikActions.Add(action);
             }
+        }
+
+        private bool ResolveParamRef(ref NetAnimatorRPC action)
+        {
+            switch (action.type)
+            {
+                case NetAnimatorAction.SetBool:
+                    return ResolveParamHash(ref action._bool.nameHash, action._bool.paramIndexPlusOne);
+                case NetAnimatorAction.SetFloat:
+                    return ResolveParamHash(ref action._float.nameHash, action._float.paramIndexPlusOne);
+                case NetAnimatorAction.SetInteger:
+                    return ResolveParamHash(ref action._integer.nameHash, action._integer.paramIndexPlusOne);
+                case NetAnimatorAction.SetTrigger:
+                    return ResolveParamHash(ref action._trigger.nameHash, action._trigger.paramIndexPlusOne);
+                case NetAnimatorAction.ResetTrigger:
+                    return ResolveParamHash(ref action._resetTrigger.nameHash, action._resetTrigger.paramIndexPlusOne);
+                default:
+                    return true;
+            }
+        }
+
+        private bool ResolveParamHash(ref int nameHash, int paramIndexPlusOne)
+        {
+            if (paramIndexPlusOne <= 0)
+                return true;
+
+            var parameters = GetCachedParameters();
+            int index = paramIndexPlusOne - 1;
+
+            if (index >= parameters.Length)
+                return false;
+
+            nameHash = parameters[index].nameHash;
+            return true;
         }
     }
 }

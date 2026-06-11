@@ -57,14 +57,17 @@ namespace PurrNet
         {
             _animator = animator;
             _avatarRoot = null;
+            _cachedParameters = null;
+            _cachedController = null;
             _dontSyncHashes.Clear();
             for (var i = 0; i < _dontSyncParameters.Count; i++)
                 _dontSyncHashes.Add(Animator.StringToHash(_dontSyncParameters[i]));
-            if (_animator != null)
+            if (_animator != null && _animator.isInitialized)
             {
-                for (var i = 0; i < _animator.parameters.Length; i++)
+                var animParams = _animator.parameters;
+                for (var i = 0; i < animParams.Length; i++)
                 {
-                    var parameter = _animator.parameters[i];
+                    var parameter = animParams[i];
                     if (_animator.IsParameterControlledByCurve(parameter.nameHash))
                         _dontSyncHashes.Add(parameter.nameHash);
                 }
@@ -81,11 +84,15 @@ namespace PurrNet
                 _dontSyncHashes.Add(Animator.StringToHash(param));
             }
 
-            for (var i = 0; i < _animator.parameters.Length; i++)
+            if (_animator != null)
             {
-                var parameter = _animator.parameters[i];
-                if (_animator.IsParameterControlledByCurve(parameter.nameHash))
-                    _dontSyncHashes.Add(parameter.nameHash);
+                var animParams = _animator.parameters;
+                for (var i = 0; i < animParams.Length; i++)
+                {
+                    var parameter = animParams[i];
+                    if (_animator.IsParameterControlledByCurve(parameter.nameHash))
+                        _dontSyncHashes.Add(parameter.nameHash);
+                }
             }
         }
 
@@ -165,7 +172,7 @@ namespace PurrNet
                 return true;
 
             var nm = networkManager;
-            if (!nm || !nm.networkAssets || nm.networkAssets.GetIndex(asset) < 0)
+            if (!nm || !nm.networkAssets || !nm.networkAssets.TryGetIndex(asset, out _))
             {
                 Logging.PurrLogger.LogError(
                     $"NetworkAnimator.{memberName}: '{asset.name}' is not registered in NetworkAssets. " +
@@ -531,6 +538,14 @@ namespace PurrNet
 
         public bool IsParameterControlledByCurve(string paramName) => _animator.IsParameterControlledByCurve(paramName);
 
+        public bool IsParameterControlledByCurve(int nameHash) => _animator.IsParameterControlledByCurve(nameHash);
+
+        public AnimatorClipInfo[] GetCurrentAnimatorClipInfo(int layerIndex) =>
+            _animator.GetCurrentAnimatorClipInfo(layerIndex);
+
+        public AnimatorClipInfo[] GetNextAnimatorClipInfo(int layerIndex) =>
+            _animator.GetNextAnimatorClipInfo(layerIndex);
+
         public int GetCurrentAnimatorClipInfoCount(int layerIndex) =>
             _animator.GetCurrentAnimatorClipInfoCount(layerIndex);
 
@@ -553,6 +568,9 @@ namespace PurrNet
         public void ResetTrigger(string triggerName) => ResetTrigger(Animator.StringToHash(triggerName));
 
         public void SetFloat(string propName, float value) => SetFloat(Animator.StringToHash(propName), value);
+
+        public void SetFloat(string propName, float value, float dampTime, float deltaTime) =>
+            SetFloat(Animator.StringToHash(propName), value, dampTime, deltaTime);
 
         public float GetFloat(string propName) => _animator.GetFloat(propName);
 
@@ -584,11 +602,12 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            var resetTrigger = new ResetTrigger { nameHash = nameHash };
+            var resetTrigger = new ResetTrigger
+                { nameHash = nameHash, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             resetTrigger.Apply(_animator);
 
             IfSameReplace(new NetAnimatorRPC(resetTrigger),
-                (a, b) => a._trigger.nameHash == b._trigger.nameHash);
+                (a, b) => a._resetTrigger.nameHash == b._resetTrigger.nameHash);
         }
 
         public void SetTrigger(int nameHash)
@@ -602,7 +621,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            var trigger = new SetTrigger { nameHash = nameHash };
+            var trigger = new SetTrigger
+                { nameHash = nameHash, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             trigger.Apply(_animator);
 
             IfSameReplace(new NetAnimatorRPC(trigger),
@@ -620,9 +640,35 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            var setFloat = new SetFloat { nameHash = nameHash, value = value };
+            var setFloat = new SetFloat
+                { nameHash = nameHash, value = value, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             setFloat.Apply(_animator);
             _floatValues[nameHash] = value;
+
+            IfSameReplace(new NetAnimatorRPC(setFloat),
+                (a, b) => a._float.nameHash == b._float.nameHash);
+        }
+
+        /// <summary>
+        /// Same as Animator.SetFloat with damping; the damping is evaluated locally and the resulting value is synced.
+        /// </summary>
+        public void SetFloat(int nameHash, float value, float dampTime, float deltaTime)
+        {
+            if (_dontSyncHashes.Contains(nameHash))
+            {
+                _animator.SetFloat(nameHash, value, dampTime, deltaTime);
+                return;
+            }
+
+            if (!IsController(_ownerAuth))
+                return;
+
+            _animator.SetFloat(nameHash, value, dampTime, deltaTime);
+
+            var damped = _animator.GetFloat(nameHash);
+            var setFloat = new SetFloat
+                { nameHash = nameHash, value = damped, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
+            _floatValues[nameHash] = damped;
 
             IfSameReplace(new NetAnimatorRPC(setFloat),
                 (a, b) => a._float.nameHash == b._float.nameHash);
@@ -639,7 +685,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            var setBool = new SetBool { nameHash = nameHash, value = value };
+            var setBool = new SetBool
+                { nameHash = nameHash, value = value, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             setBool.Apply(_animator);
             _boolValues[nameHash] = value;
 
@@ -658,7 +705,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            var setInteger = new SetInteger { nameHash = nameHash, value = value };
+            var setInteger = new SetInteger
+                { nameHash = nameHash, value = value, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             setInteger.Apply(_animator);
             _intValues[nameHash] = value;
 
@@ -889,6 +937,40 @@ namespace PurrNet
             matchTarget.Apply(_animator);
 
             _dirty.Add(new NetAnimatorRPC(matchTarget));
+        }
+
+        public void SetTarget(AvatarTarget targetIndex, float targetNormalizedTime)
+        {
+            if (!IsController(_ownerAuth))
+                return;
+
+            var setTarget = new SetTarget
+                { targetIndex = targetIndex, targetNormalizedTime = targetNormalizedTime };
+            setTarget.Apply(_animator);
+
+            IfSameTypeReplace(new NetAnimatorRPC(setTarget));
+        }
+
+        public void StartPlayback()
+        {
+            if (!IsController(_ownerAuth))
+                return;
+
+            var startPlayback = new StartPlayback();
+            startPlayback.Apply(_animator);
+
+            IfSameTypeReplace(new NetAnimatorRPC(startPlayback));
+        }
+
+        public void StopPlayback()
+        {
+            if (!IsController(_ownerAuth))
+                return;
+
+            var stopPlayback = new StopPlayback();
+            stopPlayback.Apply(_animator);
+
+            IfSameTypeReplace(new NetAnimatorRPC(stopPlayback));
         }
 
         public void InterruptMatchTarget(bool completeMatch = true)

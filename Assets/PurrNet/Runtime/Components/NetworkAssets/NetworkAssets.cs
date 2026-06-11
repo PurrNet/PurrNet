@@ -82,18 +82,34 @@ namespace PurrNet
         {
             if (!obj) return -1;
 
-            ObjectId objectId = GetObjectId(obj);
-            if (objectIdToId.TryGetValue(objectId, out int id))
+            if (TryGetIndex(obj, out int id))
                 return id;
+
+            WarnUnresolvedOnce(obj, GetObjectId(obj));
+            return -1;
+        }
+
+        /// <summary>
+        /// Same lookup as GetIndex but silent — no warning when the asset isn't registered.
+        /// Use this to probe registration of assets that are allowed to be unregistered.
+        /// </summary>
+        public bool TryGetIndex(Object obj, out int id)
+        {
+            id = -1;
+            if (!obj) return false;
+
+            ObjectId objectId = GetObjectId(obj);
+            if (objectIdToId.TryGetValue(objectId, out id))
+                return true;
 
             if (TryResolveDuplicate(obj, out id))
             {
                 objectIdToId[objectId] = id;
-                return id;
+                return true;
             }
 
-            WarnUnresolvedOnce(obj, objectId);
-            return -1;
+            id = -1;
+            return false;
         }
 
         public bool TryGetPersistentId(Object obj, out string persistentId)
