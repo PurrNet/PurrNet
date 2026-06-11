@@ -386,11 +386,21 @@ namespace PurrNet.Modules
 
             if (_players.Contains(playerId))
             {
-                // Player is already connected?
-                _transport.CloseConnection(conn);
-                PurrLogger.LogError(
-                    "Client connected using a cookie from an already connected player; closing their connection.");
-                return;
+                if (_playerToConnection.TryGetValue(playerId, out var oldConn) && oldConn != conn)
+                {
+                    PurrLogger.LogWarning(
+                        "Client reconnected with the cookie of a still-connected player; closing their previous connection.");
+                    _transport.CloseConnection(oldConn);
+                    SendUserLeftToAllClients(playerId);
+                    UnregisterPlayer(oldConn);
+                }
+                else
+                {
+                    _transport.CloseConnection(conn);
+                    PurrLogger.LogError(
+                        "Client connected using a cookie from an already connected player; closing their connection.");
+                    return;
+                }
             }
 
             var lastNidId = new NetworkID(0, playerId);
