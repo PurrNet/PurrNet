@@ -1,3 +1,10 @@
+# [1.20.0-beta.216](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.215...v1.20.0-beta.216) (2026-06-11)
+
+
+### Bug Fixes
+
+* handle player reconnection more gracefully in PlayersManager ([e0ad5b6](https://github.com/PurrNet/PurrNet/commit/e0ad5b686daa4631f245e9a450d122fa0805f935))
+
 # [1.20.0-beta.215](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.214...v1.20.0-beta.215) (2026-06-11)
 
 
