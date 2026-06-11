@@ -1,3 +1,10 @@
+# [1.20.0-beta.215](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.214...v1.20.0-beta.215) (2026-06-11)
+
+
+### Bug Fixes
+
+* NetworkAnimator improvements and missing methods ([3b6774a](https://github.com/PurrNet/PurrNet/commit/3b6774a82f7128530f8ec1c1e4d75a20a35a4bde))
+
 # [1.20.0-beta.214](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.213...v1.20.0-beta.214) (2026-06-10)
 
 
