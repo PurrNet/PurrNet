@@ -1,3 +1,10 @@
+# [1.20.0-beta.217](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.216...v1.20.0-beta.217) (2026-06-16)
+
+
+### Bug Fixes
+
+* ensure proper unsubscription in CompositeTransport ([32db46a](https://github.com/PurrNet/PurrNet/commit/32db46a1414daf629aa1fd0c10d899c31109330a))
+
 # [1.20.0-beta.216](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.215...v1.20.0-beta.216) (2026-06-11)
 
 
