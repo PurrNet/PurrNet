@@ -111,14 +111,15 @@ Inheritance diagram for PurrNet.NetworkIdentity:</div>
 <area href="classPurrNet_1_1NetworkAudioSource.html" alt="PurrNet.NetworkAudioSource" shape="rect" coords="215,168,420,192"/>
 <area href="classPurrNet_1_1NetworkBehaviour.html" alt="PurrNet.NetworkBehaviour" shape="rect" coords="215,224,420,248"/>
 <area href="classPurrNet_1_1NetworkBones.html" alt="PurrNet.NetworkBones" shape="rect" coords="215,280,420,304"/>
-<area href="classPurrNet_1_1NetworkOwnershipDebug.html" alt="PurrNet.NetworkOwnershipDebug" shape="rect" coords="215,336,420,360"/>
-<area href="classPurrNet_1_1NetworkOwnershipToggle.html" alt="PurrNet.NetworkOwnershipToggle" shape="rect" coords="215,392,420,416"/>
-<area href="classPurrNet_1_1NetworkReflection.html" alt="PurrNet.NetworkReflection" shape="rect" coords="215,448,420,472"/>
-<area href="classPurrNet_1_1NetworkRigidbody.html" alt="PurrNet.NetworkRigidbody" shape="rect" coords="215,504,420,528"/>
-<area href="classPurrNet_1_1NetworkServerToggle.html" alt="PurrNet.NetworkServerToggle" shape="rect" coords="215,560,420,584"/>
-<area href="classPurrNet_1_1NetworkTransform.html" alt="PurrNet.NetworkTransform" shape="rect" coords="215,616,420,640"/>
-<area href="classPurrNet_1_1PlayerIdentity.html" alt="PurrNet.PlayerIdentity&lt; T &gt;" shape="rect" coords="215,672,420,696"/>
-<area href="classPurrNet_1_1PrefabLink.html" alt="PurrNet.PrefabLink" shape="rect" coords="215,728,420,752"/>
+<area href="classPurrNet_1_1NetworkLOD.html" title="Opt-in network LOD for the identities on this GameObject. The server periodically resolves a tier per..." alt="PurrNet.NetworkLOD" shape="rect" coords="215,336,420,360"/>
+<area href="classPurrNet_1_1NetworkOwnershipDebug.html" alt="PurrNet.NetworkOwnershipDebug" shape="rect" coords="215,392,420,416"/>
+<area href="classPurrNet_1_1NetworkOwnershipToggle.html" alt="PurrNet.NetworkOwnershipToggle" shape="rect" coords="215,448,420,472"/>
+<area href="classPurrNet_1_1NetworkReflection.html" alt="PurrNet.NetworkReflection" shape="rect" coords="215,504,420,528"/>
+<area href="classPurrNet_1_1NetworkRigidbody.html" alt="PurrNet.NetworkRigidbody" shape="rect" coords="215,560,420,584"/>
+<area href="classPurrNet_1_1NetworkServerToggle.html" alt="PurrNet.NetworkServerToggle" shape="rect" coords="215,616,420,640"/>
+<area href="classPurrNet_1_1NetworkTransform.html" alt="PurrNet.NetworkTransform" shape="rect" coords="215,672,420,696"/>
+<area href="classPurrNet_1_1PlayerIdentity.html" alt="PurrNet.PlayerIdentity&lt; T &gt;" shape="rect" coords="215,728,420,752"/>
+<area href="classPurrNet_1_1PrefabLink.html" alt="PurrNet.PrefabLink" shape="rect" coords="215,784,420,808"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -242,6 +243,17 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetID</b> (<a class="
 <tr class="memitem:aa0e1773e6bacdfd990a36375fa2d06df"><td class="memItemLeft" align="right" valign="top"><a id="aa0e1773e6bacdfd990a36375fa2d06df" name="aa0e1773e6bacdfd990a36375fa2d06df"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetIsSpawned</b> (bool <a class="el" href="classPurrNet_1_1NetworkIdentity.html#a1ee60a1c08b4452a59a233dee72059e1">isSpawned</a>, bool asServer)</td></tr>
 <tr class="separator:aa0e1773e6bacdfd990a36375fa2d06df"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a62282e70cc2c4212399eda58de8cba9c"><td class="memItemLeft" align="right" valign="top"><a id="a62282e70cc2c4212399eda58de8cba9c" name="a62282e70cc2c4212399eda58de8cba9c"></a>
+delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>LODTierChangedDelegate</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, byte previousTier, byte newTier)</td></tr>
+<tr class="separator:a62282e70cc2c4212399eda58de8cba9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7f22c47059dbdf11779a30ef80ac9ce"><td class="memItemLeft" align="right" valign="top"><a id="ae7f22c47059dbdf11779a30ef80ac9ce" name="ae7f22c47059dbdf11779a30ef80ac9ce"></a>
+byte&#160;</td><td class="memItemRight" valign="bottom"><b>GetLODTier</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:ae7f22c47059dbdf11779a30ef80ac9ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current LOD tier of this object for the given player. 0 (full detail) when no LOD component is present. Server only.  <br /></td></tr>
+<tr class="separator:ae7f22c47059dbdf11779a30ef80ac9ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acd5e3a7b6c7671953683e0b8bf88e9d8"><td class="memItemLeft" align="right" valign="top"><a id="acd5e3a7b6c7671953683e0b8bf88e9d8" name="acd5e3a7b6c7671953683e0b8bf88e9d8"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>ShouldSendLODToPlayer</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:acd5e3a7b6c7671953683e0b8bf88e9d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether state for this object should be sent to the given player on the current tick, based on the player's LOD tier. Always true when no LOD component is present.  <br /></td></tr>
+<tr class="separator:acd5e3a7b6c7671953683e0b8bf88e9d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a447c29c284006355058a84886b8eb8e2"><td class="memItemLeft" align="right" valign="top"><a id="a447c29c284006355058a84886b8eb8e2" name="a447c29c284006355058a84886b8eb8e2"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterModuleInternal</b> (string moduleName, string type, <a class="el" href="classPurrNet_1_1NetworkModule.html">NetworkModule</a> module, bool isNetworkIdentity)</td></tr>
 <tr class="separator:a447c29c284006355058a84886b8eb8e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -403,6 +415,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDestroy</b>
 <tr class="memitem:ab9706c0e2c02592b957e7cd2851d8e1e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e">PromoteToServer</a> ()</td></tr>
 <tr class="memdesc:ab9706c0e2c02592b957e7cd2851d8e1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.   <a href="classPurrNet_1_1NetworkIdentity.html#ab9706c0e2c02592b957e7cd2851d8e1e">More...</a><br /></td></tr>
 <tr class="separator:ab9706c0e2c02592b957e7cd2851d8e1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afa982787d09a224c08ff7883c8d574c5"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#afa982787d09a224c08ff7883c8d574c5">OnLODTierChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, byte previousTier, byte newTier)</td></tr>
+<tr class="memdesc:afa982787d09a224c08ff7883c8d574c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the LOD tier of this object changes for a player. Server only.   <a href="classPurrNet_1_1NetworkIdentity.html#afa982787d09a224c08ff7883c8d574c5">More...</a><br /></td></tr>
+<tr class="separator:afa982787d09a224c08ff7883c8d574c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
@@ -516,6 +531,10 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isFullySpawned</b><co
 <tr class="memitem:a3ea08ea79d2d6cdf448becaf9493841e"><td class="memItemLeft" align="right" valign="top"><a id="a3ea08ea79d2d6cdf448becaf9493841e" name="a3ea08ea79d2d6cdf448becaf9493841e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isManualSpawn</b><code> [get, set]</code></td></tr>
 <tr class="separator:a3ea08ea79d2d6cdf448becaf9493841e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae554a2054c59f8d4f1e7f9a3480479f4"><td class="memItemLeft" align="right" valign="top"><a id="ae554a2054c59f8d4f1e7f9a3480479f4" name="ae554a2054c59f8d4f1e7f9a3480479f4"></a>
+<a class="el" href="classPurrNet_1_1NetworkLOD.html">NetworkLOD</a>&#160;</td><td class="memItemRight" valign="bottom"><b>networkLOD</b><code> [get]</code></td></tr>
+<tr class="memdesc:ae554a2054c59f8d4f1e7f9a3480479f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">The <a class="el" href="classPurrNet_1_1NetworkLOD.html" title="Opt-in network LOD for the identities on this GameObject. The server periodically resolves a tier per...">NetworkLOD</a> component governing this identity, if any.  <br /></td></tr>
+<tr class="separator:ae554a2054c59f8d4f1e7f9a3480479f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae2c8030a57549dc8e7cff1904ab81e94"><td class="memItemLeft" align="right" valign="top"><a id="ae2c8030a57549dc8e7cff1904ab81e94" name="ae2c8030a57549dc8e7cff1904ab81e94"></a>
 IReadOnlyList&lt; <a class="el" href="classPurrNet_1_1NetworkModule.html">NetworkModule</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>modules</b><code> [get]</code></td></tr>
 <tr class="separator:ae2c8030a57549dc8e7cff1904ab81e94"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -546,6 +565,10 @@ Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;
 NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentChanged</b></td></tr>
 <tr class="memdesc:a4033fcf94e189d7cb751bca972838cf3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the network parent of this object changes. This will be the closest parent with a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>.  <br /></td></tr>
 <tr class="separator:a4033fcf94e189d7cb751bca972838cf3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a42c36958f71dcbdeb255e7805fd44eaf"><td class="memItemLeft" align="right" valign="top"><a id="a42c36958f71dcbdeb255e7805fd44eaf" name="a42c36958f71dcbdeb255e7805fd44eaf"></a>
+LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onLODTierChanged</b></td></tr>
+<tr class="memdesc:a42c36958f71dcbdeb255e7805fd44eaf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the LOD tier of this object changes for a player. Server only.  <br /></td></tr>
+<tr class="separator:a42c36958f71dcbdeb255e7805fd44eaf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="aacf2429591c4c7a1a12f7d110674c312" name="aacf2429591c4c7a1a12f7d110674c312"></a>
@@ -734,7 +757,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a5bd3fed5e49b3ee58b56604f010780f5">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1PlayerIdentity.html#ad444f89b34dfc57f6830a1f9688b1862">PurrNet.PlayerIdentity&lt; T &gt;</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#ad0e18b4ef21d78cd782cc69a1d91ad8c">PurrNet.StateMachine.StateMachine</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a5bd3fed5e49b3ee58b56604f010780f5">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1PlayerIdentity.html#ad444f89b34dfc57f6830a1f9688b1862">PurrNet.PlayerIdentity&lt; T &gt;</a>, <a class="el" href="classPurrNet_1_1NetworkLOD.html#a63211fe7f0eca495b288eba024075524">PurrNet.NetworkLOD</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#ad0e18b4ef21d78cd782cc69a1d91ad8c">PurrNet.StateMachine.StateMachine</a>.</p>
 
 </div>
 </div>
@@ -764,6 +787,58 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 <p>Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.  </p>
 
 <p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#af1afaf75f36fe5bb777f9e205d0d1c5e">PurrNet.NetworkTransform</a>, and <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a7ae307e7fa47852b3e20388377b38b2d">PurrNet.NetworkRigidbody</a>.</p>
+
+</div>
+</div>
+<a id="afa982787d09a224c08ff7883c8d574c5" name="afa982787d09a224c08ff7883c8d574c5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afa982787d09a224c08ff7883c8d574c5">&#9670;&#160;</a></span>OnLODTierChanged()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkIdentity.OnLODTierChanged </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">byte&#160;</td>
+          <td class="paramname"><em>previousTier</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">byte&#160;</td>
+          <td class="paramname"><em>newTier</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when the LOD tier of this object changes for a player. Server only.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">player</td><td>The player whose tier changed</td></tr>
+    <tr><td class="paramname">previousTier</td><td>The previous tier</td></tr>
+    <tr><td class="paramname">newTier</td><td>The new tier</td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1241,7 +1316,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a7e8e31f524129e43f8138b376a64edb3">PurrNet.NetworkBones</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#aa703b27b71d3dc97450f8f5c07f0034e">PurrNet.StateMachine.StateMachine</a>.</p>
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27">PurrNet.NetworkTransform</a>, <a class="el" href="classPurrNet_1_1NetworkBones.html#a7e8e31f524129e43f8138b376a64edb3">PurrNet.NetworkBones</a>, <a class="el" href="classPurrNet_1_1NetworkLOD.html#aa871ad0be7de21c05661bf9fe5bd0318">PurrNet.NetworkLOD</a>, and <a class="el" href="classPurrNet_1_1StateMachine_1_1StateMachine.html#aa703b27b71d3dc97450f8f5c07f0034e">PurrNet.StateMachine.StateMachine</a>.</p>
 
 </div>
 </div>
@@ -1427,6 +1502,7 @@ NidParentChanged&#160;</td><td class="memItemRight" valign="bottom"><b>onParentC
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Broadcasting.cs</li>
 <li>Assets/PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.cs</li>
+<li>Assets/PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.LOD.cs</li>
 <li>Assets/PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Modules.cs</li>
 <li>Assets/PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Rules.cs</li>
 </ul>

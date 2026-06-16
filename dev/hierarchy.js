@@ -203,6 +203,9 @@ var hierarchy =
     [ "PurrNet.Transports.IListener", "interfacePurrNet_1_1Transports_1_1IListener.html", [
       [ "PurrNet.Transports.ITransport", "interfacePurrNet_1_1Transports_1_1ITransport.html", null ]
     ] ],
+    [ "PurrNet.ILODScheduler", "interfacePurrNet_1_1ILODScheduler.html", [
+      [ "PurrNet.LODIntervalScheduler", "classPurrNet_1_1LODIntervalScheduler.html", null ]
+    ] ],
     [ "PurrNet.IMath< T >", "interfacePurrNet_1_1IMath.html", null ],
     [ "INetLogger", null, [
       [ "PurrNet.Transports.UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", null ]
@@ -218,6 +221,7 @@ var hierarchy =
       [ "PurrNet.Modules.DeltaModule", "classPurrNet_1_1Modules_1_1DeltaModule.html", null ],
       [ "PurrNet.Modules.GlobalOwnershipModule", "classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html", null ],
       [ "PurrNet.Modules.HierarchyFactory", "classPurrNet_1_1Modules_1_1HierarchyFactory.html", null ],
+      [ "PurrNet.Modules.NetworkLODModule", "classPurrNet_1_1Modules_1_1NetworkLODModule.html", null ],
       [ "PurrNet.Modules.NetworkTransformFactory", "classPurrNet_1_1Modules_1_1NetworkTransformFactory.html", null ],
       [ "PurrNet.Modules.NetworkTransformModule", "classPurrNet_1_1Modules_1_1NetworkTransformModule.html", null ],
       [ "PurrNet.Modules.PlayersManager", "classPurrNet_1_1Modules_1_1PlayersManager.html", null ],
@@ -239,6 +243,7 @@ var hierarchy =
       [ "PurrNet.NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", [
         [ "PurrNet.AlwaysVisibleRule", "classPurrNet_1_1AlwaysVisibleRule.html", null ],
         [ "PurrNet.DistanceRule", "classPurrNet_1_1DistanceRule.html", null ],
+        [ "PurrNet.LODVisibilityRule", "classPurrNet_1_1LODVisibilityRule.html", null ],
         [ "PurrNet.NoVisibilityRule", "classPurrNet_1_1NoVisibilityRule.html", null ]
       ] ]
     ] ],
@@ -406,6 +411,7 @@ var hierarchy =
           [ "PurrNet.StateMachine.StateNode< T >", "classPurrNet_1_1StateMachine_1_1StateNode.html", null ]
         ] ],
         [ "PurrNet.NetworkBones", "classPurrNet_1_1NetworkBones.html", null ],
+        [ "PurrNet.NetworkLOD", "classPurrNet_1_1NetworkLOD.html", null ],
         [ "PurrNet.NetworkOwnershipDebug", "classPurrNet_1_1NetworkOwnershipDebug.html", null ],
         [ "PurrNet.NetworkOwnershipToggle", "classPurrNet_1_1NetworkOwnershipToggle.html", null ],
         [ "PurrNet.NetworkReflection", "classPurrNet_1_1NetworkReflection.html", null ],
@@ -430,6 +436,7 @@ var hierarchy =
       [ "PurrNet.UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ]
     ] ],
     [ "PurrNet.NetworkIdentityRules", "structPurrNet_1_1NetworkIdentityRules.html", null ],
+    [ "PurrNet.NetworkLODTier", "structPurrNet_1_1NetworkLODTier.html", null ],
     [ "PurrNet.NetworkModule", "classPurrNet_1_1NetworkModule.html", [
       [ "PurrNet.Reference< T >", "classPurrNet_1_1Reference.html", null ],
       [ "PurrNet.ReliableDeltaStream< T >", "classPurrNet_1_1ReliableDeltaStream.html", null ],
@@ -508,12 +515,16 @@ var hierarchy =
     [ "PurrNet.RpcRules", "structPurrNet_1_1RpcRules.html", null ],
     [ "PurrNet.RPCSignature", "structPurrNet_1_1RPCSignature.html", null ],
     [ "PurrNet.ScaleWithParent", "structPurrNet_1_1ScaleWithParent.html", null ],
+    [ "PurrNet.Modules.SceneScopedFactory< NetworkLODModule >", "classPurrNet_1_1Modules_1_1SceneScopedFactory.html", [
+      [ "PurrNet.Modules.NetworkLODFactory", "classPurrNet_1_1Modules_1_1NetworkLODFactory.html", null ]
+    ] ],
     [ "PurrNet.Modules.SceneScopedFactory< RollbackModule >", "classPurrNet_1_1Modules_1_1SceneScopedFactory.html", [
       [ "PurrNet.Modules.ColliderRollbackFactory", "classPurrNet_1_1Modules_1_1ColliderRollbackFactory.html", null ]
     ] ],
     [ "PurrNet.Modules.SceneState", "structPurrNet_1_1Modules_1_1SceneState.html", null ],
     [ "ScriptableObject", null, [
       [ "PurrNet.NetworkAssets", "classPurrNet_1_1NetworkAssets.html", null ],
+      [ "PurrNet.NetworkLODProfile", "classPurrNet_1_1NetworkLODProfile.html", null ],
       [ "PurrNet.NetworkRigidbodySettings< T >", "classPurrNet_1_1NetworkRigidbodySettings.html", null ],
       [ "PurrNet.NetworkRules", "classPurrNet_1_1NetworkRules.html", null ],
       [ "PurrNet.NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", null ],

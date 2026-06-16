@@ -27,6 +27,8 @@ var namespacePurrNet_1_1Modules =
     [ "INetworkModule", "interfacePurrNet_1_1Modules_1_1INetworkModule.html", null ],
     [ "IStableHashable", "interfacePurrNet_1_1Modules_1_1IStableHashable.html", null ],
     [ "LocalTransform", "structPurrNet_1_1Modules_1_1LocalTransform.html", null ],
+    [ "NetworkLODFactory", "classPurrNet_1_1Modules_1_1NetworkLODFactory.html", "classPurrNet_1_1Modules_1_1NetworkLODFactory" ],
+    [ "NetworkLODModule", "classPurrNet_1_1Modules_1_1NetworkLODModule.html", null ],
     [ "NetworkTransformDelta", "structPurrNet_1_1Modules_1_1NetworkTransformDelta.html", null ],
     [ "NetworkTransformFactory", "classPurrNet_1_1Modules_1_1NetworkTransformFactory.html", null ],
     [ "NetworkTransformModule", "classPurrNet_1_1Modules_1_1NetworkTransformModule.html", null ],
