@@ -15,7 +15,7 @@ public class LateSerializeScenario : Scenario
     [SerializeField] private float _stayDisconnectedSeconds = 1.0f;
     [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
-    private const int BarrierEnd = 4300;
+    private const int BarrierEnd = 4350;
 
     private LateSerializeIdentity _prefab;
 

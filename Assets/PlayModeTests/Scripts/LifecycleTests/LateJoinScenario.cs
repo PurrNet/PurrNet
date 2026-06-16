@@ -21,7 +21,7 @@ public class LateJoinScenario : Scenario
     [SerializeField] private float _stayDisconnectedSeconds = 1.0f;
     [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
-    private const int BarrierEnd = 4200;
+    private const int BarrierEnd = 4250;
 
     private LateJoinIdentity _prefab;
 

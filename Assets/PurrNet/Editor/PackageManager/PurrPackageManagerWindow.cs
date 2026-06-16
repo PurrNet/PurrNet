@@ -1588,8 +1588,7 @@ namespace PurrNet.Editor
                 }
 
                 PurrPackageManagerCache.Invalidate();
-                UnityEditor.PackageManager.Client.Resolve();
-                AssetDatabase.Refresh();
+                PurrPackageManagerInstaller.ResolvePackagesWithRetry();
             }
             catch (Exception e)
             {

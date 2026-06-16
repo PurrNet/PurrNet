@@ -8,12 +8,12 @@ public class StateMachineServerAuthScenario : Scenario
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
     [SerializeField] private float _stateTimeoutSeconds = 30f;
 
-    private const int BarrierInitial = 5500;
-    private const int BarrierInsertedCurrent = 5501;
-    private const int BarrierPhaseOne = 5502;
-    private const int BarrierAddedCurrent = 5503;
-    private const int BarrierFinal = 5504;
-    private const int BarrierExpandedBase = 5520;
+    private const int BarrierInitial = 6000;
+    private const int BarrierInsertedCurrent = 6001;
+    private const int BarrierPhaseOne = 6002;
+    private const int BarrierAddedCurrent = 6003;
+    private const int BarrierFinal = 6004;
+    private const int BarrierExpandedBase = 6020;
     private const float BarrierTimeoutSeconds = 60f;
 
     private StateMachineTestRig _prefab;
