@@ -12,7 +12,11 @@ public static class ScenarioBarrier
     // before completion — it forwards OnCompleted to the underlying state-machine source,
     // which only allows one continuation.
     private static readonly Dictionary<int, Task> _inFlight = new();
-    private static int _lastProceedBarrier = -1;
+    // Exact-match per-id proceeds (NOT a high-water mark): barrier ids are scenario-local constants
+    // with no global ordering, so "any id <= last proceeded" would let clients skip barriers in any
+    // scenario that runs after one with higher ids. The set also covers proceeds that arrive before
+    // a client starts waiting. Ids must still be globally unique across scenarios.
+    private static readonly HashSet<int> _proceeded = new();
 
     public static async UniTask Wait(ScenarioContext ctx, int barrierId, float timeoutSeconds)
     {
@@ -67,7 +71,7 @@ public static class ScenarioBarrier
         if (ctx.isClient)
         {
             await UniTaskUtils.WaitWithTimeout(
-                () => _lastProceedBarrier >= barrierId,
+                () => _proceeded.Contains(barrierId),
                 timeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -83,7 +87,6 @@ public static class ScenarioBarrier
     [ObserversRpc(runLocally: true)]
     private static void BroadcastProceed(int barrierId)
     {
-        if (barrierId > _lastProceedBarrier)
-            _lastProceedBarrier = barrierId;
+        _proceeded.Add(barrierId);
     }
 }

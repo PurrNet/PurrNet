@@ -24,10 +24,13 @@ namespace PurrNet
 
             isInitialized = true;
 
-            for (int i = 0; i < _rules.Length; i++)
+            if (_rules != null)
             {
-                _rules[i].Setup(manager);
-                _raw_rules.Add(_rules[i]);
+                for (int i = 0; i < _rules.Length; i++)
+                {
+                    _rules[i].Setup(manager);
+                    _raw_rules.Add(_rules[i]);
+                }
             }
 
             _raw_rules.Sort((a, b) =>

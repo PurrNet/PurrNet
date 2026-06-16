@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -58,6 +59,60 @@ namespace PurrNet.Editor
         {
             _cachedManifest = null;
             _cachedLockFile = null;
+        }
+
+        private static string FormatInstallFailure(Exception exception, PackageInfo package)
+        {
+            var message = exception.Message;
+            if (message.IndexOf("Unity could not replace the cached package folder", StringComparison.Ordinal) >= 0)
+                return message;
+
+            if (!LooksLikePackageCacheAccessDenied(message))
+                return message;
+
+            var packageName = package?.GetUpmPackageName();
+            var cachePath = string.IsNullOrEmpty(packageName)
+                ? "Library/PackageCache/<package>@*"
+                : $"Library/PackageCache/{packageName}@*";
+
+            return message + "\n\n" +
+                   "Unity could not replace the cached package folder. On Windows this usually means " +
+                   "the current Unity session, an IDE, antivirus, or another process still has a file " +
+                   "inside the old package cache open.\n\n" +
+                   $"Close Unity, delete {cachePath}, then reopen the project and install again. " +
+                   "Removing the package, letting Unity resolve, and then adding it back also works.";
+        }
+
+        private static bool LooksLikePackageCacheAccessDenied(string message)
+        {
+            return !string.IsNullOrEmpty(message)
+                   && message.IndexOf("PackageCache", StringComparison.OrdinalIgnoreCase) >= 0
+                   && message.IndexOf("access", StringComparison.OrdinalIgnoreCase) >= 0
+                   && message.IndexOf("denied", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        public static void ResolvePackagesWithRetry(PackageInfo package = null)
+        {
+            const int maxAttempts = 3;
+            const int baseDelayMs = 750;
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    UnityEditor.PackageManager.Client.Resolve();
+                    return;
+                }
+                catch (Exception e) when (LooksLikePackageCacheAccessDenied(e.Message) && attempt < maxAttempts)
+                {
+                    Debug.LogWarning($"[PurrNet] Unity could not resolve packages because PackageCache is locked. Retrying ({attempt + 1}/{maxAttempts})...");
+                    Thread.Sleep(baseDelayMs * attempt);
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException(FormatInstallFailure(e, package), e);
+                }
+            }
         }
 
         /// <summary>
@@ -539,8 +594,7 @@ namespace PurrNet.Editor
                         if (resolve)
                         {
                             PurrPackageManagerCache.Invalidate();
-                            UnityEditor.PackageManager.Client.Resolve();
-                            AssetDatabase.Refresh();
+                            ResolvePackagesWithRetry(package);
                         }
 
                         return Result<bool>.Ok(true);
@@ -638,8 +692,7 @@ namespace PurrNet.Editor
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
-                    UnityEditor.PackageManager.Client.Resolve();
-                    AssetDatabase.Refresh();
+                    ResolvePackagesWithRetry(package);
                 }
 
                 return Result<bool>.Ok(true);
@@ -648,6 +701,7 @@ namespace PurrNet.Editor
             {
                 Debug.LogError($"[PurrNet] Install failed: {e}");
                 EditorUtility.ClearProgressBar();
+                var message = FormatInstallFailure(e, package);
 
                 // Roll back: a partial install must not leave the project worse off than before.
                 // Remove any half-written embedded folder we created, then restore manifest/lock.
@@ -658,11 +712,10 @@ namespace PurrNet.Editor
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
-                    try { UnityEditor.PackageManager.Client.Resolve(); } catch { /* lock still held — picked up on next reload */ }
-                    AssetDatabase.Refresh();
+                    try { ResolvePackagesWithRetry(package); } catch { /* lock still held — picked up on next reload */ }
                 }
 
-                return Result<bool>.Fail(e.Message);
+                return Result<bool>.Fail(message);
             }
         }
 
@@ -682,8 +735,7 @@ namespace PurrNet.Editor
                 ClearExistingInstall(package, package.GetUpmPackageName());
 
                 PurrPackageManagerCache.Invalidate();
-                UnityEditor.PackageManager.Client.Resolve();
-                AssetDatabase.Refresh();
+                ResolvePackagesWithRetry(package);
                 return true;
             }
             catch (Exception e)
@@ -710,21 +762,21 @@ namespace PurrNet.Editor
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
-                    UnityEditor.PackageManager.Client.Resolve();
-                    AssetDatabase.Refresh();
+                    ResolvePackagesWithRetry(package);
                 }
             }
             catch (Exception e)
             {
                 EditorUtility.ClearProgressBar();
-                Debug.LogError($"[PurrNet] Failed to install external package: {e.Message}");
+                var message = FormatInstallFailure(e, package);
+                Debug.LogError($"[PurrNet] Failed to install external package: {message}");
+                EditorUtility.DisplayDialog("Install Failed", message, "Ok");
 
                 backup.Restore();
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
-                    try { UnityEditor.PackageManager.Client.Resolve(); } catch { /* lock still held — picked up on next reload */ }
-                    AssetDatabase.Refresh();
+                    try { ResolvePackagesWithRetry(package); } catch { /* lock still held — picked up on next reload */ }
                 }
             }
         }

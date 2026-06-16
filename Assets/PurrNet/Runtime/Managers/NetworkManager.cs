@@ -938,6 +938,13 @@ namespace PurrNet
         public DeltaModule deltaModule => _serverDeltaModule ?? _clientDeltaModule;
 
         /// <summary>
+        /// The network LOD factory of the network manager.
+        /// Defaults to the server module if the server is active.
+        /// Otherwise it defaults to the client module.
+        /// </summary>
+        public NetworkLODFactory lodModule => _serverLODModule ?? _clientLODModule;
+
+        /// <summary>
         /// The local player of the network manager.
         /// If the local player is not set, this will return the default value of the player id.
         /// </summary>
@@ -980,6 +987,9 @@ namespace PurrNet
 
         internal DeltaModule _clientDeltaModule;
         internal DeltaModule _serverDeltaModule;
+
+        private NetworkLODFactory _clientLODModule;
+        private NetworkLODFactory _serverLODModule;
 
         private AuthModule _serverAuthModule;
 
@@ -1269,6 +1279,10 @@ namespace PurrNet
             var networkTransform =
                 new NetworkTransformFactory(scenesModule, scenePlayers, playersBroadcast, this, hierarchyV2);
             var colliderRollback = new ColliderRollbackFactory(tickManager, scenesModule);
+            var networkLOD = new NetworkLODFactory(this, scenesModule, scenePlayers);
+
+            if (asServer) _serverLODModule = networkLOD;
+            else _clientLODModule = networkLOD;
 
             if (asServer)
                 _serverRpcModule = rpcModule;
@@ -1289,6 +1303,7 @@ namespace PurrNet
             modules.AddModule(rpcModule);
             modules.AddModule(new RpcRequestResponseModule(this, playersManager, asServer));
             modules.AddModule(colliderRollback);
+            modules.AddModule(networkLOD);
 
 #if ADDRESSABLES_PURRNET_SUPPORT
             if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0 &&
@@ -1881,6 +1896,7 @@ namespace PurrNet
             _serverScenePlayersModule = null;
             _serverDeltaModule = null;
             _serverRpcModule = null;
+            _serverLODModule = null;
         }
 
         public void InternalUnregisterClientModules()
@@ -1914,6 +1930,7 @@ namespace PurrNet
             _clientScenePlayersModule = null;
             _clientDeltaModule = null;
             _clientRpcModule = null;
+            _clientLODModule = null;
         }
 
         private Coroutine _clientCoroutine;
