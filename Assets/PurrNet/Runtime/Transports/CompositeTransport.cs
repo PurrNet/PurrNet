@@ -24,6 +24,8 @@ namespace PurrNet.Transports
 
         public void Subscribe(int idx, ITransport transport)
         {
+            Unsubscribe();
+
             index = idx;
             _transport = transport;
 
@@ -366,6 +368,7 @@ namespace PurrNet.Transports
             }
             else
             {
+                _clientEvent.Unsubscribe();
                 onDisconnected?.Invoke(conn, reason, false);
             }
         }
