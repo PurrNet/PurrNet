@@ -612,6 +612,7 @@ Transform:
   - {fileID: 108535982}
   - {fileID: 1438235316}
   - {fileID: 1999225764}
+  - {fileID: 1092860909}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &277924964
@@ -1084,6 +1085,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
+--- !u!1 &1092860908
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1092860909}
+  - component: {fileID: 1092860910}
+  m_Layer: 0
+  m_Name: SceneScenario
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1092860909
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1092860908}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 277924963}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1092860910
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1092860908}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af24e6420f2d44c3aa9f5b76d184c001, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneTransferCorrectionScenario
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _transferTimeoutSeconds: 45
+  _barrierTimeoutSeconds: 60
 --- !u!1 &1128545786
 GameObject:
   m_ObjectHideFlags: 0
@@ -1653,6 +1702,9 @@ GameObject:
   - component: {fileID: 1680343644}
   - component: {fileID: 1680343645}
   - component: {fileID: 1680343646}
+  - component: {fileID: 1680343647}
+  - component: {fileID: 1680343648}
+  - component: {fileID: 1680343649}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -2024,7 +2076,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3e8a1b7c9d2f4e5a8b1c6d3e7f9a2b4c, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkAnimatorParamsScenario
   _spawnTimeoutSeconds: 15
   _syncTimeoutSeconds: 30
@@ -2040,7 +2092,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb337da9b58f453f81196b704993cffb, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkLODTierScenario
   _spawnTimeoutSeconds: 20
   _tierTimeoutSeconds: 20
@@ -2058,12 +2110,69 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 679af572dd3e4b3fb0428c6112c2ca51, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkLODCullScenario
   _spawnTimeoutSeconds: 20
   _visibilityTimeoutSeconds: 30
   _despawnTimeoutSeconds: 20
   _barrierTimeoutSeconds: 120
+--- !u!114 &1680343647
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d76d0c21e594c8fb798ffd64ea09358, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneMembershipSwitchScenario
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _membershipTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 20
+  _propagationDelaySeconds: 0.5
+  _barrierTimeoutSeconds: 60
+--- !u!114 &1680343648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f65dca8427614ff39fb0560e52b5838a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneLoadUnloadCycleScenario
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _membershipTimeoutSeconds: 30
+  _unloadTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+--- !u!114 &1680343649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa0826ea48e94b79906ca3d180906c62, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneMembershipRejoinScenario
+  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _membershipTimeoutSeconds: 30
+  _disconnectTimeoutSeconds: 30
+  _reconnectTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
+  _stayDisconnectedSeconds: 1
+  _barrierTimeoutSeconds: 60
 --- !u!1 &1869161003
 GameObject:
   m_ObjectHideFlags: 0

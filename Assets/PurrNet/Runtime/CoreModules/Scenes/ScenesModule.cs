@@ -197,13 +197,29 @@ namespace PurrNet.Modules
 
         private void RemoveScene(Scene scene)
         {
+            RemoveScene(scene, false);
+        }
+
+        private void RemoveScene(Scene scene, bool playUnloadEventsImmediately)
+        {
             if (!_idToScene.TryGetValue(scene, out var id))
                 return;
 
             _scenes.Remove(id);
             _idToScene.Remove(scene);
             _rawScenes.Remove(id);
-            _scenesToTriggerUnloadEvent.Add(id);
+            _scenesToTriggerUnloadEvent.Remove(id);
+
+            if (playUnloadEventsImmediately)
+                PlayUnloadEventsForScene(id);
+            else _scenesToTriggerUnloadEvent.Add(id);
+        }
+
+        private void PlayUnloadEventsForScene(SceneID id)
+        {
+            onPreSceneUnloaded?.Invoke(id, _asServer);
+            onSceneUnloaded?.Invoke(id, _asServer);
+            onPostSceneUnloaded?.Invoke(id, _asServer);
         }
 
         public void OnConnectionState(ConnectionState state, bool asServer)
@@ -592,13 +608,178 @@ namespace PurrNet.Modules
 
             _isTransferingToNewServer = false;
 
-            // TODO: reconcile with current scenes, data.actions is the correct target
+            ReconcileTransferScenes(data.actions);
+        }
 
-            for (var i = 0; i < _rawScenes.Count; i++)
+        private void ReconcileTransferScenes(List<SceneAction> actions)
+        {
+            _actionsQueue.Clear();
+
+            if (actions == null)
+                return;
+
+            var targetScenes = new HashSet<SceneID>();
+            var targetBuildScenes = new Dictionary<SceneID, uint>();
+            var missingActions = new List<SceneAction>();
+            var replayLoadEvents = new List<SceneID>();
+
+            for (var i = 0; i < actions.Count; i++)
             {
-                var scene = _rawScenes[i];
-                PlayLoadEventsForScene(scene);
+                var action = actions[i];
+
+                switch (action.type)
+                {
+                    case SceneActionType.Load:
+                    {
+                        var loadAction = action.loadSceneAction;
+                        targetScenes.Add(loadAction.sceneID);
+                        targetBuildScenes[loadAction.sceneID] = loadAction.scenePathHash;
+
+                        var buildIndex = BuildIndexFromScenePathHash(loadAction.scenePathHash);
+                        if (buildIndex == -1)
+                        {
+                            missingActions.Add(action);
+                            break;
+                        }
+
+                        if (TryReconcileLoadedTransferScene(loadAction, buildIndex, replayLoadEvents))
+                            break;
+
+                        if (!IsBuildScenePending(loadAction.sceneID, loadAction.scenePathHash))
+                            missingActions.Add(action);
+
+                        break;
+                    }
+                    case SceneActionType.LoadAddressable:
+                        targetScenes.Add(action.loadAddressableSceneAction.sceneID);
+                        missingActions.Add(action);
+                        break;
+                    case SceneActionType.Unload:
+                    case SceneActionType.SetActive:
+                    default:
+                        missingActions.Add(action);
+                        break;
+                }
             }
+
+            RemoveStaleTransferScenes(targetScenes, targetBuildScenes);
+
+            for (var i = 0; i < replayLoadEvents.Count; i++)
+                PlayLoadEventsForScene(replayLoadEvents[i]);
+
+            if (missingActions.Count > 0)
+                HandleScenes(missingActions);
+        }
+
+        private bool TryReconcileLoadedTransferScene(
+            LoadSceneAction loadAction,
+            int buildIndex,
+            ICollection<SceneID> replayLoadEvents)
+        {
+            if (_scenes.TryGetValue(loadAction.sceneID, out var existing))
+            {
+                if (existing.scene.IsValid() && existing.scene.isLoaded && existing.scene.buildIndex == buildIndex)
+                {
+                    _scenes[loadAction.sceneID] = new SceneState(existing.scene, loadAction.parameters);
+                    replayLoadEvents.Add(loadAction.sceneID);
+                    return true;
+                }
+
+                RemoveScene(existing.scene, true);
+            }
+
+            var loadedScene = SceneManager.GetSceneByBuildIndex(buildIndex);
+            if (!loadedScene.IsValid() || !loadedScene.isLoaded)
+                return false;
+
+            BindLoadedTransferScene(loadedScene, loadAction.parameters, loadAction.sceneID);
+            replayLoadEvents.Add(loadAction.sceneID);
+            return true;
+        }
+
+        private bool IsBuildScenePending(SceneID sceneId, uint scenePathHash)
+        {
+            for (var i = 0; i < _pendingOperations.Count; i++)
+            {
+                var operation = _pendingOperations[i];
+                if (operation.idToAssign == sceneId && operation.scenePathHash == scenePathHash)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void BindLoadedTransferScene(Scene scene, PurrSceneSettings settings, SceneID id)
+        {
+            if (_idToScene.TryGetValue(scene, out var oldId))
+            {
+                if (oldId == id)
+                {
+                    _scenes[id] = new SceneState(scene, settings);
+                    _scenesToTriggerUnloadEvent.Remove(id);
+                    return;
+                }
+
+                RemoveScene(scene, true);
+            }
+
+            if (_scenes.TryGetValue(id, out var oldState))
+                RemoveScene(oldState.scene, true);
+
+            _scenes[id] = new SceneState(scene, settings);
+            _idToScene[scene] = id;
+            if (!_rawScenes.Contains(id))
+                _rawScenes.Add(id);
+
+            _scenesToTriggerUnloadEvent.Remove(id);
+        }
+
+        private void RemoveStaleTransferScenes(
+            HashSet<SceneID> targetScenes,
+            IReadOnlyDictionary<SceneID, uint> targetBuildScenes)
+        {
+            for (var i = _pendingOperations.Count - 1; i >= 0; i--)
+            {
+                var operation = _pendingOperations[i];
+                if (!targetBuildScenes.TryGetValue(operation.idToAssign, out var scenePathHash) ||
+                    operation.scenePathHash != scenePathHash)
+                {
+                    _pendingOperations.RemoveAt(i);
+                }
+            }
+
+            for (var i = _rawScenes.Count - 1; i >= 0; i--)
+            {
+                var id = _rawScenes[i];
+                if (targetScenes.Contains(id))
+                    continue;
+
+                if (!_scenes.TryGetValue(id, out var state))
+                    continue;
+
+                if (ShouldKeepLocalSceneDuringTransfer(state.scene))
+                    continue;
+
+                RemoveScene(state.scene, true);
+
+                if (state.scene.IsValid() && state.scene.isLoaded)
+                    SceneManager.UnloadSceneAsync(state.scene);
+            }
+        }
+
+        private bool ShouldKeepLocalSceneDuringTransfer(Scene scene)
+        {
+            if (!scene.IsValid())
+                return false;
+
+            if (IsDontDestroyOnLoadScene(scene))
+                return true;
+
+            if (_networkManager.gameObject.scene.handle == scene.handle)
+                return true;
+
+            var originalScene = _networkManager.originalScene;
+            return originalScene.IsValid() && originalScene.handle == scene.handle;
         }
 
         private void OnSceneActionsBatch(PlayerID player, SceneActionsBatch data, bool asServer)
@@ -1043,9 +1224,7 @@ namespace PurrNet.Modules
                 for (var i = 0; i < _scenesToTriggerUnloadEvent.Count; i++)
                 {
                     var scene = _scenesToTriggerUnloadEvent[i];
-                    onPreSceneUnloaded?.Invoke(scene, _asServer);
-                    onSceneUnloaded?.Invoke(scene, _asServer);
-                    onPostSceneUnloaded?.Invoke(scene, _asServer);
+                    PlayUnloadEventsForScene(scene);
                 }
                 _scenesToTriggerUnloadEvent.Clear();
             }

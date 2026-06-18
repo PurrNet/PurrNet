@@ -8,6 +8,15 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/PlayModeTests/Bootstrap.unity
     guid: 9ef637a9218879340bcefa2119c1926e
+  - enabled: 1
+    path: Assets/PlayModeTests/SceneTransferTarget.unity
+    guid: d2f46b5e8a7042d2b95f2a3c6d9e8f10
+  - enabled: 1
+    path: Assets/PlayModeTests/SceneMembershipTargetA.unity
+    guid: 49f7594ed87e4fef9b1db3935a09333e
+  - enabled: 1
+    path: Assets/PlayModeTests/SceneMembershipTargetB.unity
+    guid: 209839264b6f4778b846041377fa64ec
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: f321fa2f9211178448ea4925059f7af5, type: 2}
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
