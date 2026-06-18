@@ -56,81 +56,90 @@ public class SceneLoadUnloadCycleScenario : Scenario
         if (buildIndex < 0)
             return ScenarioResult.Fail($"target scene missing from build settings: {TargetScenePath}");
 
-        for (int cycle = 0; cycle < Cycles; cycle++)
+        bool cleanupNeeded = false;
+        try
         {
-            int rootSpawnsBefore = SceneLoadUnloadCycleRoot.ClientSpawnCount;
-            int childSpawnsBefore = SceneLoadUnloadCycleChild.ClientSpawnCount;
-            int barrier = BarrierBase + cycle * 10;
-
-            if (ctx.isServer)
+            for (int cycle = 0; cycle < Cycles; cycle++)
             {
-                var loaded = await LoadPrivateScene(ctx, buildIndex, cycle);
-                if (!loaded.success) return loaded;
+                int rootSpawnsBefore = SceneLoadUnloadCycleRoot.ClientSpawnCount;
+                int childSpawnsBefore = SceneLoadUnloadCycleChild.ClientSpawnCount;
+                int barrier = BarrierBase + cycle * 10;
 
-                if (!TryGetSceneId(ctx, buildIndex, out var sceneId))
-                    return ScenarioResult.Fail($"cycle {cycle}: network scene id missing after load: {DescribeState(ctx)}");
+                if (ctx.isServer)
+                {
+                    var loaded = await LoadPrivateScene(ctx, buildIndex, cycle);
+                    if (!loaded.success) return loaded;
+                    cleanupNeeded = true;
 
-                var scenePlayers = ctx.networkManager.GetModule<ScenePlayersModule>(true);
-                var players = GetClientPlayers(ctx);
-                if (players.Count == 0)
-                    return ScenarioResult.Fail("no client players available for scene load/unload cycle");
+                    if (!TryGetSceneId(ctx, buildIndex, out var sceneId))
+                        return ScenarioResult.Fail($"cycle {cycle}: network scene id missing after load: {DescribeState(ctx)}");
 
-                for (int i = 0; i < players.Count; i++)
-                    scenePlayers.AddPlayerToScene(players[i], sceneId);
+                    var scenePlayers = ctx.networkManager.GetModule<ScenePlayersModule>(true);
+                    var players = GetClientPlayers(ctx);
+                    if (players.Count == 0)
+                        return ScenarioResult.Fail("no client players available for scene load/unload cycle");
+
+                    for (int i = 0; i < players.Count; i++)
+                        scenePlayers.AddPlayerToScene(players[i], sceneId);
+
+                    try
+                    {
+                        await UniTaskUtils.WaitWithTimeout(
+                            () => AllPlayersLoaded(scenePlayers, players, sceneId),
+                            _membershipTimeoutSeconds,
+                            ctx.cancellationToken);
+                    }
+                    catch (TimeoutException)
+                    {
+                        return ScenarioResult.Fail(
+                            $"cycle {cycle}: players did not load private scene: {DescribeState(ctx)}");
+                    }
+
+                    SpawnInScene(SceneManager.GetSceneByName(TargetSceneName));
+                }
+
+                var spawn = ctx.isServer
+                    ? await WaitForServerSpawn(ctx, cycle)
+                    : await WaitForClientSpawn(ctx, cycle, rootSpawnsBefore, childSpawnsBefore);
+                if (!spawn.success) return spawn;
 
                 try
                 {
-                    await UniTaskUtils.WaitWithTimeout(
-                        () => AllPlayersLoaded(scenePlayers, players, sceneId),
-                        _membershipTimeoutSeconds,
-                        ctx.cancellationToken);
+                    await ScenarioBarrier.Wait(ctx, barrier + 1, _barrierTimeoutSeconds);
                 }
                 catch (TimeoutException)
                 {
-                    return ScenarioResult.Fail(
-                        $"cycle {cycle}: players did not load private scene: {DescribeState(ctx)}");
+                    return ScenarioResult.Fail($"cycle {cycle}: spawn barrier timeout: {DescribeState(ctx)}");
                 }
 
-                SpawnInScene(SceneManager.GetSceneByName(TargetSceneName));
+                if (ctx.isServer)
+                    RequestUnloadTarget(ctx, buildIndex);
+
+                var unload = ctx.isServer
+                    ? await WaitForServerUnload(ctx, buildIndex, cycle)
+                    : await WaitForClientUnload(ctx, cycle);
+                if (!unload.success) return unload;
+
+                if (ctx.isServer)
+                    cleanupNeeded = false;
+
+                try
+                {
+                    await ScenarioBarrier.Wait(ctx, barrier + 2, _barrierTimeoutSeconds);
+                }
+                catch (TimeoutException)
+                {
+                    return ScenarioResult.Fail($"cycle {cycle}: unload barrier timeout: {DescribeState(ctx)}");
+                }
             }
 
-            var spawn = ctx.isServer
-                ? await WaitForServerSpawn(ctx, cycle)
-                : await WaitForClientSpawn(ctx, cycle, rootSpawnsBefore, childSpawnsBefore);
-            if (!spawn.success) return spawn;
-
-            try
-            {
-                await ScenarioBarrier.Wait(ctx, barrier + 1, _barrierTimeoutSeconds);
-            }
-            catch (TimeoutException)
-            {
-                return ScenarioResult.Fail($"cycle {cycle}: spawn barrier timeout: {DescribeState(ctx)}");
-            }
-
-            if (ctx.isServer)
-            {
-                var scene = SceneManager.GetSceneByName(TargetSceneName);
-                if (scene.IsValid() && scene.isLoaded)
-                    ctx.networkManager.sceneModule.UnloadSceneAsync(scene);
-            }
-
-            var unload = ctx.isServer
-                ? await WaitForServerUnload(ctx, buildIndex, cycle)
-                : await WaitForClientUnload(ctx, cycle);
-            if (!unload.success) return unload;
-
-            try
-            {
-                await ScenarioBarrier.Wait(ctx, barrier + 2, _barrierTimeoutSeconds);
-            }
-            catch (TimeoutException)
-            {
-                return ScenarioResult.Fail($"cycle {cycle}: unload barrier timeout: {DescribeState(ctx)}");
-            }
+            return ScenarioResult.Ok($"{Cycles} private scene load/unload cycles");
         }
-
-        return ScenarioResult.Ok($"{Cycles} private scene load/unload cycles");
+        finally
+        {
+            if (ctx.isServer && cleanupNeeded)
+                await CleanupTarget(ctx, buildIndex);
+        }
     }
 
     private SceneLoadUnloadCycleRoot SpawnInScene(Scene targetScene)
@@ -150,6 +159,9 @@ public class SceneLoadUnloadCycleScenario : Scenario
 
     private async UniTask<ScenarioResult> LoadPrivateScene(ScenarioContext ctx, int buildIndex, int cycle)
     {
+        if (IsNetworkSceneLoaded(ctx, buildIndex))
+            return ScenarioResult.Ok();
+
         var op = ctx.networkManager.sceneModule.LoadSceneAsync(TargetSceneName, new PurrSceneSettings
         {
             mode = LoadSceneMode.Additive,
@@ -175,6 +187,37 @@ public class SceneLoadUnloadCycleScenario : Scenario
         return ScenarioResult.Ok();
     }
 
+    private void RequestUnloadTarget(ScenarioContext ctx, int buildIndex)
+    {
+        var scene = SceneManager.GetSceneByName(TargetSceneName);
+        if (!scene.IsValid() || !scene.isLoaded)
+            return;
+
+        if (IsNetworkSceneLoaded(ctx, buildIndex))
+            ctx.networkManager.sceneModule.UnloadSceneAsync(scene);
+        else
+            SceneManager.UnloadSceneAsync(scene);
+    }
+
+    private async UniTask CleanupTarget(ScenarioContext ctx, int buildIndex)
+    {
+        RequestUnloadTarget(ctx, buildIndex);
+
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => SceneLoadUnloadCycleRoot.ServerAliveCount == 0
+                      && SceneLoadUnloadCycleChild.ServerAliveCount == 0
+                      && !IsNetworkSceneLoaded(ctx, buildIndex)
+                      && !IsSceneLoaded(TargetSceneName),
+                _unloadTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+        }
+    }
+
     private async UniTask<ScenarioResult> WaitForServerSpawn(ScenarioContext ctx, int cycle)
     {
         try
@@ -191,7 +234,7 @@ public class SceneLoadUnloadCycleScenario : Scenario
         }
 
         if (SceneLoadUnloadCycleRoot.SawBadId || SceneLoadUnloadCycleChild.SawBadId)
-            return ScenarioResult.Fail($"cycle {cycle}: server saw default/unassigned id: {DescribeState(ctx)}");
+            return ScenarioResult.Fail($"cycle {cycle}: server saw missing/default id: {DescribeState(ctx)}");
 
         return ScenarioResult.Ok();
     }
@@ -216,7 +259,7 @@ public class SceneLoadUnloadCycleScenario : Scenario
         }
 
         if (SceneLoadUnloadCycleRoot.SawBadId || SceneLoadUnloadCycleChild.SawBadId)
-            return ScenarioResult.Fail($"cycle {cycle}: client saw default/unassigned id: {DescribeState(ctx)}");
+            return ScenarioResult.Fail($"cycle {cycle}: client saw missing/default id: {DescribeState(ctx)}");
 
         return ScenarioResult.Ok();
     }
@@ -228,7 +271,8 @@ public class SceneLoadUnloadCycleScenario : Scenario
             await UniTaskUtils.WaitWithTimeout(
                 () => SceneLoadUnloadCycleRoot.ServerAliveCount == 0
                       && SceneLoadUnloadCycleChild.ServerAliveCount == 0
-                      && !IsNetworkSceneLoaded(ctx, buildIndex),
+                      && !IsNetworkSceneLoaded(ctx, buildIndex)
+                      && !IsSceneLoaded(TargetSceneName),
                 _unloadTimeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -315,6 +359,7 @@ public class SceneLoadUnloadCycleScenario : Scenario
     private static string DescribeState(ScenarioContext ctx)
     {
         return $"role={ctx.role}, sceneLoaded={IsSceneLoaded(TargetSceneName)}, " +
+               $"networkSceneLoaded={IsNetworkSceneLoaded(ctx, GetBuildIndex(TargetScenePath))}, " +
                $"clientRoots={SceneLoadUnloadCycleRoot.ClientAliveCount}, " +
                $"clientChildren={SceneLoadUnloadCycleChild.ClientAliveCount}/{ExpectedChildren}, " +
                $"clientRootSpawns={SceneLoadUnloadCycleRoot.ClientSpawnCount}, " +

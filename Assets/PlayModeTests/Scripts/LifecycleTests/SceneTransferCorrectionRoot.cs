@@ -44,7 +44,7 @@ public class SceneTransferCorrectionRoot : NetworkIdentity
 
     protected override void OnSpawned()
     {
-        if (!id.HasValue || id.Value == default)
+        if (!id.HasValue)
         {
             SawBadId = true;
             return;

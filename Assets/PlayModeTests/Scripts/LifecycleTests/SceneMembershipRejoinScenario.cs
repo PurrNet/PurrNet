@@ -89,133 +89,144 @@ public class SceneMembershipRejoinScenario : Scenario
         if (buildIndex < 0)
             return ScenarioResult.Fail($"target scene missing from build settings: {TargetScenePath}");
 
-        var load = await LoadPrivateScene(ctx, buildIndex);
-        if (!load.success) return load;
-
-        if (!TryGetSceneId(ctx, buildIndex, out var sceneId))
-            return ScenarioResult.Fail($"network scene id missing after load: {DescribeState(ctx)}");
-
-        var victim = PickNonHostClient(ctx);
-        if (!victim.HasValue)
-            return ScenarioResult.Fail("no eligible non-server / non-host client for private scene rejoin");
-
-        BroadcastVictim(victim.Value.id.value);
-
-        var scenePlayers = ctx.networkManager.GetModule<ScenePlayersModule>(true);
-        scenePlayers.AddPlayerToScene(victim.Value, sceneId);
+        SceneMembershipRejoinRoot instance = null;
+        bool cleanupNeeded = false;
 
         try
         {
-            await UniTaskUtils.WaitWithTimeout(
-                () => scenePlayers.IsPlayerLoadedInScene(victim.Value, sceneId),
-                _membershipTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"victim did not load private scene before spawn: {DescribeState(ctx)}");
-        }
+            var load = await LoadPrivateScene(ctx, buildIndex);
+            if (!load.success) return load;
+            cleanupNeeded = true;
 
-        HierarchyV2.SupressAutoOwner();
-        SceneMembershipRejoinRoot instance;
-        try
-        {
-            instance = SpawnInScene(SceneManager.GetSceneByName(TargetSceneName));
+            if (!TryGetSceneId(ctx, buildIndex, out var sceneId))
+                return ScenarioResult.Fail($"network scene id missing after load: {DescribeState(ctx)}");
+
+            var victim = PickNonHostClient(ctx);
+            if (!victim.HasValue)
+                return ScenarioResult.Fail("no eligible non-server / non-host client for private scene rejoin");
+
+            BroadcastVictim(victim.Value.id.value);
+
+            var scenePlayers = ctx.networkManager.GetModule<ScenePlayersModule>(true);
+            scenePlayers.AddPlayerToScene(victim.Value, sceneId);
+
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => scenePlayers.IsPlayerInScene(victim.Value, sceneId)
+                          && scenePlayers.IsPlayerLoadedInScene(victim.Value, sceneId),
+                    _membershipTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"victim did not load private scene before spawn: {DescribeState(ctx)}");
+            }
+
+            HierarchyV2.SupressAutoOwner();
+            try
+            {
+                instance = SpawnInScene(SceneManager.GetSceneByName(TargetSceneName));
+            }
+            finally
+            {
+                HierarchyV2.ResumeAutoOwner();
+            }
+
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => SceneMembershipRejoinRoot.ServerAliveCount == 1
+                          && SceneMembershipRejoinChild.ServerAliveCount == ExpectedChildren,
+                    _spawnTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"server spawn timeout: {DescribeState(ctx)}");
+            }
+
+            instance.GiveOwnership(victim.Value);
+            await UniTask.WaitForSeconds(_propagationDelaySeconds, cancellationToken: ctx.cancellationToken);
+
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => _initialObservedCount >= 1,
+                    _membershipTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"victim did not observe owned private scene hierarchy: {DescribeState(ctx)}");
+            }
+
+            BroadcastDisconnectCommand();
+
+            var failures = string.Empty;
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => _victimReturnedCount >= 1,
+                    _reconnectTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                failures = $"victim {victim.Value.id.value} did not reconnect and report restored state: {DescribeState(ctx)}";
+            }
+
+            if (!SceneMembershipRejoinRoot.DisconnectCalls.Contains(victim.Value.id.value))
+            {
+                var message = $"server did not observe OnOwnerDisconnected({victim.Value.id.value})";
+                failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
+            }
+
+            if (!SceneMembershipRejoinRoot.ReconnectCalls.Contains(victim.Value.id.value))
+            {
+                var message = $"server did not observe OnOwnerReconnected({victim.Value.id.value})";
+                failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
+            }
+
+            BroadcastPhaseDone();
+
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => _doneCount >= ctx.expectedConnections,
+                    _doneTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                var message = $"done timeout: got {_doneCount}/{ctx.expectedConnections}";
+                failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
+            }
+
+            var cleanup = await UnloadTarget(ctx, buildIndex, instance);
+            if (!cleanup.success)
+                return cleanup;
+
+            cleanupNeeded = false;
+
+            try
+            {
+                await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"cleanup barrier timeout: {DescribeState(ctx)}");
+            }
+
+            return string.IsNullOrEmpty(failures)
+                ? ScenarioResult.Ok($"victim={victim.Value.id.value}")
+                : ScenarioResult.Fail(failures);
         }
         finally
         {
-            HierarchyV2.ResumeAutoOwner();
+            if (cleanupNeeded)
+                await UnloadTarget(ctx, buildIndex, instance);
         }
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => SceneMembershipRejoinRoot.ServerAliveCount == 1
-                      && SceneMembershipRejoinChild.ServerAliveCount == ExpectedChildren,
-                _spawnTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"server spawn timeout: {DescribeState(ctx)}");
-        }
-
-        instance.GiveOwnership(victim.Value);
-        await UniTask.WaitForSeconds(_propagationDelaySeconds, cancellationToken: ctx.cancellationToken);
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => _initialObservedCount >= 1,
-                _membershipTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"victim did not observe owned private scene hierarchy: {DescribeState(ctx)}");
-        }
-
-        BroadcastDisconnectCommand();
-
-        var failures = string.Empty;
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => _victimReturnedCount >= 1,
-                _reconnectTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            failures = $"victim {victim.Value.id.value} did not reconnect and report restored state: {DescribeState(ctx)}";
-        }
-
-        if (!SceneMembershipRejoinRoot.DisconnectCalls.Contains(victim.Value.id.value))
-        {
-            var message = $"server did not observe OnOwnerDisconnected({victim.Value.id.value})";
-            failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
-        }
-
-        if (!SceneMembershipRejoinRoot.ReconnectCalls.Contains(victim.Value.id.value))
-        {
-            var message = $"server did not observe OnOwnerReconnected({victim.Value.id.value})";
-            failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
-        }
-
-        BroadcastPhaseDone();
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => _doneCount >= ctx.expectedConnections,
-                _doneTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            var message = $"done timeout: got {_doneCount}/{ctx.expectedConnections}";
-            failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
-        }
-
-        if (instance)
-            instance.Despawn();
-
-        var cleanup = await UnloadTarget(ctx, buildIndex);
-        if (!cleanup.success)
-            return cleanup;
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"cleanup barrier timeout: {DescribeState(ctx)}");
-        }
-
-        return string.IsNullOrEmpty(failures)
-            ? ScenarioResult.Ok($"victim={victim.Value.id.value}")
-            : ScenarioResult.Fail(failures);
     }
 
     private async UniTask<ScenarioResult> RunAsClient(ScenarioContext ctx)
@@ -331,6 +342,9 @@ public class SceneMembershipRejoinScenario : Scenario
 
     private async UniTask<ScenarioResult> LoadPrivateScene(ScenarioContext ctx, int buildIndex)
     {
+        if (IsNetworkSceneLoaded(ctx, buildIndex))
+            return ScenarioResult.Ok();
+
         var op = ctx.networkManager.sceneModule.LoadSceneAsync(TargetSceneName, new PurrSceneSettings
         {
             mode = LoadSceneMode.Additive,
@@ -356,17 +370,28 @@ public class SceneMembershipRejoinScenario : Scenario
         return ScenarioResult.Ok();
     }
 
-    private async UniTask<ScenarioResult> UnloadTarget(ScenarioContext ctx, int buildIndex)
+    private async UniTask<ScenarioResult> UnloadTarget(
+        ScenarioContext ctx, int buildIndex, SceneMembershipRejoinRoot instance = null)
     {
-        if (IsSceneLoaded(TargetSceneName))
-            ctx.networkManager.sceneModule.UnloadSceneAsync(SceneManager.GetSceneByName(TargetSceneName));
+        if (instance)
+            instance.Despawn();
+
+        var scene = SceneManager.GetSceneByName(TargetSceneName);
+        if (scene.IsValid() && scene.isLoaded)
+        {
+            if (IsNetworkSceneLoaded(ctx, buildIndex))
+                _ = ctx.networkManager.sceneModule.UnloadSceneAsync(scene);
+            else
+                _ = SceneManager.UnloadSceneAsync(scene);
+        }
 
         try
         {
             await UniTaskUtils.WaitWithTimeout(
                 () => SceneMembershipRejoinRoot.ServerAliveCount == 0
                       && SceneMembershipRejoinChild.ServerAliveCount == 0
-                      && !IsNetworkSceneLoaded(ctx, buildIndex),
+                      && !IsNetworkSceneLoaded(ctx, buildIndex)
+                      && !IsSceneLoaded(TargetSceneName),
                 _doneTimeoutSeconds,
                 ctx.cancellationToken);
         }
@@ -424,7 +449,7 @@ public class SceneMembershipRejoinScenario : Scenario
         }
 
         if (SceneMembershipRejoinRoot.SawBadId || SceneMembershipRejoinChild.SawBadId)
-            return ScenarioResult.Fail($"{phase}: default/unassigned id observed: {DescribeState(ctx)}");
+            return ScenarioResult.Fail($"{phase}: missing/default id observed: {DescribeState(ctx)}");
 
         if (!requireFreshSpawn)
             return ScenarioResult.Ok();
@@ -531,7 +556,8 @@ public class SceneMembershipRejoinScenario : Scenario
                $"disconnectCalls=[{string.Join(",", SceneMembershipRejoinRoot.DisconnectCalls)}], " +
                $"reconnectCalls=[{string.Join(",", SceneMembershipRejoinRoot.ReconnectCalls)}], " +
                $"rootBadId={SceneMembershipRejoinRoot.SawBadId}, childBadId={SceneMembershipRejoinChild.SawBadId}, " +
-               $"sceneLoaded={IsSceneLoaded(TargetSceneName)}";
+               $"sceneLoaded={IsSceneLoaded(TargetSceneName)}, " +
+               $"networkSceneLoaded={IsNetworkSceneLoaded(ctx, GetBuildIndex(TargetScenePath))}";
     }
 
     [ObserversRpc(runLocally: true, bufferLast: true)]

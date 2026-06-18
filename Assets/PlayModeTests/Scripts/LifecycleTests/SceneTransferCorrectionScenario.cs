@@ -265,7 +265,7 @@ public class SceneTransferCorrectionScenario : Scenario
     private static ScenarioResult CheckBadIds(string phase)
     {
         if (SceneTransferCorrectionRoot.SawBadId)
-            return ScenarioResult.Fail($"{phase}: root spawned with a default/unassigned id (Server:0)");
+            return ScenarioResult.Fail($"{phase}: root spawned without a network id");
 
         if (SceneTransferCorrectionChild.SawBadId)
             return ScenarioResult.Fail($"{phase}: child spawned with a default/unassigned id (Server:0)");

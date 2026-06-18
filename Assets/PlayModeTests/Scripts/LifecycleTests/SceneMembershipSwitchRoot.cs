@@ -34,7 +34,7 @@ public class SceneMembershipSwitchRoot : NetworkIdentity
 
     protected override void OnSpawned(bool asServer)
     {
-        if (!id.HasValue || id.Value == default)
+        if (!id.HasValue)
         {
             SawBadId = true;
             return;

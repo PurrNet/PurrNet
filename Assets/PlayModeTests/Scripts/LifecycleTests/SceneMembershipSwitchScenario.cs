@@ -67,96 +67,112 @@ public class SceneMembershipSwitchScenario : Scenario
         if (buildA < 0 || buildB < 0)
             return ScenarioResult.Fail($"target scenes missing from build settings: A={buildA}, B={buildB}");
 
-        var loadA = await LoadPrivateScene(ctx, TargetSceneAName, buildA, "load A");
-        if (!loadA.success) return loadA;
-        var sceneA = SceneManager.GetSceneByName(TargetSceneAName);
-
-        var loadB = await LoadPrivateScene(ctx, TargetSceneBName, buildB, "load B");
-        if (!loadB.success) return loadB;
-        var sceneB = SceneManager.GetSceneByName(TargetSceneBName);
-
-        if (!TryGetSceneId(ctx, buildA, out var sceneAId) || !TryGetSceneId(ctx, buildB, out var sceneBId))
-            return ScenarioResult.Fail($"network scene ids missing after load: {DescribeState(ctx)}");
-
-        var instanceA = SpawnInScene(sceneA);
-        var instanceB = SpawnInScene(sceneB);
+        SceneMembershipSwitchRoot instanceA = null;
+        SceneMembershipSwitchRoot instanceB = null;
+        bool cleanupNeeded = false;
 
         try
         {
-            await UniTaskUtils.WaitWithTimeout(
-                () => SceneMembershipSwitchRoot.ServerAliveCount == 2
-                      && SceneMembershipSwitchChild.ServerAliveCount == ExpectedChildren * 2,
-                _spawnTimeoutSeconds,
-                ctx.cancellationToken);
+            var loadA = await LoadPrivateScene(ctx, TargetSceneAName, buildA, "load A");
+            if (!loadA.success) return loadA;
+            cleanupNeeded = true;
+            var sceneA = SceneManager.GetSceneByName(TargetSceneAName);
+
+            var loadB = await LoadPrivateScene(ctx, TargetSceneBName, buildB, "load B");
+            if (!loadB.success) return loadB;
+            var sceneB = SceneManager.GetSceneByName(TargetSceneBName);
+
+            if (!TryGetSceneId(ctx, buildA, out var sceneAId) || !TryGetSceneId(ctx, buildB, out var sceneBId))
+                return ScenarioResult.Fail($"network scene ids missing after load: {DescribeState(ctx)}");
+
+            instanceA = SpawnInScene(sceneA);
+            instanceB = SpawnInScene(sceneB);
+
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => SceneMembershipSwitchRoot.ServerAliveCount == 2
+                          && SceneMembershipSwitchChild.ServerAliveCount == ExpectedChildren * 2,
+                    _spawnTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"server spawn timeout: {DescribeState(ctx)}");
+            }
+
+            if (SceneMembershipSwitchRoot.SawBadId || SceneMembershipSwitchChild.SawBadId)
+                return ScenarioResult.Fail($"server spawn saw missing/default id: {DescribeState(ctx)}");
+
+            var victim = PickNonHostClient(ctx);
+            if (!victim.HasValue)
+                return ScenarioResult.Fail("no eligible non-server / non-host client for scene membership switch");
+
+            var scenePlayers = ctx.networkManager.GetModule<ScenePlayersModule>(true);
+            scenePlayers.AddPlayerToScene(victim.Value, sceneAId);
+            var addedA = await WaitForPlayerLoaded(ctx, scenePlayers, victim.Value, sceneAId, "scene A membership");
+            if (!addedA.success) return addedA;
+            BroadcastPhase(victim.Value.id.value, 1);
+
+            try
+            {
+                await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"scene A membership barrier timeout: {DescribeState(ctx)}");
+            }
+
+            scenePlayers.RemovePlayerFromScene(victim.Value, sceneAId);
+            var removedA = await WaitForPlayerRemoved(ctx, scenePlayers, victim.Value, sceneAId, "scene A removal");
+            if (!removedA.success) return removedA;
+            BroadcastPhase(victim.Value.id.value, 2);
+
+            try
+            {
+                await ScenarioBarrier.Wait(ctx, BarrierBase + 2, _barrierTimeoutSeconds);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"scene A removal barrier timeout: {DescribeState(ctx)}");
+            }
+
+            scenePlayers.AddPlayerToScene(victim.Value, sceneBId);
+            var addedB = await WaitForPlayerLoaded(ctx, scenePlayers, victim.Value, sceneBId, "scene B membership");
+            if (!addedB.success) return addedB;
+            BroadcastPhase(victim.Value.id.value, 3);
+
+            try
+            {
+                await ScenarioBarrier.Wait(ctx, BarrierBase + 3, _barrierTimeoutSeconds);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"scene B membership barrier timeout: {DescribeState(ctx)}");
+            }
+
+            var cleanup = await UnloadTargets(ctx, buildA, buildB, instanceA, instanceB);
+            if (!cleanup.success)
+                return cleanup;
+
+            cleanupNeeded = false;
+
+            try
+            {
+                await ScenarioBarrier.Wait(ctx, BarrierBase + 4, _barrierTimeoutSeconds);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail($"cleanup barrier timeout: {DescribeState(ctx)}");
+            }
+
+            return ScenarioResult.Ok($"victim={victim.Value.id.value}");
         }
-        catch (TimeoutException)
+        finally
         {
-            return ScenarioResult.Fail($"server spawn timeout: {DescribeState(ctx)}");
+            if (cleanupNeeded)
+                await UnloadTargets(ctx, buildA, buildB, instanceA, instanceB);
         }
-
-        if (SceneMembershipSwitchRoot.SawBadId || SceneMembershipSwitchChild.SawBadId)
-            return ScenarioResult.Fail($"server spawn saw default/unassigned id: {DescribeState(ctx)}");
-
-        var victim = PickNonHostClient(ctx);
-        if (!victim.HasValue)
-            return ScenarioResult.Fail("no eligible non-server / non-host client for scene membership switch");
-
-        var scenePlayers = ctx.networkManager.GetModule<ScenePlayersModule>(true);
-        BroadcastPhase(victim.Value.id.value, 1);
-        scenePlayers.AddPlayerToScene(victim.Value, sceneAId);
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"scene A membership barrier timeout: {DescribeState(ctx)}");
-        }
-
-        scenePlayers.RemovePlayerFromScene(victim.Value, sceneAId);
-        BroadcastPhase(victim.Value.id.value, 2);
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 2, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"scene A removal barrier timeout: {DescribeState(ctx)}");
-        }
-
-        scenePlayers.AddPlayerToScene(victim.Value, sceneBId);
-        BroadcastPhase(victim.Value.id.value, 3);
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 3, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"scene B membership barrier timeout: {DescribeState(ctx)}");
-        }
-
-        if (instanceA)
-            instanceA.Despawn();
-        if (instanceB)
-            instanceB.Despawn();
-
-        var cleanup = await UnloadTargets(ctx, buildA, buildB);
-        if (!cleanup.success)
-            return cleanup;
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 4, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"cleanup barrier timeout: {DescribeState(ctx)}");
-        }
-
-        return ScenarioResult.Ok($"victim={victim.Value.id.value}");
     }
 
     private async UniTask<ScenarioResult> RunAsClient(ScenarioContext ctx)
@@ -292,12 +308,20 @@ public class SceneMembershipSwitchScenario : Scenario
         return ScenarioResult.Ok();
     }
 
-    private async UniTask<ScenarioResult> UnloadTargets(ScenarioContext ctx, int buildA, int buildB)
+    private async UniTask<ScenarioResult> UnloadTargets(
+        ScenarioContext ctx, int buildA, int buildB,
+        SceneMembershipSwitchRoot instanceA = null,
+        SceneMembershipSwitchRoot instanceB = null)
     {
+        if (instanceA)
+            instanceA.Despawn();
+        if (instanceB)
+            instanceB.Despawn();
+
         if (IsSceneLoaded(TargetSceneAName))
-            ctx.networkManager.sceneModule.UnloadSceneAsync(SceneManager.GetSceneByName(TargetSceneAName));
+            _ = ctx.networkManager.sceneModule.UnloadSceneAsync(SceneManager.GetSceneByName(TargetSceneAName));
         if (IsSceneLoaded(TargetSceneBName))
-            ctx.networkManager.sceneModule.UnloadSceneAsync(SceneManager.GetSceneByName(TargetSceneBName));
+            _ = ctx.networkManager.sceneModule.UnloadSceneAsync(SceneManager.GetSceneByName(TargetSceneBName));
 
         try
         {
@@ -305,13 +329,53 @@ public class SceneMembershipSwitchScenario : Scenario
                 () => SceneMembershipSwitchRoot.ServerAliveCount == 0
                       && SceneMembershipSwitchChild.ServerAliveCount == 0
                       && !IsNetworkSceneLoaded(ctx, buildA)
-                      && !IsNetworkSceneLoaded(ctx, buildB),
+                      && !IsNetworkSceneLoaded(ctx, buildB)
+                      && !IsSceneLoaded(TargetSceneAName)
+                      && !IsSceneLoaded(TargetSceneBName),
                 _despawnTimeoutSeconds,
                 ctx.cancellationToken);
         }
         catch (TimeoutException)
         {
             return ScenarioResult.Fail($"cleanup timeout: {DescribeState(ctx)}");
+        }
+
+        return ScenarioResult.Ok();
+    }
+
+    private async UniTask<ScenarioResult> WaitForPlayerLoaded(
+        ScenarioContext ctx, ScenePlayersModule scenePlayers, PlayerID player, SceneID sceneId, string phase)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => scenePlayers.IsPlayerInScene(player, sceneId)
+                      && scenePlayers.IsPlayerLoadedInScene(player, sceneId),
+                _membershipTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"{phase}: player did not finish loading scene: {DescribeState(ctx)}");
+        }
+
+        return ScenarioResult.Ok();
+    }
+
+    private async UniTask<ScenarioResult> WaitForPlayerRemoved(
+        ScenarioContext ctx, ScenePlayersModule scenePlayers, PlayerID player, SceneID sceneId, string phase)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => !scenePlayers.IsPlayerInScene(player, sceneId)
+                      && !scenePlayers.IsPlayerLoadedInScene(player, sceneId),
+                _membershipTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"{phase}: player membership was not removed: {DescribeState(ctx)}");
         }
 
         return ScenarioResult.Ok();
@@ -335,7 +399,7 @@ public class SceneMembershipSwitchScenario : Scenario
         }
 
         if (SceneMembershipSwitchRoot.SawBadId || SceneMembershipSwitchChild.SawBadId)
-            return ScenarioResult.Fail($"{phase}: default/unassigned id observed: {DescribeState(ctx)}");
+            return ScenarioResult.Fail($"{phase}: missing/default id observed: {DescribeState(ctx)}");
 
         return ScenarioResult.Ok();
     }
@@ -433,7 +497,9 @@ public class SceneMembershipSwitchScenario : Scenario
                $"serverRoots={SceneMembershipSwitchRoot.ServerAliveCount}, " +
                $"serverChildren={SceneMembershipSwitchChild.ServerAliveCount}, " +
                $"rootBadId={SceneMembershipSwitchRoot.SawBadId}, childBadId={SceneMembershipSwitchChild.SawBadId}, " +
-               $"sceneA={IsSceneLoaded(TargetSceneAName)}, sceneB={IsSceneLoaded(TargetSceneBName)}";
+               $"sceneA={IsSceneLoaded(TargetSceneAName)}, sceneB={IsSceneLoaded(TargetSceneBName)}, " +
+               $"networkSceneA={IsNetworkSceneLoaded(ctx, GetBuildIndex(TargetSceneAPath))}, " +
+               $"networkSceneB={IsNetworkSceneLoaded(ctx, GetBuildIndex(TargetSceneBPath))}";
     }
 
     [ObserversRpc(runLocally: true)]
