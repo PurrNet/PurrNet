@@ -327,6 +327,9 @@ public class Bootstrap : Scenario
                     if (await RunOne(i, ctx))
                         anyFailed = true;
 
+                    if (!_networkManager.isServer)
+                        break;
+
                     await ScenarioSequencer.WaitForAllAcks(ctx, i);
 
                     if (i == _scenarios.Length - 1)
@@ -335,10 +338,13 @@ public class Bootstrap : Scenario
                     await UniTask.WaitForSeconds(_timeBetweenScenarios);
                 }
 
-                ScenarioSequencer.IssueSequenceComplete();
-                // End-of-run handshake: bounded wait so a crashed/already-exited peer
-                // can't strand the server in the finally-then-Quit path.
-                await ScenarioSequencer.WaitForEndOfRunHandshake(ctx);
+                if (_networkManager.isServer)
+                {
+                    ScenarioSequencer.IssueSequenceComplete();
+                    // End-of-run handshake: bounded wait so a crashed/already-exited peer
+                    // can't strand the server in the finally-then-Quit path.
+                    await ScenarioSequencer.WaitForEndOfRunHandshake(ctx);
+                }
             }
             else
             {
