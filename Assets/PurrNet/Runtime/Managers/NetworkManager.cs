@@ -1959,7 +1959,7 @@ namespace PurrNet
 
         public bool isTranferingToNewServer { get; private set; }
 
-        private const float TransferToNewServerConnectRetryIntervalSeconds = 0.25f;
+        private const float TransferToNewServerConnectRetryIntervalSeconds = 2f;
 
         /// <summary>
         /// Transfers the current connection to a new server. This operation is asynchronous
