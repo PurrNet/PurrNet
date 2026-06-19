@@ -2254,7 +2254,6 @@ MonoBehaviour:
   _doneTimeoutSeconds: 30
   _promotionStartupDelaySeconds: 1
   _flushDelaySeconds: 0.2
-  _barrierTimeoutSeconds: 60
 --- !u!1 &1869161003
 GameObject:
   m_ObjectHideFlags: 0

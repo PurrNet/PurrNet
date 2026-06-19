@@ -10,7 +10,6 @@ public class PromotedServerTransferScenario : Scenario
 {
     private const string TargetSceneName = "SceneMembershipTargetA";
     private const string TargetScenePath = "Assets/PlayModeTests/SceneMembershipTargetA.unity";
-    private const int BarrierBase = 6800;
     private const int ExpectedChildren = 1;
 
     [SerializeField] private NetworkRules _rules;
@@ -21,7 +20,6 @@ public class PromotedServerTransferScenario : Scenario
     [SerializeField] private float _doneTimeoutSeconds = 30f;
     [SerializeField] private float _promotionStartupDelaySeconds = 1f;
     [SerializeField] private float _flushDelaySeconds = 0.2f;
-    [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
     private static ulong _promotedId;
     private static ulong _ownerId;
@@ -132,9 +130,6 @@ public class PromotedServerTransferScenario : Scenario
                 $"promotion transfer initial observation timeout: got {_initialObservedCount}/{ctx.expectedConnections}; {DescribeState(ctx)}");
         }
 
-        var initialBarrier = await WaitAtBarrier(ctx, BarrierBase + 1, "initial");
-        if (!initialBarrier.success) return initialBarrier;
-
         BroadcastPromotionCommand();
 
         await UniTask.WaitForSeconds(_flushDelaySeconds, cancellationToken: ctx.cancellationToken);
@@ -179,9 +174,6 @@ public class PromotedServerTransferScenario : Scenario
         if (!initial.success) return initial;
 
         SignalInitialObserved();
-
-        var initialBarrier = await WaitAtBarrier(ctx, BarrierBase + 1, "initial");
-        if (!initialBarrier.success) return initialBarrier;
 
         try
         {
@@ -491,20 +483,6 @@ public class PromotedServerTransferScenario : Scenario
                 $"ownerId={rec.ownerId}, expected={_ownerId}, ownerHasValue={rec.ownerHasValue}, " +
                 $"isOwner={rec.isOwner}, isController={rec.isController}, hasConnectedOwner={rec.hasConnectedOwner}, " +
                 $"scene={rec.sceneName}");
-        }
-
-        return ScenarioResult.Ok();
-    }
-
-    private async UniTask<ScenarioResult> WaitAtBarrier(ScenarioContext ctx, int barrierId, string phase)
-    {
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, barrierId, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"promotion transfer {phase} barrier timeout: {DescribeState(ctx)}");
         }
 
         return ScenarioResult.Ok();
