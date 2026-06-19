@@ -471,14 +471,11 @@ namespace PurrNet.Modules
             string cookie = null;
             NetworkID? playerLastNid = null;
 
-            if (_networkManager.networkRules.IsHostMigrationEnabled())
-            {
-                if (_playerIdToCookie.TryGetValue(playerId, out var playerCookie))
-                    cookie = playerCookie;
+            if (_playerIdToCookie.TryGetValue(playerId, out var playerCookie))
+                cookie = playerCookie;
 
-                if (_lastNidId.TryGetValue(playerId, out var lastNidId))
-                    playerLastNid = lastNidId;
-            }
+            if (_lastNidId.TryGetValue(playerId, out var lastNidId))
+                playerLastNid = lastNidId;
 
             return new PlayerJoinedEvent(playerId, conn, playerLastNid, cookie);
         }
