@@ -67,6 +67,7 @@ namespace PurrNet.Modules
         private readonly Dictionary<SceneID, SceneState> _scenes = new Dictionary<SceneID, SceneState>();
         private readonly Dictionary<Scene, SceneID> _idToScene = new Dictionary<Scene, SceneID>();
         private readonly List<SceneID> _rawScenes = new List<SceneID>();
+        private readonly HashSet<SceneID> _sceneActionScenes = new HashSet<SceneID>();
 
         /// <summary>
         /// First callback for when a scene is loaded
@@ -198,6 +199,7 @@ namespace PurrNet.Modules
             _scenes.Remove(id);
             _idToScene.Remove(scene);
             _rawScenes.Remove(id);
+            _sceneActionScenes.Remove(id);
             _scenesToTriggerUnloadEvent.Remove(id);
 
             if (playUnloadEventsImmediately)
@@ -246,13 +248,15 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
-            RebuildHistoryFromLoadedBuildScenes();
+            _rebuildHistoryOnNextPlayerJoin = true;
             _players.Unsubscribe<SceneActionsBatch>(OnSceneActionsBatch);
             _players.Unsubscribe<FirstSceneActionsBatch>(OnSceneActionsBatch);
             _players.onPrePlayerJoined += OnPlayerJoined;
             _scenePlayers.onPlayerJoinedScene += OnPlayerJoinedScene;
             _scenePlayers.onPlayerLeftScene += OnPlayerLeftScene;
         }
+
+        private bool _rebuildHistoryOnNextPlayerJoin;
 
         private void RebuildHistoryFromLoadedBuildScenes()
         {
@@ -261,6 +265,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _rawScenes.Count; i++)
             {
                 var id = _rawScenes[i];
+                if (!_sceneActionScenes.Contains(id))
+                    continue;
+
                 if (!_scenes.TryGetValue(id, out var state))
                     continue;
 
@@ -377,6 +384,12 @@ namespace PurrNet.Modules
             if (!asServer)
                 return;
 
+            if (_rebuildHistoryOnNextPlayerJoin)
+            {
+                _rebuildHistoryOnNextPlayerJoin = false;
+                RebuildHistoryFromLoadedBuildScenes();
+            }
+
             var history = _history.GetFullHistory();
 
             _playerFilteredActions.Clear();
@@ -472,6 +485,7 @@ namespace PurrNet.Modules
 
                 if (operation.scenePathHash == loadedHash && operation.settings.mode == mode)
                 {
+                    _sceneActionScenes.Add(operation.idToAssign);
                     AddScene(scene, operation.settings, operation.idToAssign);
                     _pendingOperations.RemoveAt(i);
                     break;
@@ -566,6 +580,7 @@ namespace PurrNet.Modules
                             idToAssign = loadAction.sceneID,
                             operation = operation
                         });
+                        _sceneActionScenes.Add(loadAction.sceneID);
 
                         _actionsQueue.Dequeue();
                         break;
@@ -664,6 +679,7 @@ namespace PurrNet.Modules
                         var loadAction = action.loadSceneAction;
                         targetScenes.Add(loadAction.sceneID);
                         targetBuildScenes[loadAction.sceneID] = loadAction.scenePathHash;
+                        _sceneActionScenes.Add(loadAction.sceneID);
 
                         var buildIndex = BuildIndexFromScenePathHash(loadAction.scenePathHash);
                         if (buildIndex == -1)
@@ -682,6 +698,7 @@ namespace PurrNet.Modules
                     }
                     case SceneActionType.LoadAddressable:
                         targetScenes.Add(action.loadAddressableSceneAction.sceneID);
+                        _sceneActionScenes.Add(action.loadAddressableSceneAction.sceneID);
                         missingActions.Add(action);
                         break;
                     case SceneActionType.Unload:
@@ -711,6 +728,7 @@ namespace PurrNet.Modules
                 if (existing.scene.IsValid() && existing.scene.isLoaded && existing.scene.buildIndex == buildIndex)
                 {
                     _scenes[loadAction.sceneID] = new SceneState(existing.scene, loadAction.parameters);
+                    _sceneActionScenes.Add(loadAction.sceneID);
                     replayLoadEvents.Add(loadAction.sceneID);
                     return true;
                 }
@@ -746,6 +764,7 @@ namespace PurrNet.Modules
                 if (oldId == id)
                 {
                     _scenes[id] = new SceneState(scene, settings);
+                    _sceneActionScenes.Add(id);
                     _scenesToTriggerUnloadEvent.Remove(id);
                     return;
                 }
@@ -758,6 +777,7 @@ namespace PurrNet.Modules
 
             _scenes[id] = new SceneState(scene, settings);
             _idToScene[scene] = id;
+            _sceneActionScenes.Add(id);
             if (!_rawScenes.Contains(id))
                 _rawScenes.Add(id);
 
@@ -834,7 +854,10 @@ namespace PurrNet.Modules
                                 continue;
 
                             if (serverModule.TryGetSceneState(action.loadSceneAction.sceneID, out var state))
+                            {
+                                _sceneActionScenes.Add(action.loadSceneAction.sceneID);
                                 AddScene(state.scene, state.settings, action.loadSceneAction.sceneID);
+                            }
                             break;
                         }
                         case SceneActionType.LoadAddressable:
@@ -843,7 +866,10 @@ namespace PurrNet.Modules
                                 continue;
 
                             if (serverModule.TryGetSceneState(action.loadAddressableSceneAction.sceneID, out var state))
+                            {
+                                _sceneActionScenes.Add(action.loadAddressableSceneAction.sceneID);
                                 AddScene(state.scene, state.settings, action.loadAddressableSceneAction.sceneID);
+                            }
                             break;
                         }
                         case SceneActionType.Unload:
@@ -1054,6 +1080,7 @@ namespace PurrNet.Modules
                 sceneID = idToAssign,
                 parameters = settings
             });
+            _sceneActionScenes.Add(idToAssign);
 
             var op = SceneManager.LoadSceneAsync(sceneIndex, parameters);
             var operation = new PendingSceneOperation
