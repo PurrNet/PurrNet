@@ -1748,13 +1748,20 @@ namespace PurrNet
                 }
             }
 
-            if (_isCleaningServer && _serverModules.Cleanup())
+            if (_isCleaningServer)
             {
-                _isServerTicking = false;
-                _serverModules.UnregisterModules();
-                CleanupServerModules();
-                TriggerUnsubscribeEvents(true);
-                _isCleaningServer = false;
+                if (isPromotingToServer)
+                {
+                    _isCleaningServer = false;
+                }
+                else if (_serverModules.Cleanup())
+                {
+                    _isServerTicking = false;
+                    _serverModules.UnregisterModules();
+                    CleanupServerModules();
+                    TriggerUnsubscribeEvents(true);
+                    _isCleaningServer = false;
+                }
             }
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
