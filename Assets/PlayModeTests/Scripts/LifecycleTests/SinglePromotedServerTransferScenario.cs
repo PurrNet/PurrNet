@@ -1,6 +1,7 @@
 using System;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine;
 using UnityEngine.SceneManagement;
