@@ -1118,7 +1118,7 @@ namespace PurrNet
             switch (asServer)
             {
                 case true when isPromotingToServer:
-                    modules.MigrateFrom(_clientModules);
+                    RegisterPromotedServerModules(modules);
                     return;
                 case false when isTranferingToNewServer:
                     modules.TransferToNewServer();
@@ -1314,6 +1314,169 @@ namespace PurrNet
 #endif
 
             RenewSubscriptions(asServer);
+        }
+
+        private void RegisterPromotedServerModules(ModulesCollection modules)
+        {
+            modules.MigrateFrom(_clientModules);
+            RebindPromotedServerModules();
+            RenewSubscriptions(true);
+        }
+
+        private void RebindPromotedServerModules()
+        {
+            if (_clientTickManager != null)
+            {
+                _clientTickManager.onPreTick -= OnClientPreTick;
+                _clientTickManager.onTick -= OnClientTick;
+                _clientTickManager.onPostTick -= OnClientPostTick;
+            }
+
+            if (_serverTickManager != null)
+            {
+                _serverTickManager.onPreTick -= OnServerPreTick;
+                _serverTickManager.onTick -= OnServerTick;
+                _serverTickManager.onPostTick -= OnServerPostTick;
+            }
+
+            if (_serverModules.TryGetModule(out TickManager tickManager))
+            {
+                _serverTickManager = tickManager;
+                _isServerTicking = true;
+                _serverTickManager.onPreTick += OnServerPreTick;
+                _serverTickManager.onTick += OnServerTick;
+                _serverTickManager.onPostTick += OnServerPostTick;
+            }
+            else
+            {
+                _serverTickManager = null;
+                _isServerTicking = false;
+            }
+
+            UnsubscribePlayerModuleEvents(_clientPlayersManager);
+            UnsubscribePlayerModuleEvents(_serverPlayersManager);
+
+            if (_serverModules.TryGetModule(out PlayersManager playersManager))
+            {
+                _serverPlayersManager = playersManager;
+                SubscribePlayerModuleEvents(_serverPlayersManager);
+            }
+            else
+            {
+                _serverPlayersManager = null;
+            }
+
+            UnsubscribeScenePlayersModuleEvents(_clientScenePlayersModule);
+            UnsubscribeScenePlayersModuleEvents(_serverScenePlayersModule);
+
+            if (_serverModules.TryGetModule(out ScenePlayersModule scenePlayersModule))
+            {
+                _serverScenePlayersModule = scenePlayersModule;
+                SubscribeScenePlayersModuleEvents(_serverScenePlayersModule);
+            }
+            else
+            {
+                _serverScenePlayersModule = null;
+            }
+
+            if (_serverAuthModule != null)
+                _serverAuthModule.onAuthenticationDenied -= OnAuthenticationDenied;
+
+            if (_serverModules.TryGetModule(out AuthModule authModule))
+            {
+                _serverAuthModule = authModule;
+                _serverAuthModule.onAuthenticationDenied += OnAuthenticationDenied;
+            }
+            else
+            {
+                _serverAuthModule = null;
+            }
+
+            if (!_serverModules.TryGetModule(out _serverBroadcast))
+                _serverBroadcast = null;
+            if (!_serverModules.TryGetModule(out _serverPlayersBroadcast))
+                _serverPlayersBroadcast = null;
+            if (!_serverModules.TryGetModule(out _serverSceneModule))
+                _serverSceneModule = null;
+            if (!_serverModules.TryGetModule(out _serverDeltaModule))
+                _serverDeltaModule = null;
+            if (!_serverModules.TryGetModule(out _serverRpcModule))
+                _serverRpcModule = null;
+            if (!_serverModules.TryGetModule(out _serverLODModule))
+                _serverLODModule = null;
+
+            if (_onClientSpawnValidate != null &&
+                _serverModules.TryGetModule(out HierarchyFactory hierarchyFactory))
+            {
+                foreach (var del in _onClientSpawnValidate.GetInvocationList())
+                {
+                    var validate = (ValidateSpawnAction)del;
+                    hierarchyFactory.onClientSpawnValidate -= validate;
+                    hierarchyFactory.onClientSpawnValidate += validate;
+                }
+            }
+
+            _clientTickManager = null;
+            _clientBroadcast = null;
+            _clientPlayersManager = null;
+            _clientPlayersBroadcast = null;
+            _clientSceneModule = null;
+            _clientScenePlayersModule = null;
+            _clientDeltaModule = null;
+            _clientRpcModule = null;
+            _clientLODModule = null;
+            _isCleaningClient = false;
+        }
+
+        private void SubscribePlayerModuleEvents(PlayersManager playersManager)
+        {
+            if (playersManager == null)
+                return;
+
+            playersManager.onPlayerJoined -= OnPlayerJoined;
+            playersManager.onPlayerLeft -= OnPlayerLeft;
+            playersManager.onLocalPlayerReceivedID -= OnLocalPlayerReceivedID;
+
+            playersManager.onPlayerJoined += OnPlayerJoined;
+            playersManager.onPlayerLeft += OnPlayerLeft;
+            playersManager.onLocalPlayerReceivedID += OnLocalPlayerReceivedID;
+        }
+
+        private void UnsubscribePlayerModuleEvents(PlayersManager playersManager)
+        {
+            if (playersManager == null)
+                return;
+
+            playersManager.onPlayerJoined -= OnPlayerJoined;
+            playersManager.onPlayerLeft -= OnPlayerLeft;
+            playersManager.onLocalPlayerReceivedID -= OnLocalPlayerReceivedID;
+        }
+
+        private void SubscribeScenePlayersModuleEvents(ScenePlayersModule scenePlayersModule)
+        {
+            if (scenePlayersModule == null)
+                return;
+
+            scenePlayersModule.onPlayerJoinedScene -= OnPlayerJoinedScene;
+            scenePlayersModule.onPlayerLoadedScene -= OnPlayerLoadedScene;
+            scenePlayersModule.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
+            scenePlayersModule.onPlayerLeftScene -= OnPlayerLeftScene;
+
+            scenePlayersModule.onPlayerJoinedScene += OnPlayerJoinedScene;
+            scenePlayersModule.onPlayerLoadedScene += OnPlayerLoadedScene;
+            scenePlayersModule.onPlayerUnloadedScene += OnPlayerUnloadedScene;
+            scenePlayersModule.onPlayerLeftScene += OnPlayerLeftScene;
+        }
+
+        private void UnsubscribeScenePlayersModuleEvents(ScenePlayersModule scenePlayersModule)
+        {
+            if (scenePlayersModule == null)
+                return;
+
+            scenePlayersModule.onPlayerJoinedScene -= OnPlayerJoinedScene;
+            scenePlayersModule.onPlayerLoadedScene -= OnPlayerLoadedScene;
+            scenePlayersModule.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
+            scenePlayersModule.onPlayerLeftScene -= OnPlayerLeftScene;
         }
 
         private void OnServerPreTick() => onPreTick?.Invoke(true);
@@ -1754,6 +1917,9 @@ namespace PurrNet
 
                 StartServer();
                 _serverModules.PostPromoteToServer();
+
+                _isCleaningClient = false;
+                isPromotingToServer = false;
 
                 if (_networkRules && _networkRules.ShouldMigrateAsHost())
                     StartClient();

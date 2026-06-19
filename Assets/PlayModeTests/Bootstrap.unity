@@ -2278,7 +2278,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65b413c3f39649628cc46def2cc09b78, type: 3}
   m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PromotedServerTransferScenario
-  _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
+  _rules: {fileID: 11400000, guid: 4f194c428acb4f40ac42802e7d14e12c, type: 2}
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
   _promotionTimeoutSeconds: 45

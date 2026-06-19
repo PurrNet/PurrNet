@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace PurrNet.Modules
 {
-    public class TickManager : INetworkModule, IUpdate
+    public class TickManager : INetworkModule, IUpdate, IPromoteToServerModule
     {
         /// <summary>
         /// Tracks local ticks starting from client connection to the server for synchronization.
@@ -73,7 +73,7 @@ namespace PurrNet.Modules
         public event Action onReliablePreTick, onReliableTick, onReliablePostTick;
 
         private readonly INetworkManager _networkManager;
-        private readonly bool _asServer;
+        private bool _asServer;
 
         private uint _syncedTick;
         private float _lastSyncTime = -99;
@@ -116,6 +116,15 @@ namespace PurrNet.Modules
                 _broadcaster.Unsubscribe<TickManagerResponseLocalTick>(OnServerRespondedPing);
             }
         }
+
+        public void PromoteToServerModule()
+        {
+            Disable(false);
+            _asServer = true;
+            Enable(true);
+        }
+
+        public void PostPromoteToServerModule() { }
 
         public void Update()
         {

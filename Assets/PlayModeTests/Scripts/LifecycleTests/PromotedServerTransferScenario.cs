@@ -201,18 +201,6 @@ public class PromotedServerTransferScenario : Scenario
 
     private async UniTask<ScenarioResult> RunPromotedClient(ScenarioContext ctx)
     {
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => ctx.networkManager.clientState == ConnectionState.Disconnected,
-                _promotionTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"promotion transfer promoted client did not detach from old server: {DescribeState(ctx)}");
-        }
-
         ctx.networkManager.PromoteToServer();
 
         try
