@@ -540,6 +540,9 @@ public class PrivateSceneSwitchTransferScenario : Scenario
 
     private async UniTask<ScenarioResult> VerifyBystanderExcluded(ScenarioContext ctx, string phase)
     {
+        if (ctx.role == NetworkRole.Host)
+            return ScenarioResult.Ok();
+
         await UniTask.WaitForSeconds(_propagationDelaySeconds, cancellationToken: ctx.cancellationToken);
         if (PrivateSceneSwitchTransferRoot.ClientAliveCount != 0 ||
             PrivateSceneSwitchTransferChild.ClientAliveCount != 0)

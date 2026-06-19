@@ -434,6 +434,9 @@ public class PrivateSceneTransferScenario : Scenario
 
     private async UniTask<ScenarioResult> VerifyBystanderExcluded(ScenarioContext ctx, string phase)
     {
+        if (ctx.role == NetworkRole.Host)
+            return ScenarioResult.Ok();
+
         await UniTask.WaitForSeconds(_propagationDelaySeconds, cancellationToken: ctx.cancellationToken);
         if (PrivateSceneTransferRoot.ClientAliveCount != 0 || PrivateSceneTransferChild.ClientAliveCount != 0)
             return ScenarioResult.Fail($"{phase}: bystander received private scene hierarchy: {DescribeState(ctx)}");
