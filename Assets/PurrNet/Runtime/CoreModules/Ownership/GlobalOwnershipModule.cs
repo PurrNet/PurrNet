@@ -287,6 +287,9 @@ namespace PurrNet.Modules
         {
             if (!_sceneOwnerships.TryGetValue(scene, out var ownerships)) return;
 
+            if (_asServer)
+                SendOwnershipSnapshot(player, scene, ownerships);
+
             var owned = ownerships.TryGetOwnedObjects(player);
 
             foreach (var id in owned)
@@ -294,6 +297,22 @@ namespace PurrNet.Modules
                 if (_hierarchy.TryGetIdentity(scene, id, out var identity))
                     identity.TriggerOnOwnerReconnected(player, asServer);
             }
+        }
+
+        private void SendOwnershipSnapshot(PlayerID player, SceneID scene, SceneOwnership ownerships)
+        {
+            var state = ownerships.GetState();
+            if (state.Count == 0)
+                return;
+
+            using var snapshot = DisposableList<OwnershipInfo>.Create(state.Count);
+            snapshot.AddRange(state);
+
+            _playersManager.Send(player, new OwnershipChangeBatch
+            {
+                scene = scene,
+                state = snapshot
+            });
         }
 
         private void OnPlayerLeft(PlayerID player, bool asServer)
