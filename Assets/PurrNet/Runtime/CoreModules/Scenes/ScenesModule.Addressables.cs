@@ -200,8 +200,6 @@ namespace PurrNet.Modules
                 return default;
             }
 
-            HostMigrationCompatibility(ref settings);
-
             var idToAssign = GetNextID();
             var guid = sceneRef.AssetGUID;
 
@@ -281,8 +279,6 @@ namespace PurrNet.Modules
                 PurrLogger.LogError("LoadAddressableSceneAsync failed: GUID is null or empty");
                 return default;
             }
-
-            HostMigrationCompatibility(ref settings);
 
             var idToAssign = GetNextID();
 

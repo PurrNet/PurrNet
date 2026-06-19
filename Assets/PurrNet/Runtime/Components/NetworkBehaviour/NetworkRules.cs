@@ -14,7 +14,6 @@ namespace PurrNet
         [Tooltip("If enabled, new server will also start as client (server+client)")]
         [UsedImplicitly] public bool migrateAsHost;
         [UsedImplicitly] public bool identitiesAlwaysVisible;
-        [UsedImplicitly] public bool scenesAlwaysPublic;
     }
 
     public enum SceneCleanupMode
@@ -186,8 +185,7 @@ namespace PurrNet
         {
             enabled = false,
             migrateAsHost = true,
-            identitiesAlwaysVisible = true,
-            scenesAlwaysPublic = true
+            identitiesAlwaysVisible = true
         };
 
         [SerializeField]
@@ -401,11 +399,6 @@ namespace PurrNet
         public bool ShouldForceVisibilityToAlwaysVisible()
         {
             return _hostMigrationRules.identitiesAlwaysVisible;
-        }
-
-        public bool ShouldForceSceneToAlwaysPublic()
-        {
-            return _hostMigrationRules.scenesAlwaysPublic;
         }
 
         public bool ShouldMigrateAsHost()

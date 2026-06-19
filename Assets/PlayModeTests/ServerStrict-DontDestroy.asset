@@ -16,7 +16,6 @@ MonoBehaviour:
     enabled: 0
     migrateAsHost: 1
     identitiesAlwaysVisible: 1
-    scenesAlwaysPublic: 1
   _defaultSpawnRules:
     spawnAuth: 0
     despawnAuth: 1
