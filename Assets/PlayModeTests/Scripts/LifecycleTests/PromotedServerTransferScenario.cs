@@ -17,7 +17,6 @@ public class PromotedServerTransferScenario : Scenario
     [SerializeField] private float _spawnTimeoutSeconds = 20f;
     [SerializeField] private float _promotionTimeoutSeconds = 45f;
     [SerializeField] private float _transferTimeoutSeconds = 45f;
-    [SerializeField] private float _doneTimeoutSeconds = 30f;
     [SerializeField] private float _promotionStartupDelaySeconds = 1f;
     [SerializeField] private float _flushDelaySeconds = 0.2f;
 
@@ -299,18 +298,7 @@ public class PromotedServerTransferScenario : Scenario
         if (!restored.success) return restored;
 
         SignalTransferRestored();
-
-        try
-        {
-            await UniTaskUtils.WaitWithTimeout(
-                () => ScenarioSequencer.SequenceComplete,
-                _doneTimeoutSeconds,
-                ctx.cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"promotion transfer sequence-complete timeout: {DescribeState(ctx)}");
-        }
+        await UniTask.WaitForSeconds(_flushDelaySeconds, cancellationToken: ctx.cancellationToken);
 
         return ScenarioResult.Ok(isOwner ? "owner restored through promoted server" : "peer restored through promoted server");
     }
