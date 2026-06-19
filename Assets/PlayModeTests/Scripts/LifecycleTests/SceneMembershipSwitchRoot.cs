@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class SceneMembershipSwitchRoot : NetworkIdentity
 {
-    private static readonly HashSet<NetworkID> _serverAlive = new();
-    private static readonly HashSet<NetworkID> _clientAlive = new();
+    private static readonly HashSet<(SceneID scene, NetworkID id)> _serverAlive = new();
+    private static readonly HashSet<(SceneID scene, NetworkID id)> _clientAlive = new();
 
     public static SceneMembershipSwitchRoot LocalClientInstance;
     public static int ServerAliveCount => _serverAlive.Count;
@@ -14,8 +14,8 @@ public class SceneMembershipSwitchRoot : NetworkIdentity
     public static string ClientSceneName;
     public static bool SawBadId;
 
-    private NetworkID? _serverTrackedId;
-    private NetworkID? _clientTrackedId;
+    private (SceneID scene, NetworkID id)? _serverTrackedId;
+    private (SceneID scene, NetworkID id)? _clientTrackedId;
 
     public static void ResetAll()
     {
@@ -42,13 +42,13 @@ public class SceneMembershipSwitchRoot : NetworkIdentity
 
         if (asServer)
         {
-            _serverTrackedId = id.Value;
-            _serverAlive.Add(id.Value);
+            _serverTrackedId = (sceneId, id.Value);
+            _serverAlive.Add(_serverTrackedId.Value);
             return;
         }
 
-        _clientTrackedId = id.Value;
-        _clientAlive.Add(id.Value);
+        _clientTrackedId = (sceneId, id.Value);
+        _clientAlive.Add(_clientTrackedId.Value);
         ClientSpawnCount++;
         ClientSceneName = gameObject.scene.name;
         LocalClientInstance = this;

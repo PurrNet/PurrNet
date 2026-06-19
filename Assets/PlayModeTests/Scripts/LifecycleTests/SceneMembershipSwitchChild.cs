@@ -3,16 +3,16 @@ using PurrNet;
 
 public class SceneMembershipSwitchChild : NetworkIdentity
 {
-    private static readonly HashSet<NetworkID> _serverAlive = new();
-    private static readonly HashSet<NetworkID> _clientAlive = new();
+    private static readonly HashSet<(SceneID scene, NetworkID id)> _serverAlive = new();
+    private static readonly HashSet<(SceneID scene, NetworkID id)> _clientAlive = new();
 
     public static int ServerAliveCount => _serverAlive.Count;
     public static int ClientAliveCount => _clientAlive.Count;
     public static int ClientSpawnCount;
     public static bool SawBadId;
 
-    private NetworkID? _serverTrackedId;
-    private NetworkID? _clientTrackedId;
+    private (SceneID scene, NetworkID id)? _serverTrackedId;
+    private (SceneID scene, NetworkID id)? _clientTrackedId;
 
     public static void ResetAll()
     {
@@ -32,13 +32,13 @@ public class SceneMembershipSwitchChild : NetworkIdentity
 
         if (asServer)
         {
-            _serverTrackedId = id.Value;
-            _serverAlive.Add(id.Value);
+            _serverTrackedId = (sceneId, id.Value);
+            _serverAlive.Add(_serverTrackedId.Value);
             return;
         }
 
-        _clientTrackedId = id.Value;
-        _clientAlive.Add(id.Value);
+        _clientTrackedId = (sceneId, id.Value);
+        _clientAlive.Add(_clientTrackedId.Value);
         ClientSpawnCount++;
     }
 
