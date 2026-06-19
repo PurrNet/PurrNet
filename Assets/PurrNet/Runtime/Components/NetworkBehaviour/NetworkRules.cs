@@ -10,10 +10,8 @@ namespace PurrNet
     [Serializable]
     public struct HostMigrationRules
     {
-        [UsedImplicitly] public bool enabled;
         [Tooltip("If enabled, new server will also start as client (server+client)")]
         [UsedImplicitly] public bool migrateAsHost;
-        [UsedImplicitly] public bool identitiesAlwaysVisible;
     }
 
     public enum SceneCleanupMode
@@ -183,9 +181,7 @@ namespace PurrNet
         [SerializeField]
         private HostMigrationRules _hostMigrationRules = new HostMigrationRules
         {
-            enabled = false,
-            migrateAsHost = true,
-            identitiesAlwaysVisible = true
+            migrateAsHost = true
         };
 
         [SerializeField]
@@ -389,16 +385,6 @@ namespace PurrNet
         public bool CanTargetServerWithTargetRpc()
         {
             return _defaultRpcRules.targetRpcsCanTargetServer;
-        }
-
-        public bool IsHostMigrationEnabled()
-        {
-            return _hostMigrationRules.enabled;
-        }
-
-        public bool ShouldForceVisibilityToAlwaysVisible()
-        {
-            return _hostMigrationRules.identitiesAlwaysVisible;
         }
 
         public bool ShouldMigrateAsHost()

@@ -1709,6 +1709,8 @@ GameObject:
   - component: {fileID: 1680343650}
   - component: {fileID: 1680343651}
   - component: {fileID: 1680343652}
+  - component: {fileID: 1680343654}
+  - component: {fileID: 1680343655}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -2234,6 +2236,42 @@ MonoBehaviour:
   _doneTimeoutSeconds: 30
   _propagationDelaySeconds: 0.5
   _barrierTimeoutSeconds: 60
+--- !u!114 &1680343654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a92abc49121447b8c9d05c85ba8bf15, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::PrivateSceneVisibilityTransferScenario
+  _rules: {fileID: 11400000, guid: 4f194c428acb4f40ac42802e7d14e12c, type: 2}
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _transferTimeoutSeconds: 45
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
+  _barrierTimeoutSeconds: 60
+--- !u!114 &1680343655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 455908e0f11c4dd2acfccf4e035c01f4, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SingleSceneTransferScenario
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _transferTimeoutSeconds: 45
+  _doneTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
 --- !u!1 &2090000000
 GameObject:
   m_ObjectHideFlags: 0
@@ -2275,15 +2313,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 2090000000}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 65b413c3f39649628cc46def2cc09b78, type: 3}
+  m_Script: {fileID: 11500000, guid: 51a51e1ce501484a9d7636d52995a8c9, type: 3}
   m_Name:
-  m_EditorClassIdentifier: PurrNet.PlayModeTests::PromotedServerTransferScenario
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SinglePromotedServerTransferScenario
   _rules: {fileID: 11400000, guid: 4f194c428acb4f40ac42802e7d14e12c, type: 2}
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
   _promotionTimeoutSeconds: 45
   _transferTimeoutSeconds: 45
-  _doneTimeoutSeconds: 30
   _promotionStartupDelaySeconds: 1
   _flushDelaySeconds: 0.2
 --- !u!1 &1869161003

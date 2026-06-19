@@ -13,9 +13,7 @@ MonoBehaviour:
   m_Name: AnyoneCanSpawn
   m_EditorClassIdentifier: 
   _hostMigrationRules:
-    enabled: 0
     migrateAsHost: 1
-    identitiesAlwaysVisible: 1
   _defaultSpawnRules:
     spawnAuth: 1
     despawnAuth: -1

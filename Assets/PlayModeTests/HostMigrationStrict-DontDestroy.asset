@@ -13,9 +13,7 @@ MonoBehaviour:
   m_Name: HostMigrationStrict-DontDestroy
   m_EditorClassIdentifier:
   _hostMigrationRules:
-    enabled: 1
     migrateAsHost: 1
-    identitiesAlwaysVisible: 1
   _defaultSpawnRules:
     spawnAuth: 0
     despawnAuth: 1
