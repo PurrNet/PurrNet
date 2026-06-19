@@ -80,6 +80,8 @@ namespace PurrNet
             return false;
         }
 
+        internal bool hasModules => _modules != null && _modules.Count > 0;
+
         public void RegisterModules()
         {
             if (_manager == null)
@@ -90,8 +92,9 @@ namespace PurrNet
             }
 
             bool isClientTransfering = !_asServer && _manager.isTranferingToNewServer;
+            bool transferExistingClientModules = isClientTransfering && hasModules;
 
-            if (!isClientTransfering)
+            if (!transferExistingClientModules)
                 UnregisterModules();
 
             _manager.RegisterModules(this, _asServer);
@@ -99,7 +102,7 @@ namespace PurrNet
             if (_manager.isPromotingToServer)
                 return;
 
-            if (_manager.isTranferingToNewServer)
+            if (transferExistingClientModules)
                 return;
 
             for (int i = 0; i < _modules.Count; i++)
@@ -151,6 +154,9 @@ namespace PurrNet
                 if (_modules[i] is IPostTransferToNewServer PostTransferToNewServer)
                     _IPostTransferToNewServer.Add(PostTransferToNewServer);
             }
+
+            if (isClientTransfering)
+                TransferToNewServer();
         }
 
         public void OnNewConnection(Connection conn, bool asServer)

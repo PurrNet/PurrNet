@@ -1120,7 +1120,7 @@ namespace PurrNet
                 case true when isPromotingToServer:
                     RegisterPromotedServerModules(modules);
                     return;
-                case false when isTranferingToNewServer:
+                case false when isTranferingToNewServer && modules.hasModules:
                     modules.TransferToNewServer();
                     return;
             }
@@ -2115,9 +2115,9 @@ namespace PurrNet
         {
             if (_clientTickManager != null)
             {
-                _clientTickManager.onPreTick -= OnServerPreTick;
-                _clientTickManager.onTick -= OnServerTick;
-                _clientTickManager.onPostTick -= OnServerPostTick;
+                _clientTickManager.onPreTick -= OnClientPreTick;
+                _clientTickManager.onTick -= OnClientTick;
+                _clientTickManager.onPostTick -= OnClientPostTick;
                 _clientTickManager = null;
             }
 
