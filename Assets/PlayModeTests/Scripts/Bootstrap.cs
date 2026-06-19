@@ -363,16 +363,16 @@ public class Bootstrap : Scenario
                 }
 
                 // Wait for the server's sequence-complete broadcast, then ack so
-                // the server can exit its handshake wait cleanly.
-                await UniTaskUtils.WaitWithTimeout(
-                    () => ScenarioSequencer.SequenceComplete,
-                    30f,
-                    ctx.cancellationToken);
-                ScenarioSequencer.AckEndOfRun(ctx);
-                // Give the ack a couple frames to flush through transport before
-                // the finally block quits the process.
-                await UniTask.NextFrame();
-                await UniTask.NextFrame();
+                // the server can exit its handshake wait cleanly. This is best-effort:
+                // a terminal scenario may intentionally stop the original server.
+                if (await TryWaitForSequenceComplete(ctx))
+                {
+                    ScenarioSequencer.AckEndOfRun(ctx);
+                    // Give the ack a couple frames to flush through transport before
+                    // the finally block quits the process.
+                    await UniTask.NextFrame();
+                    await UniTask.NextFrame();
+                }
             }
         }
         catch (Exception e)
@@ -400,6 +400,22 @@ public class Bootstrap : Scenario
 #else
             Application.Quit(anyResultFailed || anyFailed ? -1 : 0);
 #endif
+        }
+    }
+
+    private async UniTask<bool> TryWaitForSequenceComplete(ScenarioContext ctx)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => ScenarioSequencer.SequenceComplete,
+                30f,
+                ctx.cancellationToken);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
         }
     }
 
