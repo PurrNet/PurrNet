@@ -1996,8 +1996,9 @@ namespace PurrNet
                         break;
 
                     _transport.StopClientInternalOnly();
+                    _isCleaningClient = false;
 
-                    while (clientState != ConnectionState.Disconnected)
+                    while (_transportLayer != null && _transportLayer.clientState != ConnectionState.Disconnected)
                         await UnityLatestUpdate.Yield();
 
                     _transport.StartClientInternalOnly();
