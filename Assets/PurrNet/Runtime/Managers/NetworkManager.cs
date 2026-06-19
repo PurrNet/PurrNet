@@ -1959,6 +1959,8 @@ namespace PurrNet
 
         public bool isTranferingToNewServer { get; private set; }
 
+        private const float TransferToNewServerConnectRetryIntervalSeconds = 0.25f;
+
         /// <summary>
         /// Transfers the current connection to a new server. This operation is asynchronous
         /// and is typically used to migrate a client to a different server while maintaining
@@ -1985,7 +1987,21 @@ namespace PurrNet
                 StartClient();
 
                 while (clientState != ConnectionState.Connected)
-                    await UnityLatestUpdate.Yield();
+                {
+                    var nextRetryAt = Time.unscaledTimeAsDouble + TransferToNewServerConnectRetryIntervalSeconds;
+                    while (clientState != ConnectionState.Connected && Time.unscaledTimeAsDouble < nextRetryAt)
+                        await UnityLatestUpdate.Yield();
+
+                    if (clientState == ConnectionState.Connected)
+                        break;
+
+                    _transport.StopClientInternalOnly();
+
+                    while (clientState != ConnectionState.Disconnected)
+                        await UnityLatestUpdate.Yield();
+
+                    _transport.StartClientInternalOnly();
+                }
 
                 _clientModules.PostTransferToNewServer();
             }
