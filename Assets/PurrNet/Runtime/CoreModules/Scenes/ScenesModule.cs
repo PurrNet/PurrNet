@@ -246,11 +246,40 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
+            RebuildHistoryFromLoadedBuildScenes();
             _players.Unsubscribe<SceneActionsBatch>(OnSceneActionsBatch);
             _players.Unsubscribe<FirstSceneActionsBatch>(OnSceneActionsBatch);
             _players.onPrePlayerJoined += OnPlayerJoined;
             _scenePlayers.onPlayerJoinedScene += OnPlayerJoinedScene;
             _scenePlayers.onPlayerLeftScene += OnPlayerLeftScene;
+        }
+
+        private void RebuildHistoryFromLoadedBuildScenes()
+        {
+            _history.Clear();
+
+            for (var i = 0; i < _rawScenes.Count; i++)
+            {
+                var id = _rawScenes[i];
+                if (!_scenes.TryGetValue(id, out var state))
+                    continue;
+
+                if (!state.scene.IsValid() || !state.scene.isLoaded)
+                    continue;
+
+                var buildIndex = state.scene.buildIndex;
+                if (buildIndex < 0)
+                    continue;
+
+                _history.AddLoadAction(new LoadSceneAction
+                {
+                    scenePathHash = ScenePathHashFromBuildIndex(buildIndex),
+                    sceneID = id,
+                    parameters = state.settings
+                });
+            }
+
+            _history.Flush();
         }
 
         private bool _isTransferingToNewServer;

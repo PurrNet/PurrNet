@@ -162,6 +162,13 @@ namespace PurrNet.Modules
             OptimizeHistory();
         }
 
+        internal void Clear()
+        {
+            _actions.Clear();
+            _pending.Clear();
+            hasUnflushedActions = false;
+        }
+
         private readonly List<SceneID> _sceneIds = new List<SceneID>();
 
         private void OptimizeHistory()
