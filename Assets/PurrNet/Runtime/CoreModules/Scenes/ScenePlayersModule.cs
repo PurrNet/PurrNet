@@ -278,18 +278,6 @@ namespace PurrNet.Modules
 
         private void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer)
         {
-            if (isReconnect && !_manager.networkRules.ShouldRemovePlayerFromSceneOnLeave())
-            {
-                /*foreach (var (scene, players) in _scenePlayers)
-                {
-                    if (players.Contains(player))
-                        continue;
-
-                    AddPlayerToScene
-                }*/
-                return;
-            }
-
             for (var i = 0; i < _scenes.scenes.Count; i++)
             {
                 var scene = _scenes.scenes[i];

@@ -365,11 +365,22 @@ namespace PurrNet.Modules
                     _ => default
                 };
 
-                if (_scenePlayers.IsPlayerInScene(player, target))
+                if (ShouldSendSceneActionOnJoin(player, target, isReconnect))
                     _playerFilteredActions.Add(action);
             }
 
             _players.Send(player, new FirstSceneActionsBatch { actions = _playerFilteredActions });
+        }
+
+        private bool ShouldSendSceneActionOnJoin(PlayerID player, SceneID target, bool isReconnect)
+        {
+            if (_scenePlayers.IsPlayerInScene(player, target))
+                return true;
+
+            if (!isReconnect)
+                return false;
+
+            return _scenes.TryGetValue(target, out var state) && state.settings.isPublic;
         }
 
         private void OnPlayerLeftScene(PlayerID player, SceneID scene, bool asServer)
