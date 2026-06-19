@@ -11,7 +11,6 @@ public class PromotedServerTransferScenario : Scenario
     private const string TargetSceneName = "SceneMembershipTargetA";
     private const string TargetScenePath = "Assets/PlayModeTests/SceneMembershipTargetA.unity";
     private const int ExpectedChildren = 1;
-    private const ushort PromotionPortOffset = 1000;
 
     [SerializeField] private NetworkRules _rules;
     [SerializeField] private float _sceneTimeoutSeconds = 30f;
@@ -24,7 +23,6 @@ public class PromotedServerTransferScenario : Scenario
 
     private static ulong _promotedId;
     private static ulong _ownerId;
-    private static ushort _promotionPort;
     private static int _expectedTransfers;
     private static bool _planReceived;
     private static bool _promotionCommandReceived;
@@ -58,7 +56,6 @@ public class PromotedServerTransferScenario : Scenario
         PromotedServerTransferChild.ResetAll();
         _promotedId = 0;
         _ownerId = 0;
-        _promotionPort = 0;
         _expectedTransfers = 0;
         _planReceived = false;
         _promotionCommandReceived = false;
@@ -98,10 +95,7 @@ public class PromotedServerTransferScenario : Scenario
         if (expectedTransfers <= 0)
             return ScenarioResult.Fail("promotion transfer: expected transfer count was zero");
 
-        if (!TryGetPromotionPort(ctx, out var promotionPort))
-            return ScenarioResult.Fail($"promotion transfer: could not resolve promotion port: {DescribeState(ctx)}");
-
-        BroadcastPlan(promoted.Value.id.value, owner.Value.id.value, promotionPort, expectedTransfers);
+        BroadcastPlan(promoted.Value.id.value, owner.Value.id.value, expectedTransfers);
 
         var instance = SpawnInScene(SceneManager.GetSceneByName(TargetSceneName));
 
@@ -207,9 +201,6 @@ public class PromotedServerTransferScenario : Scenario
 
     private async UniTask<ScenarioResult> RunPromotedClient(ScenarioContext ctx)
     {
-        var configured = ConfigurePromotedServerTransport(ctx);
-        if (!configured.success) return configured;
-
         ctx.networkManager.PromoteToServer();
 
         try
@@ -283,9 +274,6 @@ public class PromotedServerTransferScenario : Scenario
         }
 
         await UniTask.WaitForSeconds(_promotionStartupDelaySeconds, cancellationToken: ctx.cancellationToken);
-
-        var configured = ConfigureTransferClientTransport(ctx);
-        if (!configured.success) return configured;
 
         ctx.networkManager.TransferToNewServer();
 
@@ -572,39 +560,9 @@ public class PromotedServerTransferScenario : Scenario
                && ctx.networkManager.localPlayer.id.value == playerId;
     }
 
-    private static bool TryGetPromotionPort(ScenarioContext ctx, out ushort port)
-    {
-        if (ctx.networkManager.transport is not UDPTransport udp)
-        {
-            port = 0;
-            return false;
-        }
-
-        port = (ushort)(udp.serverPort + PromotionPortOffset);
-        return true;
-    }
-
-    private static ScenarioResult ConfigurePromotedServerTransport(ScenarioContext ctx)
-    {
-        if (ctx.networkManager.transport is not UDPTransport udp)
-            return ScenarioResult.Fail($"promotion transfer: expected UDPTransport on promoted client: {DescribeState(ctx)}");
-
-        udp.serverPort = _promotionPort;
-        return ScenarioResult.Ok();
-    }
-
-    private static ScenarioResult ConfigureTransferClientTransport(ScenarioContext ctx)
-    {
-        if (ctx.networkManager.transport is not UDPTransport udp)
-            return ScenarioResult.Fail($"promotion transfer: expected UDPTransport on transfer client: {DescribeState(ctx)}");
-
-        udp.serverPort = _promotionPort;
-        return ScenarioResult.Ok();
-    }
-
     private static string DescribeState(ScenarioContext ctx)
     {
-        return $"role={ctx.role}, promoted={_promotedId}, owner={_ownerId}, promotionPort={_promotionPort}, expectedTransfers={_expectedTransfers}, " +
+        return $"role={ctx.role}, promoted={_promotedId}, owner={_ownerId}, expectedTransfers={_expectedTransfers}, " +
                $"plan={_planReceived}, command={_promotionCommandReceived}, " +
                $"initial={_initialObservedCount}, restored={_transferRestoredCount}, " +
                $"clientState={ctx.networkManager.clientState}, serverState={ctx.networkManager.serverState}, " +
@@ -627,11 +585,10 @@ public class PromotedServerTransferScenario : Scenario
     }
 
     [ObserversRpc(runLocally: true, bufferLast: true)]
-    private static void BroadcastPlan(ulong promotedId, ulong ownerId, ushort promotionPort, int expectedTransfers)
+    private static void BroadcastPlan(ulong promotedId, ulong ownerId, int expectedTransfers)
     {
         _promotedId = promotedId;
         _ownerId = ownerId;
-        _promotionPort = promotionPort;
         _expectedTransfers = expectedTransfers;
         _planReceived = true;
     }

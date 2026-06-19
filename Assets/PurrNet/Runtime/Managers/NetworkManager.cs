@@ -1883,6 +1883,8 @@ namespace PurrNet
             _transport.StartServer(this);
         }
 
+        private const float PromoteToServerStartRetryIntervalSeconds = 0.1f;
+
         public bool isPromotingToServer { get; private set; }
 
         /// <summary>
@@ -1916,6 +1918,17 @@ namespace PurrNet
                     await UnityLatestUpdate.Yield();
 
                 StartServer();
+
+                while (serverState != ConnectionState.Connected)
+                {
+                    var nextRetryAt = Time.unscaledTimeAsDouble + PromoteToServerStartRetryIntervalSeconds;
+                    while (serverState != ConnectionState.Connected && Time.unscaledTimeAsDouble < nextRetryAt)
+                        await UnityLatestUpdate.Yield();
+
+                    if (serverState != ConnectionState.Connected)
+                        _transport.StartServerInternalOnly();
+                }
+
                 _serverModules.PostPromoteToServer();
 
                 _isCleaningClient = false;
