@@ -135,9 +135,6 @@ public class PrivateSceneOwnedTransferScenario : Scenario
             var observed = await WaitForObserved(ctx, () => _initialObservedCount >= 1, "initial owned private scene observed");
             if (!observed.success) return observed;
 
-            var initialBarrier = await WaitAtBarrier(ctx, BarrierBase + 1, "initial owned private scene");
-            if (!initialBarrier.success) return initialBarrier;
-
             BroadcastTransferCommand();
 
             var failures = string.Empty;
@@ -235,10 +232,6 @@ public class PrivateSceneOwnedTransferScenario : Scenario
                 return ScenarioResult.Fail($"owned private transfer bystander received private hierarchy: {DescribeState(ctx)}");
             }
         }
-
-        var initialBarrier = await WaitAtBarrier(ctx, BarrierBase + 1, "initial owned private scene");
-        if (!initialBarrier.success)
-            return initialBarrier;
 
         if (isVictim)
         {
