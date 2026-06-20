@@ -1843,7 +1843,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b0e4f37c1d54f24a92e7d63b2f1c9aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ClientSpawnScenario
-  _rules: {fileID: 11400000, guid: c2f4a3e58d9b4f428a31e6d075c0b3a9, type: 2}
+  _rules: {fileID: 11400000, guid: 1f9b0e8a7d654a109c8b2e3f4a5c6d7e, type: 2}
   _playersTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
   _validateTimeoutSeconds: 15
@@ -1997,7 +1997,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73968d48c2ecb7c40b9c4fdfe053dad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::DestroyDuringSpawnScenario
-  _rules: {fileID: 11400000, guid: c2f4a3e58d9b4f428a31e6d075c0b3a9, type: 2}
+  _rules: {fileID: 11400000, guid: 1f9b0e8a7d654a109c8b2e3f4a5c6d7e, type: 2}
   _churnCount: 16
   _playersTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
