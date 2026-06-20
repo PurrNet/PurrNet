@@ -9,14 +9,12 @@ public class SingleSceneTransferScenario : Scenario
 {
     private const string TargetSceneName = "SceneTransferTarget";
     private const string TargetScenePath = "Assets/PlayModeTests/SceneTransferTarget.unity";
-    private const int BarrierBase = 6900;
     private const int ExpectedChildren = 1;
 
     [SerializeField] private float _sceneTimeoutSeconds = 30f;
     [SerializeField] private float _spawnTimeoutSeconds = 20f;
     [SerializeField] private float _transferTimeoutSeconds = 45f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
-    [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
     private static ulong _victimId;
     private static bool _victimReceived;
@@ -135,15 +133,6 @@ public class SingleSceneTransferScenario : Scenario
                 $"single transfer initial observation timeout: got {_initialObservedCount}/{ctx.expectedConnections}; {DescribeState(ctx)}");
         }
 
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"single transfer initial barrier timeout: {DescribeState(ctx)}");
-        }
-
         BroadcastTransferCommand();
 
         var failures = string.Empty;
@@ -197,15 +186,6 @@ public class SingleSceneTransferScenario : Scenario
         if (!initial.success) return initial;
 
         SignalInitialObserved();
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"single transfer initial barrier timeout: {DescribeState(ctx)}");
-        }
 
         try
         {

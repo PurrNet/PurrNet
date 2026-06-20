@@ -1710,7 +1710,6 @@ GameObject:
   - component: {fileID: 1680343651}
   - component: {fileID: 1680343652}
   - component: {fileID: 1680343654}
-  - component: {fileID: 1680343655}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -2254,14 +2253,13 @@ MonoBehaviour:
   _transferTimeoutSeconds: 45
   _doneTimeoutSeconds: 30
   _propagationDelaySeconds: 0.5
-  _barrierTimeoutSeconds: 60
 --- !u!114 &1680343655
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1680343622}
+  m_GameObject: {fileID: 2090000000}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 455908e0f11c4dd2acfccf4e035c01f4, type: 3}
@@ -2271,7 +2269,6 @@ MonoBehaviour:
   _spawnTimeoutSeconds: 20
   _transferTimeoutSeconds: 45
   _doneTimeoutSeconds: 30
-  _barrierTimeoutSeconds: 60
 --- !u!1 &2090000000
 GameObject:
   m_ObjectHideFlags: 0
@@ -2281,6 +2278,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2090000001}
+  - component: {fileID: 1680343655}
   - component: {fileID: 1680343653}
   m_Layer: 0
   m_Name: HostMigration

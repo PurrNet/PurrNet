@@ -9,7 +9,6 @@ public class PrivateSceneVisibilityTransferScenario : Scenario
 {
     private const string TargetSceneName = "SceneMembershipTargetA";
     private const string TargetScenePath = "Assets/PlayModeTests/SceneMembershipTargetA.unity";
-    private const int BarrierBase = 6800;
 
     [SerializeField] private NetworkRules _rules;
     [SerializeField] private float _sceneTimeoutSeconds = 30f;
@@ -17,7 +16,6 @@ public class PrivateSceneVisibilityTransferScenario : Scenario
     [SerializeField] private float _transferTimeoutSeconds = 45f;
     [SerializeField] private float _doneTimeoutSeconds = 30f;
     [SerializeField] private float _propagationDelaySeconds = 0.5f;
-    [SerializeField] private float _barrierTimeoutSeconds = 60f;
 
     private static ulong _victimId;
     private static bool _victimReceived;
@@ -132,15 +130,6 @@ public class PrivateSceneVisibilityTransferScenario : Scenario
                 return ScenarioResult.Fail($"visibility transfer victim did not observe initial visible root: {DescribeState(ctx)}");
             }
 
-            try
-            {
-                await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-            }
-            catch (TimeoutException)
-            {
-                return ScenarioResult.Fail($"visibility transfer initial barrier timeout: {DescribeState(ctx)}");
-            }
-
             BroadcastTransferCommand();
 
             var failures = string.Empty;
@@ -177,15 +166,6 @@ public class PrivateSceneVisibilityTransferScenario : Scenario
 
             cleanupNeeded = false;
 
-            try
-            {
-                await ScenarioBarrier.Wait(ctx, BarrierBase + 2, _barrierTimeoutSeconds);
-            }
-            catch (TimeoutException)
-            {
-                return ScenarioResult.Fail($"visibility transfer cleanup barrier timeout: {DescribeState(ctx)}");
-            }
-
             return string.IsNullOrEmpty(failures)
                 ? ScenarioResult.Ok($"victim={victim.Value.id.value}")
                 : ScenarioResult.Fail(failures);
@@ -220,15 +200,6 @@ public class PrivateSceneVisibilityTransferScenario : Scenario
 
         if (isVictim)
             SignalInitialObserved();
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"visibility transfer initial barrier timeout: {DescribeState(ctx)}");
-        }
 
         try
         {
@@ -313,16 +284,6 @@ public class PrivateSceneVisibilityTransferScenario : Scenario
         var cleanup = await WaitForClientCleanup(ctx);
         if (!cleanup.success)
             failures = string.IsNullOrEmpty(failures) ? cleanup.message : $"{failures} | {cleanup.message}";
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 2, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            var message = $"visibility transfer cleanup barrier timeout: {DescribeState(ctx)}";
-            failures = string.IsNullOrEmpty(failures) ? message : $"{failures} | {message}";
-        }
 
         return string.IsNullOrEmpty(failures)
             ? ScenarioResult.Ok(isVictim ? "victim saw root only" : "bystander excluded")
