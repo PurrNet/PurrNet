@@ -1689,6 +1689,7 @@ GameObject:
   - component: {fileID: 1680343628}
   - component: {fileID: 1680343629}
   - component: {fileID: 1680343630}
+  - component: {fileID: 1680343656}
   - component: {fileID: 1680343631}
   - component: {fileID: 1680343632}
   - component: {fileID: 1680343633}
@@ -1710,7 +1711,6 @@ GameObject:
   - component: {fileID: 1680343651}
   - component: {fileID: 1680343652}
   - component: {fileID: 1680343654}
-  - component: {fileID: 1680343656}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
