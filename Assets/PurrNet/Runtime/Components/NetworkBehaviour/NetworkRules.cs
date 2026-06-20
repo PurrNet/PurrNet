@@ -12,6 +12,9 @@ namespace PurrNet
     {
         [Tooltip("If enabled, new server will also start as client (server+client)")]
         [UsedImplicitly] public bool migrateAsHost;
+
+        [Tooltip("Unsafe: include player reconnect cookies in player snapshots so a promoted peer can preserve PlayerIDs.")]
+        [UsedImplicitly] public bool sharePlayerCookiesWithPeers;
     }
 
     public enum SceneCleanupMode
@@ -390,6 +393,11 @@ namespace PurrNet
         public bool ShouldMigrateAsHost()
         {
             return _hostMigrationRules.migrateAsHost;
+        }
+
+        public bool ShouldSharePlayerCookiesWithPeers()
+        {
+            return _hostMigrationRules.sharePlayerCookiesWithPeers;
         }
 
         public bool ShouldIncludeInstantiatedSceneObjects()

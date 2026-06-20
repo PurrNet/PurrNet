@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 28e93bf2b6064364aa5fd430134916ac, type: 3}
-  m_Name: HostMigrationStrict-DontDestroy
+  m_Name: ServerStrict-HostMigrationCookies
   m_EditorClassIdentifier:
   _hostMigrationRules:
     migrateAsHost: 1
@@ -20,7 +20,7 @@ MonoBehaviour:
     despawnAuth: 1
     defaultOwner: 0
     propagateOwnershipByDefault: 1
-    despawnIfOwnerDisconnects: 0
+    despawnIfOwnerDisconnects: 1
     cleanupSpawnedObjects: 1
     includeInstantiatedSceneObjects: 0
   _defaultRpcRules:

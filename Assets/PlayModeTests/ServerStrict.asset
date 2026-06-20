@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _hostMigrationRules:
     migrateAsHost: 1
+    sharePlayerCookiesWithPeers: 0
   _defaultSpawnRules:
     spawnAuth: 0
     despawnAuth: 1
