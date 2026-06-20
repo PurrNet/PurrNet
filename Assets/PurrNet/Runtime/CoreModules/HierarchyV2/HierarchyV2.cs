@@ -1690,16 +1690,6 @@ namespace PurrNet.Modules
                 ListPool<NetworkIdentity>.Destroy(children);
                 return;
             }
-            using var directChildren = DisposableList<TransformIdentityPair>.Create(16);
-            HierarchyPool.GetDirectChildrenWithRoot(gameObject.transform, directChildren);
-
-            for (var i = 0; i < directChildren.Count; i++)
-            {
-                var idPair = directChildren[i];
-                var p = idPair.identity.parent;
-                if (p) p.RemoveDirectChild(idPair.identity);
-            }
-
             if (!bypassPermissions &&
                 !children[0].HasDespawnAuthority(_playersManager?.localPlayerId ?? default, _asServer))
             {
