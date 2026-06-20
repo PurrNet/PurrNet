@@ -78,6 +78,24 @@ public class SinglePromotedServerTransferScenario : Scenario
     {
         UnityEngine.Object.DontDestroyOnLoad(transform.root.gameObject);
         UnityEngine.Object.DontDestroyOnLoad(ctx.networkManager.gameObject);
+        PreserveRuntimePrefabs(ctx.networkManager.prefabProvider);
+    }
+
+    private static void PreserveRuntimePrefabs(IPrefabProvider provider)
+    {
+        if (provider == null)
+            return;
+
+        foreach (var data in provider.allPrefabs)
+        {
+            var prefab = data.prefab;
+            if (!prefab)
+                continue;
+
+            var root = prefab.transform.root ? prefab.transform.root.gameObject : prefab;
+            if (root && root.scene.IsValid() && root.scene.isLoaded)
+                UnityEngine.Object.DontDestroyOnLoad(root);
+        }
     }
 
     private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)
