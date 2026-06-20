@@ -43,9 +43,12 @@ public class SinglePromotedServerTransferScenario : Scenario
         childGo.transform.SetParent(rootGo.transform);
         childGo.AddComponent<SinglePromotedServerTransferChild>();
 
+        var identities = rootGo.GetComponentsInChildren<NetworkIdentity>(true);
+        for (int i = 0; i < identities.Length; i++)
+            identities[i].skipSceneAutoSpawning = true;
+
         if (_rules)
         {
-            var identities = rootGo.GetComponentsInChildren<NetworkIdentity>(true);
             for (int i = 0; i < identities.Length; i++)
                 identities[i].SetNetworkRules(_rules);
         }
@@ -636,6 +639,8 @@ public class SinglePromotedServerTransferScenario : Scenario
                $"serverChildren={SinglePromotedServerTransferChild.ServerAliveCount}, " +
                $"serverRootId={SinglePromotedServerTransferRoot.ServerId}, " +
                $"serverChildId={SinglePromotedServerTransferChild.ServerId}, " +
+               $"serverRootPrefab={SinglePromotedServerTransferRoot.ServerPrefabInfo}, " +
+               $"serverChildPrefab={SinglePromotedServerTransferChild.ServerPrefabInfo}, " +
                $"serverRootDirectChildren={SinglePromotedServerTransferRoot.ServerDirectChildCount}, " +
                $"serverChildDirectChildren={SinglePromotedServerTransferChild.ServerDirectChildCount}, " +
                $"serverRootObservers=[{SinglePromotedServerTransferRoot.ServerObservers}], " +

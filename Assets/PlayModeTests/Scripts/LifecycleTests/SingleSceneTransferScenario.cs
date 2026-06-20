@@ -35,6 +35,10 @@ public class SingleSceneTransferScenario : Scenario
         childGo.transform.SetParent(rootGo.transform);
         childGo.AddComponent<SingleSceneTransferChild>();
 
+        var identities = rootGo.GetComponentsInChildren<NetworkIdentity>(true);
+        for (int i = 0; i < identities.Length; i++)
+            identities[i].skipSceneAutoSpawning = true;
+
         rootGo.SetActive(false);
         SingleSceneTransferRoot.ResetAll();
         SingleSceneTransferChild.ResetAll();

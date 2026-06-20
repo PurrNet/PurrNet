@@ -252,7 +252,8 @@ namespace PurrNet.Modules
                 if (!root || !roots.Add(root))
                     continue;
 
-                onPreSpawn?.Invoke(root.gameObject, true);
+                if (root.skipSceneAutoSpawning)
+                    continue;
 
                 var children = ListPool<NetworkIdentity>.Instantiate();
                 root.GetComponentsInChildren(true, children);
@@ -265,6 +266,14 @@ namespace PurrNet.Modules
                 }
 
                 var cc = children.Count;
+                if (cc == 0)
+                {
+                    ListPool<NetworkIdentity>.Destroy(children);
+                    continue;
+                }
+
+                onPreSpawn?.Invoke(root.gameObject, true);
+
                 var pid = -i - 2;
 
                 for (int j = 0; j < cc; j++)
@@ -291,7 +300,7 @@ namespace PurrNet.Modules
             if (!_asServer)
             {
                 foreach (var root in roots)
-                    _scenePool.PutBackInPool(root.gameObject);
+                    _scenePool.PutBackInPool(root.gameObject, respectSkipSceneAutoSpawning: true);
             }
 
             ListPool<NetworkIdentity>.Destroy(allSceneIdentities);

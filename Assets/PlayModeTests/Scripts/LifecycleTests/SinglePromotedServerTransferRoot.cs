@@ -28,6 +28,7 @@ public class SinglePromotedServerTransferRoot : NetworkIdentity
         : -1;
     public static string ServerObservers => FormatObservers(ServerInstance);
     public static string ServerId => FormatId(ServerInstance);
+    public static string ServerPrefabInfo => FormatPrefabInfo(ServerInstance);
     public static int ClientSpawnCount;
     public static string ClientSceneName;
     public static bool SawBadId;
@@ -148,5 +149,13 @@ public class SinglePromotedServerTransferRoot : NetworkIdentity
             return "<none>";
 
         return identity.id.Value.id.value.ToString();
+    }
+
+    public static string FormatPrefabInfo(NetworkIdentity identity)
+    {
+        if (!identity)
+            return "<none>";
+
+        return $"{identity.prefabId}:{identity.componentIndex}";
     }
 }

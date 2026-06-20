@@ -196,7 +196,7 @@ namespace PurrNet.Modules
 
         readonly HashSet<GameObject> _toDestroy = new HashSet<GameObject>();
 
-        public void PutBackInPool(GameObject target, bool tagName = false)
+        public void PutBackInPool(GameObject target, bool tagName = false, bool respectSkipSceneAutoSpawning = false)
         {
             var children = ListPool<NetworkIdentity>.Instantiate();
             var pidSet = HashSetPool<PrefabPieceID>.Instantiate();
@@ -207,7 +207,7 @@ namespace PurrNet.Modules
             {
                 var child = children[i];
 
-                if (!child || child.skipSceneAutoSpawning)
+                if (!child || (respectSkipSceneAutoSpawning && child.skipSceneAutoSpawning))
                     continue;
 
                 var pid = new PrefabPieceID(child.prefabId, child.componentIndex);
