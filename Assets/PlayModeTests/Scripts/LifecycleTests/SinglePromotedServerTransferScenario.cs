@@ -27,6 +27,7 @@ public class SinglePromotedServerTransferScenario : Scenario
     private static bool _promotionCommandReceived;
     private static int _initialObservedCount;
     private static int _transferRestoredCount;
+    private static readonly List<string> _sentSpawnPackets = new();
 
     private SinglePromotedServerTransferRoot _prefab;
 
@@ -60,6 +61,7 @@ public class SinglePromotedServerTransferScenario : Scenario
         _promotionCommandReceived = false;
         _initialObservedCount = 0;
         _transferRestoredCount = 0;
+        _sentSpawnPackets.Clear();
     }
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
@@ -256,6 +258,8 @@ public class SinglePromotedServerTransferScenario : Scenario
             return ScenarioResult.Fail($"single promotion transfer promoted server hierarchy timeout: {DescribeState(ctx)}");
         }
 
+        TrackSentSpawnPackets(ctx);
+
         try
         {
             await UniTaskUtils.WaitWithTimeout(
@@ -347,6 +351,17 @@ public class SinglePromotedServerTransferScenario : Scenario
         }
 
         return ScenarioResult.Ok("original host shut down");
+    }
+
+    private static void TrackSentSpawnPackets(ScenarioContext ctx)
+    {
+        if (ctx.networkManager.TryGetModule<HierarchyFactory>(true, out var factory))
+            factory.onSentSpawnPacket += RecordSentSpawnPacket;
+    }
+
+    private static void RecordSentSpawnPacket(PlayerID player, SceneID scene, NetworkID identity)
+    {
+        _sentSpawnPackets.Add($"{player.id.value}:{identity.id.value}");
     }
 
     private SinglePromotedServerTransferRoot SpawnInScene(Scene targetScene)
@@ -594,6 +609,7 @@ public class SinglePromotedServerTransferScenario : Scenario
                $"serverChildDirectChildren={SinglePromotedServerTransferChild.ServerDirectChildCount}, " +
                $"serverRootObservers=[{SinglePromotedServerTransferRoot.ServerObservers}], " +
                $"serverChildObservers=[{SinglePromotedServerTransferChild.ServerObservers}], " +
+               $"sentSpawns=[{string.Join(",", _sentSpawnPackets)}], " +
                $"rootOwned={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isOwner}, " +
                $"rootController={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isController}, " +
                $"disconnectCalls=[{string.Join(",", SinglePromotedServerTransferRoot.DisconnectCalls)}], " +
