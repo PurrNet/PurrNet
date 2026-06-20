@@ -18,8 +18,14 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
     private static readonly HashSet<GlobalNetworkID> _serverAlive = new();
     private static readonly HashSet<GlobalNetworkID> _clientAlive = new();
 
+    public static SinglePromotedServerTransferChild ServerInstance;
     public static int ServerAliveCount => _serverAlive.Count;
     public static int ClientAliveCount => _clientAlive.Count;
+    public static int ServerDirectChildCount => ServerInstance && ServerInstance.directChildren != null
+        ? ServerInstance.directChildren.Count
+        : -1;
+    public static string ServerObservers => SinglePromotedServerTransferRoot.FormatObservers(ServerInstance);
+    public static string ServerId => FormatId(ServerInstance);
     public static int ClientSpawnCount;
     public static bool SawBadId;
     public static bool HasLastClientSpawn;
@@ -32,6 +38,7 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
     {
         _serverAlive.Clear();
         _clientAlive.Clear();
+        ServerInstance = null;
         ClientSpawnCount = 0;
         SawBadId = false;
         HasLastClientSpawn = false;
@@ -51,6 +58,7 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
         {
             _serverTrackedId = globalId;
             _serverAlive.Add(globalId);
+            ServerInstance = this;
             return;
         }
 
@@ -78,11 +86,21 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
             if (_serverTrackedId.HasValue)
                 _serverAlive.Remove(_serverTrackedId.Value);
             _serverTrackedId = null;
+            if (ServerInstance == this)
+                ServerInstance = null;
             return;
         }
 
         if (_clientTrackedId.HasValue)
             _clientAlive.Remove(_clientTrackedId.Value);
         _clientTrackedId = null;
+    }
+
+    private static string FormatId(NetworkIdentity identity)
+    {
+        if (!identity || !identity.id.HasValue)
+            return "<none>";
+
+        return identity.id.Value.id.value.ToString();
     }
 }

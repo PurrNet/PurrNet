@@ -588,6 +588,12 @@ public class SinglePromotedServerTransferScenario : Scenario
                $"clientScene={SinglePromotedServerTransferRoot.ClientSceneName ?? "<none>"}, " +
                $"serverRoots={SinglePromotedServerTransferRoot.ServerAliveCount}, " +
                $"serverChildren={SinglePromotedServerTransferChild.ServerAliveCount}, " +
+               $"serverRootId={SinglePromotedServerTransferRoot.ServerId}, " +
+               $"serverChildId={SinglePromotedServerTransferChild.ServerId}, " +
+               $"serverRootDirectChildren={SinglePromotedServerTransferRoot.ServerDirectChildCount}, " +
+               $"serverChildDirectChildren={SinglePromotedServerTransferChild.ServerDirectChildCount}, " +
+               $"serverRootObservers=[{SinglePromotedServerTransferRoot.ServerObservers}], " +
+               $"serverChildObservers=[{SinglePromotedServerTransferChild.ServerObservers}], " +
                $"rootOwned={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isOwner}, " +
                $"rootController={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isController}, " +
                $"disconnectCalls=[{string.Join(",", SinglePromotedServerTransferRoot.DisconnectCalls)}], " +
