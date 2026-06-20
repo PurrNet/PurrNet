@@ -1147,6 +1147,8 @@ namespace PurrNet.Modules
             if (scene != _sceneId)
                 return;
 
+            RebuildSpawnedHierarchyLinks();
+
             if (IsServerHost() && _manager.localPlayer == player)
                 CatchupClient(player);
 
