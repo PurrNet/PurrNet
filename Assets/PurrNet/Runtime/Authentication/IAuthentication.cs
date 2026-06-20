@@ -218,7 +218,7 @@ namespace PurrNet.Authentication
             try
             {
                 var payload = await GetClientPayload();
-                payload.cookie ??= cookies.GetOrSet("client_connection_session", Guid.NewGuid().ToString());
+                payload.cookie ??= cookies.GetOrSet(AuthModule.CONNECTION_COOKIE_KEY, Guid.NewGuid().ToString());
                 using var packer = BitPackerPool.Get();
                 Packer<string>.Write(packer, NetworkManager.version);
                 Packer<T>.Write(packer, payload.payload);
@@ -340,7 +340,7 @@ namespace PurrNet.Authentication
             try
             {
                 var payload = await GetClientPayload();
-                payload.cookie ??= cookies.GetOrSet("client_connection_session", Guid.NewGuid().ToString());
+                payload.cookie ??= cookies.GetOrSet(AuthModule.CONNECTION_COOKIE_KEY, Guid.NewGuid().ToString());
                 using var packer = BitPackerPool.Get();
                 Packer<string>.Write(packer, NetworkManager.version);
                 Packer<TRequest>.Write(packer, payload.payload);

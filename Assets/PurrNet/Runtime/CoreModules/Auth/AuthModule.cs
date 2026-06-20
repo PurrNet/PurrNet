@@ -22,6 +22,7 @@ namespace PurrNet.Modules
     public class AuthModule : INetworkModule, IConnectionListener, IFixedUpdate, IPromoteToServerModule
     {
         private const float FALLBACK_DENIAL_TIMEOUT = 5f;
+        public const string CONNECTION_COOKIE_KEY = "client_connection_session";
 
         private readonly NetworkManager _manager;
         private readonly BroadcastModule _broadcastModule;
@@ -43,6 +44,8 @@ namespace PurrNet.Modules
         /// <see cref="AuthenticationBehaviour{TRequest,TDenial}"/> attached a typed denial reason.
         /// </summary>
         public event Action<Connection, DenialKind, ByteData?> onAuthenticationDenied;
+
+        public string clientConnectionCookie => _cookiesModule.Get(CONNECTION_COOKIE_KEY);
 
         public AuthModule(NetworkManager manager, BroadcastModule broadcastModule, CookiesModule cookiesModule)
         {
@@ -115,7 +118,7 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    var cookie = _cookiesModule.GetOrSet("client_connection_session", Guid.NewGuid().ToString());
+                    var cookie = _cookiesModule.GetOrSet(CONNECTION_COOKIE_KEY, Guid.NewGuid().ToString());
                     _broadcastModule.SendToServer(new AuthenticationRequest
                     {
                         cookie = cookie,
@@ -292,7 +295,7 @@ namespace PurrNet.Modules
             {
                 try
                 {
-                    ByteData? reason = data.reason.length > 0 ? data.reason : (ByteData?)null;
+                    ByteData? reason = data.reason.length > 0 ? data.reason : null;
                     _authenticator.OnDenialReceived(data.kind, reason);
                 }
                 catch (Exception e)

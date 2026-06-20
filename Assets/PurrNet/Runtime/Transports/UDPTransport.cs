@@ -107,6 +107,9 @@ namespace PurrNet.Transports
         readonly List<Connection> _connections = new List<Connection>();
 
         readonly Dictionary<Connection, PeerInfo> _peers = new Dictionary<Connection, PeerInfo>();
+        readonly Dictionary<NetPeer, Connection> _peerToConnection = new Dictionary<NetPeer, Connection>();
+        readonly Dictionary<Connection, NetPeer> _connectionToPeer = new Dictionary<Connection, NetPeer>();
+        private int _nextConnectionId = 1;
 
         public override bool isSupported => Application.platform != RuntimePlatform.WebGLPlayer;
 
@@ -128,7 +131,7 @@ namespace PurrNet.Transports
             try
             {
                 if (asServer)
-                    return _server.GetPeerById(target.connectionId).GetMaxSinglePacketSize(ToDeliveryMethod(channel));
+                    return _connectionToPeer[target].GetMaxSinglePacketSize(ToDeliveryMethod(channel));
                 return _client.FirstPeer.GetMaxSinglePacketSize(ToDeliveryMethod(channel));
             }
             catch
@@ -230,8 +233,11 @@ namespace PurrNet.Transports
 
         private void OnServerData(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliverymethod)
         {
+            if (!_peerToConnection.TryGetValue(peer, out var conn))
+                return;
+
             var data = new ByteData(reader.RawData, reader.UserDataOffset, reader.UserDataSize);
-            onDataReceived?.Invoke(new Connection(peer.Id), data, true);
+            onDataReceived?.Invoke(conn, data, true);
         }
 
         private void OnClientData(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliverymethod)
@@ -281,13 +287,16 @@ namespace PurrNet.Transports
 
         private void OnServerDisconnected(NetPeer peer, DisconnectInfo disconnectinfo)
         {
-            var conn = new Connection(peer.Id);
+            if (!_peerToConnection.TryGetValue(peer, out var conn))
+                return;
 
             for (int i = 0; i < _connections.Count; i++)
             {
                 if (_connections[i] == conn)
                 {
                     _peers.Remove(conn);
+                    _connectionToPeer.Remove(conn);
+                    _peerToConnection.Remove(peer);
                     _connections.RemoveAt(i);
                     break;
                 }
@@ -305,8 +314,10 @@ namespace PurrNet.Transports
 
         private void OnServerConnected(NetPeer peer)
         {
-            var conn = new Connection(peer.Id);
+            var conn = new Connection(_nextConnectionId++);
 
+            _peerToConnection[peer] = conn;
+            _connectionToPeer[conn] = peer;
             _peers[conn] = PeerInfo.Generate(peer);
 
             _connections.Add(conn);
@@ -409,8 +420,11 @@ namespace PurrNet.Transports
                 listenerState = ConnectionState.Disconnected;
                 TriggerConnectionStateEvent(true);
 
+                _peerToConnection.Clear();
+                _connectionToPeer.Clear();
                 _peers.Clear();
                 _connections.Clear();
+                _nextConnectionId = 1;
             }
         }
 
@@ -434,7 +448,7 @@ namespace PurrNet.Transports
                 return;
 
             var deliveryMethod = ToDeliveryMethod(method);
-            var peer = _server.GetPeerById(target.connectionId);
+            _connectionToPeer.TryGetValue(target, out var peer);
             peer?.Send(data.data, data.offset, data.length, deliveryMethod);
             RaiseDataSent(target, data, true);
         }
@@ -451,7 +465,7 @@ namespace PurrNet.Transports
 
         public void CloseConnection(Connection conn)
         {
-            var peer = _server.GetPeerById(conn.connectionId);
+            _connectionToPeer.TryGetValue(conn, out var peer);
             peer?.Disconnect();
         }
 
@@ -476,8 +490,11 @@ namespace PurrNet.Transports
             TriggerConnectionStateEvent(true);
             TriggerConnectionStateEvent(false);
 
+            _peerToConnection.Clear();
+            _connectionToPeer.Clear();
             _peers.Clear();
             _connections.Clear();
+            _nextConnectionId = 1;
         }
 
         public void WriteNet(NetLogLevel level, string str, params object[] args)

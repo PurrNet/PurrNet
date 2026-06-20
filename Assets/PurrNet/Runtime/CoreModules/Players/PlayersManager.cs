@@ -18,10 +18,14 @@ namespace PurrNet.Modules
         [JsonProperty]
         public NetworkID lastNidId { get; }
 
-        public ServerLoginResponse(PlayerID playerId, NetworkID lastNidId)
+        [JsonProperty]
+        public string cookie { get; }
+
+        public ServerLoginResponse(PlayerID playerId, NetworkID lastNidId, string cookie = null)
         {
             this.playerId = playerId;
             this.lastNidId = lastNidId;
+            this.cookie = cookie;
         }
     }
 
@@ -407,7 +411,7 @@ namespace PurrNet.Modules
             if (_lastNidId.TryGetValue(playerId, out var lastNidRes))
                 lastNidId = lastNidRes;
 
-            _broadcastModule.Send(conn, new ServerLoginResponse(playerId, lastNidId));
+            _broadcastModule.Send(conn, new ServerLoginResponse(playerId, lastNidId, data.cookie));
 
             SendSnapshotToClient(conn);
             if (RegisterPlayer(conn, playerId, out var isReconnect))
@@ -455,6 +459,27 @@ namespace PurrNet.Modules
 
         private void OnClientLoginResponse(Connection conn, ServerLoginResponse data, bool asServer)
         {
+            if (!string.IsNullOrEmpty(data.cookie))
+            {
+                var clientCookie = _authModule.clientConnectionCookie;
+                if (!string.IsNullOrEmpty(clientCookie) &&
+                    !string.Equals(clientCookie, data.cookie, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            if (localPlayerId.HasValue)
+            {
+                if (localPlayerId.Value != data.playerId)
+                {
+                    PurrLogger.LogWarning(
+                        $"Ignoring duplicate login response for player {data.playerId}; local player is already {localPlayerId.Value}.");
+                }
+
+                return;
+            }
+
             localPlayerId = data.playerId;
             lastNid = data.lastNidId;
             onLocalPlayerReceivedID?.Invoke(data.playerId);

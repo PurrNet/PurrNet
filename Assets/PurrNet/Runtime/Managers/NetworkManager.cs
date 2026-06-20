@@ -390,6 +390,7 @@ namespace PurrNet
 
         private bool _isCleaningClient;
         private bool _isCleaningServer;
+        private bool _preserveClientStateForHostMigration;
 
         /// <summary>
         /// The state of the server connection.
@@ -1735,7 +1736,7 @@ namespace PurrNet
 
             if (_isCleaningClient)
             {
-                if (isPromotingToServer || isTranferingToNewServer)
+                if (_preserveClientStateForHostMigration || isPromotingToServer || isTranferingToNewServer)
                 {
                     _isCleaningClient = false;
                 }
@@ -1895,6 +1896,27 @@ namespace PurrNet
         public bool isPromotingToServer { get; private set; }
 
         /// <summary>
+        /// Keeps the current client modules alive while an external host migration system
+        /// prepares transport state before calling PromoteToServer or TransferToNewServer.
+        /// </summary>
+        public void PreserveClientStateForHostMigration()
+        {
+            _preserveClientStateForHostMigration = true;
+            _isCleaningClient = false;
+        }
+
+        /// <summary>
+        /// Releases a pending host migration preservation request when migration preparation fails.
+        /// </summary>
+        public void ReleaseClientStateForHostMigration()
+        {
+            _preserveClientStateForHostMigration = false;
+
+            if (_transportLayer != null && _transportLayer.clientState == ConnectionState.Disconnected)
+                _isCleaningClient = true;
+        }
+
+        /// <summary>
         /// Transitions the current NetworkManager instance into acting as a server.
         /// This method is used to promote the local instance from a client state
         /// into a server state, enabling server-specific functionalities.
@@ -1916,6 +1938,7 @@ namespace PurrNet
                 }
 
                 isPromotingToServer = true;
+                _preserveClientStateForHostMigration = false;
 
                 StopServer();
                 StopClient();
@@ -1976,6 +1999,7 @@ namespace PurrNet
                     return;
 
                 isTranferingToNewServer = true;
+                _preserveClientStateForHostMigration = false;
 
                 StopClient();
                 StopServer();
@@ -1986,13 +2010,14 @@ namespace PurrNet
 
                 StartClient();
 
-                while (clientState != ConnectionState.Connected)
+                while (clientState != ConnectionState.Connected || !isLocalPlayerReady)
                 {
                     var nextRetryAt = Time.unscaledTimeAsDouble + TransferToNewServerConnectRetryIntervalSeconds;
-                    while (clientState != ConnectionState.Connected && Time.unscaledTimeAsDouble < nextRetryAt)
+                    while ((clientState != ConnectionState.Connected || !isLocalPlayerReady) &&
+                           Time.unscaledTimeAsDouble < nextRetryAt)
                         await UnityLatestUpdate.Yield();
 
-                    if (clientState == ConnectionState.Connected)
+                    if (clientState == ConnectionState.Connected && isLocalPlayerReady)
                         break;
 
                     _transport.StopClientInternalOnly();
@@ -2225,7 +2250,7 @@ namespace PurrNet
                 switch (asServer)
                 {
                     case false:
-                        _isCleaningClient = true;
+                        _isCleaningClient = !_preserveClientStateForHostMigration;
                         break;
                     case true:
                         _isCleaningServer = true;
