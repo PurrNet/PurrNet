@@ -1170,10 +1170,66 @@ namespace PurrNet.Modules
                     continue;
 
                 _visibility.RefreshVisibilityForGameObject(player, root.transform);
+                SendObservedRootCatchupIfNeeded(player, root);
             }
 
             FlushSpawnPackets();
             HashSetPool<NetworkIdentity>.Destroy(roots);
+        }
+
+        private void SendObservedRootCatchupIfNeeded(PlayerID player, NetworkIdentity root)
+        {
+            if (!root || !root.id.HasValue || !root.IsObserver(player))
+                return;
+
+            if (HasPendingSpawnPacket(player, root.id.Value))
+                return;
+
+            var children = ListPool<NetworkIdentity>.Instantiate();
+            if (HierarchyPool.TryGetPrototype(root.transform, player, children, out var prototype))
+            {
+                SendSpawnPacket(player, prototype, children, true);
+            }
+            else
+            {
+                ListPool<NetworkIdentity>.Destroy(children);
+            }
+        }
+
+        private bool HasPendingSpawnPacket(PlayerID player, NetworkID root)
+        {
+            if (!_spawnPackets.TryGetValue(player, out var batch))
+                return false;
+
+            for (var i = 0; i < batch.spawnPackets.Count; i++)
+            {
+                var packet = batch.spawnPackets[i];
+                if (SpawnPacketContains(packet, root))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool SpawnPacketContains(SpawnPacket packet, NetworkID identity)
+        {
+            if (packet.localcache != null)
+            {
+                for (var i = 0; i < packet.localcache.Count; i++)
+                {
+                    var cached = packet.localcache[i];
+                    if (cached && cached.id.HasValue && cached.id.Value.Equals(identity))
+                        return true;
+                }
+            }
+
+            for (var i = 0; i < packet.prototype.framework.Count; i++)
+            {
+                if (packet.prototype.framework[i].id.Equals(identity))
+                    return true;
+            }
+
+            return false;
         }
 
         public void EvaluateVisibilityForPlayer(PlayerID player)

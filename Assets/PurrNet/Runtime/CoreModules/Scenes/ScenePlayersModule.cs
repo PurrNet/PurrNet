@@ -182,8 +182,10 @@ namespace PurrNet.Modules
 
             if (_sceneLoadedPlayers.TryGetValue(data.scene, out var loadedPlayers))
             {
-                if (!loadedPlayers.Contains(player))
-                    loadedPlayers.Add(player);
+                if (loadedPlayers.Contains(player))
+                    return;
+
+                loadedPlayers.Add(player);
             }
             else
             {
@@ -208,8 +210,10 @@ namespace PurrNet.Modules
 
             if (_sceneLoadedPlayers.TryGetValue(scene, out var loadedPlayers))
             {
-                if (!loadedPlayers.Contains(bot))
-                    loadedPlayers.Add(bot);
+                if (loadedPlayers.Contains(bot))
+                    return;
+
+                loadedPlayers.Add(bot);
             }
             else
             {
