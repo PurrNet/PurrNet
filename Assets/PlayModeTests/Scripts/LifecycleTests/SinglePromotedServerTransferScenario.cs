@@ -11,6 +11,12 @@ public class SinglePromotedServerTransferScenario : Scenario
     private const string TargetSceneName = "SceneMembershipTargetB";
     private const string TargetScenePath = "Assets/PlayModeTests/SceneMembershipTargetB.unity";
     private const int ExpectedChildren = 1;
+    private const int RootServerStateValue = 8311;
+    private const int ChildServerStateValue = 8312;
+    private const int RootOwnerPrePromotionValue = 8411;
+    private const int ChildOwnerPrePromotionValue = 8412;
+    private const int RootOwnerPostTransferValue = 8511;
+    private const int ChildOwnerPostTransferValue = 8512;
 
     [SerializeField] private NetworkRules _rules;
     [SerializeField] private float _sceneTimeoutSeconds = 30f;
@@ -27,6 +33,8 @@ public class SinglePromotedServerTransferScenario : Scenario
     private static bool _promotionCommandReceived;
     private static int _initialObservedCount;
     private static int _transferRestoredCount;
+    private static bool _prePromotionOwnerStateSent;
+    private static bool _postTransferOwnerStateSent;
     private SinglePromotedServerTransferRoot _prefab;
 
     private void CreatePrefab()
@@ -62,6 +70,8 @@ public class SinglePromotedServerTransferScenario : Scenario
         _promotionCommandReceived = false;
         _initialObservedCount = 0;
         _transferRestoredCount = 0;
+        _prePromotionOwnerStateSent = false;
+        _postTransferOwnerStateSent = false;
     }
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
@@ -145,6 +155,7 @@ public class SinglePromotedServerTransferScenario : Scenario
             return ScenarioResult.Fail($"single promotion transfer server spawn saw default id: {DescribeState(ctx)}");
 
         instance.GiveOwnership(owner.Value, propagateToChildren: true);
+        SetServerAuthState(instance);
 
         try
         {
@@ -192,6 +203,17 @@ public class SinglePromotedServerTransferScenario : Scenario
         bool isPromoted = IsLocal(_promotedId, ctx);
         bool isOriginalHostLocal = ctx.role == NetworkRole.Host && !isPromoted;
         bool shouldTransfer = ctx.role == NetworkRole.Client && !isPromoted;
+
+        if (IsLocal(_ownerId, ctx))
+        {
+            var seeded = await SeedOwnerState(
+                ctx,
+                RootOwnerPrePromotionValue,
+                ChildOwnerPrePromotionValue,
+                postTransfer: false,
+                "pre-promotion owner state");
+            if (!seeded.success) return seeded;
+        }
 
         var initial = await WaitForClientScene(
             ctx,
@@ -249,13 +271,14 @@ public class SinglePromotedServerTransferScenario : Scenario
         {
             await UniTaskUtils.WaitWithTimeout(
                 () => SinglePromotedServerTransferRoot.ServerAliveCount == 1
-                      && SinglePromotedServerTransferChild.ServerAliveCount == ExpectedChildren,
+                      && SinglePromotedServerTransferChild.ServerAliveCount == ExpectedChildren
+                      && HasServerState(RootOwnerPrePromotionValue, ChildOwnerPrePromotionValue),
                 _promotionTimeoutSeconds,
                 ctx.cancellationToken);
         }
         catch (TimeoutException)
         {
-            return ScenarioResult.Fail($"single promotion transfer promoted server hierarchy timeout: {DescribeState(ctx)}");
+            return ScenarioResult.Fail($"single promotion transfer promoted server hierarchy/state timeout: {DescribeState(ctx)}");
         }
 
         try
@@ -276,6 +299,18 @@ public class SinglePromotedServerTransferScenario : Scenario
 
         if (!SinglePromotedServerTransferRoot.ReconnectCalls.Contains(_ownerId))
             return ScenarioResult.Fail($"single promotion transfer promoted server did not mark owner reconnected: {DescribeState(ctx)}");
+
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => HasServerState(RootOwnerPostTransferValue, ChildOwnerPostTransferValue),
+                _transferTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"single promotion transfer promoted server did not receive post-transfer owner state: {DescribeState(ctx)}");
+        }
 
         ScenarioSequencer.IssueSequenceComplete();
         await UniTask.NextFrame(ctx.cancellationToken);
@@ -327,6 +362,24 @@ public class SinglePromotedServerTransferScenario : Scenario
             requireOwnerState: isOwner);
         if (!restored.success) return restored;
 
+        if (isOwner)
+        {
+            var seeded = await SeedOwnerState(
+                ctx,
+                RootOwnerPostTransferValue,
+                ChildOwnerPostTransferValue,
+                postTransfer: true,
+                "post-transfer owner state");
+            if (!seeded.success) return seeded;
+        }
+
+        var postOwnerState = await WaitForClientState(
+            ctx,
+            "post-single-promotion transfer owner state",
+            RootOwnerPostTransferValue,
+            ChildOwnerPostTransferValue);
+        if (!postOwnerState.success) return postOwnerState;
+
         SignalTransferRestored();
         await UniTask.WaitForSeconds(_flushDelaySeconds, cancellationToken: ctx.cancellationToken);
 
@@ -364,6 +417,13 @@ public class SinglePromotedServerTransferScenario : Scenario
             if (changed && previous.IsValid() && previous.isLoaded)
                 SceneManager.SetActiveScene(previous);
         }
+    }
+
+    private static void SetServerAuthState(SinglePromotedServerTransferRoot root)
+    {
+        root.SetServerValue(RootServerStateValue);
+        if (SinglePromotedServerTransferChild.ServerInstance)
+            SinglePromotedServerTransferChild.ServerInstance.SetServerValue(ChildServerStateValue);
     }
 
     private async UniTask<ScenarioResult> LoadSingleScene(ScenarioContext ctx, int buildIndex)
@@ -428,6 +488,7 @@ public class SinglePromotedServerTransferScenario : Scenario
                       && (!requireFreshSpawn ||
                           (SinglePromotedServerTransferRoot.ClientSpawnCount > rootSpawnsBefore
                            && SinglePromotedServerTransferChild.ClientSpawnCount > childSpawnsBefore))
+                      && HasClientState(RootOwnerPrePromotionValue, ChildOwnerPrePromotionValue)
                       && (!requireOwnerState ||
                           (SinglePromotedServerTransferRoot.LocalClientInstance.isOwner
                            && SinglePromotedServerTransferRoot.LocalClientInstance.isController
@@ -453,6 +514,92 @@ public class SinglePromotedServerTransferScenario : Scenario
         if (!child.success) return child;
 
         return ScenarioResult.Ok();
+    }
+
+    private async UniTask<ScenarioResult> SeedOwnerState(
+        ScenarioContext ctx,
+        int rootOwnerValue,
+        int childOwnerValue,
+        bool postTransfer,
+        string phase)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => TrySeedOwnerState(rootOwnerValue, childOwnerValue, postTransfer),
+                _transferTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"{phase}: owner could not seed SyncVar state: {DescribeState(ctx)}");
+        }
+
+        return ScenarioResult.Ok();
+    }
+
+    private static bool TrySeedOwnerState(int rootOwnerValue, int childOwnerValue, bool postTransfer)
+    {
+        if (postTransfer && _postTransferOwnerStateSent)
+            return true;
+        if (!postTransfer && _prePromotionOwnerStateSent)
+            return true;
+
+        var root = SinglePromotedServerTransferRoot.LocalClientInstance;
+        var child = SinglePromotedServerTransferChild.LocalClientInstance;
+        if (!root || !child)
+            return false;
+        if (!root.isOwner || !child.isOwner)
+            return false;
+
+        root.SetOwnerValue(rootOwnerValue);
+        child.SetOwnerValue(childOwnerValue);
+
+        if (postTransfer)
+            _postTransferOwnerStateSent = true;
+        else
+            _prePromotionOwnerStateSent = true;
+
+        return true;
+    }
+
+    private async UniTask<ScenarioResult> WaitForClientState(
+        ScenarioContext ctx,
+        string phase,
+        int rootOwnerValue,
+        int childOwnerValue)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => HasClientState(rootOwnerValue, childOwnerValue),
+                _transferTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"{phase}: SyncVar state timeout: {DescribeState(ctx)}");
+        }
+
+        return ScenarioResult.Ok();
+    }
+
+    private static bool HasClientState(int rootOwnerValue, int childOwnerValue)
+    {
+        var root = SinglePromotedServerTransferRoot.LocalClientInstance;
+        var child = SinglePromotedServerTransferChild.LocalClientInstance;
+        return root && child
+                    && root.HasState(RootServerStateValue, rootOwnerValue)
+                    && child.HasState(ChildServerStateValue, childOwnerValue);
+    }
+
+    private static bool HasServerState(int rootOwnerValue, int childOwnerValue)
+    {
+        var root = SinglePromotedServerTransferRoot.ServerInstance;
+        var child = SinglePromotedServerTransferChild.ServerInstance;
+        return root && child
+                    && root.HasState(RootServerStateValue, rootOwnerValue)
+                    && child.HasState(ChildServerStateValue, childOwnerValue);
     }
 
     private static ScenarioResult CheckRootSpawnRecord(string phase)
@@ -598,6 +745,10 @@ public class SinglePromotedServerTransferScenario : Scenario
                $"serverChildObservers=[{SinglePromotedServerTransferChild.ServerObservers}], " +
                $"rootOwned={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isOwner}, " +
                $"rootController={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isController}, " +
+               $"clientRootState={SinglePromotedServerTransferRoot.LocalClientInstance?.DescribeState() ?? "<none>"}, " +
+               $"clientChildState={SinglePromotedServerTransferChild.LocalClientInstance?.DescribeState() ?? "<none>"}, " +
+               $"serverRootState={SinglePromotedServerTransferRoot.ServerInstance?.DescribeState() ?? "<none>"}, " +
+               $"serverChildState={SinglePromotedServerTransferChild.ServerInstance?.DescribeState() ?? "<none>"}, " +
                $"disconnectCalls=[{string.Join(",", SinglePromotedServerTransferRoot.DisconnectCalls)}], " +
                $"reconnectCalls=[{string.Join(",", SinglePromotedServerTransferRoot.ReconnectCalls)}], " +
                $"rootBadId={SinglePromotedServerTransferRoot.SawBadId}, childBadId={SinglePromotedServerTransferChild.SawBadId}, " +

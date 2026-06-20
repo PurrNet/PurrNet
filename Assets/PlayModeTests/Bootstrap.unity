@@ -2286,6 +2286,22 @@ MonoBehaviour:
   _playersTimeoutSeconds: 30
   _barrierTimeoutSeconds: 60
   _rulesWithoutSharing: {fileID: 11400000, guid: e0a4aaa8c3ab6ce4dbf625273ef3141b, type: 2}
+--- !u!114 &1680343657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2090000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa9d2f6f03434c9aa4f86a33544bd6e0, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::AddressableSceneTransferScenario
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _transferTimeoutSeconds: 45
+  _doneTimeoutSeconds: 30
 --- !u!1 &2090000000
 GameObject:
   m_ObjectHideFlags: 0
@@ -2296,6 +2312,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2090000001}
   - component: {fileID: 1680343655}
+  - component: {fileID: 1680343657}
   - component: {fileID: 1680343653}
   m_Layer: 0
   m_Name: HostMigration

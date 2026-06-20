@@ -19,6 +19,9 @@ public class SinglePromotedServerTransferRoot : NetworkIdentity
     private static readonly HashSet<GlobalNetworkID> _serverAlive = new();
     private static readonly HashSet<GlobalNetworkID> _clientAlive = new();
 
+    [SerializeField] private SyncVar<int> _serverValue = new(0, sendIntervalInSeconds: 0f, ownerAuth: false);
+    [SerializeField] private SyncVar<int> _ownerValue = new(0, sendIntervalInSeconds: 0f, ownerAuth: true);
+
     public static SinglePromotedServerTransferRoot ServerInstance;
     public static SinglePromotedServerTransferRoot LocalClientInstance;
     public static int ServerAliveCount => _serverAlive.Count;
@@ -125,6 +128,26 @@ public class SinglePromotedServerTransferRoot : NetworkIdentity
     protected override void OnOwnerReconnected(PlayerID ownerId)
     {
         ReconnectCalls.Add(ownerId.id.value);
+    }
+
+    public void SetServerValue(int value)
+    {
+        _serverValue.value = value;
+    }
+
+    public void SetOwnerValue(int value)
+    {
+        _ownerValue.value = value;
+    }
+
+    public bool HasState(int expectedServerValue, int expectedOwnerValue)
+    {
+        return _serverValue.value == expectedServerValue && _ownerValue.value == expectedOwnerValue;
+    }
+
+    public string DescribeState()
+    {
+        return $"serverValue={_serverValue.value}, ownerValue={_ownerValue.value}";
     }
 
     public static string FormatObservers(NetworkIdentity identity)
