@@ -315,6 +315,12 @@
         "com.unity.modules.imgui": "1.0.0"
       }
     },
+    "dev.purrnet.host-migration": {
+      "version": "file:dev.purrnet.host-migration",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
       "depth": 0,
