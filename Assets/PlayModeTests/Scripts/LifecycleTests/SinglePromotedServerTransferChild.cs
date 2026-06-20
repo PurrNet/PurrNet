@@ -26,7 +26,6 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
         : -1;
     public static string ServerObservers => SinglePromotedServerTransferRoot.FormatObservers(ServerInstance);
     public static string ServerId => FormatId(ServerInstance);
-    public static string ServerPrefabInfo => SinglePromotedServerTransferRoot.FormatPrefabInfo(ServerInstance);
     public static int ClientSpawnCount;
     public static bool SawBadId;
     public static bool HasLastClientSpawn;
