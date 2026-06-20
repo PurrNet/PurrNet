@@ -906,6 +906,8 @@ namespace PurrNet.Modules
                     return;
             }
 
+            ReplacePartialLocalHierarchy(data.prototype);
+
             if (data.prototype.framework.Count > 0)
             {
                 for (var i = 0; i < data.prototype.framework.Count; i++)
@@ -961,6 +963,28 @@ namespace PurrNet.Modules
             }
 
             CompleteSpawn(data, flushData);
+        }
+
+        private void ReplacePartialLocalHierarchy(GameObjectPrototype prototype)
+        {
+            if (_asServer || prototype.framework.Count <= 1)
+                return;
+
+            var rootId = prototype.framework[0].id;
+            if (!TryGetIdentity(rootId, out var existingRoot))
+                return;
+
+            var existingPieces = 0;
+            for (var i = 0; i < prototype.framework.Count; i++)
+            {
+                if (TryGetIdentity(prototype.framework[i].id, out _))
+                    existingPieces++;
+            }
+
+            if (existingPieces >= prototype.framework.Count)
+                return;
+
+            Despawn(existingRoot.gameObject, true, true);
         }
 
         private async void ProcessSpawnWhenLoadedAsync(SpawnPacket data, bool flushData,
