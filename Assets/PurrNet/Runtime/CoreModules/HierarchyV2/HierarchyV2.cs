@@ -1182,12 +1182,17 @@ namespace PurrNet.Modules
             if (!root || !root.id.HasValue || !root.IsObserver(player))
                 return;
 
-            if (HasPendingSpawnPacket(player, root.id.Value))
-                return;
-
             var children = ListPool<NetworkIdentity>.Instantiate();
             if (HierarchyPool.TryGetPrototype(root.transform, player, children, out var prototype))
             {
+                if (HasPendingSpawnPacket(player, root.id.Value, prototype.framework.Count))
+                {
+                    prototype.Dispose();
+                    ListPool<NetworkIdentity>.Destroy(children);
+                    return;
+                }
+
+                RemoveStalePendingSpawnPackets(player, root.id.Value, prototype.framework.Count);
                 SendSpawnPacket(player, prototype, children, true);
             }
             else
@@ -1196,7 +1201,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private bool HasPendingSpawnPacket(PlayerID player, NetworkID root)
+        private bool HasPendingSpawnPacket(PlayerID player, NetworkID root, int minimumPieceCount)
         {
             if (!_spawnPackets.TryGetValue(player, out var batch))
                 return false;
@@ -1204,11 +1209,27 @@ namespace PurrNet.Modules
             for (var i = 0; i < batch.spawnPackets.Count; i++)
             {
                 var packet = batch.spawnPackets[i];
-                if (SpawnPacketContains(packet, root))
+                if (SpawnPacketContains(packet, root) && packet.prototype.framework.Count >= minimumPieceCount)
                     return true;
             }
 
             return false;
+        }
+
+        private void RemoveStalePendingSpawnPackets(PlayerID player, NetworkID root, int minimumPieceCount)
+        {
+            if (!_spawnPackets.TryGetValue(player, out var batch))
+                return;
+
+            for (var i = batch.spawnPackets.Count - 1; i >= 0; i--)
+            {
+                var packet = batch.spawnPackets[i];
+                if (!SpawnPacketContains(packet, root) || packet.prototype.framework.Count >= minimumPieceCount)
+                    continue;
+
+                packet.Dispose();
+                batch.spawnPackets.RemoveAt(i);
+            }
         }
 
         private static bool SpawnPacketContains(SpawnPacket packet, NetworkID identity)
