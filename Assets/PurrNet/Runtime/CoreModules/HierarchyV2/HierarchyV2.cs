@@ -182,10 +182,37 @@ namespace PurrNet.Modules
                 identity.TriggerSpawnEvent(true);
             }
 
+            RebuildSpawnedHierarchyLinks();
+
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
                 identity.TriggerPromoteToServer();
+            }
+        }
+
+        private void RebuildSpawnedHierarchyLinks()
+        {
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                if (!identity || !identity.isSpawned)
+                    continue;
+
+                identity.parent = identity.GetNearestParent();
+                identity.RecalculateNearestPath();
+            }
+
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                if (!identity || !identity.isSpawned)
+                    continue;
+
+                if (identity.gameObject.GetComponent<NetworkIdentity>() != identity)
+                    continue;
+
+                identity.RecalculateDirectChildren();
             }
         }
 
