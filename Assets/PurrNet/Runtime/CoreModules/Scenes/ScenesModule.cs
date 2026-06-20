@@ -286,6 +286,7 @@ namespace PurrNet.Modules
                 });
             }
 
+            RebuildAddressableHistoryFromLoadedScenes();
             _history.Flush();
         }
 
@@ -665,6 +666,9 @@ namespace PurrNet.Modules
 
             var targetScenes = new HashSet<SceneID>();
             var targetBuildScenes = new Dictionary<SceneID, uint>();
+#if ADDRESSABLES_PURRNET_SUPPORT
+            var targetAddressableScenes = new Dictionary<SceneID, string>();
+#endif
             var missingActions = new List<SceneAction>();
             var replayLoadEvents = new List<SceneID>();
 
@@ -697,10 +701,24 @@ namespace PurrNet.Modules
                         break;
                     }
                     case SceneActionType.LoadAddressable:
-                        targetScenes.Add(action.loadAddressableSceneAction.sceneID);
-                        _sceneActionScenes.Add(action.loadAddressableSceneAction.sceneID);
+                    {
+                        var loadAction = action.loadAddressableSceneAction;
+                        targetScenes.Add(loadAction.sceneID);
+                        _sceneActionScenes.Add(loadAction.sceneID);
+#if ADDRESSABLES_PURRNET_SUPPORT
+                        var guid = loadAction.guid.value;
+                        targetAddressableScenes[loadAction.sceneID] = guid;
+
+                        if (TryReconcileLoadedAddressableTransferScene(loadAction, replayLoadEvents))
+                            break;
+
+                        if (!IsAddressableScenePending(loadAction.sceneID, guid))
+                            missingActions.Add(action);
+#else
                         missingActions.Add(action);
+#endif
                         break;
+                    }
                     case SceneActionType.Unload:
                     case SceneActionType.SetActive:
                     default:
@@ -709,6 +727,9 @@ namespace PurrNet.Modules
                 }
             }
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+            RemoveStaleAddressableTransferScenes(targetAddressableScenes);
+#endif
             RemoveStaleTransferScenes(targetScenes, targetBuildScenes);
 
             for (var i = 0; i < replayLoadEvents.Count; i++)
@@ -1252,6 +1273,7 @@ namespace PurrNet.Modules
         }
 
         partial void ProcessCompletedAddressableLoads();
+        partial void RebuildAddressableHistoryFromLoadedScenes();
 
         public void FixedUpdate()
         {

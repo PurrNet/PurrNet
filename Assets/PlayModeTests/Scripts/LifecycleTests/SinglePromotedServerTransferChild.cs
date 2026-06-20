@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using PurrNet;
+using UnityEngine;
 
 public class SinglePromotedServerTransferChild : NetworkIdentity
 {
@@ -18,7 +19,11 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
     private static readonly HashSet<GlobalNetworkID> _serverAlive = new();
     private static readonly HashSet<GlobalNetworkID> _clientAlive = new();
 
+    [SerializeField] private SyncVar<int> _serverValue = new(0, sendIntervalInSeconds: 0f, ownerAuth: false);
+    [SerializeField] private SyncVar<int> _ownerValue = new(0, sendIntervalInSeconds: 0f, ownerAuth: true);
+
     public static SinglePromotedServerTransferChild ServerInstance;
+    public static SinglePromotedServerTransferChild LocalClientInstance;
     public static int ServerAliveCount => _serverAlive.Count;
     public static int ClientAliveCount => _clientAlive.Count;
     public static int ServerDirectChildCount => ServerInstance && ServerInstance.directChildren != null
@@ -39,6 +44,7 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
         _serverAlive.Clear();
         _clientAlive.Clear();
         ServerInstance = null;
+        LocalClientInstance = null;
         ClientSpawnCount = 0;
         SawBadId = false;
         HasLastClientSpawn = false;
@@ -65,6 +71,7 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
         _clientTrackedId = globalId;
         _clientAlive.Add(globalId);
         ClientSpawnCount++;
+        LocalClientInstance = this;
         HasLastClientSpawn = true;
         LastClientSpawn = new SpawnRecord
         {
@@ -94,6 +101,29 @@ public class SinglePromotedServerTransferChild : NetworkIdentity
         if (_clientTrackedId.HasValue)
             _clientAlive.Remove(_clientTrackedId.Value);
         _clientTrackedId = null;
+
+        if (LocalClientInstance == this)
+            LocalClientInstance = null;
+    }
+
+    public void SetServerValue(int value)
+    {
+        _serverValue.value = value;
+    }
+
+    public void SetOwnerValue(int value)
+    {
+        _ownerValue.value = value;
+    }
+
+    public bool HasState(int expectedServerValue, int expectedOwnerValue)
+    {
+        return _serverValue.value == expectedServerValue && _ownerValue.value == expectedOwnerValue;
+    }
+
+    public string DescribeState()
+    {
+        return $"serverValue={_serverValue.value}, ownerValue={_ownerValue.value}";
     }
 
     private static string FormatId(NetworkIdentity identity)

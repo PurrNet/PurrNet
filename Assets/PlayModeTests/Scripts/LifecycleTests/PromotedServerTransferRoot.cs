@@ -19,6 +19,10 @@ public class PromotedServerTransferRoot : NetworkIdentity
     private static readonly HashSet<GlobalNetworkID> _serverAlive = new();
     private static readonly HashSet<GlobalNetworkID> _clientAlive = new();
 
+    [SerializeField] private SyncVar<int> _serverValue = new(0, sendIntervalInSeconds: 0f, ownerAuth: false);
+    [SerializeField] private SyncVar<int> _ownerValue = new(0, sendIntervalInSeconds: 0f, ownerAuth: true);
+
+    public static PromotedServerTransferRoot ServerInstance;
     public static PromotedServerTransferRoot LocalClientInstance;
     public static int ServerAliveCount => _serverAlive.Count;
     public static int ClientAliveCount => _clientAlive.Count;
@@ -37,6 +41,7 @@ public class PromotedServerTransferRoot : NetworkIdentity
     {
         _serverAlive.Clear();
         _clientAlive.Clear();
+        ServerInstance = null;
         LocalClientInstance = null;
         ClientSpawnCount = 0;
         ClientSceneName = null;
@@ -65,6 +70,7 @@ public class PromotedServerTransferRoot : NetworkIdentity
         {
             _serverTrackedId = globalId;
             _serverAlive.Add(globalId);
+            ServerInstance = this;
             return;
         }
 
@@ -94,6 +100,8 @@ public class PromotedServerTransferRoot : NetworkIdentity
             if (_serverTrackedId.HasValue)
                 _serverAlive.Remove(_serverTrackedId.Value);
             _serverTrackedId = null;
+            if (ServerInstance == this)
+                ServerInstance = null;
             return;
         }
 
@@ -115,5 +123,25 @@ public class PromotedServerTransferRoot : NetworkIdentity
     protected override void OnOwnerReconnected(PlayerID ownerId)
     {
         ReconnectCalls.Add(ownerId.id.value);
+    }
+
+    public void SetServerValue(int value)
+    {
+        _serverValue.value = value;
+    }
+
+    public void SetOwnerValue(int value)
+    {
+        _ownerValue.value = value;
+    }
+
+    public bool HasState(int expectedServerValue, int expectedOwnerValue)
+    {
+        return _serverValue.value == expectedServerValue && _ownerValue.value == expectedOwnerValue;
+    }
+
+    public string DescribeState()
+    {
+        return $"serverValue={_serverValue.value}, ownerValue={_ownerValue.value}";
     }
 }
