@@ -29,6 +29,8 @@ public class SinglePromotedServerTransferScenario : Scenario
     private static int _initialObservedCount;
     private static int _transferRestoredCount;
     private static readonly List<string> _sentSpawnPackets = new();
+    private static readonly List<string> _preSpawnShapes = new();
+    private static bool _trackingPreSpawns;
 
     private SinglePromotedServerTransferRoot _prefab;
 
@@ -63,6 +65,9 @@ public class SinglePromotedServerTransferScenario : Scenario
         _initialObservedCount = 0;
         _transferRestoredCount = 0;
         _sentSpawnPackets.Clear();
+        _preSpawnShapes.Clear();
+        _trackingPreSpawns = false;
+        HierarchyV2.onPreSpawn -= RecordPreSpawnShape;
     }
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
@@ -187,6 +192,8 @@ public class SinglePromotedServerTransferScenario : Scenario
 
     private async UniTask<ScenarioResult> RunAsClient(ScenarioContext ctx)
     {
+        TrackPreSpawnShapes();
+
         var plan = await WaitForPlan(ctx);
         if (!plan.success) return plan;
 
@@ -360,9 +367,32 @@ public class SinglePromotedServerTransferScenario : Scenario
             factory.onSentSpawnPacket += RecordSentSpawnPacket;
     }
 
+    private static void TrackPreSpawnShapes()
+    {
+        if (_trackingPreSpawns)
+            return;
+
+        HierarchyV2.onPreSpawn += RecordPreSpawnShape;
+        _trackingPreSpawns = true;
+    }
+
     private static void RecordSentSpawnPacket(PlayerID player, SceneID scene, NetworkID identity)
     {
         _sentSpawnPackets.Add($"{player.id.value}:{identity.id.value}");
+    }
+
+    private static void RecordPreSpawnShape(GameObject instance, bool isSceneObject)
+    {
+        if (!instance)
+            return;
+
+        var roots = instance.GetComponentsInChildren<SinglePromotedServerTransferRoot>(true);
+        var children = instance.GetComponentsInChildren<SinglePromotedServerTransferChild>(true);
+        if (roots.Length == 0 && children.Length == 0)
+            return;
+
+        _preSpawnShapes.Add(
+            $"{(isSceneObject ? "scene" : "spawn")}:{instance.name}:roots={roots.Length}:children={children.Length}:scene={instance.scene.name}");
     }
 
     private SinglePromotedServerTransferRoot SpawnInScene(Scene targetScene)
@@ -611,6 +641,7 @@ public class SinglePromotedServerTransferScenario : Scenario
                $"serverRootObservers=[{SinglePromotedServerTransferRoot.ServerObservers}], " +
                $"serverChildObservers=[{SinglePromotedServerTransferChild.ServerObservers}], " +
                $"sentSpawns=[{string.Join(",", _sentSpawnPackets)}], " +
+               $"preSpawnShapes=[{string.Join(",", _preSpawnShapes)}], " +
                $"rootOwned={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isOwner}, " +
                $"rootController={SinglePromotedServerTransferRoot.LocalClientInstance != null && SinglePromotedServerTransferRoot.LocalClientInstance.isController}, " +
                $"disconnectCalls=[{string.Join(",", SinglePromotedServerTransferRoot.DisconnectCalls)}], " +
