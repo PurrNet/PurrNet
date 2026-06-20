@@ -229,6 +229,14 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushBatchedRPCs</b> 
 <tr class="memitem:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a4c7989fcb2cf8be4d07c0aecd0798ee3">StartServer</a> ()</td></tr>
 <tr class="memdesc:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts the server. This will start the transport server.   <a href="classPurrNet_1_1NetworkManager.html#a4c7989fcb2cf8be4d07c0aecd0798ee3">More...</a><br /></td></tr>
 <tr class="separator:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0adbbe233c319c0198849edadedf3b29"><td class="memItemLeft" align="right" valign="top"><a id="a0adbbe233c319c0198849edadedf3b29" name="a0adbbe233c319c0198849edadedf3b29"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>PreserveClientStateForHostMigration</b> ()</td></tr>
+<tr class="memdesc:a0adbbe233c319c0198849edadedf3b29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keeps the current client modules alive while an external host migration system prepares transport state before calling PromoteToServer or TransferToNewServer.  <br /></td></tr>
+<tr class="separator:a0adbbe233c319c0198849edadedf3b29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a861564130a928f1adaaacabcf232fa58"><td class="memItemLeft" align="right" valign="top"><a id="a861564130a928f1adaaacabcf232fa58" name="a861564130a928f1adaaacabcf232fa58"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>ReleaseClientStateForHostMigration</b> ()</td></tr>
+<tr class="memdesc:a861564130a928f1adaaacabcf232fa58"><td class="mdescLeft">&#160;</td><td class="mdescRight">Releases a pending host migration preservation request when migration preparation fails.  <br /></td></tr>
+<tr class="separator:a861564130a928f1adaaacabcf232fa58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a483e37b314094bd8cd3e93b679a4d19d"><td class="memItemLeft" align="right" valign="top"><a id="a483e37b314094bd8cd3e93b679a4d19d" name="a483e37b314094bd8cd3e93b679a4d19d"></a>
 async void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServer</b> ()</td></tr>
 <tr class="memdesc:a483e37b314094bd8cd3e93b679a4d19d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transitions the current <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> instance into acting as a server. This method is used to promote the local instance from a client state into a server state, enabling server-specific functionalities. Great for host migration. It's your responsibility to prepare the transport for this transition.  <br /></td></tr>
