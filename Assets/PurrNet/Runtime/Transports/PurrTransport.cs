@@ -143,6 +143,19 @@ namespace PurrNet.Transports
             _host = server.host;
         }
 
+        private bool _hasPreparedHostMigration;
+        private RelayServer _preparedHostMigrationServer;
+        private HostJoinInfo _preparedHostMigrationJoinInfo;
+        private string _preparedHostMigrationRoomName;
+
+        public void PrepareHostMigration(RelayServer server, HostJoinInfo joinInfo, string roomName = null)
+        {
+            _preparedHostMigrationServer = server;
+            _preparedHostMigrationJoinInfo = joinInfo;
+            _preparedHostMigrationRoomName = string.IsNullOrWhiteSpace(roomName) ? _roomName : roomName;
+            _hasPreparedHostMigration = true;
+        }
+
         public bool hasRegionAndHost => !string.IsNullOrEmpty(_region) && !string.IsNullOrEmpty(_host);
 
         public NetworkSimulation networkSimulation
@@ -520,6 +533,7 @@ namespace PurrNet.Transports
             switch (type)
             {
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATED:
+                    _hasPreparedHostMigration = false;
                     listenerState = ConnectionState.Connected;
                     break;
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED:
@@ -890,17 +904,28 @@ namespace PurrNet.Transports
                     var token = new CancellationTokenSource();
                     AddCancellation(token, true);
 
-                    if (!hasRegionAndHost)
+                    if (_hasPreparedHostMigration)
                     {
-                        var relayServer = await PurrTransportUtils.GetRelayServerAsync(_masterServer, token);
-                        _region = relayServer.region;
-                        _host = relayServer.host;
+                        if (!string.IsNullOrWhiteSpace(_preparedHostMigrationRoomName))
+                            _roomName = _preparedHostMigrationRoomName;
+
+                        SetServer(_preparedHostMigrationServer);
+                        _hostJoinInfo = _preparedHostMigrationJoinInfo;
                     }
+                    else
+                    {
+                        if (!hasRegionAndHost)
+                        {
+                            var relayServer = await PurrTransportUtils.GetRelayServerAsync(_masterServer, token);
+                            _region = relayServer.region;
+                            _host = relayServer.host;
+                        }
 
-                    if (token.IsCancellationRequested)
-                        return;
+                        if (token.IsCancellationRequested)
+                            return;
 
-                    _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token);
+                        _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token);
+                    }
 
                     if (token.IsCancellationRequested)
                         return;
