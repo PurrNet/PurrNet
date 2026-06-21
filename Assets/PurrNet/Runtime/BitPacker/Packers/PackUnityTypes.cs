@@ -282,10 +282,41 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
+        private static bool DeltaWritePose(BitPacker packer, Pose old, Pose newValue)
+        {
+            var delta = new DeltaWritingScope(packer);
+
+            delta.Write(old.position, newValue.position);
+            delta.Write(old.rotation, newValue.rotation);
+
+            return delta.Complete();
+        }
+
+        [UsedByIL]
         public static void Read(this BitPacker packer, ref Pose value)
         {
             packer.Read(ref value.position);
             packer.Read(ref value.rotation);
+        }
+
+        [UsedByIL]
+        private static void DeltaReadPose(BitPacker packer, Pose old, ref Pose value)
+        {
+            if (!packer.ReadBit())
+            {
+                value.position = old.position;
+                value.rotation = old.rotation;
+                return;
+            }
+
+            var position = old.position;
+            var rotation = old.rotation;
+
+            DeltaPacker<Vector3>.Read(packer, old.position, ref position);
+            DeltaPacker<Quaternion>.Read(packer, old.rotation, ref rotation);
+
+            value.position = position;
+            value.rotation = rotation;
         }
         #endif
 
