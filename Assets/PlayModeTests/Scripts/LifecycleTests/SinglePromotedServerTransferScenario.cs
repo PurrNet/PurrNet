@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
@@ -36,6 +37,11 @@ public class SinglePromotedServerTransferScenario : Scenario
     private static bool _prePromotionOwnerStateSent;
     private static bool _postTransferOwnerStateSent;
     private SinglePromotedServerTransferRoot _prefab;
+    private SinglePromotedPlayerPrefabRoot _playerPrefab;
+    private GameObject _playerSpawnerObject;
+
+    private static readonly FieldInfo PlayerSpawnerPrefabField =
+        typeof(PlayerSpawner).GetField("_playerPrefab", BindingFlags.Instance | BindingFlags.NonPublic);
 
     private void CreatePrefab()
     {
@@ -61,8 +67,11 @@ public class SinglePromotedServerTransferScenario : Scenario
         }
 
         rootGo.SetActive(false);
+        CreatePlayerPrefab();
         SinglePromotedServerTransferRoot.ResetAll();
         SinglePromotedServerTransferChild.ResetAll();
+        SinglePromotedPlayerPrefabRoot.ResetAll();
+        SinglePromotedPlayerPrefabChild.ResetAll();
         _promotedId = 0;
         _ownerId = 0;
         _expectedTransfers = 0;
@@ -74,10 +83,33 @@ public class SinglePromotedServerTransferScenario : Scenario
         _postTransferOwnerStateSent = false;
     }
 
+    private void CreatePlayerPrefab()
+    {
+        var rootGo = new GameObject(nameof(SinglePromotedPlayerPrefabRoot));
+        _playerPrefab = rootGo.AddComponent<SinglePromotedPlayerPrefabRoot>();
+
+        var childGo = new GameObject(nameof(SinglePromotedPlayerPrefabChild));
+        childGo.transform.SetParent(rootGo.transform);
+        childGo.AddComponent<SinglePromotedPlayerPrefabChild>();
+
+        var identities = rootGo.GetComponentsInChildren<NetworkIdentity>(true);
+        for (int i = 0; i < identities.Length; i++)
+            identities[i].skipSceneAutoSpawning = true;
+
+        if (_rules)
+        {
+            for (int i = 0; i < identities.Length; i++)
+                identities[i].SetNetworkRules(_rules);
+        }
+
+        rootGo.SetActive(false);
+    }
+
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
         CreatePrefab();
         manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
+        manager.prefabProvider.AddRuntimePrefab(_playerPrefab.name, _playerPrefab.gameObject);
     }
 
     public override UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
@@ -108,6 +140,33 @@ public class SinglePromotedServerTransferScenario : Scenario
             if (root && root.scene.IsValid() && root.scene.isLoaded)
                 UnityEngine.Object.DontDestroyOnLoad(root);
         }
+    }
+
+    private ScenarioResult EnsurePlayerSpawnerInTargetScene(string phase)
+    {
+        if (_playerSpawnerObject)
+            return ScenarioResult.Ok();
+
+        if (!_playerPrefab)
+            return ScenarioResult.Fail($"{phase}: player prefab was not created");
+
+        if (PlayerSpawnerPrefabField == null)
+            return ScenarioResult.Fail($"{phase}: PlayerSpawner _playerPrefab field was not found");
+
+        var targetScene = SceneManager.GetSceneByName(TargetSceneName);
+        if (!targetScene.IsValid() || !targetScene.isLoaded)
+            return ScenarioResult.Fail($"{phase}: target scene is not loaded");
+
+        var spawnerGo = new GameObject(nameof(SinglePromotedServerTransferScenario) + "PlayerSpawner");
+        spawnerGo.SetActive(false);
+        SceneManager.MoveGameObjectToScene(spawnerGo, targetScene);
+
+        var spawner = spawnerGo.AddComponent<PlayerSpawner>();
+        PlayerSpawnerPrefabField.SetValue(spawner, _playerPrefab.gameObject);
+
+        _playerSpawnerObject = spawnerGo;
+        spawnerGo.SetActive(true);
+        return ScenarioResult.Ok();
     }
 
     private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)
@@ -144,6 +203,12 @@ public class SinglePromotedServerTransferScenario : Scenario
         }
 
         BroadcastPlan(promoted.Value.id.value, owner.Value.id.value, expectedTransfers);
+
+        var spawner = EnsurePlayerSpawnerInTargetScene("initial server player spawner");
+        if (!spawner.success) return spawner;
+
+        var serverPlayers = await WaitForServerPlayerPrefabs(ctx, "initial server player prefabs", _spawnTimeoutSeconds);
+        if (!serverPlayers.success) return serverPlayers;
 
         var instance = SpawnInScene(SceneManager.GetSceneByName(TargetSceneName));
 
@@ -236,6 +301,12 @@ public class SinglePromotedServerTransferScenario : Scenario
             requireOwnerState: IsLocal(_ownerId, ctx));
         if (!initial.success) return initial;
 
+        var spawner = EnsurePlayerSpawnerInTargetScene("initial client player spawner");
+        if (!spawner.success) return spawner;
+
+        var playerInitial = await WaitForLocalPlayerPrefab(ctx, "initial player prefab");
+        if (!playerInitial.success) return playerInitial;
+
         SignalInitialObserved();
 
         try
@@ -279,6 +350,12 @@ public class SinglePromotedServerTransferScenario : Scenario
             return ScenarioResult.Fail($"single promotion transfer promoted client did not become server: {DescribeState(ctx)}");
         }
 
+        var spawner = EnsurePlayerSpawnerInTargetScene("promoted server player spawner");
+        if (!spawner.success) return spawner;
+
+        var promotedLocal = await WaitForLocalPlayerPrefab(ctx, "promoted host player prefab");
+        if (!promotedLocal.success) return promotedLocal;
+
         try
         {
             await UniTaskUtils.WaitWithTimeout(
@@ -305,6 +382,9 @@ public class SinglePromotedServerTransferScenario : Scenario
             return ScenarioResult.Fail(
                 $"single promotion transfer promoted server restored timeout: got {_transferRestoredCount}/{_expectedTransfers}; {DescribeState(ctx)}");
         }
+
+        var promotedPlayers = await WaitForServerPlayerPrefabs(ctx, "promoted server player prefabs", _transferTimeoutSeconds);
+        if (!promotedPlayers.success) return promotedPlayers;
 
         if (!SinglePromotedServerTransferRoot.DisconnectCalls.Contains(_ownerId))
             return ScenarioResult.Fail($"single promotion transfer promoted server did not mark owner disconnected: {DescribeState(ctx)}");
@@ -374,6 +454,9 @@ public class SinglePromotedServerTransferScenario : Scenario
             requireOwnerState: isOwner,
             requirePreTransferState: isOwner);
         if (!restored.success) return restored;
+
+        var playerRestored = await WaitForLocalPlayerPrefab(ctx, "post-transfer player prefab");
+        if (!playerRestored.success) return playerRestored;
 
         if (isOwner)
         {
@@ -529,6 +612,78 @@ public class SinglePromotedServerTransferScenario : Scenario
         if (!child.success) return child;
 
         return ScenarioResult.Ok();
+    }
+
+    private async UniTask<ScenarioResult> WaitForServerPlayerPrefabs(
+        ScenarioContext ctx,
+        string phase,
+        float timeoutSeconds)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => ServerHasPlayerPrefabsForConnectedPlayers(ctx),
+                timeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"{phase}: player prefab ownership timeout: {DescribeState(ctx)}");
+        }
+
+        if (SinglePromotedPlayerPrefabRoot.SawBadId || SinglePromotedPlayerPrefabChild.SawBadId)
+            return ScenarioResult.Fail($"{phase}: player prefab saw missing/default id: {DescribeState(ctx)}");
+
+        return ScenarioResult.Ok();
+    }
+
+    private async UniTask<ScenarioResult> WaitForLocalPlayerPrefab(ScenarioContext ctx, string phase)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => SinglePromotedPlayerPrefabRoot.HasCorrectLocalPlayer(ctx.networkManager),
+                _transferTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return ScenarioResult.Fail($"{phase}: local player prefab ownership timeout: {DescribeState(ctx)}");
+        }
+
+        if (SinglePromotedPlayerPrefabRoot.SawBadId || SinglePromotedPlayerPrefabChild.SawBadId)
+            return ScenarioResult.Fail($"{phase}: player prefab saw missing/default id: {DescribeState(ctx)}");
+
+        return ScenarioResult.Ok();
+    }
+
+    private static bool ServerHasPlayerPrefabsForConnectedPlayers(ScenarioContext ctx)
+    {
+        if (!ctx.networkManager.isServer)
+            return false;
+
+        if (SinglePromotedPlayerPrefabRoot.ServerHasDuplicateOwner() ||
+            SinglePromotedPlayerPrefabChild.ServerHasDuplicateOwner())
+            return false;
+
+        var players = ctx.networkManager.players;
+        int expectedPlayers = 0;
+        for (int i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            if (player.isServer)
+                continue;
+
+            expectedPlayers++;
+            if (SinglePromotedPlayerPrefabRoot.ServerOwnerCount(player) != 1)
+                return false;
+            if (SinglePromotedPlayerPrefabChild.ServerOwnerCount(player) != 1)
+                return false;
+        }
+
+        return expectedPlayers > 0
+               && SinglePromotedPlayerPrefabRoot.ServerAliveCount >= expectedPlayers
+               && SinglePromotedPlayerPrefabChild.ServerAliveCount >= expectedPlayers;
     }
 
     private async UniTask<ScenarioResult> SeedOwnerState(
@@ -745,6 +900,15 @@ public class SinglePromotedServerTransferScenario : Scenario
                $"clientState={ctx.networkManager.clientState}, serverState={ctx.networkManager.serverState}, " +
                $"client={ctx.networkManager.isClient}, server={ctx.networkManager.isServer}, ready={ctx.networkManager.isLocalPlayerReady}, " +
                $"playerCount={ctx.networkManager.playerCount}, " +
+               $"playerPrefabServerRoots={SinglePromotedPlayerPrefabRoot.ServerAliveCount}, " +
+               $"playerPrefabServerChildren={SinglePromotedPlayerPrefabChild.ServerAliveCount}, " +
+               $"playerPrefabServerRootOwners=[{SinglePromotedPlayerPrefabRoot.ServerOwners}], " +
+               $"playerPrefabServerChildOwners=[{SinglePromotedPlayerPrefabChild.ServerOwners}], " +
+               $"playerPrefabClientRoots={SinglePromotedPlayerPrefabRoot.ClientAliveCount}, " +
+               $"playerPrefabClientChildren={SinglePromotedPlayerPrefabChild.ClientAliveCount}, " +
+               $"playerPrefabClientRootOwners=[{SinglePromotedPlayerPrefabRoot.ClientOwners}], " +
+               $"playerPrefabClientChildOwners=[{SinglePromotedPlayerPrefabChild.ClientOwners}], " +
+               $"playerPrefabLocal={SinglePromotedPlayerPrefabRoot.DescribeLocal(ctx.networkManager)}, " +
                $"clientRoots={SinglePromotedServerTransferRoot.ClientAliveCount}, " +
                $"clientChildren={SinglePromotedServerTransferChild.ClientAliveCount}/{ExpectedChildren}, " +
                $"clientRootSpawns={SinglePromotedServerTransferRoot.ClientSpawnCount}, " +
