@@ -36,6 +36,8 @@ namespace PurrNet
 
         private IProvideSpawnPoints _spawnPointProvider;
         private IProvidePrefabInstantiated _prefabInstantiatedProvider;
+        private bool _queuedLoadedPlayersReplay;
+        private int _loadedPlayersReplayVersion;
 
         /// <summary>
         /// Sets a provider that will be used to provide spawn points for players.
@@ -108,31 +110,69 @@ namespace PurrNet
             {
                 scenePlayersModule.onPlayerLoadedScene += OnPlayerLoadedScene;
 
-                if (!manager.TryGetModule(out ScenesModule scenes, true))
-                    return;
-
-                if (!scenes.TryGetSceneID(gameObject.scene, out var sceneID))
-                    return;
-
-                if (scenePlayersModule.TryGetPlayersInScene(sceneID, out var players))
-                {
-                    foreach (var player in players)
-                        OnPlayerLoadedScene(player, sceneID, true);
-                }
+                if (manager.isPromotingToServer)
+                    QueueLoadedPlayersReplay(manager);
+                else
+                    ReplayLoadedPlayers(manager);
             }
         }
 
         public override void Unsubscribe(NetworkManager manager, bool asServer)
         {
+            _queuedLoadedPlayersReplay = false;
+            _loadedPlayersReplayVersion++;
+
             if (asServer && manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
                 scenePlayersModule.onPlayerLoadedScene -= OnPlayerLoadedScene;
         }
 
         private void OnDestroy()
         {
+            _queuedLoadedPlayersReplay = false;
+            _loadedPlayersReplayVersion++;
+
             if (NetworkManager.main &&
                 NetworkManager.main.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
                 scenePlayersModule.onPlayerLoadedScene -= OnPlayerLoadedScene;
+        }
+
+        private async void QueueLoadedPlayersReplay(NetworkManager manager)
+        {
+            if (_queuedLoadedPlayersReplay)
+                return;
+
+            _queuedLoadedPlayersReplay = true;
+            int version = ++_loadedPlayersReplayVersion;
+
+            while (manager && manager.isPromotingToServer)
+                await UnityLatestUpdate.Yield();
+
+            if (!this || !isActiveAndEnabled || version != _loadedPlayersReplayVersion)
+                return;
+
+            _queuedLoadedPlayersReplay = false;
+            ReplayLoadedPlayers(manager);
+        }
+
+        private void ReplayLoadedPlayers(NetworkManager manager)
+        {
+            if (!manager || !manager.isServer)
+                return;
+
+            if (!manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
+                return;
+
+            if (!manager.TryGetModule(out ScenesModule scenes, true))
+                return;
+
+            if (!scenes.TryGetSceneID(gameObject.scene, out var sceneID))
+                return;
+
+            if (scenePlayersModule.TryGetPlayersInScene(sceneID, out var players))
+            {
+                foreach (var player in players)
+                    OnPlayerLoadedScene(player, sceneID, true);
+            }
         }
 
         private void OnPlayerLoadedScene(PlayerID player, SceneID scene, bool asServer)
@@ -141,6 +181,12 @@ namespace PurrNet
 
             if (!main || !main.TryGetModule(out ScenesModule scenes, true))
                 return;
+
+            if (main.isPromotingToServer)
+            {
+                QueueLoadedPlayersReplay(main);
+                return;
+            }
 
             var unityScene = gameObject.scene;
 
