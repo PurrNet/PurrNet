@@ -1,3 +1,10 @@
+# [1.20.0-beta.219](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.218...v1.20.0-beta.219) (2026-06-21)
+
+
+### Bug Fixes
+
+* player reconnects during host promotion ([00c7bfe](https://github.com/PurrNet/PurrNet/commit/00c7bfee493808c147f3ad6c0f110472114a55d9))
+
 # [1.20.0-beta.218](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.217...v1.20.0-beta.218) (2026-06-21)
 
 
