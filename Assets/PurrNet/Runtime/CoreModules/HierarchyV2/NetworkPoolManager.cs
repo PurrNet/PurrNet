@@ -4,6 +4,11 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
+    [AddComponentMenu("")]
+    internal sealed class PurrNetPoolRoot : MonoBehaviour
+    {
+    }
+
     public static class NetworkPoolManager
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -35,6 +40,7 @@ namespace PurrNet.Modules
                 hideFlags = HideFlags.HideAndDontSave
 #endif
             };
+            poolParent.AddComponent<PurrNetPoolRoot>();
 
             SceneManager.MoveGameObjectToScene(poolParent, unityScene);
 
@@ -61,6 +67,7 @@ namespace PurrNet.Modules
                 hideFlags = HideFlags.HideAndDontSave
 #endif
             };
+            poolParent.AddComponent<PurrNetPoolRoot>();
 
             Object.DontDestroyOnLoad(poolParent);
             pool = new HierarchyPool(poolParent.transform, prefabs);

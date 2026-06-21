@@ -55,6 +55,7 @@ namespace PurrNet.Modules
                 var rootObject = rootGameObjects[i];
 
                 if (!rootObject || rootObject.scene.handle != scene.handle) continue;
+                if (rootObject.TryGetComponent<PurrNetPoolRoot>(out _)) continue;
 
                 rootObject.gameObject.GetComponentsInChildren(true, _sceneIdentities);
 
