@@ -23,6 +23,8 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
     private GlobalNetworkID? _clientTrackedId;
     private ulong? _serverTrackedOwner;
     private ulong? _clientTrackedOwner;
+    private PlayerID? _serverPendingOwner;
+    private PlayerID? _clientPendingOwner;
 
     public static void ResetAll()
     {
@@ -62,7 +64,8 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
                 LocalClientInstance = this;
         }
 
-        TrackOwner(asServer, owner);
+        var ownerToTrack = asServer ? _serverPendingOwner ?? owner : _clientPendingOwner ?? owner;
+        TrackOwner(asServer, ownerToTrack);
     }
 
     protected override void OnDespawned(bool asServer)
@@ -153,9 +156,16 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
     private void TrackOwner(bool asServer, PlayerID? newOwner)
     {
         if (asServer && !_serverTrackedId.HasValue)
+        {
+            _serverPendingOwner = newOwner;
             return;
+        }
+
         if (!asServer && !_clientTrackedId.HasValue)
+        {
+            _clientPendingOwner = newOwner;
             return;
+        }
 
         UntrackOwner(asServer);
         if (!newOwner.HasValue)
@@ -172,9 +182,15 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
 
         identities.Add(idToTrack);
         if (asServer)
+        {
             _serverTrackedOwner = ownerId;
+            _serverPendingOwner = null;
+        }
         else
+        {
             _clientTrackedOwner = ownerId;
+            _clientPendingOwner = null;
+        }
     }
 
     private void UntrackOwner(bool asServer)
