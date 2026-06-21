@@ -208,8 +208,8 @@ namespace PurrNet
                     main.TryGetModule(out GlobalOwnershipModule ownership, true) && ownership.PlayerOwnsSomething(player);
                 if (ownershipModuleHasExistingOwner ||
                     PlayerOwnsIdentityInScene(player, unityScene) ||
-                    (_usePromotedOwnershipFallback &&
-                     (PlayerOwnsIdentityAnywhere(player) || HasEnoughExistingPrefabInstances(main, scene))))
+                    HasEnoughExistingPrefabInstances(main, scene) ||
+                    (_usePromotedOwnershipFallback && PlayerOwnsIdentityAnywhere(player)))
                     return;
             }
 
@@ -283,6 +283,9 @@ namespace PurrNet
             if (!manager.prefabProvider.TryGetPrefabData(_playerPrefab, out var prefabData))
                 return false;
 
+            var prefabRoot = _playerPrefab.GetComponent<NetworkIdentity>();
+            var prefabRootType = prefabRoot ? prefabRoot.GetType() : typeof(NetworkIdentity);
+
             if (!manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
                 return false;
 
@@ -304,7 +307,12 @@ namespace PurrNet
                 if (!identity || !identity.isSpawned)
                     continue;
 
-                if (identity.prefabId == prefabData.prefabId && identity.componentIndex == 0)
+                if (identity.gameObject == _playerPrefab)
+                    continue;
+
+                bool prefabIdMatches = identity.prefabId == prefabData.prefabId && identity.componentIndex == 0;
+                bool rootTypeMatches = prefabRootType != typeof(NetworkIdentity) && identity.GetType() == prefabRootType;
+                if (prefabIdMatches || rootTypeMatches)
                     count++;
             }
 
