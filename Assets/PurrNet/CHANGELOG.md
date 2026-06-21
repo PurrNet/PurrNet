@@ -1,3 +1,10 @@
+# [1.20.0-beta.218](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.217...v1.20.0-beta.218) (2026-06-21)
+
+
+### Bug Fixes
+
+* avoid disabling everything before the initial spawn ([0ebae28](https://github.com/PurrNet/PurrNet/commit/0ebae28bbff42eeb3d13b5b3ffca22f9639fb282))
+
 # [1.20.0-beta.217](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.216...v1.20.0-beta.217) (2026-06-16)
 
 
