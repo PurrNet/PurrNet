@@ -101,6 +101,8 @@ namespace PurrNet.Modules
 
         private readonly List<PlayerID> _players = new List<PlayerID>();
         private readonly HashSet<PlayerID> _allSeenPlayers = new HashSet<PlayerID>();
+        private readonly HashSet<int> _promotedStaleConnectionIds = new HashSet<int>();
+        private PlayerID? _promotedLocalPlayerId;
 
         public IReadOnlyList<PlayerID> players => _players;
 
@@ -304,6 +306,7 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            _promotedLocalPlayerId = localPlayerId;
             Disable(false);
             _asServer = true;
             Enable(true);
@@ -330,8 +333,22 @@ namespace PurrNet.Modules
         {
             using var keys = DisposableList<Connection>.Create(_connectionToPlayerId.Keys);
             for (var i = 0; i < keys.Count; i++)
+            {
+                if (_promotedLocalPlayerId.HasValue &&
+                    _connectionToPlayerId.TryGetValue(keys[i], out var playerId) &&
+                    playerId == _promotedLocalPlayerId.Value)
+                {
+                    _connectionToPlayerId.Remove(keys[i]);
+                    _playerToConnection.Remove(playerId);
+                    _promotedStaleConnectionIds.Add(keys[i].connectionId);
+                    continue;
+                }
+
                 _networkManager.TriggerConnectionLeft(keys[i], true);
+            }
+
             _connectionToPlayerId.Clear();
+            _promotedLocalPlayerId = null;
         }
 
         public void Enable(bool asServer)
@@ -395,10 +412,9 @@ namespace PurrNet.Modules
                     PurrLogger.LogWarning(
                         "Client reconnected with the cookie of a still-connected player; closing their previous connection.");
                     _transport.CloseConnection(oldConn);
-                    SendUserLeftToAllClients(playerId);
-                    UnregisterPlayer(oldConn);
+                    ReplacePlayerConnection(playerId, oldConn, conn);
                 }
-                else
+                else if (_playerToConnection.ContainsKey(playerId))
                 {
                     _transport.CloseConnection(conn);
                     PurrLogger.LogError(
@@ -414,7 +430,12 @@ namespace PurrNet.Modules
             _broadcastModule.Send(conn, new ServerLoginResponse(playerId, lastNidId, data.cookie));
 
             SendSnapshotToClient(conn);
-            if (RegisterPlayer(conn, playerId, out var isReconnect))
+            if (IsPlayerConnection(conn, playerId))
+            {
+                SendNewUserToAllClients(conn, playerId);
+                TriggerOnJoinedEvent(playerId, true);
+            }
+            else if (RegisterPlayer(conn, playerId, out var isReconnect))
             {
                 SendNewUserToAllClients(conn, playerId);
                 TriggerOnJoinedEvent(playerId, isReconnect);
@@ -521,6 +542,21 @@ namespace PurrNet.Modules
             _broadcastModule.Send(conn, new PlayerSnapshotEvent(batch));
         }
 
+        private void ReplacePlayerConnection(PlayerID playerId, Connection oldConn, Connection newConn)
+        {
+            _connectionToPlayerId.Remove(oldConn);
+            _playerToConnection[playerId] = newConn;
+
+            if (newConn.isValid)
+                _connectionToPlayerId[newConn] = playerId;
+        }
+
+        private bool IsPlayerConnection(Connection conn, PlayerID playerId)
+        {
+            return _connectionToPlayerId.TryGetValue(conn, out var registeredPlayer) &&
+                   registeredPlayer == playerId;
+        }
+
         private bool RegisterPlayer(Connection conn, PlayerID player, out bool isReconnect)
         {
             if (_connectionToPlayerId.ContainsKey(conn))
@@ -529,7 +565,8 @@ namespace PurrNet.Modules
                 return false;
             }
 
-            _players.Add(player);
+            if (!_players.Contains(player))
+                _players.Add(player);
 
             if (conn.isValid)
             {
@@ -623,6 +660,9 @@ namespace PurrNet.Modules
         public void OnDisconnected(Connection conn, bool asServer)
         {
             if (!asServer) return;
+
+            if (_promotedStaleConnectionIds.Remove(conn.connectionId))
+                return;
 
             if (_connectionToPlayerId.TryGetValue(conn, out var playerId))
                 SendUserLeftToAllClients(playerId);
