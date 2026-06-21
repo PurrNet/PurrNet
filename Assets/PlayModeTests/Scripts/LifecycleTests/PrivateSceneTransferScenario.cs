@@ -121,15 +121,6 @@ public class PrivateSceneTransferScenario : Scenario
                 return ScenarioResult.Fail($"private transfer victim did not observe initial hierarchy: {DescribeState(ctx)}");
             }
 
-            try
-            {
-                await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-            }
-            catch (TimeoutException)
-            {
-                return ScenarioResult.Fail($"private transfer initial barrier timeout: {DescribeState(ctx)}");
-            }
-
             BroadcastTransferCommand();
 
             var failures = string.Empty;
@@ -209,15 +200,6 @@ public class PrivateSceneTransferScenario : Scenario
 
         if (isVictim)
             SignalInitialObserved();
-
-        try
-        {
-            await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail($"private transfer initial barrier timeout: {DescribeState(ctx)}");
-        }
 
         try
         {

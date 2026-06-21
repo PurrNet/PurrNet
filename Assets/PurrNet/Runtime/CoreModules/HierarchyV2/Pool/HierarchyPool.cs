@@ -21,6 +21,8 @@ namespace PurrNet.Modules
     public class HierarchyPool
     {
         private readonly Dictionary<PrefabPieceID, Queue<GameObject>> _pool = new();
+        private readonly Dictionary<PrefabPieceID, Queue<GameObject>> _activeScenePieces = new();
+        private readonly HashSet<GameObject> _activeScenePieceSet = new HashSet<GameObject>();
 
         private readonly Transform _parent;
 
@@ -244,6 +246,144 @@ namespace PurrNet.Modules
             HashSetPool<PrefabPieceID>.Destroy(pidSet);
         }
 
+        public void RegisterActiveScenePiece(NetworkIdentity identity)
+        {
+            if (!identity)
+                return;
+
+            var pieceIdentity = identity.transform.GetComponent<NetworkIdentity>();
+            if (!pieceIdentity || pieceIdentity.prefabId >= 0)
+                return;
+
+            var target = pieceIdentity.gameObject;
+            if (!_activeScenePieceSet.Add(target))
+                return;
+
+            var pid = new PrefabPieceID(pieceIdentity.prefabId, pieceIdentity.componentIndex);
+            if (!_activeScenePieces.TryGetValue(pid, out var queue))
+            {
+                queue = QueuePool<GameObject>.Instantiate();
+                _activeScenePieces.Add(pid, queue);
+            }
+
+            queue.Enqueue(target);
+        }
+
+        public void ReconcileActiveScenePieces()
+        {
+            if (_activeScenePieceSet.Count == 0)
+            {
+                ClearActiveScenePieceQueues();
+                return;
+            }
+
+            var pieces = ListPool<GameObject>.Instantiate();
+            foreach (var piece in _activeScenePieceSet)
+            {
+                if (piece)
+                    pieces.Add(piece);
+            }
+
+            pieces.Sort((left, right) => GetDepth(right.transform).CompareTo(GetDepth(left.transform)));
+
+            for (var i = 0; i < pieces.Count; i++)
+            {
+                var piece = pieces[i];
+                if (!piece || !_activeScenePieceSet.Remove(piece))
+                    continue;
+
+                PutActiveScenePieceBackInPool(piece);
+            }
+
+            ListPool<GameObject>.Destroy(pieces);
+            _activeScenePieceSet.Clear();
+            ClearActiveScenePieceQueues();
+        }
+
+        private static int GetDepth(Transform transform)
+        {
+            var depth = 0;
+            while (transform)
+            {
+                depth++;
+                transform = transform.parent;
+            }
+
+            return depth;
+        }
+
+        private bool TryGetActiveScenePiece(PrefabPieceID pid, out GameObject instance)
+        {
+            if (!_activeScenePieces.TryGetValue(pid, out var queue))
+            {
+                instance = null;
+                return false;
+            }
+
+            while (queue.Count > 0)
+            {
+                if (queue.TryDequeue(out instance) && instance && _activeScenePieceSet.Remove(instance))
+                    return true;
+            }
+
+            instance = null;
+            return false;
+        }
+
+        private void PutActiveScenePieceBackInPool(GameObject target)
+        {
+            if (!target || !target.TryGetComponent<NetworkIdentity>(out var identity))
+                return;
+
+            DetachAdoptedDirectChildren(identity.transform, identity.transform.parent);
+
+            if (!identity.shouldBePooled)
+            {
+                UnityProxy.DestroyDirectly(target);
+                return;
+            }
+
+            var pid = new PrefabPieceID(identity.prefabId, identity.componentIndex);
+            if (!_pool.TryGetValue(pid, out var queue))
+            {
+                queue = QueuePool<GameObject>.Instantiate();
+                _pool.Add(pid, queue);
+            }
+
+            if (target.activeSelf)
+                target.SetActive(false);
+
+            identity.transform.SetParent(_parent, false);
+            queue.Enqueue(target);
+        }
+
+        private void DetachAdoptedDirectChildren(Transform root, Transform safeParent)
+        {
+            using var directChildren = DisposableList<TransformIdentityPair>.Create(16);
+            GetDirectChildren(root, directChildren);
+
+            for (var i = 0; i < directChildren.Count; i++)
+            {
+                var child = directChildren[i].identity;
+                if (!child)
+                    continue;
+
+                var target = child.gameObject;
+                if (_activeScenePieceSet.Contains(target))
+                    continue;
+
+                child.transform.SetParent(safeParent, true);
+            }
+        }
+
+        private void ClearActiveScenePieceQueues()
+        {
+            foreach (var (_, queue) in _activeScenePieces)
+                QueuePool<GameObject>.Destroy(queue);
+
+            _activeScenePieces.Clear();
+        }
+
         void ClearToDestroy()
         {
             int c = _toDestroy.Count;
@@ -265,6 +405,9 @@ namespace PurrNet.Modules
             while (true)
             {
                 var pool = pid.prefabId >= 0 ? pair.prefabPool : pair.scenePool;
+
+                if (pid.prefabId < 0 && pool.TryGetActiveScenePiece(pid, out instance))
+                    return true;
 
                 if (!pool._pool.TryGetValue(pid, out var queue))
                 {
@@ -607,6 +750,9 @@ namespace PurrNet.Modules
             }
             else
             {
+                if (!shouldBeActive && instance.activeSelf)
+                    instance.SetActive(false);
+
                 foreach (var sib in siblings)
                 {
                     sib.parent = null;
@@ -735,6 +881,8 @@ namespace PurrNet.Modules
             foreach (var (_, queue) in _pool)
                 QueuePool<GameObject>.Destroy(queue);
             _pool.Clear();
+            ClearActiveScenePieceQueues();
+            _activeScenePieceSet.Clear();
 
             if (_parent)
                 UnityProxy.DestroyDirectly(_parent.gameObject);

@@ -1955,7 +1955,7 @@ namespace PurrNet
                     while (serverState != ConnectionState.Connected && Time.unscaledTimeAsDouble < nextRetryAt)
                         await UnityLatestUpdate.Yield();
 
-                    if (serverState != ConnectionState.Connected)
+                    if (serverState == ConnectionState.Disconnected)
                         _transport.StartServerInternalOnly();
                 }
 

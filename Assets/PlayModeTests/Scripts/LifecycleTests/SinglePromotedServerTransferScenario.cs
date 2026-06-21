@@ -124,15 +124,24 @@ public class SinglePromotedServerTransferScenario : Scenario
 
         var promoted = PickPromotedClient(ctx);
         if (!promoted.HasValue)
-            return ScenarioResult.Fail("single promotion transfer: no eligible promoted client");
+        {
+            BroadcastPlan(0, 0, 0);
+            return ScenarioResult.Ok("single promotion transfer requires a non-host client to promote");
+        }
 
         var owner = PickTransferClient(ctx, promoted.Value);
         if (!owner.HasValue)
-            return ScenarioResult.Fail("single promotion transfer: no eligible transfer/owner client");
+        {
+            BroadcastPlan(0, 0, 0);
+            return ScenarioResult.Ok("single promotion transfer requires two non-host clients");
+        }
 
         int expectedTransfers = CountTransferClients(ctx, promoted.Value);
         if (expectedTransfers <= 0)
-            return ScenarioResult.Fail("single promotion transfer: expected transfer count was zero");
+        {
+            BroadcastPlan(0, 0, 0);
+            return ScenarioResult.Ok("single promotion transfer requires at least one transfer client");
+        }
 
         BroadcastPlan(promoted.Value.id.value, owner.Value.id.value, expectedTransfers);
 
@@ -199,6 +208,9 @@ public class SinglePromotedServerTransferScenario : Scenario
     {
         var plan = await WaitForPlan(ctx);
         if (!plan.success) return plan;
+
+        if (_expectedTransfers <= 0)
+            return ScenarioResult.Ok("single promotion transfer not applicable to this topology");
 
         bool isPromoted = IsLocal(_promotedId, ctx);
         bool isOriginalHostLocal = ctx.role == NetworkRole.Host && !isPromoted;

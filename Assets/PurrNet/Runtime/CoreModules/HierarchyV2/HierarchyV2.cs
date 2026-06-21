@@ -292,18 +292,22 @@ namespace PurrNet.Modules
                         child.ResetIdentity();
                 }
 
-                SpawnSceneObject(children);
+                if (_asServer)
+                {
+                    SpawnSceneObject(children);
+                }
+                else
+                {
+                    for (var j = 0; j < cc; j++)
+                        _scenePool.RegisterActiveScenePiece(children[j]);
+                }
+
                 _defaultPrototypes.Add(HierarchyPool.GetFullPrototype(root.transform));
                 ListPool<NetworkIdentity>.Destroy(children);
             }
 
-            if (!_asServer)
-            {
-                foreach (var root in roots)
-                    _scenePool.PutBackInPool(root.gameObject, respectSkipSceneAutoSpawning: true);
-            }
-
             ListPool<NetworkIdentity>.Destroy(allSceneIdentities);
+            HashSetPool<NetworkIdentity>.Destroy(roots);
             _areSceneObjectsReady = true;
         }
 
@@ -322,6 +326,7 @@ namespace PurrNet.Modules
             _playersManager.Subscribe<SpawnPacket>(OnSpawnPacket);
             _playersManager.Subscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Subscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
+            _playersManager.Subscribe<SceneSpawnReconcilePacket>(OnSceneSpawnReconcilePacket);
             _playersManager.Subscribe<ChangeParentPacket>(OnParentChangedPacket);
         }
 
@@ -348,10 +353,22 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<SpawnPacket>(OnSpawnPacket);
             _playersManager.Unsubscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Unsubscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
+            _playersManager.Unsubscribe<SceneSpawnReconcilePacket>(OnSceneSpawnReconcilePacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
 
             if (!_manager.isTranferingToNewServer)
                 NetworkPoolManager.RemovePool(_sceneId);
+        }
+
+        private void OnSceneSpawnReconcilePacket(PlayerID player, SceneSpawnReconcilePacket data, bool asServer)
+        {
+            if (data.sceneId != _sceneId)
+                return;
+
+            if (_asServer)
+                return;
+
+            _scenePool.ReconcileActiveScenePieces();
         }
 
         public void TransferToNewServer()
@@ -1207,7 +1224,19 @@ namespace PurrNet.Modules
             }
 
             FlushSpawnPackets();
+            SendSceneSpawnReconcile(player);
             HashSetPool<NetworkIdentity>.Destroy(roots);
+        }
+
+        private void SendSceneSpawnReconcile(PlayerID player)
+        {
+            if (!_asServer)
+                return;
+
+            _playersManager.Send(player, new SceneSpawnReconcilePacket
+            {
+                sceneId = _sceneId
+            });
         }
 
         private void SendObservedRootCatchupIfNeeded(PlayerID player, NetworkIdentity root)

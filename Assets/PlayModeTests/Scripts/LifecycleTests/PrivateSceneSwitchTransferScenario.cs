@@ -28,6 +28,7 @@ public class PrivateSceneSwitchTransferScenario : Scenario
     private static bool _phaseDoneReceived;
     private static int _phase;
     private static int _sceneAObservedCount;
+    private static int _sceneARemovedCount;
     private static int _sceneBObservedCount;
     private static int _victimReturnedCount;
     private static int _doneCount;
@@ -52,6 +53,7 @@ public class PrivateSceneSwitchTransferScenario : Scenario
         _phaseDoneReceived = false;
         _phase = 0;
         _sceneAObservedCount = 0;
+        _sceneARemovedCount = 0;
         _sceneBObservedCount = 0;
         _victimReturnedCount = 0;
         _doneCount = 0;
@@ -125,16 +127,13 @@ public class PrivateSceneSwitchTransferScenario : Scenario
             var observedA = await WaitForObserved(ctx, () => _sceneAObservedCount >= 1, "scene A observed");
             if (!observedA.success) return observedA;
 
-            var barrierA = await WaitAtBarrier(ctx, BarrierBase + 1, "scene A");
-            if (!barrierA.success) return barrierA;
-
             scenePlayers.RemovePlayerFromScene(victim.Value, sceneAId);
             var removedA = await WaitForPlayerRemoved(ctx, scenePlayers, victim.Value, sceneAId, "scene A removal");
             if (!removedA.success) return removedA;
 
             BroadcastPhase(2);
-            var barrierRemoveA = await WaitAtBarrier(ctx, BarrierBase + 2, "scene A removal");
-            if (!barrierRemoveA.success) return barrierRemoveA;
+            var removedAObserved = await WaitForObserved(ctx, () => _sceneARemovedCount >= 1, "scene A removed");
+            if (!removedAObserved.success) return removedAObserved;
 
             scenePlayers.AddPlayerToScene(victim.Value, sceneBId);
             var loadedB = await WaitForPlayerLoaded(ctx, scenePlayers, victim.Value, sceneBId, "scene B membership");
@@ -143,9 +142,6 @@ public class PrivateSceneSwitchTransferScenario : Scenario
             BroadcastPhase(3);
             var observedB = await WaitForObserved(ctx, () => _sceneBObservedCount >= 1, "scene B observed");
             if (!observedB.success) return observedB;
-
-            var barrierB = await WaitAtBarrier(ctx, BarrierBase + 3, "scene B");
-            if (!barrierB.success) return barrierB;
 
             BroadcastTransferCommand();
 
@@ -222,9 +218,6 @@ public class PrivateSceneSwitchTransferScenario : Scenario
         if (!stateA.success) return stateA;
         if (isVictim) SignalSceneAObserved();
 
-        var barrierA = await WaitAtBarrier(ctx, BarrierBase + 1, "scene A");
-        if (!barrierA.success) return barrierA;
-
         var phaseRemoveA = await WaitForPhase(ctx, 2, "scene A removal");
         if (!phaseRemoveA.success) return phaseRemoveA;
 
@@ -232,9 +225,7 @@ public class PrivateSceneSwitchTransferScenario : Scenario
             ? await WaitForClientEmpty(ctx, "scene A removal")
             : await VerifyBystanderExcluded(ctx, "scene A removal");
         if (!removedA.success) return removedA;
-
-        var barrierRemoveA = await WaitAtBarrier(ctx, BarrierBase + 2, "scene A removal");
-        if (!barrierRemoveA.success) return barrierRemoveA;
+        if (isVictim) SignalSceneARemoved();
 
         var phaseB = await WaitForPhase(ctx, 3, "scene B membership");
         if (!phaseB.success) return phaseB;
@@ -244,9 +235,6 @@ public class PrivateSceneSwitchTransferScenario : Scenario
             : await VerifyBystanderExcluded(ctx, "scene B membership");
         if (!stateB.success) return stateB;
         if (isVictim) SignalSceneBObserved();
-
-        var barrierB = await WaitAtBarrier(ctx, BarrierBase + 3, "scene B");
-        if (!barrierB.success) return barrierB;
 
         try
         {
@@ -609,7 +597,7 @@ public class PrivateSceneSwitchTransferScenario : Scenario
     {
         return $"role={ctx.role}, phase={_phase}, victim={_victimId}, victimReceived={_victimReceived}, " +
                $"transfer={_transferCommandReceived}, phaseDone={_phaseDoneReceived}, " +
-               $"aObserved={_sceneAObservedCount}, bObserved={_sceneBObservedCount}, " +
+               $"aObserved={_sceneAObservedCount}, aRemoved={_sceneARemovedCount}, bObserved={_sceneBObservedCount}, " +
                $"returned={_victimReturnedCount}, done={_doneCount}, " +
                $"client={ctx.networkManager.isClient}, ready={ctx.networkManager.isLocalPlayerReady}, " +
                $"clientRoots={PrivateSceneSwitchTransferRoot.ClientAliveCount}, " +
@@ -654,6 +642,12 @@ public class PrivateSceneSwitchTransferScenario : Scenario
     private static void SignalSceneAObserved(RPCInfo info = default)
     {
         _sceneAObservedCount++;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private static void SignalSceneARemoved(RPCInfo info = default)
+    {
+        _sceneARemovedCount++;
     }
 
     [ServerRpc(requireOwnership: false)]
