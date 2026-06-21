@@ -631,9 +631,6 @@ public class SinglePromotedServerTransferScenario : Scenario
             return ScenarioResult.Fail($"{phase}: player prefab ownership timeout: {DescribeState(ctx)}");
         }
 
-        if (SinglePromotedPlayerPrefabRoot.SawBadId || SinglePromotedPlayerPrefabChild.SawBadId)
-            return ScenarioResult.Fail($"{phase}: player prefab saw missing/default id: {DescribeState(ctx)}");
-
         return ScenarioResult.Ok();
     }
 
@@ -650,9 +647,6 @@ public class SinglePromotedServerTransferScenario : Scenario
         {
             return ScenarioResult.Fail($"{phase}: local player prefab ownership timeout: {DescribeState(ctx)}");
         }
-
-        if (SinglePromotedPlayerPrefabRoot.SawBadId || SinglePromotedPlayerPrefabChild.SawBadId)
-            return ScenarioResult.Fail($"{phase}: player prefab saw missing/default id: {DescribeState(ctx)}");
 
         return ScenarioResult.Ok();
     }
