@@ -1,3 +1,10 @@
+# [1.20.0-beta.220](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.219...v1.20.0-beta.220) (2026-06-21)
+
+
+### Bug Fixes
+
+* dont queue RPCs on migration ([5477dc2](https://github.com/PurrNet/PurrNet/commit/5477dc2a227974f617ce2135368fcb05c59a27cb))
+
 # [1.20.0-beta.219](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.218...v1.20.0-beta.219) (2026-06-21)
 
 
