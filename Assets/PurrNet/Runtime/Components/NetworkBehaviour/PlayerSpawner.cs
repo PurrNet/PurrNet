@@ -36,9 +36,6 @@ namespace PurrNet
 
         private IProvideSpawnPoints _spawnPointProvider;
         private IProvidePrefabInstantiated _prefabInstantiatedProvider;
-        private bool _queuedLoadedPlayersReplay;
-        private bool _usePromotedOwnershipFallback;
-        private int _loadedPlayersReplayVersion;
 
         /// <summary>
         /// Sets a provider that will be used to provide spawn points for players.
@@ -111,70 +108,31 @@ namespace PurrNet
             {
                 scenePlayersModule.onPlayerLoadedScene += OnPlayerLoadedScene;
 
-                if (manager.isPromotingToServer)
-                    QueueLoadedPlayersReplay(manager);
-                else
-                    ReplayLoadedPlayers(manager);
+                if (!manager.TryGetModule(out ScenesModule scenes, true))
+                    return;
+
+                if (!scenes.TryGetSceneID(gameObject.scene, out var sceneID))
+                    return;
+
+                if (scenePlayersModule.TryGetPlayersInScene(sceneID, out var players))
+                {
+                    foreach (var player in players)
+                        OnPlayerLoadedScene(player, sceneID, true);
+                }
             }
         }
 
         public override void Unsubscribe(NetworkManager manager, bool asServer)
         {
-            _queuedLoadedPlayersReplay = false;
-            _loadedPlayersReplayVersion++;
-
             if (asServer && manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
                 scenePlayersModule.onPlayerLoadedScene -= OnPlayerLoadedScene;
         }
 
         private void OnDestroy()
         {
-            _queuedLoadedPlayersReplay = false;
-            _loadedPlayersReplayVersion++;
-
             if (NetworkManager.main &&
                 NetworkManager.main.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
                 scenePlayersModule.onPlayerLoadedScene -= OnPlayerLoadedScene;
-        }
-
-        private async void QueueLoadedPlayersReplay(NetworkManager manager)
-        {
-            if (_queuedLoadedPlayersReplay)
-                return;
-
-            _usePromotedOwnershipFallback = true;
-            _queuedLoadedPlayersReplay = true;
-            int version = ++_loadedPlayersReplayVersion;
-
-            while (manager && manager.isPromotingToServer)
-                await UnityLatestUpdate.Yield();
-
-            if (!this || !isActiveAndEnabled || version != _loadedPlayersReplayVersion)
-                return;
-
-            _queuedLoadedPlayersReplay = false;
-            ReplayLoadedPlayers(manager);
-        }
-
-        private void ReplayLoadedPlayers(NetworkManager manager)
-        {
-            if (!manager || !manager.isServer)
-                return;
-
-            if (!manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
-                return;
-
-            if (!manager.TryGetModule(out ScenesModule scenes, true))
-                return;
-
-            if (!scenes.TryGetSceneID(gameObject.scene, out var sceneID))
-                return;
-
-            if (scenePlayersModule.TryGetPlayersInScene(sceneID, out var players))
-            {
-                foreach (var player in players)
-                    OnPlayerLoadedScene(player, sceneID, true);
-            }
         }
 
         private void OnPlayerLoadedScene(PlayerID player, SceneID scene, bool asServer)
@@ -183,12 +141,6 @@ namespace PurrNet
 
             if (!main || !main.TryGetModule(out ScenesModule scenes, true))
                 return;
-
-            if (main.isPromotingToServer)
-            {
-                QueueLoadedPlayersReplay(main);
-                return;
-            }
 
             var unityScene = gameObject.scene;
 
@@ -206,10 +158,7 @@ namespace PurrNet
             {
                 bool ownershipModuleHasExistingOwner =
                     main.TryGetModule(out GlobalOwnershipModule ownership, true) && ownership.PlayerOwnsSomething(player);
-                if (ownershipModuleHasExistingOwner ||
-                    PlayerOwnsIdentityInScene(player, unityScene) ||
-                    HasEnoughExistingPrefabInstances(main, scene) ||
-                    (_usePromotedOwnershipFallback && PlayerOwnsIdentityAnywhere(player)))
+                if (ownershipModuleHasExistingOwner || PlayerOwnsIdentityInScene(player, unityScene))
                     return;
             }
 
@@ -252,84 +201,12 @@ namespace PurrNet
                 for (int j = 0; j < identities.Length; j++)
                 {
                     var identity = identities[j];
-                    if (IdentityHasOwner(identity, player))
+                    if (identity && identity.owner.HasValue && identity.owner.Value == player)
                         return true;
                 }
             }
 
             return false;
-        }
-
-        private static bool PlayerOwnsIdentityAnywhere(PlayerID player)
-        {
-            var identities = UnityEngine.Object.FindObjectsByType<NetworkIdentity>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
-
-            for (int i = 0; i < identities.Length; i++)
-            {
-                if (IdentityHasOwner(identities[i], player))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private bool HasEnoughExistingPrefabInstances(NetworkManager manager, SceneID scene)
-        {
-            if (!_playerPrefab || manager.prefabProvider == null)
-                return false;
-
-            if (!manager.prefabProvider.TryGetPrefabData(_playerPrefab, out var prefabData))
-                return false;
-
-            var prefabRoot = _playerPrefab.GetComponent<NetworkIdentity>();
-            var prefabRootType = prefabRoot ? prefabRoot.GetType() : typeof(NetworkIdentity);
-
-            if (!manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
-                return false;
-
-            if (!scenePlayersModule.TryGetPlayersInScene(scene, out var players))
-                return false;
-
-            int expected = players.Count;
-            if (expected <= 0)
-                return false;
-
-            int count = 0;
-            var identities = UnityEngine.Object.FindObjectsByType<NetworkIdentity>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
-
-            for (int i = 0; i < identities.Length; i++)
-            {
-                var identity = identities[i];
-                if (!identity || !identity.isSpawned)
-                    continue;
-
-                if (identity.gameObject == _playerPrefab)
-                    continue;
-
-                bool prefabIdMatches = identity.prefabId == prefabData.prefabId && identity.componentIndex == 0;
-                bool rootTypeMatches = prefabRootType != typeof(NetworkIdentity) && identity.GetType() == prefabRootType;
-                if (prefabIdMatches || rootTypeMatches)
-                    count++;
-            }
-
-            return count >= expected;
-        }
-
-        private static bool IdentityHasOwner(NetworkIdentity identity, PlayerID player)
-        {
-            if (!identity)
-                return false;
-
-            var serverOwner = identity.GetOwner(true);
-            if (serverOwner.HasValue && serverOwner.Value == player)
-                return true;
-
-            var clientOwner = identity.GetOwner(false);
-            return clientOwner.HasValue && clientOwner.Value == player;
         }
     }
 }

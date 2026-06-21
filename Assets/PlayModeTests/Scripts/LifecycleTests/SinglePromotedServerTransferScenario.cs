@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
@@ -38,10 +37,6 @@ public class SinglePromotedServerTransferScenario : Scenario
     private static bool _postTransferOwnerStateSent;
     private SinglePromotedServerTransferRoot _prefab;
     private SinglePromotedPlayerPrefabRoot _playerPrefab;
-    private GameObject _playerSpawnerObject;
-
-    private static readonly FieldInfo PlayerSpawnerPrefabField =
-        typeof(PlayerSpawner).GetField("_playerPrefab", BindingFlags.Instance | BindingFlags.NonPublic);
 
     private void CreatePrefab()
     {
@@ -142,33 +137,6 @@ public class SinglePromotedServerTransferScenario : Scenario
         }
     }
 
-    private ScenarioResult EnsurePlayerSpawnerInTargetScene(string phase)
-    {
-        if (_playerSpawnerObject)
-            return ScenarioResult.Ok();
-
-        if (!_playerPrefab)
-            return ScenarioResult.Fail($"{phase}: player prefab was not created");
-
-        if (PlayerSpawnerPrefabField == null)
-            return ScenarioResult.Fail($"{phase}: PlayerSpawner _playerPrefab field was not found");
-
-        var targetScene = SceneManager.GetSceneByName(TargetSceneName);
-        if (!targetScene.IsValid() || !targetScene.isLoaded)
-            return ScenarioResult.Fail($"{phase}: target scene is not loaded");
-
-        var spawnerGo = new GameObject(nameof(SinglePromotedServerTransferScenario) + "PlayerSpawner");
-        spawnerGo.SetActive(false);
-        SceneManager.MoveGameObjectToScene(spawnerGo, targetScene);
-
-        var spawner = spawnerGo.AddComponent<PlayerSpawner>();
-        PlayerSpawnerPrefabField.SetValue(spawner, _playerPrefab.gameObject);
-
-        _playerSpawnerObject = spawnerGo;
-        spawnerGo.SetActive(true);
-        return ScenarioResult.Ok();
-    }
-
     private async UniTask<ScenarioResult> RunAsServer(ScenarioContext ctx)
     {
         if (!_rules)
@@ -204,8 +172,8 @@ public class SinglePromotedServerTransferScenario : Scenario
 
         BroadcastPlan(promoted.Value.id.value, owner.Value.id.value, expectedTransfers);
 
-        var spawner = EnsurePlayerSpawnerInTargetScene("initial server player spawner");
-        if (!spawner.success) return spawner;
+        var playerPrefabs = SpawnPlayerPrefabsInScene(ctx, SceneManager.GetSceneByName(TargetSceneName));
+        if (!playerPrefabs.success) return playerPrefabs;
 
         var serverPlayers = await WaitForServerPlayerPrefabs(ctx, "initial server player prefabs", _spawnTimeoutSeconds);
         if (!serverPlayers.success) return serverPlayers;
@@ -301,9 +269,6 @@ public class SinglePromotedServerTransferScenario : Scenario
             requireOwnerState: IsLocal(_ownerId, ctx));
         if (!initial.success) return initial;
 
-        var spawner = EnsurePlayerSpawnerInTargetScene("initial client player spawner");
-        if (!spawner.success) return spawner;
-
         var playerInitial = await WaitForLocalPlayerPrefab(ctx, "initial player prefab");
         if (!playerInitial.success) return playerInitial;
 
@@ -349,9 +314,6 @@ public class SinglePromotedServerTransferScenario : Scenario
         {
             return ScenarioResult.Fail($"single promotion transfer promoted client did not become server: {DescribeState(ctx)}");
         }
-
-        var spawner = EnsurePlayerSpawnerInTargetScene("promoted server player spawner");
-        if (!spawner.success) return spawner;
 
         var promotedLocal = await WaitForLocalPlayerPrefab(ctx, "promoted host player prefab");
         if (!promotedLocal.success) return promotedLocal;
@@ -513,6 +475,32 @@ public class SinglePromotedServerTransferScenario : Scenario
             if (changed && previous.IsValid() && previous.isLoaded)
                 SceneManager.SetActiveScene(previous);
         }
+    }
+
+    private ScenarioResult SpawnPlayerPrefabsInScene(ScenarioContext ctx, Scene targetScene)
+    {
+        if (!_playerPrefab)
+            return ScenarioResult.Fail("initial server player prefabs: player prefab was not created");
+
+        if (!targetScene.IsValid() || !targetScene.isLoaded)
+            return ScenarioResult.Fail("initial server player prefabs: target scene is not loaded");
+
+        var players = ctx.networkManager.players;
+        for (int i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            if (player.isServer)
+                continue;
+
+            _playerPrefab.transform.GetPositionAndRotation(out var position, out var rotation);
+            var instance = UnityProxy.Instantiate(_playerPrefab.gameObject, position, rotation, targetScene);
+            if (!instance || !instance.TryGetComponent(out NetworkIdentity identity))
+                return ScenarioResult.Fail($"initial server player prefabs: failed to instantiate player prefab for {player}");
+
+            identity.GiveOwnership(player, propagateToChildren: true);
+        }
+
+        return ScenarioResult.Ok();
     }
 
     private static void SetServerAuthState(SinglePromotedServerTransferRoot root)
