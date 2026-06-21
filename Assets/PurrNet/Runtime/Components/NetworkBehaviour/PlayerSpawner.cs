@@ -208,7 +208,8 @@ namespace PurrNet
                     main.TryGetModule(out GlobalOwnershipModule ownership, true) && ownership.PlayerOwnsSomething(player);
                 if (ownershipModuleHasExistingOwner ||
                     PlayerOwnsIdentityInScene(player, unityScene) ||
-                    (_usePromotedOwnershipFallback && PlayerOwnsIdentityAnywhere(player)))
+                    (_usePromotedOwnershipFallback &&
+                     (PlayerOwnsIdentityAnywhere(player) || HasEnoughExistingPrefabInstances(main, scene))))
                     return;
             }
 
@@ -272,6 +273,42 @@ namespace PurrNet
             }
 
             return false;
+        }
+
+        private bool HasEnoughExistingPrefabInstances(NetworkManager manager, SceneID scene)
+        {
+            if (!_playerPrefab || manager.prefabProvider == null)
+                return false;
+
+            if (!manager.prefabProvider.TryGetPrefabData(_playerPrefab, out var prefabData))
+                return false;
+
+            if (!manager.TryGetModule(out ScenePlayersModule scenePlayersModule, true))
+                return false;
+
+            if (!scenePlayersModule.TryGetPlayersInScene(scene, out var players))
+                return false;
+
+            int expected = players.Count;
+            if (expected <= 0)
+                return false;
+
+            int count = 0;
+            var identities = UnityEngine.Object.FindObjectsByType<NetworkIdentity>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+            for (int i = 0; i < identities.Length; i++)
+            {
+                var identity = identities[i];
+                if (!identity || !identity.isSpawned)
+                    continue;
+
+                if (identity.prefabId == prefabData.prefabId && identity.componentIndex == 0)
+                    count++;
+            }
+
+            return count >= expected;
         }
 
         private static bool IdentityHasOwner(NetworkIdentity identity, PlayerID player)
