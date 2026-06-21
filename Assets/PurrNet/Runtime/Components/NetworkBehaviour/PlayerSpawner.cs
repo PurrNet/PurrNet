@@ -37,6 +37,7 @@ namespace PurrNet
         private IProvideSpawnPoints _spawnPointProvider;
         private IProvidePrefabInstantiated _prefabInstantiatedProvider;
         private bool _queuedLoadedPlayersReplay;
+        private bool _usePromotedOwnershipFallback;
         private int _loadedPlayersReplayVersion;
 
         /// <summary>
@@ -141,6 +142,7 @@ namespace PurrNet
             if (_queuedLoadedPlayersReplay)
                 return;
 
+            _usePromotedOwnershipFallback = true;
             _queuedLoadedPlayersReplay = true;
             int version = ++_loadedPlayersReplayVersion;
 
@@ -204,7 +206,9 @@ namespace PurrNet
             {
                 bool ownershipModuleHasExistingOwner =
                     main.TryGetModule(out GlobalOwnershipModule ownership, true) && ownership.PlayerOwnsSomething(player);
-                if (ownershipModuleHasExistingOwner || PlayerOwnsIdentityInScene(player, unityScene))
+                if (ownershipModuleHasExistingOwner ||
+                    PlayerOwnsIdentityInScene(player, unityScene) ||
+                    (_usePromotedOwnershipFallback && PlayerOwnsIdentityAnywhere(player)))
                     return;
             }
 
@@ -247,12 +251,40 @@ namespace PurrNet
                 for (int j = 0; j < identities.Length; j++)
                 {
                     var identity = identities[j];
-                    if (identity && identity.owner.HasValue && identity.owner.Value == player)
+                    if (IdentityHasOwner(identity, player))
                         return true;
                 }
             }
 
             return false;
+        }
+
+        private static bool PlayerOwnsIdentityAnywhere(PlayerID player)
+        {
+            var identities = UnityEngine.Object.FindObjectsByType<NetworkIdentity>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+            for (int i = 0; i < identities.Length; i++)
+            {
+                if (IdentityHasOwner(identities[i], player))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IdentityHasOwner(NetworkIdentity identity, PlayerID player)
+        {
+            if (!identity)
+                return false;
+
+            var serverOwner = identity.GetOwner(true);
+            if (serverOwner.HasValue && serverOwner.Value == player)
+                return true;
+
+            var clientOwner = identity.GetOwner(false);
+            return clientOwner.HasValue && clientOwner.Value == player;
         }
     }
 }
