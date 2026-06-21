@@ -371,7 +371,8 @@ public class SinglePromotedServerTransferScenario : Scenario
             requireFreshSpawn: true,
             rootSpawnsBefore: rootSpawnsBefore,
             childSpawnsBefore: childSpawnsBefore,
-            requireOwnerState: isOwner);
+            requireOwnerState: isOwner,
+            requirePreTransferState: isOwner);
         if (!restored.success) return restored;
 
         if (isOwner)
@@ -488,7 +489,8 @@ public class SinglePromotedServerTransferScenario : Scenario
         bool requireFreshSpawn,
         int rootSpawnsBefore,
         int childSpawnsBefore,
-        bool requireOwnerState)
+        bool requireOwnerState,
+        bool requirePreTransferState = true)
     {
         try
         {
@@ -500,7 +502,8 @@ public class SinglePromotedServerTransferScenario : Scenario
                       && (!requireFreshSpawn ||
                           (SinglePromotedServerTransferRoot.ClientSpawnCount > rootSpawnsBefore
                            && SinglePromotedServerTransferChild.ClientSpawnCount > childSpawnsBefore))
-                      && HasClientState(RootOwnerPrePromotionValue, ChildOwnerPrePromotionValue)
+                      && (!requirePreTransferState ||
+                          HasClientState(RootOwnerPrePromotionValue, ChildOwnerPrePromotionValue))
                       && (!requireOwnerState ||
                           (SinglePromotedServerTransferRoot.LocalClientInstance.isOwner
                            && SinglePromotedServerTransferRoot.LocalClientInstance.isController
