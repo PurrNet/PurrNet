@@ -5,10 +5,10 @@ using UnityEngine;
 
 public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlayerPrefabRoot>
 {
-    private static readonly HashSet<GlobalNetworkID> _serverAlive = new();
-    private static readonly HashSet<GlobalNetworkID> _clientAlive = new();
-    private static readonly Dictionary<ulong, HashSet<GlobalNetworkID>> _serverByOwner = new();
-    private static readonly Dictionary<ulong, HashSet<GlobalNetworkID>> _clientByOwner = new();
+    private static readonly HashSet<SinglePromotedPlayerPrefabRoot> _serverAlive = new();
+    private static readonly HashSet<SinglePromotedPlayerPrefabRoot> _clientAlive = new();
+    private static readonly Dictionary<ulong, HashSet<SinglePromotedPlayerPrefabRoot>> _serverByOwner = new();
+    private static readonly Dictionary<ulong, HashSet<SinglePromotedPlayerPrefabRoot>> _clientByOwner = new();
     private static readonly MethodInfo PlayerIdentityInit =
         typeof(PlayerIdentity<SinglePromotedPlayerPrefabRoot>).GetMethod("Init", BindingFlags.NonPublic | BindingFlags.Static);
 
@@ -19,12 +19,8 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
     public static string ServerOwners => FormatOwners(_serverByOwner);
     public static string ClientOwners => FormatOwners(_clientByOwner);
 
-    private GlobalNetworkID? _serverTrackedId;
-    private GlobalNetworkID? _clientTrackedId;
     private ulong? _serverTrackedOwner;
     private ulong? _clientTrackedOwner;
-    private PlayerID? _serverPendingOwner;
-    private PlayerID? _clientPendingOwner;
 
     public static void ResetAll()
     {
@@ -50,22 +46,18 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
             return;
         }
 
-        var globalId = new GlobalNetworkID(sceneId, id.Value);
         if (asServer)
         {
-            _serverTrackedId = globalId;
-            _serverAlive.Add(globalId);
+            _serverAlive.Add(this);
         }
         else
         {
-            _clientTrackedId = globalId;
-            _clientAlive.Add(globalId);
+            _clientAlive.Add(this);
             if (isOwner)
                 LocalClientInstance = this;
         }
 
-        var ownerToTrack = asServer ? _serverPendingOwner ?? owner : _clientPendingOwner ?? owner;
-        TrackOwner(asServer, ownerToTrack);
+        TrackOwner(asServer, owner);
     }
 
     protected override void OnDespawned(bool asServer)
@@ -73,16 +65,12 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
         if (asServer)
         {
             UntrackOwner(true);
-            if (_serverTrackedId.HasValue)
-                _serverAlive.Remove(_serverTrackedId.Value);
-            _serverTrackedId = null;
+            _serverAlive.Remove(this);
             return;
         }
 
         UntrackOwner(false);
-        if (_clientTrackedId.HasValue)
-            _clientAlive.Remove(_clientTrackedId.Value);
-        _clientTrackedId = null;
+        _clientAlive.Remove(this);
         if (LocalClientInstance == this)
             LocalClientInstance = null;
     }
@@ -155,55 +143,35 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
 
     private void TrackOwner(bool asServer, PlayerID? newOwner)
     {
-        if (asServer && !_serverTrackedId.HasValue)
-        {
-            _serverPendingOwner = newOwner;
-            return;
-        }
-
-        if (!asServer && !_clientTrackedId.HasValue)
-        {
-            _clientPendingOwner = newOwner;
-            return;
-        }
-
         UntrackOwner(asServer);
         if (!newOwner.HasValue)
             return;
 
         var ownerId = newOwner.Value.id.value;
-        var idToTrack = asServer ? _serverTrackedId.Value : _clientTrackedId.Value;
         var map = asServer ? _serverByOwner : _clientByOwner;
         if (!map.TryGetValue(ownerId, out var identities))
         {
-            identities = new HashSet<GlobalNetworkID>();
+            identities = new HashSet<SinglePromotedPlayerPrefabRoot>();
             map[ownerId] = identities;
         }
 
-        identities.Add(idToTrack);
+        identities.Add(this);
         if (asServer)
-        {
             _serverTrackedOwner = ownerId;
-            _serverPendingOwner = null;
-        }
         else
-        {
             _clientTrackedOwner = ownerId;
-            _clientPendingOwner = null;
-        }
     }
 
     private void UntrackOwner(bool asServer)
     {
         var owner = asServer ? _serverTrackedOwner : _clientTrackedOwner;
-        var trackedId = asServer ? _serverTrackedId : _clientTrackedId;
-        if (!owner.HasValue || !trackedId.HasValue)
+        if (!owner.HasValue)
             return;
 
         var map = asServer ? _serverByOwner : _clientByOwner;
         if (map.TryGetValue(owner.Value, out var identities))
         {
-            identities.Remove(trackedId.Value);
+            identities.Remove(this);
             if (identities.Count == 0)
                 map.Remove(owner.Value);
         }
@@ -214,12 +182,12 @@ public class SinglePromotedPlayerPrefabRoot : PlayerIdentity<SinglePromotedPlaye
             _clientTrackedOwner = null;
     }
 
-    private static int OwnerCount(Dictionary<ulong, HashSet<GlobalNetworkID>> owners, PlayerID player)
+    private static int OwnerCount(Dictionary<ulong, HashSet<SinglePromotedPlayerPrefabRoot>> owners, PlayerID player)
     {
         return owners.TryGetValue(player.id.value, out var identities) ? identities.Count : 0;
     }
 
-    private static string FormatOwners(Dictionary<ulong, HashSet<GlobalNetworkID>> owners)
+    private static string FormatOwners(Dictionary<ulong, HashSet<SinglePromotedPlayerPrefabRoot>> owners)
     {
         var parts = new List<string>(owners.Count);
         foreach (var pair in owners)
