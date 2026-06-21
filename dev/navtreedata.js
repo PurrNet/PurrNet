@@ -57,7 +57,7 @@ var NAVTREEINDEX =
 "classPurrNet_1_1ReliableDeltaStream.html#aef99862212093a112574dac5bd1253d3",
 "classPurrNet_1_1TargetRpcAttribute.html",
 "interfacePurrNet_1_1Transports_1_1IListener.html",
-"structPurrNet_1_1Packing_1_1PackedInt.html"
+"structPurrNet_1_1Packing_1_1PackedByte.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

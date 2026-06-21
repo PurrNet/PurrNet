@@ -280,6 +280,7 @@ var hierarchy =
       [ "PurrNet.Modules.PlayerJoinedEvent", "structPurrNet_1_1Modules_1_1PlayerJoinedEvent.html", null ],
       [ "PurrNet.Modules.PlayerLeftEvent", "structPurrNet_1_1Modules_1_1PlayerLeftEvent.html", null ],
       [ "PurrNet.Modules.PlayerSnapshotEvent", "structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html", null ],
+      [ "PurrNet.Modules.SceneSpawnReconcilePacket", "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html", null ],
       [ "PurrNet.Modules.ServerLoginResponse", "structPurrNet_1_1Modules_1_1ServerLoginResponse.html", null ],
       [ "PurrNet.Modules.SpawnID", "structPurrNet_1_1Modules_1_1SpawnID.html", null ],
       [ "PurrNet.Modules.SpawnPacketBatch", "structPurrNet_1_1Modules_1_1SpawnPacketBatch.html", null ],

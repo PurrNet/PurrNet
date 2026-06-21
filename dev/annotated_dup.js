@@ -76,6 +76,7 @@ var annotated_dup =
         [ "ScenePlayersModule", "classPurrNet_1_1Modules_1_1ScenePlayersModule.html", "classPurrNet_1_1Modules_1_1ScenePlayersModule" ],
         [ "SceneScopedFactory", "classPurrNet_1_1Modules_1_1SceneScopedFactory.html", null ],
         [ "ScenesModule", "classPurrNet_1_1Modules_1_1ScenesModule.html", "classPurrNet_1_1Modules_1_1ScenesModule" ],
+        [ "SceneSpawnReconcilePacket", "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html", null ],
         [ "SceneState", "structPurrNet_1_1Modules_1_1SceneState.html", "structPurrNet_1_1Modules_1_1SceneState" ],
         [ "ServerLoginResponse", "structPurrNet_1_1Modules_1_1ServerLoginResponse.html", null ],
         [ "SimpleHistory", "classPurrNet_1_1Modules_1_1SimpleHistory.html", "classPurrNet_1_1Modules_1_1SimpleHistory" ],
