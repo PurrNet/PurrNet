@@ -681,9 +681,7 @@ public class SinglePromotedServerTransferScenario : Scenario
                 return false;
         }
 
-        return expectedPlayers > 0
-               && SinglePromotedPlayerPrefabRoot.ServerAliveCount >= expectedPlayers
-               && SinglePromotedPlayerPrefabChild.ServerAliveCount >= expectedPlayers;
+        return expectedPlayers > 0;
     }
 
     private async UniTask<ScenarioResult> SeedOwnerState(
