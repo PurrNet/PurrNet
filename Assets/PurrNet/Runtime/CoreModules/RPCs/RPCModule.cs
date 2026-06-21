@@ -13,7 +13,7 @@ using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
-    public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IPromoteToServerModule
+    public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IPromoteToServerModule, ITransferToNewServer
     {
         public delegate void RPCPreProcessDelegate(RPCSignature signature, ref BitPacker packer);
 
@@ -82,6 +82,11 @@ namespace PurrNet.Modules
         }
 
         public void PostPromoteToServerModule() { }
+
+        public void TransferToNewServer()
+        {
+            _unionBatch.Clear();
+        }
 
         public void Enable(bool asServer)
         {
