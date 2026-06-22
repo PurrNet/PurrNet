@@ -1,3 +1,10 @@
+# [1.20.0-beta.223](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.222...v1.20.0-beta.223) (2026-06-22)
+
+
+### Bug Fixes
+
+* include chidlren for scene objects ([5cbcbf2](https://github.com/PurrNet/PurrNet/commit/5cbcbf2f6e6ef10616988b86558a5615dd84bd3b))
+
 # [1.20.0-beta.222](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.221...v1.20.0-beta.222) (2026-06-22)
 
 
