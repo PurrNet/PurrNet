@@ -26,7 +26,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 871477370877421358}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0.55992234, y: -0, z: -0, w: 0.8285451}
   m_LocalPosition: {x: 0, y: 1.9, z: 0}
   m_LocalScale: {x: 0.08, y: 0.08, z: 0.08}
   m_ConstrainProportionsScale: 1
@@ -319,6 +319,7 @@ MonoBehaviour:
   _syncRotation: 2
   _syncScale: 0
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 255
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -476,6 +477,7 @@ MonoBehaviour:
   - {fileID: 2125669350971959550}
   - {fileID: 3114173323945344206}
   - {fileID: 8913748296582932277}
+  _random: 0
 --- !u!1 &8887981878880113861
 GameObject:
   m_ObjectHideFlags: 0
@@ -535,6 +537,7 @@ MonoBehaviour:
   _syncRotation: 2
   _syncScale: 1
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 255
   _minBufferSize: 1
   _maxBufferSize: 4

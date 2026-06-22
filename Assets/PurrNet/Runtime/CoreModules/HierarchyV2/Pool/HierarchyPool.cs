@@ -64,7 +64,7 @@ namespace PurrNet.Modules
 
             if (!_prefabPrototypes.ContainsKey(prefabData.prefab))
             {
-                var prototype = GetFullPrototype(copy.transform);
+                var prototype = GetFullPrototype(copy.transform, null, true);
                 _prefabPrototypes.Add(prefabData.prefab, prototype);
             }
 
@@ -505,7 +505,7 @@ namespace PurrNet.Modules
 
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab);
             NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled);
-            prototype = GetFullPrototype(copy.transform);
+            prototype = GetFullPrototype(copy.transform, null, true);
             _prefabPrototypes.Add(prefabData.prefab, prototype);
             UnityProxy.DestroyDirectly(copy);
             return true;
@@ -593,7 +593,8 @@ namespace PurrNet.Modules
             return true;
         }
 
-        public static GameObjectPrototype GetFullPrototype(Transform transform, List<NetworkIdentity> allChildren = null)
+        public static GameObjectPrototype GetFullPrototype(Transform transform, List<NetworkIdentity> allChildren = null,
+            bool includeUnspawnedChildren = false)
         {
             var framework = DisposableList<GameObjectFrameworkPiece>.Create(16);
             if (!transform.TryGetComponent<NetworkIdentity>(out var rootId))
@@ -619,7 +620,7 @@ namespace PurrNet.Modules
                 for (var i = 0; i < children.Count; i++)
                 {
                     var child = children[i];
-                    if (!child.identity.id.HasValue)
+                    if (!includeUnspawnedChildren && !child.identity.id.HasValue)
                         continue;
                     var childPair = GetRuntimePair(trs, child.identity);
                     queue.Enqueue(childPair);
@@ -773,14 +774,20 @@ namespace PurrNet.Modules
             // Process each child in sequence - children start after all siblings
             for (var j = 0; j < childCount; j++)
             {
-                TryBuildPrototypeHelper(
+                if (!TryBuildPrototypeHelper(
                     pair,
                     prototype,
                     createdNids,
                     trs,
                     childScopeStart + j,
                     out var childGo,
-                    out _);
+                    out _))
+                {
+                    PutBackInPool(pair, instance);
+                    result = null;
+                    shouldBeActive = false;
+                    return false;
+                }
 
                 if (nid && childGo && childGo.TryGetComponent<NetworkIdentity>(out var childNid))
                     nid.AddDirectChild(childNid);
