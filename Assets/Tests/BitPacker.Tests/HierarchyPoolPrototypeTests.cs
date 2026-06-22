@@ -72,6 +72,51 @@ public class HierarchyPoolPrototypeTests
         }
     }
 
+    [Test]
+    public void SceneDefaultPrototypeRestoresNestedUnspawnedIdentities()
+    {
+        var poolRoot = new GameObject(nameof(SceneDefaultPrototypeRestoresNestedUnspawnedIdentities) + "Pool");
+        var root = CreateRootWithNestedChildren(nameof(SceneDefaultPrototypeRestoresNestedUnspawnedIdentities));
+        GameObject rebuilt = null;
+
+        try
+        {
+            var scenePool = new HierarchyPool(poolRoot.transform);
+            var pair = new PoolPair(scenePool, null);
+
+            PrepareScenePieces(root, -42);
+
+            var activePieces = new List<NetworkIdentity>();
+            root.GetComponentsInChildren(true, activePieces);
+
+            foreach (var piece in activePieces)
+                scenePool.RegisterActiveScenePiece(piece);
+
+            using var defaultPrototype = HierarchyPool.GetFullPrototype(root.transform, null, true);
+            Assert.That(defaultPrototype.framework.Count, Is.EqualTo(activePieces.Count));
+
+            var created = new List<NetworkIdentity>();
+            var success = HierarchyPool.TryBuildPrototype(pair, defaultPrototype, created, out rebuilt, out _);
+
+            Assert.IsTrue(success);
+            Assert.IsTrue(rebuilt);
+
+            var restoredPieces = new List<NetworkIdentity>();
+            rebuilt.GetComponentsInChildren(true, restoredPieces);
+            Assert.That(restoredPieces.Count, Is.EqualTo(activePieces.Count));
+        }
+        finally
+        {
+            if (rebuilt)
+                Object.DestroyImmediate(rebuilt);
+            else if (root)
+                Object.DestroyImmediate(root);
+
+            if (poolRoot)
+                Object.DestroyImmediate(poolRoot);
+        }
+    }
+
     private static GameObject CreateRootWithNestedChildren(string name)
     {
         var root = new GameObject(name);
@@ -88,5 +133,14 @@ public class HierarchyPoolPrototypeTests
         child.transform.SetParent(parent.transform);
         child.AddComponent<NetworkIdentity>();
         return child;
+    }
+
+    private static void PrepareScenePieces(GameObject root, int prefabId)
+    {
+        var pieces = new List<NetworkIdentity>();
+        root.GetComponentsInChildren(true, pieces);
+
+        for (int i = 0; i < pieces.Count; i++)
+            pieces[i].PreparePrefabInfo(prefabId, i, true, true);
     }
 }

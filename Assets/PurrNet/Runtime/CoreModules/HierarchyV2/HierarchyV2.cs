@@ -302,7 +302,7 @@ namespace PurrNet.Modules
                         _scenePool.RegisterActiveScenePiece(children[j]);
                 }
 
-                _defaultPrototypes.Add(HierarchyPool.GetFullPrototype(root.transform));
+                _defaultPrototypes.Add(HierarchyPool.GetFullPrototype(root.transform, null, true));
                 ListPool<NetworkIdentity>.Destroy(children);
             }
 
