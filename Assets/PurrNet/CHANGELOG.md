@@ -1,3 +1,10 @@
+# [1.20.0-beta.224](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.223...v1.20.0-beta.224) (2026-06-22)
+
+
+### Bug Fixes
+
+* scene and syncvar bug ([9cd9732](https://github.com/PurrNet/PurrNet/commit/9cd973256e7478b37c1cb1f2a1ad82dfd6142a41))
+
 # [1.20.0-beta.223](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.222...v1.20.0-beta.223) (2026-06-22)
 
 
