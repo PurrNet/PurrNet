@@ -1,3 +1,10 @@
+# [1.20.0-beta.221](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.220...v1.20.0-beta.221) (2026-06-21)
+
+
+### Bug Fixes
+
+* pooling bugs ([22eef29](https://github.com/PurrNet/PurrNet/commit/22eef2930c13c802ef2be1baa0364ed301e6dfd0))
+
 # [1.20.0-beta.220](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.219...v1.20.0-beta.220) (2026-06-21)
 
 
