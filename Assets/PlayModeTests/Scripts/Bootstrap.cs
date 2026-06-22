@@ -12,6 +12,8 @@ using UnityEngine.Assertions;
 
 public class Bootstrap : Scenario
 {
+    private static bool _runStarted;
+
     [SerializeField] private NetworkManager _networkManager;
     [SerializeField] private float _connectionTimeout = 15f;
     [SerializeField] private float _timeBetweenScenarios = 0.1f;
@@ -34,6 +36,7 @@ public class Bootstrap : Scenario
     private NetworkRole _role;
     private int _expectedConnections;
     private string _resultsPath;
+    private string _scenarioFilter;
 
     private bool _benchmarkMode;
     private bool _measured = true;
@@ -47,8 +50,20 @@ public class Bootstrap : Scenario
 
     private CancellationTokenSource _runCts;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetRunState()
+    {
+        _runStarted = false;
+    }
+
     private void Awake()
     {
+        if (_runStarted)
+        {
+            enabled = false;
+            return;
+        }
+
         LoadArgs();
 
         if (_benchmarkMode)
@@ -60,7 +75,31 @@ public class Bootstrap : Scenario
             _scenarios = GetComponentsInChildren<Scenario>();
         }
 
+        ApplyScenarioFilter();
         _results = new ScenarioDetails?[_scenarios.Length];
+    }
+
+    private void ApplyScenarioFilter()
+    {
+        if (string.IsNullOrEmpty(_scenarioFilter))
+            return;
+
+        var filtered = new System.Collections.Generic.List<Scenario>();
+        for (var i = 0; i < _scenarios.Length; i++)
+        {
+            var scenario = _scenarios[i];
+            if (scenario == this || scenario.GetType().Name == _scenarioFilter)
+                filtered.Add(scenario);
+        }
+
+        if (filtered.Count == 1)
+        {
+            Debug.LogError($"Scenario filter '{_scenarioFilter}' did not match any scenario.");
+            Application.Quit(-1);
+            return;
+        }
+
+        _scenarios = filtered.ToArray();
     }
 
     private Scenario[] DiscoverBenchmarkScenarios()
@@ -87,6 +126,11 @@ public class Bootstrap : Scenario
 
     private void Start()
     {
+        if (_runStarted)
+            return;
+
+        _runStarted = true;
+
         if (!_networkManager.transport)
         {
             Debug.LogError($"No network transport found");
@@ -175,6 +219,7 @@ public class Bootstrap : Scenario
         }
 
         CommandLineUtils.TryGetArgument("-results", out _resultsPath);
+        CommandLineUtils.TryGetArgument("-scenario", out _scenarioFilter);
 
         LoadBenchmarkArgs();
     }

@@ -248,6 +248,7 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
+            RemoveUnloadedSceneStates();
             _rebuildHistoryOnNextPlayerJoin = true;
             _players.Unsubscribe<SceneActionsBatch>(OnSceneActionsBatch);
             _players.Unsubscribe<FirstSceneActionsBatch>(OnSceneActionsBatch);
@@ -257,6 +258,33 @@ namespace PurrNet.Modules
         }
 
         private bool _rebuildHistoryOnNextPlayerJoin;
+
+        private void RemoveUnloadedSceneStates()
+        {
+            for (var i = _rawScenes.Count - 1; i >= 0; i--)
+            {
+                var id = _rawScenes[i];
+
+                if (!_scenes.TryGetValue(id, out var state))
+                {
+                    _rawScenes.RemoveAt(i);
+                    _sceneActionScenes.Remove(id);
+                    _scenesToTriggerUnloadEvent.Remove(id);
+                    continue;
+                }
+
+                if (state.scene.IsValid() && state.scene.isLoaded)
+                    continue;
+
+                _scenes.Remove(id);
+                _rawScenes.RemoveAt(i);
+                _sceneActionScenes.Remove(id);
+                _scenesToTriggerUnloadEvent.Remove(id);
+
+                if (_idToScene.TryGetValue(state.scene, out var mappedId) && mappedId == id)
+                    _idToScene.Remove(state.scene);
+            }
+        }
 
         private void RebuildHistoryFromLoadedBuildScenes()
         {

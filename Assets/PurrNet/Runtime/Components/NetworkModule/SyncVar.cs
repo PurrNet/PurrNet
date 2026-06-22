@@ -139,7 +139,7 @@ namespace PurrNet
             if (isSpawner && ownerAuth && owner == player)
                 return;
 
-            SendLatestState(player, _id, _value);
+            SendLatestState(player, ReserveLatestStatePacketId(), _value);
         }
 
         public override void OnInitializeModules()
@@ -254,6 +254,14 @@ namespace PurrNet
         private ulong _id;
         private bool _wasLastDirty;
         private readonly T _initialValue;
+
+        private PackedULong ReserveLatestStatePacketId()
+        {
+            if (isControllingSyncVar)
+                return _id++;
+
+            return _id;
+        }
 
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
         {

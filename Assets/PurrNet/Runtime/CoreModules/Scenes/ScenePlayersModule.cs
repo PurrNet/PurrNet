@@ -292,6 +292,9 @@ namespace PurrNet.Modules
                 if (!state.settings.isPublic)
                     continue;
 
+                if (!state.scene.IsValid() || !state.scene.isLoaded)
+                    continue;
+
                 AddPlayerToScene(player, scene);
             }
         }
@@ -349,13 +352,56 @@ namespace PurrNet.Modules
                 return;
             }
 
-            if (!playersInScene.Contains(player))
+            if (playersInScene.Contains(player))
             {
-                playersInScene.Add(player);
-                onPlayerJoinedScene?.Invoke(player, scene, _asServer);
-                if(player.isBot)
-                    NotifyBotSceneLoaded(player, scene);
+                if (!IsPlayerLoadedInScene(player, scene))
+                {
+                    if (CanRestoreLoadedStateWithoutSceneAction(scene))
+                        MarkPlayerLoadedInScene(player, scene);
+                }
+
+                return;
             }
+
+            playersInScene.Add(player);
+            onPlayerJoinedScene?.Invoke(player, scene, _asServer);
+            if(player.isBot)
+                NotifyBotSceneLoaded(player, scene);
+        }
+
+        private bool CanRestoreLoadedStateWithoutSceneAction(SceneID scene)
+        {
+            if (!_scenes.TryGetSceneState(scene, out var state))
+                return false;
+
+            if (!state.settings.isPublic)
+                return false;
+
+            if (!state.scene.IsValid() || !state.scene.isLoaded)
+                return false;
+
+            if (_manager.gameObject.scene.handle == state.scene.handle)
+                return true;
+
+            var originalScene = _manager.originalScene;
+            return originalScene.IsValid() && originalScene.handle == state.scene.handle;
+        }
+
+        private void MarkPlayerLoadedInScene(PlayerID player, SceneID scene)
+        {
+            if (!_sceneLoadedPlayers.TryGetValue(scene, out var loadedPlayers))
+            {
+                PurrLogger.LogError($"SceneID '{scene}' not found in scene loaded players dictionary");
+                return;
+            }
+
+            if (loadedPlayers.Contains(player))
+                return;
+
+            loadedPlayers.Add(player);
+            onPrePlayerLoadedScene?.Invoke(player, scene, _asServer);
+            onPlayerLoadedScene?.Invoke(player, scene, _asServer);
+            onPostPlayerLoadedScene?.Invoke(player, scene, _asServer);
         }
 
         public bool TryGetScenesForPlayer(PlayerID playerId, out SceneID[] scenes)
