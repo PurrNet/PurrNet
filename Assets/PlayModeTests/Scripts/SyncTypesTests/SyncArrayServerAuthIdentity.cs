@@ -69,7 +69,9 @@ public class SyncArrayServerAuthIdentity : NetworkIdentity
 
     protected override void OnSpawned(bool asServer)
     {
-        LocalInstance = this;
+        if (asServer || LocalInstance == null)
+            LocalInstance = this;
+
         if (asServer)
             SeedInitial();
     }
