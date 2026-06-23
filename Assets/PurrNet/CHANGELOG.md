@@ -1,3 +1,10 @@
+# [1.20.0-beta.227](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.226...v1.20.0-beta.227) (2026-06-23)
+
+
+### Bug Fixes
+
+* patch some catchup logic, still not ideal need to revisit ([511d120](https://github.com/PurrNet/PurrNet/commit/511d12029aa62a069e2a2e34c0b387f9a5e5229f))
+
 # [1.20.0-beta.226](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.225...v1.20.0-beta.226) (2026-06-23)
 
 
