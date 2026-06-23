@@ -1,3 +1,10 @@
+# [1.20.0-beta.225](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.224...v1.20.0-beta.225) (2026-06-22)
+
+
+### Bug Fixes
+
+* reconnect ([f934dd9](https://github.com/PurrNet/PurrNet/commit/f934dd97066bcbed4432e6c8ac164c6f713b6d87))
+
 # [1.20.0-beta.224](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.223...v1.20.0-beta.224) (2026-06-22)
 
 
