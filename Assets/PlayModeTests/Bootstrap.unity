@@ -161,7 +161,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d92fd6fce64477c4088dff8434cad2d0, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PlayerMovementBenchmarkScenario
   _pingsPerSecond: 10
 --- !u!1 &43754047
@@ -1167,6 +1167,8 @@ GameObject:
   - component: {fileID: 1128545790}
   - component: {fileID: 1128545789}
   - component: {fileID: 1128545788}
+  - component: {fileID: 1128545794}
+  - component: {fileID: 1128545796}
   m_Layer: 0
   m_Name: BufferedRPC
   m_TagString: Untagged
@@ -1301,6 +1303,43 @@ MonoBehaviour:
   _disconnectTimeoutSeconds: 15
   _reconnectTimeoutSeconds: 30
   _replayTimeoutSeconds: 30
+--- !u!114 &1128545794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1128545786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9fb34323094444f4812dcfb93433f2dc, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SpawnBufferedObserversRpcScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _observerTimeoutSeconds: 30
+  _reportTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
+  _duplicateWindowSeconds: 1
+--- !u!114 &1128545796
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1128545786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c03c7ad5c7a34d6290dbef772195b6b1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneObjectBufferedObserversRpcScenario
+  _sceneTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 20
+  _reportTimeoutSeconds: 30
+  _unloadTimeoutSeconds: 30
+  _duplicateWindowSeconds: 1
+  _barrierTimeoutSeconds: 60
 --- !u!1 &1216416895
 GameObject:
   m_ObjectHideFlags: 0

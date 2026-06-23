@@ -1209,8 +1209,6 @@ namespace PurrNet.Modules
             if (scene != _sceneId)
                 return;
 
-            RebuildSpawnedHierarchyLinks();
-
             if (IsServerHost() && _manager.localPlayer == player)
                 CatchupClient(player);
 
@@ -1232,7 +1230,6 @@ namespace PurrNet.Modules
                     continue;
 
                 _visibility.RefreshVisibilityForGameObject(player, root.transform);
-                ReplaceStaleObservedRootCatchupIfNeeded(player, root);
             }
 
             FlushSpawnPackets();
@@ -1249,105 +1246,6 @@ namespace PurrNet.Modules
             {
                 sceneId = _sceneId
             });
-        }
-
-        private void ReplaceStaleObservedRootCatchupIfNeeded(PlayerID player, NetworkIdentity root)
-        {
-            if (!root || !root.id.HasValue || !root.IsObserver(player))
-                return;
-
-            var children = ListPool<NetworkIdentity>.Instantiate();
-            if (HierarchyPool.TryGetPrototype(root.transform, player, children, out var prototype))
-            {
-                if (HasPendingSpawnPacket(player, root.id.Value, prototype.framework.Count))
-                {
-                    prototype.Dispose();
-                    ListPool<NetworkIdentity>.Destroy(children);
-                    return;
-                }
-
-                // Visibility refresh owns new catchup packets; this helper only upgrades stale ones.
-                if (!HasPendingSpawnPacket(player, root.id.Value))
-                {
-                    prototype.Dispose();
-                    ListPool<NetworkIdentity>.Destroy(children);
-                    return;
-                }
-
-                RemoveStalePendingSpawnPackets(player, root.id.Value, prototype.framework.Count);
-                SendSpawnPacket(player, prototype, children, true);
-            }
-            else
-            {
-                ListPool<NetworkIdentity>.Destroy(children);
-            }
-        }
-
-        private bool HasPendingSpawnPacket(PlayerID player, NetworkID root, int minimumPieceCount)
-        {
-            if (!_spawnPackets.TryGetValue(player, out var batch))
-                return false;
-
-            for (var i = 0; i < batch.spawnPackets.Count; i++)
-            {
-                var packet = batch.spawnPackets[i];
-                if (SpawnPacketContains(packet, root) && packet.prototype.framework.Count >= minimumPieceCount)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private bool HasPendingSpawnPacket(PlayerID player, NetworkID root)
-        {
-            if (!_spawnPackets.TryGetValue(player, out var batch))
-                return false;
-
-            for (var i = 0; i < batch.spawnPackets.Count; i++)
-            {
-                var packet = batch.spawnPackets[i];
-                if (SpawnPacketContains(packet, root))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private void RemoveStalePendingSpawnPackets(PlayerID player, NetworkID root, int minimumPieceCount)
-        {
-            if (!_spawnPackets.TryGetValue(player, out var batch))
-                return;
-
-            for (var i = batch.spawnPackets.Count - 1; i >= 0; i--)
-            {
-                var packet = batch.spawnPackets[i];
-                if (!SpawnPacketContains(packet, root) || packet.prototype.framework.Count >= minimumPieceCount)
-                    continue;
-
-                packet.Dispose();
-                batch.spawnPackets.RemoveAt(i);
-            }
-        }
-
-        private static bool SpawnPacketContains(SpawnPacket packet, NetworkID identity)
-        {
-            if (packet.localcache != null)
-            {
-                for (var i = 0; i < packet.localcache.Count; i++)
-                {
-                    var cached = packet.localcache[i];
-                    if (cached && cached.id.HasValue && cached.id.Value.Equals(identity))
-                        return true;
-                }
-            }
-
-            for (var i = 0; i < packet.prototype.framework.Count; i++)
-            {
-                if (packet.prototype.framework[i].id.Equals(identity))
-                    return true;
-            }
-
-            return false;
         }
 
         public void EvaluateVisibilityForPlayer(PlayerID player)

@@ -23,6 +23,7 @@ public class ServerConnectedSceneSpawnScenario : Scenario
     private AsyncOperation _loadOperation;
     private bool _loadRequested;
     private bool _loadReturnedNull;
+    private bool _subscribedConnectionState;
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
@@ -30,15 +31,15 @@ public class ServerConnectedSceneSpawnScenario : Scenario
         _loadOperation = null;
         _loadRequested = false;
         _loadReturnedNull = false;
+        _subscribedConnectionState = false;
         ServerConnectedSceneSpawnRoot.ResetAll();
         ServerConnectedSceneSpawnChild.ResetAll();
-
-        if (ctx.isServer && ctx.role != NetworkRole.Host)
-            manager.onServerConnectionState += OnServerConnectionState;
     }
 
     public override UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
+        ServerConnectedSceneSpawnRoot.ResetAll();
+        ServerConnectedSceneSpawnChild.ResetAll();
         return RunSplit(ctx, RunAsClient, RunAsServer);
     }
 
@@ -77,6 +78,13 @@ public class ServerConnectedSceneSpawnScenario : Scenario
                 if (!prepared.success)
                     return prepared;
             }
+            else
+            {
+                SubscribeConnectionState();
+
+                if (ctx.networkManager.serverState == ConnectionState.Connected)
+                    OnServerConnectionState(ConnectionState.Connected);
+            }
 
             var loaded = await WaitForServerScene(ctx);
             if (!loaded.success)
@@ -114,9 +122,21 @@ public class ServerConnectedSceneSpawnScenario : Scenario
         }
         finally
         {
-            if (_manager)
+            if (_manager && _subscribedConnectionState)
+            {
                 _manager.onServerConnectionState -= OnServerConnectionState;
+                _subscribedConnectionState = false;
+            }
         }
+    }
+
+    private void SubscribeConnectionState()
+    {
+        if (_subscribedConnectionState)
+            return;
+
+        _manager.onServerConnectionState += OnServerConnectionState;
+        _subscribedConnectionState = true;
     }
 
     private async UniTask<ScenarioResult> LoadSceneBeforeHostClientReconnect(ScenarioContext ctx)

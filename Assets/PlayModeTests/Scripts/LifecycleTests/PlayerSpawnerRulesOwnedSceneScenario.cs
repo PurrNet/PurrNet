@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerSpawnerRulesOwnedSceneScenario : Scenario
 {
@@ -258,13 +259,17 @@ public class PlayerSpawnerRulesOwnedSceneScenario : Scenario
         if (!scenes.TryGetSceneID(unityScene, out var sceneId))
             return (false, ScenarioResult.Fail($"PlayerSpawner rules scenario: scene id missing for {unityScene.name}"), 0);
 
-        var player = PickNonServerPlayer(ctx);
-        if (!player.HasValue)
-            return (true, ScenarioResult.Ok("PlayerSpawner rules scenario requires a non-server player"), 0);
+        NetworkManager.SetMainInstance(ctx.networkManager);
 
-        SeedOwnedSceneIdentity(ctx.networkManager, sceneId, player.Value);
+        var player = PickNonServerPlayerWithoutExistingOwnership(ctx);
+        if (!player.HasValue)
+            return (false, ScenarioResult.Fail(
+                "PlayerSpawner rules scenario requires a non-server player without existing global ownership"), 0);
+
+        SeedOwnedSceneIdentity(ctx.networkManager, sceneId, player.Value, gameObject.scene);
 
         var spawnerGo = new GameObject(nameof(PlayerSpawnerRulesOwnedSceneScenario) + "_Spawner");
+        SceneManager.MoveGameObjectToScene(spawnerGo, gameObject.scene);
         spawnerGo.SetActive(false);
         var spawner = spawnerGo.AddComponent<PlayerSpawner>();
         PlayerPrefabField.SetValue(spawner, _playerPrefab.gameObject);
@@ -296,6 +301,7 @@ public class PlayerSpawnerRulesOwnedSceneScenario : Scenario
         NetworkRulesField.SetValue(ctx.networkManager, _rules);
         try
         {
+            NetworkManager.SetMainInstance(ctx.networkManager);
             OnPlayerLoadedSceneMethod.Invoke(_serverSpawner, new object[] { _serverTargetPlayer, _serverSceneId, true });
         }
         catch (TargetInvocationException e)
@@ -310,22 +316,25 @@ public class PlayerSpawnerRulesOwnedSceneScenario : Scenario
         return ScenarioResult.Ok();
     }
 
-    private static PlayerID? PickNonServerPlayer(ScenarioContext ctx)
+    private static PlayerID? PickNonServerPlayerWithoutExistingOwnership(ScenarioContext ctx)
     {
+        ctx.networkManager.TryGetModule(out GlobalOwnershipModule ownership, true);
+
         var players = ctx.networkManager.players;
         for (int i = 0; i < players.Count; i++)
         {
             var player = players[i];
-            if (!player.isServer)
+            if (!player.isServer && (ownership == null || !ownership.PlayerOwnsSomething(player)))
                 return player;
         }
 
         return null;
     }
 
-    private static void SeedOwnedSceneIdentity(NetworkManager manager, SceneID sceneId, PlayerID player)
+    private static void SeedOwnedSceneIdentity(NetworkManager manager, SceneID sceneId, PlayerID player, Scene scene)
     {
         var go = new GameObject(nameof(PlayerSpawnerRulesOwnedSceneIdentity));
+        SceneManager.MoveGameObjectToScene(go, scene);
         var identity = go.AddComponent<PlayerSpawnerRulesOwnedSceneIdentity>();
         identity.SetID(new NetworkID(991731));
         identity.SetIsSpawned(true, true);
