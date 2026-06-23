@@ -21,6 +21,7 @@ namespace PurrNet.Modules
     public class HierarchyPool
     {
         private readonly Dictionary<PrefabPieceID, Queue<GameObject>> _pool = new();
+        private readonly HashSet<GameObject> _pooledObjects = new();
         private readonly Dictionary<PrefabPieceID, Queue<GameObject>> _activeScenePieces = new();
         private readonly HashSet<GameObject> _activeScenePieceSet = new HashSet<GameObject>();
 
@@ -181,7 +182,7 @@ namespace PurrNet.Modules
                 child.gameObject.SetActive(false);
                 child.transform.SetParent(pair._parent, false);
 
-                queue.Enqueue(child.gameObject);
+                pair.Enqueue(child.gameObject, queue);
             }
 
             // destroy the objects that shouldn't be pooled
@@ -239,7 +240,7 @@ namespace PurrNet.Modules
 
                 child.transform.SetParent(_parent, false);
 
-                queue.Enqueue(child.gameObject);
+                Enqueue(child.gameObject, queue);
             }
 
             ListPool<NetworkIdentity>.Destroy(children);
@@ -354,7 +355,15 @@ namespace PurrNet.Modules
                 target.SetActive(false);
 
             identity.transform.SetParent(_parent, false);
-            queue.Enqueue(target);
+            Enqueue(target, queue);
+        }
+
+        private void Enqueue(GameObject instance, Queue<GameObject> queue)
+        {
+            if (!instance || !_pooledObjects.Add(instance))
+                return;
+
+            queue.Enqueue(instance);
         }
 
         private void DetachAdoptedDirectChildren(Transform root, Transform safeParent)
@@ -433,7 +442,12 @@ namespace PurrNet.Modules
 
                 while (queue.Count > 0)
                 {
-                    if (queue.TryDequeue(out instance) && instance)
+                    if (!queue.TryDequeue(out instance))
+                        continue;
+
+                    pool._pooledObjects.Remove(instance);
+
+                    if (instance)
                     {
                         pool._toDestroy.Remove(instance);
                         return true;
@@ -888,6 +902,7 @@ namespace PurrNet.Modules
             foreach (var (_, queue) in _pool)
                 QueuePool<GameObject>.Destroy(queue);
             _pool.Clear();
+            _pooledObjects.Clear();
             ClearActiveScenePieceQueues();
             _activeScenePieceSet.Clear();
 

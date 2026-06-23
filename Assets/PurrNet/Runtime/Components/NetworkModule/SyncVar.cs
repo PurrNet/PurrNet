@@ -139,7 +139,7 @@ namespace PurrNet
             if (isSpawner && ownerAuth && owner == player)
                 return;
 
-            SendLatestState(player, ReserveLatestStatePacketId(), _value);
+            SendLatestState(player, _id, _value);
         }
 
         public override void OnInitializeModules()
@@ -176,7 +176,6 @@ namespace PurrNet
             {
                 if (isControllingSyncVar && parent)
                 {
-                    _id += 1;
                     ForceSendReliable();
                     _lastSendTime = Time.time;
                 }
@@ -203,15 +202,15 @@ namespace PurrNet
         private void ForceSendUnreliable()
         {
             if (isServer)
-                SendToAll(_id++, _value);
-            else SendToServer(_id++, _value);
+                SendToAll(++_id, _value);
+            else SendToServer(++_id, _value);
         }
 
         private void ForceSendReliable()
         {
             if (isServer)
-                SendToAllReliably(_id++, _value);
-            else SendToServerReliably(_id++, _value);
+                SendToAllReliably(++_id, _value);
+            else SendToServerReliably(++_id, _value);
         }
 
         public void FlushImmediately()
@@ -254,14 +253,6 @@ namespace PurrNet
         private ulong _id;
         private bool _wasLastDirty;
         private readonly T _initialValue;
-
-        private PackedULong ReserveLatestStatePacketId()
-        {
-            if (isControllingSyncVar)
-                return _id++;
-
-            return _id;
-        }
 
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
         {

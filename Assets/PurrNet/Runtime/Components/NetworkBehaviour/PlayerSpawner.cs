@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace PurrNet
 {
@@ -158,7 +157,7 @@ namespace PurrNet
             {
                 bool ownershipModuleHasExistingOwner =
                     main.TryGetModule(out GlobalOwnershipModule ownership, true) && ownership.PlayerOwnsSomething(player);
-                if (ownershipModuleHasExistingOwner || PlayerOwnsIdentityInScene(player, unityScene))
+                if (ownershipModuleHasExistingOwner)
                     return;
             }
 
@@ -187,26 +186,6 @@ namespace PurrNet
 
             if (newPlayer.TryGetComponent(out NetworkIdentity identity))
                 identity.GiveOwnership(player);
-        }
-
-        private static bool PlayerOwnsIdentityInScene(PlayerID player, Scene scene)
-        {
-            if (!scene.IsValid() || !scene.isLoaded)
-                return false;
-
-            var roots = scene.GetRootGameObjects();
-            for (int i = 0; i < roots.Length; i++)
-            {
-                var identities = roots[i].GetComponentsInChildren<NetworkIdentity>(true);
-                for (int j = 0; j < identities.Length; j++)
-                {
-                    var identity = identities[j];
-                    if (identity && identity.owner.HasValue && identity.owner.Value == player)
-                        return true;
-                }
-            }
-
-            return false;
         }
     }
 }

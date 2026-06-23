@@ -152,6 +152,17 @@ namespace PurrNet.Modules
             PlayLoadEventsForScene(id);
         }
 
+        private bool HasScene(Scene scene)
+        {
+            foreach (var state in _scenes.Values)
+            {
+                if (state.scene.handle == scene.handle)
+                    return true;
+            }
+
+            return false;
+        }
+
         private void PlayLoadEventsForScene(SceneID id)
         {
             onPreSceneLoaded?.Invoke(id, _asServer);
@@ -372,6 +383,9 @@ namespace PurrNet.Modules
             }
 
             if (!asServer)
+                MirrorAlreadyLoadedHostScenes();
+
+            if (!asServer)
             {
                 _players.Subscribe<SceneActionsBatch>(OnSceneActionsBatch);
                 _players.Subscribe<FirstSceneActionsBatch>(OnSceneActionsBatch);
@@ -384,6 +398,37 @@ namespace PurrNet.Modules
             }
 
             SceneManager.sceneLoaded += SceneManagerOnSceneLoaded;
+        }
+
+        private void MirrorAlreadyLoadedHostScenes()
+        {
+            if (!_networkManager.isServer)
+                return;
+
+            if (!_networkManager.TryGetModule<ScenesModule>(true, out var serverModule))
+                return;
+
+            foreach (var pair in serverModule.sceneStates)
+            {
+                var sceneId = pair.Key;
+                var state = pair.Value;
+
+                if (!serverModule._sceneActionScenes.Contains(sceneId))
+                    continue;
+
+                if (!state.scene.IsValid() || !state.scene.isLoaded)
+                    continue;
+
+                if (_scenes.ContainsKey(sceneId) || HasScene(state.scene))
+                    continue;
+
+                _sceneActionScenes.Add(sceneId);
+                AddScene(state.scene, state.settings, sceneId);
+
+                var nextSceneId = (int)sceneId.id + 1;
+                if (nextSceneId > _nextSceneID && nextSceneId <= ushort.MaxValue)
+                    _nextSceneID = (ushort)nextSceneId;
+            }
         }
 
         public void Enable(bool asServer)
