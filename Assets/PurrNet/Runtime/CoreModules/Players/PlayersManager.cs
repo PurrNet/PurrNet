@@ -481,25 +481,7 @@ namespace PurrNet.Modules
         private void OnClientLoginResponse(Connection conn, ServerLoginResponse data, bool asServer)
         {
             if (!string.IsNullOrEmpty(data.cookie))
-            {
-                var clientCookie = _authModule.clientConnectionCookie;
-                if (!string.IsNullOrEmpty(clientCookie) &&
-                    !string.Equals(clientCookie, data.cookie, StringComparison.Ordinal))
-                {
-                    return;
-                }
-            }
-
-            if (localPlayerId.HasValue)
-            {
-                if (localPlayerId.Value != data.playerId)
-                {
-                    PurrLogger.LogWarning(
-                        $"Ignoring duplicate login response for player {data.playerId}; local player is already {localPlayerId.Value}.");
-                }
-
-                return;
-            }
+                _authModule.SetClientConnectionCookie(data.cookie);
 
             localPlayerId = data.playerId;
             lastNid = data.lastNidId;

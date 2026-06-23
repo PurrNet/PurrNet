@@ -47,6 +47,11 @@ namespace PurrNet.Modules
 
         public string clientConnectionCookie => _cookiesModule.Get(CONNECTION_COOKIE_KEY);
 
+        internal void SetClientConnectionCookie(string cookie)
+        {
+            _cookiesModule.Set(CONNECTION_COOKIE_KEY, cookie, false);
+        }
+
         public AuthModule(NetworkManager manager, BroadcastModule broadcastModule, CookiesModule cookiesModule)
         {
             _cookiesModule = cookiesModule;
