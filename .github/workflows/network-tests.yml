@@ -210,6 +210,18 @@ jobs:
             done
           fi
 
+          # Some fatal networking/Unity failures can leave JSON looking incomplete or stale.
+          # Keep this narrow: scenario assertions remain the main signal, logs catch hard failures.
+          FATAL_LOG_PATTERN="CompleteSpawn: CreatePrototype failed|SceneID '[0-9]+' not found|Address already in use|UDPTransport Bind exception|Unhandled Exception|NullReferenceException|InvalidOperationException|Segmentation fault|SIGSEGV|Crash!!!|Native Crash Reporting"
+          for f in "$LOGS_DIR"/*.log; do
+            [ -e "$f" ] || continue
+            if grep -E -n "$FATAL_LOG_PATTERN" "$f" >/tmp/purrnet-fatal-log-matches.txt; then
+              echo "::error::$f contains fatal log patterns"
+              cat /tmp/purrnet-fatal-log-matches.txt
+              FAIL=1
+            fi
+          done
+
           exit $FAIL
 
       - name: Render results to job summary

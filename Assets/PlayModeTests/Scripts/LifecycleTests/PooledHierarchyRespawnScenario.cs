@@ -7,7 +7,8 @@ using UnityEngine;
 // every nested NetworkIdentity, and every spawn cycle must rebuild the full child hierarchy.
 public class PooledHierarchyRespawnScenario : Scenario
 {
-    [SerializeField] private int _cycles = 3;
+    [SerializeField] private int _cycles = 10;
+    [SerializeField] private int _instancesPerCycle = 8;
     [SerializeField] private float _spawnTimeoutSeconds = 20f;
     [SerializeField] private float _despawnTimeoutSeconds = 20f;
     [SerializeField] private float _barrierTimeoutSeconds = 60f;
@@ -52,27 +53,34 @@ public class PooledHierarchyRespawnScenario : Scenario
         for (int cycle = 0; cycle < _cycles; cycle++)
         {
             int barrier = BarrierBase + cycle * 10;
-            PooledHierarchyRespawnRoot instance = null;
+            var instances = ctx.isServer ? new PooledHierarchyRespawnRoot[_instancesPerCycle] : null;
 
             if (ctx.isServer)
-                instance = Instantiate(_prefab);
+            {
+                for (var i = 0; i < _instancesPerCycle; i++)
+                    instances[i] = Instantiate(_prefab);
+            }
 
             try
             {
                 await UniTaskUtils.WaitWithTimeout(
-                    () => PooledHierarchyRespawnRoot.LocalInstance != null
-                          && PooledHierarchyRespawnChild.AliveCount == ExpectedChildren,
+                    () => PooledHierarchyRespawnRoot.AliveCount == _instancesPerCycle
+                          && PooledHierarchyRespawnChild.AliveCount == _instancesPerCycle * ExpectedChildren,
                     _spawnTimeoutSeconds,
                     ctx.cancellationToken);
             }
             catch (TimeoutException)
             {
                 return ScenarioResult.Fail(
-                    $"cycle {cycle}: pooled spawn incomplete: root={PooledHierarchyRespawnRoot.LocalInstance != null}, " +
-                    $"children={PooledHierarchyRespawnChild.AliveCount}/{ExpectedChildren}, " +
+                    $"cycle {cycle}: pooled spawn incomplete: roots={PooledHierarchyRespawnRoot.AliveCount}/{_instancesPerCycle}, " +
+                    $"children={PooledHierarchyRespawnChild.AliveCount}/{_instancesPerCycle * ExpectedChildren}, " +
+                    $"rootBadId={PooledHierarchyRespawnRoot.SawBadId}, " +
                     $"badId={PooledHierarchyRespawnChild.SawBadId}, " +
                     $"wrongParent={PooledHierarchyRespawnChild.SawWrongParent}");
             }
+
+            if (PooledHierarchyRespawnRoot.SawBadId)
+                return ScenarioResult.Fail($"cycle {cycle}: pooled root spawned with a default/unassigned id");
 
             if (PooledHierarchyRespawnChild.SawBadId)
                 return ScenarioResult.Fail($"cycle {cycle}: pooled child spawned with a default/unassigned id");
@@ -82,13 +90,19 @@ public class PooledHierarchyRespawnScenario : Scenario
 
             await ScenarioBarrier.Wait(ctx, barrier + 1, _barrierTimeoutSeconds);
 
-            if (ctx.isServer && instance)
-                instance.Despawn();
+            if (ctx.isServer)
+            {
+                for (var i = 0; i < instances.Length; i++)
+                {
+                    if (instances[i])
+                        instances[i].Despawn();
+                }
+            }
 
             try
             {
                 await UniTaskUtils.WaitWithTimeout(
-                    () => PooledHierarchyRespawnRoot.LocalInstance == null
+                    () => PooledHierarchyRespawnRoot.AliveCount == 0
                           && PooledHierarchyRespawnChild.AliveCount == 0,
                     _despawnTimeoutSeconds,
                     ctx.cancellationToken);
@@ -96,13 +110,13 @@ public class PooledHierarchyRespawnScenario : Scenario
             catch (TimeoutException)
             {
                 return ScenarioResult.Fail(
-                    $"cycle {cycle}: pooled despawn incomplete: root={PooledHierarchyRespawnRoot.LocalInstance != null}, " +
+                    $"cycle {cycle}: pooled despawn incomplete: roots={PooledHierarchyRespawnRoot.AliveCount}, " +
                     $"children={PooledHierarchyRespawnChild.AliveCount}");
             }
 
             await ScenarioBarrier.Wait(ctx, barrier + 2, _barrierTimeoutSeconds);
         }
 
-        return ScenarioResult.Ok($"{_cycles} pooled respawn cycles, full child set ({ExpectedChildren}) each cycle");
+        return ScenarioResult.Ok($"{_cycles} pooled respawn cycles, {_instancesPerCycle} instances, full child set ({ExpectedChildren}) each instance");
     }
 }

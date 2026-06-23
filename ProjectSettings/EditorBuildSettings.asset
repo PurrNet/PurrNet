@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/PlayModeTests/SceneMembershipTargetB.unity
     guid: 209839264b6f4778b846041377fa64ec
+  - enabled: 1
+    path: Assets/PlayModeTests/ServerConnectedSceneSpawnTarget.unity
+    guid: f024ea30a2764d969ec8add3bd1c2b0e
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: f321fa2f9211178448ea4925059f7af5, type: 2}
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

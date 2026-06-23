@@ -2,21 +2,18 @@ using System.Collections.Generic;
 using PurrNet;
 using UnityEngine;
 
-// Root of the pooled multi-child prefab spawned/despawned by PooledHierarchyRespawnScenario.
-public class PooledHierarchyRespawnRoot : NetworkIdentity
+public class NonPooledRuntimeHierarchyRoot : NetworkIdentity
 {
-    private static readonly HashSet<NetworkID> _alive = new();
+    private static readonly HashSet<NetworkID> Alive = new();
 
-    public static PooledHierarchyRespawnRoot LocalInstance;
-    public static int AliveCount => _alive.Count;
+    public static int AliveCount => Alive.Count;
     public static bool SawBadId;
 
     private NetworkID? _trackedId;
 
     public static void ResetAll()
     {
-        _alive.Clear();
-        LocalInstance = null;
+        Alive.Clear();
         SawBadId = false;
     }
 
@@ -34,17 +31,14 @@ public class PooledHierarchyRespawnRoot : NetworkIdentity
         }
 
         _trackedId = id.Value;
-        _alive.Add(id.Value);
-        LocalInstance = this;
+        Alive.Add(id.Value);
     }
 
     protected override void OnDespawned()
     {
         if (_trackedId.HasValue)
-            _alive.Remove(_trackedId.Value);
-        _trackedId = null;
+            Alive.Remove(_trackedId.Value);
 
-        if (LocalInstance == this)
-            LocalInstance = null;
+        _trackedId = null;
     }
 }
