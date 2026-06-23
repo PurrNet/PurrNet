@@ -1,3 +1,10 @@
+# [1.20.0-beta.229](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.228...v1.20.0-beta.229) (2026-06-23)
+
+
+### Bug Fixes
+
+* accept server cookie and PlayerID always ([b4980cc](https://github.com/PurrNet/PurrNet/commit/b4980cc078ae3e8fef46d93e825e9b25285afc1f))
+
 # [1.20.0-beta.228](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.227...v1.20.0-beta.228) (2026-06-23)
 
 
