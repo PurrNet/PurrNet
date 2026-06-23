@@ -1,3 +1,10 @@
+# [1.20.0-beta.226](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.225...v1.20.0-beta.226) (2026-06-23)
+
+
+### Bug Fixes
+
+* syncvar force sync; more pooling behavior ([c0db18e](https://github.com/PurrNet/PurrNet/commit/c0db18ec21b38522f1d3f0fd4059fd8e0f5b9649))
+
 # [1.20.0-beta.225](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.224...v1.20.0-beta.225) (2026-06-22)
 
 
