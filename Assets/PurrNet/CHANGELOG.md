@@ -1,3 +1,10 @@
+# [1.20.0-beta.228](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.227...v1.20.0-beta.228) (2026-06-23)
+
+
+### Bug Fixes
+
+* remove redundant code in HierarchyV2.cs ([6bad369](https://github.com/PurrNet/PurrNet/commit/6bad36937154710ecd980992fb8bfb6a9a70cbdf))
+
 # [1.20.0-beta.227](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.226...v1.20.0-beta.227) (2026-06-23)
 
 
