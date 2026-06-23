@@ -1232,7 +1232,7 @@ namespace PurrNet.Modules
                     continue;
 
                 _visibility.RefreshVisibilityForGameObject(player, root.transform);
-                SendObservedRootCatchupIfNeeded(player, root);
+                ReplaceStaleObservedRootCatchupIfNeeded(player, root);
             }
 
             FlushSpawnPackets();
@@ -1251,7 +1251,7 @@ namespace PurrNet.Modules
             });
         }
 
-        private void SendObservedRootCatchupIfNeeded(PlayerID player, NetworkIdentity root)
+        private void ReplaceStaleObservedRootCatchupIfNeeded(PlayerID player, NetworkIdentity root)
         {
             if (!root || !root.id.HasValue || !root.IsObserver(player))
                 return;
@@ -1260,6 +1260,14 @@ namespace PurrNet.Modules
             if (HierarchyPool.TryGetPrototype(root.transform, player, children, out var prototype))
             {
                 if (HasPendingSpawnPacket(player, root.id.Value, prototype.framework.Count))
+                {
+                    prototype.Dispose();
+                    ListPool<NetworkIdentity>.Destroy(children);
+                    return;
+                }
+
+                // Visibility refresh owns new catchup packets; this helper only upgrades stale ones.
+                if (!HasPendingSpawnPacket(player, root.id.Value))
                 {
                     prototype.Dispose();
                     ListPool<NetworkIdentity>.Destroy(children);
@@ -1284,6 +1292,21 @@ namespace PurrNet.Modules
             {
                 var packet = batch.spawnPackets[i];
                 if (SpawnPacketContains(packet, root) && packet.prototype.framework.Count >= minimumPieceCount)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool HasPendingSpawnPacket(PlayerID player, NetworkID root)
+        {
+            if (!_spawnPackets.TryGetValue(player, out var batch))
+                return false;
+
+            for (var i = 0; i < batch.spawnPackets.Count; i++)
+            {
+                var packet = batch.spawnPackets[i];
+                if (SpawnPacketContains(packet, root))
                     return true;
             }
 
