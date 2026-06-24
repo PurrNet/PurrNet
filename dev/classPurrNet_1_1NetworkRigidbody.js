@@ -18,6 +18,7 @@ var classPurrNet_1_1NetworkRigidbody =
     [ "isInForceSyncWindow", "classPurrNet_1_1NetworkRigidbody.html#a226f1bbf7545361d763a058622319933", null ],
     [ "positionTransform", "classPurrNet_1_1NetworkRigidbody.html#af03e259ba604c57476834135fc38c69b", null ],
     [ "softParent", "classPurrNet_1_1NetworkRigidbody.html#a0e4498a0d42d8f9227cf50021750bbcc", null ],
+    [ "softParentInstance", "classPurrNet_1_1NetworkRigidbody.html#ad6ba75d29e9486f2d179e6909d7c920c", null ],
     [ "space", "classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6", null ],
     [ "velocity", "classPurrNet_1_1NetworkRigidbody.html#a991b4caed336f1e8cd3e6cb0db4ca2f2", null ],
     [ "onForceSyncWindowClosed", "classPurrNet_1_1NetworkRigidbody.html#af820fd825b17101054493054cf4f7886", null ],
