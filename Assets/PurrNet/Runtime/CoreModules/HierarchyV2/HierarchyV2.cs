@@ -1678,22 +1678,37 @@ namespace PurrNet.Modules
             if (_asServer)
             {
                 _visibility.ClearVisibilityForGameObject(gameObject.transform);
+                
                 for (var i = 0; i < c; i++)
-                    TriggerDespawnEvent(children[i]);
+                {
+                    var child = children[i];
+                    
+                    TriggerDespawnEvent(child, child.shouldBePooled);
+                }
+
                 _manager.FlushBatchedRPCs();
                 FlushSpawnPackets();
             }
             else if (!bypassBroadcast)
             {
                 for (var i = 0; i < c; i++)
-                    TriggerDespawnEvent(children[i]);
+                {
+                    var child = children[i];
+                    
+                    TriggerDespawnEvent(child, child.shouldBePooled);
+                }
+
                 _manager.FlushBatchedRPCs();
                 SendDespawnPacket(default, children[0], false);
             }
             else
             {
                 for (var i = 0; i < c; i++)
-                    TriggerDespawnEvent(children[i]);
+                {
+                    var child = children[i];
+                    
+                    TriggerDespawnEvent(child, child.shouldBePooled);
+                }
             }
 
             for (var i = 0; i < c; i++)
@@ -2192,11 +2207,11 @@ namespace PurrNet.Modules
             }
         }
 
-        private void TriggerDespawnEvent(NetworkIdentity identity)
+        private void TriggerDespawnEvent(NetworkIdentity identity, bool preserveModules = false)
         {
             if (_asServer && IsServerHost())
-                identity.TriggerDespawnEvent(false);
-            identity.TriggerDespawnEvent(_asServer);
+                identity.TriggerDespawnEvent(false, preserveModules);
+            identity.TriggerDespawnEvent(_asServer, preserveModules);
         }
 
         private void UnregisterIdentity(NetworkIdentity identity)
