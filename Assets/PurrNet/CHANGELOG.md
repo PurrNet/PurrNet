@@ -1,3 +1,11 @@
+# [1.20.0-beta.230](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.229...v1.20.0-beta.230) (2026-06-24)
+
+
+### Bug Fixes
+
+* NetworkRigidbody.cs soft parent inconsistencies and added some inspector debugging ([d992bc3](https://github.com/PurrNet/PurrNet/commit/d992bc39dafa6eb98a450daaebd1b0651f997a02))
+* undo rawTransport breaking change ([a066ff3](https://github.com/PurrNet/PurrNet/commit/a066ff3888deebd0f5d257187f20ec01580d8c44))
+
 # [1.20.0-beta.229](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.228...v1.20.0-beta.229) (2026-06-23)
 
 
