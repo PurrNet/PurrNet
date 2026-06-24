@@ -290,7 +290,7 @@ namespace PurrNet
             }
         }
 
-        public ITransport transportInterface => _transportLayer;
+        public ITransport proxyTransport => _transportLayer;
 
         private bool _ready;
 

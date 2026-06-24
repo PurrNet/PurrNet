@@ -23,7 +23,7 @@ namespace PurrNet.Modules
 
         public BroadcastModule(INetworkManager manager, bool asServer)
         {
-            _transport = manager.transportInterface;
+            _transport = manager.proxyTransport;
             _networkManager = manager;
             _asServer = asServer;
         }

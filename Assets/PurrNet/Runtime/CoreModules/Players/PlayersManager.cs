@@ -114,11 +114,11 @@ namespace PurrNet.Modules
         {
             if (!asServer)
             {
-                return _networkManager.transportInterface.GetMTU(default, channel, false);
+                return _networkManager.proxyTransport.GetMTU(default, channel, false);
             }
 
             if (_playerToConnection.TryGetValue(player, out var p))
-                return _networkManager.transportInterface.GetMTU(p, channel, true);
+                return _networkManager.proxyTransport.GetMTU(p, channel, true);
 
             return 500;
         }
