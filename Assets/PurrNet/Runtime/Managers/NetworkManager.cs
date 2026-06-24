@@ -280,7 +280,17 @@ namespace PurrNet
 
         private PurrTransportLayer _transportLayer;
 
-        public ITransport rawTransport => _transportLayer;
+        public ITransport rawTransport
+        {
+            get
+            {
+                if (_transport)
+                    return _transport.transport;
+                return null;
+            }
+        }
+
+        public ITransport transportInterface => _transportLayer;
 
         private bool _ready;
 
@@ -400,7 +410,7 @@ namespace PurrNet
         {
             get
             {
-                var state = _transportLayer == null ? ConnectionState.Disconnected : _transportLayer.listenerState;
+                var state = _transportLayer?.listenerState ?? ConnectionState.Disconnected;
                 var result = state == ConnectionState.Disconnected && _isCleaningServer
                     ? ConnectionState.Disconnecting
                     : state;
@@ -416,7 +426,7 @@ namespace PurrNet
         {
             get
             {
-                var state = _transportLayer == null ? ConnectionState.Disconnected : _transportLayer.clientState;
+                var state = _transportLayer?.clientState ?? ConnectionState.Disconnected;
                 return state == ConnectionState.Disconnected && _isCleaningClient
                     ? ConnectionState.Disconnecting
                     : state;
@@ -1370,9 +1380,9 @@ namespace PurrNet
             UnsubscribeScenePlayersModuleEvents(_clientScenePlayersModule);
             UnsubscribeScenePlayersModuleEvents(_serverScenePlayersModule);
 
-            if (_serverModules.TryGetModule(out ScenePlayersModule scenePlayersModule))
+            if (_serverModules.TryGetModule(out ScenePlayersModule scenePlayersModuleInstance))
             {
-                _serverScenePlayersModule = scenePlayersModule;
+                _serverScenePlayersModule = scenePlayersModuleInstance;
                 SubscribeScenePlayersModuleEvents(_serverScenePlayersModule);
             }
             else

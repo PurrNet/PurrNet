@@ -71,7 +71,7 @@ namespace PurrNet
 
         private PurrTransportLayer _transportLayer;
 
-        public ITransport rawTransport
+        public ITransport transportInterface
         {
             get
             {
