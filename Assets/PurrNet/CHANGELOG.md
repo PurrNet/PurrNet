@@ -1,3 +1,10 @@
+# [1.20.0-beta.231](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.230...v1.20.0-beta.231) (2026-06-24)
+
+
+### Bug Fixes
+
+* better naming for internal transport ([55b2690](https://github.com/PurrNet/PurrNet/commit/55b2690f1aaee34fbc01889ffdf345204c812c36))
+
 # [1.20.0-beta.230](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.229...v1.20.0-beta.230) (2026-06-24)
 
 
