@@ -68,6 +68,7 @@ namespace PurrNet
         public HalfVector3 linearVelocity;
         public HalfVector3 angularVelocity;
         public NetworkIdentity parent;
+        public bool isSoftParent;
     }
 
     public struct RigidbodySettingsData
@@ -734,7 +735,7 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
-            _softParent = data.isSoftParent ? data.parent : null;
+            ApplyReceivedSoftParent(data.parent, data.isSoftParent);
 
             var now = Time.unscaledTimeAsDouble;
 
@@ -747,7 +748,7 @@ namespace PurrNet
             }
 
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
-            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
+            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
             {
                 time = now,
@@ -912,6 +913,12 @@ namespace PurrNet
         /// real Unity parent (legacy behaviour). See <see cref="SetSoftParent"/>.
         /// </summary>
         public NetworkIdentity softParent => (_softParent && _softParent.isSpawned) ? _softParent : null;
+
+        /// <summary>
+        /// The assigned or received soft-parent instance, even when it is not currently spawned.
+        /// Use <see cref="softParent"/> when only the active sync parent matters.
+        /// </summary>
+        public NetworkIdentity softParentInstance => _softParent;
 
         /// <summary>
         /// Soft-parent this rigidbody to <paramref name="identity"/>: its position, rotation and
@@ -1079,18 +1086,35 @@ namespace PurrNet
             return frame == RigidbodyPositionFrame.Absolute ? wireAbs : ToD3(wirePos);
         }
 
+        private void ApplyReceivedSoftParent(NetworkIdentity parent, bool isSoftParent)
+        {
+            if (!isSoftParent)
+            {
+                _softParent = null;
+                return;
+            }
+
+            if (parent)
+                _softParent = parent;
+        }
+
         /// <summary>
         /// Resolves the parent transform for a received state. Prefers the networked
-        /// parent reference, but falls back to the local Unity parent when that
-        /// reference has not resolved yet (the parent identity can register a frame
-        /// or two after the child), so a ParentLocal payload still decodes correctly.
+        /// parent reference, but falls back to the local Unity parent only for real
+        /// Unity-parent packets. Soft-parent packets must not decode against the real
+        /// hierarchy when their soft-parent reference is unavailable.
         /// </summary>
-        private Transform ResolveParentTransform(NetworkIdentity wireParent, RigidbodyPositionFrame frame)
+        private Transform ResolveParentTransform(NetworkIdentity wireParent, RigidbodyPositionFrame frame, bool isSoftParent = false)
         {
             if (wireParent)
                 return wireParent.transform;
+
+            if (isSoftParent)
+                return _softParent ? _softParent.transform : null;
+
             if (frame == RigidbodyPositionFrame.ParentLocal)
                 return transform.parent;
+
             return null;
         }
 
@@ -1718,7 +1742,9 @@ namespace PurrNet
             _rigidbody.useGravity = settings.useGravity;
             _rigidbody.isKinematic = settings.isKinematic;
 
-            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
+            ApplyReceivedSoftParent(data.parent, data.isSoftParent);
+
+            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
 
             _rigidbody.position = ToWorldPosition(syncPos, parentTrs);
@@ -1752,7 +1778,9 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
-            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
+            ApplyReceivedSoftParent(data.parent, data.isSoftParent);
+
+            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
 
             _targetPosition = syncPos;
@@ -1826,7 +1854,9 @@ namespace PurrNet
             _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
 
-            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame);
+            ApplyReceivedSoftParent(data.parent, data.isSoftParent);
+
+            var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
 
             _rigidbody.position = ToWorldPosition(syncPos, parentTrs);
@@ -1913,7 +1943,7 @@ namespace PurrNet
 
         private void BroadcastTeleport()
         {
-            var parentIdentity = GetSyncParentIdentity();
+            var parentIdentity = GetSyncParentIdentity(out var isSoft);
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
@@ -1925,7 +1955,8 @@ namespace PurrNet
                 rotation = ReadRotation(parentTrs),
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
-                parent = parentIdentity
+                parent = parentIdentity,
+                isSoftParent = isSoft
             });
         }
 

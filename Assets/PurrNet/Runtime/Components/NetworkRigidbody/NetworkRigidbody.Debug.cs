@@ -16,12 +16,12 @@ namespace PurrNet
             if (!_debugGizmos || _rigidbody == null)
                 return;
 
-            bool isController = isSpawned && IsController(_ownerAuth);
+            bool amIController = isSpawned && IsController(_ownerAuth);
 
-            Gizmos.color = isController ? Color.green : Color.cyan;
+            Gizmos.color = amIController ? Color.green : Color.cyan;
             Gizmos.DrawWireSphere(_rigidbody.position, 0.2f);
 
-            if (!isController && isSpawned)
+            if (!amIController && isSpawned)
             {
                 Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
                 Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
@@ -91,11 +91,10 @@ namespace PurrNet
 
             screenPos.y = Screen.height - screenPos.y;
 
-            bool isController = IsController(_ownerAuth);
+            bool amIController = IsController(_ownerAuth);
             float posError = Vector3.Distance(_rigidbody.position, ToWorldPosition(_targetPosition, _targetParent));
             float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(ToWorldRotation(_targetRotation, _targetParent)));
             float velocityMagnitude = GetLinearVelocity().magnitude;
-            float angVelMagnitude = _rigidbody.angularVelocity.magnitude;
 
             double bufferSpan = 0;
             if (_bufferCount >= 2)
@@ -106,20 +105,20 @@ namespace PurrNet
             }
 
             float ratio = 0f;
-            if (!isController)
+            if (!amIController)
             {
                 float range = Mathf.Max(_correctionRange, 0.01f);
                 ratio = Mathf.Clamp01(posError / range);
             }
 
-            var syncParent = GetSyncParentIdentity();
+            var syncParentInstance = GetSyncParentIdentity();
             string frame = _softParent && _softParent.isSpawned
                 ? $"Soft->{_softParent.name}"
-                : syncParent ? $"Parent->{syncParent.name}"
+                : syncParentInstance ? $"Parent->{syncParentInstance.name}"
                 : _space == RigidbodyTransformSpace.Local ? "Local" : "World";
 
             string info = $"<b>NetworkRigidbody</b>\n" +
-                          $"Server: {isServer} | Controller: {isController}\n" +
+                          $"Server: {isServer} | Controller: {amIController}\n" +
                           $"OwnerAuth: {_ownerAuth}\n" +
                           $"Owner: {(owner.HasValue ? owner.Value.ToString() : "none")}\n" +
                           $"Frame: {frame}\n" +
@@ -128,7 +127,7 @@ namespace PurrNet
                           $"Rot Error: {rotError:F1}deg\n" +
                           $"Ratio: {ratio:F3}\n" +
                           $"Velocity: {velocityMagnitude:F2}\n" +
-                          $"Correcting: {(isController ? "-" : _lastCorrectionReason)}\n" +
+                          $"Correcting: {(amIController ? "-" : _lastCorrectionReason)}\n" +
                           $"---\n" +
                           $"Buffer: {_bufferCount}/{BUFFER_SIZE}\n" +
                           $"Sample: {_bufferSampleMode}\n" +
