@@ -247,6 +247,8 @@ namespace PurrNet
 
         Queue<Action> _onSpawnedQueue;
 
+        public bool observerSpawnStateIncluded { get; private set; }
+
         /// <summary>
         /// Returns if you can control this object.
         /// If the object has an owner, it will return if you are the owner.
@@ -1539,6 +1541,25 @@ namespace PurrNet
         }
 
         public void TriggerOnObserverAdded(PlayerID target, bool isSpawner)
+        {
+            TriggerOnObserverAdded(target, isSpawner, false);
+        }
+
+        public void TriggerOnObserverAdded(PlayerID target, bool isSpawner, bool spawnStateIncluded)
+        {
+            observerSpawnStateIncluded = spawnStateIncluded;
+
+            try
+            {
+                TriggerOnObserverAddedInternal(target, isSpawner);
+            }
+            finally
+            {
+                observerSpawnStateIncluded = false;
+            }
+        }
+
+        private void TriggerOnObserverAddedInternal(PlayerID target, bool isSpawner)
         {
             try
             {

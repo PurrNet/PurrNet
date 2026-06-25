@@ -136,6 +136,9 @@ namespace PurrNet
 
         public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
+            if (observerSpawnStateIncluded)
+                return;
+
             if (isSpawner && ownerAuth && owner == player)
                 return;
 
@@ -155,6 +158,23 @@ namespace PurrNet
         public override void OnSpawn()
         {
             InvalidateIsController();
+        }
+
+        public override void OnSerialize(BitPacker packer)
+        {
+            Packer<T>.Write(packer, _value);
+        }
+
+        public override void OnDeserialize(BitPacker packer)
+        {
+            var oldValue = _value;
+            var newValue = default(T);
+            Packer<T>.Read(packer, ref newValue);
+
+            if (!Packer.Transform(ref _value, newValue))
+                return;
+
+            TriggerEvents(oldValue);
         }
 
         private void InvalidateIsController()

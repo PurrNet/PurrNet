@@ -45,6 +45,8 @@ namespace PurrNet
 
         public bool isController => parent && parent.isController;
 
+        public bool observerSpawnStateIncluded => parent && parent.observerSpawnStateIncluded;
+
         [UsedImplicitly]
         public bool IsController(bool ownerHasAuthority) => parent && parent.IsController(ownerHasAuthority);
 

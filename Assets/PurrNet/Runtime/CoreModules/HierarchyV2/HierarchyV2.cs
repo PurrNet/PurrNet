@@ -726,7 +726,7 @@ namespace PurrNet.Modules
                                 if (!nid.IsObserver(spawner)) continue;
                                 onObserverAdded?.Invoke(spawner, nid);
                                 nid.TriggerOnPreObserverAdded(spawner, true);
-                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
+                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true, spawnStateIncluded = true });
                             }
 
                             var lastNid = list[count - 1];
@@ -776,7 +776,7 @@ namespace PurrNet.Modules
                 var entry = _triggerLateObserverAdded[i];
                 if (!ListContainsNid(list, entry.nid)) continue;
                 if (!entry.nid || !entry.nid.isSpawned) continue;
-                entry.nid.TriggerOnObserverAdded(entry.player, entry.isSpawner);
+                entry.nid.TriggerOnObserverAdded(entry.player, entry.isSpawner, entry.spawnStateIncluded);
                 onLateObserverAdded?.Invoke(entry.player, entry.nid);
             }
             for (int i = _triggerLateObserverAdded.Count - 1; i >= 0; i--)
@@ -829,7 +829,7 @@ namespace PurrNet.Modules
                             if (!nid.IsObserver(spawner)) continue;
                             onObserverAdded?.Invoke(spawner, nid);
                             nid.TriggerOnPreObserverAdded(spawner, true);
-                            _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
+                            _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true, spawnStateIncluded = true });
                         }
 
                         var lastNid = list[count - 1];
@@ -1311,6 +1311,7 @@ namespace PurrNet.Modules
             public PlayerID player;
             public NetworkIdentity nid;
             public bool isSpawner;
+            public bool spawnStateIncluded;
         }
 
         private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
@@ -1332,7 +1333,8 @@ namespace PurrNet.Modules
                 var children = ListPool<NetworkIdentity>.Instantiate();
                 if (HierarchyPool.TryGetPrototype(scope, player, children, out var prototype))
                 {
-                    if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
+                    var sentSpawnPacket = _scenePlayers.IsPlayerLoadedInScene(player, _sceneId);
+                    if (sentSpawnPacket)
                     {
                         SendSpawnPacket(player, prototype, children, true);
                     }
@@ -1342,7 +1344,7 @@ namespace PurrNet.Modules
                         var nid = children[i];
                         onObserverAdded?.Invoke(player, nid);
                         nid.TriggerOnPreObserverAdded(player, false);
-                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false });
+                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false, spawnStateIncluded = sentSpawnPacket });
                     }
                 }
                 else PurrLogger.LogError($"Failed to get prototype for '{scope.name}'.", scope);
@@ -1859,7 +1861,7 @@ namespace PurrNet.Modules
                 if (!nid.nid || !nid.nid.isSpawned)
                     continue;
 
-                nid.nid.TriggerOnObserverAdded(nid.player, nid.isSpawner);
+                nid.nid.TriggerOnObserverAdded(nid.player, nid.isSpawner, nid.spawnStateIncluded);
                 onLateObserverAdded?.Invoke(nid.player, nid.nid);
             }
 
@@ -1912,7 +1914,7 @@ namespace PurrNet.Modules
                 {
                     onObserverAdded?.Invoke(playerId, identity);
                     identity.TriggerOnPreObserverAdded(playerId, false);
-                    _triggerLateObserverAdded.Add(new PlayerNid { player = playerId, nid = identity, isSpawner = false });
+                    _triggerLateObserverAdded.Add(new PlayerNid { player = playerId, nid = identity, isSpawner = false, spawnStateIncluded = false });
                 }
 
                 identity.TriggerSpawnEvent(false);
