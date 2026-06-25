@@ -726,7 +726,7 @@ namespace PurrNet.Modules
                                 if (!nid.IsObserver(spawner)) continue;
                                 onObserverAdded?.Invoke(spawner, nid);
                                 nid.TriggerOnPreObserverAdded(spawner, true);
-                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true, spawnStateIncluded = true });
+                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true, spawnStateIncluded = false });
                             }
 
                             var lastNid = list[count - 1];
@@ -829,7 +829,7 @@ namespace PurrNet.Modules
                             if (!nid.IsObserver(spawner)) continue;
                             onObserverAdded?.Invoke(spawner, nid);
                             nid.TriggerOnPreObserverAdded(spawner, true);
-                            _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true, spawnStateIncluded = true });
+                            _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true, spawnStateIncluded = false });
                         }
 
                         var lastNid = list[count - 1];
@@ -1344,7 +1344,7 @@ namespace PurrNet.Modules
                         var nid = children[i];
                         onObserverAdded?.Invoke(player, nid);
                         nid.TriggerOnPreObserverAdded(player, false);
-                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false, spawnStateIncluded = sentSpawnPacket });
+                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false, spawnStateIncluded = false });
                     }
                 }
                 else PurrLogger.LogError($"Failed to get prototype for '{scope.name}'.", scope);
