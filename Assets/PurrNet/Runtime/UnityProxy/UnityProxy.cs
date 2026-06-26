@@ -254,7 +254,7 @@ namespace PurrNet
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original));
         }
 
-#if UNITY_6000_0_35
+#if UNITY_6000_0_OR_NEWER
         [UsedByIL]
         public static T Instantiate<T>(T original, InstantiateParameters parameters) where T : Object
         {

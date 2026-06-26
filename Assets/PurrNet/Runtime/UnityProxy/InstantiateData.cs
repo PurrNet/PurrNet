@@ -30,7 +30,7 @@ namespace PurrNet
         public readonly Scene scene;
         public readonly bool instantiateInWorldSpace;
 
-#if UNITY_6000_0_35
+#if UNITY_6000_0_OR_NEWER
         public readonly InstantiateParameters parameters;
 #endif
 
@@ -107,7 +107,7 @@ namespace PurrNet
             instantiateInWorldSpace = false;
         }
 
-#if UNITY_6000_0_35
+#if UNITY_6000_0_OR_NEWER
         public InstantiateData(T original, InstantiateParameters parameters)
         {
             type = InstantiateType.Parameters;
@@ -197,7 +197,7 @@ namespace PurrNet
 #if UNITY_2023_1_OR_NEWER
                 InstantiateType.Scene => UnityProxy.InstantiateDirectly(original, scene),
 #endif
-#if UNITY_6000_0_35
+#if UNITY_6000_0_OR_NEWER
                 InstantiateType.Parameters => UnityProxy.InstantiateDirectly(original, parameters),
                 InstantiateType.ParametersWithPosRot => UnityProxy.InstantiateDirectly(original, position, rotation, parameters),
 #endif
@@ -246,7 +246,7 @@ namespace PurrNet
                     break;
                 case InstantiateType.Parameters:
                 case InstantiateType.ParametersWithPosRot:
-#if UNITY_6000_0_35
+#if UNITY_6000_0_OR_NEWER
                     bool usePosRot = type == InstantiateType.ParametersWithPosRot;
 
                     if (parameters.worldSpace)
