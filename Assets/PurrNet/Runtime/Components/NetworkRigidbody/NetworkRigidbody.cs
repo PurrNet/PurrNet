@@ -200,6 +200,11 @@ namespace PurrNet
         /// </summary>
         public static INetworkRigidbodyPositionTransform defaultPositionTransform { get; set; }
 
+        /// <summary>
+        /// Fired after this rigidbody applies a hard position correction teleport.
+        /// </summary>
+        public event Action<RigidbodyCorrectionContext> onTeleportCorrection;
+
         private INetworkRigidbodyPositionTransform _positionTransform;
         private bool _positionTransformExplicit;
 
@@ -572,15 +577,16 @@ namespace PurrNet
 
             EnsureSettingsInstance();
 
+            var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, rotationError);
+
             if (_settingsInstance != null)
             {
-                var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, rotationError);
-
                 if (_settingsInstance.ShouldTeleport(in ctx))
                 {
                     _lastCorrectionReason = "Hard (Distance)";
                     _settingsInstance.ApplyHardCorrection(in ctx);
                     _settingsInstance.OnReset(in ctx);
+                    onTeleportCorrection?.Invoke(ctx);
                     return;
                 }
 
@@ -616,6 +622,7 @@ namespace PurrNet
                 {
                     _lastCorrectionReason = "Hard (Distance)";
                     HardCorrect(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel);
+                    onTeleportCorrection?.Invoke(ctx);
                     return;
                 }
 
@@ -689,9 +696,34 @@ namespace PurrNet
 
         private RigidbodyCorrectionContext BuildCorrectionContext(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel, float positionError, float rotationError)
         {
+            return BuildCorrectionContext(
+                worldTargetPos,
+                worldTargetRot,
+                worldTargetLinVel,
+                worldTargetAngVel,
+                positionError,
+                rotationError,
+                _rigidbody.position,
+                _rigidbody.rotation
+            );
+        }
+
+        private RigidbodyCorrectionContext BuildCorrectionContext(
+            Vector3 worldTargetPos,
+            Quaternion worldTargetRot,
+            Vector3 worldTargetLinVel,
+            Vector3 worldTargetAngVel,
+            float positionError,
+            float rotationError,
+            Vector3 previousPosition,
+            Quaternion previousRotation
+        )
+        {
             return new RigidbodyCorrectionContext
             {
                 rigidbody = _rigidbody,
+                previousPosition = previousPosition,
+                previousRotation = previousRotation,
                 targetPosition = worldTargetPos,
                 targetRotation = worldTargetRot,
                 targetLinearVelocity = worldTargetLinVel,
@@ -1851,6 +1883,9 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
+            var previousPosition = _rigidbody.position;
+            var previousRotation = _rigidbody.rotation;
+
             _lastCorrectionReason = "Teleport";
             _hasPendingTeleport = true;
 
@@ -1879,7 +1914,16 @@ namespace PurrNet
                 Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
                 Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent);
                 Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
-                var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, 0f, 0f);
+                var ctx = BuildCorrectionContext(
+                    worldTargetPos,
+                    worldTargetRot,
+                    worldTargetLinVel,
+                    worldTargetAngVel,
+                    0f,
+                    0f,
+                    previousPosition,
+                    previousRotation
+                );
                 _settingsInstance.OnReset(in ctx);
             }
         }

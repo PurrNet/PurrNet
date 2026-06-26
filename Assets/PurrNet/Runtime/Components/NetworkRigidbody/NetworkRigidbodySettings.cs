@@ -6,6 +6,8 @@ namespace PurrNet
     public struct RigidbodyCorrectionContext
     {
         public Rigidbody rigidbody;
+        public Vector3 previousPosition;
+        public Quaternion previousRotation;
         public Vector3 targetPosition;
         public Quaternion targetRotation;
         public Vector3 targetLinearVelocity;
