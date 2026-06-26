@@ -2622,6 +2622,7 @@ GameObject:
   - component: {fileID: 2027560129}
   - component: {fileID: 2027560128}
   - component: {fileID: 2027560130}
+  - component: {fileID: 2027560131}
   m_Layer: 0
   m_Name: SyncTypes
   m_TagString: Untagged
@@ -2770,6 +2771,24 @@ MonoBehaviour:
   _readyTimeoutSeconds: 30
   _stateTimeoutSeconds: 30
   _doneTimeoutSeconds: 30
+--- !u!114 &2027560131
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027560121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c4f61e4a9b848a4b5a2d91e7630c6f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncCollectionsObserverReaddScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _observerTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _propagationDelaySeconds: 0.5
 --- !u!1 &2071908759
 GameObject:
   m_ObjectHideFlags: 0
