@@ -96,7 +96,7 @@ namespace PurrNet
 
         public override void OnObserverAdded(PlayerID player)
         {
-            HandleInitialStateTarget(player, _serializedSet.ToHashSet());
+            HandleInitialStateTarget(player, _set);
         }
 
         [TargetRpc(Channel.ReliableOrdered)]
