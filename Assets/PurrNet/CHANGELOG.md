@@ -1,3 +1,10 @@
+# [1.20.0-beta.232](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.231...v1.20.0-beta.232) (2026-06-26)
+
+
+### Bug Fixes
+
+* introduce onTeleportCorrection event to NetworkRigidbody.cs ([7bb6457](https://github.com/PurrNet/PurrNet/commit/7bb645752c1d2753c7df830cdfc77f204559b2be))
+
 # [1.20.0-beta.231](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.230...v1.20.0-beta.231) (2026-06-24)
 
 
