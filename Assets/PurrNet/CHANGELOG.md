@@ -1,3 +1,10 @@
+# [1.20.0-beta.233](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.232...v1.20.0-beta.233) (2026-06-26)
+
+
+### Bug Fixes
+
+* make sure GameObjectPrototype doesn't fail with disposed list ([3ab5832](https://github.com/PurrNet/PurrNet/commit/3ab5832c340aba402b2b9c4106704f5078919b4d))
+
 # [1.20.0-beta.232](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.231...v1.20.0-beta.232) (2026-06-26)
 
 
