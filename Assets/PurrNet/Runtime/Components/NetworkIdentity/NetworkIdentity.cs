@@ -1333,7 +1333,7 @@ namespace PurrNet
             }
         }
 
-        internal void TriggerDespawnEvent(bool asServer)
+        internal void TriggerDespawnEvent(bool asServer, bool preserveModules = false)
         {
             if (!IsSpawned(asServer)) return;
 
@@ -1393,7 +1393,7 @@ namespace PurrNet
 
             RecacheHasConnectedOwner();
 
-            if (_spawnedCount == 0)
+            if (_spawnedCount == 0 && !preserveModules)
             {
                 _externalModulesView.Clear();
                 _modules.Clear();
