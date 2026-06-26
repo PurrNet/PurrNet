@@ -1,3 +1,10 @@
+# [1.20.0-beta.235](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.234...v1.20.0-beta.235) (2026-06-26)
+
+
+### Bug Fixes
+
+* Instantiate with InstantiateParameters ([20b8c9d](https://github.com/PurrNet/PurrNet/commit/20b8c9dc557d1d525d54d9e97bd3c4ea4f956281))
+
 # [1.20.0-beta.234](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.233...v1.20.0-beta.234) (2026-06-26)
 
 
