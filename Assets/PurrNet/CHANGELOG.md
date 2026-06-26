@@ -1,3 +1,10 @@
+# [1.20.0-beta.234](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.233...v1.20.0-beta.234) (2026-06-26)
+
+
+### Bug Fixes
+
+* synchashset initial state ([c129afa](https://github.com/PurrNet/PurrNet/commit/c129afa6501425110db95de64026773309e5790e))
+
 # [1.20.0-beta.233](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.232...v1.20.0-beta.233) (2026-06-26)
 
 
