@@ -71,15 +71,23 @@ namespace PurrNet.Modules
         public override string ToString()
         {
             StringBuilder builder = new();
-            builder.Append($"GameObjectPrototype: {{\n    ");
-            for (int i = 0; i < framework.Count; i++)
+
+            if (framework.isDisposed)
             {
-                builder.Append(framework[i]);
-                if (i < framework.Count - 1)
-                    builder.Append("\n    ");
+                builder.Append($"GameObjectPrototype: DISPOSED\n");
+            }
+            else
+            {
+                builder.Append($"GameObjectPrototype: {{\n    ");
+                for (int i = 0; i < framework.Count; i++)
+                {
+                    builder.Append(framework[i]);
+                    if (i < framework.Count - 1)
+                        builder.Append("\n    ");
+                }
+                builder.Append("\n}");
             }
 
-            builder.Append("\n}");
             return builder.ToString();
         }
     }
