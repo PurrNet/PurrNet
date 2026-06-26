@@ -22,5 +22,6 @@ var classPurrNet_1_1NetworkRigidbody =
     [ "space", "classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6", null ],
     [ "velocity", "classPurrNet_1_1NetworkRigidbody.html#a991b4caed336f1e8cd3e6cb0db4ca2f2", null ],
     [ "onForceSyncWindowClosed", "classPurrNet_1_1NetworkRigidbody.html#af820fd825b17101054493054cf4f7886", null ],
-    [ "onForceSyncWindowOpened", "classPurrNet_1_1NetworkRigidbody.html#af6e51e3ec60610c656da3786e147b5e6", null ]
+    [ "onForceSyncWindowOpened", "classPurrNet_1_1NetworkRigidbody.html#af6e51e3ec60610c656da3786e147b5e6", null ],
+    [ "onTeleportCorrection", "classPurrNet_1_1NetworkRigidbody.html#ae0c821ee8156bdae2e8e3679c9827aa8", null ]
 ];

@@ -25,7 +25,7 @@ var searchData=
   ['onparentchanged_22',['onParentChanged',['../classPurrNet_1_1NetworkIdentity.html#a4033fcf94e189d7cb751bca972838cf3',1,'PurrNet::NetworkIdentity']]],
   ['onpipedatareceived_23',['onPipeDataReceived',['../classPurrNet_1_1Transports_1_1PurrTransport.html#adb6bca90a8777ce2400c79305c628e22',1,'PurrNet::Transports::PurrTransport']]],
   ['onplayerjoined_24',['onPlayerJoined',['../classPurrNet_1_1Modules_1_1PlayersManager.html#a2baaeedd585300a5f112e1e8f9651aed',1,'PurrNet.Modules.PlayersManager.onPlayerJoined()'],['../classPurrNet_1_1NetworkManager.html#ab25c029116ae4cb8c2cb449c3153b725',1,'PurrNet.NetworkManager.onPlayerJoined()']]],
-  ['onplayerjoinedscene_25',['onPlayerJoinedScene',['../classPurrNet_1_1NetworkManager.html#ac0cae6a2d6ecc8d177aaa415986c8e21',1,'PurrNet.NetworkManager.onPlayerJoinedScene()'],['../classPurrNet_1_1Modules_1_1ScenePlayersModule.html#aafd1717406ac9604592282f5a2c414c0',1,'PurrNet.Modules.ScenePlayersModule.onPlayerJoinedScene()']]],
+  ['onplayerjoinedscene_25',['onPlayerJoinedScene',['../classPurrNet_1_1Modules_1_1ScenePlayersModule.html#aafd1717406ac9604592282f5a2c414c0',1,'PurrNet.Modules.ScenePlayersModule.onPlayerJoinedScene()'],['../classPurrNet_1_1NetworkManager.html#ac0cae6a2d6ecc8d177aaa415986c8e21',1,'PurrNet.NetworkManager.onPlayerJoinedScene()']]],
   ['onplayerleft_26',['onPlayerLeft',['../classPurrNet_1_1Modules_1_1PlayersManager.html#ab0ef3d50f787b027afe693102afb977a',1,'PurrNet.Modules.PlayersManager.onPlayerLeft()'],['../classPurrNet_1_1NetworkManager.html#affcd6e74d8a9b29362ea22b84ffbb4d1',1,'PurrNet.NetworkManager.onPlayerLeft()']]],
   ['onplayerleftscene_27',['onPlayerLeftScene',['../classPurrNet_1_1NetworkManager.html#ab53dc4f390ac43fcd52db1d21d0a6fc2',1,'PurrNet::NetworkManager']]],
   ['onplayerloadedscene_28',['onPlayerLoadedScene',['../classPurrNet_1_1Modules_1_1ScenePlayersModule.html#ae67e83c3729fd43b647ce12fba8ad07d',1,'PurrNet.Modules.ScenePlayersModule.onPlayerLoadedScene()'],['../classPurrNet_1_1NetworkManager.html#a8a86454c06df8f0b82de4fdca160b3e7',1,'PurrNet.NetworkManager.onPlayerLoadedScene()']]],
@@ -52,5 +52,6 @@ var searchData=
   ['onsentspawnpacket_49',['onSentSpawnPacket',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a5bda74504738830db639bbdd49719ad3',1,'PurrNet::Modules::HierarchyV2']]],
   ['onserverconnectionstate_50',['onServerConnectionState',['../classPurrNet_1_1NetworkManager.html#a0e62d84e9e2449d99bc40682eea5cddd',1,'PurrNet::NetworkManager']]],
   ['onstatechanged_51',['onStateChanged',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a28eaafe981139912f35f3b793cf37f88',1,'PurrNet::StateMachine::StateMachine']]],
-  ['ontick_52',['onTick',['../classPurrNet_1_1NetworkManager.html#a8c50f5ebe1ad6ceeceadc5f61f1e57cf',1,'PurrNet.NetworkManager.onTick()'],['../classPurrNet_1_1RawNetManager.html#a247da9c872462fdc0922e7454cad52d3',1,'PurrNet.RawNetManager.onTick()']]]
+  ['onteleportcorrection_52',['onTeleportCorrection',['../classPurrNet_1_1NetworkRigidbody.html#ae0c821ee8156bdae2e8e3679c9827aa8',1,'PurrNet::NetworkRigidbody']]],
+  ['ontick_53',['onTick',['../classPurrNet_1_1NetworkManager.html#a8c50f5ebe1ad6ceeceadc5f61f1e57cf',1,'PurrNet.NetworkManager.onTick()'],['../classPurrNet_1_1RawNetManager.html#a247da9c872462fdc0922e7454cad52d3',1,'PurrNet.RawNetManager.onTick()']]]
 ];
