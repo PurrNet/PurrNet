@@ -69,9 +69,9 @@ namespace PurrNet
         private bool _isCleaningClient;
         private bool _isCleaningServer;
 
-        private PurrTransportLayer _transportLayer;
+        private ITransport _transportLayer;
 
-        public ITransport proxyTransport
+        public ITransport rawTransport
         {
             get
             {
@@ -83,7 +83,11 @@ namespace PurrNet
         private void EnsureTransportLayer()
         {
             if (_transportLayer == null && _transport)
-                _transportLayer = new PurrTransportLayer(_transport.transport);
+            {
+                _transportLayer = _transport.transport;
+                if (_transportLayer == null)
+                    throw new InvalidOperationException(PurrLogger.FormatMessage("Transport is not set (null)."));
+            }
         }
 
         /// <summary>
@@ -182,11 +186,7 @@ namespace PurrNet
 
         private void OnDestroy()
         {
-            if (_transportLayer != null)
-            {
-                _transportLayer.Dispose();
-                _transportLayer = null;
-            }
+            _transportLayer = null;
         }
 
         private void Start()

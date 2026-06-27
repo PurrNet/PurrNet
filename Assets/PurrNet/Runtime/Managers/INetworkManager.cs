@@ -11,7 +11,7 @@ namespace PurrNet
 
         bool isClient { get; }
 
-        ITransport proxyTransport { get; }
+        ITransport rawTransport { get; }
 
         MTUExceededBehaviour mtuExceededBehaviour { get; }
 

@@ -278,7 +278,7 @@ namespace PurrNet
         /// </summary>
         public event Action<Connection, DenialKind, ByteData?> onAuthenticationDenied;
 
-        private PurrTransportLayer _transportLayer;
+        private ITransport _transportLayer;
 
         public ITransport rawTransport
         {
@@ -289,8 +289,6 @@ namespace PurrNet
                 return null;
             }
         }
-
-        public ITransport proxyTransport => _transportLayer;
 
         private bool _ready;
 
@@ -368,7 +366,10 @@ namespace PurrNet
 
         private void BuildTransportLayer()
         {
-            _transportLayer = new PurrTransportLayer(_transport.transport);
+            _transportLayer = _transport.transport;
+            if (_transportLayer == null)
+                throw new InvalidOperationException(PurrLogger.FormatMessage("Transport is not set (null)."));
+
             _transportLayer.onConnected += OnNewConnection;
             _transportLayer.onDisconnected += OnLostConnection;
             _transportLayer.onConnectionState += OnConnectionState;
@@ -384,7 +385,6 @@ namespace PurrNet
             _transportLayer.onDisconnected -= OnLostConnection;
             _transportLayer.onConnectionState -= OnConnectionState;
             _transportLayer.onDataReceived -= OnDataReceived;
-            _transportLayer.Dispose();
             _transportLayer = null;
         }
 

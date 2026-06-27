@@ -186,7 +186,7 @@ namespace PurrNet
             {
                 _networkManager.onServerConnectionState -= OnServerConnectionState;
                 _networkManager.onClientConnectionState -= OnClientConnectionState;
-                var rt = _networkManager.proxyTransport;
+                var rt = _networkManager.rawTransport;
                 if (rt != null)
                 {
                     rt.onDataReceived -= OnDataReceived;
@@ -429,7 +429,7 @@ namespace PurrNet
                     _playersServerBroadcaster.Unsubscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Unsubscribe<PacketMessage>(ReceivePacket);
                     _playersServerBroadcaster = null;
-                    var rt = _networkManager.proxyTransport;
+                    var rt = _networkManager.rawTransport;
                     if (rt != null)
                     {
                         rt.onDataReceived -= OnDataReceived;
@@ -441,8 +441,8 @@ namespace PurrNet
                     _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
                     _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
-                    _networkManager.proxyTransport.onDataReceived += OnDataReceived;
-                    _networkManager.proxyTransport.onDataSent += OnDataSent;
+                    _networkManager.rawTransport.onDataReceived += OnDataReceived;
+                    _networkManager.rawTransport.onDataSent += OnDataSent;
                     ServerSubscribe_ServerStats();
                     break;
                 case ConnectionState.Connecting:
@@ -468,7 +468,7 @@ namespace PurrNet
                 _tickManager.onTick -= OnClientTick;
                 if (!connectedServer)
                 {
-                    var rt = _networkManager.proxyTransport;
+                    var rt = _networkManager.rawTransport;
                     if (rt != null)
                     {
                         rt.onDataReceived -= OnDataReceived;
@@ -487,8 +487,8 @@ namespace PurrNet
 
             if (!connectedServer)
             {
-                _networkManager.proxyTransport.onDataReceived += OnDataReceived;
-                _networkManager.proxyTransport.onDataSent += OnDataSent;
+                _networkManager.rawTransport.onDataReceived += OnDataReceived;
+                _networkManager.rawTransport.onDataSent += OnDataSent;
             }
 
             if (_tickManager.tickRate < _packetsToSendPerSec)

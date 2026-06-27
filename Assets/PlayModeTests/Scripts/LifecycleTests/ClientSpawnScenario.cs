@@ -126,9 +126,8 @@ public class ClientSpawnScenario : Scenario
 
         // Give a beat for OnOwnerChanged + OnObserverAdded to land after OnSpawned. OnObserverAdded
         // fires server-side only, so a pure-client peer waits on the owner-change record alone.
-        // Host has both perspectives in one process, and reliable host-loopback is now deferred by
-        // a tick (PurrTransportLayer), so the server-side record arrives first and the client-side
-        // record on the next ReceiveMessages drain — wait for both before validating.
+        // Host has both perspectives in one process, so server-side and client-side records can
+        // land across adjacent receive drains. Wait for both before validating.
         int expectedOwnerChanges = ctx.isServer && ctx.isClient ? 2 : 1;
         try
         {
