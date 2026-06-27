@@ -79,8 +79,7 @@ var searchData=
   ['purrsceneinfo_76',['PurrSceneInfo',['../classPurrNet_1_1PurrSceneInfo.html',1,'PurrNet']]],
   ['purrscenesettings_77',['PurrSceneSettings',['../structPurrNet_1_1Modules_1_1PurrSceneSettings.html',1,'PurrNet::Modules']]],
   ['purrtransport_78',['PurrTransport',['../classPurrNet_1_1Transports_1_1PurrTransport.html',1,'PurrNet::Transports']]],
-  ['purrtransportlayer_79',['PurrTransportLayer',['../classPurrNet_1_1Transports_1_1PurrTransportLayer.html',1,'PurrNet::Transports']]],
-  ['statemachine_80',['StateMachine',['../namespacePurrNet_1_1StateMachine.html',1,'PurrNet']]],
-  ['transports_81',['Transports',['../namespacePurrNet_1_1Transports.html',1,'PurrNet']]],
-  ['utils_82',['Utils',['../namespacePurrNet_1_1Utils.html',1,'PurrNet']]]
+  ['statemachine_79',['StateMachine',['../namespacePurrNet_1_1StateMachine.html',1,'PurrNet']]],
+  ['transports_80',['Transports',['../namespacePurrNet_1_1Transports.html',1,'PurrNet']]],
+  ['utils_81',['Utils',['../namespacePurrNet_1_1Utils.html',1,'PurrNet']]]
 ];

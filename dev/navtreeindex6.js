@@ -1,11 +1,5 @@
 var NAVTREEINDEX6 =
 {
-"interfacePurrNet_1_1StateMachine_1_1IStateCommand.html":[0,0,0,8,0],
-"interfacePurrNet_1_1Transports_1_1IConnectable.html":[1,0,0,9,8],
-"interfacePurrNet_1_1Transports_1_1IConnectable.html":[0,0,0,9,8],
-"interfacePurrNet_1_1Transports_1_1IListener.html":[1,0,0,9,9],
-"interfacePurrNet_1_1Transports_1_1IListener.html":[0,0,0,9,9],
-"interfacePurrNet_1_1Transports_1_1ITransport.html":[1,0,0,9,10],
 "interfacePurrNet_1_1Transports_1_1ITransport.html":[0,0,0,9,10],
 "namespacePurrNet.html":[0,0,0],
 "namespacePurrNet.html#a632ad9e97daa2680bc840e36e5ddda74":[0,0,0,182],
@@ -23,7 +17,7 @@ var NAVTREEINDEX6 =
 "namespacePurrNet_1_1Profiler.html":[0,0,0,7],
 "namespacePurrNet_1_1StateMachine.html":[0,0,0,8],
 "namespacePurrNet_1_1Transports.html":[0,0,0,9],
-"namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701":[0,0,0,9,20],
+"namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701":[0,0,0,9,19],
 "namespacePurrNet_1_1Utils.html":[0,0,0,10],
 "namespacemembers.html":[0,1,0],
 "namespacemembers_enum.html":[0,1,1],
@@ -249,5 +243,11 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1Packing_1_1HalfVector2.html":[1,0,0,5,15],
 "structPurrNet_1_1Packing_1_1HalfVector3.html":[0,0,0,5,16],
 "structPurrNet_1_1Packing_1_1HalfVector3.html":[1,0,0,5,16],
-"structPurrNet_1_1Packing_1_1HalfVector4.html":[1,0,0,5,17]
+"structPurrNet_1_1Packing_1_1HalfVector4.html":[1,0,0,5,17],
+"structPurrNet_1_1Packing_1_1HalfVector4.html":[0,0,0,5,17],
+"structPurrNet_1_1Packing_1_1NormalizedFloat.html":[0,0,0,5,26],
+"structPurrNet_1_1Packing_1_1NormalizedFloat.html":[1,0,0,5,26],
+"structPurrNet_1_1Packing_1_1PackedByte.html":[0,0,0,5,27],
+"structPurrNet_1_1Packing_1_1PackedByte.html":[1,0,0,5,27],
+"structPurrNet_1_1Packing_1_1PackedInt.html":[0,0,0,5,28]
 };

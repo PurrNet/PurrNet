@@ -38,6 +38,5 @@ var searchData=
   ['purrsceneattribute_35',['PurrSceneAttribute',['../classPurrNet_1_1PurrSceneAttribute.html',1,'PurrNet']]],
   ['purrsceneinfo_36',['PurrSceneInfo',['../classPurrNet_1_1PurrSceneInfo.html',1,'PurrNet']]],
   ['purrscenesettings_37',['PurrSceneSettings',['../structPurrNet_1_1Modules_1_1PurrSceneSettings.html',1,'PurrNet::Modules']]],
-  ['purrtransport_38',['PurrTransport',['../classPurrNet_1_1Transports_1_1PurrTransport.html',1,'PurrNet::Transports']]],
-  ['purrtransportlayer_39',['PurrTransportLayer',['../classPurrNet_1_1Transports_1_1PurrTransportLayer.html',1,'PurrNet::Transports']]]
+  ['purrtransport_38',['PurrTransport',['../classPurrNet_1_1Transports_1_1PurrTransport.html',1,'PurrNet::Transports']]]
 ];
