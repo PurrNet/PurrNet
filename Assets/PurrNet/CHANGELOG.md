@@ -1,3 +1,10 @@
+# [1.20.0-beta.236](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.235...v1.20.0-beta.236) (2026-06-27)
+
+
+### Bug Fixes
+
+* remove proxy transport layer for now ([ebaac4b](https://github.com/PurrNet/PurrNet/commit/ebaac4bb07064801e2d2a04c548c778235b1f124))
+
 # [1.20.0-beta.235](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.234...v1.20.0-beta.235) (2026-06-26)
 
 
