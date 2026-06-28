@@ -35,6 +35,8 @@ var classPurrNet_1_1NetworkIdentity =
     [ "SetVisibilityRules", "classPurrNet_1_1NetworkIdentity.html#ab9226d91e2d52222882668e2ba3cace2", null ],
     [ "ShouldSendLODToPlayer", "classPurrNet_1_1NetworkIdentity.html#acd5e3a7b6c7671953683e0b8bf88e9d8", null ],
     [ "Spawn", "classPurrNet_1_1NetworkIdentity.html#a6cbd9682b4d1f0f9a18b4d6ecffc27e6", null ],
+    [ "TriggerOnDeserialize", "classPurrNet_1_1NetworkIdentity.html#a33948ae1c35a309c5bfda23c1943486a", null ],
+    [ "TriggerOnSerialize", "classPurrNet_1_1NetworkIdentity.html#a5e0060ea1e4e99022a7a2913a61def80", null ],
     [ "blacklist", "classPurrNet_1_1NetworkIdentity.html#a1fbc33d0cc20898ca64304db209f4106", null ],
     [ "hasConnectedOwner", "classPurrNet_1_1NetworkIdentity.html#a844e2d660b4b912092a2b73c0803e8b2", null ],
     [ "id", "classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b", null ],

@@ -205,6 +205,12 @@ GameObject&#160;</td><td class="memItemRight" valign="bottom"><b>Duplicate</b> (
 <tr class="memitem:a14dde094ebd386c9a661f59db0f9779a"><td class="memItemLeft" align="right" valign="top"><a id="a14dde094ebd386c9a661f59db0f9779a" name="a14dde094ebd386c9a661f59db0f9779a"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsSpawned</b> (bool asServer)</td></tr>
 <tr class="separator:a14dde094ebd386c9a661f59db0f9779a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5e0060ea1e4e99022a7a2913a61def80"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a5e0060ea1e4e99022a7a2913a61def80">TriggerOnSerialize</a> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memdesc:a5e0060ea1e4e99022a7a2913a61def80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invokes custom spawn serialization on all external modules and then this identity. This is used internally for spawn packets and can be used by manual spawn flows that need the same data pipeline.   <a href="classPurrNet_1_1NetworkIdentity.html#a5e0060ea1e4e99022a7a2913a61def80">More...</a><br /></td></tr>
+<tr class="separator:a5e0060ea1e4e99022a7a2913a61def80"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a33948ae1c35a309c5bfda23c1943486a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a33948ae1c35a309c5bfda23c1943486a">TriggerOnDeserialize</a> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memdesc:a33948ae1c35a309c5bfda23c1943486a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invokes custom spawn deserialization on all external modules and then this identity. Manual spawn flows should call this after identity setup and before early-spawn if they need spawn-packet ordering.   <a href="classPurrNet_1_1NetworkIdentity.html#a33948ae1c35a309c5bfda23c1943486a">More...</a><br /></td></tr>
+<tr class="separator:a33948ae1c35a309c5bfda23c1943486a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a3245425f3960807888182357065557"><td class="memItemLeft" align="right" valign="top"><a id="a7a3245425f3960807888182357065557" name="a7a3245425f3960807888182357065557"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Despawn</b> ()</td></tr>
 <tr class="separator:a7a3245425f3960807888182357065557"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1432,6 +1438,58 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
   <table class="params">
     <tr><td class="paramname">prefab</td><td>Prefab used to spawn the object</td></tr>
     <tr><td class="paramname">manager</td><td>Optional <a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> to use, will use <a class="el" href="classPurrNet_1_1NetworkManager.html#a363f5d48f41229126959dd5650d7988a" title="The main instance of the network manager.">NetworkManager.main</a> if not provided</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a33948ae1c35a309c5bfda23c1943486a" name="a33948ae1c35a309c5bfda23c1943486a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a33948ae1c35a309c5bfda23c1943486a">&#9670;&#160;</a></span>TriggerOnDeserialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.NetworkIdentity.TriggerOnDeserialize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td>
+          <td class="paramname"><em>packer</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Invokes custom spawn deserialization on all external modules and then this identity. Manual spawn flows should call this after identity setup and before early-spawn if they need spawn-packet ordering.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packer</td><td>The packer to read custom data from.</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a5e0060ea1e4e99022a7a2913a61def80" name="a5e0060ea1e4e99022a7a2913a61def80"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5e0060ea1e4e99022a7a2913a61def80">&#9670;&#160;</a></span>TriggerOnSerialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.NetworkIdentity.TriggerOnSerialize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td>
+          <td class="paramname"><em>packer</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Invokes custom spawn serialization on all external modules and then this identity. This is used internally for spawn packets and can be used by manual spawn flows that need the same data pipeline.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packer</td><td>The packer to write custom data into.</td></tr>
   </table>
   </dd>
 </dl>
