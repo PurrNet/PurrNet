@@ -10,24 +10,28 @@ namespace PurrNet.Pooling
 
     internal static class DisposableLeasePool
     {
+        private static readonly object _lock = new object();
         private static Stack<DisposableLease> _pool;
 
         private static Stack<DisposableLease> pool => _pool ??= new Stack<DisposableLease>();
 
         public static DisposableLease Rent(out int version)
         {
-            var leases = pool;
-            var lease = leases.Count > 0 ? leases.Pop() : new DisposableLease();
-            unchecked
+            lock (_lock)
             {
-                lease.version++;
-                if (lease.version == 0)
-                    lease.version = 1;
-            }
+                var leases = pool;
+                var lease = leases.Count > 0 ? leases.Pop() : new DisposableLease();
+                unchecked
+                {
+                    lease.version++;
+                    if (lease.version == 0)
+                        lease.version = 1;
+                }
 
-            lease.isAllocated = true;
-            version = lease.version;
-            return lease;
+                lease.isAllocated = true;
+                version = lease.version;
+                return lease;
+            }
         }
 
         public static bool IsValid(DisposableLease lease, int version)
@@ -37,11 +41,14 @@ namespace PurrNet.Pooling
 
         public static void Return(DisposableLease lease, int version)
         {
-            if (!IsValid(lease, version))
-                return;
+            lock (_lock)
+            {
+                if (!IsValid(lease, version))
+                    return;
 
-            lease.isAllocated = false;
-            pool.Push(lease);
+                lease.isAllocated = false;
+                pool.Push(lease);
+            }
         }
     }
 }

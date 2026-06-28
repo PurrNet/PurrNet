@@ -51,6 +51,10 @@ namespace PurrNet.Codegen
             if (name.Contains("NuGetForUnity"))
                 return false;
 
+            if (name.EndsWith(".Analyzers", StringComparison.Ordinal) ||
+                name.EndsWith(".Analyzer", StringComparison.Ordinal))
+                return false;
+
             if (name.StartsWith("Unity."))
                 return false;
 

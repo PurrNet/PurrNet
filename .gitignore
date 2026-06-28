@@ -37,6 +37,9 @@
 ExportedObj/
 .consulo/
 *.csproj
+!RoslynAnalyzers/**/*.csproj
+RoslynAnalyzers/**/bin/
+RoslynAnalyzers/**/obj/
 /[Aa]ssets/PurrNet/PurrNetApi.csproj.meta
 *.unityproj
 *.sln
