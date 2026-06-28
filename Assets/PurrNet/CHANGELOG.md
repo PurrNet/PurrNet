@@ -1,3 +1,10 @@
+# [1.20.0-beta.239](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.238...v1.20.0-beta.239) (2026-06-28)
+
+
+### Bug Fixes
+
+* deffer OnDeserialize before any OnEarlySpawn is called to avoid execution order mistakes ([09f35d7](https://github.com/PurrNet/PurrNet/commit/09f35d7b60562ab0180a35fcdbf201c3208688c1))
+
 # [1.20.0-beta.238](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.237...v1.20.0-beta.238) (2026-06-28)
 
 
