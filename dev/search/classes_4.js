@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['finishspawnpacket_0',['FinishSpawnPacket',['../structPurrNet_1_1Modules_1_1FinishSpawnPacket.html',1,'PurrNet::Modules']]],
-  ['fragmentationlayer_1',['FragmentationLayer',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html',1,'PurrNet::Transports']]]
+  ['enumerator_0',['Enumerator',['../structPurrNet_1_1Pooling_1_1DisposableArray_1_1Enumerator.html',1,'PurrNet.Pooling.DisposableArray&lt; T &gt;.Enumerator'],['../structPurrNet_1_1Pooling_1_1DisposableDictionary_1_1Enumerator.html',1,'PurrNet.Pooling.DisposableDictionary&lt; TKey, TValue &gt;.Enumerator'],['../structPurrNet_1_1Pooling_1_1DisposableHashSet_1_1Enumerator.html',1,'PurrNet.Pooling.DisposableHashSet&lt; T &gt;.Enumerator']]]
 ];

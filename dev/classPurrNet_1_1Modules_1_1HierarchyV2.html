@@ -201,6 +201,9 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetLocalPosAnd
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
+<tr class="memitem:a0783729a0b49a2e30cadbc335a948f58"><td class="memItemLeft" align="right" valign="top"><a id="a0783729a0b49a2e30cadbc335a948f58" name="a0783729a0b49a2e30cadbc335a948f58"></a>
+ValidateSpawnAction&#160;</td><td class="memItemRight" valign="bottom"><b>onClientSpawnValidate</b></td></tr>
+<tr class="separator:a0783729a0b49a2e30cadbc335a948f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeb8e18a11c7924834a30a3b0ab39053f"><td class="memItemLeft" align="right" valign="top"><a id="aeb8e18a11c7924834a30a3b0ab39053f" name="aeb8e18a11c7924834a30a3b0ab39053f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isReadyToSpawn</b><code> [get]</code></td></tr>
 <tr class="memdesc:aeb8e18a11c7924834a30a3b0ab39053f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates whether the system is ready to spawn networked objects. This flag is typically set when the necessary conditions for spawning objects, such as proper initialization and synchronization, have been met.  <br /></td></tr>
@@ -208,10 +211,6 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isReadyToSpawn</b><co
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
-<tr class="memitem:a0783729a0b49a2e30cadbc335a948f58"><td class="memItemLeft" align="right" valign="top"><a id="a0783729a0b49a2e30cadbc335a948f58" name="a0783729a0b49a2e30cadbc335a948f58"></a>
-ValidateSpawnAction&#160;</td><td class="memItemRight" valign="bottom"><b>onClientSpawnValidate</b></td></tr>
-<tr class="memdesc:a0783729a0b49a2e30cadbc335a948f58"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invoked to validate the spawning of a client-side object before it is instantiated. This event allows implementing custom rules to determine whether the object spawn should proceed or be rejected.  <br /></td></tr>
-<tr class="separator:a0783729a0b49a2e30cadbc335a948f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad2e7ac7352bbce58511f1c562dd8d013"><td class="memItemLeft" align="right" valign="top"><a id="ad2e7ac7352bbce58511f1c562dd8d013" name="ad2e7ac7352bbce58511f1c562dd8d013"></a>
 IdentityAction&#160;</td><td class="memItemRight" valign="bottom"><b>onEarlyIdentityAdded</b></td></tr>
 <tr class="memdesc:ad2e7ac7352bbce58511f1c562dd8d013"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fired when a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> is added to the hierarchy early in its lifecycle, before the standard identity initialization or observer assignment processes occur. This event is typically leveraged to perform custom logic or setup on new identities before they are fully managed by the hierarchy.  <br /></td></tr>

@@ -145,6 +145,11 @@ var hierarchy =
     [ "PurrNet.Packing.IDuplicate< Half >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
       [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ]
     ] ],
+    [ "IEnumerator", null, [
+      [ "PurrNet.Pooling.DisposableArray< T >.Enumerator", "structPurrNet_1_1Pooling_1_1DisposableArray_1_1Enumerator.html", null ],
+      [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >.Enumerator", "structPurrNet_1_1Pooling_1_1DisposableDictionary_1_1Enumerator.html", null ],
+      [ "PurrNet.Pooling.DisposableHashSet< T >.Enumerator", "structPurrNet_1_1Pooling_1_1DisposableHashSet_1_1Enumerator.html", null ]
+    ] ],
     [ "IEqualityComparer", null, [
       [ "PurrNet.Packing.QuaternionEqualityComparer", "structPurrNet_1_1Packing_1_1QuaternionEqualityComparer.html", null ]
     ] ],
