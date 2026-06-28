@@ -33,12 +33,21 @@ namespace PurrNet
             RequestRefresh();
         }
 
+        protected override void OnDespawned()
+        {
+            _refreshPending = false;
+        }
+
         private void LateUpdate()
         {
             if (!_refreshPending)
                 return;
 
             _refreshPending = false;
+
+            if (!isSpawned)
+                return;
+
             Refresh();
         }
 
