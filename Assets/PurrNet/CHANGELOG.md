@@ -1,3 +1,10 @@
+# [1.20.0-beta.237](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.236...v1.20.0-beta.237) (2026-06-28)
+
+
+### Bug Fixes
+
+* GC pass across PurrNet ([de4a8c8](https://github.com/PurrNet/PurrNet/commit/de4a8c8b8b04e848a007de314b5a3a726aedc685))
+
 # [1.20.0-beta.236](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.235...v1.20.0-beta.236) (2026-06-27)
 
 
