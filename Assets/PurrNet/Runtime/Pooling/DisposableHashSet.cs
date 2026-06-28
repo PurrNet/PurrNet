@@ -9,24 +9,25 @@ namespace PurrNet.Pooling
     public struct DisposableHashSet<T> : ISet<T>, IDisposable, IDuplicate<DisposableHashSet<T>>, IEquatable<DisposableHashSet<T>>
     {
         private bool _isAllocated;
+        private DisposableLease _lease;
+        private int _leaseVersion;
         private HashSet<T> _set;
         private DisposableList<T> _items;
 
-        public HashSet<T> set => _set;
+        public HashSet<T> set => isDisposed ? null : _set;
 
-        public bool isDisposed => !_isAllocated;
+        public bool isDisposed => !_isAllocated || !DisposableLeasePool.IsValid(_lease, _leaseVersion);
 
         [Obsolete( "Use DisposableHashSet<T>.Create() instead")]
         public DisposableHashSet(int capacity)
         {
             var newSet = HashSetPool<T>.Instantiate();
-
-            if (newSet.Count < capacity)
-                newSet = new HashSet<T>(newSet);
+            newSet.EnsureCapacity(capacity);
 
             _set = newSet;
             _items = DisposableList<T>.Create(capacity);
             _isAllocated = true;
+            _lease = DisposableLeasePool.Rent(out _leaseVersion);
         }
 
         public static DisposableHashSet<T> Create()
@@ -35,6 +36,7 @@ namespace PurrNet.Pooling
             val._set = HashSetPool<T>.Instantiate();
             val._items = DisposableList<T>.Create();
             val._isAllocated = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
@@ -45,6 +47,7 @@ namespace PurrNet.Pooling
             val._set.EnsureCapacity(capacity);
             val._items = DisposableList<T>.Create(capacity);
             val._isAllocated = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
@@ -59,12 +62,13 @@ namespace PurrNet.Pooling
                     val._items.Add(item);
             }
             val._isAllocated = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
         public void Dispose()
         {
-            if (!_isAllocated) return;
+            if (isDisposed) return;
 
             if (_set != null)
             {
@@ -73,20 +77,65 @@ namespace PurrNet.Pooling
             }
 
             _isAllocated = false;
+            _set = null;
+            _items = default;
+            DisposableLeasePool.Return(_lease, _leaseVersion);
+            _lease = null;
+            _leaseVersion = 0;
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public Enumerator GetEnumerator()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            int count = _items.Count;
-            for (var i = 0; i < count; ++i)
-                yield return _items[i];
+            return new Enumerator(_items.list, _items.Count);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
             return GetEnumerator();
+        }
+
+        public struct Enumerator : IEnumerator<T>
+        {
+            private readonly List<T> _items;
+            private readonly int _count;
+            private int _index;
+
+            internal Enumerator(List<T> items, int count)
+            {
+                _items = items;
+                _count = count;
+                _index = -1;
+            }
+
+            public bool MoveNext()
+            {
+                int next = _index + 1;
+                if (next >= _count)
+                    return false;
+                _index = next;
+                return true;
+            }
+
+            public void Reset()
+            {
+                _index = -1;
+            }
+
+            public T Current => _items[_index];
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+            }
         }
 
         public void Add(T item)

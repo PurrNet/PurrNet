@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -566,10 +567,21 @@ namespace PurrNet.Packing
             // Write length (31 bits)
             WriteBits((ulong)byteCount, 31);
 
-            // Encode directly into buffer
-            var temp = byteCount <= 256 ? stackalloc byte[byteCount] : new byte[byteCount];
-            encoding.GetBytes(value, temp);
-            WriteBytes(temp);
+            byte[] rented = null;
+            Span<byte> temp = byteCount <= 256
+                ? stackalloc byte[byteCount]
+                : (rented = ArrayPool<byte>.Shared.Rent(byteCount)).AsSpan(0, byteCount);
+
+            try
+            {
+                encoding.GetBytes(value, temp);
+                WriteBytes(temp);
+            }
+            finally
+            {
+                if (rented != null)
+                    ArrayPool<byte>.Shared.Return(rented);
+            }
         }
 
         public string ReadString(Encoding encoding)
@@ -581,10 +593,21 @@ namespace PurrNet.Packing
             // Length
             int len = (int)ReadBits(31);
 
-            // Read bytes
-            var temp = len <= 256 ? stackalloc byte[len] : new byte[len];
-            ReadBytes(temp);
-            return encoding.GetString(temp);
+            byte[] rented = null;
+            Span<byte> temp = len <= 256
+                ? stackalloc byte[len]
+                : (rented = ArrayPool<byte>.Shared.Rent(len)).AsSpan(0, len);
+
+            try
+            {
+                ReadBytes(temp);
+                return encoding.GetString(temp);
+            }
+            finally
+            {
+                if (rented != null)
+                    ArrayPool<byte>.Shared.Return(rented);
+            }
         }
 
         public char ReadChar()

@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using PurrNet;
+using PurrNet.Collections;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
@@ -60,6 +63,101 @@ public class DisposableHashSetsTests
 
         set.Dispose();
         copy.Dispose();
+    }
+
+    [Test]
+    public void DisposableHashSet_ConcreteEnumerator_WalksStoredOrder()
+    {
+        var set = DisposableHashSet<int>.Create(new[] { 3, 1, 2 });
+        try
+        {
+            var enumerator = set.GetEnumerator();
+            Assert.AreEqual(typeof(DisposableHashSet<int>.Enumerator), enumerator.GetType());
+
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(3, enumerator.Current);
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(1, enumerator.Current);
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(2, enumerator.Current);
+            Assert.IsFalse(enumerator.MoveNext());
+        }
+        finally
+        {
+            set.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableDictionary_ConcreteEnumerator_WalksKeysInInsertionOrder()
+    {
+        var dictionary = DisposableDictionary<int, string>.Create();
+        try
+        {
+            dictionary.Add(2, "two");
+            dictionary.Add(1, "one");
+
+            var enumerator = dictionary.GetEnumerator();
+            Assert.AreEqual(typeof(DisposableDictionary<int, string>.Enumerator), enumerator.GetType());
+
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(2, enumerator.Current.Key);
+            Assert.AreEqual("two", enumerator.Current.Value);
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(1, enumerator.Current.Key);
+            Assert.AreEqual("one", enumerator.Current.Value);
+            Assert.IsFalse(enumerator.MoveNext());
+        }
+        finally
+        {
+            dictionary.Dispose();
+        }
+    }
+
+    [Test]
+    public void PurrHashSet_ConcreteEnumerator_ReturnsHashSetEnumerator()
+    {
+        var set = new PurrHashSet<int>();
+        set.Add(4);
+        set.Add(5);
+
+        var enumerator = set.GetEnumerator();
+        Assert.AreEqual(typeof(HashSet<int>.Enumerator), enumerator.GetType());
+
+        var values = new HashSet<int>();
+        while (enumerator.MoveNext())
+            values.Add(enumerator.Current);
+
+        CollectionAssert.AreEquivalent(new[] { 4, 5 }, values);
+    }
+
+    [Test]
+    public void CopiedHandleIsDisposedWithOriginal()
+    {
+        var set = DisposableHashSet<int>.Create(new[] { 1, 2, 3 });
+        var copy = set;
+
+        set.Dispose();
+
+        Assert.IsTrue(copy.isDisposed);
+        Assert.IsNull(copy.set);
+        Assert.Throws<ObjectDisposedException>(() => _ = copy.Count);
+        Assert.DoesNotThrow(() => copy.Dispose());
+    }
+
+    [Test]
+    public void CopiedDictionaryHandleIsDisposedWithOriginal()
+    {
+        var dictionary = DisposableDictionary<int, string>.Create();
+        dictionary.Add(1, "one");
+        var copy = dictionary;
+
+        dictionary.Dispose();
+
+        Assert.IsTrue(copy.isDisposed);
+        Assert.IsNull(copy.dictionary);
+        Assert.Throws<ObjectDisposedException>(() => _ = copy.Count);
+        Assert.DoesNotThrow(() => copy.Dispose());
     }
 
     [Test]

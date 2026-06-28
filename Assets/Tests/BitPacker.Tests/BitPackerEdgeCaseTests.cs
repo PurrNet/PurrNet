@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Packing;
@@ -196,5 +198,124 @@ public class BitPackerEdgeCaseTests
         readPacker.ResetPositionAndMode(true);
 
         Assert.Throws<IndexOutOfRangeException>(() => Packer<string>.Read(readPacker));
+    }
+
+    [Test]
+    public void FragmentationLayer_Unfragmented_Roundtrips()
+    {
+        using var layer = new FragmentationLayer();
+        var payload = new byte[] { 10, 20, 30, 40, 50 };
+        var source = new ByteData(payload, 1, 3);
+        var fragments = new List<byte[]>();
+
+        layer.Send(source, 16, fragment => Capture(fragment, fragments));
+
+        Assert.AreEqual(1, fragments.Count);
+        Assert.AreEqual(0, fragments[0][0]);
+
+        Assert.IsTrue(layer.Receive(new ByteData(fragments[0], 0, fragments[0].Length), out var assembled));
+        AssertByteDataEquals(source, assembled);
+    }
+
+    [Test]
+    public void FragmentationLayer_FragmentedOutOfOrder_Roundtrips()
+    {
+        using var layer = new FragmentationLayer();
+        var payload = new byte[43];
+        for (int i = 0; i < payload.Length; i++)
+            payload[i] = (byte)(i * 3 + 7);
+
+        var source = new ByteData(payload, 3, 37);
+        var fragments = new List<byte[]>();
+
+        layer.Send(source, 13, fragment => Capture(fragment, fragments));
+
+        Assert.Greater(fragments.Count, 1);
+
+        ByteData assembled = default;
+        for (int i = fragments.Count - 1; i >= 0; i--)
+        {
+            var completed = layer.Receive(new ByteData(fragments[i], 0, fragments[i].Length), out assembled);
+            Assert.AreEqual(i == 0, completed);
+        }
+
+        AssertByteDataEquals(source, assembled);
+    }
+
+    [Test]
+    public void ValidatedSyncVar_ServerValidation_RemovesLastMatchingSubscriber()
+    {
+        var syncVar = new ValidatedSyncVar<int>(0);
+        int firstCalls = 0;
+        int secondCalls = 0;
+
+        ValidatedSyncVar<int>.ServerValidationHandler first = (_, _) =>
+        {
+            firstCalls++;
+            return true;
+        };
+        ValidatedSyncVar<int>.ServerValidationHandler second = (_, _) =>
+        {
+            secondCalls++;
+            return true;
+        };
+
+        syncVar.serverValidation += first;
+        syncVar.serverValidation += second;
+        syncVar.serverValidation += first;
+        syncVar.serverValidation -= first;
+
+        Assert.IsTrue(RunServerValidators(syncVar, 0, 1));
+        Assert.AreEqual(1, firstCalls);
+        Assert.AreEqual(1, secondCalls);
+    }
+
+    [Test]
+    public void ValidatedSyncVar_ServerValidation_ShortCircuitsAndPoolResetClears()
+    {
+        var syncVar = new ValidatedSyncVar<int>(0);
+        int calls = 0;
+
+        syncVar.serverValidation += (_, _) =>
+        {
+            calls++;
+            return false;
+        };
+        syncVar.serverValidation += (_, _) =>
+        {
+            calls++;
+            return true;
+        };
+
+        Assert.IsFalse(RunServerValidators(syncVar, 0, 1));
+        Assert.AreEqual(1, calls);
+
+        syncVar.OnPoolReset();
+        calls = 0;
+
+        Assert.IsTrue(RunServerValidators(syncVar, 0, 1));
+        Assert.AreEqual(0, calls);
+    }
+
+    private static void Capture(ByteData data, List<byte[]> target)
+    {
+        var copy = new byte[data.length];
+        Buffer.BlockCopy(data.data, data.offset, copy, 0, data.length);
+        target.Add(copy);
+    }
+
+    private static void AssertByteDataEquals(ByteData expected, ByteData actual)
+    {
+        Assert.AreEqual(expected.length, actual.length);
+        for (int i = 0; i < expected.length; i++)
+            Assert.AreEqual(expected.data[expected.offset + i], actual.data[actual.offset + i], $"Byte {i}");
+    }
+
+    private static bool RunServerValidators<T>(ValidatedSyncVar<T> syncVar, T oldValue, T newValue)
+    {
+        var method = typeof(ValidatedSyncVar<T>).GetMethod("RunServerValidators",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method);
+        return (bool)method.Invoke(syncVar, new object[] { oldValue, newValue });
     }
 }

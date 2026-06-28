@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using PurrNet.Pooling;
 
 namespace PurrNet.Packing
 {
@@ -12,14 +11,27 @@ namespace PurrNet.Packing
             if (y is null) return false;
             if (x.Count != y.Count) return false;
 
-            using var xKeys = DisposableList<K>.Create(x.Keys);
-            using var yKeys = DisposableList<K>.Create(y.Keys);
-            using var xValues = DisposableList<V>.Create(x.Values);
-            using var yValues = DisposableList<V>.Create(y.Values);
+            var keyEquality = PurrEquality<K>.Default;
+            var valueEquality = PurrEquality<V>.Default;
 
-            if (!xKeys.Equals(yKeys))
-                return false;
-            return xValues.Equals(yValues);
+            using var xEnumerator = x.GetEnumerator();
+            using var yEnumerator = y.GetEnumerator();
+
+            while (xEnumerator.MoveNext())
+            {
+                if (!yEnumerator.MoveNext())
+                    return false;
+
+                var xCurrent = xEnumerator.Current;
+                var yCurrent = yEnumerator.Current;
+
+                if (!keyEquality.Equals(xCurrent.Key, yCurrent.Key))
+                    return false;
+                if (!valueEquality.Equals(xCurrent.Value, yCurrent.Value))
+                    return false;
+            }
+
+            return !yEnumerator.MoveNext();
         }
 
         public int GetHashCode(Dictionary<K, V> obj)

@@ -1106,19 +1106,33 @@ namespace PurrNet
 
         private bool _isServerTicking;
 
-        event ValidateSpawnAction _onClientSpawnValidate;
+        readonly List<ValidateSpawnAction> _clientSpawnValidators = new List<ValidateSpawnAction>();
 
         public event ValidateSpawnAction onClientSpawnValidate
         {
             add
             {
-                _onClientSpawnValidate += value;
+                if (value == null)
+                    return;
+
+                _clientSpawnValidators.Add(value);
                 if (TryGetModule<HierarchyFactory>(true, out var hierarchyFactory))
                     hierarchyFactory.onClientSpawnValidate += value;
             }
             remove
             {
-                _onClientSpawnValidate -= value;
+                if (value == null)
+                    return;
+
+                for (int i = _clientSpawnValidators.Count - 1; i >= 0; i--)
+                {
+                    if (_clientSpawnValidators[i] != value)
+                        continue;
+
+                    _clientSpawnValidators.RemoveAt(i);
+                    break;
+                }
+
                 if (TryGetModule<HierarchyFactory>(true, out var hierarchyFactory))
                     hierarchyFactory.onClientSpawnValidate -= value;
             }
@@ -1300,13 +1314,8 @@ namespace PurrNet
             else _clientRpcModule = rpcModule;
 
             if (asServer)
-            {
-                if (_onClientSpawnValidate != null)
-                {
-                    foreach (var del in _onClientSpawnValidate.GetInvocationList())
-                        hierarchyV2.onClientSpawnValidate += (ValidateSpawnAction)del;
-                }
-            }
+                for (int i = 0; i < _clientSpawnValidators.Count; i++)
+                    hierarchyV2.onClientSpawnValidate += _clientSpawnValidators[i];
 
             modules.AddModule(networkTransform);
             modules.AddModule(hierarchyV2);
@@ -1416,12 +1425,12 @@ namespace PurrNet
             if (!_serverModules.TryGetModule(out _serverLODModule))
                 _serverLODModule = null;
 
-            if (_onClientSpawnValidate != null &&
+            if (_clientSpawnValidators.Count > 0 &&
                 _serverModules.TryGetModule(out HierarchyFactory hierarchyFactory))
             {
-                foreach (var del in _onClientSpawnValidate.GetInvocationList())
+                for (int i = 0; i < _clientSpawnValidators.Count; i++)
                 {
-                    var validate = (ValidateSpawnAction)del;
+                    var validate = _clientSpawnValidators[i];
                     hierarchyFactory.onClientSpawnValidate -= validate;
                     hierarchyFactory.onClientSpawnValidate += validate;
                 }

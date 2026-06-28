@@ -45,7 +45,30 @@ namespace PurrNet.Modules
         /// This event allows implementing custom rules to determine whether the object spawn
         /// should proceed or be rejected.
         /// </summary>
-        public event ValidateSpawnAction onClientSpawnValidate;
+        private readonly List<ValidateSpawnAction> _clientSpawnValidators = new();
+
+        public event ValidateSpawnAction onClientSpawnValidate
+        {
+            add
+            {
+                if (value != null)
+                    _clientSpawnValidators.Add(value);
+            }
+            remove
+            {
+                if (value == null)
+                    return;
+
+                for (int i = _clientSpawnValidators.Count - 1; i >= 0; i--)
+                {
+                    if (_clientSpawnValidators[i] != value)
+                        continue;
+
+                    _clientSpawnValidators.RemoveAt(i);
+                    return;
+                }
+            }
+        }
 
         /// <summary>
         /// Fired when a NetworkIdentity is added to the hierarchy early in its lifecycle,
@@ -961,13 +984,11 @@ namespace PurrNet.Modules
                 }
             }
 
-            if (_asServer && onClientSpawnValidate != null)
+            if (_asServer && _clientSpawnValidators.Count > 0)
             {
-                var list = onClientSpawnValidate.GetInvocationList();
-                for (var i = 0; i < list.Length; i++)
+                for (var i = 0; i < _clientSpawnValidators.Count; i++)
                 {
-                    var @delegate = list[i];
-                    var validator = (ValidateSpawnAction)@delegate;
+                    var validator = _clientSpawnValidators[i];
                     if (!validator(player, data))
                     {
                         var declaring = validator.Method.DeclaringType;

@@ -10,12 +10,19 @@ namespace PurrNet.Pooling
     public struct DisposableList<T> : IList<T>, IDisposable, IReadOnlyList<T>, IDuplicate<DisposableList<T>>, IEquatable<DisposableList<T>>
     {
         private bool _shouldDispose;
+        private DisposableLease _lease;
+        private int _leaseVersion;
+        private List<T> _list;
 
-        public List<T> list { get; private set; }
+        public List<T> list
+        {
+            get => isDisposed ? null : _list;
+            private set => _list = value;
+        }
 
         public DisposableList<T> Duplicate()
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 return default;
 
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
@@ -31,7 +38,7 @@ namespace PurrNet.Pooling
             return Create(this);
         }
 
-        public readonly bool Equals(DisposableList<T> other) => new ListComparator<T>().Equals(list, other.list);
+        public bool Equals(DisposableList<T> other) => new ListComparator<T>().Equals(list, other.list);
 
         public override string ToString()
         {
@@ -51,9 +58,10 @@ namespace PurrNet.Pooling
             if (newList.Capacity < capacity)
                 newList.Capacity = capacity;
 
-            list = newList;
+            _list = newList;
             _isAllocated = true;
             _shouldDispose = true;
+            _lease = DisposableLeasePool.Rent(out _leaseVersion);
         }
 
         public static DisposableList<T> Create(int capacity)
@@ -64,68 +72,73 @@ namespace PurrNet.Pooling
             if (newList.Capacity < capacity)
                 newList.Capacity = capacity;
 
-            val.list = newList;
+            val._list = newList;
             val._isAllocated = true;
             val._shouldDispose = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
         public static DisposableList<T> Create(DisposableList<T> copyFrom)
         {
             var val = new DisposableList<T>();
-            val.list = ListPool<T>.Instantiate();
+            val._list = ListPool<T>.Instantiate();
 
             int count = copyFrom.Count;
             int targetCapacity = count + Math.Max(count >> 2, 8);
 
-            if (val.list.Capacity < targetCapacity)
-                val.list.Capacity = targetCapacity;
+            if (val._list.Capacity < targetCapacity)
+                val._list.Capacity = targetCapacity;
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
-                val.list.Add(copyFrom[i]);
+                val._list.Add(copyFrom[i]);
 
             val._isAllocated = true;
             val._shouldDispose = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
         public static DisposableList<T> Create(IList<T> copyFrom)
         {
             var val = new DisposableList<T>();
-            val.list = ListPool<T>.Instantiate();
+            val._list = ListPool<T>.Instantiate();
 
             int count = copyFrom.Count;
             int targetCapacity = count + Math.Max(count >> 2, 8);
 
-            if (val.list.Capacity < targetCapacity)
-                val.list.Capacity = targetCapacity;
+            if (val._list.Capacity < targetCapacity)
+                val._list.Capacity = targetCapacity;
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
-                val.list.Add(copyFrom[i]);
+                val._list.Add(copyFrom[i]);
 
             val._isAllocated = true;
             val._shouldDispose = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
         public static DisposableList<T> Create(IEnumerable<T> copyFrom)
         {
             var val = new DisposableList<T>();
-            val.list = ListPool<T>.Instantiate();
-            val.list.AddRange(copyFrom);
+            val._list = ListPool<T>.Instantiate();
+            val._list.AddRange(copyFrom);
             val._isAllocated = true;
             val._shouldDispose = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
         public static DisposableList<T> Create()
         {
             var val = new DisposableList<T>();
-            val.list = ListPool<T>.Instantiate();
+            val._list = ListPool<T>.Instantiate();
             val._isAllocated = true;
             val._shouldDispose = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
@@ -161,9 +174,20 @@ namespace PurrNet.Pooling
             if (_shouldDispose && list != null)
                 ListPool<T>.Destroy(list);
             _isAllocated = false;
+            list = null;
+            DisposableLeasePool.Return(_lease, _leaseVersion);
+            _lease = null;
+            _leaseVersion = 0;
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public List<T>.Enumerator GetEnumerator()
+        {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
+            NotifyUsage();
+            return list.GetEnumerator();
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
             NotifyUsage();
@@ -234,7 +258,7 @@ namespace PurrNet.Pooling
 
         private bool _isAllocated;
 
-        public bool isDisposed => !_isAllocated;
+        public bool isDisposed => !_isAllocated || !DisposableLeasePool.IsValid(_lease, _leaseVersion);
 
         [UsedByIL]
         public T GetAt(int index)

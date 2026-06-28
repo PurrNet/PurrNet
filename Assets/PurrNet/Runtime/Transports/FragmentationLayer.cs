@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using PurrNet.Packing;
 
@@ -31,6 +32,7 @@ namespace PurrNet.Transports
 
         ushort _nextMessageId;
         readonly Dictionary<ushort, ReassemblyEntry> _pending = new();
+        BitPacker _sendPacker;
         BitPacker _assemblyPacker;
         readonly List<ushort> _removeBuffer = new();
 
@@ -60,10 +62,11 @@ namespace PurrNet.Transports
         {
             if (data.length + UNFRAGMENTED_OVERHEAD <= mtu)
             {
-                var packet = new byte[UNFRAGMENTED_OVERHEAD + data.length];
-                packet[0] = FLAG_UNFRAGMENTED;
-                Buffer.BlockCopy(data.data, data.offset, packet, UNFRAGMENTED_OVERHEAD, data.length);
-                sendFragment(new ByteData(packet, 0, packet.Length));
+                _sendPacker ??= BitPackerPool.Get();
+                _sendPacker.ResetPositionAndMode(false);
+                _sendPacker.WriteBits(FLAG_UNFRAGMENTED, 8);
+                _sendPacker.WriteBytes(data);
+                sendFragment(_sendPacker.ToByteData());
                 return;
             }
 
@@ -87,14 +90,14 @@ namespace PurrNet.Transports
                 int payloadOffset = i * maxPayload;
                 int payloadLen = Math.Min(maxPayload, data.length - payloadOffset);
 
-                var packet = new byte[FRAGMENT_OVERHEAD + payloadLen];
-                packet[0] = FLAG_FRAGMENTED;
-                packet[1] = (byte)(msgId & 0xFF);
-                packet[2] = (byte)(msgId >> 8);
-                packet[3] = (byte)i;
-                packet[4] = (byte)totalFragments;
-                Buffer.BlockCopy(data.data, data.offset + payloadOffset, packet, FRAGMENT_OVERHEAD, payloadLen);
-                sendFragment(new ByteData(packet, 0, packet.Length));
+                _sendPacker ??= BitPackerPool.Get();
+                _sendPacker.ResetPositionAndMode(false);
+                _sendPacker.WriteBits(FLAG_FRAGMENTED, 8);
+                _sendPacker.WriteBits(msgId, 16);
+                _sendPacker.WriteBits((byte)i, 8);
+                _sendPacker.WriteBits((byte)totalFragments, 8);
+                _sendPacker.WriteBytes(new ByteData(data.data, data.offset + payloadOffset, payloadLen));
+                sendFragment(_sendPacker.ToByteData());
             }
         }
 
@@ -112,12 +115,10 @@ namespace PurrNet.Transports
                 return false;
             }
 
-            var reader = BitPackerPool.Get(data);
-            byte flag = (byte)reader.ReadBits(8);
+            byte flag = data.data[data.offset];
 
             if (flag == FLAG_UNFRAGMENTED)
             {
-                BitPackerPool.Free(reader);
                 assembled = new ByteData(data.data,
                     data.offset + UNFRAGMENTED_OVERHEAD,
                     data.length - UNFRAGMENTED_OVERHEAD);
@@ -126,15 +127,13 @@ namespace PurrNet.Transports
 
             if (data.length < FRAGMENT_OVERHEAD)
             {
-                BitPackerPool.Free(reader);
                 assembled = default;
                 return false;
             }
 
-            ushort msgId = (ushort)reader.ReadBits(16);
-            byte fragIdx = (byte)reader.ReadBits(8);
-            byte totalFrags = (byte)reader.ReadBits(8);
-            BitPackerPool.Free(reader);
+            ushort msgId = (ushort)(data.data[data.offset + 1] | (data.data[data.offset + 2] << 8));
+            byte fragIdx = data.data[data.offset + 3];
+            byte totalFrags = data.data[data.offset + 4];
 
             if (totalFrags == 0 || fragIdx >= totalFrags)
             {
@@ -144,11 +143,14 @@ namespace PurrNet.Transports
 
             if (!_pending.TryGetValue(msgId, out var entry))
             {
+                var fragments = ArrayPool<BitPacker>.Shared.Rent(totalFrags);
+                Array.Clear(fragments, 0, totalFrags);
+
                 entry = new ReassemblyEntry
                 {
                     totalFragments = totalFrags,
                     receivedCount = 0,
-                    fragments = new BitPacker[totalFrags],
+                    fragments = fragments,
                     createdAtTick = Environment.TickCount
                 };
             }
@@ -182,9 +184,11 @@ namespace PurrNet.Transports
             {
                 _assemblyPacker.WriteBytes(entry.fragments[i].ToByteData());
                 BitPackerPool.Free(entry.fragments[i]);
+                entry.fragments[i] = null;
             }
 
             _pending.Remove(msgId);
+            ArrayPool<BitPacker>.Shared.Return(entry.fragments, true);
             assembled = _assemblyPacker.ToByteData();
             return true;
         }
@@ -232,6 +236,12 @@ namespace PurrNet.Transports
                 BitPackerPool.Free(_assemblyPacker);
                 _assemblyPacker = null;
             }
+
+            if (_sendPacker != null)
+            {
+                BitPackerPool.Free(_sendPacker);
+                _sendPacker = null;
+            }
         }
 
         public void Dispose()
@@ -241,6 +251,9 @@ namespace PurrNet.Transports
 
         void FreeEntry(ref ReassemblyEntry entry)
         {
+            if (entry.fragments == null)
+                return;
+
             for (int i = 0; i < entry.totalFragments; i++)
             {
                 if (entry.fragments[i] != null)
@@ -249,6 +262,9 @@ namespace PurrNet.Transports
                     entry.fragments[i] = null;
                 }
             }
+
+            ArrayPool<BitPacker>.Shared.Return(entry.fragments, true);
+            entry.fragments = null;
         }
     }
 }

@@ -374,9 +374,10 @@ namespace PurrNet
 
         public bool Contains(T item) => _list.Contains(item);
         public void CopyTo(T[] array, int arrayIndex) => _list.CopyTo(array, arrayIndex);
-        public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
+        public List<T>.Enumerator GetEnumerator() => _list.GetEnumerator();
         public int IndexOf(T item) => _list.IndexOf(item);
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => _list.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<T>)this).GetEnumerator();
 
         private bool ValidateAuthority()
         {

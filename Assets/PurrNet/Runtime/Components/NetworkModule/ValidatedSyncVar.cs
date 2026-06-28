@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using PurrNet.Packing;
 using PurrNet.Transports;
 using UnityEngine;
@@ -13,7 +14,34 @@ namespace PurrNet
         public delegate bool ServerValidationHandler(T oldValue, T newValue);
         public delegate void ValidationFailedHandler(T failedValue, T authoritativeValue);
 
-        public event ServerValidationHandler serverValidation;
+        private List<ServerValidationHandler> _serverValidators;
+
+        public event ServerValidationHandler serverValidation
+        {
+            add
+            {
+                if (value == null)
+                    return;
+
+                _serverValidators ??= new List<ServerValidationHandler>(1);
+                _serverValidators.Add(value);
+            }
+            remove
+            {
+                if (_serverValidators == null || value == null)
+                    return;
+
+                for (int i = _serverValidators.Count - 1; i >= 0; i--)
+                {
+                    if (_serverValidators[i] != value)
+                        continue;
+
+                    _serverValidators.RemoveAt(i);
+                    return;
+                }
+            }
+        }
+
         public event ValidationFailedHandler onValidationFail;
 
 
@@ -73,7 +101,7 @@ namespace PurrNet
         {
             onChanged = null;
             onChangedWithOld = null;
-            serverValidation = null;
+            _serverValidators?.Clear();
             onValidationFail = null;
             _nextPacketId = 0;
             _lastAppliedServerId = 0;
@@ -125,11 +153,15 @@ namespace PurrNet
 
         private bool RunServerValidators(T oldValue, T newValue)
         {
-            var list = serverValidation?.GetInvocationList();
-            if (list == null) return true;
-            for (int i = 0; i < list.Length; i++)
-                if (!((ServerValidationHandler)list[i]).Invoke(oldValue, newValue))
+            if (_serverValidators == null)
+                return true;
+
+            for (int i = 0; i < _serverValidators.Count; i++)
+            {
+                if (!_serverValidators[i].Invoke(oldValue, newValue))
                     return false;
+            }
+
             return true;
         }
 

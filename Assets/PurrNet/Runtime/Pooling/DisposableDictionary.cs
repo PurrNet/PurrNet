@@ -11,12 +11,15 @@ namespace PurrNet.Pooling
         where TKey : notnull
     {
         private bool _isAllocated;
+        private DisposableLease _lease;
+        private int _leaseVersion;
 
-        public bool isDisposed => !_isAllocated;
+        public bool isDisposed => !_isAllocated || !DisposableLeasePool.IsValid(_lease, _leaseVersion);
 
         private DisposableList<TKey> _keys;
+        private Dictionary<TKey, TValue> _dictionary;
 
-        public Dictionary<TKey, TValue> dictionary { get; private set; }
+        public Dictionary<TKey, TValue> dictionary => isDisposed ? null : _dictionary;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void NotifyUsage()
@@ -29,21 +32,23 @@ namespace PurrNet.Pooling
         public static DisposableDictionary<TKey, TValue> Create()
         {
             var val = new DisposableDictionary<TKey, TValue>();
-            val.dictionary = DictionaryPool<TKey, TValue>.Instantiate();
+            val._dictionary = DictionaryPool<TKey, TValue>.Instantiate();
             val._keys = DisposableList<TKey>.Create();
             val._isAllocated = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
 
         public static DisposableDictionary<TKey, TValue> Create(IDictionary<TKey, TValue> copyFrom)
         {
             var val = new DisposableDictionary<TKey, TValue>();
-            val.dictionary = DictionaryPool<TKey, TValue>.Instantiate();
+            val._dictionary = DictionaryPool<TKey, TValue>.Instantiate();
             val._keys = DisposableList<TKey>.Create();
             val._isAllocated = true;
+            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             foreach (var kvp in copyFrom)
             {
-                if (val.dictionary.TryAdd(kvp.Key, kvp.Value))
+                if (val._dictionary.TryAdd(kvp.Key, kvp.Value))
                     val._keys.Add(kvp.Key);
             }
             return val;
@@ -51,41 +56,94 @@ namespace PurrNet.Pooling
 
         public void Dispose()
         {
-            if (!_isAllocated) return;
+            if (isDisposed) return;
 
-            if (dictionary != null)
+            if (_dictionary != null)
             {
-                DictionaryPool<TKey, TValue>.Destroy(dictionary);
+                DictionaryPool<TKey, TValue>.Destroy(_dictionary);
                 _keys.Dispose();
             }
 
             _isAllocated = false;
+            _dictionary = null;
+            _keys = default;
+            DisposableLeasePool.Return(_lease, _leaseVersion);
+            _lease = null;
+            _leaseVersion = 0;
         }
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        public Enumerator GetEnumerator()
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
-            int count = _keys.Count;
-            for (var i = 0; i < count; ++i)
-            {
-                var key = _keys[i];
-                yield return new KeyValuePair<TKey, TValue>(key, dictionary[key]);
-            }
+            return new Enumerator(_keys.list, dictionary, _keys.Count);
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             return GetEnumerator();
         }
 
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            if (isDisposed)
+                throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
+            NotifyUsage();
+            return GetEnumerator();
+        }
+
+        public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+        {
+            private readonly List<TKey> _keys;
+            private readonly Dictionary<TKey, TValue> _dictionary;
+            private readonly int _count;
+            private int _index;
+
+            internal Enumerator(List<TKey> keys, Dictionary<TKey, TValue> dictionary, int count)
+            {
+                _keys = keys;
+                _dictionary = dictionary;
+                _count = count;
+                _index = -1;
+            }
+
+            public bool MoveNext()
+            {
+                int next = _index + 1;
+                if (next >= _count)
+                    return false;
+                _index = next;
+                return true;
+            }
+
+            public void Reset()
+            {
+                _index = -1;
+            }
+
+            public KeyValuePair<TKey, TValue> Current
+            {
+                get
+                {
+                    var key = _keys[_index];
+                    return new KeyValuePair<TKey, TValue>(key, _dictionary[key]);
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+            }
+        }
+
         public void Add(KeyValuePair<TKey, TValue> item)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             dictionary.Add(item.Key, item.Value);
@@ -94,7 +152,7 @@ namespace PurrNet.Pooling
 
         public void Clear()
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             _keys.Clear();
@@ -103,7 +161,7 @@ namespace PurrNet.Pooling
 
         public bool Contains(KeyValuePair<TKey, TValue> item)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             return dictionary.TryGetValue(item.Key, out var val) && EqualityComparer<TValue>.Default.Equals(val, item.Value);
@@ -111,7 +169,7 @@ namespace PurrNet.Pooling
 
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             if (array == null) throw new ArgumentNullException(nameof(array));
@@ -127,7 +185,7 @@ namespace PurrNet.Pooling
 
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             if (dictionary.TryGetValue(item.Key, out var val) && EqualityComparer<TValue>.Default.Equals(val, item.Value))
@@ -143,7 +201,7 @@ namespace PurrNet.Pooling
         {
             get
             {
-                if (!_isAllocated)
+                if (isDisposed)
                     throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
                 NotifyUsage();
                 return dictionary.Count;
@@ -154,7 +212,7 @@ namespace PurrNet.Pooling
         {
             get
             {
-                if (!_isAllocated)
+                if (isDisposed)
                     throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
                 NotifyUsage();
                 return false;
@@ -163,7 +221,7 @@ namespace PurrNet.Pooling
 
         public void Add(TKey key, TValue value)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             dictionary.Add(key, value);
@@ -172,7 +230,7 @@ namespace PurrNet.Pooling
 
         public bool ContainsKey(TKey key)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             return dictionary.ContainsKey(key);
@@ -180,7 +238,7 @@ namespace PurrNet.Pooling
 
         public bool Remove(TKey key)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
 
@@ -195,7 +253,7 @@ namespace PurrNet.Pooling
 
         public bool TryGetValue(TKey key, out TValue value)
         {
-            if (!_isAllocated)
+            if (isDisposed)
             {
                 value = default;
                 return false;
@@ -208,14 +266,14 @@ namespace PurrNet.Pooling
         {
             get
             {
-                if (!_isAllocated)
+                if (isDisposed)
                     throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
                 NotifyUsage();
                 return dictionary[key];
             }
             set
             {
-                if (!_isAllocated)
+                if (isDisposed)
                     throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
                 NotifyUsage();
                 if (dictionary.TryAdd(key, value))
@@ -229,7 +287,7 @@ namespace PurrNet.Pooling
         {
             get
             {
-                if (!_isAllocated)
+                if (isDisposed)
                     throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
                 NotifyUsage();
                 return _keys;
@@ -240,7 +298,7 @@ namespace PurrNet.Pooling
         {
             get
             {
-                if (!_isAllocated)
+                if (isDisposed)
                     throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
                 NotifyUsage();
                 return _keys;
@@ -258,7 +316,7 @@ namespace PurrNet.Pooling
 
         public TValue GetValueOrDefault(TKey key)
         {
-            if (!_isAllocated)
+            if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
             return dictionary.GetValueOrDefault(key);

@@ -10,8 +10,15 @@ namespace PurrNet.Pooling
     public struct DisposableArray<T> : IDisposable, IReadOnlyList<T>, IList<T>, IDuplicate<DisposableArray<T>>, IEquatable<DisposableArray<T>>
     {
         private bool _shouldDispose;
+        private DisposableLease _lease;
+        private int _leaseVersion;
+        private T[] _array;
 
-        public T[] array { get; private set; }
+        public T[] array
+        {
+            get => isDisposed ? null : _array;
+            private set => _array = value;
+        }
 
         public void Add(T item)
         {
@@ -25,14 +32,16 @@ namespace PurrNet.Pooling
 
         public bool Contains(T item)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableArray<T>));
             NotifyUsage();
-            return Array.IndexOf(array, item) >= 0;
+            return Array.IndexOf(array, item, 0, Count) >= 0;
         }
 
         public void CopyTo(T[] array, int arrayIndex)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableArray<T>));
             NotifyUsage();
-            Array.Copy(this.array, array, Count);
+            Array.Copy(this.array, 0, array, arrayIndex, Count);
         }
 
         public bool Remove(T item)
@@ -44,12 +53,13 @@ namespace PurrNet.Pooling
 
         public bool IsReadOnly => false;
 
-        public bool isDisposed => !_shouldDispose;
+        public bool isDisposed => !_shouldDispose || !DisposableLeasePool.IsValid(_lease, _leaseVersion);
 
         public int IndexOf(T item)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableArray<T>));
             NotifyUsage();
-            return Array.IndexOf(array, item);
+            return Array.IndexOf(array, item, 0, Count);
         }
 
         public void Insert(int index, T item)
@@ -88,12 +98,14 @@ namespace PurrNet.Pooling
 #endif
             Array.Clear(rented, 0, size);
 
-            return new DisposableArray<T>
+            var result = new DisposableArray<T>
             {
                 array = rented,
                 Count = size,
                 _shouldDispose = true
             };
+            result._lease = DisposableLeasePool.Rent(out result._leaseVersion);
+            return result;
         }
 
         public static DisposableArray<T> Create(DisposableArray<T> copyFrom)
@@ -103,12 +115,14 @@ namespace PurrNet.Pooling
             AllocationTracker.Track(array);
 #endif
             Array.Copy(copyFrom.array, array, copyFrom.Count);
-            return new DisposableArray<T>
+            var result = new DisposableArray<T>
             {
                 array = array,
                 Count = copyFrom.Count,
                 _shouldDispose = true
             };
+            result._lease = DisposableLeasePool.Rent(out result._leaseVersion);
+            return result;
         }
 
         public static DisposableArray<T> Create(IList<T> copyFrom)
@@ -118,12 +132,14 @@ namespace PurrNet.Pooling
             AllocationTracker.Track(array);
 #endif
             copyFrom.CopyTo(array, 0);
-            return new DisposableArray<T>
+            var result = new DisposableArray<T>
             {
                 array = array,
                 Count = copyFrom.Count,
                 _shouldDispose = true
             };
+            result._lease = DisposableLeasePool.Rent(out result._leaseVersion);
+            return result;
         }
 
         public static DisposableArray<T> Create(T[] copyFrom)
@@ -139,37 +155,87 @@ namespace PurrNet.Pooling
             }
             else Array.Copy(copyFrom, array, copyFrom.Length);
 
-            return new DisposableArray<T>
+            var result = new DisposableArray<T>
             {
                 array = array,
                 Count = copyFrom.Length,
                 _shouldDispose = true
             };
+            result._lease = DisposableLeasePool.Rent(out result._leaseVersion);
+            return result;
         }
 
         public void Dispose()
         {
-            if (!_shouldDispose) return;
-            ArrayPool<T>.Shared.Return(array);
-            array = null;
+            if (isDisposed) return;
+            var rented = _array;
 #if UNITY_EDITOR && PURR_LEAKS_CHECK
-            AllocationTracker.UnTrack(array);
+            AllocationTracker.UnTrack(rented);
 #endif
+            ArrayPool<T>.Shared.Return(rented, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+            array = null;
             _shouldDispose = false;
+            Count = 0;
+            DisposableLeasePool.Return(_lease, _leaseVersion);
+            _lease = null;
+            _leaseVersion = 0;
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public Enumerator GetEnumerator()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableArray<T>));
             NotifyUsage();
-            for (int i = 0; i < Count; i++)
-                yield return array[i];
+            return new Enumerator(array, Count);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableArray<T>));
+            NotifyUsage();
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(DisposableArray<T>));
             NotifyUsage();
             return GetEnumerator();
+        }
+
+        public struct Enumerator : IEnumerator<T>
+        {
+            private readonly T[] _array;
+            private readonly int _count;
+            private int _index;
+
+            internal Enumerator(T[] array, int count)
+            {
+                _array = array;
+                _count = count;
+                _index = -1;
+            }
+
+            public bool MoveNext()
+            {
+                int next = _index + 1;
+                if (next >= _count)
+                    return false;
+                _index = next;
+                return true;
+            }
+
+            public void Reset()
+            {
+                _index = -1;
+            }
+
+            public T Current => _array[_index];
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+            }
         }
 
         public void Resize(int valueCount)
@@ -180,11 +246,13 @@ namespace PurrNet.Pooling
 
             var newArray = ArrayPool<T>.Shared.Rent(valueCount);
             Array.Copy(array, newArray, Count);
-            ArrayPool<T>.Shared.Return(array);
+            Array.Clear(newArray, Count, valueCount - Count);
+            var oldArray = _array;
 #if UNITY_EDITOR && PURR_LEAKS_CHECK
-            AllocationTracker.UnTrack(array);
+            AllocationTracker.UnTrack(oldArray);
             AllocationTracker.Track(newArray);
 #endif
+            ArrayPool<T>.Shared.Return(oldArray, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
             array = newArray;
             Count = valueCount;
             NotifyUsage();
@@ -214,6 +282,21 @@ namespace PurrNet.Pooling
             return Create(this);
         }
 
-        public bool Equals(DisposableArray<T> other) => new ArrayComparator<T>().Equals(array, other.array);
+        public bool Equals(DisposableArray<T> other)
+        {
+            if (isDisposed || other.isDisposed)
+                return isDisposed == other.isDisposed;
+            if (Count != other.Count)
+                return false;
+
+            var equality = PurrEquality<T>.Default;
+            for (int i = 0; i < Count; i++)
+            {
+                if (!equality.Equals(array[i], other.array[i]))
+                    return false;
+            }
+
+            return true;
+        }
     }
 }
