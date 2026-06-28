@@ -9,6 +9,7 @@ public class NestedSerializeParent : NetworkIdentity
     public static NestedSerializeParent LocalInstance;
     public static int DeserializeCount;
     public static int ServerOkCount;
+    public static bool EarlySpawnBeforeChildDeserialize;
 
     public int readValue;
     public string readString;
@@ -18,10 +19,14 @@ public class NestedSerializeParent : NetworkIdentity
         LocalInstance = null;
         DeserializeCount = 0;
         ServerOkCount = 0;
+        EarlySpawnBeforeChildDeserialize = false;
     }
 
     protected override void OnEarlySpawn()
     {
+        if (DeserializeCount > 0 && NestedSerializeChild.DeserializeCount == 0)
+            EarlySpawnBeforeChildDeserialize = true;
+
         gameObject.SetActive(true);
     }
 

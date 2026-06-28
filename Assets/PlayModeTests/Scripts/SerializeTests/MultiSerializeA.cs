@@ -9,6 +9,7 @@ public class MultiSerializeA : NetworkIdentity
     public static MultiSerializeA LocalInstance;
     public static int DeserializeCount;
     public static int ServerOkCount;
+    public static bool EarlySpawnBeforeBDeserialize;
 
     public int readValue;
     public string readString;
@@ -18,10 +19,14 @@ public class MultiSerializeA : NetworkIdentity
         LocalInstance = null;
         DeserializeCount = 0;
         ServerOkCount = 0;
+        EarlySpawnBeforeBDeserialize = false;
     }
 
     protected override void OnEarlySpawn()
     {
+        if (DeserializeCount > 0 && MultiSerializeB.DeserializeCount == 0)
+            EarlySpawnBeforeBDeserialize = true;
+
         gameObject.SetActive(true);
     }
 

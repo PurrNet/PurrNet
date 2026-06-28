@@ -73,6 +73,8 @@ public class NestedSerializeScenario : Scenario
             failures.Add($"parent OnDeserialize ran {NestedSerializeParent.DeserializeCount} time(s), expected 1");
         if (NestedSerializeChild.DeserializeCount != 1)
             failures.Add($"child OnDeserialize ran {NestedSerializeChild.DeserializeCount} time(s), expected 1");
+        if (NestedSerializeParent.EarlySpawnBeforeChildDeserialize)
+            failures.Add("parent OnEarlySpawn ran before child OnDeserialize");
 
         if (!parent.ReadValuesMatch)
             failures.Add($"parent values mismatch: int={parent.readValue}, str='{parent.readString}'");

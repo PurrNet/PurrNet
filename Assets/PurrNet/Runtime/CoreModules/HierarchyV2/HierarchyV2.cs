@@ -1115,36 +1115,36 @@ namespace PurrNet.Modules
                 onPreSpawn?.Invoke(go, false);
                 using var scope = data.customData.AutoScope();
 
-                if (_asServer)
+                bool isHost = _asServer && IsServerHost();
+                var spawner = data.packetIdx.scope;
+
+                for (var i = 0; i < createdNids.Count; i++)
                 {
-                    bool isHost = IsServerHost();
-                    var spawner = data.packetIdx.scope;
+                    var nid = createdNids[i];
+                    nid.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
+                    RegisterIdentity(nid, false, false);
+                }
 
-
+                if (hasCustomData)
+                {
                     for (var i = 0; i < createdNids.Count; i++)
                     {
                         var nid = createdNids[i];
-                        nid.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
-
-                        if (hasCustomData)
+                        if (nid)
                             nid.TriggerOnDeserialize(data.customData.packer);
-
-                        RegisterIdentity(nid, false);
-                        nid.TryAddObserver(spawner);
                     }
                 }
-                else
+
+                for (var i = 0; i < createdNids.Count; i++)
                 {
-                    for (var i = 0; i < createdNids.Count; i++)
-                    {
-                        var nid = createdNids[i];
-                        nid.SetIdentity(_manager, this, _sceneId, _asServer, false);
+                    var nid = createdNids[i];
+                    if (!nid)
+                        continue;
 
-                        if (hasCustomData)
-                            nid.TriggerOnDeserialize(data.customData.packer);
+                    TriggerEarlySpawnForRegisteredIdentity(nid);
 
-                        RegisterIdentity(nid, false);
-                    }
+                    if (_asServer)
+                        nid.TryAddObserver(spawner);
                 }
 
                 if (!_pendingSpawns.TryAdd(data.packetIdx, createdNids))
@@ -2210,22 +2210,31 @@ namespace PurrNet.Modules
         /// <summary>
         /// Local spawn will trigger the spawn event next frame immediately after the identity is registered.
         /// </summary>
-        private void RegisterIdentity(NetworkIdentity identity, bool isLocalSpawn)
+        private void RegisterIdentity(NetworkIdentity identity, bool isLocalSpawn, bool triggerEarlySpawn = true)
         {
-            if (identity.id.HasValue)
+            if (identity && identity.id.HasValue)
             {
                 _spawnedIdentities.Add(identity);
                 _spawnedIdentitiesMap.Add(identity.id.Value, identity);
 
-                identity.TriggerEarlySpawnEvent(_asServer);
-                if (_asServer && _manager.isClient)
-                    identity.TriggerEarlySpawnEvent(false);
-
-                onEarlyIdentityAdded?.Invoke(identity);
+                if (triggerEarlySpawn)
+                    TriggerEarlySpawnForRegisteredIdentity(identity);
 
                 if (isLocalSpawn)
                     _toSpawnNextFrame.Add(identity);
             }
+        }
+
+        private void TriggerEarlySpawnForRegisteredIdentity(NetworkIdentity identity)
+        {
+            if (!identity || !identity.id.HasValue)
+                return;
+
+            identity.TriggerEarlySpawnEvent(_asServer);
+            if (_asServer && _manager.isClient)
+                identity.TriggerEarlySpawnEvent(false);
+
+            onEarlyIdentityAdded?.Invoke(identity);
         }
 
         private void TriggerDespawnEvent(NetworkIdentity identity, bool preserveModules = false)

@@ -67,6 +67,8 @@ public class MultiSerializeScenario : Scenario
             failures.Add($"A OnDeserialize ran {MultiSerializeA.DeserializeCount} time(s), expected 1");
         if (MultiSerializeB.DeserializeCount != 1)
             failures.Add($"B OnDeserialize ran {MultiSerializeB.DeserializeCount} time(s), expected 1");
+        if (MultiSerializeA.EarlySpawnBeforeBDeserialize)
+            failures.Add("A OnEarlySpawn ran before B OnDeserialize");
 
         if (!a.ReadValuesMatch)
             failures.Add($"A values mismatch: int={a.readValue}, str='{a.readString}'");
