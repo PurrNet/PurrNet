@@ -12,6 +12,8 @@ namespace PurrNet
         [SerializeField] private OwnershipComponentToggle[] _components;
         [Tooltip("GameObjects to toggle from the owner's perspective")]
         [SerializeField] private OwnershipGameObjectToggle[] _gameObjects;
+        [Tooltip("Apply the final controller state in LateUpdate to avoid transient ownership changes during spawning")]
+        [SerializeField] private bool _applyInLateUpdate;
 
         [SerializeField, HideInInspector] private GameObject[] _toActivate;
         [SerializeField, HideInInspector] private GameObject[] _toDeactivate;
@@ -19,6 +21,7 @@ namespace PurrNet
         [SerializeField, HideInInspector] private Behaviour[] _toDisable;
 
         private bool _lastIsController;
+        private bool _refreshPending;
 
         private void Awake()
         {
@@ -27,8 +30,34 @@ namespace PurrNet
 
         protected override void OnSpawned()
         {
-            if (isController)
-                Setup(true);
+            RequestRefresh();
+        }
+
+        private void LateUpdate()
+        {
+            if (!_refreshPending)
+                return;
+
+            _refreshPending = false;
+            Refresh();
+        }
+
+        private void RequestRefresh()
+        {
+            if (_applyInLateUpdate)
+            {
+                _refreshPending = true;
+                return;
+            }
+
+            Refresh();
+        }
+
+        private void Refresh()
+        {
+            bool controller = isController;
+            if (controller != _lastIsController)
+                Setup(controller);
         }
 
         // migrate old data to _components and _gameObjects
@@ -140,16 +169,12 @@ namespace PurrNet
 
         protected override void OnOwnerReconnected(PlayerID ownerId)
         {
-            bool controller = isController;
-            if (controller != _lastIsController)
-                Setup(controller);
+            RequestRefresh();
         }
 
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
         {
-            bool controller = isController;
-            if (controller != _lastIsController)
-                Setup(controller);
+            RequestRefresh();
         }
     }
 }
