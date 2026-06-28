@@ -634,14 +634,24 @@ namespace PurrNet
         [UsedImplicitly]
         public bool IsSpawned(bool asServer) => asServer ? _isSpawnedServer : _isSpawnedClient;
 
-        internal void TriggerOnSerialize(BitPacker packer)
+        /// <summary>
+        /// Invokes custom spawn serialization on all external modules and then this identity.
+        /// This is used internally for spawn packets and can be used by manual spawn flows that need the same data pipeline.
+        /// </summary>
+        /// <param name="packer">The packer to write custom data into.</param>
+        public void TriggerOnSerialize(BitPacker packer)
         {
             for (int i = 0; i < _externalModulesView.Count; i++)
                 _externalModulesView[i].OnSerialize(packer);
             OnSerialize(packer);
         }
 
-        internal void TriggerOnDeserialize(BitPacker packer)
+        /// <summary>
+        /// Invokes custom spawn deserialization on all external modules and then this identity.
+        /// Manual spawn flows should call this after identity setup and before early-spawn if they need spawn-packet ordering.
+        /// </summary>
+        /// <param name="packer">The packer to read custom data from.</param>
+        public void TriggerOnDeserialize(BitPacker packer)
         {
             for (int i = 0; i < _externalModulesView.Count; i++)
                 _externalModulesView[i].OnDeserialize(packer);

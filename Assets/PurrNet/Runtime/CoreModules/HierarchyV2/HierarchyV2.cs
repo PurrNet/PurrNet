@@ -2118,6 +2118,17 @@ namespace PurrNet.Modules
         /// </summary>
         public void ManualEarlySpawn(NetworkIdentity identity, NetworkID id)
         {
+            ManualEarlySpawn(identity, id, default);
+        }
+
+        /// <summary>
+        /// For manual spawning of identities with custom spawn data.
+        /// Custom data is deserialized after identity setup and before early-spawn callbacks.
+        /// After this call, you should call <see cref="ManualFinalizeSpawn(NetworkIdentity)"/> to finalize the spawning.
+        /// This needs to be called manually on all conserned clients.
+        /// </summary>
+        public void ManualEarlySpawn(NetworkIdentity identity, NetworkID id, BitData customData)
+        {
             _spawnedIdentities.Add(identity);
             _spawnedIdentitiesMap.Add(id, identity);
 
@@ -2126,6 +2137,12 @@ namespace PurrNet.Modules
             identity.isManualSpawn = true;
             identity.SetID(id);
             identity.SetIdentity(_manager, this, _sceneId, _asServer, isHost);
+
+            if (customData.bitLength > 0 && customData.packer != null)
+            {
+                using var scope = customData.AutoScope();
+                identity.TriggerOnDeserialize(customData.packer);
+            }
 
             identity.TriggerEarlySpawnEvent(_asServer);
             if (isHost) identity.TriggerEarlySpawnEvent(false);
