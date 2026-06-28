@@ -1,3 +1,10 @@
+# [1.20.0-beta.238](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.237...v1.20.0-beta.238) (2026-06-28)
+
+
+### Bug Fixes
+
+* introduce some roslyn IDE warnings/errors for quick feedback ([d99e0da](https://github.com/PurrNet/PurrNet/commit/d99e0da50931a0fa3f1647c9555fd613f4870ae1))
+
 # [1.20.0-beta.237](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.236...v1.20.0-beta.237) (2026-06-28)
 
 
