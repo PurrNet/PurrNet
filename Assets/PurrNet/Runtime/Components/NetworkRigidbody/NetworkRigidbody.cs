@@ -106,6 +106,9 @@ namespace PurrNet
         [Tooltip("Whether to sync parent changes (SetParent) through the hierarchy. Only works when the new parent has a NetworkIdentity.")]
         [SerializeField] private bool _syncParent = true;
 
+        [Tooltip("If true, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody's motion instead of only rotated into the parent frame.")]
+        [SerializeField] private bool _syncVelocityRelativeToParent;
+
         [Header("Settings Override")]
         [Tooltip("Optional. When assigned, this asset's Create() builds a per-instance correction object that controls all correction decisions. The fields below are passed as defaults via the correction context.")]
         [SerializeField] private NetworkRigidbodySettings _settingsOverride;
@@ -569,7 +572,7 @@ namespace PurrNet
 
             Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
             Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
-            Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent);
+            Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent, worldTargetPos);
             Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
 
             float positionError = Vector3.Distance(_rigidbody.position, worldTargetPos);
@@ -908,8 +911,8 @@ namespace PurrNet
             {
                 Vector3 aWorldPos = ToWorldPosition(a.position, a.parent);
                 Vector3 bWorldPos = ToWorldPosition(b.position, b.parent);
-                Vector3 aWorldLinVel = ToWorldLinearVelocity(a.linearVelocity, a.parent);
-                Vector3 bWorldLinVel = ToWorldLinearVelocity(b.linearVelocity, b.parent);
+                Vector3 aWorldLinVel = ToWorldLinearVelocity(a.linearVelocity, a.parent, aWorldPos);
+                Vector3 bWorldLinVel = ToWorldLinearVelocity(b.linearVelocity, b.parent, bWorldPos);
                 Quaternion aWorldRot = ToWorldRotation(a.rotation, a.parent);
                 Quaternion bWorldRot = ToWorldRotation(b.rotation, b.parent);
                 Vector3 aWorldAngVel = ToWorldAngularVelocity(a.angularVelocity, a.parent);
@@ -940,6 +943,16 @@ namespace PurrNet
         public RigidbodyTransformSpace space => _space;
 
         /// <summary>
+        /// When enabled, velocities synced in a parent or soft-parent frame are relative to
+        /// the parent Rigidbody's motion. Position and rotation sync frames are unchanged.
+        /// </summary>
+        public bool syncVelocityRelativeToParent
+        {
+            get => _syncVelocityRelativeToParent;
+            set => _syncVelocityRelativeToParent = value;
+        }
+
+        /// <summary>
         /// Active soft-parent: the identity this rigidbody syncs relative to without being a
         /// Unity child of it, or null when the sync frame comes from <see cref="space"/> and the
         /// real Unity parent (legacy behaviour). See <see cref="SetSoftParent"/>.
@@ -957,6 +970,8 @@ namespace PurrNet
         /// velocity sync in that identity's local frame, exactly as if parented there, but the
         /// Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides
         /// <see cref="space"/> while active. Pass null (or call <see cref="ClearSoftParent"/>) to revert.
+        /// Enable <see cref="syncVelocityRelativeToParent"/> if velocity should subtract the
+        /// parent Rigidbody's linear and angular motion instead of only changing axes.
         ///
         /// Opt-in and backwards compatible: with no soft-parent set the wire format and behaviour are
         /// unchanged. Set it on the controller (the owner under client-auth, the server under
@@ -1169,7 +1184,13 @@ namespace PurrNet
             if (!_rigidbody)
                 return Vector3.zero;
             var v = GetLinearVelocity();
-            return parent ? parent.InverseTransformVector(v) : v;
+            if (!parent)
+                return v;
+
+            if (_syncVelocityRelativeToParent)
+                v -= GetParentPointVelocity(parent, _rigidbody.position);
+
+            return parent.InverseTransformVector(v);
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
@@ -1177,7 +1198,13 @@ namespace PurrNet
             if (!_rigidbody)
                 return Vector3.zero;
             var v = _rigidbody.angularVelocity;
-            return parent ? Quaternion.Inverse(parent.rotation) * v : v;
+            if (!parent)
+                return v;
+
+            if (_syncVelocityRelativeToParent)
+                v -= GetParentAngularVelocity(parent);
+
+            return Quaternion.Inverse(parent.rotation) * v;
         }
 
         /// <summary>
@@ -1199,14 +1226,65 @@ namespace PurrNet
             return parent ? parent.rotation * rot : rot;
         }
 
-        private static Vector3 ToWorldLinearVelocity(Vector3 v, Transform parent)
+        private Vector3 ToWorldLinearVelocity(Vector3 v, Transform parent, Vector3 worldPoint)
         {
-            return parent ? parent.TransformVector(v) : v;
+            if (!parent)
+                return v;
+
+            var worldVelocity = parent.TransformVector(v);
+            if (_syncVelocityRelativeToParent)
+                worldVelocity += GetParentPointVelocity(parent, worldPoint);
+
+            return worldVelocity;
         }
 
-        private static Vector3 ToWorldAngularVelocity(Vector3 v, Transform parent)
+        private Vector3 ToWorldAngularVelocity(Vector3 v, Transform parent)
         {
-            return parent ? parent.rotation * v : v;
+            if (!parent)
+                return v;
+
+            var worldVelocity = parent.rotation * v;
+            if (_syncVelocityRelativeToParent)
+                worldVelocity += GetParentAngularVelocity(parent);
+
+            return worldVelocity;
+        }
+
+        private Vector3 GetParentPointVelocity(Transform parent, Vector3 worldPoint)
+        {
+            if (!TryGetParentRigidbody(parent, out var parentRigidbody))
+                return Vector3.zero;
+
+            var linear = NetworkRigidbodyPhysics.GetLinearVelocity(parentRigidbody);
+            var angular = parentRigidbody.angularVelocity;
+            return linear + Vector3.Cross(angular, worldPoint - parentRigidbody.worldCenterOfMass);
+        }
+
+        private Vector3 GetParentAngularVelocity(Transform parent)
+        {
+            return TryGetParentRigidbody(parent, out var parentRigidbody)
+                ? parentRigidbody.angularVelocity
+                : Vector3.zero;
+        }
+
+        private bool TryGetParentRigidbody(Transform parent, out Rigidbody parentRigidbody)
+        {
+            parentRigidbody = null;
+
+            if (!_syncVelocityRelativeToParent || !parent)
+                return false;
+
+            parentRigidbody = parent.GetComponent<Rigidbody>();
+            if (!parentRigidbody)
+                parentRigidbody = parent.GetComponentInParent<Rigidbody>();
+
+            if (!parentRigidbody || parentRigidbody == _rigidbody)
+            {
+                parentRigidbody = null;
+                return false;
+            }
+
+            return true;
         }
 
         private Vector3 GetLinearVelocity()
@@ -1304,7 +1382,10 @@ namespace PurrNet
             if (_rigidbody.isKinematic || _rigidbody.IsSleeping())
                 return true;
 
-            return IsSettledState(GetLinearVelocity(), _rigidbody.angularVelocity);
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            return IsSettledState(ReadLinearVelocity(parentTrs), ReadAngularVelocity(parentTrs));
         }
 
         private bool IsSettledState(Vector3 linearVelocity, Vector3 angularVelocity)
@@ -1319,7 +1400,11 @@ namespace PurrNet
         {
             if (!_rigidbody)
                 return false;
-            return IsSettledState(GetLinearVelocity(), _rigidbody.angularVelocity)
+
+            var parentIdentity = GetSyncParentIdentity();
+            var parentTrs = parentIdentity ? parentIdentity.transform : null;
+
+            return IsSettledState(ReadLinearVelocity(parentTrs), ReadAngularVelocity(parentTrs))
                 && !_rigidbody.IsSleeping();
         }
 
@@ -1778,10 +1863,11 @@ namespace PurrNet
 
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
+            var worldPos = ToWorldPosition(syncPos, parentTrs);
 
-            _rigidbody.position = ToWorldPosition(syncPos, parentTrs);
+            _rigidbody.position = worldPos;
             _rigidbody.rotation = NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs));
-            SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
+            SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs, worldPos));
             SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
 
             _targetPosition = syncPos;
@@ -1893,10 +1979,11 @@ namespace PurrNet
 
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
+            var worldPos = ToWorldPosition(syncPos, parentTrs);
 
-            _rigidbody.position = ToWorldPosition(syncPos, parentTrs);
+            _rigidbody.position = worldPos;
             _rigidbody.rotation = NormalizeQuaternion(ToWorldRotation(data.rotation, parentTrs));
-            SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs));
+            SetLinearVelocity(ToWorldLinearVelocity(data.linearVelocity, parentTrs, worldPos));
             SetAngularVelocity(ToWorldAngularVelocity(data.angularVelocity, parentTrs));
 
             _targetPosition = syncPos;
@@ -1912,7 +1999,7 @@ namespace PurrNet
             {
                 Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
                 Quaternion worldTargetRot = ToWorldRotation(_targetRotation, _targetParent);
-                Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent);
+                Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent, worldTargetPos);
                 Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
                 var ctx = BuildCorrectionContext(
                     worldTargetPos,
