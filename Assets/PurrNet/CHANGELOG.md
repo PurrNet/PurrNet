@@ -1,3 +1,10 @@
+# [1.20.0-beta.243](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.242...v1.20.0-beta.243) (2026-06-29)
+
+
+### Bug Fixes
+
+* Avoid ambiguity in steam naming ([b8cce5f](https://github.com/PurrNet/PurrNet/commit/b8cce5f4a6ee46f9f7d793239f59f916fd069fc7))
+
 # [1.20.0-beta.242](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.241...v1.20.0-beta.242) (2026-06-29)
 
 
