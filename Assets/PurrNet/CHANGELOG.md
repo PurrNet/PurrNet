@@ -1,3 +1,10 @@
+# [1.20.0-beta.240](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.239...v1.20.0-beta.240) (2026-06-28)
+
+
+### Bug Fixes
+
+* allow manual spawn to access OnSerialize/Deserialize path ([e394da5](https://github.com/PurrNet/PurrNet/commit/e394da52786df72c78e3fbba3843bd712e9ea5fc))
+
 # [1.20.0-beta.239](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.238...v1.20.0-beta.239) (2026-06-28)
 
 
