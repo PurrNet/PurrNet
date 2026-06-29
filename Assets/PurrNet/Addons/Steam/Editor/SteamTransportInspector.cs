@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Editor;
 using PurrNet.Transports;
+using PurrConnectionState = PurrNet.Transports.ConnectionState;
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
 using Steamworks;
 #endif
@@ -118,7 +119,7 @@ namespace PurrNet.Steam.Editor
                 generic.transport.onConnectionState -= OnDirty;
         }
 
-        private void OnDirty(ConnectionState state, bool asServer)
+        private void OnDirty(PurrConnectionState state, bool asServer)
         {
             Repaint();
         }
