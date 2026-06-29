@@ -92,7 +92,8 @@ namespace PurrNet
             screenPos.y = Screen.height - screenPos.y;
 
             bool amIController = IsController(_ownerAuth);
-            float posError = Vector3.Distance(_rigidbody.position, ToWorldPosition(_targetPosition, _targetParent));
+            Vector3 worldTargetPos = ToWorldPosition(_targetPosition, _targetParent);
+            float posError = GetPositionError(worldTargetPos);
             float rotError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(ToWorldRotation(_targetRotation, _targetParent)));
             float velocityMagnitude = GetLinearVelocity().magnitude;
 

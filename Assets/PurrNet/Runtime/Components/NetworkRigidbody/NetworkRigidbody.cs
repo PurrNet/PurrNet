@@ -109,6 +109,9 @@ namespace PurrNet
         [Tooltip("If true, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody's motion instead of only rotated into the parent frame.")]
         [SerializeField] private bool _syncVelocityRelativeToParent;
 
+        [Tooltip("If true, position error for correction and hard-snap decisions is measured in the parent or soft-parent frame when active.")]
+        [SerializeField] private bool _useParentFramePositionError;
+
         [Header("Settings Override")]
         [Tooltip("Optional. When assigned, this asset's Create() builds a per-instance correction object that controls all correction decisions. The fields below are passed as defaults via the correction context.")]
         [SerializeField] private NetworkRigidbodySettings _settingsOverride;
@@ -575,7 +578,7 @@ namespace PurrNet
             Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent, worldTargetPos);
             Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
 
-            float positionError = Vector3.Distance(_rigidbody.position, worldTargetPos);
+            float positionError = GetPositionError(worldTargetPos);
             float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(worldTargetRot));
 
             EnsureSettingsInstance();
@@ -953,6 +956,16 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// When enabled, position error used by correction and hard-snap decisions is
+        /// measured in the active parent or soft-parent frame. The correction target remains world-space.
+        /// </summary>
+        public bool useParentFramePositionError
+        {
+            get => _useParentFramePositionError;
+            set => _useParentFramePositionError = value;
+        }
+
+        /// <summary>
         /// Active soft-parent: the identity this rigidbody syncs relative to without being a
         /// Unity child of it, or null when the sync frame comes from <see cref="space"/> and the
         /// real Unity parent (legacy behaviour). See <see cref="SetSoftParent"/>.
@@ -1219,6 +1232,17 @@ namespace PurrNet
             if (_positionTransform != null)
                 return _positionTransform.ToLocal(this, pos);
             return ToV3(pos);
+        }
+
+        private float GetPositionError(Vector3 worldTargetPos)
+        {
+            if (_useParentFramePositionError && _targetParent)
+            {
+                Vector3 localCurrent = _targetParent.InverseTransformPoint(_rigidbody.position);
+                return Vector3.Distance(localCurrent, ToV3(_targetPosition));
+            }
+
+            return Vector3.Distance(_rigidbody.position, worldTargetPos);
         }
 
         private static Quaternion ToWorldRotation(Quaternion rot, Transform parent)
