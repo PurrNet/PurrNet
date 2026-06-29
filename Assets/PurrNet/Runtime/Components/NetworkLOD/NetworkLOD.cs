@@ -7,6 +7,7 @@ namespace PurrNet
     /// Opt-in network LOD for the identities on this GameObject.
     /// The server periodically resolves a tier per observer based on distance to their anchors,
     /// which drives send-rate scheduling via <see cref="ShouldSendToPlayer"/>.
+    /// Network LOD never changes observer membership or visibility.
     /// </summary>
     public sealed class NetworkLOD : NetworkIdentity
     {
@@ -39,13 +40,17 @@ namespace PurrNet
             return _tiers.GetValueOrDefault(player, (byte)0);
         }
 
+        /// <summary>
+        /// True when this player is in the send-culled tier. The player may still be an observer.
+        /// </summary>
         public bool IsCulled(PlayerID player)
         {
             return GetTier(player) == NetworkLODProfile.CulledTier;
         }
 
         /// <summary>
-        /// Whether a sender should include this object's state for the given player on the current tick.
+        /// Whether LOD-aware senders should include this object's state for the given player on the current tick.
+        /// A culled tier means "send nothing" for LOD-gated traffic only; it does not affect visibility.
         /// Always true when no profile is assigned or the manager is unavailable.
         /// </summary>
         public bool ShouldSendToPlayer(PlayerID player)
@@ -70,9 +75,6 @@ namespace PurrNet
             if (previousTier == newTier)
                 return;
 
-            bool cullChanged = (previousTier == NetworkLODProfile.CulledTier) !=
-                               (newTier == NetworkLODProfile.CulledTier);
-
             for (var i = 0; i < _siblings.Count; i++)
             {
                 var sibling = _siblings[i];
@@ -80,9 +82,6 @@ namespace PurrNet
                     continue;
 
                 sibling.TriggerOnLODTierChanged(player, previousTier, newTier);
-
-                if (cullChanged && _profile && _profile.cullBeyondLastTier)
-                    sibling.MarkLODVisibilityDirty(player);
             }
         }
 
@@ -107,16 +106,15 @@ namespace PurrNet
         protected override void OnDespawned(bool asServer)
         {
             if (asServer)
-            {
-                for (var i = 0; i < _siblings.Count; i++)
-                {
-                    if (_siblings[i])
-                        _siblings[i].SetLODComponent(null);
-                }
-
-                _siblings.Clear();
                 _tiers.Clear();
+
+            for (var i = 0; i < _siblings.Count; i++)
+            {
+                if (_siblings[i])
+                    _siblings[i].SetLODComponent(null);
             }
+
+            _siblings.Clear();
 
             if (networkManager.TryGetModule<Modules.NetworkLODFactory>(asServer, out var factory) &&
                 factory.TryGetModule(sceneId, out var module))

@@ -29,7 +29,7 @@ namespace PurrNet
             new NetworkLODTier { maxDistance = 150f, hysteresis = 10f, sendIntervalTicks = 4 }
         };
 
-        [Tooltip("If true, players beyond the last tier stop being observers entirely. Requires a LODVisibilityRule in the active visibility rule set.")]
+        [Tooltip("If true, players beyond the last tier enter a send-culled tier. They remain observers; LOD-aware senders decide what to skip.")]
         [SerializeField] private bool _cullBeyondLastTier;
 
         public int tierCount => _tiers?.Length ?? 0;

@@ -9,7 +9,8 @@ namespace PurrNet
 
         /// <summary>
         /// Called when the LOD tier of this object changes for a player.
-        /// Server only.
+        /// Server only. Network LOD does not send automatically; use this event to react with user-authored
+        /// catch-up state, quality changes, or other LOD-aware behavior.
         /// </summary>
         public event LODTierChangedDelegate onLODTierChanged;
 
@@ -37,6 +38,7 @@ namespace PurrNet
         /// <summary>
         /// Whether state for this object should be sent to the given player on the current tick,
         /// based on the player's LOD tier. Always true when no LOD component is present.
+        /// This is a query only; RPC dispatch and visibility do not consult it automatically.
         /// </summary>
         public bool ShouldSendLODToPlayer(PlayerID player)
         {
@@ -45,7 +47,7 @@ namespace PurrNet
 
         /// <summary>
         /// Called when the LOD tier of this object changes for a player.
-        /// Server only.
+        /// Server only. Network LOD does not send automatically.
         /// </summary>
         /// <param name="player">The player whose tier changed</param>
         /// <param name="previousTier">The previous tier</param>
@@ -75,9 +77,5 @@ namespace PurrNet
             }
         }
 
-        internal void MarkLODVisibilityDirty(PlayerID player)
-        {
-            SetVisibilityDirty(player);
-        }
     }
 }

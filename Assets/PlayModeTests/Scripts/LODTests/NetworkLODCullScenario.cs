@@ -5,8 +5,8 @@ using PurrNet.Modules;
 using UnityEngine;
 
 /// <summary>
-/// LOD culling contract: with cullBeyondLastTier + a LODVisibilityRule override, moving beyond the
-/// last band removes every observer (clients despawn) and moving back re-adds them (clients respawn).
+/// LOD culling contract: cullBeyondLastTier send-culls LOD-aware traffic, but it does not change
+/// observer membership or despawn the object on clients.
 /// </summary>
 public class NetworkLODCullScenario : Scenario
 {
@@ -41,21 +41,13 @@ public class NetworkLODCullScenario : Scenario
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
         CreatePrefab();
-
-        var ruleSet = ScriptableObject.CreateInstance<NetworkVisibilityRuleSet>();
-        ruleSet.Setup(manager);
-        ruleSet.AddRule(manager, ScriptableObject.CreateInstance<LODVisibilityRule>());
-
-        var identities = _prefab.GetComponents<NetworkIdentity>();
-        for (var i = 0; i < identities.Length; i++)
-            identities[i].SetVisibilityRules(ruleSet);
-
         manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
         NetworkLODCullTarget instance = null;
+        NetworkLOD lod = null;
         GameObject anchorGo = null;
         NetworkLODFactory lodFactory = null;
 
@@ -78,6 +70,7 @@ public class NetworkLODCullScenario : Scenario
             HierarchyV2.SupressAutoOwner();
             try { instance = Instantiate(_prefab, BasePos + new Vector3(10f, 0f, 0f), Quaternion.identity); }
             finally { HierarchyV2.ResumeAutoOwner(); }
+            lod = instance.GetComponent<NetworkLOD>();
         }
 
         try
@@ -95,58 +88,62 @@ public class NetworkLODCullScenario : Scenario
         await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
 
         if (ctx.isServer)
-            instance.transform.position = BasePos + new Vector3(100f, 0f, 0f);
-
-        try
         {
-            if (ctx.isServer)
-            {
-                await UniTaskUtils.WaitWithTimeout(
-                    () => instance.observers.Count == 0,
-                    _visibilityTimeoutSeconds, ctx.cancellationToken);
-            }
-            else
-            {
-                await UniTaskUtils.WaitWithTimeout(
-                    () => NetworkLODCullTarget.localInstance == null && NetworkLODCullTarget.aliveCount == 0,
-                    _visibilityTimeoutSeconds, ctx.cancellationToken);
-            }
-        }
-        catch (TimeoutException)
-        {
-            return ScenarioResult.Fail(ctx.isServer
-                ? $"cull: observers never emptied: {instance.observers.Count}"
-                : $"cull: client never saw the despawn: alive={NetworkLODCullTarget.aliveCount}");
-        }
-
-        await ScenarioBarrier.Wait(ctx, BarrierBase + 2, _barrierTimeoutSeconds);
-
-        if (ctx.isServer)
-            instance.transform.position = BasePos + new Vector3(10f, 0f, 0f);
-
-        try
-        {
-            if (ctx.isServer)
+            try
             {
                 await UniTaskUtils.WaitWithTimeout(
                     () => instance.observers.Count == ctx.expectedConnections,
                     _visibilityTimeoutSeconds, ctx.cancellationToken);
             }
-            else
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail(
+                    $"initial observers={instance.observers.Count}/{ctx.expectedConnections}");
+            }
+
+            instance.transform.position = BasePos + new Vector3(100f, 0f, 0f);
+
+            try
             {
                 await UniTaskUtils.WaitWithTimeout(
-                    () => NetworkLODCullTarget.localInstance != null && NetworkLODCullTarget.aliveCount == 1,
+                    () => AllPlayersSendCulled(ctx, instance, lod),
                     _visibilityTimeoutSeconds, ctx.cancellationToken);
             }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail(
+                    $"send-cull: observers={instance.observers.Count}/{ctx.expectedConnections}, " +
+                    $"tiers={DescribePlayerTiers(ctx, lod)}");
+            }
         }
-        catch (TimeoutException)
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 2, _barrierTimeoutSeconds);
+
+        if (!ctx.isServer && (NetworkLODCullTarget.localInstance == null || NetworkLODCullTarget.aliveCount != 1))
+            return ScenarioResult.Fail($"send-cull despawned client object: alive={NetworkLODCullTarget.aliveCount}");
+
+        if (ctx.isServer)
         {
-            return ScenarioResult.Fail(ctx.isServer
-                ? $"un-cull: observers={instance.observers.Count}/{ctx.expectedConnections}"
-                : $"un-cull: client never saw the respawn: alive={NetworkLODCullTarget.aliveCount}");
+            instance.transform.position = BasePos + new Vector3(10f, 0f, 0f);
+
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => AllPlayersSendActive(ctx, instance, lod),
+                    _visibilityTimeoutSeconds, ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail(
+                    $"un-cull: observers={instance.observers.Count}/{ctx.expectedConnections}, " +
+                    $"tiers={DescribePlayerTiers(ctx, lod)}");
+            }
         }
 
         await ScenarioBarrier.Wait(ctx, BarrierBase + 3, _barrierTimeoutSeconds);
+
+        if (!ctx.isServer && (NetworkLODCullTarget.localInstance == null || NetworkLODCullTarget.aliveCount != 1))
+            return ScenarioResult.Fail($"un-cull lost client object: alive={NetworkLODCullTarget.aliveCount}");
 
         if (ctx.isServer)
         {
@@ -174,6 +171,73 @@ public class NetworkLODCullScenario : Scenario
 
         await ScenarioBarrier.Wait(ctx, BarrierBase + 4, _barrierTimeoutSeconds);
 
-        return ScenarioResult.Ok("cull/un-cull cycle drove observer removal and re-add");
+        return ScenarioResult.Ok("send-cull/un-cull preserved observers and client liveness");
+    }
+
+    private static bool AllPlayersSendCulled(ScenarioContext ctx, NetworkIdentity identity, NetworkLOD lod)
+    {
+        if (!identity || !lod || identity.observers.Count != ctx.expectedConnections)
+            return false;
+
+        var players = ctx.networkManager.players;
+        for (var i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            if (player.isServer)
+                continue;
+
+            if (!lod.IsCulled(player))
+                return false;
+
+            if (identity.ShouldSendLODToPlayer(player))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool AllPlayersSendActive(ScenarioContext ctx, NetworkIdentity identity, NetworkLOD lod)
+    {
+        if (!identity || !lod || identity.observers.Count != ctx.expectedConnections)
+            return false;
+
+        var players = ctx.networkManager.players;
+        for (var i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            if (player.isServer)
+                continue;
+
+            if (lod.GetTier(player) != 0)
+                return false;
+
+            if (!identity.ShouldSendLODToPlayer(player))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static string DescribePlayerTiers(ScenarioContext ctx, NetworkLOD lod)
+    {
+        if (!lod)
+            return "missing-lod";
+
+        var players = ctx.networkManager.players;
+        string result = "";
+
+        for (var i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            if (player.isServer)
+                continue;
+
+            if (result.Length > 0)
+                result += ",";
+
+            result += $"{player.id.value}:{lod.GetTier(player)}:{lod.ShouldSendToPlayer(player)}";
+        }
+
+        return result;
     }
 }
