@@ -27,7 +27,7 @@ namespace PurrNet
             };
         }
 
-        static T OnPreInstantiate<T>(PrefabData prefabData, InstantiateData<T> instantiateData)
+        static T OnPreInstantiate<T>(PrefabData prefabData, InstantiateData<T> instantiateData, bool notifyCreated)
             where T : Object
         {
             var prefab = prefabData.prefab;
@@ -38,16 +38,14 @@ namespace PurrNet
             if (!prefabData.pooled)
             {
                 var instance = instantiateData.Instantiate();
-                var go = GetGameObject(instance);
-                PurrNetGameObjectUtils.NotifyGameObjectCreated(go, prefab);
+                NotifyGameObjectCreated(instance, prefab, notifyCreated);
                 return instance;
             }
 
             if (!HierarchyPool.TryGetPrefabPrototype(prefab, out var prototype))
             {
                 var instance = instantiateData.Instantiate();
-                var go = GetGameObject(instance);
-                PurrNetGameObjectUtils.NotifyGameObjectCreated(go, prefab);
+                NotifyGameObjectCreated(instance, prefab, notifyCreated);
                 return instance;
             }
 
@@ -64,12 +62,38 @@ namespace PurrNet
             }
 
             instantiateData.ApplyToExisting(result, prefab);
-            PurrNetGameObjectUtils.NotifyGameObjectCreated(result, prefab);
+            NotifyGameObjectCreated(result, prefab, notifyCreated);
 
             if (result.TryGetComponent(out T component))
                 return component;
 
             return (T)(Object)result;
+        }
+
+        static void NotifyGameObjectCreated<T>(T instance, GameObject prefab, bool notifyCreated) where T : Object
+        {
+            if (!notifyCreated)
+                return;
+
+            var go = GetGameObject(instance);
+            PurrNetGameObjectUtils.NotifyGameObjectCreated(go, prefab);
+        }
+
+        static T InstantiateWithPurrNet<T>(T original, InstantiateData<T> instantiateData) where T : Object
+        {
+            if (!TryGetPrefabData(original, out var prefabData))
+                return instantiateData.Instantiate();
+
+            return OnPreInstantiate(prefabData, instantiateData, true);
+        }
+
+        static T InstantiateDirectlyFromPoolWithPurrNet<T>(T original, InstantiateData<T> instantiateData)
+            where T : Object
+        {
+            if (!TryGetPrefabData(original, out var prefabData))
+                return instantiateData.Instantiate();
+
+            return OnPreInstantiate(prefabData, instantiateData, false);
         }
 
         static bool OnDestroy(Object instance)
@@ -164,35 +188,37 @@ namespace PurrNet
 
         [UsedByIL]
         public static Object Instantiate(Object original)
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original);
-            return OnPreInstantiate(prefabData, new InstantiateData<Object>(original));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<Object>(original));
+
+        public static Object InstantiateDirectlyFromPool(Object original)
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<Object>(original));
 
         [UsedByIL]
         public static Object Instantiate(Object original, Transform parent, bool instantiateInWorldSpace)
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent, instantiateInWorldSpace);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, parent, instantiateInWorldSpace));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<Object>(original, parent, instantiateInWorldSpace));
 
         public static Object InstantiateDirectly(Object original, Transform parent, bool instantiateInWorldSpace)
             => Object.Instantiate(original, parent, instantiateInWorldSpace);
 
+        public static Object InstantiateDirectlyFromPool(
+            Object original,
+            Transform parent,
+            bool instantiateInWorldSpace)
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<Object>(original, parent, instantiateInWorldSpace));
+
         [UsedByIL]
         public static Object Instantiate(Object original, Vector3 position, Quaternion rotation)
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, position, rotation));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<Object>(original, position, rotation));
 
         public static Object InstantiateDirectly(Object original, Vector3 position, Quaternion rotation)
             => Object.Instantiate(original, position, rotation);
+
+        public static Object InstantiateDirectlyFromPool(Object original, Vector3 position, Quaternion rotation)
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<Object>(original, position, rotation));
 
         [UsedByIL]
         public static Object Instantiate(
@@ -200,12 +226,7 @@ namespace PurrNet
             Vector3 position,
             Quaternion rotation,
             Transform parent)
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation, parent);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, position, rotation, parent));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<Object>(original, position, rotation, parent));
 
         public static Object InstantiateDirectly(
             Object original,
@@ -216,100 +237,100 @@ namespace PurrNet
             return Object.Instantiate(original, position, rotation, parent);
         }
 
+        public static Object InstantiateDirectlyFromPool(
+            Object original,
+            Vector3 position,
+            Quaternion rotation,
+            Transform parent)
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<Object>(original, position, rotation, parent));
+
 #if UNITY_2023_1_OR_NEWER
         [UsedByIL]
         public static Object Instantiate(Object original, Scene scene)
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, scene);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, scene));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<Object>(original, scene));
 
         public static Object InstantiateDirectly(Object original, Scene scene)
             => Object.Instantiate(original, scene);
 
+        public static Object InstantiateDirectlyFromPool(Object original, Scene scene)
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<Object>(original, scene));
+
         public static T InstantiateDirectly<T>(T original, Scene scene) where T : Object
             => (T)Object.Instantiate(original, scene);
+
+        public static T InstantiateDirectlyFromPool<T>(T original, Scene scene) where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<T>(original, scene));
 #endif
 
         [UsedByIL]
         public static Object Instantiate(Object original, Transform parent)
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, parent));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<Object>(original, parent));
 
         public static Object InstantiateDirectly(Object original, Transform parent)
             => Object.Instantiate(original, parent);
 
+        public static Object InstantiateDirectlyFromPool(Object original, Transform parent)
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<Object>(original, parent));
+
         [UsedByIL]
         public static T Instantiate<T>(T original) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original));
 
 #if UNITY_6000_0_OR_NEWER
         [UsedByIL]
         public static T Instantiate<T>(T original, InstantiateParameters parameters) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parameters);
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parameters));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, parameters));
 
         [UsedByIL]
         public static T Instantiate<T>(T original, Vector3 pos, Quaternion rot, InstantiateParameters parameters) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, pos, rot, parameters);
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, pos, rot, parameters));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, pos, rot, parameters));
 
         [UsedByIL]
         public static T InstantiateDirectly<T>(T original, InstantiateParameters parameters) where T : Object
             => Object.Instantiate(original, parameters);
 
+        public static T InstantiateDirectlyFromPool<T>(T original, InstantiateParameters parameters) where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<T>(original, parameters));
+
         [UsedByIL]
         public static T InstantiateDirectly<T>(T original, Vector3 pos, Quaternion rot, InstantiateParameters parameters) where T : Object
             => Object.Instantiate(original, pos, rot, parameters);
+
+        public static T InstantiateDirectlyFromPool<T>(
+            T original,
+            Vector3 pos,
+            Quaternion rot,
+            InstantiateParameters parameters)
+            where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<T>(original, pos, rot, parameters));
 #endif
 
         public static T InstantiateDirectly<T>(T original) where T : Object
             => Object.Instantiate(original);
 
+        public static T InstantiateDirectlyFromPool<T>(T original) where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<T>(original));
+
         [UsedByIL]
         public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, position, rotation));
 
         public static T InstantiateDirectly<T>(T original, Vector3 position, Quaternion rotation) where T : Object
             => Object.Instantiate(original, position, rotation);
 
+        public static T InstantiateDirectlyFromPool<T>(T original, Vector3 position, Quaternion rotation)
+            where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<T>(original, position, rotation));
+
         [UsedByIL]
         public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation, Scene scene) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-            {
-                var obj = Object.Instantiate(original, position, rotation);
-                var go = GetGameObject(obj);
-
-                if (go && go.scene.handle != scene.handle)
-                    SceneManager.MoveGameObjectToScene(go, scene);
-                return obj;
-            }
-
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation, scene));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, position, rotation, scene));
 
         public static T InstantiateDirectly<T>(T original, Vector3 position, Quaternion rotation, Scene scene)
             where T : Object
@@ -321,6 +342,16 @@ namespace PurrNet
             return obj;
         }
 
+        public static T InstantiateDirectlyFromPool<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation,
+            Scene scene)
+            where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<T>(original, position, rotation, scene));
+
         [UsedByIL]
         public static T Instantiate<T>(
             T original,
@@ -328,12 +359,7 @@ namespace PurrNet
             Quaternion rotation,
             Transform parent)
             where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation, parent);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation, parent));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, position, rotation, parent));
 
         public static T InstantiateDirectly<T>(
             T original,
@@ -343,29 +369,38 @@ namespace PurrNet
             where T : Object
             => Object.Instantiate(original, position, rotation, parent);
 
+        public static T InstantiateDirectlyFromPool<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation,
+            Transform parent)
+            where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<T>(original, position, rotation, parent));
+
         [UsedByIL]
         public static T Instantiate<T>(T original, Transform parent) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parent));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, parent));
 
         public static T InstantiateDirectly<T>(T original, Transform parent) where T : Object
             => Object.Instantiate(original, parent);
 
+        public static T InstantiateDirectlyFromPool<T>(T original, Transform parent) where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(original, new InstantiateData<T>(original, parent));
+
         [UsedByIL]
         public static T Instantiate<T>(T original, Transform parent, bool worldPositionStays) where T : Object
-        {
-            if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent, worldPositionStays);
-
-            return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parent, worldPositionStays));
-        }
+            => InstantiateWithPurrNet(original, new InstantiateData<T>(original, parent, worldPositionStays));
 
         public static T InstantiateDirectly<T>(T original, Transform parent, bool worldPositionStays) where T : Object
             => Object.Instantiate(original, parent, worldPositionStays);
+
+        public static T InstantiateDirectlyFromPool<T>(T original, Transform parent, bool worldPositionStays)
+            where T : Object
+            => InstantiateDirectlyFromPoolWithPurrNet(
+                original,
+                new InstantiateData<T>(original, parent, worldPositionStays));
 
         [UsedByIL]
         public static void Destroy(Object obj)
