@@ -55,7 +55,6 @@ var namespacePurrNet =
     [ "ITick", "interfacePurrNet_1_1ITick.html", "interfacePurrNet_1_1ITick" ],
     [ "LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
     [ "LODIntervalScheduler", "classPurrNet_1_1LODIntervalScheduler.html", null ],
-    [ "LODVisibilityRule", "classPurrNet_1_1LODVisibilityRule.html", "classPurrNet_1_1LODVisibilityRule" ],
     [ "MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
     [ "MinimalModuleHeader", "structPurrNet_1_1MinimalModuleHeader.html", null ],
     [ "MinimalStaticHeader", "structPurrNet_1_1MinimalStaticHeader.html", null ],

@@ -5,6 +5,5 @@ var searchData=
   ['localtransform_2',['LocalTransform',['../structPurrNet_1_1Modules_1_1LocalTransform.html',1,'PurrNet::Modules']]],
   ['localtransport_3',['LocalTransport',['../classPurrNet_1_1Transports_1_1LocalTransport.html',1,'PurrNet::Transports']]],
   ['lodintervalscheduler_4',['LODIntervalScheduler',['../classPurrNet_1_1LODIntervalScheduler.html',1,'PurrNet']]],
-  ['lodvisibilityrule_5',['LODVisibilityRule',['../classPurrNet_1_1LODVisibilityRule.html',1,'PurrNet']]],
-  ['logstyle_6',['LogStyle',['../structPurrNet_1_1Logging_1_1LogStyle.html',1,'PurrNet::Logging']]]
+  ['logstyle_5',['LogStyle',['../structPurrNet_1_1Logging_1_1LogStyle.html',1,'PurrNet::Logging']]]
 ];

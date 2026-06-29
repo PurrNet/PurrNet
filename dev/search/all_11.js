@@ -133,5 +133,6 @@ var searchData=
   ['synctexturefile_130',['SyncTextureFile',['../classPurrNet_1_1SyncTextureFile.html',1,'PurrNet']]],
   ['synctimer_131',['SyncTimer',['../classPurrNet_1_1SyncTimer.html',1,'PurrNet']]],
   ['syncvar_132',['SyncVar',['../classPurrNet_1_1SyncVar.html',1,'PurrNet']]],
-  ['syncvar_3c_20purrnet_3a_3aglobalnetworkid_20_3e_133',['SyncVar&lt; PurrNet::GlobalNetworkID &gt;',['../classPurrNet_1_1SyncVar.html',1,'PurrNet']]]
+  ['syncvar_3c_20purrnet_3a_3aglobalnetworkid_20_3e_133',['SyncVar&lt; PurrNet::GlobalNetworkID &gt;',['../classPurrNet_1_1SyncVar.html',1,'PurrNet']]],
+  ['syncvelocityrelativetoparent_134',['syncVelocityRelativeToParent',['../classPurrNet_1_1NetworkRigidbody.html#a422c39dcd8e35cd5fcfe07222174fbc5',1,'PurrNet::NetworkRigidbody']]]
 ];

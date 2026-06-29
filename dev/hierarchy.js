@@ -246,7 +246,6 @@ var hierarchy =
       [ "PurrNet.NetworkVisibilityRule", "classPurrNet_1_1NetworkVisibilityRule.html", [
         [ "PurrNet.AlwaysVisibleRule", "classPurrNet_1_1AlwaysVisibleRule.html", null ],
         [ "PurrNet.DistanceRule", "classPurrNet_1_1DistanceRule.html", null ],
-        [ "PurrNet.LODVisibilityRule", "classPurrNet_1_1LODVisibilityRule.html", null ],
         [ "PurrNet.NoVisibilityRule", "classPurrNet_1_1NoVisibilityRule.html", null ]
       ] ]
     ] ],
