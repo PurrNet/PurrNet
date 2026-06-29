@@ -1,3 +1,11 @@
+# [1.20.0-beta.241](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.240...v1.20.0-beta.241) (2026-06-29)
+
+
+### Bug Fixes
+
+* allow NetworkRigidbody to use the parent for velocity calculations ([7bafd6b](https://github.com/PurrNet/PurrNet/commit/7bafd6b73c0287ea13409cd79ad00a417fc8c421))
+* reworking some early LOD stuff ([200db77](https://github.com/PurrNet/PurrNet/commit/200db77361976fb6febeeb47221558e5c0718bd4))
+
 # [1.20.0-beta.240](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.239...v1.20.0-beta.240) (2026-06-28)
 
 
