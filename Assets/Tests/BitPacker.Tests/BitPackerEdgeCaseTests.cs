@@ -218,6 +218,55 @@ public class BitPackerEdgeCaseTests
     }
 
     [Test]
+    public void FragmentationLayer_Unfragmented_DoesNotAliasReturnedBitPackerBuffer()
+    {
+        using var layer = new FragmentationLayer();
+        var expected = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
+
+        var sourcePacker = BitPackerPool.Get();
+        sourcePacker.WriteBytes(expected);
+        var source = sourcePacker.ToByteData();
+        sourcePacker.Dispose();
+
+        var fragments = new List<byte[]>();
+        layer.Send(source, 16, fragment => Capture(fragment, fragments));
+
+        Assert.AreEqual(1, fragments.Count);
+        Assert.AreEqual(0, fragments[0][0]);
+
+        var assembled = new ByteData(fragments[0], 1, expected.Length);
+        AssertByteDataEquals(new ByteData(expected, 0, expected.Length), assembled);
+    }
+
+    [Test]
+    public void FragmentationLayer_Fragmented_DoesNotAliasReturnedBitPackerBuffer()
+    {
+        using var layer = new FragmentationLayer();
+        var expected = new byte[37];
+        for (int i = 0; i < expected.Length; i++)
+            expected[i] = (byte)(i * 7 + 3);
+
+        var sourcePacker = BitPackerPool.Get();
+        sourcePacker.WriteBytes(expected);
+        var source = sourcePacker.ToByteData();
+        sourcePacker.Dispose();
+
+        var fragments = new List<byte[]>();
+        layer.Send(source, 13, fragment => Capture(fragment, fragments));
+
+        Assert.Greater(fragments.Count, 1);
+
+        ByteData assembled = default;
+        for (int i = 0; i < fragments.Count; i++)
+        {
+            var completed = layer.Receive(new ByteData(fragments[i], 0, fragments[i].Length), out assembled);
+            Assert.AreEqual(i == fragments.Count - 1, completed);
+        }
+
+        AssertByteDataEquals(new ByteData(expected, 0, expected.Length), assembled);
+    }
+
+    [Test]
     public void FragmentationLayer_FragmentedOutOfOrder_Roundtrips()
     {
         using var layer = new FragmentationLayer();
