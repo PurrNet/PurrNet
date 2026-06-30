@@ -1,3 +1,10 @@
+# [1.20.0-beta.245](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.244...v1.20.0-beta.245) (2026-06-30)
+
+
+### Bug Fixes
+
+* dont use BitPacker at the FragmentationLayer due to corrupting send array (it is freed on send and net "Get" risks getting the same array back and modifying it). ([187866b](https://github.com/PurrNet/PurrNet/commit/187866b8301c76a5443e62c5ce71c89b7f835989))
+
 # [1.20.0-beta.244](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.243...v1.20.0-beta.244) (2026-06-30)
 
 
