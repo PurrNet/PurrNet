@@ -9,6 +9,7 @@
 using System;
 using System.Collections.Generic;
 using PurrNet.Transports;
+using PurrConnectionState = PurrNet.Transports.ConnectionState;
 using UnityEngine;
 
 namespace PurrNet.Steam
@@ -79,9 +80,9 @@ namespace PurrNet.Steam
 
         public IReadOnlyList<Connection> connections => _connections;
 
-        private ConnectionState _listenerState = ConnectionState.Disconnected;
+        private PurrConnectionState _listenerState = PurrConnectionState.Disconnected;
 
-        public ConnectionState listenerState
+        public PurrNet.Transports.ConnectionState listenerState
         {
             get => _listenerState;
             private set
@@ -94,9 +95,9 @@ namespace PurrNet.Steam
             }
         }
 
-        private ConnectionState _clientState = ConnectionState.Disconnected;
+        private PurrConnectionState _clientState = PurrConnectionState.Disconnected;
 
-        public ConnectionState clientState
+        public PurrNet.Transports.ConnectionState clientState
         {
             get => _clientState;
             private set
@@ -135,7 +136,7 @@ namespace PurrNet.Steam
             if (_server != null)
                 StopListening();
 
-            listenerState = ConnectionState.Connecting;
+            listenerState = PurrConnectionState.Connecting;
 
             _server = new SteamServer();
             _connections.Clear();
@@ -146,12 +147,12 @@ namespace PurrNet.Steam
 
             if (_server.listening)
             {
-                listenerState = ConnectionState.Connected;
+                listenerState = PurrConnectionState.Connected;
             }
             else
             {
-                listenerState = ConnectionState.Disconnecting;
-                listenerState = ConnectionState.Disconnected;
+                listenerState = PurrConnectionState.Disconnecting;
+                listenerState = PurrConnectionState.Disconnected;
             }
 
             _server.onDataReceived += OnServerData;
@@ -178,10 +179,10 @@ namespace PurrNet.Steam
 
         public void StopListening()
         {
-            if (listenerState != ConnectionState.Disconnected)
-                listenerState = ConnectionState.Disconnecting;
+            if (listenerState != PurrConnectionState.Disconnected)
+                listenerState = PurrConnectionState.Disconnecting;
             _server?.Stop();
-            listenerState = ConnectionState.Disconnected;
+            listenerState = PurrConnectionState.Disconnected;
             _server = null;
         }
 
@@ -206,12 +207,12 @@ namespace PurrNet.Steam
             onDataReceived?.Invoke(new Connection(-1), data, false);
         }
 
-        private void OnClientStateChanged(ConnectionState state)
+        private void OnClientStateChanged(PurrConnectionState state)
         {
-            if (state == ConnectionState.Connected)
+            if (state == PurrConnectionState.Connected)
                 onConnected?.Invoke(new Connection(0), false);
 
-            if (state == ConnectionState.Disconnected)
+            if (state == PurrConnectionState.Disconnected)
                 onDisconnected?.Invoke(new Connection(0), DisconnectReason.ClientRequest, false);
 
             clientState = state;
@@ -247,7 +248,7 @@ namespace PurrNet.Steam
             if (_server == null)
                 return;
 
-            if (listenerState is not ConnectionState.Connected)
+            if (listenerState is not PurrConnectionState.Connected)
                 return;
 
             if (!target.isValid)

@@ -1,3 +1,17 @@
+# [1.20.0-beta.243](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.242...v1.20.0-beta.243) (2026-06-29)
+
+
+### Bug Fixes
+
+* Avoid ambiguity in steam naming ([b8cce5f](https://github.com/PurrNet/PurrNet/commit/b8cce5f4a6ee46f9f7d793239f59f916fd069fc7))
+
+# [1.20.0-beta.242](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.241...v1.20.0-beta.242) (2026-06-29)
+
+
+### Bug Fixes
+
+* allow to make NetworkRigidbody error relative to the parent ([d28d03f](https://github.com/PurrNet/PurrNet/commit/d28d03fa0c06514f9c7cbce0cf9729cfed0189ad))
+
 # [1.20.0-beta.241](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.240...v1.20.0-beta.241) (2026-06-29)
 
 

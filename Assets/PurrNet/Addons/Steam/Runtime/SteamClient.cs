@@ -9,6 +9,7 @@
 using System;
 using System.Collections;
 using PurrNet.Transports;
+using PurrConnectionState = PurrNet.Transports.ConnectionState;
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
 using System.Runtime.InteropServices;
 using PurrNet.Logging;
@@ -33,11 +34,11 @@ namespace PurrNet.Steam
 #pragma warning disable CS0067 // Event is never used
         public event Action<ByteData> onDataReceived;
 #pragma warning restore CS0067 // Event is never used
-        public event Action<ConnectionState> onConnectionState;
+        public event Action<PurrNet.Transports.ConnectionState> onConnectionState;
 
-        private ConnectionState _state = ConnectionState.Disconnected;
+        private PurrConnectionState _state = PurrConnectionState.Disconnected;
 
-        public ConnectionState connectionState
+        public PurrNet.Transports.ConnectionState connectionState
         {
             get => _state;
             set
@@ -178,13 +179,13 @@ namespace PurrNet.Steam
         {
             if (_connection == HSteamNetConnection.Invalid)
             {
-                connectionState = ConnectionState.Disconnecting;
-                connectionState = ConnectionState.Disconnected;
+                connectionState = PurrConnectionState.Disconnecting;
+                connectionState = PurrConnectionState.Disconnected;
                 PurrLogger.LogError("Failed to connect to host");
                 return;
             }
 
-            connectionState = ConnectionState.Connecting;
+            connectionState = PurrConnectionState.Connecting;
             _onLocalConnectionState =
  Callback<SteamNetConnectionStatusChangedCallback_t>.Create(OnLocalConnectionState);
         }
@@ -197,15 +198,15 @@ namespace PurrNet.Steam
             switch (param.m_info.m_eState)
             {
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting:
-                    connectionState = ConnectionState.Connecting;
+                    connectionState = PurrConnectionState.Connecting;
                     break;
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
-                    connectionState = ConnectionState.Connected;
+                    connectionState = PurrConnectionState.Connected;
                     break;
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
-                    connectionState = ConnectionState.Disconnecting;
-                    connectionState = ConnectionState.Disconnected;
+                    connectionState = PurrConnectionState.Disconnecting;
+                    connectionState = PurrConnectionState.Disconnected;
                     break;
             }
         }
@@ -214,8 +215,8 @@ namespace PurrNet.Steam
         {
             if (_connection != HSteamNetConnection.Invalid)
             {
-                if (connectionState != ConnectionState.Disconnected)
-                    connectionState = ConnectionState.Disconnecting;
+                if (connectionState != PurrConnectionState.Disconnected)
+                    connectionState = PurrConnectionState.Disconnecting;
 
                 try
                 {
@@ -228,7 +229,7 @@ namespace PurrNet.Steam
                     // ignored
                 }
 
-                connectionState = ConnectionState.Disconnected;
+                connectionState = PurrConnectionState.Disconnected;
                 _connection = HSteamNetConnection.Invalid;
             }
         }
