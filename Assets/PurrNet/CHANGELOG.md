@@ -1,3 +1,10 @@
+# [1.20.0-beta.247](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.246...v1.20.0-beta.247) (2026-06-30)
+
+
+### Bug Fixes
+
+* update docs base URL ([406e30f](https://github.com/PurrNet/PurrNet/commit/406e30f822c574f9fb96e00a65220214316855d3))
+
 # [1.20.0-beta.246](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.245...v1.20.0-beta.246) (2026-06-30)
 
 
