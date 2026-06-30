@@ -54,14 +54,14 @@ namespace PurrNet
         [SerializeField]
         private bool _dontDestroyOnLoad;
 
-        [PurrDocs("systems-and-modules/network-manager/transports")] [SerializeField]
+        [PurrDocs("systems-and-modules/transports")] [SerializeField]
         private GenericTransport _transport;
 
         [PurrDocs("systems-and-modules/network-manager/network-prefabs")] [SerializeField]
         private NetworkPrefabs _networkPrefabs;
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-        //[PurrDocs("systems-and-modules/network-manager/addressable-network-prefabs")] //TODO: Add this in the future
+        //[PurrDocs("systems-and-modules/addressables/addressable-spawning-and-despawning")] //TODO: Add this in the future
         [SerializeField]
         private AddressableNetworkPrefabs _addressableNetworkPrefabs;
 #endif

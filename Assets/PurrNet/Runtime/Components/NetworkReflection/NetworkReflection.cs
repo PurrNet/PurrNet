@@ -10,7 +10,7 @@ namespace PurrNet
     [AddComponentMenu("PurrNet/Network Reflection")]
     public partial class NetworkReflection : NetworkIdentity, ITick
     {
-        [PurrDocs("systems-and-modules/plug-n-play-components/network-reflection-auto-sync")]
+        [PurrDocs("plug-n-play-components/network-reflection-auto-sync")]
         [Tooltip("The behaviour to track")]
         [SerializeField, HideInInspector]
         Object _trackedBehaviour;

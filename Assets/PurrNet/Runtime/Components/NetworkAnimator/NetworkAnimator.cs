@@ -12,7 +12,7 @@ namespace PurrNet
     public sealed partial class NetworkAnimator : NetworkIdentity
     {
 #if UNITY_ANIMATION
-        [PurrDocs("systems-and-modules/plug-n-play-components/network-animator")]
+        [PurrDocs("plug-n-play-components/network-animator")]
         [Tooltip("The animator to sync")]
         [SerializeField, PurrLock]
         private Animator _animator;

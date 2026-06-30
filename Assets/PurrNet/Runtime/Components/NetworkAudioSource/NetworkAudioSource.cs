@@ -8,7 +8,7 @@ using UnityEngine;
 namespace PurrNet
 {
     [AddComponentMenu("PurrNet/Network Audio Source")]
-    [PurrDocs("plug-n-play-components/networkaudiosource")]
+    [PurrDocs("plug-n-play-components/network-audio-source")]
     public sealed class NetworkAudioSource : NetworkIdentity, ITick
     {
         [Tooltip("The audio source to sync")]
