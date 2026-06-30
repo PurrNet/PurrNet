@@ -145,7 +145,7 @@ namespace PurrNet.Editor
                 GUILayout.BeginHorizontal();
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button(new GUIContent(" Open Docs", _helpIcon), GUILayout.ExpandWidth(false), GUILayout.Height(20)))
-                    Application.OpenURL("https://purrnet.gitbook.io/docs/" + _docsUrl);
+                    Application.OpenURL("https://purrnet.dev/docs/" + _docsUrl);
                 GUILayout.EndHorizontal();
             }*/
         }

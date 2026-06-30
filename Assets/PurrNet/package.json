@@ -7,7 +7,7 @@
   },
   "description": "A unity networking framework",
   "displayName": "PurrNet",
-  "documentationUrl": "https://purrnet.gitbook.io/",
+  "documentationUrl": "https://purrnet.dev/docs",
   "changelogUrl": "https://github.com/PurrNet/PurrNet/blob/dev/Assets/PurrNet/CHANGELOG.md",
   "hideInEditor": false,
   "keywords": [

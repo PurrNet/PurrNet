@@ -33,7 +33,7 @@ namespace PurrNet.Utils
             if (GUI.Button(iconRect, iconContent, GUIStyle.none))
             {
                 if (attribute is PurrDocsAttribute helpLink)
-                    Application.OpenURL("https://purrnet.gitbook.io/docs/" + helpLink.url);
+                    Application.OpenURL("https://purrnet.dev/docs/" + helpLink.url);
             }
 
             EditorGUI.PropertyField(propertyRect, property, label);
