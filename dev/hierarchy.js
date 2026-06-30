@@ -24,6 +24,7 @@ var hierarchy =
     [ "PurrNet.Modules.DeltaIDs", "classPurrNet_1_1Modules_1_1DeltaIDs.html", null ],
     [ "PurrNet.Modules.DeltaMessagesList", "structPurrNet_1_1Modules_1_1DeltaMessagesList.html", null ],
     [ "PurrNet.Packing.DeltaWritingScope", "structPurrNet_1_1Packing_1_1DeltaWritingScope.html", null ],
+    [ "PurrNet.Pooling.DisposableArray< byte >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
     [ "PurrNet.Pooling.DisposableList< DeltaAcknowledge >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< int >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< OwnershipInfo >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],

@@ -155,7 +155,7 @@ const int&#160;</td><td class="memItemRight" valign="bottom"><b>MAX_FRAGMENTS</b
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Modular, GC-free fragmentation layer for transports that don't handle fragmentation natively. Splits outgoing messages into MTU-sized fragments and reassembles incoming fragments. </p>
-<p >Hot path (unfragmented messages) produces zero GC allocations. Uses BitPacker pooling for all intermediate buffers.</p>
+<p >Hot path (unfragmented messages) reuses pooled byte buffers after first growth. Uses pooled byte buffers for fragment reassembly.</p>
 <p >Header format: Unfragmented: [1 byte: 0x00] [payload] Fragmented: [1 byte: 0x01] [2 bytes: messageId] [1 byte: fragmentIndex] [1 byte: totalFragments] [payload]  </p>
 </div><hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Transports/FragmentationLayer.cs</li>
