@@ -1,3 +1,19 @@
+# [1.20.0-beta.246](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.245...v1.20.0-beta.246) (2026-06-30)
+
+
+### Bug Fixes
+
+* defer NetworkOwnershipToggle refresh to LateUpdate ([cefdcfb](https://github.com/PurrNet/PurrNet/commit/cefdcfb01db807bd509508c01ce89f1fb808b2b8))
+* discard deferred refreshes after despawn ([5459931](https://github.com/PurrNet/PurrNet/commit/5459931576898e51b5453a107f9787e360ca0c02))
+* register delta serializers with NativeDeltaPacker in IL codegen ([e1ad40b](https://github.com/PurrNet/PurrNet/commit/e1ad40b2c751a17b3f36eeffc7ff1e4517dc4da3))
+
+# [1.20.0-beta.245](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.244...v1.20.0-beta.245) (2026-06-30)
+
+
+### Bug Fixes
+
+* dont use BitPacker at the FragmentationLayer due to corrupting send array (it is freed on send and net "Get" risks getting the same array back and modifying it). ([187866b](https://github.com/PurrNet/PurrNet/commit/187866b8301c76a5443e62c5ce71c89b7f835989))
+
 # [1.20.0-beta.244](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.243...v1.20.0-beta.244) (2026-06-30)
 
 
