@@ -9,6 +9,7 @@ using PurrNet;
 using PurrNet.Transports;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.SceneManagement;
 
 public class Bootstrap : Scenario
 {
@@ -141,6 +142,9 @@ public class Bootstrap : Scenario
         _runCts = new CancellationTokenSource();
 
         ConfigureTransport();
+
+        if (CommandLineUtils.HasFlag("-dumpBuildCompat"))
+            DumpBuildCompatibility();
 
         var ctx = new ScenarioContext
         {
@@ -297,6 +301,46 @@ public class Bootstrap : Scenario
         Debug.LogError($"Expected -role argument");
         return false;
 #endif
+    }
+
+    private static void DumpBuildCompatibility()
+    {
+        Debug.Log(
+            "[BuildCompat] " +
+            $"unity={Application.unityVersion}, " +
+            $"platform={Application.platform}, " +
+            $"product={Application.productName}, " +
+            $"identifier={Application.identifier}, " +
+            $"purrnet={NetworkManager.version}");
+
+        var sceneCount = SceneManager.sceneCountInBuildSettings;
+        for (var i = 0; i < sceneCount; i++)
+        {
+            var path = SceneUtility.GetScenePathByBuildIndex(i);
+            Debug.Log($"[BuildCompat] scene[{i}] path='{path}' hash={PurrNet.Utils.Hasher.Hash(path)}");
+        }
+
+        DumpTypeIdentity("PurrNet.Modules.SceneActionsBatch, PurrNet.Runtime");
+        DumpTypeIdentity("PurrNet.Modules.FirstSceneActionsBatch, PurrNet.Runtime");
+        DumpTypeIdentity("PurrNet.Modules.LoadSceneAction, PurrNet.Runtime");
+        DumpTypeIdentity("PurrNet.Modules.ClientFinishedLoadingScene, PurrNet.Runtime");
+    }
+
+    private static void DumpTypeIdentity(string assemblyQualifiedName)
+    {
+        var type = Type.GetType(assemblyQualifiedName);
+        if (type == null)
+        {
+            Debug.LogWarning($"[BuildCompat] type '{assemblyQualifiedName}' not found");
+            return;
+        }
+
+        Debug.Log(
+            "[BuildCompat] type " +
+            $"fullName='{type.FullName}', " +
+            $"assembly='{type.Assembly.GetName().Name}', " +
+            $"assemblyFullName='{type.Assembly.FullName}', " +
+            $"hash={PurrNet.Utils.Hasher.Hash(type)}");
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)

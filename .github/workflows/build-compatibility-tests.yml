@@ -1,0 +1,239 @@
+name: Build Compatibility Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      externalClients:
+        description: "External client processes to launch against the independently built server/host player."
+        required: true
+        default: "1"
+      scenario:
+        description: "Scenario component name to run."
+        required: true
+        default: "SingleSceneTransferScenario"
+      connectionDelaySeconds:
+        description: "Seconds to wait after server/host starts before launching clients."
+        required: true
+        default: "1"
+      timeoutMinutes:
+        description: "Hard timeout for each run job, in minutes."
+        required: true
+        default: "30"
+
+env:
+  COMPAT_PORT: "7777"
+
+jobs:
+  build:
+    name: Build ${{ matrix.kind }} player
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [server, client]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Library cache
+        id: cache-library
+        uses: actions/cache/restore@v4
+        with:
+          path: Library
+          key: Library-PurrNet-compat-${{ matrix.kind }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-PurrNet-compat-${{ matrix.kind }}-
+
+      - name: Build StandaloneLinux64 player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: StandaloneLinux64
+          buildName: PurrNetTests
+          buildsPath: build
+          unityVersion: auto
+          buildMethod: CIBuild.BuildLinuxPlayer
+          customParameters: -purrBuildOutput build/${{ matrix.kind }}/PurrNetTests
+
+      - name: Save Library cache
+        if: always() && steps.cache-library.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.cache-library.outputs.cache-primary-key }}
+
+      - name: Upload player artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: compat-player-${{ matrix.kind }}
+          path: build/${{ matrix.kind }}/
+          retention-days: 1
+
+  run:
+    name: ${{ matrix.mode }} A-to-B
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeoutMinutes) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [server, host]
+    steps:
+      - name: Download server player
+        uses: actions/download-artifact@v4
+        with:
+          name: compat-player-server
+          path: player-server
+
+      - name: Download client player
+        uses: actions/download-artifact@v4
+        with:
+          name: compat-player-client
+          path: player-client
+
+      - name: Run independently built players
+        env:
+          EXTERNAL_CLIENTS: ${{ inputs.externalClients }}
+          CONNECT_DELAY: ${{ inputs.connectionDelaySeconds }}
+          MODE: ${{ matrix.mode }}
+          SCENARIO: ${{ inputs.scenario }}
+        run: |
+          set -euo pipefail
+          case "$EXTERNAL_CLIENTS" in
+            ''|*[!0-9]*)
+              echo "::error::externalClients must be a positive integer"
+              exit 1
+              ;;
+          esac
+          if [ "$EXTERNAL_CLIENTS" -lt 1 ]; then
+            echo "::error::externalClients must be >= 1"
+            exit 1
+          fi
+
+          sudo apt-get update -qq && sudo apt-get install -y xvfb >/dev/null
+
+          SERVER_BIN="$PWD/player-server/PurrNetTests"
+          CLIENT_BIN="$PWD/player-client/PurrNetTests"
+          sudo chmod +x "$SERVER_BIN" "$CLIENT_BIN" || chmod +x "$SERVER_BIN" "$CLIENT_BIN" || true
+
+          RESULTS_DIR="$PWD/test-results"
+          LOGS_DIR="$PWD/test-logs"
+          mkdir -p "$RESULTS_DIR" "$LOGS_DIR"
+
+          if [ "$MODE" = "host" ]; then
+            COUNT=$((EXTERNAL_CLIENTS + 1))
+          else
+            COUNT="$EXTERNAL_CLIENTS"
+          fi
+
+          RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
+
+          echo "::group::Launching $MODE from server build"
+          "${RUN[@]}" "$SERVER_BIN" -batchmode -nographics \
+            -role "$MODE" -count "$COUNT" \
+            -scenario "$SCENARIO" -dumpBuildCompat \
+            -port "$COMPAT_PORT" -connectTimeout 90 \
+            -results "$RESULTS_DIR/$MODE.json" \
+            -logFile "$LOGS_DIR/$MODE.log" &
+          SERVER_PID=$!
+          echo "$MODE PID: $SERVER_PID"
+          echo "::endgroup::"
+
+          sleep "$CONNECT_DELAY"
+
+          if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo "::error::$MODE process died before clients could start"
+            tail -n 200 "$LOGS_DIR/$MODE.log" || true
+            exit 1
+          fi
+
+          CLIENT_PIDS=()
+          for i in $(seq 1 "$EXTERNAL_CLIENTS"); do
+            echo "::group::Launching client $i from client build"
+            "${RUN[@]}" "$CLIENT_BIN" -batchmode -nographics \
+              -role client \
+              -scenario "$SCENARIO" -dumpBuildCompat \
+              -serverHost 127.0.0.1 -port "$COMPAT_PORT" -connectTimeout 90 \
+              -results "$RESULTS_DIR/client-$i.json" \
+              -logFile "$LOGS_DIR/client-$i.log" &
+            PID=$!
+            CLIENT_PIDS+=("$PID")
+            echo "Client $i PID: $PID"
+            echo "::endgroup::"
+          done
+
+          FAIL=0
+
+          for pid in "${CLIENT_PIDS[@]}"; do
+            if wait "$pid"; then
+              echo "Client PID $pid exited 0"
+            else
+              code=$?
+              echo "::error::Client PID $pid exited $code"
+              FAIL=1
+            fi
+          done
+
+          if wait "$SERVER_PID"; then
+            echo "$MODE process exited 0"
+          else
+            code=$?
+            echo "::error::$MODE process exited $code"
+            FAIL=1
+          fi
+
+          echo "::group::Result files"
+          for f in "$RESULTS_DIR"/*.json; do
+            [ -e "$f" ] || continue
+            echo "----- $f -----"
+            cat "$f"
+            echo
+          done
+          echo "::endgroup::"
+
+          if command -v jq >/dev/null 2>&1; then
+            for f in "$RESULTS_DIR"/*.json; do
+              [ -e "$f" ] || continue
+              if jq -e 'any(.[]; .result.success == false)' "$f" >/dev/null; then
+                echo "::error::$f contains a failed scenario"
+                FAIL=1
+              fi
+            done
+          fi
+
+          FATAL_LOG_PATTERN="Scene with path hash|Cannot find type with id|No reader for type|No writer for type|Failed to read value|CompleteSpawn: CreatePrototype failed|SceneID '[0-9]+' not found|Address already in use|UDPTransport Bind exception|Unhandled Exception|NullReferenceException|InvalidOperationException|Segmentation fault|SIGSEGV|Crash!!!|Native Crash Reporting"
+          for f in "$LOGS_DIR"/*.log; do
+            [ -e "$f" ] || continue
+            if grep -E -n "$FATAL_LOG_PATTERN" "$f" >/tmp/purrnet-compat-log-matches.txt; then
+              echo "::error::$f contains compatibility/fatal log patterns"
+              cat /tmp/purrnet-compat-log-matches.txt
+              FAIL=1
+            fi
+          done
+
+          exit $FAIL
+
+      - name: Tail logs on failure
+        if: failure()
+        run: |
+          for f in test-logs/*.log; do
+            [ -e "$f" ] || continue
+            echo "::group::$f (last 200 lines)"
+            tail -n 200 "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Upload results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-compat-artifacts-${{ matrix.mode }}
+          path: |
+            test-results/
+            test-logs/
+          if-no-files-found: warn
+          retention-days: 14

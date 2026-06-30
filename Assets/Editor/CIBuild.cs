@@ -26,19 +26,33 @@ public static class CIBuild
 
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.IL2CPP);
 
+        var outputPath = GetCommandLineValue("-purrBuildOutput") ?? OutputPath;
+
         var options = new BuildPlayerOptions
         {
             scenes = scenes,
-            locationPathName = OutputPath,
+            locationPathName = outputPath,
             target = BuildTarget.StandaloneLinux64,
             options = dev ? BuildOptions.Development : BuildOptions.None
         };
 
-        Debug.Log($"[CIBuild] Building StandaloneLinux64 IL2CPP (development={dev}) -> {OutputPath}");
+        Debug.Log($"[CIBuild] Building StandaloneLinux64 IL2CPP (development={dev}) -> {outputPath}");
         var report = BuildPipeline.BuildPlayer(options);
         var summary = report.summary;
         Debug.Log($"[CIBuild] Result={summary.result} size={summary.totalSize} errors={summary.totalErrors}");
 
         EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
+    }
+
+    private static string GetCommandLineValue(string key)
+    {
+        var args = Environment.GetCommandLineArgs();
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == key)
+                return args[i + 1];
+        }
+
+        return null;
     }
 }
