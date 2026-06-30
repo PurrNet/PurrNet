@@ -1,3 +1,10 @@
+# [1.20.0-beta.244](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.243...v1.20.0-beta.244) (2026-06-30)
+
+
+### Features
+
+* introduce a hash resolver window to debug unregistered IDs and resolve them to their type ([09901d5](https://github.com/PurrNet/PurrNet/commit/09901d5b0ddc826674a3bbd37e0fe95e5983bff2))
+
 # [1.20.0-beta.243](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.242...v1.20.0-beta.243) (2026-06-29)
 
 
