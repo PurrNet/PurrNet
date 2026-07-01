@@ -131,7 +131,6 @@ namespace PurrNet
         public SyncList(bool ownerAuth = false)
         {
             _ownerAuth = ownerAuth;
-            CacheInitialList();
         }
 
         public SyncList(List<T> defaultValues, bool ownerAuth = false)

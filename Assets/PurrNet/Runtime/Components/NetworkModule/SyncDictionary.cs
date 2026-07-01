@@ -111,7 +111,6 @@ namespace PurrNet
         {
             _ownerAuth = ownerAuth;
             _useForceSend = useForceSend;
-            CacheInitialDict();
 
 #if UNITY_EDITOR
             onChanged += UpdateSerializedDict;
