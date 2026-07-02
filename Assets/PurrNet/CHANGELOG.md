@@ -1,3 +1,10 @@
+# [1.20.0-beta.248](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.247...v1.20.0-beta.248) (2026-07-02)
+
+
+### Bug Fixes
+
+* NT and NR interpolation issues ([031b6f1](https://github.com/PurrNet/PurrNet/commit/031b6f19c86c555a1741d2c38424d7c37eadafc6))
+
 # [1.20.0-beta.247](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.246...v1.20.0-beta.247) (2026-06-30)
 
 
