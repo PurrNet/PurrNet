@@ -57,6 +57,10 @@ namespace PurrNet
         /// <summary>True when <see cref="parent"/> is a soft-parent override the receiver should
         /// adopt as its own (vs the real Unity parent). Delta-packs away when unused.</summary>
         public bool isSoftParent;
+        /// <summary>Sender's unscaled clock at capture time. Receivers map it onto their
+        /// own clock so snapshot spacing reflects the send cadence instead of arrival
+        /// timing; relays forward it untouched. 0 means unstamped (legacy sender).</summary>
+        public double time;
     }
 
     public struct RigidbodyTeleportData
@@ -216,6 +220,12 @@ namespace PurrNet
 
         private NetworkIdentity _softParent;
 
+        private Transform _parentPoseTransform;
+        private Rigidbody _parentPoseRigidbody;
+
+        private double _senderTimeOffset;
+        private bool _hasSenderTimeOffset;
+
         private void Awake()
         {
             _cachedRigidbody = GetComponent<Rigidbody>();
@@ -288,7 +298,8 @@ namespace PurrNet
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
                 parent = parentIdentity,
-                isSoftParent = isSoft
+                isSoftParent = isSoft,
+                time = Time.unscaledTimeAsDouble
             };
             SendInitialStateToObserver(player, stateData, GetCurrentSettings());
         }
@@ -300,6 +311,8 @@ namespace PurrNet
             _positionTransform = null;
             _positionTransformExplicit = false;
             _softParent = null;
+            _parentPoseTransform = null;
+            _parentPoseRigidbody = null;
         }
 
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
@@ -364,7 +377,8 @@ namespace PurrNet
                 linearVelocity = _targetLinearVelocity,
                 angularVelocity = _targetAngularVelocity,
                 parent = parentIdentity,
-                isSoftParent = isSoft
+                isSoftParent = isSoft,
+                time = Time.unscaledTimeAsDouble
             };
         }
 
@@ -383,7 +397,8 @@ namespace PurrNet
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
                 parent = parentIdentity,
-                isSoftParent = isSoft
+                isSoftParent = isSoft,
+                time = Time.unscaledTimeAsDouble
             };
         }
 
@@ -425,7 +440,8 @@ namespace PurrNet
                 linearVelocity = linVel,
                 angularVelocity = angVel,
                 parent = parentIdentity,
-                isSoftParent = isSoft
+                isSoftParent = isSoft,
+                time = Time.unscaledTimeAsDouble
             });
         }
 
@@ -513,7 +529,8 @@ namespace PurrNet
                 linearVelocity = linVel,
                 angularVelocity = angVel,
                 parent = parentIdentity,
-                isSoftParent = isSoft
+                isSoftParent = isSoft,
+                time = Time.unscaledTimeAsDouble
             };
 
             if (reliable)
@@ -769,6 +786,31 @@ namespace PurrNet
         {
             _bufferHead = 0;
             _bufferCount = 0;
+            _hasSenderTimeOffset = false;
+        }
+
+        private double MapToLocalTimeline(double senderTime, double now)
+        {
+            if (senderTime <= 0)
+                return now;
+
+            double sample = now - senderTime;
+
+            if (!_hasSenderTimeOffset || Math.Abs(sample - _senderTimeOffset) > 0.5)
+            {
+                _senderTimeOffset = sample;
+                _hasSenderTimeOffset = true;
+            }
+            else if (sample < _senderTimeOffset)
+            {
+                _senderTimeOffset = sample;
+            }
+            else
+            {
+                _senderTimeOffset += (sample - _senderTimeOffset) * 0.02;
+            }
+
+            return senderTime + _senderTimeOffset;
         }
 
         private void PushSnapshot(RigidbodyStateData data)
@@ -785,11 +827,21 @@ namespace PurrNet
                     ClearBuffer();
             }
 
+            var snapshotTime = MapToLocalTimeline(data.time, now);
+
+            if (_bufferCount > 0)
+            {
+                int lastIndex = (_bufferHead - 1 + BUFFER_SIZE) % BUFFER_SIZE;
+                double lastTime = _snapshotBuffer[lastIndex].time;
+                if (snapshotTime <= lastTime)
+                    snapshotTime = lastTime + 0.0001;
+            }
+
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
             _snapshotBuffer[_bufferHead] = new TimestampedSnapshot
             {
-                time = now,
+                time = snapshotTime,
                 position = syncPos,
                 rotation = data.rotation,
                 linearVelocity = data.linearVelocity,
@@ -1073,6 +1125,81 @@ namespace PurrNet
         private static double3 ToD3(Vector3 v) => new double3(v.x, v.y, v.z);
         private static Vector3 ToV3(double3 v) => new Vector3((float)v.x, (float)v.y, (float)v.z);
 
+        private Rigidbody ResolveParentRigidbody(Transform parent)
+        {
+            if (_parentPoseTransform != parent)
+            {
+                _parentPoseTransform = parent;
+                _parentPoseRigidbody = parent ? parent.GetComponentInParent<Rigidbody>() : null;
+                if (_parentPoseRigidbody == _rigidbody)
+                    _parentPoseRigidbody = null;
+            }
+
+            return _parentPoseRigidbody;
+        }
+
+        private void GetParentPose(Transform parent, out Vector3 position, out Quaternion rotation)
+        {
+            var rb = ResolveParentRigidbody(parent);
+            if (!rb)
+            {
+                position = parent.position;
+                rotation = parent.rotation;
+                return;
+            }
+
+            var rbTransform = rb.transform;
+            if (rbTransform == parent)
+            {
+                position = rb.position;
+                rotation = rb.rotation;
+                return;
+            }
+
+            var localRotation = Quaternion.Inverse(rbTransform.rotation) * parent.rotation;
+            var localPosition = rbTransform.InverseTransformPoint(parent.position);
+            rotation = rb.rotation * localRotation;
+            position = rb.position + rb.rotation * Vector3.Scale(rbTransform.lossyScale, localPosition);
+        }
+
+        private Vector3 ParentTransformPoint(Transform parent, Vector3 local)
+        {
+            GetParentPose(parent, out var position, out var rotation);
+            return position + rotation * Vector3.Scale(parent.lossyScale, local);
+        }
+
+        private Vector3 ParentInverseTransformPoint(Transform parent, Vector3 world)
+        {
+            GetParentPose(parent, out var position, out var rotation);
+            return InverseScale(Quaternion.Inverse(rotation) * (world - position), parent.lossyScale);
+        }
+
+        private Vector3 ParentTransformVector(Transform parent, Vector3 local)
+        {
+            GetParentPose(parent, out _, out var rotation);
+            return rotation * Vector3.Scale(parent.lossyScale, local);
+        }
+
+        private Vector3 ParentInverseTransformVector(Transform parent, Vector3 world)
+        {
+            GetParentPose(parent, out _, out var rotation);
+            return InverseScale(Quaternion.Inverse(rotation) * world, parent.lossyScale);
+        }
+
+        private Quaternion ParentRotation(Transform parent)
+        {
+            GetParentPose(parent, out _, out var rotation);
+            return rotation;
+        }
+
+        private static Vector3 InverseScale(Vector3 v, Vector3 s)
+        {
+            return new Vector3(
+                s.x != 0f ? v.x / s.x : v.x,
+                s.y != 0f ? v.y / s.y : v.y,
+                s.z != 0f ? v.z / s.z : v.z);
+        }
+
         /// <summary>
         /// Reads the rigidbody position into the origin-invariant sync frame:
         /// parent-local when parented, absolute (via the position transform) when
@@ -1082,7 +1209,7 @@ namespace PurrNet
         {
             var p = _rigidbody ? _rigidbody.position : transform.position;
             if (parent)
-                return ToD3(parent.InverseTransformPoint(p));
+                return ToD3(ParentInverseTransformPoint(parent, p));
             if (_positionTransform != null)
                 return _positionTransform.ToAbsolute(this, p);
             return ToD3(p);
@@ -1100,7 +1227,7 @@ namespace PurrNet
             var p = _rigidbody ? _rigidbody.position : transform.position;
             if (parent)
             {
-                var local = parent.InverseTransformPoint(p);
+                var local = ParentInverseTransformPoint(parent, p);
                 wirePos = local;
                 wireAbs = default;
                 frame = RigidbodyPositionFrame.ParentLocal;
@@ -1189,7 +1316,7 @@ namespace PurrNet
         private Quaternion ReadRotation(Transform parent)
         {
             var r = _rigidbody ? _rigidbody.rotation : transform.rotation;
-            return parent ? Quaternion.Inverse(parent.rotation) * r : r;
+            return parent ? Quaternion.Inverse(ParentRotation(parent)) * r : r;
         }
 
         private Vector3 ReadLinearVelocity(Transform parent)
@@ -1203,7 +1330,7 @@ namespace PurrNet
             if (_syncVelocityRelativeToParent)
                 v -= GetParentPointVelocity(parent, _rigidbody.position);
 
-            return parent.InverseTransformVector(v);
+            return ParentInverseTransformVector(parent, v);
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
@@ -1217,7 +1344,7 @@ namespace PurrNet
             if (_syncVelocityRelativeToParent)
                 v -= GetParentAngularVelocity(parent);
 
-            return Quaternion.Inverse(parent.rotation) * v;
+            return Quaternion.Inverse(ParentRotation(parent)) * v;
         }
 
         /// <summary>
@@ -1228,7 +1355,7 @@ namespace PurrNet
         private Vector3 ToWorldPosition(double3 pos, Transform parent)
         {
             if (parent)
-                return parent.TransformPoint(ToV3(pos));
+                return ParentTransformPoint(parent, ToV3(pos));
             if (_positionTransform != null)
                 return _positionTransform.ToLocal(this, pos);
             return ToV3(pos);
@@ -1238,16 +1365,16 @@ namespace PurrNet
         {
             if (_useParentFramePositionError && _targetParent)
             {
-                Vector3 localCurrent = _targetParent.InverseTransformPoint(_rigidbody.position);
+                Vector3 localCurrent = ParentInverseTransformPoint(_targetParent, _rigidbody.position);
                 return Vector3.Distance(localCurrent, ToV3(_targetPosition));
             }
 
             return Vector3.Distance(_rigidbody.position, worldTargetPos);
         }
 
-        private static Quaternion ToWorldRotation(Quaternion rot, Transform parent)
+        private Quaternion ToWorldRotation(Quaternion rot, Transform parent)
         {
-            return parent ? parent.rotation * rot : rot;
+            return parent ? ParentRotation(parent) * rot : rot;
         }
 
         private Vector3 ToWorldLinearVelocity(Vector3 v, Transform parent, Vector3 worldPoint)
@@ -1255,7 +1382,7 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            var worldVelocity = parent.TransformVector(v);
+            var worldVelocity = ParentTransformVector(parent, v);
             if (_syncVelocityRelativeToParent)
                 worldVelocity += GetParentPointVelocity(parent, worldPoint);
 
@@ -1267,7 +1394,7 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            var worldVelocity = parent.rotation * v;
+            var worldVelocity = ParentRotation(parent) * v;
             if (_syncVelocityRelativeToParent)
                 worldVelocity += GetParentAngularVelocity(parent);
 
@@ -1298,17 +1425,8 @@ namespace PurrNet
             if (!_syncVelocityRelativeToParent || !parent)
                 return false;
 
-            parentRigidbody = parent.GetComponent<Rigidbody>();
-            if (!parentRigidbody)
-                parentRigidbody = parent.GetComponentInParent<Rigidbody>();
-
-            if (!parentRigidbody || parentRigidbody == _rigidbody)
-            {
-                parentRigidbody = null;
-                return false;
-            }
-
-            return true;
+            parentRigidbody = ResolveParentRigidbody(parent);
+            return parentRigidbody;
         }
 
         private Vector3 GetLinearVelocity()

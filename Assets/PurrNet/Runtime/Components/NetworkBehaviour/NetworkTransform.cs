@@ -154,6 +154,13 @@ namespace PurrNet
         private bool _positionTransformExplicit;
         private bool _useAbsoluteFrame;
 
+#if UNITY_PHYSICS_3D
+        private Vector3 _pendingRbPosition;
+        private Quaternion _pendingRbRotation;
+        private bool _pendingRbHasPosition;
+        private bool _pendingRbHasRotation;
+#endif
+
         public INetworkTransformPositionTransform positionTransform { get; private set; }
 
         public void SetPositionTransform(INetworkTransformPositionTransform transform)
@@ -521,12 +528,17 @@ namespace PurrNet
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private void FixedUpdate()
         {
-            if (!isSpawned || !_forceSleepRb)
+            if (!isSpawned)
                 return;
 
-            bool isNotController = !_cachedIsController;
+            if (_cachedIsController)
+                return;
 
-            if (isNotController)
+#if UNITY_PHYSICS_3D
+            ApplyPendingRigidbodyPose();
+#endif
+
+            if (_forceSleepRb)
             {
 #if UNITY_PHYSICS_3D
                 if (_hasRigidbody && _rb) _rb.Sleep();
@@ -534,6 +546,28 @@ namespace PurrNet
 #if UNITY_PHYSICS_2D
                 if (_hasRigidbody2D && _rb) _rb2d.Sleep();
 #endif
+            }
+        }
+#endif
+
+#if UNITY_PHYSICS_3D
+        private void ApplyPendingRigidbodyPose()
+        {
+            if (!_hasRigidbody || !_rb)
+                return;
+
+            if (_pendingRbHasPosition)
+            {
+                _pendingRbHasPosition = false;
+                if ((_rb.position - _pendingRbPosition).sqrMagnitude > 0.00000001f)
+                    _rb.MovePosition(_pendingRbPosition);
+            }
+
+            if (_pendingRbHasRotation)
+            {
+                _pendingRbHasRotation = false;
+                if (Quaternion.Angle(_rb.rotation, _pendingRbRotation) > 0.005f)
+                    _rb.MoveRotation(_pendingRbRotation);
             }
         }
 #endif
@@ -598,14 +632,34 @@ namespace PurrNet
             if (syncPosition)
             {
                 var worldPos = _position.Advance(Time.unscaledDeltaTime).position;
-                _trs.position = worldPos;
+#if UNITY_PHYSICS_3D
+                if (_hasRigidbody && _rb)
+                {
+                    _pendingRbPosition = worldPos;
+                    _pendingRbHasPosition = true;
+                }
+                else
+#endif
+                {
+                    _trs.position = worldPos;
+                }
                 position = worldPos;
             }
 
             if (syncRotation)
             {
                 var worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
-                _trs.rotation = worldRot;
+#if UNITY_PHYSICS_3D
+                if (_hasRigidbody && _rb)
+                {
+                    _pendingRbRotation = worldRot;
+                    _pendingRbHasRotation = true;
+                }
+                else
+#endif
+                {
+                    _trs.rotation = worldRot;
+                }
                 rotation = worldRot;
             }
 
