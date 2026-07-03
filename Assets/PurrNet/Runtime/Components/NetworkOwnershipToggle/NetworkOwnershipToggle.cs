@@ -22,6 +22,7 @@ namespace PurrNet
 
         private bool _lastIsController;
         private bool _refreshPending;
+        private bool _forceRefreshPending;
 
         private void Awake()
         {
@@ -30,12 +31,13 @@ namespace PurrNet
 
         protected override void OnSpawned()
         {
-            RequestRefresh();
+            RequestRefresh(true);
         }
 
         protected override void OnDespawned()
         {
             _refreshPending = false;
+            _forceRefreshPending = false;
         }
 
         private void LateUpdate()
@@ -45,27 +47,31 @@ namespace PurrNet
 
             _refreshPending = false;
 
+            bool force = _forceRefreshPending;
+            _forceRefreshPending = false;
+
             if (!isSpawned)
                 return;
 
-            Refresh();
+            Refresh(force);
         }
 
-        private void RequestRefresh()
+        private void RequestRefresh(bool force = false)
         {
             if (_applyInLateUpdate)
             {
                 _refreshPending = true;
+                _forceRefreshPending |= force;
                 return;
             }
 
-            Refresh();
+            Refresh(force);
         }
 
-        private void Refresh()
+        private void Refresh(bool force = false)
         {
             bool controller = isController;
-            if (controller != _lastIsController)
+            if (force || controller != _lastIsController)
                 Setup(controller);
         }
 
