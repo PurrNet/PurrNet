@@ -1,3 +1,10 @@
+# [1.20.0-beta.249](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.248...v1.20.0-beta.249) (2026-07-03)
+
+
+### Bug Fixes
+
+* reapply ownership toggle state after spawn ([e412c65](https://github.com/PurrNet/PurrNet/commit/e412c65b68804dcce0b19558e52a0e43b02c3ef8))
+
 # [1.20.0-beta.248](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.247...v1.20.0-beta.248) (2026-07-02)
 
 
