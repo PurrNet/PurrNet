@@ -1,3 +1,10 @@
+# [1.20.0-beta.253](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.252...v1.20.0-beta.253) (2026-07-07)
+
+
+### Bug Fixes
+
+* Addressables editor ([27276b3](https://github.com/PurrNet/PurrNet/commit/27276b39aac9c916981c179ac3f8fd1151994232))
+
 # [1.20.0-beta.252](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.251...v1.20.0-beta.252) (2026-07-07)
 
 
