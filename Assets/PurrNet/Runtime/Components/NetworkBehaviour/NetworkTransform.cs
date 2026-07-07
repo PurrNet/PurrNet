@@ -474,15 +474,15 @@ namespace PurrNet
             if (!_ownerAuth || !IsControlling(info.sender, false))
                 return;
 
-            BumpSendGen();
-            bool apply = ForceAdoptRecvGen(gen);
-            AdoptState(state);
+            // Stale RPC (newer same-gen owner samples already applied): forwarding it with a
+            // fresh gen would teleport every observer backward.
+            if (!ForceAdoptRecvGen(gen))
+                return;
 
-            if (apply)
-            {
-                TeleportToState(state);
-                ApplyLerpedPosition();
-            }
+            BumpSendGen();
+            AdoptState(state);
+            TeleportToState(state);
+            ApplyLerpedPosition();
 
             int obCount = observers.Count;
             var localP = localPlayer;
@@ -848,9 +848,14 @@ namespace PurrNet
 
         public byte sendGen => _sendGen;
 
+        // Wire gen is a byte and wraps; sender-side baseline validity compares this instead.
+        private uint _sendGenEpoch;
+        public uint sendGenEpoch => _sendGenEpoch;
+
         private void BumpSendGen()
         {
             _sendGen++;
+            _sendGenEpoch++;
         }
 
         private void ResetUnreliableRecvState()

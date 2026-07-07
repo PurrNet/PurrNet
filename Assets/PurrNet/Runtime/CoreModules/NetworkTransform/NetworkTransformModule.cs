@@ -359,6 +359,7 @@ namespace PurrNet.Modules
                         state = entry.state,
                         velocity = entry.velocity,
                         gen = entry.gen,
+                        genEpoch = entry.genEpoch,
                         order = slot.order
                     };
                 }
@@ -380,8 +381,10 @@ namespace PurrNet.Modules
 
         private void SendNack(PlayerID sender, NetworkID nid)
         {
+            // Reliable: the NACK is the only per-entry correction against packet-granular acks;
+            // losing it while the ack lands wedges a resting object on a phantom baseline.
             var nack = new NetworkTransformUnreliableNack { scene = _scene, id = nid };
-            _broadcaster.Send(sender, nack, Channel.Unreliable);
+            _broadcaster.Send(sender, nack, Channel.ReliableUnordered);
         }
 
         private void FlushAcks()
@@ -420,7 +423,7 @@ namespace PurrNet.Modules
             var nid = nt.id!.Value;
             var current = nt.capturedState;
 
-            bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.gen == nt.sendGen;
+            bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == nt.sendGenEpoch;
 
             // Suppression must not depend on baseline age — a resting object's baseline never
             // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
@@ -565,7 +568,8 @@ namespace PurrNet.Modules
                     nid = nt.id.Value,
                     state = nt.capturedState,
                     velocity = velocity,
-                    gen = nt.sendGen
+                    gen = nt.sendGen,
+                    genEpoch = nt.sendGenEpoch
                 });
             }
 
@@ -658,6 +662,9 @@ namespace PurrNet.Modules
                     stream.nackFloor.Remove(nid);
                     PurgeRing(stream.ring, nid);
                 }
+
+                foreach (var stream in _recvStreams.Values)
+                    PurgeRing(stream.ring, nid);
             }
         }
 

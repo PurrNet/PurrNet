@@ -41,6 +41,8 @@ namespace PurrNet.Modules
         public NetworkTransformState state;
         public NetworkTransformVelocity velocity;
         public byte gen;
+        // Send-side only: non-wrapping epoch behind the byte gen.
+        public uint genEpoch;
     }
 
     internal struct NTUnreliableBaseline
@@ -48,6 +50,7 @@ namespace PurrNet.Modules
         public NetworkTransformState state;
         public NetworkTransformVelocity velocity;
         public byte gen;
+        public uint genEpoch;
         // Monotonic packet order — ushort seq wraps, so age math uses this instead.
         public uint order;
     }
