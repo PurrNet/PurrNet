@@ -1,3 +1,10 @@
+# [1.20.0-beta.252](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.251...v1.20.0-beta.252) (2026-07-07)
+
+
+### Bug Fixes
+
+* Network transform RB issues ([45da2f8](https://github.com/PurrNet/PurrNet/commit/45da2f81524aa05d220326d175ced3097a1eed10))
+
 # [1.20.0-beta.251](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.250...v1.20.0-beta.251) (2026-07-07)
 
 
