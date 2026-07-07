@@ -59,13 +59,5 @@ namespace PurrNet
         /// Works on both owner and non-owner clients.
         /// </summary>
         void ClearInterpolation(Vector3? targetPos, Quaternion? targetRot, Vector3? targetScale);
-
-        /// <summary>
-        /// Indicates whether the current state of the network transform has deviated from its last transmitted state.
-        /// </summary>
-        /// <returns>
-        /// True if there are differences between the current state and the last sent state; otherwise, false.
-        /// </returns>
-        bool HasChanges();
     }
 }

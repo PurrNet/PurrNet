@@ -209,7 +209,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c86d70b84e48c2e4a9a8aed561cb74b2, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleSerializeScenario
   _spawnTimeoutSeconds: 15
   _serializeTimeoutSeconds: 30
@@ -224,7 +224,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9c19b6a143b0f864ea2d7f54d99f2a05, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::MultiSerializeScenario
   _spawnTimeoutSeconds: 15
   _doneTimeoutSeconds: 30
@@ -238,7 +238,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a7448bbf157477e4e983c091a3d0351e, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NestedSerializeScenario
   _spawnTimeoutSeconds: 15
   _doneTimeoutSeconds: 30
@@ -252,7 +252,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ccdedeb7130eb50439b2089d5eda5f53, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SpawnSerializeScenario
   _spawnTimeoutSeconds: 15
   _serializeTimeoutSeconds: 30
@@ -302,7 +302,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 079a63b2e270ddf488b3c6f64aa82cbb, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityTargetRpcsScenario
   _doneTimeoutSeconds: 30
   _targetTimeoutSeconds: 10
@@ -317,7 +317,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d6e3a61f65c99e448c5a90890346290, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityObserversRpcsScenario
   _doneTimeoutSeconds: 30
   _broadcastTimeoutSeconds: 10
@@ -332,7 +332,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d11dea3c0bf13824ca75d121d8584da1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityServerRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
@@ -346,7 +346,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62c24875cc520b64f8f6780ce138de79, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
@@ -399,7 +399,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5d8c0dfbdf1ca04e92553aa582adf8e, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncQueueOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -415,7 +415,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ed60f7d57cc2afd40865a8f5239f0a91, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncHashsetOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -431,7 +431,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: deeeb229b2103654db4ebfa39d688aaf, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncDictionaryOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -447,7 +447,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8f3facc17ff92141b65527410a6d2d1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncArrayOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -463,7 +463,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c7541632194e8134d869cbc27edcab9c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncListOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -479,7 +479,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67c6fb6a854e4a040b227f9966a48e46, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -495,7 +495,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d0d1893a8cf145d1966ae69d6cf5506b, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StateMachineOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -510,7 +510,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0a41983f4d34e4b9c9e62179c287301, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncCollectionsOwnerReconnectScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _spawnTimeoutSeconds: 15
@@ -564,7 +564,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a16dc6145a7e3b348a779b87e9289e03, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkAssetsScenario
   _spawnTimeoutSeconds: 15
   _receiveTimeoutSeconds: 30
@@ -627,7 +627,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1f4386744cce92c478f5a182d9d8e2c1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::Bootstrap
   _networkManager: {fileID: 1216416897}
   _connectionTimeout: 15
@@ -762,8 +762,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_UsePipelineSettings: 1
   m_AdditionalLightsShadowResolutionTier: 2
   m_CustomShadowLayers: 0
@@ -823,7 +823,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d61c200068a803c478ca5f140e87bf55, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::EmptySerializeScenario
   _spawnTimeoutSeconds: 15
   _settleSeconds: 1
@@ -870,7 +870,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: edd92e6d1d3b92440b0a3c663bd5c4ee, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::BenchmarkScenario
   _pingsPerSecond: 10
   _objectCount: 1000
@@ -977,8 +977,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
@@ -1056,7 +1056,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f76b39aafb428c645aa87152ef0e7256, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleTargetRpcsScenario
   _doneTimeoutSeconds: 30
   _targetTimeoutSeconds: 10
@@ -1071,7 +1071,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 114dceeb0bff72f47b7d2e08bb9a6cf2, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleObserversRpcsScenario
   _doneTimeoutSeconds: 30
   _broadcastTimeoutSeconds: 10
@@ -1086,7 +1086,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 32fffa126395d20459252cbf2f74564a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleServerRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
@@ -1100,7 +1100,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2e6aed612bf05054aaafe8519deaa453, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
@@ -1146,7 +1146,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af24e6420f2d44c3aa9f5b76d184c001, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneTransferCorrectionScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -1201,7 +1201,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea234d903634dd344944cc1637c904be, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleTargetBufferedRpcsScenario
   _kickoffTimeoutSeconds: 30
   _phaseACompleteTimeoutSeconds: 30
@@ -1220,7 +1220,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3082f9ab4fb8a7a4eae66936594d84ce, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ModuleObserversBufferedRpcsScenario
   _kickoffTimeoutSeconds: 30
   _phaseACompleteTimeoutSeconds: 30
@@ -1239,7 +1239,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4e0c59ae6a4db44d833075404fbc1c6, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityTargetBufferedRpcsScenario
   _kickoffTimeoutSeconds: 30
   _phaseACompleteTimeoutSeconds: 30
@@ -1258,7 +1258,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d7568453b5aa9f4ab2b3403ebd96492, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityObserversBufferedRpcsScenario
   _kickoffTimeoutSeconds: 30
   _phaseACompleteTimeoutSeconds: 30
@@ -1277,7 +1277,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3f81eb65cb7c1746a1f6ece723c4784, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticTargetBufferedRpcsScenario
   _kickoffTimeoutSeconds: 30
   _phaseACompleteTimeoutSeconds: 30
@@ -1295,7 +1295,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8ec0ebe1276cfa445b95da056a50bf6a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticObserversBufferedRpcsScenario
   _kickoffTimeoutSeconds: 30
   _phaseACompleteTimeoutSeconds: 30
@@ -1368,8 +1368,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fc64ff707d914a64e95f2ac0bf554c09, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   _automaticCloudSetups:
     _adaptToEdgegap: 1
   _serverPort: 5000
@@ -1394,8 +1394,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: baacc2bfe126d544691d4f39fa3785f9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   _stopPlayingOnDisconnect: 0
   _startServerFlags: 0
   _startClientFlags: 0
@@ -1584,7 +1584,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fcd6f4b9e060235479397c84d07af732, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticTargetRpcsScenario
   _doneTimeoutSeconds: 30
   _targetTimeoutSeconds: 10
@@ -1598,7 +1598,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d408dfd9981d849be9281f89e66461c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticObserversRpcsScenario
   _doneTimeoutSeconds: 30
   _broadcastTimeoutSeconds: 10
@@ -1612,7 +1612,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f86ede6bcb977a641a56431bc5ea5acf, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticRpcsScenario
   _doneTimeoutSeconds: 30
 --- !u!114 &1354744834
@@ -1625,7 +1625,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ac27038b030b8ca40a0e7e7191be1de1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StaticGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _broadcastTimeoutSeconds: 10
@@ -1675,7 +1675,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8896f97a5beecc744a4ac2e5f4f0f7a7, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncLazyRefServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1691,7 +1691,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5af0f45f1995cb04fab4ff1c5c609d4a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncTimerServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1707,7 +1707,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 28ea77e2daf192b4baf613c0d29a382b, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncInputScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1723,7 +1723,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d7fec1023ef1b3429054474c2d39f1d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncEventServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1791,6 +1791,7 @@ GameObject:
   - component: {fileID: 1680343660}
   - component: {fileID: 1680343661}
   - component: {fileID: 1680343662}
+  - component: {fileID: 1680343663}
   - component: {fileID: 277924965}
   m_Layer: 0
   m_Name: Lifetimes
@@ -1824,7 +1825,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1f718293445af80a1c2334d5e6f80915, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnerDisconnectScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _spawnTimeoutSeconds: 15
@@ -1844,7 +1845,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1d5f7081232ae7f9a0b223c4d5e6f713, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnerChangeScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
@@ -1859,7 +1860,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4ef60ad75152858509a5ff5e3324214f, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ObserverEventsScenario
   _spawnTimeoutSeconds: 15
   _observersTimeoutSeconds: 30
@@ -1874,7 +1875,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1b3d5f719113c5d7e9f1102b3c4d5e11, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::LifecycleSpawnScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
@@ -1888,7 +1889,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6a4f9a38ef1ce0a1bc1c4e62a8df4937, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::LifecycleDespawnScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1903,7 +1904,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 94385e3e41871b347a8ef16cf1af1d8d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnerDisconnectDespawnScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1922,7 +1923,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8b0e4f37c1d54f24a92e7d63b2f1c9aa, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ClientSpawnScenario
   _rules: {fileID: 11400000, guid: 1f9b0e8a7d654a109c8b2e3f4a5c6d7e, type: 2}
   _playersTimeoutSeconds: 30
@@ -1939,7 +1940,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9c4b3e7a1f284b29a37e5d92c8b416f3, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::LateJoinScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _spawnTimeoutSeconds: 15
@@ -1960,7 +1961,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b27f3c4815e547a8b9e6147305d68f1c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ObserverRemovalScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1977,7 +1978,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5d3f74be8c1a6e7f97a0c2f693e4b5d8, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnershipPropagationScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -1995,7 +1996,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7f5b96d0ae3c8f9b19c2e4f8b5a6d7e0, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StateVisibilityScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2010,7 +2011,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cebd572629a9ee34bad0faead6f0afab, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::HierarchyDespawnScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2025,7 +2026,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4b3af9726d2b21d4d8d1e9716f22cf8d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PostSpawnSyncScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2040,7 +2041,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c89dc28a6a5d16949ba490258b755f36, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::OwnershipToDisconnectedScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2056,7 +2057,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c6c01ba7a00104842a0282c2df88b1df, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarReSyncScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2076,7 +2077,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8cb67ea6954543eb8cfa075504cab6be, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarObserverAddedDeltaScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2099,6 +2100,22 @@ MonoBehaviour:
   _playersTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
   _duplicateWindowSeconds: 1
+  _barrierTimeoutSeconds: 60
+--- !u!114 &1680343663
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d411101b1b844f46966c1c6272d45b75, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::UnreliableNTScenario
+  _spawnTimeoutSeconds: 15
+  _convergeTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
   _barrierTimeoutSeconds: 60
 --- !u!114 &1680343662
 MonoBehaviour:
@@ -2127,7 +2144,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 73968d48c2ecb7c40b9c4fdfe053dad8, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::DestroyDuringSpawnScenario
   _rules: {fileID: 11400000, guid: 1f9b0e8a7d654a109c8b2e3f4a5c6d7e, type: 2}
   _churnCount: 16
@@ -2144,7 +2161,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b3c1d9e5a2f4c08b6d1e4f7a9c2b5d2, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::HierarchyRespawnScenario
   _cycles: 3
   _spawnTimeoutSeconds: 20
@@ -2160,7 +2177,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b3c1d9e5a2f4c08b6d1e4f7a9c2b5d3, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SameFrameChildDestroyScenario
   _cycles: 3
   _spawnTimeoutSeconds: 20
@@ -2176,7 +2193,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b3c1d9e5a2f4c08b6d1e4f7a9c2b5d8, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::ChunkRestoreScenario
   _cycles: 4
   _spawnTimeoutSeconds: 20
@@ -2192,7 +2209,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a4f0c14b8ef54d7e9a3120f62d93b6c1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerReconnectScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _spawnTimeoutSeconds: 15
@@ -2214,7 +2231,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3e8a1b7c9d2f4e5a8b1c6d3e7f9a2b4c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkAnimatorParamsScenario
   _spawnTimeoutSeconds: 15
   _syncTimeoutSeconds: 30
@@ -2230,7 +2247,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb337da9b58f453f81196b704993cffb, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkLODTierScenario
   _spawnTimeoutSeconds: 20
   _tierTimeoutSeconds: 20
@@ -2248,7 +2265,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 679af572dd3e4b3fb0428c6112c2ca51, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkLODCullScenario
   _spawnTimeoutSeconds: 20
   _visibilityTimeoutSeconds: 30
@@ -2264,7 +2281,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d76d0c21e594c8fb798ffd64ea09358, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneMembershipSwitchScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -2282,7 +2299,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f65dca8427614ff39fb0560e52b5838a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneLoadUnloadCycleScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -2299,7 +2316,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fa0826ea48e94b79906ca3d180906c62, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneMembershipRejoinScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _sceneTimeoutSeconds: 30
@@ -2321,7 +2338,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e609d20921b6461c903f72e7fbed746d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PrivateSceneTransferScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -2339,7 +2356,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8785f735bf454c068d9eac2eaa2b1849, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PrivateSceneSwitchTransferScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -2358,7 +2375,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5ab7505c5def437ea28e8d6604f8d0fd, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PrivateSceneOwnedTransferScenario
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _sceneTimeoutSeconds: 30
@@ -2378,7 +2395,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 51a51e1ce501484a9d7636d52995a8c9, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SinglePromotedServerTransferScenario
   _rules: {fileID: 11400000, guid: 4f194c428acb4f40ac42802e7d14e12c, type: 2}
   _sceneTimeoutSeconds: 30
@@ -2397,7 +2414,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0a92abc49121447b8c9d05c85ba8bf15, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PrivateSceneVisibilityTransferScenario
   _rules: {fileID: 11400000, guid: 4f194c428acb4f40ac42802e7d14e12c, type: 2}
   _sceneTimeoutSeconds: 30
@@ -2415,7 +2432,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 455908e0f11c4dd2acfccf4e035c01f4, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SingleSceneTransferScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -2431,7 +2448,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a45f63c87e314d14b9ab6f86b44d2ce1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::PlayerCookieSharingRulesScenario
   _spawnTimeoutSeconds: 15
   _playersTimeoutSeconds: 30
@@ -2447,7 +2464,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aa9d2f6f03434c9aa4f86a33544bd6e0, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::AddressableSceneTransferScenario
   _sceneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 20
@@ -2463,7 +2480,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d384b7e21b4f4f02a3016d0c91a5ef2c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::AuthoredSceneReconnectScenario
   _spawnTimeoutSeconds: 20
   _readyTimeoutSeconds: 30
@@ -2532,7 +2549,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2839a145a9053b8428529d2747d00555, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::LateSerializeScenario
   _spawnTimeoutSeconds: 15
   _disconnectTimeoutSeconds: 30
@@ -2585,7 +2602,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c46ebde86513b7409784923e2d185fc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncTextureFileServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2601,7 +2618,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c3ffa8e10fa0c64299232958e230664, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncRawFileServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2617,7 +2634,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3156d9a205ec80e458eb9826f57652b2, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncBigDataServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2673,7 +2690,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 61b4b8dfec0e2a149be0cecc07589130, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncQueueServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2689,7 +2706,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aca560070534e6040a9969635c6cacb7, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncHashsetServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2705,7 +2722,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1f85162d91900274fb22dd98b3e66451, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncDictionaryServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2721,7 +2738,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4f59535d0bf13454eb7ca8770a6554cf, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncArrayServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2737,7 +2754,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e49b6904baeb8e544bf135918e43144c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncListServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2753,7 +2770,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e58a6cc1c58a0bd4c8c55950f3e18137, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarServerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2769,7 +2786,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b5d7729c94544d7bb24b5f9899266144, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::StateMachineServerAuthScenario
   _spawnTimeoutSeconds: 15
   _stateTimeoutSeconds: 30
@@ -2799,7 +2816,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2c4f61e4a9b848a4b5a2d91e7630c6f1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncCollectionsObserverReaddScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
@@ -2917,14 +2934,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e09b541acb8e45939b68f9df2e73cb75, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::AuthoredSceneReconnectRoot
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
   _shouldBePooled: 0
   _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
+  _invertedPathToNearestParent:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
@@ -2970,14 +2987,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0c82dd9d62434e50b2d1047a2efc660e, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::AuthoredSceneReconnectChild
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
   _shouldBePooled: 0
   _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
+  _invertedPathToNearestParent:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
