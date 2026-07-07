@@ -544,7 +544,7 @@ namespace PurrNet
                 if (_hasRigidbody && _rb) _rb.Sleep();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_hasRigidbody2D && _rb) _rb2d.Sleep();
+                if (_hasRigidbody2D && _rb2d) _rb2d.Sleep();
 #endif
             }
         }
@@ -560,14 +560,24 @@ namespace PurrNet
             {
                 _pendingRbHasPosition = false;
                 if ((_rb.position - _pendingRbPosition).sqrMagnitude > 0.00000001f)
-                    _rb.MovePosition(_pendingRbPosition);
+                {
+                    if (_forceSleepRb)
+                        _rb.position = _pendingRbPosition;
+                    else
+                        _rb.MovePosition(_pendingRbPosition);
+                }
             }
 
             if (_pendingRbHasRotation)
             {
                 _pendingRbHasRotation = false;
                 if (Quaternion.Angle(_rb.rotation, _pendingRbRotation) > 0.005f)
-                    _rb.MoveRotation(_pendingRbRotation);
+                {
+                    if (_forceSleepRb)
+                        _rb.rotation = _pendingRbRotation;
+                    else
+                        _rb.MoveRotation(_pendingRbRotation);
+                }
             }
         }
 #endif
