@@ -69,16 +69,103 @@ namespace PurrNet
                 x += INDEX_WIDTH + SPACING;
 
                 EditorGUI.BeginDisabledGroup(_target.autoGenerate);
-                EditorGUI.PropertyField(new Rect(x, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), assetProp, GUIContent.none);
+                DrawAddressablePrefabField(new Rect(x, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), assetProp);
                 EditorGUI.EndDisabledGroup();
             };
 
-            _reorderableList.onAddCallback = (ReorderableList list) =>
+            _reorderableList.onAddDropdownCallback = (Rect buttonRect, ReorderableList list) =>
             {
-                int index = list.count;
-                list.serializedProperty.arraySize++;
-                serializedObject.ApplyModifiedProperties();
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Add Empty Entry"), false, () =>
+                {
+                    int index = list.count;
+                    list.serializedProperty.arraySize++;
+                    var element = list.serializedProperty.GetArrayElementAtIndex(index);
+                    SetAssetReferenceGuid(element.FindPropertyRelative("asset"), string.Empty);
+                    serializedObject.ApplyModifiedProperties();
+                });
+
+                menu.AddItem(new GUIContent("Add Selected Addressable Prefabs"), false, () =>
+                {
+                    bool addedAny = false;
+                    foreach (var obj in Selection.gameObjects)
+                    {
+                        if (!PrefabUtility.IsPartOfPrefabAsset(obj))
+                            continue;
+
+                        var path = AssetDatabase.GetAssetPath(obj);
+                        var guid = AssetDatabase.AssetPathToGUID(path);
+                        var settings = AddressableAssetSettingsDefaultObject.Settings;
+                        if (settings == null || settings.FindAssetEntry(guid) == null)
+                            continue;
+
+                        addedAny = true;
+                        int index = list.count;
+                        list.serializedProperty.arraySize++;
+                        var element = list.serializedProperty.GetArrayElementAtIndex(index);
+                        SetAssetReferenceGuid(element.FindPropertyRelative("asset"), guid);
+                    }
+
+                    if (addedAny)
+                        serializedObject.ApplyModifiedProperties();
+                });
+
+                menu.ShowAsContext();
             };
+        }
+
+        private static void DrawAddressablePrefabField(Rect rect, SerializedProperty assetProp)
+        {
+            var guidProp = assetProp.FindPropertyRelative("m_AssetGUID");
+            var current = LoadPrefabFromGuid(guidProp?.stringValue);
+
+            EditorGUI.BeginChangeCheck();
+            var selected = (GameObject)EditorGUI.ObjectField(rect, current, typeof(GameObject), false);
+            if (!EditorGUI.EndChangeCheck())
+                return;
+
+            if (!selected)
+            {
+                SetAssetReferenceGuid(assetProp, string.Empty);
+                return;
+            }
+
+            var path = AssetDatabase.GetAssetPath(selected);
+            var guid = AssetDatabase.AssetPathToGUID(path);
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (settings == null || settings.FindAssetEntry(guid) == null)
+            {
+                PurrNet.Logging.PurrLogger.LogWarning($"`{selected.name}` is not marked as Addressable and was not added.", selected);
+                return;
+            }
+
+            SetAssetReferenceGuid(assetProp, guid);
+        }
+
+        private static GameObject LoadPrefabFromGuid(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return null;
+
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            return string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        }
+
+        private static void SetAssetReferenceGuid(SerializedProperty assetProp, string guid)
+        {
+            assetProp.FindPropertyRelative("m_AssetGUID").stringValue = guid;
+            assetProp.FindPropertyRelative("m_SubObjectName").stringValue = string.Empty;
+            assetProp.FindPropertyRelative("m_SubObjectType").stringValue = string.Empty;
+            assetProp.FindPropertyRelative("m_SubObjectGUID").stringValue = string.Empty;
+
+            var changedProp = assetProp.FindPropertyRelative("m_EditorAssetChanged");
+            if (changedProp != null)
+            {
+                if (changedProp.propertyType == SerializedPropertyType.Boolean)
+                    changedProp.boolValue = true;
+                else
+                    changedProp.intValue = 1;
+            }
         }
 
         public override void OnInspectorGUI()

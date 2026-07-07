@@ -195,7 +195,7 @@ namespace PurrNet.Editor
             EditorGUILayout.PropertyField(_transport);
             DrawNetworkPrefabs();
             if(_addressableNetworkPrefabs != null)
-                EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+                DrawAddressableNetworkPrefabs();
             DrawNetworkAssets();
             EditorGUILayout.PropertyField(_networkRules);
             EditorGUILayout.PropertyField(_visibilityRules);
@@ -256,6 +256,31 @@ namespace PurrNet.Editor
 
             EditorGUILayout.EndHorizontal();
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        private void DrawAddressableNetworkPrefabs()
+        {
+            EditorGUILayout.BeginHorizontal();
+            Color originalBgColor = GUI.backgroundColor;
+
+            EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+            GUI.backgroundColor = originalBgColor;
+
+            if (_addressableNetworkPrefabs.objectReferenceValue == null)
+            {
+                if (GUILayout.Button("New", GUILayout.Width(50)))
+                    CreateNewAddressableNetworkPrefabs();
+            }
+
+            EditorGUILayout.EndHorizontal();
+        }
+#else
+        private void DrawAddressableNetworkPrefabs()
+        {
+            EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+        }
+#endif
+
 
         private void DrawStatusFoldout()
         {
@@ -493,5 +518,24 @@ namespace PurrNet.Editor
 
             EditorGUIUtility.PingObject(networkAssets);
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        private void CreateNewAddressableNetworkPrefabs()
+        {
+            string folderPath = "Assets";
+
+            var addressableNetworkPrefabs = ScriptableObject.CreateInstance<AddressableNetworkPrefabs>();
+            string assetPath = $"{folderPath}/AddressableNetworkPrefabs.asset";
+            assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
+
+            AssetDatabase.CreateAsset(addressableNetworkPrefabs, assetPath);
+            AssetDatabase.SaveAssets();
+
+            _addressableNetworkPrefabs.objectReferenceValue = addressableNetworkPrefabs;
+            serializedObject.ApplyModifiedProperties();
+
+            EditorGUIUtility.PingObject(addressableNetworkPrefabs);
+        }
+#endif
     }
 }
