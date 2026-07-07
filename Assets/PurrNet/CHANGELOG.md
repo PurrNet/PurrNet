@@ -1,3 +1,10 @@
+# [1.20.0-beta.251](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.250...v1.20.0-beta.251) (2026-07-07)
+
+
+### Bug Fixes
+
+* Addressables utilize network rules properly ([7047be6](https://github.com/PurrNet/PurrNet/commit/7047be611c22b20770f85e4a5100d570f18c0948))
+
 # [1.20.0-beta.250](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.249...v1.20.0-beta.250) (2026-07-07)
 
 
