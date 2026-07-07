@@ -71,7 +71,9 @@ namespace PurrNet.Modules
             if (string.IsNullOrEmpty(guid))
                 return;
 
-            await _manager.addressableNetworkPrefabs.LoadPrefabByGuidAsync(guid);
+            var prefabData = await _manager.addressableNetworkPrefabs.LoadPrefabByGuidAsync(guid);
+            if (prefabData.prefab)
+                SendLoadState(guid, true);
         }
 
         private void OnClientLoadStateChanged(string guid, bool loaded)
