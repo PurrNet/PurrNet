@@ -1,3 +1,10 @@
+# [1.20.0-beta.250](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.249...v1.20.0-beta.250) (2026-07-07)
+
+
+### Bug Fixes
+
+* Addressables proper reporting of load state ([cb55fe2](https://github.com/PurrNet/PurrNet/commit/cb55fe2c50d71f7bc01e1d3b4780b9f56df84a2b))
+
 # [1.20.0-beta.249](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.248...v1.20.0-beta.249) (2026-07-03)
 
 
