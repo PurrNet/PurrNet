@@ -217,7 +217,7 @@ namespace PurrNet
 
             var manager = NetworkManager.main;
 
-            if (!manager || !manager.isServer)
+            if (!manager)
                 return;
 
             var prefab = ResolvePrefab(manager, key);
