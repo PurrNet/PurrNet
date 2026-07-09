@@ -525,15 +525,15 @@ namespace PurrNet
             if (!_ownerAuth || !IsControlling(info.sender, false))
                 return;
 
-            BumpSendGen();
-            bool apply = ForceAdoptRecvGen(gen);
-            AdoptState(state);
+            // Stale RPC (newer same-gen owner samples already applied): adopting would let the
+            // same-tick relay ship the older pose to observers under a fresh gen.
+            if (!ForceAdoptRecvGen(gen))
+                return;
 
-            if (apply)
-            {
-                TeleportToState(state);
-                ApplyLerpedPosition();
-            }
+            BumpSendGen();
+            AdoptState(state);
+            TeleportToState(state);
+            ApplyLerpedPosition();
         }
 
         [TargetRpc]
