@@ -902,7 +902,7 @@ namespace PurrNet.Editor
                     GUI.color = _frozenColor;
                     GUI.enabled = CanStartPackageOperation();
                     if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
-                        PurrPackageManagerInstaller.Remove(package);
+                        RemovePackage(package);
                     GUI.enabled = true;
                     GUI.color = Color.white;
                     GUILayout.Space(8);
@@ -977,7 +977,7 @@ namespace PurrNet.Editor
                 GUI.color = _frozenColor;
                 GUI.enabled = CanStartPackageOperation();
                 if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
-                    PurrPackageManagerInstaller.Remove(package);
+                    RemovePackage(package);
                 GUI.enabled = true;
                 GUI.color = Color.white;
             }
@@ -1572,11 +1572,13 @@ namespace PurrNet.Editor
                     {
                         if (gitUrl != null)
                         {
-                            PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl, false);
+                            var result = await PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl);
+                            if (!result.Success)
+                                errors.Add($"{pkg.DisplayName}: {result.Error}");
                         }
                         else if (version != null)
                         {
-                            var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version, false);
+                            var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version);
                             if (!result.Success)
                                 errors.Add($"{pkg.DisplayName}: {result.Error}");
                         }
@@ -1588,7 +1590,6 @@ namespace PurrNet.Editor
                 }
 
                 PurrPackageManagerCache.Invalidate();
-                PurrPackageManagerInstaller.ResolvePackagesWithRetry();
             }
             catch (Exception e)
             {
@@ -1681,11 +1682,13 @@ namespace PurrNet.Editor
             if (!TryBeginPackageOperation(operationKey))
                 return;
 
-            EditorApplication.delayCall += () =>
+            EditorApplication.delayCall += async () =>
             {
                 try
                 {
-                    PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                    var result = await PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                    if (!result.Success)
+                        EditorUtility.DisplayDialog("Install Failed", result.Error, "Ok");
                     LoadData();
                 }
                 catch (Exception e)
@@ -1699,6 +1702,29 @@ namespace PurrNet.Editor
                     EndPackageOperation(operationKey);
                 }
             };
+        }
+
+        private async void RemovePackage(PackageInfo package)
+        {
+            var operationKey = GetPackageOperationKey(package, "remove");
+            if (!TryBeginPackageOperation(operationKey))
+                return;
+
+            try
+            {
+                var result = await PurrPackageManagerInstaller.Remove(package);
+                if (!result.Success)
+                    EditorUtility.DisplayDialog("Remove Failed", result.Error, "Ok");
+                LoadData();
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Remove Failed", e.Message, "Ok");
+            }
+            finally
+            {
+                EndPackageOperation(operationKey);
+            }
         }
 
         private async void InstallPackage(PackageInfo package, VersionInfo version, string operationKey = null)

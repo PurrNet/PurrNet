@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,9 +15,14 @@ namespace PurrNet.Editor
 {
     public static class PurrPackageManagerInstaller
     {
-        private const string LegacyPackagesDir = "PurrPackages";
-        private const string ManifestPath = "Packages/manifest.json";
-        private const string LockFilePath = "Packages/packages-lock.json";
+        private static readonly SemaphoreSlim OperationGate = new(1, 1);
+        private const string LegacyPackagesFolderName = "PurrPackages";
+
+        private static string ProjectRoot => Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        private static string PackagesDirectory => Path.Combine(ProjectRoot, "Packages");
+        private static string LegacyPackagesDir => Path.Combine(ProjectRoot, LegacyPackagesFolderName);
+        private static string ManifestPath => Path.Combine(PackagesDirectory, "manifest.json");
+        private static string LockFilePath => Path.Combine(PackagesDirectory, "packages-lock.json");
 
         // The package-manager window re-queries install state on every OnGUI repaint — once per
         // package row, plus the "Update All" count — and each query parsed manifest.json /
@@ -83,6 +89,13 @@ namespace PurrNet.Editor
                    "Removing the package, letting Unity resolve, and then adding it back also works.";
         }
 
+        private static string FormatCommittedResolveFailure(Exception exception, PackageInfo package, string operation)
+        {
+            return FormatInstallFailure(exception, package) + "\n\n" +
+                   $"The package {operation} was committed safely, but Unity did not finish refreshing its package state. " +
+                   "Close and reopen the project; Unity will retry resolution from the valid manifest on startup.";
+        }
+
         private static bool LooksLikePackageCacheAccessDenied(string message)
         {
             return !string.IsNullOrEmpty(message)
@@ -91,35 +104,185 @@ namespace PurrNet.Editor
                    && message.IndexOf("denied", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        public static void ResolvePackagesWithRetry(PackageInfo package = null)
+        public static async Task<Result<bool>> ResolvePackagesWithRetry(PackageInfo package = null)
+        {
+            await OperationGate.WaitAsync();
+            try
+            {
+                await ResolvePackagesCore(package);
+                return Result<bool>.Ok(true);
+            }
+            catch (Exception e)
+            {
+                return Result<bool>.Fail(FormatInstallFailure(e, package));
+            }
+            finally
+            {
+                OperationGate.Release();
+            }
+        }
+
+        private static async Task ResolvePackagesCore(PackageInfo package = null, string expectedVersion = null,
+            string expectedPackageName = null, bool expectRemoved = false)
         {
             const int maxAttempts = 3;
-            const int baseDelayMs = 750;
+            const int eventTimeoutMs = 12000;
+            const int baseDelayMs = 500;
 
             for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
+                var registration = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                void OnRegistered(UnityEditor.PackageManager.PackageRegistrationEventArgs args)
+                {
+                    if (RegistrationMatches(args, package, expectedPackageName, expectRemoved))
+                        registration.TrySetResult(true);
+                }
+
+                UnityEditor.PackageManager.Events.registeredPackages += OnRegistered;
                 try
                 {
                     UnityEditor.PackageManager.Client.Resolve();
-                    return;
+
+                    // Resolve has no Request object. A registration event is the only public completion
+                    // signal Unity exposes. If the requested state is already visible, a short quiet
+                    // period is enough because Unity intentionally emits no event for a no-op resolve.
+                    var initialWait = await Task.WhenAny(registration.Task, Task.Delay(1000));
+                    if (initialWait == registration.Task
+                        || (expectRemoved && IsExpectedPackageStateVisible(package, null, expectedPackageName, true))
+                        || (!string.IsNullOrEmpty(expectedVersion)
+                            && IsExpectedPackageStateVisible(package, expectedVersion, expectedPackageName, false)))
+                    {
+                        await WaitForLockFileToSettle();
+                        return;
+                    }
+
+                    var completed = await Task.WhenAny(registration.Task, Task.Delay(eventTimeoutMs - 1000));
+                    if (completed == registration.Task)
+                    {
+                        await WaitForLockFileToSettle();
+                        return;
+                    }
+
+                    throw new TimeoutException(
+                        "Unity Package Manager did not finish resolving packages. Its cache may be locked by Unity, an IDE, antivirus, or another Editor instance.");
                 }
-                catch (Exception e) when (LooksLikePackageCacheAccessDenied(e.Message) && attempt < maxAttempts)
+                catch (Exception e) when (IsTransientPackageIoFailure(e) && attempt < maxAttempts)
                 {
-                    Debug.LogWarning($"[PurrNet] Unity could not resolve packages because PackageCache is locked. Retrying ({attempt + 1}/{maxAttempts})...");
-                    Thread.Sleep(baseDelayMs * attempt);
+                    Debug.LogWarning($"[PurrNet] Unity could not resolve packages because package files are busy. Retrying ({attempt + 1}/{maxAttempts})...");
+                    await Task.Delay(baseDelayMs * attempt);
                 }
                 catch (Exception e)
                 {
                     throw new InvalidOperationException(FormatInstallFailure(e, package), e);
                 }
+                finally
+                {
+                    UnityEditor.PackageManager.Events.registeredPackages -= OnRegistered;
+                }
+            }
+        }
+
+        private static bool RegistrationMatches(UnityEditor.PackageManager.PackageRegistrationEventArgs args,
+            PackageInfo package, string expectedPackageName, bool expectRemoved)
+        {
+            if (package == null)
+                return true;
+
+            var packageName = expectedPackageName ?? package.GetUpmPackageName();
+            var candidates = expectRemoved ? args.removed : args.added.Concat(args.changedTo);
+            foreach (var candidate in candidates)
+            {
+                if (!string.Equals(candidate.name, packageName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // A registration event for the requested package is the completion signal. Version
+                // validation is only used for the no-event fast path because API catalog versions and
+                // git tag/package.json versions are not guaranteed to use identical text.
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsExpectedPackageStateVisible(PackageInfo package, string expectedVersion,
+            string expectedPackageName, bool expectRemoved)
+        {
+            if (package == null)
+                return false;
+
+            var packageName = expectedPackageName ?? package.GetUpmPackageName();
+            try
+            {
+                foreach (var registered in UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages())
+                {
+                    if (!string.Equals(registered.name, packageName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (expectRemoved)
+                        return false;
+
+                    return string.IsNullOrEmpty(expectedVersion)
+                           || string.Equals(registered.version, expectedVersion, StringComparison.OrdinalIgnoreCase);
+                }
+
+                return expectRemoved;
+            }
+            catch
+            {
+                // Package registration can be unavailable briefly while Unity reloads assemblies.
+            }
+
+            return false;
+        }
+
+        private static bool IsTransientPackageIoFailure(Exception exception)
+        {
+            for (var current = exception; current != null; current = current.InnerException)
+            {
+                if (current is UnauthorizedAccessException || current is IOException || current is TimeoutException)
+                    return true;
+                if (LooksLikePackageCacheAccessDenied(current.Message))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static async Task WaitForLockFileToSettle()
+        {
+            const int pollMs = 150;
+            const int stableMs = 600;
+            const int maximumMs = 3000;
+
+            var elapsed = 0;
+            var stableFor = 0;
+            var previousWrite = File.Exists(LockFilePath) ? File.GetLastWriteTimeUtc(LockFilePath) : DateTime.MinValue;
+            var previousLength = File.Exists(LockFilePath) ? new FileInfo(LockFilePath).Length : -1;
+
+            while (elapsed < maximumMs && stableFor < stableMs)
+            {
+                await Task.Delay(pollMs);
+                elapsed += pollMs;
+
+                var exists = File.Exists(LockFilePath);
+                var write = exists ? File.GetLastWriteTimeUtc(LockFilePath) : DateTime.MinValue;
+                var length = exists ? new FileInfo(LockFilePath).Length : -1;
+                if (write == previousWrite && length == previousLength)
+                    stableFor += pollMs;
+                else
+                    stableFor = 0;
+
+                previousWrite = write;
+                previousLength = length;
             }
         }
 
         /// <summary>
         /// Snapshot of Packages/manifest.json and packages-lock.json taken before an install/remove
-        /// touches them. If the operation throws partway (download failure, a locked PackageCache
-        /// folder Unity can't delete during resolve, a failed file sync, ...) the snapshot is restored
-        /// so the project is never left without the package it had before.
+        /// touches them. If filesystem or manifest mutation throws before commit, the snapshot is
+        /// restored so the project is never left with a partial package operation. Once committed,
+        /// Unity resolution is allowed to recover on the next project open instead of rewriting state
+        /// while Package Manager may still be active.
         /// </summary>
         private readonly struct ManifestBackup
         {
@@ -149,16 +312,135 @@ namespace PurrNet.Editor
             {
                 try
                 {
-                    if (_hadManifest && _manifest != null && File.ReadAllText(ManifestPath) != _manifest)
-                        File.WriteAllText(ManifestPath, _manifest);
-                    if (_hadLock && _lock != null && (!File.Exists(LockFilePath) || File.ReadAllText(LockFilePath) != _lock))
-                        File.WriteAllText(LockFilePath, _lock);
+                    RestoreFile(ManifestPath, _manifest, _hadManifest);
+                    RestoreFile(LockFilePath, _lock, _hadLock);
                     InvalidateFileCaches();
                 }
                 catch (Exception e)
                 {
                     Debug.LogError($"[PurrNet] Failed to restore manifest after a failed package operation: {e.Message}");
                 }
+
+                static void RestoreFile(string path, string contents, bool existed)
+                {
+                    if (!existed)
+                    {
+                        if (File.Exists(path))
+                            File.Delete(path);
+                        return;
+                    }
+
+                    if (contents != null && (!File.Exists(path) || File.ReadAllText(path) != contents))
+                        PurrPackageManagerIO.WriteAllTextAtomic(path, contents);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves package files aside without deleting them until the filesystem/manifest transaction
+        /// commits. If a mutation fails before UPM resolution begins, the original content is moved back.
+        /// </summary>
+        private sealed class QuarantineScope : IDisposable
+        {
+            private readonly string _root = Path.Combine(ProjectRoot, "Temp", "PurrNetTransactions", Guid.NewGuid().ToString("N"));
+            private readonly List<(string original, string quarantined, bool directory)> _moves = new();
+            private bool _completed;
+
+            public void MoveDirectory(string path)
+            {
+                if (!Directory.Exists(path))
+                    return;
+
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                {
+                    // Unity creates Packages/<name> junctions for local/file dependencies. Moving or
+                    // recursively quarantining one can operate on its target on some Windows runtimes.
+                    // Unlink only the junction; the manifest snapshot is sufficient for UPM to recreate
+                    // it if a pre-commit rollback is needed.
+                    Directory.Delete(path, false);
+                    return;
+                }
+
+                Directory.CreateDirectory(_root);
+                var destination = GetDestination(path);
+                Directory.Move(path, destination);
+                _moves.Add((path, destination, true));
+            }
+
+            public void MoveFile(string path)
+            {
+                if (!File.Exists(path))
+                    return;
+
+                Directory.CreateDirectory(_root);
+                var destination = GetDestination(path);
+                File.Move(path, destination);
+                _moves.Add((path, destination, false));
+            }
+
+            public void Commit()
+            {
+                if (_completed)
+                    return;
+
+                _completed = true;
+                PurrPackageManagerIO.DeleteDirectoryBestEffort(_root);
+            }
+
+            public void Rollback()
+            {
+                if (_completed)
+                    return;
+
+                var errors = new List<string>();
+                for (var i = _moves.Count - 1; i >= 0; i--)
+                {
+                    var move = _moves[i];
+                    try
+                    {
+                        if (move.directory)
+                        {
+                            if (Directory.Exists(move.original))
+                            {
+                                var replacement = Path.Combine(_root, $"rollback-replacement-{i:D3}-{Guid.NewGuid():N}");
+                                Directory.Move(move.original, replacement);
+                            }
+                            if (Directory.Exists(move.quarantined))
+                                Directory.Move(move.quarantined, move.original);
+                        }
+                        else
+                        {
+                            if (File.Exists(move.original))
+                            {
+                                var replacement = Path.Combine(_root, $"rollback-replacement-{i:D3}-{Guid.NewGuid():N}");
+                                File.Move(move.original, replacement);
+                            }
+                            if (File.Exists(move.quarantined))
+                                File.Move(move.quarantined, move.original);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        errors.Add($"'{move.original}': {e.Message}");
+                    }
+                }
+
+                _completed = true;
+                if (errors.Count == 0)
+                    PurrPackageManagerIO.DeleteDirectoryBestEffort(_root);
+                else
+                    Debug.LogError("[PurrNet] Could not fully roll back package files: " + string.Join("; ", errors));
+            }
+
+            public void Dispose()
+            {
+                Rollback();
+            }
+
+            private string GetDestination(string original)
+            {
+                var name = PurrPackageManagerIO.GetSafeFileName(Path.GetFileName(original), "package");
+                return Path.Combine(_root, $"{_moves.Count:D3}_{Guid.NewGuid():N}_{name}");
             }
         }
 
@@ -262,7 +544,7 @@ namespace PurrNet.Editor
             // Check for embedded package first (Packages/{name}/ takes priority in Unity)
             if (HasEmbeddedPackage(apiName))
             {
-                var pkgJsonPath = Path.Combine("Packages", apiName, "package.json");
+                var pkgJsonPath = Path.Combine(PackagesDirectory, apiName, "package.json");
                 try
                 {
                     var json = JObject.Parse(File.ReadAllText(pkgJsonPath));
@@ -282,11 +564,8 @@ namespace PurrNet.Editor
 
             // Try direct lookup with API-provided name
             var directEntry = deps[apiName]?.ToString();
-            if (directEntry != null && directEntry.Contains(LegacyPackagesDir))
-                return (apiName, directEntry);
-
-            // Check for git URL entries (external packages)
-            if (directEntry != null && IsGitUrl(directEntry))
+            if (directEntry != null && (directEntry.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+                                        || IsGitUrl(directEntry)))
                 return (apiName, directEntry);
 
             // API name may differ from the real name in package.json.
@@ -297,7 +576,7 @@ namespace PurrNet.Editor
                 foreach (var prop in deps.Properties())
                 {
                     var val = prop.Value.ToString();
-                    if (!val.Contains(LegacyPackagesDir))
+                    if (!val.Contains(LegacyPackagesFolderName))
                         continue;
 
                     // Legacy: val is "file:../PurrPackages/{key}-{version}.tgz" or "file:../PurrPackages/{key}-{version}"
@@ -341,7 +620,7 @@ namespace PurrNet.Editor
 
         private static bool HasEmbeddedPackage(string upmName)
         {
-            var path = Path.Combine("Packages", upmName);
+            var path = Path.Combine(PackagesDirectory, upmName);
             if (!Directory.Exists(path))
                 return false;
 
@@ -356,56 +635,38 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Removes a directory by moving it to Temp/ first, then best-effort deleting it.
-        /// Directory.Move within the same volume is a rename, so the original path is
-        /// freed up immediately — locked files (e.g. loaded native DLLs) stay in Temp/
-        /// and get cleaned up later with the project's Temp folder.
-        /// </summary>
-        private static void SafeRemoveDirectory(string path)
-        {
-            if (!Directory.Exists(path))
-                return;
-
-            Directory.CreateDirectory("Temp");
-            var tempDest = Path.Combine("Temp", "PurrNet_cleanup_" + DateTime.Now.Ticks);
-            Directory.Move(path, tempDest);
-
-            try
-            {
-                Directory.Delete(tempDest, true);
-            }
-            catch
-            {
-                // Locked files remain in Temp/ — not our problem anymore, original path is free
-            }
-        }
-
-        /// <summary>
         /// Clears any existing install of <paramref name="package"/> so a new version can be written.
         /// Removes manifest entries, legacy PurrPackages/ files, and embedded Packages/{name}/ folders
         /// for both the detected install key and the canonical name (needed when api name ≠ upm name,
         /// or when a rename crossed versions).
         /// </summary>
         /// <remarks>
-        /// Ordering within each name: SafeRemoveDirectory BEFORE CleanupLegacyPackageFiles.
+        /// Ordering within each name: quarantine Packages/{name} BEFORE legacy targets.
         /// Packages/{name}/ may be a Unity-created junction pointing at PurrPackages/{name}-{version}/.
         /// Deleting the target first leaves the junction dangling and Directory.Exists returns false,
         /// orphaning the junction forever.
         /// </remarks>
-        private static void ClearExistingInstall(PackageInfo package, string canonicalName)
+        private static void ClearExistingInstall(PackageInfo package, string canonicalName, QuarantineScope quarantine)
         {
             var match = FindInstalledEntry(package);
             if (match != null)
-                ClearByName(match.Value.key);
+                ClearByName(match.Value.key, match.Value.value.StartsWith("file:", StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrEmpty(canonicalName) && (match == null || match.Value.key != canonicalName))
-                ClearByName(canonicalName);
+                ClearByName(canonicalName, false);
 
-            static void ClearByName(string name)
+            void ClearByName(string name, bool unlinkUnityFilePackage)
             {
+                var packageDirectory = Path.Combine(PackagesDirectory, name);
+                if (!unlinkUnityFilePackage)
+                {
+                    quarantine.MoveDirectory(packageDirectory);
+                }
+                // UPM exposes file: dependencies at Packages/<name> through a managed/virtual link.
+                // Any System.IO move or delete against that path can be redirected to the source on
+                // some Unity/Mono versions. Leave it entirely to UPM after the manifest entry changes.
+                CleanupLegacyPackageFiles(name, quarantine);
                 RemoveManifestEntry(name);
-                SafeRemoveDirectory(Path.Combine("Packages", name));
-                CleanupLegacyPackageFiles(name);
             }
         }
 
@@ -417,162 +678,63 @@ namespace PurrNet.Editor
         /// entries and legacy PurrPackages/ files for both the detected install key and the
         /// canonical name so the install is auto-discovered as embedded.
         /// </summary>
-        private static void InstallFilesSynced(PackageInfo package, string canonicalName, string sourceDir)
+        private static void InstallFilesSynced(PackageInfo package, string canonicalName, string sourceDir,
+            QuarantineScope quarantine)
         {
-            var targetFolder = Path.Combine("Packages", canonicalName);
+            var targetFolder = Path.Combine(PackagesDirectory, canonicalName);
             var match = FindInstalledEntry(package);
 
-            RemoveManifestEntry(canonicalName);
-            CleanupLegacyPackageFiles(canonicalName);
+            CleanupLegacyPackageFiles(canonicalName, quarantine);
 
             // Different-name install (rename or api/upm mismatch) — can't sync across names, full wipe.
             if (match != null && !string.Equals(match.Value.key, canonicalName, StringComparison.OrdinalIgnoreCase))
             {
+                quarantine.MoveDirectory(Path.Combine(PackagesDirectory, match.Value.key));
+                CleanupLegacyPackageFiles(match.Value.key, quarantine);
                 RemoveManifestEntry(match.Value.key);
-                SafeRemoveDirectory(Path.Combine("Packages", match.Value.key));
-                CleanupLegacyPackageFiles(match.Value.key);
             }
 
             // Unlink junction at target without following it — else sync would write into the
             // legacy PurrPackages/ target rather than replacing the junction with a real folder.
             if (Directory.Exists(targetFolder)
-                && (File.GetAttributes(targetFolder) & FileAttributes.ReparsePoint) != 0)
+                && match != null
+                && string.Equals(match.Value.key, canonicalName, StringComparison.OrdinalIgnoreCase)
+                && match.Value.value.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
             {
-                Directory.Delete(targetFolder, false);
+                throw new InvalidOperationException(
+                    $"Unity still has the local package '{canonicalName}' mounted. Remove it first, let Unity finish resolving, then install the embedded package.");
+            }
+            else if (Directory.Exists(targetFolder)
+                     && (File.GetAttributes(targetFolder) & FileAttributes.ReparsePoint) != 0)
+            {
+                quarantine.MoveDirectory(targetFolder);
             }
 
-            SyncDirectory(sourceDir, targetFolder);
-        }
-
-        /// <summary>
-        /// Syncs <paramref name="destination"/> to match <paramref name="source"/>:
-        /// copies files that are new or have different content, deletes files not present in source,
-        /// and leaves byte-identical files completely untouched. Logs a warning if any file could
-        /// not be written or deleted (usually a locked native library — caller should advise a restart).
-        /// </summary>
-        private static void SyncDirectory(string source, string destination)
-        {
-            Directory.CreateDirectory(destination);
-
-            var sourceRelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            int failed = 0;
-
-            foreach (var srcFile in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
-            {
-                var rel = Path.GetRelativePath(source, srcFile);
-                sourceRelPaths.Add(rel);
-
-                var dstFile = Path.Combine(destination, rel);
-
-                if (File.Exists(dstFile) && FilesEqual(srcFile, dstFile))
-                    continue;
-
-                var dstDir = Path.GetDirectoryName(dstFile);
-                if (!string.IsNullOrEmpty(dstDir))
-                    Directory.CreateDirectory(dstDir);
-
-                try
-                {
-                    if (File.Exists(dstFile))
-                        File.SetAttributes(dstFile, FileAttributes.Normal);
-                    File.Copy(srcFile, dstFile, overwrite: true);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning($"[PurrNet] Could not write '{rel}' (may be a locked native library): {ex.Message}");
-                    failed++;
-                }
-            }
-
-            // Remove files that exist in destination but not in source
-            foreach (var dstFile in Directory.GetFiles(destination, "*", SearchOption.AllDirectories))
-            {
-                var rel = Path.GetRelativePath(destination, dstFile);
-                if (sourceRelPaths.Contains(rel))
-                    continue;
-
-                try
-                {
-                    File.SetAttributes(dstFile, FileAttributes.Normal);
-                    File.Delete(dstFile);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning($"[PurrNet] Could not remove orphaned '{rel}' (may be locked): {ex.Message}");
-                    failed++;
-                }
-            }
-
-            // Prune empty subdirectories bottom-up
-            var dirs = Directory.GetDirectories(destination, "*", SearchOption.AllDirectories);
-            Array.Sort(dirs, (a, b) => b.Length.CompareTo(a.Length));
-            foreach (var dir in dirs)
-            {
-                try
-                {
-                    if (Directory.GetFileSystemEntries(dir).Length == 0)
-                        Directory.Delete(dir, false);
-                }
-                catch
-                {
-                    // not empty or locked — skip
-                }
-            }
-
-            if (failed > 0)
-                Debug.LogWarning($"[PurrNet] Install completed with {failed} file(s) that could not be updated. A Unity restart may be required for native plugin changes to take effect.");
-        }
-
-        /// <summary>
-        /// Byte-compares two files after a size short-circuit. Chunked read avoids loading
-        /// large native DLLs fully into memory.
-        /// </summary>
-        private static bool FilesEqual(string a, string b)
-        {
-            var infoA = new FileInfo(a);
-            var infoB = new FileInfo(b);
-            if (infoA.Length != infoB.Length)
-                return false;
-            if (infoA.Length == 0)
-                return true;
-
-            const int bufSize = 64 * 1024;
-            var bufA = new byte[bufSize];
-            var bufB = new byte[bufSize];
-
-            using var streamA = new FileStream(a, FileMode.Open, FileAccess.Read, FileShare.Read, bufSize);
-            using var streamB = new FileStream(b, FileMode.Open, FileAccess.Read, FileShare.Read, bufSize);
-
-            while (true)
-            {
-                int readA = ReadFully(streamA, bufA);
-                int readB = ReadFully(streamB, bufB);
-                if (readA != readB)
-                    return false;
-                if (readA == 0)
-                    return true;
-                if (!bufA.AsSpan(0, readA).SequenceEqual(bufB.AsSpan(0, readB)))
-                    return false;
-            }
-
-            static int ReadFully(FileStream s, byte[] buf)
-            {
-                int total = 0;
-                while (total < buf.Length)
-                {
-                    int n = s.Read(buf, total, buf.Length - total);
-                    if (n == 0) break;
-                    total += n;
-                }
-                return total;
-            }
+            RemoveManifestEntry(canonicalName);
+            PurrPackageManagerIO.SyncDirectoryTransactional(sourceDir, targetFolder);
         }
 
         public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
+            await OperationGate.WaitAsync();
+            try
+            {
+                return await InstallCore(apiKey, package, version, resolve);
+            }
+            finally
+            {
+                OperationGate.Release();
+            }
+        }
+
+        private static async Task<Result<bool>> InstallCore(string apiKey, PackageInfo package, VersionInfo version, bool resolve)
+        {
             var backup = ManifestBackup.Capture();
+            using var quarantine = new QuarantineScope();
             string installedFolder = null;
             bool installedFolderExisted = false;
+            string operationTempDirectory = null;
+            var mutationCommitted = false;
 
             try
             {
@@ -586,15 +748,20 @@ namespace PurrNet.Editor
 
                         var gitUpmName = package.GetUpmPackageName();
 
-                        ClearExistingInstall(package, gitUpmName);
+                        ClearExistingInstall(package, gitUpmName, quarantine);
 
                         SetManifestEntry(gitUpmName, StripGitRef(gitUrl) + "#" + version.TagName);
+
+                        // Commit before asking UPM to resolve. Resolving can trigger an assembly/domain
+                        // reload, so no in-memory rollback state may be assumed to survive this point.
+                        quarantine.Commit();
+                        mutationCommitted = true;
 
                         EditorUtility.ClearProgressBar();
                         if (resolve)
                         {
                             PurrPackageManagerCache.Invalidate();
-                            ResolvePackagesWithRetry(package);
+                            await ResolvePackagesCore(package, version.Version);
                         }
 
                         return Result<bool>.Ok(true);
@@ -612,8 +779,11 @@ namespace PurrNet.Editor
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Downloading {package.DisplayName}...", 0.3f);
 
-                var downloadFilename = downloadResult.Value.Filename ?? (package.GetUpmPackageName() + ".unitypackage");
-                var tempPath = Path.Combine(Path.GetTempPath(), downloadFilename);
+                operationTempDirectory = PurrPackageManagerIO.CreateUniqueTempDirectory("downloads");
+                var downloadFilename = PurrPackageManagerIO.GetSafeFileName(
+                    downloadResult.Value.Filename,
+                    package.GetUpmPackageName() + ".unitypackage");
+                var tempPath = PurrPackageManagerIO.GetContainedPath(operationTempDirectory, downloadFilename);
 
                 var fileResult = await PurrPackageManagerAPI.DownloadFile(downloadResult.Value.Url, tempPath);
                 if (!fileResult.Success)
@@ -625,7 +795,7 @@ namespace PurrNet.Editor
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Installing package...", 0.7f);
 
                 // Extract to a temp directory to read package.json
-                var tempExtractDir = Path.Combine("Temp", "PurrNet_extract_" + DateTime.Now.Ticks);
+                var tempExtractDir = Path.Combine(operationTempDirectory, "extracted");
 
                 try
                 {
@@ -633,8 +803,6 @@ namespace PurrNet.Editor
                 }
                 catch (Exception extractEx)
                 {
-                    if (Directory.Exists(tempExtractDir))
-                        Directory.Delete(tempExtractDir, true);
                     EditorUtility.ClearProgressBar();
                     return Result<bool>.Fail($"Failed to extract package: {extractEx.Message}");
                 }
@@ -643,7 +811,6 @@ namespace PurrNet.Editor
                 var pkgJsonPath = Path.Combine(tempExtractDir, "package.json");
                 if (!File.Exists(pkgJsonPath))
                 {
-                    Directory.Delete(tempExtractDir, true);
                     EditorUtility.ClearProgressBar();
                     return Result<bool>.Fail("Extracted package does not contain a package.json");
                 }
@@ -654,7 +821,6 @@ namespace PurrNet.Editor
 
                 if (string.IsNullOrEmpty(upmName) || string.IsNullOrEmpty(upmVersion))
                 {
-                    Directory.Delete(tempExtractDir, true);
                     EditorUtility.ClearProgressBar();
                     return Result<bool>.Fail("package.json is missing 'name' or 'version' field");
                 }
@@ -666,33 +832,31 @@ namespace PurrNet.Editor
                     EditorUtility.ClearProgressBar();
                     if (!EditorUtility.DisplayDialog("Embedded Package Found",
                         $"An embedded copy of {package.DisplayName} exists in the Packages folder. " +
-                        "It must be removed to install the new version. Any local changes will be lost.",
-                        "Remove & Continue", "Cancel"))
+                        "It will be updated transactionally. Any local changes will be replaced.",
+                        "Update & Continue", "Cancel"))
                     {
-                        Directory.Delete(tempExtractDir, true);
                         return Result<bool>.Fail("Installation cancelled by user.");
                     }
                     EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Removing embedded package...", 0.7f);
                 }
 
-                installedFolder = Path.Combine("Packages", upmName);
+                installedFolder = Path.Combine(PackagesDirectory, upmName);
                 installedFolderExisted = Directory.Exists(installedFolder);
 
-                InstallFilesSynced(package, upmName, tempExtractDir);
+                InstallFilesSynced(package, upmName, tempExtractDir, quarantine);
+
+                // The embedded package is now internally consistent. Commit before Resolve because
+                // package registration can reload this editor assembly and abandon async continuations.
+                quarantine.Commit();
+                mutationCommitted = true;
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Cleaning up...", 0.9f);
-
-                if (File.Exists(tempPath))
-                    File.Delete(tempPath);
-
-                if (Directory.Exists(tempExtractDir))
-                    Directory.Delete(tempExtractDir, true);
 
                 EditorUtility.ClearProgressBar();
                 if (resolve)
                 {
                     PurrPackageManagerCache.Invalidate();
-                    ResolvePackagesWithRetry(package);
+                    await ResolvePackagesCore(package, upmVersion, upmName);
                 }
 
                 return Result<bool>.Ok(true);
@@ -701,83 +865,129 @@ namespace PurrNet.Editor
             {
                 Debug.LogError($"[PurrNet] Install failed: {e}");
                 EditorUtility.ClearProgressBar();
-                var message = FormatInstallFailure(e, package);
+                var message = mutationCommitted
+                    ? FormatCommittedResolveFailure(e, package, "change")
+                    : FormatInstallFailure(e, package);
 
                 // Roll back: a partial install must not leave the project worse off than before.
                 // Remove any half-written embedded folder we created, then restore manifest/lock.
-                if (installedFolder != null && !installedFolderExisted && Directory.Exists(installedFolder))
-                    SafeRemoveDirectory(installedFolder);
-                backup.Restore();
-
-                if (resolve)
+                if (!mutationCommitted)
                 {
-                    PurrPackageManagerCache.Invalidate();
-                    try { ResolvePackagesWithRetry(package); } catch { /* lock still held — picked up on next reload */ }
+                    if (installedFolder != null && !installedFolderExisted && Directory.Exists(installedFolder))
+                        PurrPackageManagerIO.DeleteDirectoryBestEffort(installedFolder);
+                    quarantine.Rollback();
+                    backup.Restore();
                 }
 
                 return Result<bool>.Fail(message);
             }
-        }
-
-        public static bool Remove(PackageInfo package)
-        {
-            var match = FindInstalledEntry(package);
-            if (match == null)
-                return false;
-
-            if (!EditorUtility.DisplayDialog("Remove Package",
-                $"Are you sure you want to remove {package.DisplayName}?",
-                "Remove", "Cancel"))
-                return false;
-
-            try
+            finally
             {
-                ClearExistingInstall(package, package.GetUpmPackageName());
-
-                PurrPackageManagerCache.Invalidate();
-                ResolvePackagesWithRetry(package);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to remove package: {e.Message}");
-                return false;
+                EditorUtility.ClearProgressBar();
+                PurrPackageManagerIO.DeleteDirectoryBestEffort(operationTempDirectory);
             }
         }
 
-        public static void InstallExternal(PackageInfo package, string gitUrl, bool resolve = true)
+        public static Task<Result<bool>> Remove(PackageInfo package)
         {
-            var backup = ManifestBackup.Capture();
+            return Remove(package, true);
+        }
+
+        internal static async Task<Result<bool>> Remove(PackageInfo package, bool askForConfirmation)
+        {
+            await OperationGate.WaitAsync();
             try
             {
-                EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
+                var match = FindInstalledEntry(package);
+                if (match == null)
+                    return Result<bool>.Ok(false);
 
-                var upmName = package.GetUpmPackageName();
+                if (askForConfirmation && !EditorUtility.DisplayDialog("Remove Package",
+                    $"Are you sure you want to remove {package.DisplayName}?",
+                    "Remove", "Cancel"))
+                    return Result<bool>.Ok(false);
 
-                ClearExistingInstall(package, upmName);
-
-                SetManifestEntry(upmName, gitUrl);
-
-                EditorUtility.ClearProgressBar();
-                if (resolve)
+                var backup = ManifestBackup.Capture();
+                using var quarantine = new QuarantineScope();
+                var mutationCommitted = false;
+                try
                 {
+                    ClearExistingInstall(package, package.GetUpmPackageName(), quarantine);
+
+                    quarantine.Commit();
+                    mutationCommitted = true;
+
                     PurrPackageManagerCache.Invalidate();
-                    ResolvePackagesWithRetry(package);
+                    await ResolvePackagesCore(package, expectedPackageName: match.Value.key, expectRemoved: true);
+                    return Result<bool>.Ok(true);
+                }
+                catch (Exception e)
+                {
+                    if (!mutationCommitted)
+                    {
+                        quarantine.Rollback();
+                        backup.Restore();
+                    }
+                    var message = mutationCommitted
+                        ? FormatCommittedResolveFailure(e, package, "removal")
+                        : FormatInstallFailure(e, package);
+                    Debug.LogError($"[PurrNet] Failed to remove package: {e}");
+                    return Result<bool>.Fail(message);
                 }
             }
-            catch (Exception e)
+            finally
+            {
+                OperationGate.Release();
+            }
+        }
+
+        public static async Task<Result<bool>> InstallExternal(PackageInfo package, string gitUrl, bool resolve = true)
+        {
+            await OperationGate.WaitAsync();
+            try
+            {
+                var backup = ManifestBackup.Capture();
+                using var quarantine = new QuarantineScope();
+                var mutationCommitted = false;
+                try
+                {
+                    EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
+
+                    var upmName = package.GetUpmPackageName();
+
+                    ClearExistingInstall(package, upmName, quarantine);
+
+                    SetManifestEntry(upmName, gitUrl);
+
+                    quarantine.Commit();
+                    mutationCommitted = true;
+
+                    if (resolve)
+                    {
+                        PurrPackageManagerCache.Invalidate();
+                        await ResolvePackagesCore(package);
+                    }
+
+                    return Result<bool>.Ok(true);
+                }
+                catch (Exception e)
+                {
+                    if (!mutationCommitted)
+                    {
+                        quarantine.Rollback();
+                        backup.Restore();
+                    }
+                    var message = mutationCommitted
+                        ? FormatCommittedResolveFailure(e, package, "installation")
+                        : FormatInstallFailure(e, package);
+                    Debug.LogError($"[PurrNet] Failed to install external package: {e}");
+                    return Result<bool>.Fail(message);
+                }
+            }
+            finally
             {
                 EditorUtility.ClearProgressBar();
-                var message = FormatInstallFailure(e, package);
-                Debug.LogError($"[PurrNet] Failed to install external package: {message}");
-                EditorUtility.DisplayDialog("Install Failed", message, "Ok");
-
-                backup.Restore();
-                if (resolve)
-                {
-                    PurrPackageManagerCache.Invalidate();
-                    try { ResolvePackagesWithRetry(package); } catch { /* lock still held — picked up on next reload */ }
-                }
+                OperationGate.Release();
             }
         }
 
@@ -824,38 +1034,19 @@ namespace PurrNet.Editor
         /// <summary>
         /// Cleans up old package files in the legacy PurrPackages/ directory for a given UPM name.
         /// Handles both legacy .tgz files and folder-based installs.
-        /// Also removes the PurrPackages/ directory itself if it becomes empty.
+        /// Files are quarantined until the surrounding package operation commits.
         /// </summary>
-        private static void CleanupLegacyPackageFiles(string upmName)
+        private static void CleanupLegacyPackageFiles(string upmName, QuarantineScope quarantine)
         {
             if (!Directory.Exists(LegacyPackagesDir)) return;
 
             // Old tgz files
             foreach (var f in Directory.GetFiles(LegacyPackagesDir, upmName + "-*.tgz"))
-            {
-                try { File.Delete(f); }
-                catch
-                {
-                    // ignored
-                }
-            }
+                quarantine.MoveFile(f);
 
             // Folder installs
             foreach (var d in Directory.GetDirectories(LegacyPackagesDir, upmName + "-*"))
-            {
-                SafeRemoveDirectory(d);
-            }
-
-            // Remove PurrPackages/ itself if now empty
-            try
-            {
-                if (Directory.GetFileSystemEntries(LegacyPackagesDir).Length == 0)
-                    Directory.Delete(LegacyPackagesDir);
-            }
-            catch
-            {
-                // ignored
-            }
+                quarantine.MoveDirectory(d);
         }
 
         /// <summary>
@@ -902,7 +1093,7 @@ namespace PurrNet.Editor
         /// </summary>
         private static string GetResolvedPackageVersion(string packageName, string preferredHash = null)
         {
-            const string cacheDir = "Library/PackageCache";
+            var cacheDir = Path.Combine(ProjectRoot, "Library", "PackageCache");
             if (!Directory.Exists(cacheDir))
                 return null;
 
@@ -963,7 +1154,7 @@ namespace PurrNet.Editor
                     manifest["dependencies"] = deps;
                 }
                 deps[packageName] = value;
-                File.WriteAllText(ManifestPath, manifest.ToString(Formatting.Indented));
+                PurrPackageManagerIO.WriteAllTextAtomic(ManifestPath, manifest.ToString(Formatting.Indented));
                 InvalidateFileCaches();
             }
             catch (Exception e)
@@ -982,7 +1173,7 @@ namespace PurrNet.Editor
                 if (deps != null && deps.ContainsKey(packageName))
                 {
                     deps.Remove(packageName);
-                    File.WriteAllText(ManifestPath, manifest.ToString(Formatting.Indented));
+                    PurrPackageManagerIO.WriteAllTextAtomic(ManifestPath, manifest.ToString(Formatting.Indented));
                     InvalidateFileCaches();
                 }
             }
@@ -1038,9 +1229,16 @@ namespace PurrNet.Editor
                     byte[] content = null;
                     if (size > 0)
                     {
-                        content = new byte[size];
+                        if (size > int.MaxValue || pos + size > tarBytes.Length)
+                            throw new InvalidDataException($"Invalid tar entry size for '{tarName}'.");
+
+                        var paddedSize = (size + 511) / 512 * 512;
+                        if (pos + paddedSize > tarBytes.Length)
+                            throw new InvalidDataException($"Truncated tar entry '{tarName}'.");
+
+                        content = new byte[(int)size];
                         Array.Copy(tarBytes, pos, content, 0, (int)size);
-                        pos += (int)((size + 511) / 512) * 512;
+                        pos += (int)paddedSize;
                     }
 
                     // Handle GNU long name extension
@@ -1156,7 +1354,7 @@ namespace PurrNet.Editor
                 // Write asset content
                 if (entry.AssetContent != null)
                 {
-                    var fullPath = Path.Combine(targetDir, relativePath);
+                    var fullPath = PurrPackageManagerIO.GetContainedPath(targetDir, relativePath);
                     var dir = Path.GetDirectoryName(fullPath);
                     if (!string.IsNullOrEmpty(dir))
                         Directory.CreateDirectory(dir);
@@ -1167,7 +1365,7 @@ namespace PurrNet.Editor
                 // Write .meta file
                 if (entry.MetaContent != null)
                 {
-                    var metaPath = Path.Combine(targetDir, relativePath + ".meta");
+                    var metaPath = PurrPackageManagerIO.GetContainedPath(targetDir, relativePath + ".meta");
                     var dir = Path.GetDirectoryName(metaPath);
                     if (!string.IsNullOrEmpty(dir))
                         Directory.CreateDirectory(dir);
