@@ -258,6 +258,7 @@ namespace PurrNet
             _currentData = data;
             _latestData = data;
             _lastReadData = data;
+            _lastSentDelta = data;
 
             ResetUnreliableRecvState();
             BumpSendGen();
@@ -408,6 +409,8 @@ namespace PurrNet
 
         protected override void OnObserverAdded(PlayerID player)
         {
+            InvalidateObserverBaseline(player, true);
+
             if (!enabled)
             {
                 return;
@@ -420,6 +423,21 @@ namespace PurrNet
                 SendLatestState(player, currentState, true, _sendGen);
         }
 
+        protected override void OnObserverRemoved(PlayerID player)
+        {
+            InvalidateObserverBaseline(player, false);
+        }
+
+        private void InvalidateObserverBaseline(PlayerID player, bool enqueue)
+        {
+            if (!networkManager || !id.HasValue)
+                return;
+
+            if (networkManager.TryGetModule<NetworkTransformFactory>(isServer, out var factory) &&
+                factory.TryGetModule(sceneId, out var ntModule))
+                ntModule.InvalidateSendBaseline(player, id.Value, enqueue);
+        }
+
         /// <summary>
         /// Forces the latest NT state to target player, voiding compression and other optimizations
         /// </summary>
@@ -428,7 +446,7 @@ namespace PurrNet
             if (target == localPlayer)
                 return;
 
-            BumpSendGen();
+            BumpSendGen(target);
             RefreshCurrentState();
             SendLatestState(target, currentState, true, _sendGen);
         }
@@ -443,6 +461,7 @@ namespace PurrNet
 
             BumpSendGen();
             RefreshCurrentState();
+            _lastSentDelta = _currentData;
             var state = currentState;
 
             if (isServer)
@@ -481,6 +500,7 @@ namespace PurrNet
 
             BumpSendGen();
             AdoptState(state);
+            _lastSentDelta = state.data;
             TeleportToState(state);
             ApplyLerpedPosition();
 
@@ -532,6 +552,7 @@ namespace PurrNet
 
             BumpSendGen();
             AdoptState(state);
+            _lastSentDelta = state.data;
             TeleportToState(state);
             ApplyLerpedPosition();
         }
@@ -825,10 +846,25 @@ namespace PurrNet
                 _scale.Teleport(new ScaleWithParent(p, data.scale));
         }
 
+        private void ApplyData(NetworkTransformData data)
+        {
+            var p = _trs.parent;
+
+            if (syncPosition)
+                _position.Add(MakePositionSample(p, data));
+
+            if (syncRotation)
+                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, data.rotation));
+
+            if (syncScale)
+                _scale.Add(new ScaleWithParent(p, data.scale));
+        }
+
         private NetworkTransformData _latestData;
 
         private NetworkTransformData _currentData;
         private NetworkTransformData _lastReadData;
+        private NetworkTransformData _lastSentDelta;
 
         public void GatherState()
         {
@@ -837,25 +873,129 @@ namespace PurrNet
             _currentParentId = _latestParentId;
         }
 
+        /// <summary>
+        /// Compatibility entry point for the legacy reliable delta path.
+        /// </summary>
+        public bool HasChanges()
+        {
+            return !_currentData.Equals(_lastSentDelta);
+        }
+
+        /// <summary>
+        /// Compatibility entry point for consumers that still use the legacy delta API.
+        /// </summary>
+        public void DeltaWrite(BitPacker packer)
+        {
+            if (syncPosition)
+            {
+                if (_useAbsoluteFrame)
+                    DeltaPacker<double3>.Write(packer, _lastSentDelta.absolutePosition.GetValueOrDefault(),
+                        _currentData.absolutePosition.GetValueOrDefault());
+                else
+                    DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position.GetValueOrDefault(),
+                        _currentData.position.GetValueOrDefault());
+            }
+
+            if (syncRotation)
+                DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation);
+
+            if (syncScale)
+                DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale);
+        }
+
+        /// <summary>
+        /// Compatibility entry point for consumers that still use the legacy delta API.
+        /// </summary>
+        public void DeltaRead(BitPacker packet)
+        {
+            var data = _lastReadData;
+
+            if (syncPosition)
+            {
+                if (data.absolutePosition.HasValue)
+                {
+                    var oldPosition = data.absolutePosition.Value;
+                    var newPosition = oldPosition;
+                    DeltaPacker<double3>.Read(packet, oldPosition, ref newPosition);
+                    data.absolutePosition = newPosition;
+                }
+                else
+                {
+                    var oldPosition = data.position.GetValueOrDefault();
+                    var newPosition = oldPosition;
+                    DeltaPacker<CompressedVector3>.Read(packet, oldPosition, ref newPosition);
+                    data.position = newPosition;
+                }
+            }
+
+            if (syncRotation)
+            {
+                var oldRotation = data.rotation;
+                DeltaPacker<PackedQuaternion>.Read(packet, oldRotation, ref data.rotation);
+            }
+
+            if (syncScale)
+            {
+                var oldScale = data.scale;
+                DeltaPacker<CompressedVector3>.Read(packet, oldScale, ref data.scale);
+            }
+
+            _lastReadData = data;
+            ApplyData(data);
+        }
+
+        /// <summary>
+        /// Compatibility entry point for consumers that still use the legacy delta API.
+        /// </summary>
+        public void DeltaSave()
+        {
+            _lastSentDelta = _currentData;
+        }
+
         private NetworkTransformState _capturedState;
+        private bool _hasCapturedState;
+        private uint _capturedRevision;
         private byte _sendGen;
         private byte _recvGen;
         private bool _hasRecvGen;
-        private ushort _lastAppliedSeq;
+        private long _lastAppliedOrder;
         private bool _hasAppliedSeq;
 
-        public NetworkTransformState capturedState => _capturedState;
+        internal NetworkTransformState capturedState => _capturedState;
 
-        public byte sendGen => _sendGen;
+        internal uint capturedRevision => _capturedRevision;
+
+        internal byte sendGen => _sendGen;
 
         // Wire gen is a byte and wraps; sender-side baseline validity compares this instead.
         private uint _sendGenEpoch;
-        public uint sendGenEpoch => _sendGenEpoch;
+        internal uint sendGenEpoch => _sendGenEpoch;
 
         private void BumpSendGen()
         {
             _sendGen++;
             _sendGenEpoch++;
+
+            if (TryGetNetworkTransformModule(out var ntModule) && id.HasValue)
+                ntModule.ClearGenerationOverrides(id.Value);
+        }
+
+        private void BumpSendGen(PlayerID target)
+        {
+            if (TryGetNetworkTransformModule(out var ntModule) && id.HasValue)
+                ntModule.PrepareTargetedReset(target, id.Value, _sendGen, _sendGenEpoch);
+
+            _sendGen++;
+            _sendGenEpoch++;
+        }
+
+        private bool TryGetNetworkTransformModule(out NetworkTransformModule ntModule)
+        {
+            ntModule = null;
+
+            return networkManager &&
+                   networkManager.TryGetModule<NetworkTransformFactory>(isServer, out var factory) &&
+                   factory.TryGetModule(sceneId, out ntModule);
         }
 
         private void ResetUnreliableRecvState()
@@ -864,7 +1004,7 @@ namespace PurrNet
             _hasAppliedSeq = false;
         }
 
-        public void ResetUnreliableStream()
+        internal void ResetUnreliableStream()
         {
             BumpSendGen();
             ResetUnreliableRecvState();
@@ -908,7 +1048,7 @@ namespace PurrNet
 
             var parentIdentity = _cachedParentIdentity;
 
-            if (parentIdentity && parentIdentity.isSpawned && parentIdentity.id.HasValue)
+            if (_syncParent && parentIdentity && parentIdentity.isSpawned && parentIdentity.id.HasValue)
             {
                 _latestFrame = NetworkTransformFrame.LocalIdentity;
                 _latestParentId = parentIdentity.id.Value;
@@ -920,10 +1060,42 @@ namespace PurrNet
             }
         }
 
-        public void CaptureUnreliableState()
+        internal void CaptureUnreliableState()
         {
-            _capturedState = currentState;
+            var state = currentState;
+
+            // Canonicalize fields that are not part of this NetworkTransform's wire contract.
+            // This keeps sender and receiver baselines byte-for-byte equivalent while allowing
+            // absolute packets to omit disabled fields entirely.
+            if (!syncPosition)
+            {
+                state.data.position = default(CompressedVector3);
+                state.data.absolutePosition = null;
+            }
+
+            if (!syncRotation)
+                state.data.rotation = Quaternion.identity;
+
+            if (!syncScale)
+                state.data.scale = default;
+
+            if (!usesNetworkFrame)
+            {
+                state.frame = NetworkTransformFrame.World;
+                state.parentId = default;
+            }
+
+            if (!_hasCapturedState || !_capturedState.Equals(state))
+            {
+                _capturedState = state;
+                _capturedRevision++;
+                _hasCapturedState = true;
+            }
         }
+
+        private bool usesNetworkFrame => _syncPosition == SyncMode.Local ||
+                                         _syncRotation == SyncMode.Local ||
+                                         _syncScale;
 
         private NetworkTransformState currentState => new NetworkTransformState
         {
@@ -982,42 +1154,103 @@ namespace PurrNet
                 _scale.Teleport(new ScaleWithParent(p, state.data.scale));
         }
 
-        public bool CanDeltaAgainst(in NetworkTransformState baseline)
+        internal bool CanDeltaAgainst(in NetworkTransformState baseline)
         {
             return baseline.data.absolutePosition.HasValue == _capturedState.data.absolutePosition.HasValue;
         }
 
-        public void WriteAbsoluteState(BitPacker packer)
+        internal void WriteAbsoluteState(BitPacker packer)
         {
             var state = _capturedState;
-            packer.WriteBits((ulong)state.frame, 2);
-            if (state.frame == NetworkTransformFrame.LocalIdentity)
-                Packer<NetworkID>.Write(packer, state.parentId);
-            Packer<NetworkTransformData>.Write(packer, state.data);
+
+            if (usesNetworkFrame)
+            {
+                packer.WriteBits((ulong)state.frame, 2);
+                if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    Packer<NetworkID>.Write(packer, state.parentId);
+            }
+
+            if (syncPosition)
+            {
+                bool isAbsolute = state.data.absolutePosition.HasValue;
+                packer.WriteBits(isAbsolute ? 1UL : 0UL, 1);
+
+                if (isAbsolute)
+                    Packer<double3>.Write(packer, state.data.absolutePosition.Value);
+                else
+                    Packer<CompressedVector3>.Write(packer, state.data.position.GetValueOrDefault());
+            }
+
+            if (syncRotation)
+                Packer<PackedQuaternion>.Write(packer, state.data.rotation);
+
+            if (syncScale)
+                Packer<CompressedVector3>.Write(packer, state.data.scale);
         }
 
-        public NetworkTransformState ReadAbsoluteState(BitPacker packer)
+        internal NetworkTransformState ReadAbsoluteState(BitPacker packer)
         {
             var state = default(NetworkTransformState);
-            state.frame = (NetworkTransformFrame)packer.ReadBits(2);
-            if (state.frame == NetworkTransformFrame.LocalIdentity)
-                Packer<NetworkID>.Read(packer, ref state.parentId);
-            Packer<NetworkTransformData>.Read(packer, ref state.data);
+
+            if (usesNetworkFrame)
+            {
+                state.frame = (NetworkTransformFrame)packer.ReadBits(2);
+                if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    Packer<NetworkID>.Read(packer, ref state.parentId);
+            }
+            else
+            {
+                state.frame = NetworkTransformFrame.World;
+            }
+
+            if (syncPosition)
+            {
+                bool isAbsolute = packer.ReadBits(1) == 1;
+                if (isAbsolute)
+                {
+                    double3 position = default;
+                    Packer<double3>.Read(packer, ref position);
+                    state.data.absolutePosition = position;
+                }
+                else
+                {
+                    CompressedVector3 position = default;
+                    Packer<CompressedVector3>.Read(packer, ref position);
+                    state.data.position = position;
+                }
+            }
+            else
+            {
+                state.data.position = default(CompressedVector3);
+            }
+
+            if (syncRotation)
+                Packer<PackedQuaternion>.Read(packer, ref state.data.rotation);
+            else
+                state.data.rotation = Quaternion.identity;
+
+            if (syncScale)
+                Packer<CompressedVector3>.Read(packer, ref state.data.scale);
+
             return state;
         }
 
         // Masks compare vs the raw baseline (untouched fields must never velocity-drift);
         // diffs encode vs the second-order prediction.
-        public void WriteDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
+        internal void WriteDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
         {
             var state = _capturedState;
 
-            bool sameFrame = state.frame == baseline.frame && state.parentId.Equals(baseline.parentId);
-            packer.WriteBits(sameFrame ? 1UL : 0UL, 1);
-            if (!sameFrame)
+            if (usesNetworkFrame)
             {
-                packer.WriteBits((ulong)state.frame, 2);
-                DeltaPacker<NetworkID>.Write(packer, baseline.parentId, state.parentId);
+                bool sameFrame = state.frame == baseline.frame && state.parentId.Equals(baseline.parentId);
+                packer.WriteBits(sameFrame ? 1UL : 0UL, 1);
+                if (!sameFrame)
+                {
+                    packer.WriteBits((ulong)state.frame, 2);
+                    if (state.frame == NetworkTransformFrame.LocalIdentity)
+                        DeltaPacker<NetworkID>.Write(packer, baseline.parentId, state.parentId);
+                }
             }
 
             if (syncPosition)
@@ -1058,21 +1291,31 @@ namespace PurrNet
             }
         }
 
-        public NetworkTransformState ReadDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
+        internal NetworkTransformState ReadDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
         {
             var state = default(NetworkTransformState);
 
-            bool sameFrame = packer.ReadBits(1) == 1;
-            if (sameFrame)
+            if (usesNetworkFrame)
             {
-                state.frame = baseline.frame;
-                state.parentId = baseline.parentId;
+                bool sameFrame = packer.ReadBits(1) == 1;
+                if (sameFrame)
+                {
+                    state.frame = baseline.frame;
+                    state.parentId = baseline.parentId;
+                }
+                else
+                {
+                    state.frame = (NetworkTransformFrame)packer.ReadBits(2);
+                    if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    {
+                        state.parentId = baseline.parentId;
+                        DeltaPacker<NetworkID>.Read(packer, baseline.parentId, ref state.parentId);
+                    }
+                }
             }
             else
             {
-                state.frame = (NetworkTransformFrame)packer.ReadBits(2);
-                state.parentId = baseline.parentId;
-                DeltaPacker<NetworkID>.Read(packer, baseline.parentId, ref state.parentId);
+                state.frame = NetworkTransformFrame.World;
             }
 
             state.data = baseline.data;
@@ -1117,7 +1360,8 @@ namespace PurrNet
         /// Returns true when the state may be recorded as a receive baseline; false when it
         /// must be discarded (older generation, or unapplicable and unsafe to ack-adopt).
         /// </summary>
-        public bool TryApplyUnreliableState(in NetworkTransformState state, byte gen, ushort seq, NetworkIdentity frameParent, bool isAbsolute)
+        internal bool TryApplyUnreliableState(in NetworkTransformState state, byte gen, long packetOrder,
+            NetworkIdentity frameParent, bool isAbsolute)
         {
             // Loopback/handoff echo: a controller records baselines but never adopts remote
             // gens or feeds its own interpolation from them.
@@ -1153,7 +1397,7 @@ namespace PurrNet
                 _hasAppliedSeq = false;
             }
 
-            if (_hasAppliedSeq && (short)(seq - _lastAppliedSeq) <= 0)
+            if (!NTUnreliable.ShouldApplyOrder(_hasAppliedSeq, _lastAppliedOrder, packetOrder))
                 return true;
 
             if (state.frame == NetworkTransformFrame.LocalIdentity && !frameParent)
@@ -1166,7 +1410,7 @@ namespace PurrNet
                 _ => null
             };
 
-            _lastAppliedSeq = seq;
+            _lastAppliedOrder = packetOrder;
             _hasAppliedSeq = true;
             _lastReadData = state.data;
 

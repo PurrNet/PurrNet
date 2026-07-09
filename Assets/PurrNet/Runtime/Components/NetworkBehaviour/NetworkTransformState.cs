@@ -3,7 +3,7 @@ using PurrNet.Packing;
 
 namespace PurrNet
 {
-    public enum NetworkTransformFrame : byte
+    internal enum NetworkTransformFrame : byte
     {
         World = 0,
         LocalStatic = 1,
@@ -15,7 +15,7 @@ namespace PurrNet
     /// The frame travels with the sample so decoding never depends on the
     /// receiver's hierarchy timing.
     /// </summary>
-    public struct NetworkTransformState : IEquatable<NetworkTransformState>
+    internal struct NetworkTransformState : IEquatable<NetworkTransformState>
     {
         public NetworkTransformData data;
         public NetworkTransformFrame frame;
@@ -36,19 +36,19 @@ namespace PurrNet
     /// peers from decoded states — never sent on the wire. Enables second-order deltas:
     /// diffs are encoded against baseline + velocity * distance.
     /// </summary>
-    public struct NetworkTransformVelocity
+    internal struct NetworkTransformVelocity
     {
         public int posX, posY, posZ;
-        public long rotX, rotY, rotZ, rotW;
         public int scaleX, scaleY, scaleZ;
+        public short rotX, rotY, rotZ, rotW;
 
         // Keeps the worst-case rotation diff inside the NormalizedFloat 15-bit prefix budget:
         // |pred| <= 1024 + MAX_ROT*dist, zigzag(|diff|) must stay <= 32767, which caps
-        // MAX_BASELINE_AGE at 55 with MAX_ROT = 256. Revisit BOTH if either changes.
+        // MAX_PREDICTED_BASELINE_AGE at 55 with MAX_ROT = 256. Revisit BOTH if either changes.
         const long MAX_ROT = 256;
         const long MAX_POS = 1L << 20;
 
-        static long ClampRot(long v) => Math.Clamp(v, -MAX_ROT, MAX_ROT);
+        static short ClampRot(long v) => (short)Math.Clamp(v, -MAX_ROT, MAX_ROT);
         static int ClampPos(long v) => (int)Math.Clamp(v, -MAX_POS, MAX_POS);
         static int ClampInt(long v) => (int)Math.Clamp(v, int.MinValue, int.MaxValue);
 
@@ -98,10 +98,10 @@ namespace PurrNet
             }
 
             var r = s.data.rotation;
-            r.x = new NormalizedFloat(r.x.value + v.rotX * dist);
-            r.y = new NormalizedFloat(r.y.value + v.rotY * dist);
-            r.z = new NormalizedFloat(r.z.value + v.rotZ * dist);
-            r.w = new NormalizedFloat(r.w.value + v.rotW * dist);
+            r.x = new NormalizedFloat(r.x.value + (long)v.rotX * dist);
+            r.y = new NormalizedFloat(r.y.value + (long)v.rotY * dist);
+            r.z = new NormalizedFloat(r.z.value + (long)v.rotZ * dist);
+            r.w = new NormalizedFloat(r.w.value + (long)v.rotW * dist);
             s.data.rotation = r;
 
             var sc = s.data.scale;

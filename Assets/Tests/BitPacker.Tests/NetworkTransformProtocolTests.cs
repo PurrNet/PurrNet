@@ -1,0 +1,475 @@
+using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using NUnit.Framework;
+using PurrNet;
+using PurrNet.Modules;
+using PurrNet.Packing;
+using UnityEngine;
+
+public class NetworkTransformProtocolTests
+{
+    [Test]
+    public void PerTransformOrderSurvivesContinuousSequenceHalfRange()
+    {
+        var stream = new NTUnreliableRecvStream();
+        Assert.That(NetworkTransformModule.MarkReceived(stream, 1, out var lastAppliedOrder), Is.True);
+
+        long incomingOrder = default;
+        for (int logicalSequence = 2; logicalSequence <= 32769; logicalSequence++)
+        {
+            ushort wireSequence = unchecked((ushort)logicalSequence);
+            Assert.That(NetworkTransformModule.MarkReceived(stream, wireSequence, out incomingOrder), Is.True);
+        }
+
+        Assert.That(NTUnreliable.ShouldApplyOrder(true, lastAppliedOrder, incomingOrder), Is.True);
+    }
+
+    [Test]
+    public void OutOfOrderPacketsStillUsePerTransformOrdering()
+    {
+        var stream = new NTUnreliableRecvStream();
+        Assert.That(NetworkTransformModule.MarkReceived(stream, 100, out var firstOrder), Is.True);
+        Assert.That(NetworkTransformModule.MarkReceived(stream, 102, out var latestOrder), Is.True);
+        Assert.That(NetworkTransformModule.MarkReceived(stream, 101, out var delayedOrder), Is.True);
+
+        Assert.That(delayedOrder, Is.GreaterThan(firstOrder));
+        Assert.That(delayedOrder, Is.LessThan(latestOrder));
+        Assert.That(NTUnreliable.ShouldApplyOrder(true, firstOrder, delayedOrder), Is.True);
+        Assert.That(NTUnreliable.ShouldApplyOrder(true, latestOrder, delayedOrder), Is.False);
+    }
+
+    [Test]
+    public void UnlimitedMtuDoesNotOverflowBitBudget()
+    {
+        long budget = NetworkTransformModule.CalculateBudgetBits(int.MaxValue);
+
+        Assert.That(budget, Is.EqualTo(((long)int.MaxValue - 32L) * 8L));
+        Assert.That(budget, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void PiggybackedAckUsesNaturalFieldWidths()
+    {
+        NetworkTransformUnreliableAckHeader? expected = new NetworkTransformUnreliableAckHeader
+        {
+            seq = 1234,
+            ackBits = 0xA5A55A5A
+        };
+
+        using var packer = BitPackerPool.Get();
+        Packer<NetworkTransformUnreliableAckHeader?>.Write(packer, expected);
+
+        Assert.That(packer.positionInBits, Is.EqualTo(1 + 16 + 32));
+
+        packer.ResetPositionAndMode(true);
+        NetworkTransformUnreliableAckHeader? actual = default;
+        Packer<NetworkTransformUnreliableAckHeader?>.Read(packer, ref actual);
+
+        Assert.That(actual.HasValue, Is.True);
+        Assert.That(actual.Value.seq, Is.EqualTo(expected.Value.seq));
+        Assert.That(actual.Value.ackBits, Is.EqualTo(expected.Value.ackBits));
+    }
+
+    [Test]
+    public void CaptureRevisionOnlyAdvancesWhenQuantizedStateChanges()
+    {
+        var go = new GameObject(nameof(CaptureRevisionOnlyAdvancesWhenQuantizedStateChanges));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+            nt.CaptureUnreliableState();
+            uint first = nt.capturedRevision;
+
+            nt.CaptureUnreliableState();
+            Assert.That(nt.capturedRevision, Is.EqualTo(first));
+
+            SetField(nt, "_currentData", new NetworkTransformData
+            {
+                position = (CompressedVector3)Vector3.one,
+                rotation = Quaternion.identity,
+                scale = Vector3.one
+            });
+            nt.CaptureUnreliableState();
+
+            Assert.That(nt.capturedRevision, Is.EqualTo(first + 1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
+    public void AcknowledgedSendPacketReleasesItsSnapshots()
+    {
+        var module = new NetworkTransformModule(null, null, null, default, null);
+        var stream = new NTUnreliableSendStream();
+        const ushort seq = 7;
+        stream.ring[seq % NTUnreliable.RING_SIZE] = new NTUnreliableSlot
+        {
+            used = true,
+            seq = seq,
+            entries = new List<NTUnreliableEntry>()
+        };
+
+        module.ProcessAck(stream, seq, 0);
+
+        ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
+        Assert.That(slot.acked, Is.True);
+        Assert.That(slot.entries, Is.Null);
+    }
+
+    [Test]
+    public void PredictionVelocityStaysCompact()
+    {
+        Assert.That(Marshal.SizeOf<NetworkTransformVelocity>(), Is.EqualTo(32));
+    }
+
+    [Test]
+    public void BaselineHistoryOutlivesTheSafePredictionWindow()
+    {
+        Assert.That(NTUnreliable.MAX_BASELINE_AGE, Is.EqualTo(1 << NTUnreliable.DISTANCE_BITS));
+        Assert.That(NTUnreliable.RING_SIZE, Is.EqualTo(NTUnreliable.MAX_BASELINE_AGE));
+        Assert.That(NTUnreliable.MAX_PREDICTED_BASELINE_AGE, Is.LessThan(NTUnreliable.MAX_BASELINE_AGE));
+
+        var baseline = new NetworkTransformState
+        {
+            data = new NetworkTransformData
+            {
+                position = (CompressedVector3)Vector3.one,
+                rotation = Quaternion.identity,
+                scale = Vector3.one
+            }
+        };
+        var velocity = new NetworkTransformVelocity { posX = 10, rotX = 10, scaleX = 10 };
+
+        var near = NTUnreliable.GetDeltaPrediction(
+            baseline, velocity, NTUnreliable.MAX_PREDICTED_BASELINE_AGE);
+        var far = NTUnreliable.GetDeltaPrediction(
+            baseline, velocity, NTUnreliable.MAX_PREDICTED_BASELINE_AGE + 1);
+
+        Assert.That(near.Equals(baseline), Is.False);
+        Assert.That(far.Equals(baseline), Is.True);
+    }
+
+    [Test]
+    public void EntryBoundsRejectCursorRewindAndOverflow()
+    {
+        Assert.That(NetworkTransformModule.IsValidEntryBounds(10, 1, 11), Is.True);
+        Assert.That(NetworkTransformModule.IsValidEntryBounds(10, 0, 11), Is.False);
+        Assert.That(NetworkTransformModule.IsValidEntryBounds(10, -1, 11), Is.False);
+        Assert.That(NetworkTransformModule.IsValidEntryBounds(10, 2, 11), Is.False);
+        Assert.That(NetworkTransformModule.IsValidEntryBounds(12, 1, 11), Is.False);
+    }
+
+    [Test]
+    public void MalformedEntryDoesNotAdvanceAckWindow()
+    {
+        var module = new NetworkTransformModule(null, null, null, default, null);
+        var stream = module.GetRecvStream(PlayerID.Server);
+        var handler = typeof(NetworkTransformModule).GetMethod("OnUnreliableDelta",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        using (var packer = BitPackerPool.Get())
+        {
+            Packer<int>.Write(packer, 1);
+            DeltaPacker<PackedInt>.Write(packer, default, new PackedInt(-1));
+            DeltaPacker<NetworkID>.Write(packer, default, new NetworkID(10));
+            var malformed = new NetworkTransformUnreliableDelta(default, 1, packer);
+            handler.Invoke(module, new object[] { PlayerID.Server, malformed, false });
+        }
+
+        Assert.That(stream.ackInit, Is.False);
+        Assert.That(stream.ackDirty, Is.False);
+
+        using (var packer = BitPackerPool.Get())
+        {
+            Packer<int>.Write(packer, 0);
+            var validEmpty = new NetworkTransformUnreliableDelta(default, 2, packer);
+            handler.Invoke(module, new object[] { PlayerID.Server, validEmpty, false });
+        }
+
+        Assert.That(stream.ackInit, Is.True);
+        Assert.That(stream.latestSeq, Is.EqualTo(2));
+        Assert.That(stream.ackDirty, Is.True);
+        NTUnreliable.Release(stream.ring);
+    }
+
+    [Test]
+    public void TruncatedEntryIsDroppedWithoutEscapingTheNetworkCallback()
+    {
+        var module = new NetworkTransformModule(null, null, null, default, null);
+        var stream = module.GetRecvStream(PlayerID.Server);
+        var handler = typeof(NetworkTransformModule).GetMethod("OnUnreliableDelta",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        using (var packer = BitPackerPool.Get())
+        {
+            // Claims one entry, but omits its length, NetworkID, header, and body.
+            Packer<int>.Write(packer, 1);
+            var truncated = new NetworkTransformUnreliableDelta(default, 1, packer);
+
+            Assert.DoesNotThrow(() =>
+                handler.Invoke(module, new object[] { PlayerID.Server, truncated, false }));
+        }
+
+        Assert.That(stream.ackInit, Is.False);
+        Assert.That(stream.ackDirty, Is.False);
+    }
+
+    [Test]
+    public void DisabledParentSyncKeepsReceiverLocalFrameSemantics()
+    {
+        var parentGo = new GameObject(nameof(DisabledParentSyncKeepsReceiverLocalFrameSemantics) + "-Parent");
+        var childGo = new GameObject(nameof(DisabledParentSyncKeepsReceiverLocalFrameSemantics) + "-Child");
+
+        try
+        {
+            var parent = parentGo.AddComponent<NetworkIdentity>();
+            typeof(NetworkIdentity).GetField("_idServer", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(parent, (NetworkID?)new NetworkID(99));
+            parent.SetIsSpawned(true, true);
+
+            childGo.transform.SetParent(parentGo.transform);
+            var nt = childGo.AddComponent<NetworkTransform>();
+            var refresh = typeof(NetworkTransform).GetMethod("RefreshLatestFrame",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var latestFrame = typeof(NetworkTransform).GetField("_latestFrame",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            SetField(nt, "_syncParent", true);
+            refresh.Invoke(nt, null);
+            Assert.That(latestFrame.GetValue(nt), Is.EqualTo(NetworkTransformFrame.LocalIdentity));
+
+            SetField(nt, "_syncParent", false);
+            refresh.Invoke(nt, null);
+            Assert.That(latestFrame.GetValue(nt), Is.EqualTo(NetworkTransformFrame.LocalStatic));
+        }
+        finally
+        {
+            var parent = parentGo.GetComponent<NetworkIdentity>();
+            if (parent)
+                parent.SetIsSpawned(false, true);
+            Object.DestroyImmediate(childGo);
+            Object.DestroyImmediate(parentGo);
+        }
+    }
+
+    [Test]
+    public void PendingTransformsStaySortedAndDeduplicated()
+    {
+        var objects = new List<GameObject>();
+
+        try
+        {
+            var stream = new NTUnreliableSendStream();
+            var thirty = CreateNetworkTransform(30, objects);
+            var ten = CreateNetworkTransform(10, objects);
+            var twenty = CreateNetworkTransform(20, objects);
+
+            NetworkTransformModule.AddPending(stream, thirty);
+            NetworkTransformModule.AddPending(stream, ten);
+            NetworkTransformModule.AddPending(stream, twenty);
+            NetworkTransformModule.AddPending(stream, twenty);
+
+            Assert.That(stream.pending.Count, Is.EqualTo(3));
+            Assert.That(stream.pending[0].id, Is.EqualTo(new NetworkID(10)));
+            Assert.That(stream.pending[1].id, Is.EqualTo(new NetworkID(20)));
+            Assert.That(stream.pending[2].id, Is.EqualTo(new NetworkID(30)));
+
+            Assert.That(NetworkTransformModule.RemovePending(stream, new NetworkID(20)), Is.True);
+            Assert.That(stream.pending.Count, Is.EqualTo(2));
+            Assert.That(stream.pending[0].id, Is.EqualTo(new NetworkID(10)));
+            Assert.That(stream.pending[1].id, Is.EqualTo(new NetworkID(30)));
+
+            var forty = CreateNetworkTransform(40, objects);
+            NetworkTransformModule.MergePending(stream, new List<NetworkTransform> { twenty, forty });
+
+            Assert.That(stream.pending.Count, Is.EqualTo(4));
+            Assert.That(stream.pending[0].id, Is.EqualTo(new NetworkID(10)));
+            Assert.That(stream.pending[1].id, Is.EqualTo(new NetworkID(20)));
+            Assert.That(stream.pending[2].id, Is.EqualTo(new NetworkID(30)));
+            Assert.That(stream.pending[3].id, Is.EqualTo(new NetworkID(40)));
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+                Object.DestroyImmediate(objects[i]);
+        }
+    }
+
+    [Test]
+    public void AckOnlyRemovesPendingCurrentRevision()
+    {
+        var objects = new List<GameObject>();
+
+        try
+        {
+            var module = new NetworkTransformModule(null, null, null, default, null);
+            var player = new PlayerID(1, false);
+            var nt = CreateNetworkTransform(10, objects);
+            nt.CaptureUnreliableState();
+            module.Register(nt);
+
+            var stream = module.GetSendStream(player);
+            stream.pendingInitialized = true;
+            NetworkTransformModule.AddPending(stream, nt);
+
+            const ushort oldSeq = 1;
+            stream.ring[oldSeq % NTUnreliable.RING_SIZE] = SlotWith(nt, oldSeq, nt.capturedRevision - 1);
+            module.ProcessAck(stream, oldSeq, 0);
+            Assert.That(stream.pending, Has.Count.EqualTo(1));
+
+            const ushort currentSeq = 2;
+            stream.ring[currentSeq % NTUnreliable.RING_SIZE] = SlotWith(nt, currentSeq, nt.capturedRevision);
+            module.ProcessAck(stream, currentSeq, 0);
+            Assert.That(stream.pending, Is.Empty);
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+                Object.DestroyImmediate(objects[i]);
+        }
+    }
+
+    [Test]
+    public void LegacyNetworkTransformApiRemainsAvailable()
+    {
+        Assert.That(typeof(INetworkTransform).GetMethod(nameof(INetworkTransform.HasChanges)), Is.Not.Null);
+        Assert.That(typeof(NetworkTransform).GetMethod(nameof(NetworkTransform.DeltaWrite)), Is.Not.Null);
+        Assert.That(typeof(NetworkTransform).GetMethod(nameof(NetworkTransform.DeltaRead)), Is.Not.Null);
+        Assert.That(typeof(NetworkTransform).GetMethod(nameof(NetworkTransform.DeltaSave)), Is.Not.Null);
+        Assert.That(typeof(NetworkTransformDelta).IsValueType, Is.True);
+    }
+
+    [Test]
+    public void TargetedResetInvalidatesOnlyTheTargetBaseline()
+    {
+        var module = new NetworkTransformModule(null, null, null, default, null);
+        var target = new PlayerID(1, false);
+        var other = new PlayerID(2, false);
+        var nid = new NetworkID(10);
+        var targetStream = module.GetSendStream(target);
+        var otherStream = module.GetSendStream(other);
+
+        targetStream.acked[nid] = new NTUnreliableBaseline { gen = 1, genEpoch = 1 };
+        otherStream.acked[nid] = new NTUnreliableBaseline { gen = 1, genEpoch = 1 };
+        targetStream.ring[0] = SlotWith(nid, 1);
+        otherStream.ring[0] = SlotWith(nid, 1);
+
+        module.PrepareTargetedReset(target, nid, 1, 1);
+
+        Assert.That(targetStream.acked.ContainsKey(nid), Is.False);
+        Assert.That(targetStream.ring[0].entries, Is.Empty);
+        Assert.That(targetStream.generationOverrides.ContainsKey(nid), Is.False);
+        Assert.That(otherStream.acked[nid].gen, Is.EqualTo(1));
+        Assert.That(otherStream.acked[nid].genEpoch, Is.EqualTo(1));
+        Assert.That(otherStream.ring[0].entries[0].genEpoch, Is.EqualTo(1));
+        Assert.That(otherStream.generationOverrides[nid].gen, Is.EqualTo(1));
+        Assert.That(otherStream.generationOverrides[nid].epoch, Is.EqualTo(1));
+
+        module.ClearGenerationOverrides(nid);
+        Assert.That(otherStream.generationOverrides.ContainsKey(nid), Is.False);
+    }
+
+    [Test]
+    public void AbsoluteStateOmitsDisabledFieldsAndFrame()
+    {
+        var go = new GameObject(nameof(AbsoluteStateOmitsDisabledFieldsAndFrame));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+            SetField(nt, "_syncPosition", SyncMode.World);
+            SetField(nt, "_syncRotation", SyncMode.No);
+            SetField(nt, "_syncScale", false);
+
+            var position = (CompressedVector3)new Vector3(1.25f, -2.5f, 3.75f);
+            var state = new NetworkTransformState
+            {
+                frame = NetworkTransformFrame.LocalIdentity,
+                parentId = new NetworkID(99),
+                data = new NetworkTransformData
+                {
+                    position = position,
+                    rotation = Quaternion.Euler(10, 20, 30),
+                    scale = Vector3.one * 2
+                }
+            };
+            SetField(nt, "_capturedState", state);
+
+            using var packer = BitPackerPool.Get();
+            nt.WriteAbsoluteState(packer);
+            int positionOnlyBits = packer.positionInBits;
+            packer.ResetPositionAndMode(true);
+            var decoded = nt.ReadAbsoluteState(packer);
+
+            Assert.That(decoded.frame, Is.EqualTo(NetworkTransformFrame.World));
+            Assert.That(decoded.parentId, Is.EqualTo(default(NetworkID)));
+            Assert.That(decoded.data.position, Is.EqualTo(position));
+            Assert.That(decoded.data.rotation, Is.EqualTo((PackedQuaternion)Quaternion.identity));
+            Assert.That(decoded.data.scale, Is.EqualTo(default(CompressedVector3)));
+
+            SetField(nt, "_syncRotation", SyncMode.World);
+            SetField(nt, "_syncScale", true);
+            packer.ResetPositionAndMode(false);
+            nt.WriteAbsoluteState(packer);
+
+            Assert.That(packer.positionInBits, Is.GreaterThan(positionOnlyBits));
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    private static NTUnreliableSlot SlotWith(NetworkID nid, uint genEpoch)
+    {
+        return new NTUnreliableSlot
+        {
+            used = true,
+            entries = new List<NTUnreliableEntry>
+            {
+                new() { nid = nid, gen = 1, genEpoch = genEpoch }
+            }
+        };
+    }
+
+    private static NTUnreliableSlot SlotWith(NetworkTransform nt, ushort seq, uint revision)
+    {
+        return new NTUnreliableSlot
+        {
+            used = true,
+            seq = seq,
+            order = seq,
+            entries = new List<NTUnreliableEntry>
+            {
+                new()
+                {
+                    nid = nt.id.Value,
+                    state = nt.capturedState,
+                    gen = nt.sendGen,
+                    genEpoch = nt.sendGenEpoch,
+                    revision = revision
+                }
+            }
+        };
+    }
+
+    private static NetworkTransform CreateNetworkTransform(ulong id, List<GameObject> objects)
+    {
+        var go = new GameObject($"NetworkTransform-{id}");
+        objects.Add(go);
+        var nt = go.AddComponent<NetworkTransform>();
+        typeof(NetworkIdentity).GetField("_idServer", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(nt, (NetworkID?)new NetworkID(id));
+        return nt;
+    }
+
+    private static void SetField<T>(NetworkTransform target, string name, T value)
+    {
+        typeof(NetworkTransform).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(target, value);
+    }
+}

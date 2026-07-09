@@ -3,8 +3,6 @@
     "rootNamespace": "",
     "references": [
         "GUID:6e20f757a1bae164fa42750dd2b27dcb",
-        "GUID:27619889b8ba8c24980f49ee34dbb44a",
-        "GUID:0acc523941302664db1f4e527237feb3",
         "GUID:e0cd26848372d4e5c891c569017e11f1"
     ],
     "includePlatforms": [],
@@ -14,6 +12,9 @@
     "precompiledReferences": [
         "nunit.framework.dll",
         "K4os.Compression.LZ4.dll"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
     ],
     "autoReferenced": false,
     "defineConstraints": [
