@@ -129,18 +129,12 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>StartIgnoringParentCh
 <tr class="memitem:a463b5c6c5231267d95ef1ba9a848b569"><td class="memItemLeft" align="right" valign="top"><a id="a463b5c6c5231267d95ef1ba9a848b569" name="a463b5c6c5231267d95ef1ba9a848b569"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StopIgnoringParentChanges</b> ()</td></tr>
 <tr class="separator:a463b5c6c5231267d95ef1ba9a848b569"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a822877f09ea5532e7325c78a9deca7e1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a822877f09ea5532e7325c78a9deca7e1">HasChanges</a> ()</td></tr>
-<tr class="memdesc:a822877f09ea5532e7325c78a9deca7e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates whether the current state of the network transform has deviated from its last transmitted state.   <a href="classPurrNet_1_1NetworkTransform.html#a822877f09ea5532e7325c78a9deca7e1">More...</a><br /></td></tr>
-<tr class="separator:a822877f09ea5532e7325c78a9deca7e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a36ae041a389fe39e1f81f195c1e8e544"><td class="memItemLeft" align="right" valign="top"><a id="a36ae041a389fe39e1f81f195c1e8e544" name="a36ae041a389fe39e1f81f195c1e8e544"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>DeltaWrite</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
-<tr class="separator:a36ae041a389fe39e1f81f195c1e8e544"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a653f73f660be3d6fabba56574d240686"><td class="memItemLeft" align="right" valign="top"><a id="a653f73f660be3d6fabba56574d240686" name="a653f73f660be3d6fabba56574d240686"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>DeltaRead</b> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packet)</td></tr>
-<tr class="separator:a653f73f660be3d6fabba56574d240686"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8e0b608d4ce9f94769ea0f2b8498b7d7"><td class="memItemLeft" align="right" valign="top"><a id="a8e0b608d4ce9f94769ea0f2b8498b7d7" name="a8e0b608d4ce9f94769ea0f2b8498b7d7"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>GatherState</b> ()</td></tr>
 <tr class="separator:a8e0b608d4ce9f94769ea0f2b8498b7d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a822877f09ea5532e7325c78a9deca7e1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a822877f09ea5532e7325c78a9deca7e1">HasChanges</a> ()</td></tr>
+<tr class="memdesc:a822877f09ea5532e7325c78a9deca7e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates whether the current state of the network transform has deviated from its last transmitted state.   <a href="classPurrNet_1_1NetworkTransform.html#a822877f09ea5532e7325c78a9deca7e1">More...</a><br /></td></tr>
+<tr class="separator:a822877f09ea5532e7325c78a9deca7e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1066fcfc749172bf9b0026dc7643e5f8"><td class="memItemLeft" align="right" valign="top"><a id="a1066fcfc749172bf9b0026dc7643e5f8" name="a1066fcfc749172bf9b0026dc7643e5f8"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>DeltaSave</b> ()</td></tr>
 <tr class="separator:a1066fcfc749172bf9b0026dc7643e5f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -385,6 +379,9 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:ab80b05c91be6ae800af6302be6ef3ab6"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#ab80b05c91be6ae800af6302be6ef3ab6">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:ab80b05c91be6ae800af6302be6ef3ab6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#ab80b05c91be6ae800af6302be6ef3ab6">More...</a><br /></td></tr>
 <tr class="separator:ab80b05c91be6ae800af6302be6ef3ab6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a743a803391991f00af2fb1a1a22f3b84"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a743a803391991f00af2fb1a1a22f3b84">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:a743a803391991f00af2fb1a1a22f3b84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#a743a803391991f00af2fb1a1a22f3b84">More...</a><br /></td></tr>
+<tr class="separator:a743a803391991f00af2fb1a1a22f3b84"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e">OnOwnerDisconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
 <tr class="memdesc:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object disconnects. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e">More...</a><br /></td></tr>
 <tr class="separator:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -909,6 +906,42 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
 </dl>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#a85518391c8c60d3d0462cd0f84cb79e9">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
+<a id="a743a803391991f00af2fb1a1a22f3b84" name="a743a803391991f00af2fb1a1a22f3b84"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a743a803391991f00af2fb1a1a22f3b84">&#9670;&#160;</a></span>OnObserverRemoved()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkTransform.OnObserverRemoved </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>player</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when an observer is removed. Server only.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">player</td><td>The observer player id</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab2ecb22de5c175f5a774fb8e8dfa1ab7">PurrNet.NetworkIdentity</a>.</p>
 
 </div>
 </div>
