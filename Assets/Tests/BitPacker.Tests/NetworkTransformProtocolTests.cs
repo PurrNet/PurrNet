@@ -72,6 +72,25 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void StandaloneAckIsRateLimitedWithoutExceedingItsPacketWindow()
+    {
+        var stream = new NTUnreliableRecvStream { ackDirty = true };
+
+        for (int tick = 1; tick < NTUnreliable.ACK_INTERVAL_TICKS; tick++)
+            Assert.That(NetworkTransformModule.ShouldFlushAckAfterTick(stream), Is.False);
+
+        Assert.That(NetworkTransformModule.ShouldFlushAckAfterTick(stream), Is.True);
+
+        stream.ackDelayTicks = 0;
+        stream.packetsSinceAck = NTUnreliable.ACK_PACKET_THRESHOLD - 1;
+        Assert.That(NetworkTransformModule.ShouldFlushAckAfterPacket(stream), Is.False);
+
+        stream.packetsSinceAck++;
+        Assert.That(NetworkTransformModule.ShouldFlushAckAfterPacket(stream), Is.True);
+        Assert.That(NTUnreliable.ACK_PACKET_THRESHOLD, Is.LessThan(32));
+    }
+
+    [Test]
     public void CaptureRevisionOnlyAdvancesWhenQuantizedStateChanges()
     {
         var go = new GameObject(nameof(CaptureRevisionOnlyAdvancesWhenQuantizedStateChanges));

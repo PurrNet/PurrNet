@@ -11,6 +11,10 @@ namespace PurrNet.Modules
         static readonly ProfilerMarker _postFixedUpdateMarker = new ProfilerMarker("NetworkTransform.PostFixedUpdate");
         static readonly ProfilerMarker _gatherStateMarker = new ProfilerMarker("NetworkTransform.GatherState");
         static readonly ProfilerMarker _prepareUnreliableMarker = new ProfilerMarker("NetworkTransform.PrepareState");
+        static readonly ProfilerMarker _queueChangedMarker = new ProfilerMarker("NetworkTransform.QueueChangedState");
+        static readonly ProfilerMarker _decodeUnreliableMarker = new ProfilerMarker("NetworkTransform.DecodeState");
+        static readonly ProfilerMarker _processAckMarker = new ProfilerMarker("NetworkTransform.ProcessAck");
+        static readonly ProfilerMarker _flushAckMarker = new ProfilerMarker("NetworkTransform.FlushAck");
 
         private readonly List<NetworkTransform> _networkTransforms = new();
         private readonly List<NetworkTransform> _changedTransforms = new();
@@ -294,6 +298,8 @@ namespace PurrNet.Modules
                 ProcessAck(sendStream, ack.seq, ack.ackBits);
             }
 
+            using var decodeScope = _decodeUnreliableMarker.Auto();
+
             bool oldAckInit = stream.ackInit;
             ushort oldLatestSeq = stream.latestSeq;
             long oldLatestOrder = stream.latestOrder;
@@ -427,6 +433,7 @@ namespace PurrNet.Modules
                 slot = new NTUnreliableSlot { used = true, seq = data.seq, entries = decoded };
                 decoded = null;
                 stream.ackDirty = true;
+                stream.packetsSinceAck++;
                 committed = true;
             }
             catch (System.Exception exception) when (exception is System.IndexOutOfRangeException or
@@ -450,6 +457,23 @@ namespace PurrNet.Modules
                     stream.ackDirty = oldAckDirty;
                 }
             }
+
+            if (committed && ShouldFlushAckAfterPacket(stream))
+                SendStandaloneAck(sender, stream);
+        }
+
+        internal static bool ShouldFlushAckAfterPacket(NTUnreliableRecvStream stream)
+        {
+            return stream.ackDirty && stream.packetsSinceAck >= NTUnreliable.ACK_PACKET_THRESHOLD;
+        }
+
+        internal static bool ShouldFlushAckAfterTick(NTUnreliableRecvStream stream)
+        {
+            if (!stream.ackDirty)
+                return false;
+
+            stream.ackDelayTicks++;
+            return stream.ackDelayTicks >= NTUnreliable.ACK_INTERVAL_TICKS;
         }
 
         private void OnUnreliableAck(PlayerID player, NetworkTransformUnreliableAck data, bool asServer)
@@ -464,26 +488,29 @@ namespace PurrNet.Modules
 
         internal void ProcessAck(NTUnreliableSendStream stream, ushort seq, uint ackBits)
         {
-            var completed = ListPool<NetworkID>.Instantiate();
+            using var _ = _processAckMarker.Auto();
+            List<NetworkID> completed = null;
 
             try
             {
-                TryAdoptAck(stream, seq, completed);
+                TryAdoptAck(stream, seq, ref completed);
                 for (int i = 0; i < 32; i++)
                 {
                     if ((ackBits & (1u << i)) != 0)
-                        TryAdoptAck(stream, (ushort)(seq - 1 - i), completed);
+                        TryAdoptAck(stream, (ushort)(seq - 1 - i), ref completed);
                 }
 
-                RemovePending(stream, completed);
+                if (completed != null)
+                    RemovePending(stream, completed);
             }
             finally
             {
-                ListPool<NetworkID>.Destroy(completed);
+                if (completed != null)
+                    ListPool<NetworkID>.Destroy(completed);
             }
         }
 
-        private void TryAdoptAck(NTUnreliableSendStream stream, ushort seq, List<NetworkID> completed)
+        private void TryAdoptAck(NTUnreliableSendStream stream, ushort seq, ref List<NetworkID> completed)
         {
             ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
             if (!slot.used || slot.seq != seq || slot.acked)
@@ -496,6 +523,13 @@ namespace PurrNet.Modules
             {
                 var entry = list[i];
 
+                // ACK slots are processed newest-first. Once a newer state for this transform was
+                // adopted, older retransmissions cannot improve its baseline or complete a newer
+                // revision, so skip the registration/generation work entirely.
+                if (stream.acked.TryGetValue(entry.nid, out var currentBaseline) &&
+                    slot.order <= currentBaseline.order)
+                    continue;
+
                 if (!TryGetRegisteredTransform(entry.nid, out var nt))
                     continue;
 
@@ -506,20 +540,16 @@ namespace PurrNet.Modules
                     stream.nackFloor.Remove(entry.nid);
                 }
 
-                if (!stream.acked.TryGetValue(entry.nid, out var currentBaseline) ||
-                    slot.order > currentBaseline.order)
+                currentBaseline = new NTUnreliableBaseline
                 {
-                    currentBaseline = new NTUnreliableBaseline
-                    {
-                        state = entry.state,
-                        velocity = entry.velocity,
-                        gen = entry.gen,
-                        genEpoch = entry.genEpoch,
-                        revision = entry.revision,
-                        order = slot.order
-                    };
-                    stream.acked[entry.nid] = currentBaseline;
-                }
+                    state = entry.state,
+                    velocity = entry.velocity,
+                    gen = entry.gen,
+                    genEpoch = entry.genEpoch,
+                    revision = entry.revision,
+                    order = slot.order
+                };
+                stream.acked[entry.nid] = currentBaseline;
 
                 uint expectedEpoch = stream.generationOverrides.Count > 0 &&
                                      stream.generationOverrides.TryGetValue(entry.nid, out var generation)
@@ -528,7 +558,10 @@ namespace PurrNet.Modules
 
                 if (currentBaseline.genEpoch == expectedEpoch &&
                     currentBaseline.revision == nt.capturedRevision)
+                {
+                    completed ??= ListPool<NetworkID>.Instantiate();
                     completed.Add(entry.nid);
+                }
             }
 
             // Once this packet is acknowledged, every state needed for future deltas lives
@@ -603,6 +636,23 @@ namespace PurrNet.Modules
             _broadcaster.Send(sender, nack, Channel.ReliableUnordered);
         }
 
+        private void SendStandaloneAck(PlayerID sender, NTUnreliableRecvStream stream)
+        {
+            using var _ = _flushAckMarker.Auto();
+
+            stream.ackDirty = false;
+            stream.ackDelayTicks = 0;
+            stream.packetsSinceAck = 0;
+
+            var ack = new NetworkTransformUnreliableAck
+            {
+                scene = _scene,
+                seq = stream.latestSeq,
+                ackBits = stream.ackBits
+            };
+            _broadcaster.Send(sender, ack, Channel.Unreliable);
+        }
+
         private void FlushAcks()
         {
             foreach (var (sender, stream) in _recvStreams)
@@ -610,10 +660,10 @@ namespace PurrNet.Modules
                 if (!stream.ackDirty)
                     continue;
 
-                stream.ackDirty = false;
+                if (!ShouldFlushAckAfterTick(stream))
+                    continue;
 
-                var ack = new NetworkTransformUnreliableAck { scene = _scene, seq = stream.latestSeq, ackBits = stream.ackBits };
-                _broadcaster.Send(sender, ack, Channel.Unreliable);
+                SendStandaloneAck(sender, stream);
             }
         }
 
@@ -655,6 +705,8 @@ namespace PurrNet.Modules
 
         private void QueueChangedStates(List<NetworkTransform> changed, PlayerID localPlayer)
         {
+            using var _ = _queueChangedMarker.Auto();
+
             foreach (var (player, stream) in _sendStreams)
             {
                 if (!stream.pendingInitialized)
@@ -673,6 +725,12 @@ namespace PurrNet.Modules
                     continue;
                 }
 
+                // A continuously moving transform normally remains pending while its previous
+                // revision is in flight. In that common benchmark/gameplay case every changed ID
+                // is already present, so avoid allocating and copying the same full list again.
+                if (!HasMissingSendCandidate(stream, changed, player, localPlayer))
+                    continue;
+
                 var additions = ListPool<NetworkTransform>.Instantiate();
                 try
                 {
@@ -690,6 +748,44 @@ namespace PurrNet.Modules
                     ListPool<NetworkTransform>.Destroy(additions);
                 }
             }
+        }
+
+        private bool HasMissingSendCandidate(NTUnreliableSendStream stream, List<NetworkTransform> changed,
+            PlayerID player, PlayerID localPlayer)
+        {
+            int pendingIndex = 0;
+
+            for (int changedIndex = 0; changedIndex < changed.Count; changedIndex++)
+            {
+                var nt = changed[changedIndex];
+                if (!nt || !nt.id.HasValue)
+                    continue;
+
+                var nid = nt.id.Value;
+                bool found = false;
+
+                while (pendingIndex < stream.pending.Count)
+                {
+                    var pending = stream.pending[pendingIndex];
+                    if (!pending || !pending.id.HasValue)
+                        return true;
+
+                    var pendingId = pending.id.Value;
+                    if (pendingId < nid)
+                    {
+                        pendingIndex++;
+                        continue;
+                    }
+
+                    found = pendingId.Equals(nid);
+                    break;
+                }
+
+                if (!found && IsSendCandidate(nt, player, localPlayer))
+                    return true;
+            }
+
+            return false;
         }
 
         internal static void MergePending(NTUnreliableSendStream stream, List<NetworkTransform> additions)
@@ -841,6 +937,8 @@ namespace PurrNet.Modules
             if (_recvStreams.TryGetValue(player, out var recv) && recv.ackInit && recv.ackDirty)
             {
                 recv.ackDirty = false;
+                recv.ackDelayTicks = 0;
+                recv.packetsSinceAck = 0;
                 delta.ack = new NetworkTransformUnreliableAckHeader
                 {
                     seq = recv.latestSeq,

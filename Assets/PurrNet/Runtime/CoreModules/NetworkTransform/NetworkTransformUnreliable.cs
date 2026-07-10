@@ -124,6 +124,8 @@ namespace PurrNet.Modules
         public long latestOrder;
         public uint ackBits;
         public bool ackDirty;
+        public byte ackDelayTicks;
+        public byte packetsSinceAck;
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 
@@ -136,6 +138,10 @@ namespace PurrNet.Modules
         // both peers deterministically encode against the raw baseline instead.
         public const int MAX_BASELINE_AGE = RING_SIZE;
         public const int MAX_PREDICTED_BASELINE_AGE = 48;
+        // Low-volume streams do not need an application-level ACK every network tick. High-volume
+        // streams flush before the 32-packet selective-ACK window can leave a permanent blind spot.
+        public const int ACK_INTERVAL_TICKS = 4;
+        public const int ACK_PACKET_THRESHOLD = 24;
 
         public static NetworkTransformState GetDeltaPrediction(in NetworkTransformState baseline,
             in NetworkTransformVelocity velocity, int distance)
