@@ -314,9 +314,6 @@ namespace PurrNet
             ReCacheIsController();
             BumpSendGen();
 
-            // Only the server's inbound sender changes on ownership swaps; observers keep
-            // receiving the server's monotonic gen and resetting their gate here would
-            // re-open it to stale in-flight samples.
             if (isServer)
                 ResetUnreliableRecvState();
 
@@ -488,13 +485,9 @@ namespace PurrNet
         [ServerRpc]
         private void ForceSyncServer(NetworkTransformState state, byte gen, RPCInfo info = default)
         {
-            // No caller reaches this on a host (all are !isServer-guarded), so the codegen
-            // host shortcut with its default RPCInfo never hits this gate.
             if (!_ownerAuth || !IsControlling(info.sender, false))
                 return;
 
-            // Stale RPC (newer same-gen owner samples already applied): forwarding it with a
-            // fresh gen would teleport every observer backward.
             if (!ForceAdoptRecvGen(gen))
                 return;
 
@@ -545,8 +538,6 @@ namespace PurrNet
             if (!_ownerAuth || !IsControlling(info.sender, false))
                 return;
 
-            // Stale RPC (newer same-gen owner samples already applied): adopting would let the
-            // same-tick relay ship the older pose to observers under a fresh gen.
             if (!ForceAdoptRecvGen(gen))
                 return;
 
@@ -674,7 +665,6 @@ namespace PurrNet
             if (!isLocalController)
                 ApplyLerpedPosition();
             _latestData = GetCurrentTransformData();
-            // Unconditional: a dedicated server relaying an owner-auth NT sends without being its controller.
             RefreshLatestFrame();
         }
 
@@ -846,22 +836,7 @@ namespace PurrNet
                 _scale.Teleport(new ScaleWithParent(p, data.scale));
         }
 
-        private void ApplyData(NetworkTransformData data)
-        {
-            var p = _trs.parent;
-
-            if (syncPosition)
-                _position.Add(MakePositionSample(p, data));
-
-            if (syncRotation)
-                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, data.rotation));
-
-            if (syncScale)
-                _scale.Add(new ScaleWithParent(p, data.scale));
-        }
-
         private NetworkTransformData _latestData;
-
         private NetworkTransformData _currentData;
         private NetworkTransformData _lastReadData;
         private NetworkTransformData _lastSentDelta;
@@ -873,80 +848,11 @@ namespace PurrNet
             _currentParentId = _latestParentId;
         }
 
-        /// <summary>
-        /// Compatibility entry point for the legacy reliable delta path.
-        /// </summary>
         public bool HasChanges()
         {
             return !_currentData.Equals(_lastSentDelta);
         }
 
-        /// <summary>
-        /// Compatibility entry point for consumers that still use the legacy delta API.
-        /// </summary>
-        public void DeltaWrite(BitPacker packer)
-        {
-            if (syncPosition)
-            {
-                if (_useAbsoluteFrame)
-                    DeltaPacker<double3>.Write(packer, _lastSentDelta.absolutePosition.GetValueOrDefault(),
-                        _currentData.absolutePosition.GetValueOrDefault());
-                else
-                    DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position.GetValueOrDefault(),
-                        _currentData.position.GetValueOrDefault());
-            }
-
-            if (syncRotation)
-                DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation);
-
-            if (syncScale)
-                DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale);
-        }
-
-        /// <summary>
-        /// Compatibility entry point for consumers that still use the legacy delta API.
-        /// </summary>
-        public void DeltaRead(BitPacker packet)
-        {
-            var data = _lastReadData;
-
-            if (syncPosition)
-            {
-                if (data.absolutePosition.HasValue)
-                {
-                    var oldPosition = data.absolutePosition.Value;
-                    var newPosition = oldPosition;
-                    DeltaPacker<double3>.Read(packet, oldPosition, ref newPosition);
-                    data.absolutePosition = newPosition;
-                }
-                else
-                {
-                    var oldPosition = data.position.GetValueOrDefault();
-                    var newPosition = oldPosition;
-                    DeltaPacker<CompressedVector3>.Read(packet, oldPosition, ref newPosition);
-                    data.position = newPosition;
-                }
-            }
-
-            if (syncRotation)
-            {
-                var oldRotation = data.rotation;
-                DeltaPacker<PackedQuaternion>.Read(packet, oldRotation, ref data.rotation);
-            }
-
-            if (syncScale)
-            {
-                var oldScale = data.scale;
-                DeltaPacker<CompressedVector3>.Read(packet, oldScale, ref data.scale);
-            }
-
-            _lastReadData = data;
-            ApplyData(data);
-        }
-
-        /// <summary>
-        /// Compatibility entry point for consumers that still use the legacy delta API.
-        /// </summary>
         public void DeltaSave()
         {
             _lastSentDelta = _currentData;
@@ -967,8 +873,8 @@ namespace PurrNet
 
         internal byte sendGen => _sendGen;
 
-        // Wire gen is a byte and wraps; sender-side baseline validity compares this instead.
         private uint _sendGenEpoch;
+
         internal uint sendGenEpoch => _sendGenEpoch;
 
         private void BumpSendGen()
@@ -1010,10 +916,6 @@ namespace PurrNet
             ResetUnreliableRecvState();
         }
 
-        // Reliable resets are authoritative: always adopt (a rejected 'older' gen from a new
-        // sender incarnation would deadlock the stream). Returns false only when newer samples
-        // of the SAME gen were already applied — then the RPC payload is stale and must not
-        // teleport backward or reopen the seq gate.
         private bool ForceAdoptRecvGen(byte gen)
         {
             bool alreadyAhead = _hasRecvGen && _hasAppliedSeq && gen == _recvGen;
@@ -1034,8 +936,6 @@ namespace PurrNet
         private NetworkTransformFrame _currentFrame;
         private NetworkID _currentParentId;
 
-        // Must run at the same moment _latestData is sampled: a stale-but-coherent (data, frame)
-        // pair is correct, a mixed pair resolves the sample in the wrong space.
         private void RefreshLatestFrame()
         {
             var p = _trs.parent;
@@ -1064,9 +964,6 @@ namespace PurrNet
         {
             var state = currentState;
 
-            // Canonicalize fields that are not part of this NetworkTransform's wire contract.
-            // This keeps sender and receiver baselines byte-for-byte equivalent while allowing
-            // absolute packets to omit disabled fields entirely.
             if (!syncPosition)
             {
                 state.data.position = default(CompressedVector3);
@@ -1135,6 +1032,7 @@ namespace PurrNet
                     return _trs.parent;
                 case NetworkTransformFrame.LocalStatic:
                     return _trs.parent;
+                case NetworkTransformFrame.World:
                 default:
                     return null;
             }
@@ -1208,15 +1106,15 @@ namespace PurrNet
                 bool isAbsolute = packer.ReadBits(1) == 1;
                 if (isAbsolute)
                 {
-                    double3 position = default;
-                    Packer<double3>.Read(packer, ref position);
-                    state.data.absolutePosition = position;
+                    double3 pos = default;
+                    Packer<double3>.Read(packer, ref pos);
+                    state.data.absolutePosition = pos;
                 }
                 else
                 {
-                    CompressedVector3 position = default;
-                    Packer<CompressedVector3>.Read(packer, ref position);
-                    state.data.position = position;
+                    CompressedVector3 pos = default;
+                    Packer<CompressedVector3>.Read(packer, ref pos);
+                    state.data.position = pos;
                 }
             }
             else
@@ -1235,8 +1133,6 @@ namespace PurrNet
             return state;
         }
 
-        // Masks compare vs the raw baseline (untouched fields must never velocity-drift);
-        // diffs encode vs the second-order prediction.
         internal void WriteDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
         {
             var state = _capturedState;
@@ -1325,14 +1221,14 @@ namespace PurrNet
                 if (baseline.data.absolutePosition.HasValue)
                 {
                     var oldPos = baseline.data.absolutePosition.Value;
-                    double3 newPos = oldPos;
+                    var newPos = oldPos;
                     DeltaPacker<double3>.Read(packer, oldPos, ref newPos);
                     state.data.absolutePosition = newPos;
                 }
                 else
                 {
                     var refPos = predicted.data.position.GetValueOrDefault();
-                    CompressedVector3 newPos = refPos;
+                    var newPos = refPos;
                     DeltaPacker<CompressedVector3>.Read(packer, refPos, ref newPos);
                     state.data.position = newPos;
                 }
@@ -1347,7 +1243,7 @@ namespace PurrNet
             if (syncScale && packer.ReadBits(1) == 1)
             {
                 var refScale = predicted.data.scale;
-                CompressedVector3 newScale = refScale;
+                var newScale = refScale;
                 DeltaPacker<CompressedVector3>.Read(packer, refScale, ref newScale);
                 state.data.scale = newScale;
             }
@@ -1355,16 +1251,9 @@ namespace PurrNet
             return state;
         }
 
-        /// <summary>
-        /// Applies a decoded unreliable sample gated by generation and sequence.
-        /// Returns true when the state may be recorded as a receive baseline; false when it
-        /// must be discarded (older generation, or unapplicable and unsafe to ack-adopt).
-        /// </summary>
         internal bool TryApplyUnreliableState(in NetworkTransformState state, byte gen, long packetOrder,
             NetworkIdentity frameParent, bool isAbsolute)
         {
-            // Loopback/handoff echo: a controller records baselines but never adopts remote
-            // gens or feeds its own interpolation from them.
             if (_cachedIsController)
                 return true;
 
@@ -1372,22 +1261,15 @@ namespace PurrNet
             {
                 var genDiff = (sbyte)(gen - _recvGen);
 
-                if (genDiff < 0)
+                switch (genDiff)
                 {
-                    // Slightly-behind = a stale in-flight sample: discard. Far-behind absolutes
-                    // mean the gen spaces desynced (sbyte wrap during a stall, incarnation swap)
-                    // and rejecting them would freeze the stream with no recovery path.
-                    if (!isAbsolute || genDiff >= -8)
+                    case < 0 when !isAbsolute || genDiff >= -8:
                         return false;
-
-                    _recvGen = gen;
-                    _hasAppliedSeq = false;
-                }
-
-                if (genDiff > 0)
-                {
-                    _recvGen = gen;
-                    _hasAppliedSeq = false;
+                    case < 0:
+                    case > 0:
+                        _recvGen = gen;
+                        _hasAppliedSeq = false;
+                        break;
                 }
             }
             else

@@ -44,7 +44,7 @@ public class NetworkTransformProtocolTests
     {
         long budget = NetworkTransformModule.CalculateBudgetBits(int.MaxValue);
 
-        Assert.That(budget, Is.EqualTo(((long)int.MaxValue - 32L) * 8L));
+        Assert.That(budget, Is.EqualTo((int.MaxValue - 32L) * 8L));
         Assert.That(budget, Is.GreaterThan(0));
     }
 
@@ -67,7 +67,7 @@ public class NetworkTransformProtocolTests
         Packer<NetworkTransformUnreliableAckHeader?>.Read(packer, ref actual);
 
         Assert.That(actual.HasValue, Is.True);
-        Assert.That(actual.Value.seq, Is.EqualTo(expected.Value.seq));
+        Assert.That(actual!.Value.seq, Is.EqualTo(expected.Value.seq));
         Assert.That(actual.Value.ackBits, Is.EqualTo(expected.Value.ackBits));
     }
 
@@ -357,8 +357,6 @@ public class NetworkTransformProtocolTests
     public void LegacyNetworkTransformApiRemainsAvailable()
     {
         Assert.That(typeof(INetworkTransform).GetMethod(nameof(INetworkTransform.HasChanges)), Is.Not.Null);
-        Assert.That(typeof(NetworkTransform).GetMethod(nameof(NetworkTransform.DeltaWrite)), Is.Not.Null);
-        Assert.That(typeof(NetworkTransform).GetMethod(nameof(NetworkTransform.DeltaRead)), Is.Not.Null);
         Assert.That(typeof(NetworkTransform).GetMethod(nameof(NetworkTransform.DeltaSave)), Is.Not.Null);
         Assert.That(typeof(NetworkTransformDelta).IsValueType, Is.True);
     }
@@ -467,7 +465,7 @@ public class NetworkTransformProtocolTests
             {
                 new()
                 {
-                    nid = nt.id.Value,
+                    nid = nt.id!.Value,
                     state = nt.capturedState,
                     gen = nt.sendGen,
                     genEpoch = nt.sendGenEpoch,
