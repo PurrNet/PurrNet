@@ -51,6 +51,8 @@ namespace PurrNet
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
         [SerializeField, Tooltip("This will send the entire state when things change. It's reliable, but more data heavy")] //We should optimize this in the future
         private bool _useForceSend;
+        [SerializeField, HideInInspector]
+        private SerializableDictionary<TKey, TValue> _initialSerializedDict = new SerializableDictionary<TKey, TValue>();
 
 
         private Dictionary<TKey, TValue> _dict = new Dictionary<TKey, TValue>();
@@ -89,6 +91,8 @@ namespace PurrNet
         public override void OnPoolReset()
         {
             onChanged = null;
+            _pendingChanges.Clear();
+            RestoreInitialDict();
             _lastSendTime = default;
             _isDirty = default;
             _wasLastDirty = default;
@@ -138,7 +142,18 @@ namespace PurrNet
 
         public void OnAfterDeserialize()
         {
-            _dict = _serializedDict?.ToDictionary();
+            _serializedDict.CopyTo(_dict);
+            CacheInitialDict();
+        }
+
+        private void CacheInitialDict()
+        {
+            _initialSerializedDict.FromDictionary(_dict);
+        }
+
+        private void RestoreInitialDict()
+        {
+            _initialSerializedDict.CopyTo(_dict);
         }
 
         public override void OnSpawn()
@@ -604,6 +619,13 @@ namespace PurrNet
         public Dictionary<TKey, TValue> ToDictionary()
         {
             var dict = new Dictionary<TKey, TValue>(keys.Count);
+            CopyTo(dict);
+            return dict;
+        }
+
+        public void CopyTo(Dictionary<TKey, TValue> dict)
+        {
+            dict.Clear();
 
             if (isKeySerializable && isValueSerializable)
             {
@@ -623,8 +645,6 @@ namespace PurrNet
                         dict.Add(default(TKey)!, default(TValue));
                 }
             }
-
-            return dict;
         }
 
         public void FromDictionary(Dictionary<TKey, TValue> dict)

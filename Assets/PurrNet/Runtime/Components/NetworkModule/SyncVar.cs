@@ -10,7 +10,7 @@ using PurrNet.Utils;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncVar<T> : NetworkModule
+    public class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver
     {
         private TickManager _tickManager;
 
@@ -252,7 +252,8 @@ namespace PurrNet
 
         private ulong _id;
         private bool _wasLastDirty;
-        private readonly T _initialValue;
+        [SerializeField, HideInInspector]
+        private T _initialValue;
 
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
         {
@@ -379,6 +380,15 @@ namespace PurrNet
         public override string ToString()
         {
             return value.ToString();
+        }
+
+        public void OnBeforeSerialize()
+        {
+        }
+
+        public void OnAfterDeserialize()
+        {
+            _initialValue = _value;
         }
     }
 }

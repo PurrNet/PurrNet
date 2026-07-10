@@ -78,11 +78,12 @@ namespace PurrNet
     }
 
     [Serializable]
-    public class SyncList<T> : NetworkModule, IList<T>, ITick
+    public class SyncList<T> : NetworkModule, IList<T>, ISerializationCallbackReceiver, ITick
     {
         [SerializeField] private bool _ownerAuth;
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
         [SerializeField] private List<T> _list = new List<T>();
+        [SerializeField, HideInInspector] private List<T> _initialList = new List<T>();
 
         public List<T> list => _list;
         public List<T> ToList() => _list;
@@ -121,6 +122,7 @@ namespace PurrNet
         {
             onChanged = null;
             _pendingChanges.Clear();
+            RestoreInitialList();
             _lastSendTime = default;
             _wasLastDirty = default;
             _isDirty = default;
@@ -135,6 +137,7 @@ namespace PurrNet
         {
             _list = defaultValues;
             _ownerAuth = ownerAuth;
+            CacheInitialList();
         }
 
         public T this[int idx]
@@ -170,6 +173,18 @@ namespace PurrNet
         {
             _pendingChanges.Add(change);
             _isDirty = true;
+        }
+
+        private void CacheInitialList()
+        {
+            _initialList.Clear();
+            _initialList.AddRange(_list);
+        }
+
+        private void RestoreInitialList()
+        {
+            _list.Clear();
+            _list.AddRange(_initialList);
         }
 
         public override void OnSpawn()
@@ -709,5 +724,14 @@ namespace PurrNet
         }
 
         #endregion
+
+        public void OnBeforeSerialize()
+        {
+        }
+
+        public void OnAfterDeserialize()
+        {
+            CacheInitialList();
+        }
     }
 }
