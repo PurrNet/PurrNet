@@ -317,7 +317,7 @@ namespace PurrNet.Modules
                 using var packet = BitPackerPool.Get(data.packet);
                 packet.ResetPositionAndMode(true);
 
-                long packetEndLong = (long)data.packet.length * 8L;
+                long packetEndLong = data.packet.length * 8L;
                 if (packetEndLong > int.MaxValue)
                     return;
                 int packetEnd = (int)packetEndLong;
@@ -991,7 +991,7 @@ namespace PurrNet.Modules
 
                 int entryBits = tmp.positionInBits;
 
-                if (writtenCount > 0 && packer.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
+                if (writtenCount > 0 && packer!.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
                 {
                     FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
                     packer = null;

@@ -24,7 +24,7 @@ namespace PurrNet.Modules
     internal struct NetworkTransformUnreliableDelta : IPackedAuto
     {
         public SceneID scene;
-        public ushort seq;
+        public readonly ushort seq;
         public NetworkTransformUnreliableAckHeader? ack;
         public readonly ByteData packet;
 
@@ -37,10 +37,6 @@ namespace PurrNet.Modules
         }
     }
 
-    /// <summary>
-    /// Compact piggybacked acknowledgement. Keeping the sequence and mask as their
-    /// natural widths saves 16 bits over encoding them together in a nullable ulong.
-    /// </summary>
     internal struct NetworkTransformUnreliableAckHeader : IPackedAuto
     {
         public ushort seq;
