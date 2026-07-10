@@ -1,14 +1,11 @@
 using System.Collections.Generic;
 using PurrNet;
 
-/// <summary>
-/// LOD-governed identity for NetworkLODCullScenario; tracks liveness per peer.
-/// </summary>
-public class NetworkLODCullTarget : NetworkIdentity
+public class UnreliableNTMover : NetworkIdentity
 {
-    public static NetworkLODCullTarget localInstance;
+    public static UnreliableNTMover localInstance;
 
-    static readonly HashSet<NetworkID> _alive = new HashSet<NetworkID>();
+    static readonly HashSet<NetworkID> _alive = new();
 
     public static int aliveCount => _alive.Count;
 
@@ -25,6 +22,7 @@ public class NetworkLODCullTarget : NetworkIdentity
     protected override void OnSpawned()
     {
         localInstance = this;
+
         if (id.HasValue)
         {
             _trackedId = id.Value;
@@ -34,11 +32,11 @@ public class NetworkLODCullTarget : NetworkIdentity
 
     protected override void OnDespawned()
     {
+        if (localInstance == this)
+            localInstance = null;
+
         if (_trackedId.HasValue)
             _alive.Remove(_trackedId.Value);
         _trackedId = null;
-
-        if (localInstance == this)
-            localInstance = null;
     }
 }

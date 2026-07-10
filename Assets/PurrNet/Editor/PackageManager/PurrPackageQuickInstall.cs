@@ -74,8 +74,7 @@ namespace PurrNet.Editor
                 var gitUrl = match.GitInstallUrlRelease ?? match.GitInstallUrlDev;
                 if (string.IsNullOrEmpty(gitUrl))
                     return Result<bool>.Fail($"'{match.DisplayName}' is external but has no install URL.");
-                PurrPackageManagerInstaller.InstallExternal(match, gitUrl);
-                return Result<bool>.Ok(true);
+                return await PurrPackageManagerInstaller.InstallExternal(match, gitUrl);
             }
 
             if (!match.HasAccess)

@@ -34,8 +34,11 @@ namespace PurrNet.Editor
         {
             try
             {
-                var request = UnityWebRequest.Get(url);
-                request.downloadHandler = new DownloadHandlerFile(destPath);
+                using var request = UnityWebRequest.Get(url);
+                request.downloadHandler = new DownloadHandlerFile(destPath)
+                {
+                    removeFileOnAbort = true
+                };
                 await SendWebRequestAsync(request);
 
                 if (request.result != UnityWebRequest.Result.Success)
@@ -61,7 +64,7 @@ namespace PurrNet.Editor
         {
             try
             {
-                var request = UnityWebRequest.Get(url);
+                using var request = UnityWebRequest.Get(url);
 
                 if (!string.IsNullOrEmpty(apiKey))
                     request.SetRequestHeader("Authorization", "Bearer " + apiKey);
