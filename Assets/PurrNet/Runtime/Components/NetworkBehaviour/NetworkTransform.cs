@@ -551,14 +551,23 @@ namespace PurrNet
         [TargetRpc]
         private void SendLatestState(PlayerID player, NetworkTransformState state, bool applyPosition, byte gen)
         {
-            bool apply = ForceAdoptRecvGen(gen) && applyPosition;
+            TryApplyTargetedState(state, applyPosition, gen);
+        }
+
+        internal bool TryApplyTargetedState(in NetworkTransformState state, bool applyPosition, byte gen)
+        {
+            if (!ForceAdoptRecvGen(gen))
+                return false;
+
             AdoptState(state);
 
-            if (apply)
+            if (applyPosition)
             {
                 TeleportToState(state);
                 ApplyLerpedPosition();
             }
+
+            return true;
         }
 
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
@@ -864,6 +873,9 @@ namespace PurrNet
         private byte _sendGen;
         private byte _recvGen;
         private bool _hasRecvGen;
+        // A reliable snapshot is an authoritative epoch anchor. After one arrives, a negative
+        // signed byte delta is stale; normal byte wrap still presents as a positive delta.
+        private bool _hasAuthoritativeRecvGen;
         private long _lastAppliedOrder;
         private bool _hasAppliedSeq;
 
@@ -907,6 +919,7 @@ namespace PurrNet
         private void ResetUnreliableRecvState()
         {
             _hasRecvGen = false;
+            _hasAuthoritativeRecvGen = false;
             _hasAppliedSeq = false;
         }
 
@@ -922,6 +935,7 @@ namespace PurrNet
 
             _recvGen = gen;
             _hasRecvGen = true;
+            _hasAuthoritativeRecvGen = true;
 
             if (!alreadyAhead)
                 _hasAppliedSeq = false;
@@ -1263,7 +1277,7 @@ namespace PurrNet
 
                 switch (genDiff)
                 {
-                    case < 0 when !isAbsolute || genDiff >= -8:
+                    case < 0 when _hasAuthoritativeRecvGen || !isAbsolute || genDiff >= -8:
                         return false;
                     case < 0:
                     case > 0:
@@ -1276,6 +1290,7 @@ namespace PurrNet
             {
                 _recvGen = gen;
                 _hasRecvGen = true;
+                _hasAuthoritativeRecvGen = false;
                 _hasAppliedSeq = false;
             }
 

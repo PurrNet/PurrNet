@@ -392,6 +392,93 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void ReliableGenerationRejectsFarBehindAbsoluteButKeepsNormalWrapRecovery()
+    {
+        var go = new GameObject(nameof(ReliableGenerationRejectsFarBehindAbsoluteButKeepsNormalWrapRecovery));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+            DisableSynchronizedFields(nt);
+
+            Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)20), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, null, true), Is.False);
+            Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(20));
+
+            Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)250), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(default, 3, 2, null, true), Is.True);
+            Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(3));
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
+    public void UnanchoredGenerationCanStillRecoverFromFarBehindAbsolute()
+    {
+        var go = new GameObject(nameof(UnanchoredGenerationCanStillRecoverFromFarBehindAbsolute));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+            DisableSynchronizedFields(nt);
+            SetField(nt, "_recvGen", (byte)20);
+            SetField(nt, "_hasRecvGen", true);
+
+            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, null, true), Is.True);
+            Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(10));
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
+    public void StaleTargetedSnapshotDoesNotReplaceNewerUnreliableState()
+    {
+        var go = new GameObject(nameof(StaleTargetedSnapshotDoesNotReplaceNewerUnreliableState));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+            var newer = new NetworkTransformData
+            {
+                position = (CompressedVector3)new Vector3(10, 20, 30),
+                rotation = Quaternion.Euler(10, 20, 30),
+                scale = Vector3.one * 2
+            };
+            var stale = new NetworkTransformState
+            {
+                data = new NetworkTransformData
+                {
+                    position = (CompressedVector3)Vector3.one,
+                    rotation = Quaternion.identity,
+                    scale = Vector3.one
+                }
+            };
+
+            SetField(nt, "_currentData", newer);
+            SetField(nt, "_latestData", newer);
+            SetField(nt, "_lastReadData", newer);
+            Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)7), Is.True);
+            SetField(nt, "_hasAppliedSeq", true);
+
+            Assert.That(nt.TryApplyTargetedState(stale, false, 7), Is.False);
+
+            Assert.That(GetField<NetworkTransformData>(nt, "_currentData"), Is.EqualTo(newer));
+            Assert.That(GetField<NetworkTransformData>(nt, "_latestData"), Is.EqualTo(newer));
+            Assert.That(GetField<NetworkTransformData>(nt, "_lastReadData"), Is.EqualTo(newer));
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
     public void AbsoluteStateOmitsDisabledFieldsAndFrame()
     {
         var go = new GameObject(nameof(AbsoluteStateOmitsDisabledFieldsAndFrame));
@@ -483,6 +570,25 @@ public class NetworkTransformProtocolTests
         typeof(NetworkIdentity).GetField("_idServer", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(nt, (NetworkID?)new NetworkID(id));
         return nt;
+    }
+
+    private static void DisableSynchronizedFields(NetworkTransform target)
+    {
+        SetField(target, "_syncPosition", SyncMode.No);
+        SetField(target, "_syncRotation", SyncMode.No);
+        SetField(target, "_syncScale", false);
+    }
+
+    private static object InvokePrivate(NetworkTransform target, string name, params object[] args)
+    {
+        return typeof(NetworkTransform).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(target, args);
+    }
+
+    private static T GetField<T>(NetworkTransform target, string name)
+    {
+        return (T)typeof(NetworkTransform).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(target);
     }
 
     private static void SetField<T>(NetworkTransform target, string name, T value)
