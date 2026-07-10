@@ -1,3 +1,20 @@
+# [1.20.0-beta.254](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.253...v1.20.0-beta.254) (2026-07-10)
+
+
+### Bug Fixes
+
+* **network-transform:** harden unreliable rework ([d5963da](https://github.com/PurrNet/PurrNet/commit/d5963da95658eabf43b3dfdd0dd41a88cc99ec52))
+
+
+### Features
+
+* NetworkTransform unreliable rework ([fb0f6d5](https://github.com/PurrNet/PurrNet/commit/fb0f6d5315ec0cee5386a44f108d5c045fca2eda))
+
+
+### Performance Improvements
+
+* **network-transform:** reduce ack and queue overhead ([37518b6](https://github.com/PurrNet/PurrNet/commit/37518b62e332e4d128c4751ce84e6497715d9ece))
+
 # [1.20.0-beta.253](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.252...v1.20.0-beta.253) (2026-07-07)
 
 
