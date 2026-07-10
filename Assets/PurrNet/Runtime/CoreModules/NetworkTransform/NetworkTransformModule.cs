@@ -201,25 +201,25 @@ namespace PurrNet.Modules
 
             var diff = (short)(seq - stream.latestSeq);
 
-            if (diff > 0)
+            switch (diff)
             {
-                if (diff >= 33)
-                    stream.ackBits = 0;
-                else if (diff == 32)
-                    stream.ackBits = 1u << 31;
-                else
-                    stream.ackBits = (stream.ackBits << diff) | (1u << (diff - 1));
+                case > 0:
+                {
+                    stream.ackBits = diff switch
+                    {
+                        >= 33 => 0,
+                        32 => 1u << 31,
+                        _ => (stream.ackBits << diff) | (1u << (diff - 1))
+                    };
 
-                stream.latestOrder += diff;
-                stream.latestSeq = seq;
-                packetOrder = stream.latestOrder;
-                return true;
-            }
-
-            if (diff == 0)
-            {
-                packetOrder = stream.latestOrder;
-                return false;
+                    stream.latestOrder += diff;
+                    stream.latestSeq = seq;
+                    packetOrder = stream.latestOrder;
+                    return true;
+                }
+                case 0:
+                    packetOrder = stream.latestOrder;
+                    return false;
             }
 
             int d = -diff;
