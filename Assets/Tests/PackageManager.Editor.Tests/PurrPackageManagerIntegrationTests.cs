@@ -37,6 +37,10 @@ namespace PurrNet.Editor.Tests
                 Assert.That(install.Success, Is.True, install.Error);
                 Assert.That(GetRegisteredVersion(), Is.EqualTo("1.0.0"));
 
+                var reinstall = await PurrPackageManagerInstaller.InstallExternal(package, localReference);
+                Assert.That(reinstall.Success, Is.True, reinstall.Error);
+                Assert.That(GetRegisteredVersion(), Is.EqualTo("1.0.0"));
+
                 WritePackageManifest(fixtureRoot, "1.1.0");
                 var update = await PurrPackageManagerInstaller.InstallExternal(package, localReference);
                 Assert.That(update.Success, Is.True, update.Error);

@@ -123,7 +123,7 @@ namespace PurrNet.Editor
         }
 
         private static async Task ResolvePackagesCore(PackageInfo package = null, string expectedVersion = null,
-            string expectedPackageName = null, bool expectRemoved = false)
+            string expectedPackageName = null, bool expectRemoved = false, bool acceptAlreadyVisible = false)
         {
             const int maxAttempts = 3;
             const int eventTimeoutMs = 12000;
@@ -157,7 +157,9 @@ namespace PurrNet.Editor
                     }
 
                     var completed = await Task.WhenAny(registration.Task, Task.Delay(eventTimeoutMs - 1000));
-                    if (completed == registration.Task)
+                    if (completed == registration.Task
+                        || (acceptAlreadyVisible
+                            && IsExpectedPackageStateVisible(package, null, expectedPackageName, false)))
                     {
                         await WaitForLockFileToSettle();
                         return;
@@ -954,6 +956,13 @@ namespace PurrNet.Editor
                     EditorUtility.DisplayProgressBar("PurrNet Package Manager", $"Installing {package.DisplayName}...", 0.5f);
 
                     var upmName = package.GetUpmPackageName();
+                    var existing = FindInstalledEntry(package);
+                    bool acceptAlreadyVisible = existing != null
+                                                && string.Equals(existing.Value.key, upmName,
+                                                    StringComparison.OrdinalIgnoreCase)
+                                                && string.Equals(existing.Value.value, gitUrl,
+                                                    StringComparison.Ordinal)
+                                                && IsExpectedPackageStateVisible(package, null, upmName, false);
 
                     ClearExistingInstall(package, upmName, quarantine);
 
@@ -965,7 +974,11 @@ namespace PurrNet.Editor
                     if (resolve)
                     {
                         PurrPackageManagerCache.Invalidate();
-                        await ResolvePackagesCore(package);
+                        // Resolve emits no registration event when the identical dependency is already
+                        // current. Only allow the visible-by-name fallback when this operation restored
+                        // the exact manifest reference that was registered before the mutation.
+                        await ResolvePackagesCore(package, expectedPackageName: upmName,
+                            acceptAlreadyVisible: acceptAlreadyVisible);
                     }
 
                     return Result<bool>.Ok(true);
