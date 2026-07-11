@@ -206,6 +206,36 @@ public class BroadcastFragmentationTests
     }
 
     [Test]
+    public void UnreliableSequenced_NewerUnderMTUMessageInvalidatesOlderIncompleteMessage()
+    {
+        var transport = new TestTransport { mtu = 64 };
+        var sender = new BroadcastModule(new TestManager(transport, MTUExceededBehaviour.Fragment), true);
+        var receiver = new BroadcastModule(
+            new TestManager(new TestTransport(), MTUExceededBehaviour.Fragment), false);
+        var connection = new Connection(6);
+        string oldValue = CreatePayload(250, 3);
+        const string newValue = "new-small-value";
+        var received = new List<string>();
+        receiver.Subscribe<string>((_, value, _) => received.Add(value));
+
+        sender.Send(connection, oldValue, Channel.UnreliableSequenced);
+        int oldFragmentCount = transport.sent.Count;
+        sender.Send(connection, newValue, Channel.UnreliableSequenced);
+
+        Assert.Greater(oldFragmentCount, 1);
+        Assert.AreEqual(oldFragmentCount + 1, transport.sent.Count);
+
+        Deliver(receiver, connection, transport.sent[0]);
+        Deliver(receiver, connection, transport.sent[oldFragmentCount]);
+
+        for (int i = 1; i < oldFragmentCount; i++)
+            Deliver(receiver, connection, transport.sent[i]);
+
+        Assert.AreEqual(1, received.Count);
+        Assert.AreEqual(newValue, received[0]);
+    }
+
+    [Test]
     public void UnderMTUUnreliableMessage_UsesOriginalSinglePacketPath()
     {
         var transport = new TestTransport { mtu = 256 };

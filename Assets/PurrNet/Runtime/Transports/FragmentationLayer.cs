@@ -11,6 +11,7 @@ namespace PurrNet.Transports
     ///
     /// Header format:
     ///   Unfragmented: [1 byte: 0x00] [payload]
+    ///   Sequenced:    [1 byte: 0x02] [4 bytes: messageId] [payload]
     ///   Fragmented:   [1 byte: 0x01] [4 bytes: messageId] [4 bytes: totalLength]
     ///                 [2 bytes: fragmentStride] [1 byte: fragmentIndex]
     ///                 [1 byte: totalFragments] [payload]
@@ -21,6 +22,9 @@ namespace PurrNet.Transports
 
         /// <summary>Header overhead for unfragmented messages.</summary>
         public const int UNFRAGMENTED_OVERHEAD = 1;
+
+        /// <summary>Header overhead for sequenced, unfragmented messages.</summary>
+        public const int SEQUENCED_OVERHEAD = 5;
 
         /// <summary>Header overhead per fragmented message packet.</summary>
         public const int FRAGMENT_OVERHEAD = 13;
@@ -36,6 +40,7 @@ namespace PurrNet.Transports
 
         const byte FLAG_UNFRAGMENTED = 0;
         const byte FLAG_FRAGMENTED = 1;
+        const byte FLAG_SEQUENCED = 2;
 
         static readonly FragmentCallback<Action<ByteData>> _invokeAction = InvokeAction;
 
@@ -170,6 +175,13 @@ namespace PurrNet.Transports
             return (int)Math.Min(result, MAX_MESSAGE_SIZE);
         }
 
+        /// <summary>Returns the largest sequenced message accepted for the supplied packet size.</summary>
+        public static int GetMaxSequencedMessageSize(int mtu, int reservedPrefix = 0)
+        {
+            int singlePacketPayload = Math.Max(0, mtu - reservedPrefix - SEQUENCED_OVERHEAD);
+            return Math.Max(singlePacketPayload, GetMaxMessageSize(mtu, reservedPrefix));
+        }
+
         /// <summary>
         /// Sends a message with no prefix reserved for the caller.
         /// </summary>
@@ -182,6 +194,18 @@ namespace PurrNet.Transports
         }
 
         /// <summary>
+        /// Sends a message on a sequenced stream. Even a single-packet message carries a message id
+        /// so it can invalidate older incomplete fragmented messages on the same stream.
+        /// </summary>
+        public void SendSequenced(ByteData data, int mtu, Action<ByteData> sendFragment)
+        {
+            if (sendFragment == null)
+                throw new ArgumentNullException(nameof(sendFragment));
+
+            Send(data, mtu, 0, sendFragment, _invokeAction, true);
+        }
+
+        /// <summary>
         /// Splits a message into packets no larger than <paramref name="mtu"/>. The caller may
         /// reserve bytes at the front of every packet for its own framing and must overwrite all
         /// reserved bytes in the callback. Buffers passed to the callback are reused and are only
@@ -190,18 +214,37 @@ namespace PurrNet.Transports
         public void Send<TState>(ByteData data, int mtu, int reservedPrefix, TState state,
             FragmentCallback<TState> sendFragment)
         {
+            Send(data, mtu, reservedPrefix, state, sendFragment, false);
+        }
+
+        /// <summary>
+        /// Sends on a sequenced stream while reserving a caller-owned prefix. Single-packet and
+        /// fragmented messages share the same monotonically increasing message-id space.
+        /// </summary>
+        public void SendSequenced<TState>(ByteData data, int mtu, int reservedPrefix, TState state,
+            FragmentCallback<TState> sendFragment)
+        {
+            Send(data, mtu, reservedPrefix, state, sendFragment, true);
+        }
+
+        void Send<TState>(ByteData data, int mtu, int reservedPrefix, TState state,
+            FragmentCallback<TState> sendFragment, bool sequenced)
+        {
             if (sendFragment == null)
                 throw new ArgumentNullException(nameof(sendFragment));
             if (reservedPrefix < 0)
                 throw new ArgumentOutOfRangeException(nameof(reservedPrefix));
 
-            if (data.length + reservedPrefix + UNFRAGMENTED_OVERHEAD <= mtu)
+            int singlePacketOverhead = sequenced ? SEQUENCED_OVERHEAD : UNFRAGMENTED_OVERHEAD;
+            if (data.length + reservedPrefix + singlePacketOverhead <= mtu)
             {
-                int packetLength = reservedPrefix + UNFRAGMENTED_OVERHEAD + data.length;
+                int packetLength = reservedPrefix + singlePacketOverhead + data.length;
                 EnsureBuffer(ref _sendBuffer, packetLength);
-                _sendBuffer.array[reservedPrefix] = FLAG_UNFRAGMENTED;
+                _sendBuffer.array[reservedPrefix] = sequenced ? FLAG_SEQUENCED : FLAG_UNFRAGMENTED;
+                if (sequenced)
+                    WriteUInt32(_sendBuffer.array, reservedPrefix + 1, NextMessageId());
                 Buffer.BlockCopy(data.data, data.offset, _sendBuffer.array,
-                    reservedPrefix + UNFRAGMENTED_OVERHEAD, data.length);
+                    reservedPrefix + singlePacketOverhead, data.length);
                 sendFragment(new ByteData(_sendBuffer.array, 0, packetLength), state);
                 return;
             }
@@ -220,7 +263,7 @@ namespace PurrNet.Transports
                     $"Data ({data.length} bytes) exceeds max fragmentable size for MTU {mtu}. " +
                     $"Max: {GetMaxMessageSize(mtu, reservedPrefix)} bytes.", nameof(data));
 
-            uint messageId = _nextMessageId++;
+            uint messageId = NextMessageId();
 
             for (int i = 0; i < totalFragments; i++)
             {
@@ -252,7 +295,7 @@ namespace PurrNet.Transports
 
         /// <summary>
         /// Processes a packet for a sender and logical stream. Sequenced streams discard older
-        /// incomplete messages as soon as a newer fragmented message is observed. Reassembled
+        /// incomplete messages as soon as any newer message is observed. Reassembled
         /// data remains valid until the next completed reassembly, <see cref="Reset"/>, or disposal.
         /// </summary>
         public bool Receive(int senderId, byte streamId, bool sequenced, ByteData data, out ByteData assembled)
@@ -269,6 +312,20 @@ namespace PurrNet.Transports
             {
                 assembled = new ByteData(data.data, header + UNFRAGMENTED_OVERHEAD,
                     data.length - UNFRAGMENTED_OVERHEAD);
+                return true;
+            }
+
+            if (flag == FLAG_SEQUENCED)
+            {
+                if (!sequenced || data.length < SEQUENCED_OVERHEAD)
+                    return false;
+
+                uint completedMessageId = ReadUInt32(data.data, header + 1);
+                if (!AcceptCompletedSequenced(senderId, streamId, completedMessageId))
+                    return false;
+
+                assembled = new ByteData(data.data, header + SEQUENCED_OVERHEAD,
+                    data.length - SEQUENCED_OVERHEAD);
                 return true;
             }
 
@@ -405,6 +462,14 @@ namespace PurrNet.Transports
 
         public void Dispose() => Reset();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        uint NextMessageId()
+        {
+            uint messageId = _nextMessageId;
+            _nextMessageId = unchecked(messageId + 1);
+            return messageId;
+        }
+
         bool AcceptSequenced(ReassemblyKey key, bool hasEntry)
         {
             var stream = new StreamKey(key.senderId, key.streamId);
@@ -423,6 +488,24 @@ namespace PurrNet.Transports
 
             DiscardStream(stream);
             _latestSequencedMessages[stream] = key.messageId;
+            return true;
+        }
+
+        bool AcceptCompletedSequenced(int senderId, byte streamId, uint messageId)
+        {
+            var stream = new StreamKey(senderId, streamId);
+            if (!_latestSequencedMessages.TryGetValue(stream, out uint latest))
+            {
+                _latestSequencedMessages.Add(stream, messageId);
+                return true;
+            }
+
+            int relative = unchecked((int)(messageId - latest));
+            if (relative <= 0)
+                return false;
+
+            DiscardStream(stream);
+            _latestSequencedMessages[stream] = messageId;
             return true;
         }
 

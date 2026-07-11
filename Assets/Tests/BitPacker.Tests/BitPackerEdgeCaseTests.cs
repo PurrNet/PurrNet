@@ -572,6 +572,39 @@ public class BitPackerEdgeCaseTests
     }
 
     [Test]
+    public void FragmentationLayer_SequencedWrap_NewSinglePacketInvalidatesOldFragments()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var nextId = typeof(FragmentationLayer).GetField("_nextMessageId",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(nextId);
+        nextId.SetValue(sender, uint.MaxValue);
+
+        var oldPayload = new byte[35];
+        var newPayload = new byte[] { 10, 20, 30, 40 };
+        var oldFragments = new List<byte[]>();
+        var newPackets = new List<byte[]>();
+        sender.SendSequenced(new ByteData(oldPayload, 0, oldPayload.Length), 24,
+            packet => Capture(packet, oldFragments));
+        sender.SendSequenced(new ByteData(newPayload, 0, newPayload.Length), 24,
+            packet => Capture(packet, newPackets));
+
+        Assert.Greater(oldFragments.Count, 1);
+        Assert.AreEqual(1, newPackets.Count);
+        Assert.IsFalse(receiver.Receive(1, 1, true,
+            new ByteData(oldFragments[0], 0, oldFragments[0].Length), out _));
+        Assert.IsTrue(receiver.Receive(1, 1, true,
+            new ByteData(newPackets[0], 0, newPackets[0].Length), out var assembled));
+
+        for (int i = 1; i < oldFragments.Count; i++)
+            Assert.IsFalse(receiver.Receive(1, 1, true,
+                new ByteData(oldFragments[i], 0, oldFragments[i].Length), out _));
+
+        AssertByteDataEquals(new ByteData(newPayload, 0, newPayload.Length), assembled);
+    }
+
+    [Test]
     public void ValidatedSyncVar_ServerValidation_RemovesLastMatchingSubscriber()
     {
         var syncVar = new ValidatedSyncVar<int>(0);
