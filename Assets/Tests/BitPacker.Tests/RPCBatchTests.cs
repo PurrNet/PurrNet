@@ -443,4 +443,81 @@ public class RPCBatchTests
             channel = Channel.ReliableOrdered
         }), Is.False);
     }
+
+    [Test]
+    public void HundredRecipientReliableOrderedFanoutSurvivesDivergenceAndMtuSplits()
+    {
+        const int targetCount = 100;
+        const int sequenceCount = 96;
+        var targets = new PlayerID[targetCount];
+        var expected = new Dictionary<BatchKey, List<int>>();
+        var received = new Dictionary<BatchKey, List<int>>();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            targets[i] = new PlayerID((ulong)(1000 + i), false);
+            expected[new BatchKey
+            {
+                playerId = targets[i],
+                channel = Channel.ReliableOrdered
+            }] = new List<int>();
+        }
+
+        using var backend = new TestRPCBatchBackend { mtu = 192 };
+        using var batch = new RPCBatch(backend,
+            (_, header, content, _) => RecordReceived(backend, received, header, content));
+        using var payload = BitPackerPool.Get();
+
+        for (int sequence = 0; sequence < sequenceCount; sequence++)
+        {
+            int singledOut = (sequence * 17) % targetCount;
+            if ((sequence & 3) == 0)
+            {
+                WritePayload(payload, sequence, 24 + sequence % 41);
+                batch.Queue(targets[singledOut], MakeHeader(Channel.ReliableOrdered, sequence),
+                    new BitData(payload), Channel.ReliableOrdered);
+                expected[new BatchKey
+                {
+                    playerId = targets[singledOut],
+                    channel = Channel.ReliableOrdered
+                }].Add(sequence);
+            }
+
+            int skipA = (sequence * 7 + 3) % targetCount;
+            int skipB = (sequence * 11 + 5) % targetCount;
+            var filter = new ObserverFilter(targets[skipA], true, targets[skipB], true);
+            WritePayload(payload, sequence, 32 + sequence % 73);
+            batch.Queue(targets, MakeHeader(Channel.ReliableOrdered, sequence), new BitData(payload),
+                Channel.ReliableOrdered, filter);
+
+            for (int target = 0; target < targets.Length; target++)
+            {
+                if (target != skipA && target != skipB)
+                {
+                    expected[new BatchKey
+                    {
+                        playerId = targets[target],
+                        channel = Channel.ReliableOrdered
+                    }].Add(sequence);
+                }
+            }
+
+            if (sequence % 13 == 12)
+                batch.FlushChannel(Channel.ReliableOrdered);
+        }
+
+        batch.Flush();
+        backend.DeliverAll();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var key = new BatchKey
+            {
+                playerId = targets[i],
+                channel = Channel.ReliableOrdered
+            };
+            Assert.That(received.TryGetValue(key, out var actual), Is.True, $"No RPCs received by {targets[i]}.");
+            Assert.That(actual, Is.EqualTo(expected[key]), $"Reliable-ordered stream diverged for {targets[i]}.");
+        }
+    }
 }

@@ -100,8 +100,6 @@ namespace PurrNet.Modules
             _playersManager = playersManager;
             _onRPCReceived = callback;
             _batchIndexMap = new BatchIndexMap(128);
-            _entryCacheA.data = BitPackerPool.Get();
-            _entryCacheB.data = BitPackerPool.Get();
             _playersManager.Subscribe<RPCBatchPacket>(OnBatchReceived);
         }
 
@@ -111,8 +109,6 @@ namespace PurrNet.Modules
             _backend = backend;
             _onRPCReceived = callback;
             _batchIndexMap = new BatchIndexMap(128);
-            _entryCacheA.data = BitPackerPool.Get();
-            _entryCacheB.data = BitPackerPool.Get();
             _backend.Subscribe(OnBatchReceived);
         }
 #endif
@@ -129,8 +125,8 @@ namespace PurrNet.Modules
 #endif
 
             Clear();
-            _entryCacheA.data.Dispose();
-            _entryCacheB.data.Dispose();
+            _entryCacheA.data?.Dispose();
+            _entryCacheB.data?.Dispose();
             _batchIndexMap.Dispose();
         }
 
@@ -259,6 +255,13 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureEntryCache()
+        {
+            _entryCacheA.data ??= BitPackerPool.Get();
+            _entryCacheB.data ??= BitPackerPool.Get();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ulong NextStateVersion()
         {
             ulong version = ++_nextStateVersion;
@@ -282,7 +285,7 @@ namespace PurrNet.Modules
             if (!cache.isValid)
                 return false;
 
-            if (cache.previousStateVersion == previousStateVersion)
+            if (previousStateVersion != 0 && cache.previousStateVersion == previousStateVersion)
                 return true;
 
             return cache.previousDataLen.value == previousDataLen.value &&
@@ -396,18 +399,19 @@ namespace PurrNet.Modules
         {
             ValidateChannel(channel);
             _queueMultiMarker.Begin();
-            ulong stateVersion = NextStateVersion();
 
             if (targets.Count < 3)
             {
                 for (var i = targets.Count - 1; i >= 0; i--)
-                    QueueDirect(targets[i], header, content, channel, stateVersion);
+                    QueueDirect(targets[i], header, content, channel);
 
                 _queueMultiMarker.End();
                 return;
             }
 
+            EnsureEntryCache();
             ResetEntryCache();
+            ulong stateVersion = NextStateVersion();
             var contentLen = content.bitLength;
 
             for (var i = targets.Count - 1; i >= 0; i--)
@@ -446,7 +450,6 @@ namespace PurrNet.Modules
         {
             ValidateChannel(channel);
             _queueMultiMarker.Begin();
-            ulong stateVersion = NextStateVersion();
 
             bool hasFilter = filter.hasSkipA || filter.hasSkipB;
 
@@ -456,14 +459,16 @@ namespace PurrNet.Modules
                 {
                     var target = targets[i];
                     if (!hasFilter || !filter.ShouldSkip(target))
-                        QueueDirect(target, header, content, channel, stateVersion);
+                        QueueDirect(target, header, content, channel);
                 }
 
                 _queueMultiMarker.End();
                 return;
             }
 
+            EnsureEntryCache();
             ResetEntryCache();
+            ulong stateVersion = NextStateVersion();
             var contentLen = content.bitLength;
 
             for (var i = targets.Count - 1; i >= 0; i--)
@@ -477,7 +482,7 @@ namespace PurrNet.Modules
         }
 
         private unsafe void QueueDirect(PlayerID target, in UnionRPCHeader header, in BitData content,
-            Channel channel, ulong stateVersion)
+            Channel channel)
         {
             var batchIdx = GetBatchIndex(target, channel);
             ref var batch = ref _batches[batchIdx];
@@ -510,7 +515,7 @@ namespace PurrNet.Modules
             ++batch.batchCount;
             batch.lastHeader = header;
             batch.lastDataLen = contentLen;
-            batch.stateVersion = stateVersion;
+            batch.stateVersion = 0;
 
             if (contentLen.value > 0)
                 batch.batchedData.WriteBitDataWithoutConsumingIt(content);
@@ -521,7 +526,7 @@ namespace PurrNet.Modules
             ValidateChannel(channel);
             _queueSingleMarker.Begin();
 
-            QueueDirect(target, header, content, channel, NextStateVersion());
+            QueueDirect(target, header, content, channel);
             _queueSingleMarker.End();
         }
 

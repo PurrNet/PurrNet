@@ -29,6 +29,14 @@ public class PackerBenchmark
         public bool isValid;
     }
 
+    sealed class NoopRPCBatchBackend : IRPCBatchBackend
+    {
+        public int GetMTU(PlayerID player, Channel channel, bool asServer) => int.MaxValue;
+        public void Send(PlayerID player, RPCBatchPacket data, Channel channel) { }
+        public void Subscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback) { }
+        public void Unsubscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback) { }
+    }
+
     [OneTimeSetUp]
     public void Init()
     {
@@ -142,7 +150,7 @@ public class PackerBenchmark
         UnionRPCHeader header, BitData content, out BitPacker data, out int bitLength)
     {
         if (cacheA.isValid &&
-            (cacheA.previousStateVersion == previousStateVersion ||
+            ((previousStateVersion != 0 && cacheA.previousStateVersion == previousStateVersion) ||
              (cacheA.previousDataLen.value == previousDataLen.value &&
               cacheA.previousHeader.Equals(previousHeader))))
         {
@@ -152,7 +160,7 @@ public class PackerBenchmark
         }
 
         if (cacheB.isValid &&
-            (cacheB.previousStateVersion == previousStateVersion ||
+            ((previousStateVersion != 0 && cacheB.previousStateVersion == previousStateVersion) ||
              (cacheB.previousDataLen.value == previousDataLen.value &&
               cacheB.previousHeader.Equals(previousHeader))))
         {
@@ -559,6 +567,59 @@ public class PackerBenchmark
         Debug.Log($"[Batch Index Lookup] 4M lookups | original {originalWatch.Elapsed.TotalMilliseconds:F2} ms | " +
                    $"optimized {optimizedWatch.Elapsed.TotalMilliseconds:F2} ms | " +
                    $"{originalWatch.Elapsed.TotalMilliseconds / optimizedWatch.Elapsed.TotalMilliseconds:F2}x faster");
+    }
+
+    [Test]
+    [TestCase(1)]
+    [TestCase(2)]
+    public void Benchmark_RPCBatch_DirectQueue(int recipientCount)
+    {
+        const int warmupOperations = 5_000;
+        const int measuredOperations = 250_000;
+        const int sampleCount = 5;
+        const int flushInterval = 64;
+        var targets = new PlayerID[recipientCount];
+        for (int i = 0; i < targets.Length; i++)
+            targets[i] = new PlayerID((ulong)(i + 1), false);
+
+        var backend = new NoopRPCBatchBackend();
+        using var batch = new RPCBatch(backend, (_, _, _, _) => { });
+        using var payload = BitPackerPool.Get();
+        PackTypicalRPCPayload(payload, 7);
+        var content = new BitData(payload);
+
+        void Run(int operationCount)
+        {
+            for (int operation = 0; operation < operationCount; operation++)
+            {
+                var header = MakeHeader(1, 1, operation & 15);
+                if (recipientCount == 1)
+                    batch.Queue(targets[0], header, content, Channel.ReliableOrdered);
+                else
+                    batch.Queue(targets, header, content, Channel.ReliableOrdered);
+
+                if ((operation & (flushInterval - 1)) == flushInterval - 1)
+                    batch.Flush();
+            }
+            batch.Flush();
+        }
+
+        Run(warmupOperations);
+        var samples = new double[sampleCount];
+        for (int sample = 0; sample < sampleCount; sample++)
+        {
+            var watch = Stopwatch.StartNew();
+            Run(measuredOperations);
+            watch.Stop();
+            samples[sample] = watch.Elapsed.TotalMilliseconds * 1_000_000.0 /
+                              (measuredOperations * recipientCount);
+        }
+
+        Array.Sort(samples);
+        double nsPerRecipient = samples[sampleCount / 2];
+        Debug.Log($"[Batch Direct Queue] {recipientCount} recipient(s) | " +
+                  $"median {nsPerRecipient:F1} ns/recipient | " +
+                  $"range {samples[0]:F1}-{samples[sampleCount - 1]:F1}");
     }
 
     [Test]
