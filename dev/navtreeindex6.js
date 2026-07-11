@@ -1,5 +1,9 @@
 var NAVTREEINDEX6 =
 {
+"interfacePurrNet_1_1Packing_1_1IPacked.html":[0,0,0,5,20],
+"interfacePurrNet_1_1Packing_1_1IPackedAuto.html":[1,0,0,5,21],
+"interfacePurrNet_1_1Packing_1_1IPackedAuto.html":[0,0,0,5,21],
+"interfacePurrNet_1_1Packing_1_1IPackedSimple.html":[1,0,0,5,22],
 "interfacePurrNet_1_1Packing_1_1IPackedSimple.html":[0,0,0,5,22],
 "interfacePurrNet_1_1Packing_1_1IPurrEquatable.html":[0,0,0,5,23],
 "interfacePurrNet_1_1Packing_1_1IPurrEquatable.html":[1,0,0,5,23],
@@ -245,9 +249,5 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1Packing_1_1Half.html#ab8bcf3bc5826881dcd901b701f6ab214":[1,0,0,5,14,7],
 "structPurrNet_1_1Packing_1_1Half.html#ad1ea30aa0ff924279757ba664075508f":[0,0,0,5,14,6],
 "structPurrNet_1_1Packing_1_1Half.html#ad1ea30aa0ff924279757ba664075508f":[1,0,0,5,14,6],
-"structPurrNet_1_1Packing_1_1Half.html#ad27f22dcd10ed1c7ec3fb02ba864f46d":[0,0,0,5,14,16],
-"structPurrNet_1_1Packing_1_1Half.html#ad27f22dcd10ed1c7ec3fb02ba864f46d":[1,0,0,5,14,16],
-"structPurrNet_1_1Packing_1_1Half.html#aec4e3c0bd4284d33d95c31df4c68198b":[0,0,0,5,14,0],
-"structPurrNet_1_1Packing_1_1Half.html#aec4e3c0bd4284d33d95c31df4c68198b":[1,0,0,5,14,0],
-"structPurrNet_1_1Packing_1_1Half.html#aefa28f3664df665bce166aeca2fb28fd":[0,0,0,5,14,9]
+"structPurrNet_1_1Packing_1_1Half.html#ad27f22dcd10ed1c7ec3fb02ba864f46d":[0,0,0,5,14,16]
 };

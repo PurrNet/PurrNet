@@ -118,17 +118,25 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>FragmentCall
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Send</b> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, int mtu, Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> &gt; sendFragment)</td></tr>
 <tr class="memdesc:a6a59c3bcc328fe8d7234ef1f26fdd223"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sends a message with no prefix reserved for the caller.  <br /></td></tr>
 <tr class="separator:a6a59c3bcc328fe8d7234ef1f26fdd223"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6bd6ecbc83bc095ac0d05e3f94d1be4f"><td class="memItemLeft" align="right" valign="top"><a id="a6bd6ecbc83bc095ac0d05e3f94d1be4f" name="a6bd6ecbc83bc095ac0d05e3f94d1be4f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendSequenced</b> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, int mtu, Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> &gt; sendFragment)</td></tr>
+<tr class="memdesc:a6bd6ecbc83bc095ac0d05e3f94d1be4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sends a message on a sequenced stream. Even a single-packet message carries a message id so it can invalidate older incomplete fragmented messages on the same stream.  <br /></td></tr>
+<tr class="separator:a6bd6ecbc83bc095ac0d05e3f94d1be4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af980c134ee68acc624da1126605ffb5c"><td class="memItemLeft" align="right" valign="top"><a id="af980c134ee68acc624da1126605ffb5c" name="af980c134ee68acc624da1126605ffb5c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; TState &gt;</b> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, int mtu, int reservedPrefix, TState state, FragmentCallback&lt; TState &gt; sendFragment)</td></tr>
 <tr class="memdesc:af980c134ee68acc624da1126605ffb5c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Splits a message into packets no larger than <em>mtu</em> . The caller may reserve bytes at the front of every packet for its own framing and must overwrite all reserved bytes in the callback. Buffers passed to the callback are reused and are only valid for the duration of the callback.  <br /></td></tr>
 <tr class="separator:af980c134ee68acc624da1126605ffb5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a57a032751d3fbf2d414a754366408448"><td class="memItemLeft" align="right" valign="top"><a id="a57a032751d3fbf2d414a754366408448" name="a57a032751d3fbf2d414a754366408448"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendSequenced&lt; TState &gt;</b> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, int mtu, int reservedPrefix, TState state, FragmentCallback&lt; TState &gt; sendFragment)</td></tr>
+<tr class="memdesc:a57a032751d3fbf2d414a754366408448"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sends on a sequenced stream while reserving a caller-owned prefix. Single-packet and fragmented messages share the same monotonically increasing message-id space.  <br /></td></tr>
+<tr class="separator:a57a032751d3fbf2d414a754366408448"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab83d88e00006c32a27a123abc641444e"><td class="memItemLeft" align="right" valign="top"><a id="ab83d88e00006c32a27a123abc641444e" name="ab83d88e00006c32a27a123abc641444e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Receive</b> (<a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, out <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> assembled)</td></tr>
 <tr class="memdesc:ab83d88e00006c32a27a123abc641444e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Receives on a single unordered stream. <br /></td></tr>
 <tr class="separator:ab83d88e00006c32a27a123abc641444e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acecef5f0f41be032f0456a896f74c01e"><td class="memItemLeft" align="right" valign="top"><a id="acecef5f0f41be032f0456a896f74c01e" name="acecef5f0f41be032f0456a896f74c01e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Receive</b> (int senderId, byte streamId, bool sequenced, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, out <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> assembled)</td></tr>
-<tr class="memdesc:acecef5f0f41be032f0456a896f74c01e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Processes a packet for a sender and logical stream. Sequenced streams discard older incomplete messages as soon as a newer fragmented message is observed. Reassembled data remains valid until the next completed reassembly, Reset, or disposal.  <br /></td></tr>
+<tr class="memdesc:acecef5f0f41be032f0456a896f74c01e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Processes a packet for a sender and logical stream. Sequenced streams discard older incomplete messages as soon as any newer message is observed. Reassembled data remains valid until the next completed reassembly, Reset, or disposal.  <br /></td></tr>
 <tr class="separator:acecef5f0f41be032f0456a896f74c01e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae807bae572f1fa3b13f8d1fee5eed5b8"><td class="memItemLeft" align="right" valign="top"><a id="ae807bae572f1fa3b13f8d1fee5eed5b8" name="ae807bae572f1fa3b13f8d1fee5eed5b8"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>CleanupStaleIfDue</b> (int maxAgeMs, int intervalMs)</td></tr>
@@ -154,6 +162,10 @@ Static Public Member Functions</h2></td></tr>
 static int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMaxMessageSize</b> (int mtu, int reservedPrefix=0)</td></tr>
 <tr class="memdesc:a2372835de3e10997ed4fed14b09f98c0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the largest message accepted for the supplied packet size. <br /></td></tr>
 <tr class="separator:a2372835de3e10997ed4fed14b09f98c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee4df19ad64c3765fcefd3c7e74c5124"><td class="memItemLeft" align="right" valign="top"><a id="aee4df19ad64c3765fcefd3c7e74c5124" name="aee4df19ad64c3765fcefd3c7e74c5124"></a>
+static int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMaxSequencedMessageSize</b> (int mtu, int reservedPrefix=0)</td></tr>
+<tr class="memdesc:aee4df19ad64c3765fcefd3c7e74c5124"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the largest sequenced message accepted for the supplied packet size. <br /></td></tr>
+<tr class="separator:aee4df19ad64c3765fcefd3c7e74c5124"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -161,6 +173,10 @@ Static Public Attributes</h2></td></tr>
 const int&#160;</td><td class="memItemRight" valign="bottom"><b>UNFRAGMENTED_OVERHEAD</b> = 1</td></tr>
 <tr class="memdesc:ae9a82772968d3bf5fd32dada806f042f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Header overhead for unfragmented messages. <br /></td></tr>
 <tr class="separator:ae9a82772968d3bf5fd32dada806f042f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8378c3feec02153f8b7761c3f7163b1e"><td class="memItemLeft" align="right" valign="top"><a id="a8378c3feec02153f8b7761c3f7163b1e" name="a8378c3feec02153f8b7761c3f7163b1e"></a>
+const int&#160;</td><td class="memItemRight" valign="bottom"><b>SEQUENCED_OVERHEAD</b> = 5</td></tr>
+<tr class="memdesc:a8378c3feec02153f8b7761c3f7163b1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Header overhead for sequenced, unfragmented messages. <br /></td></tr>
+<tr class="separator:a8378c3feec02153f8b7761c3f7163b1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae0251cf4a93d36d118e7261a8dabbe4f"><td class="memItemLeft" align="right" valign="top"><a id="ae0251cf4a93d36d118e7261a8dabbe4f" name="ae0251cf4a93d36d118e7261a8dabbe4f"></a>
 const int&#160;</td><td class="memItemRight" valign="bottom"><b>FRAGMENT_OVERHEAD</b> = 13</td></tr>
 <tr class="memdesc:ae0251cf4a93d36d118e7261a8dabbe4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Header overhead per fragmented message packet. <br /></td></tr>
@@ -174,7 +190,7 @@ const int&#160;</td><td class="memItemRight" valign="bottom"><b>MAX_MESSAGE_SIZE
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Allocation-free-on-the-hot-path message fragmentation and bounded reassembly. Fragment loss is never recovered here: an incomplete message expires as a unit. </p>
-<p >Header format: Unfragmented: [1 byte: 0x00] [payload] Fragmented: [1 byte: 0x01] [4 bytes: messageId] [4 bytes: totalLength] [2 bytes: fragmentStride] [1 byte: fragmentIndex] [1 byte: totalFragments] [payload]  </p>
+<p >Header format: Unfragmented: [1 byte: 0x00] [payload] Sequenced: [1 byte: 0x02] [4 bytes: messageId] [payload] Fragmented: [1 byte: 0x01] [4 bytes: messageId] [4 bytes: totalLength] [2 bytes: fragmentStride] [1 byte: fragmentIndex] [1 byte: totalFragments] [payload]  </p>
 </div><hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Transports/FragmentationLayer.cs</li>
 </ul>
