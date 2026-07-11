@@ -116,12 +116,18 @@ namespace PurrNet.Transports
         /// Automatically upgrade the channel to ReliableOrdered so the packet is
         /// fragmented and delivered reliably. Logs a warning.
         /// </summary>
-        UpgradeToReliable,
+        UpgradeToReliable = 0,
 
         /// <summary>
         /// Drop the packet and log a warning. Preserves unreliable semantics.
         /// </summary>
-        Drop
+        Drop = 1,
+
+        /// <summary>
+        /// Split the message into unreliable MTU-sized fragments. The message is only
+        /// delivered when every fragment arrives; missing fragments are not retransmitted.
+        /// </summary>
+        Fragment = 2
     }
 
     public enum Channel : byte

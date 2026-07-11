@@ -108,6 +108,26 @@ namespace PurrNet.Pooling
             return result;
         }
 
+        /// <summary>
+        /// Rents an array without clearing value-type contents. The caller must overwrite every
+        /// element that can become observable before reading or exposing the array.
+        /// </summary>
+        internal static DisposableArray<T> CreateUninitialized(int size)
+        {
+            var rented = ArrayPool<T>.Shared.Rent(size);
+#if UNITY_EDITOR && PURR_LEAKS_CHECK
+            AllocationTracker.Track(rented);
+#endif
+            var result = new DisposableArray<T>
+            {
+                array = rented,
+                Count = size,
+                _shouldDispose = true
+            };
+            result._lease = DisposableLeasePool.Rent(out result._leaseVersion);
+            return result;
+        }
+
         public static DisposableArray<T> Create(DisposableArray<T> copyFrom)
         {
             var array = ArrayPool<T>.Shared.Rent(copyFrom.Count);
