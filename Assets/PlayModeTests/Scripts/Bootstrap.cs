@@ -359,7 +359,17 @@ public class Bootstrap : Scenario
         if (!ctx.isServer)
             return ScenarioResult.Ok();
 
-        await UniTaskUtils.WaitWithTimeout(AllConnected, _connectionTimeout, ctx.cancellationToken);
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(AllConnected, _connectionTimeout, ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            Debug.LogError(
+                $"[Bootstrap] connection timeout: players={_networkManager.playerCount}/{_expectedConnections}, " +
+                $"role={_role}, timeout={_connectionTimeout:F0}s");
+            throw;
+        }
         return ScenarioResult.Ok();
     }
 
@@ -403,8 +413,21 @@ public class Bootstrap : Scenario
             // clients don't exist on the server yet, so there's no one to coordinate with.
             if (_scenarios.Length > 0)
             {
-                if (await RunOne(0, ctx))
+                bool bootstrapFailed = await RunOne(0, ctx);
+                if (bootstrapFailed)
+                {
                     anyFailed = true;
+
+                    // No later scenario can make progress without the complete peer set.
+                    // Tell already-connected clients to leave their start wait, then let
+                    // every process write its failure result and exit.
+                    if (ctx.isServer && _networkManager.isServer)
+                    {
+                        ScenarioSequencer.IssueSequenceComplete();
+                        await ScenarioSequencer.WaitForEndOfRunHandshake(ctx);
+                    }
+                    return;
+                }
             }
 
             if (ctx.isServer)
@@ -443,7 +466,7 @@ public class Bootstrap : Scenario
 
                     // Defensive: server signalled the run is over (or crashed). Stop
                     // running scenarios the server isn't tracking.
-                    if (ScenarioSequencer.SequenceComplete)
+                    if (ScenarioSequencer.SequenceComplete || !_networkManager.isClient)
                         break;
 
                     if (await RunOne(i, ctx))
@@ -460,7 +483,7 @@ public class Bootstrap : Scenario
                 // Wait for the server's sequence-complete broadcast, then ack so
                 // the server can exit its handshake wait cleanly. This is best-effort:
                 // a terminal scenario may intentionally stop the original server.
-                if (await TryWaitForSequenceComplete(ctx))
+                if (_networkManager.isClient && await TryWaitForSequenceComplete(ctx))
                 {
                     ScenarioSequencer.AckEndOfRun(ctx);
                     // Give the ack a couple frames to flush through transport before

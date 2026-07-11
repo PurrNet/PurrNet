@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using UnityEngine;
 
 public static class ScenarioSequencer
 {
-    private const float SCENARIO_TIMEOUT_SECONDS = 24f * 60f * 60f;
+    private const float SCENARIO_TIMEOUT_SECONDS = 5f * 60f;
     private const float END_OF_RUN_HANDSHAKE_TIMEOUT_SECONDS = 10f;
 
     private static readonly Dictionary<int, HashSet<PlayerID>> _acksByIndex = new();
@@ -23,10 +25,20 @@ public static class ScenarioSequencer
 
     public static async UniTask WaitForStart(ScenarioContext ctx, int index)
     {
-        await UniTaskUtils.WaitWithTimeout(
-            () => _latestStartedIndex >= index || _sequenceComplete,
-            SCENARIO_TIMEOUT_SECONDS,
-            ctx.cancellationToken);
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => _latestStartedIndex >= index || _sequenceComplete || !ctx.networkManager.isClient,
+                SCENARIO_TIMEOUT_SECONDS,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            Debug.LogError(
+                $"[ScenarioSequencer] start timeout: waitingFor={index}, latest={_latestStartedIndex}, " +
+                $"sequenceComplete={_sequenceComplete}");
+            throw;
+        }
     }
 
     public static async UniTask WaitForAllAcks(ScenarioContext ctx, int index)
@@ -34,12 +46,41 @@ public static class ScenarioSequencer
         var localId = ctx.networkManager.localPlayer;
         bool isHost = ctx.role == NetworkRole.Host;
 
-        await UniTaskUtils.WaitWithTimeout(
-            () => AllConnectedClientsAcked(ctx, index, localId, isHost),
-            SCENARIO_TIMEOUT_SECONDS,
-            ctx.cancellationToken);
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => AllConnectedClientsAcked(ctx, index, localId, isHost),
+                SCENARIO_TIMEOUT_SECONDS,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            Debug.LogError(
+                $"[ScenarioSequencer] ack timeout: scenario={index}, " +
+                $"missing={DescribeMissingAcks(ctx, index, localId, isHost)}");
+            throw;
+        }
 
         _acksByIndex.Remove(index);
+    }
+
+    private static string DescribeMissingAcks(ScenarioContext ctx, int index, PlayerID localId, bool isHost)
+    {
+        _acksByIndex.TryGetValue(index, out var acks);
+        var connected = ctx.networkManager.players;
+        var missing = new StringBuilder();
+        for (int i = 0; i < connected.Count; i++)
+        {
+            var player = connected[i];
+            if ((isHost && player == localId) || (acks != null && acks.Contains(player)))
+                continue;
+
+            if (missing.Length > 0)
+                missing.Append(',');
+            missing.Append(player);
+        }
+
+        return missing.Length == 0 ? "none (connected set changed while timing out)" : missing.ToString();
     }
 
     private static bool AllConnectedClientsAcked(ScenarioContext ctx, int index, PlayerID localId, bool isHost)

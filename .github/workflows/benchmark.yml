@@ -243,13 +243,22 @@ jobs:
           fi
 
           RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
-          "${RUN[@]}" "$BIN" -batchmode -nographics \
+          touch logs/server.log
+          tail -n +1 -F logs/server.log &
+          TAIL_PID=$!
+          trap 'kill "$TAIL_PID" 2>/dev/null || true' EXIT
+          STATUS=0
+          timeout --signal=TERM --kill-after=10s 12m "${RUN[@]}" "$BIN" -batchmode -nographics \
             -role server -count ${{ needs.prep.outputs.total }} \
             -bench -benchSeconds ${{ inputs.bench_seconds }} \
             -benchObjects ${{ inputs.bench_objects }} \
             -port "$BENCH_PORT" -connectTimeout 90 \
             -results "$PWD/results/server.json" \
-            -logFile "$PWD/logs/server.log"
+            -logFile "$PWD/logs/server.log" || STATUS=$?
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::Server exited with status $STATUS"
+            exit "$STATUS"
+          fi
 
           # The Unity player writes everything to -logFile, so surface the bind result here.
           if grep -q "Bind exception" logs/server.log 2>/dev/null; then
@@ -337,13 +346,22 @@ jobs:
           echo "Server resolved to $SERVER_IP"
 
           RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
-          "${RUN[@]}" "$BIN" -batchmode -nographics \
+          touch logs/client-${{ matrix.idx }}.log
+          tail -n +1 -F logs/client-${{ matrix.idx }}.log &
+          TAIL_PID=$!
+          trap 'kill "$TAIL_PID" 2>/dev/null || true' EXIT
+          STATUS=0
+          timeout --signal=TERM --kill-after=10s 12m "${RUN[@]}" "$BIN" -batchmode -nographics \
             -role client -bench -benchSeconds ${{ inputs.bench_seconds }} \
             -benchObjects ${{ inputs.bench_objects }} \
             -benchPingRate ${{ inputs.ping_rate }} \
             -serverHost "$SERVER_IP" -port "$BENCH_PORT" -connectTimeout 90 \
             -results "$PWD/results/client-${{ matrix.idx }}.json" \
-            -logFile "$PWD/logs/client-${{ matrix.idx }}.log"
+            -logFile "$PWD/logs/client-${{ matrix.idx }}.log" || STATUS=$?
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::Client ${{ matrix.idx }} exited with status $STATUS"
+            exit "$STATUS"
+          fi
 
       - name: Tail client log on failure
         if: failure()
@@ -411,23 +429,67 @@ jobs:
             exit 1
           fi
 
-          RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
           PIDS=()
+          declare -A PROC_BY_PID=()
           for p in $(seq 1 ${{ inputs.procs_per_loadgen }}); do
-            "${RUN[@]}" "$BIN" -batchmode -nographics \
+            # Concurrent xvfb-run -a calls can select the same display before either
+            # lock file exists. Give every process a deterministic private display.
+            DISPLAY_NUM=$((100 + p))
+            timeout --signal=TERM --kill-after=10s 12m \
+              xvfb-run --server-num="$DISPLAY_NUM" \
+              --error-file="$PWD/logs/xvfb-${{ matrix.idx }}-$p.log" \
+              --server-args="-screen 0 1024x768x24" \
+              "$BIN" -batchmode -nographics \
               -role client -loadgen -bench -benchSeconds ${{ inputs.bench_seconds }} \
               -benchObjects ${{ inputs.bench_objects }} -benchPingRate 0 \
               -serverHost "$SERVER_IP" -port "$BENCH_PORT" -connectTimeout 90 \
               -results "$PWD/results/loadgen-${{ matrix.idx }}-$p.json" \
               -logFile "$PWD/logs/loadgen-${{ matrix.idx }}-$p.log" &
-            PIDS+=("$!")
+            PID=$!
+            PIDS+=("$PID")
+            PROC_BY_PID["$PID"]=$p
           done
-          FAIL=0
-          for pid in "${PIDS[@]}"; do
-            wait "$pid" || FAIL=1
+
+          terminate_remaining() {
+            for pid in "${!PROC_BY_PID[@]}"; do
+              kill "$pid" 2>/dev/null || true
+            done
+            wait 2>/dev/null || true
+          }
+          trap terminate_remaining EXIT
+
+          REMAINING=${#PIDS[@]}
+          while [ "$REMAINING" -gt 0 ]; do
+            STATUS=0
+            FINISHED_PID=""
+            wait -n -p FINISHED_PID "${!PROC_BY_PID[@]}" || STATUS=$?
+            PROC=${PROC_BY_PID[$FINISHED_PID]}
+            unset "PROC_BY_PID[$FINISHED_PID]"
+            REMAINING=$((REMAINING - 1))
+
+            if [ "$STATUS" -ne 0 ]; then
+              echo "::error::Loadgen process $PROC exited with status $STATUS"
+              tail -n 120 "logs/loadgen-${{ matrix.idx }}-$PROC.log" || true
+              tail -n 40 "logs/xvfb-${{ matrix.idx }}-$PROC.log" || true
+              exit "$STATUS"
+            fi
           done
-          # Loadgen exit status is informational; the measured peers decide pass/fail.
-          exit 0
+          trap - EXIT
+
+      - name: Tail loadgen logs on failure
+        if: failure()
+        run: tail -n 80 logs/*.log || true
+
+      - name: Upload loadgen diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-log-loadgen-${{ inputs.tag }}-${{ matrix.idx }}
+          path: |
+            results/
+            logs/
+          if-no-files-found: warn
+          retention-days: 14
 
   aggregate:
     name: Aggregate results
