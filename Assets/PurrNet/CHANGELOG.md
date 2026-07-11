@@ -1,3 +1,10 @@
+# [1.20.0-beta.256](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.255...v1.20.0-beta.256) (2026-07-11)
+
+
+### Features
+
+* fragment unreliable packets ([e36dbb6](https://github.com/PurrNet/PurrNet/commit/e36dbb66e16d05f95768ac2ba24eb1962cdaac43))
+
 # [1.20.0-beta.255](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.254...v1.20.0-beta.255) (2026-07-11)
 
 
