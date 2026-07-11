@@ -1,3 +1,11 @@
+# [1.20.0-beta.255](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.254...v1.20.0-beta.255) (2026-07-11)
+
+
+### Bug Fixes
+
+* improve batching ([a2322b0](https://github.com/PurrNet/PurrNet/commit/a2322b06368619d73404582822f9f8638c3a2158))
+* improve RPC batching performance ([50493b0](https://github.com/PurrNet/PurrNet/commit/50493b07122a8a88adcb7c5949e02a067ddfea2c))
+
 # [1.20.0-beta.254](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.253...v1.20.0-beta.254) (2026-07-10)
 
 
