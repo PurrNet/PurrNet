@@ -1,3 +1,10 @@
+# [1.20.0-beta.257](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.256...v1.20.0-beta.257) (2026-07-11)
+
+
+### Bug Fixes
+
+* preserve sequencing across fragmentation ([b014465](https://github.com/PurrNet/PurrNet/commit/b0144651dd7f5e47367edcbed7f13cc18a3b0219))
+
 # [1.20.0-beta.256](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.255...v1.20.0-beta.256) (2026-07-11)
 
 
