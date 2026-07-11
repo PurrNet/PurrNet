@@ -252,7 +252,7 @@ public class BitPackerEdgeCaseTests
         sourcePacker.Dispose();
 
         var fragments = new List<byte[]>();
-        layer.Send(source, 13, fragment => Capture(fragment, fragments));
+        layer.Send(source, 24, fragment => Capture(fragment, fragments));
 
         Assert.Greater(fragments.Count, 1);
 
@@ -277,7 +277,7 @@ public class BitPackerEdgeCaseTests
         var source = new ByteData(payload, 3, 37);
         var fragments = new List<byte[]>();
 
-        layer.Send(source, 13, fragment => Capture(fragment, fragments));
+        layer.Send(source, 24, fragment => Capture(fragment, fragments));
 
         Assert.Greater(fragments.Count, 1);
 
@@ -289,6 +289,286 @@ public class BitPackerEdgeCaseTests
         }
 
         AssertByteDataEquals(source, assembled);
+    }
+
+    [Test]
+    public void FragmentationLayer_MissingFragment_DoesNotDeliverAndCleansUp()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payload = new byte[64];
+        var fragments = new List<byte[]>();
+
+        sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, fragments));
+        Assert.Greater(fragments.Count, 2);
+
+        for (int i = 0; i < fragments.Count; i++)
+        {
+            if (i == 1)
+                continue;
+
+            Assert.IsFalse(receiver.Receive(new ByteData(fragments[i], 0, fragments[i].Length), out _));
+        }
+
+        Assert.AreEqual(1, receiver.pendingCount);
+        Assert.AreEqual(payload.Length, receiver.pendingBytes);
+        receiver.CleanupStale(0);
+        Assert.AreEqual(0, receiver.pendingCount);
+        Assert.AreEqual(0, receiver.pendingBytes);
+    }
+
+    [Test]
+    public void FragmentationLayer_DuplicateFragment_IsIgnored()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payload = new byte[37];
+        var fragments = new List<byte[]>();
+        sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, fragments));
+
+        var first = new ByteData(fragments[0], 0, fragments[0].Length);
+        Assert.IsFalse(receiver.Receive(first, out _));
+        Assert.IsFalse(receiver.Receive(first, out _));
+
+        ByteData assembled = default;
+        for (int i = 1; i < fragments.Count; i++)
+            Assert.AreEqual(i == fragments.Count - 1,
+                receiver.Receive(new ByteData(fragments[i], 0, fragments[i].Length), out assembled));
+
+        AssertByteDataEquals(new ByteData(payload, 0, payload.Length), assembled);
+    }
+
+    [Test]
+    public void FragmentationLayer_SeparatesIdenticalMessageIdsBySender()
+    {
+        using var senderA = new FragmentationLayer();
+        using var senderB = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payloadA = new byte[31];
+        var payloadB = new byte[31];
+        for (int i = 0; i < payloadA.Length; i++)
+        {
+            payloadA[i] = (byte)i;
+            payloadB[i] = (byte)(255 - i);
+        }
+
+        var fragmentsA = new List<byte[]>();
+        var fragmentsB = new List<byte[]>();
+        senderA.Send(new ByteData(payloadA, 0, payloadA.Length), 24, f => Capture(f, fragmentsA));
+        senderB.Send(new ByteData(payloadB, 0, payloadB.Length), 24, f => Capture(f, fragmentsB));
+
+        ByteData assembledA = default;
+        ByteData assembledB = default;
+        for (int i = 0; i < fragmentsA.Count; i++)
+        {
+            bool completedA = receiver.Receive(10, 0, false,
+                new ByteData(fragmentsA[i], 0, fragmentsA[i].Length), out var currentA);
+            if (completedA) assembledA = new ByteData((byte[])currentA.span.ToArray(), 0, currentA.length);
+
+            bool completedB = receiver.Receive(20, 0, false,
+                new ByteData(fragmentsB[i], 0, fragmentsB[i].Length), out var currentB);
+            if (completedB) assembledB = new ByteData((byte[])currentB.span.ToArray(), 0, currentB.length);
+        }
+
+        AssertByteDataEquals(new ByteData(payloadA, 0, payloadA.Length), assembledA);
+        AssertByteDataEquals(new ByteData(payloadB, 0, payloadB.Length), assembledB);
+    }
+
+    [Test]
+    public void FragmentationLayer_SequencedNewerMessageInvalidatesOlderAssembly()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var oldPayload = new byte[35];
+        var newPayload = new byte[35];
+        for (int i = 0; i < newPayload.Length; i++)
+            newPayload[i] = (byte)(i + 100);
+
+        var oldFragments = new List<byte[]>();
+        var newFragments = new List<byte[]>();
+        sender.Send(new ByteData(oldPayload, 0, oldPayload.Length), 24, f => Capture(f, oldFragments));
+        sender.Send(new ByteData(newPayload, 0, newPayload.Length), 24, f => Capture(f, newFragments));
+
+        Assert.IsFalse(receiver.Receive(7, 1, true,
+            new ByteData(oldFragments[0], 0, oldFragments[0].Length), out _));
+        Assert.IsFalse(receiver.Receive(7, 1, true,
+            new ByteData(newFragments[0], 0, newFragments[0].Length), out _));
+
+        for (int i = 1; i < oldFragments.Count; i++)
+            Assert.IsFalse(receiver.Receive(7, 1, true,
+                new ByteData(oldFragments[i], 0, oldFragments[i].Length), out _));
+
+        ByteData assembled = default;
+        for (int i = 1; i < newFragments.Count; i++)
+            Assert.AreEqual(i == newFragments.Count - 1,
+                receiver.Receive(7, 1, true,
+                    new ByteData(newFragments[i], 0, newFragments[i].Length), out assembled));
+
+        AssertByteDataEquals(new ByteData(newPayload, 0, newPayload.Length), assembled);
+        Assert.AreEqual(0, receiver.pendingCount);
+    }
+
+    [Test]
+    public void FragmentationLayer_PerSenderPendingMessagesAreBoundedAndReleasedOnDisconnect()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payload = new byte[37];
+        var fragments = new List<byte[]>();
+
+        for (int message = 0; message < 20; message++)
+        {
+            fragments.Clear();
+            sender.Send(new ByteData(payload, 0, payload.Length), 24, f => Capture(f, fragments));
+            Assert.IsFalse(receiver.Receive(99, 0, false,
+                new ByteData(fragments[0], 0, fragments[0].Length), out _));
+        }
+
+        Assert.AreEqual(16, receiver.pendingCount);
+        Assert.AreEqual(16 * payload.Length, receiver.pendingBytes);
+
+        receiver.RemoveSender(99);
+        Assert.AreEqual(0, receiver.pendingCount);
+        Assert.AreEqual(0, receiver.pendingBytes);
+    }
+
+    [Test]
+    public void FragmentationLayer_GlobalPendingMessageCountIsBoundedAcrossSenders()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payload = new byte[37];
+        var fragments = new List<byte[]>();
+
+        for (int senderId = 0; senderId < 140; senderId++)
+        {
+            fragments.Clear();
+            sender.Send(new ByteData(payload, 0, payload.Length), 24, f => Capture(f, fragments));
+            Assert.IsFalse(receiver.Receive(senderId, 0, false,
+                new ByteData(fragments[0], 0, fragments[0].Length), out _));
+        }
+
+        Assert.AreEqual(128, receiver.pendingCount);
+        Assert.AreEqual(128 * payload.Length, receiver.pendingBytes);
+    }
+
+    [Test]
+    public void FragmentationLayer_MalformedLengthIsRejectedBeforeAllocating()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payload = new byte[37];
+        var fragments = new List<byte[]>();
+        sender.Send(new ByteData(payload, 0, payload.Length), 24, f => Capture(f, fragments));
+
+        byte[] malformed = fragments[0];
+        int invalidLength = FragmentationLayer.MAX_MESSAGE_SIZE + 1;
+        malformed[5] = (byte)invalidLength;
+        malformed[6] = (byte)(invalidLength >> 8);
+        malformed[7] = (byte)(invalidLength >> 16);
+        malformed[8] = (byte)(invalidLength >> 24);
+
+        Assert.IsFalse(receiver.Receive(new ByteData(malformed, 0, malformed.Length), out _));
+        Assert.AreEqual(0, receiver.pendingCount);
+        Assert.AreEqual(0, receiver.pendingBytes);
+    }
+
+    [Test]
+    public void FragmentationLayer_MaximumFragmentCountBoundaryRoundtrips()
+    {
+        const int mtu = 24;
+        int maxLength = FragmentationLayer.GetMaxMessageSize(mtu);
+        var payload = new byte[maxLength];
+        for (int i = 0; i < payload.Length; i++)
+            payload[i] = (byte)(i * 13 + 5);
+
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var fragments = new List<byte[]>();
+        sender.Send(new ByteData(payload, 0, payload.Length), mtu, f => Capture(f, fragments));
+
+        Assert.AreEqual(FragmentationLayer.MAX_FRAGMENTS, fragments.Count);
+        ByteData assembled = default;
+        for (int i = fragments.Count - 1; i >= 0; i--)
+            Assert.AreEqual(i == 0,
+                receiver.Receive(new ByteData(fragments[i], 0, fragments[i].Length), out assembled));
+
+        AssertByteDataEquals(new ByteData(payload, 0, payload.Length), assembled);
+
+        var tooLarge = new byte[maxLength + 1];
+        Assert.Throws<ArgumentException>(() =>
+            sender.Send(new ByteData(tooLarge, 0, tooLarge.Length), mtu, _ => { }));
+    }
+
+    [Test]
+    public void FragmentationLayer_ConcurrentUnorderedMessagesFromOneSenderRemainIndependent()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var payloadA = new byte[41];
+        var payloadB = new byte[41];
+        for (int i = 0; i < payloadA.Length; i++)
+        {
+            payloadA[i] = (byte)(i + 1);
+            payloadB[i] = (byte)(200 - i);
+        }
+
+        var fragmentsA = new List<byte[]>();
+        var fragmentsB = new List<byte[]>();
+        sender.Send(new ByteData(payloadA, 0, payloadA.Length), 24, f => Capture(f, fragmentsA));
+        sender.Send(new ByteData(payloadB, 0, payloadB.Length), 24, f => Capture(f, fragmentsB));
+
+        byte[] assembledA = null;
+        byte[] assembledB = null;
+        for (int i = fragmentsA.Count - 1; i >= 0; i--)
+        {
+            if (receiver.Receive(3, 0, false,
+                    WithOffset(fragmentsA[i], 3), out var currentA))
+                assembledA = currentA.span.ToArray();
+
+            if (receiver.Receive(3, 0, false,
+                    WithOffset(fragmentsB[i], 5), out var currentB))
+                assembledB = currentB.span.ToArray();
+        }
+
+        CollectionAssert.AreEqual(payloadA, assembledA);
+        CollectionAssert.AreEqual(payloadB, assembledB);
+    }
+
+    [Test]
+    public void FragmentationLayer_SequencedMessageIdWrapTreatsZeroAsNewer()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var nextId = typeof(FragmentationLayer).GetField("_nextMessageId",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(nextId);
+        nextId.SetValue(sender, uint.MaxValue);
+
+        var oldPayload = new byte[35];
+        var newPayload = new byte[35];
+        for (int i = 0; i < newPayload.Length; i++)
+            newPayload[i] = (byte)(i + 50);
+
+        var oldFragments = new List<byte[]>();
+        var newFragments = new List<byte[]>();
+        sender.Send(new ByteData(oldPayload, 0, oldPayload.Length), 24, f => Capture(f, oldFragments));
+        sender.Send(new ByteData(newPayload, 0, newPayload.Length), 24, f => Capture(f, newFragments));
+
+        Assert.IsFalse(receiver.Receive(1, 1, true,
+            new ByteData(oldFragments[0], 0, oldFragments[0].Length), out _));
+
+        ByteData assembled = default;
+        for (int i = 0; i < newFragments.Count; i++)
+            Assert.AreEqual(i == newFragments.Count - 1,
+                receiver.Receive(1, 1, true,
+                    new ByteData(newFragments[i], 0, newFragments[i].Length), out assembled));
+
+        for (int i = 1; i < oldFragments.Count; i++)
+            Assert.IsFalse(receiver.Receive(1, 1, true,
+                new ByteData(oldFragments[i], 0, oldFragments[i].Length), out _));
+
+        AssertByteDataEquals(new ByteData(newPayload, 0, newPayload.Length), assembled);
     }
 
     [Test]
@@ -358,6 +638,13 @@ public class BitPackerEdgeCaseTests
         Assert.AreEqual(expected.length, actual.length);
         for (int i = 0; i < expected.length; i++)
             Assert.AreEqual(expected.data[expected.offset + i], actual.data[actual.offset + i], $"Byte {i}");
+    }
+
+    private static ByteData WithOffset(byte[] source, int offset)
+    {
+        var wrapped = new byte[source.Length + offset + 2];
+        Buffer.BlockCopy(source, 0, wrapped, offset, source.Length);
+        return new ByteData(wrapped, offset, source.Length);
     }
 
     private static bool RunServerValidators<T>(ValidatedSyncVar<T> syncVar, T oldValue, T newValue)

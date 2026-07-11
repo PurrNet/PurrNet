@@ -83,7 +83,7 @@ namespace PurrNet
 
         [Tooltip("What to do when a packet exceeds the MTU on an unreliable channel.")]
         [SerializeField]
-        private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Drop;
+        private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Fragment;
 
         [SerializeField, UsedImplicitly] private bool _patchLingeringProcessBug;
 

@@ -8,16 +8,48 @@ using PurrNet.Utils;
 
 namespace PurrNet.Modules
 {
-    public class BroadcastModule : INetworkModule, IDataListener, IPromoteToServerModule
+    public class BroadcastModule : INetworkModule, IDataListener, IConnectionListener, IFixedUpdate,
+        IPromoteToServerModule
     {
         public const int MAX_HEADER_SIZE = 5;
+        const int FRAGMENT_FRAME_PREFIX = 5; // 4-byte type marker + original channel
+        const int FRAGMENT_TIMEOUT_MS = 5000;
+        const int FRAGMENT_CLEANUP_INTERVAL_MS = 500;
+
+        sealed class UnreliableFragmentFrameMarker
+        {
+        }
+
+        static class BroadcastType<T>
+        {
+            public static readonly uint id = ResolveBroadcastTypeId<T>();
+        }
+
+        static readonly uint _fragmentFrameTypeId = Hasher<UnreliableFragmentFrameMarker>.stableHash;
+        static readonly FragmentationLayer.FragmentCallback<FragmentSendState> _sendFragment = SendFragment;
+
         private readonly ITransport _transport;
         private readonly INetworkManager _networkManager;
+        private readonly FragmentationLayer _fragmentation = new FragmentationLayer();
 
         private readonly Dictionary<uint, List<IBroadcastCallback>> _actions =
             new Dictionary<uint, List<IBroadcastCallback>>();
 
         private bool _asServer;
+
+        readonly struct FragmentSendState
+        {
+            public readonly BroadcastModule module;
+            public readonly Connection connection;
+            public readonly Channel channel;
+
+            public FragmentSendState(BroadcastModule module, Connection connection, Channel channel)
+            {
+                this.module = module;
+                this.connection = connection;
+                this.channel = channel;
+            }
+        }
 
         internal event Action<Connection, uint, BitPacker> onRawDataReceived;
 
@@ -34,6 +66,7 @@ namespace PurrNet.Modules
 
         public void Disable(bool asServer)
         {
+            _fragmentation.Reset();
         }
 
         void AssertIsServer(string message)
@@ -45,12 +78,21 @@ namespace PurrNet.Modules
         private static ByteData GetData<T>(T data)
         {
             using var stream = BitPackerPool.Get();
-            var typeId = Hasher.GetStableHashU32<T>();
+            uint typeId = BroadcastType<T>.id;
 
             Packer<uint>.WriteFunc(stream, typeId);
             Packer<T>.WriteFunc(stream, data);
 
             return stream.ToByteData();
+        }
+
+        static uint ResolveBroadcastTypeId<T>()
+        {
+            uint typeId = Hasher.GetStableHashU32<T>();
+            if (typeId == _fragmentFrameTypeId)
+                throw new InvalidOperationException(PurrLogger.FormatMessage(
+                    $"Broadcast type `{typeof(T)}` collides with PurrNet's reserved fragmentation frame id."));
+            return typeId;
         }
 
         static bool ShouldTrackType(Type type)
@@ -86,9 +128,47 @@ namespace PurrNet.Modules
                         $"MTU exceeded by `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}). " +
                         $"Dropping {method} packet.");
                     return false;
+                case MTUExceededBehaviour.Fragment:
+                    int maxMessageSize = FragmentationLayer.GetMaxMessageSize(mtu, FRAGMENT_FRAME_PREFIX);
+                    if (byteData.length > maxMessageSize)
+                    {
+                        PurrLogger.LogError(
+                            $"Cannot fragment `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}). " +
+                            $"Maximum unreliable message size is {maxMessageSize} bytes. Dropping packet.");
+                        return false;
+                    }
+
+                    try
+                    {
+                        var state = new FragmentSendState(this, conn, method);
+                        _fragmentation.Send(byteData, mtu, FRAGMENT_FRAME_PREFIX, state, _sendFragment);
+                    }
+                    catch (ArgumentException e)
+                    {
+                        PurrLogger.LogError(
+                            $"Cannot fragment `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}): {e.Message}");
+                    }
+                    return false;
                 default:
                     return true;
             }
+        }
+
+        static void SendFragment(ByteData fragment, FragmentSendState state)
+        {
+            byte[] data = fragment.data;
+            int offset = fragment.offset;
+            uint marker = _fragmentFrameTypeId;
+            data[offset] = (byte)marker;
+            data[offset + 1] = (byte)(marker >> 8);
+            data[offset + 2] = (byte)(marker >> 16);
+            data[offset + 3] = (byte)(marker >> 24);
+            data[offset + 4] = (byte)state.channel;
+
+            if (state.module._asServer)
+                state.module._transport.SendToClient(state.connection, fragment, state.channel);
+            else
+                state.module._transport.SendToServer(fragment, state.channel);
         }
 
         public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
@@ -177,8 +257,29 @@ namespace PurrNet.Modules
                 if (_asServer != asServer)
                     return;
 
-                using var stream = BitPackerPool.Get(data);
-                var typeId = Packer<uint>.Read(stream);
+                ProcessData(conn, data);
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogException(e);
+            }
+        }
+
+        void ProcessData(Connection conn, ByteData data)
+        {
+            if (data.length < sizeof(uint))
+                return;
+
+            uint typeId = ReadUInt32(data.data, data.offset);
+            if (typeId == _fragmentFrameTypeId)
+            {
+                ProcessFragment(conn, data);
+                return;
+            }
+
+            using (var stream = BitPackerPool.Get(data))
+            {
+                stream.SkipBits(sizeof(uint) * 8);
 
                 if (!Hasher.TryGetType(typeId, out var typeInfo))
                 {
@@ -194,15 +295,52 @@ namespace PurrNet.Modules
                     Statistics.ReceivedBroadcast(typeInfo, data.segment);
 #endif
             }
-            catch (Exception e)
-            {
-                PurrLogger.LogException(e);
-            }
+        }
+
+        static uint ReadUInt32(byte[] data, int offset)
+        {
+            return data[offset] |
+                   ((uint)data[offset + 1] << 8) |
+                   ((uint)data[offset + 2] << 16) |
+                   ((uint)data[offset + 3] << 24);
+        }
+
+        void ProcessFragment(Connection conn, ByteData data)
+        {
+            if (data.length <= FRAGMENT_FRAME_PREFIX)
+                return;
+
+            var channel = (Channel)data.data[data.offset + 4];
+            if (!IsUnreliable(channel))
+                return;
+
+            var fragment = new ByteData(data.data, data.offset + FRAGMENT_FRAME_PREFIX,
+                data.length - FRAGMENT_FRAME_PREFIX);
+            bool sequenced = channel == Channel.UnreliableSequenced;
+            if (_fragmentation.Receive(conn.connectionId, (byte)channel, sequenced, fragment, out var assembled))
+                ProcessData(conn, assembled);
+        }
+
+        public void FixedUpdate()
+        {
+            _fragmentation.CleanupStaleIfDue(FRAGMENT_TIMEOUT_MS, FRAGMENT_CLEANUP_INTERVAL_MS);
+        }
+
+        public void OnConnected(Connection conn, bool asServer)
+        {
+            if (_asServer == asServer)
+                _fragmentation.RemoveSender(conn.connectionId);
+        }
+
+        public void OnDisconnected(Connection conn, bool asServer)
+        {
+            if (_asServer == asServer)
+                _fragmentation.RemoveSender(conn.connectionId);
         }
 
         public void Subscribe<T>(BroadcastDelegate<T> callback)
         {
-            var hash = Hasher.GetStableHashU32(typeof(T));
+            uint hash = BroadcastType<T>.id;
 
             if (_actions.TryGetValue(hash, out var actions))
             {
@@ -218,7 +356,7 @@ namespace PurrNet.Modules
 
         public void Unsubscribe<T>(BroadcastDelegate<T> callback)
         {
-            var hash = Hasher.GetStableHashU32(typeof(T));
+            uint hash = BroadcastType<T>.id;
             if (!_actions.TryGetValue(hash, out var actions))
                 return;
 
@@ -252,6 +390,7 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            _fragmentation.Reset();
             _asServer = true;
         }
 
