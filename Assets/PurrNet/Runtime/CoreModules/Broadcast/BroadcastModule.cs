@@ -112,6 +112,16 @@ namespace PurrNet.Modules
                 return true;
 
             var mtu = _transport.GetMTU(conn, method, _asServer);
+            bool sequenceThroughFragmentation = method == Channel.UnreliableSequenced &&
+                                                _networkManager.mtuExceededBehaviour ==
+                                                MTUExceededBehaviour.Fragment;
+
+            if (sequenceThroughFragmentation)
+            {
+                SendFragmented<T>(conn, byteData, method, mtu, true);
+                return false;
+            }
+
             if (byteData.length <= mtu)
                 return true;
 
@@ -129,28 +139,38 @@ namespace PurrNet.Modules
                         $"Dropping {method} packet.");
                     return false;
                 case MTUExceededBehaviour.Fragment:
-                    int maxMessageSize = FragmentationLayer.GetMaxMessageSize(mtu, FRAGMENT_FRAME_PREFIX);
-                    if (byteData.length > maxMessageSize)
-                    {
-                        PurrLogger.LogError(
-                            $"Cannot fragment `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}). " +
-                            $"Maximum unreliable message size is {maxMessageSize} bytes. Dropping packet.");
-                        return false;
-                    }
-
-                    try
-                    {
-                        var state = new FragmentSendState(this, conn, method);
-                        _fragmentation.Send(byteData, mtu, FRAGMENT_FRAME_PREFIX, state, _sendFragment);
-                    }
-                    catch (ArgumentException e)
-                    {
-                        PurrLogger.LogError(
-                            $"Cannot fragment `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}): {e.Message}");
-                    }
+                    SendFragmented<T>(conn, byteData, method, mtu, false);
                     return false;
                 default:
                     return true;
+            }
+        }
+
+        void SendFragmented<T>(Connection conn, ByteData byteData, Channel method, int mtu, bool sequenced)
+        {
+            int maxMessageSize = sequenced
+                ? FragmentationLayer.GetMaxSequencedMessageSize(mtu, FRAGMENT_FRAME_PREFIX)
+                : FragmentationLayer.GetMaxMessageSize(mtu, FRAGMENT_FRAME_PREFIX);
+            if (byteData.length > maxMessageSize)
+            {
+                PurrLogger.LogError(
+                    $"Cannot fragment `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}). " +
+                    $"Maximum unreliable message size is {maxMessageSize} bytes. Dropping packet.");
+                return;
+            }
+
+            try
+            {
+                var state = new FragmentSendState(this, conn, method);
+                if (sequenced)
+                    _fragmentation.SendSequenced(byteData, mtu, FRAGMENT_FRAME_PREFIX, state, _sendFragment);
+                else
+                    _fragmentation.Send(byteData, mtu, FRAGMENT_FRAME_PREFIX, state, _sendFragment);
+            }
+            catch (ArgumentException e)
+            {
+                PurrLogger.LogError(
+                    $"Cannot fragment `{typeof(T)}` ({byteData.length} bytes, MTU {mtu}): {e.Message}");
             }
         }
 
