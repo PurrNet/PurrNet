@@ -1,7 +1,9 @@
 var classPurrNet_1_1Transports_1_1FragmentationLayer =
 [
     [ "CleanupStale", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#afabcecb90fa4b9997b7f148df8bd3671", null ],
+    [ "CleanupStaleIfDue", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae807bae572f1fa3b13f8d1fee5eed5b8", null ],
     [ "Receive", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#ab83d88e00006c32a27a123abc641444e", null ],
-    [ "Reset", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#a27a13757c82d779c4f7bc816a20a93c3", null ],
-    [ "Send", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#a6a59c3bcc328fe8d7234ef1f26fdd223", null ]
+    [ "Receive", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#acecef5f0f41be032f0456a896f74c01e", null ],
+    [ "Send", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#a6a59c3bcc328fe8d7234ef1f26fdd223", null ],
+    [ "Send< TState >", "classPurrNet_1_1Transports_1_1FragmentationLayer.html#af980c134ee68acc624da1126605ffb5c", null ]
 ];

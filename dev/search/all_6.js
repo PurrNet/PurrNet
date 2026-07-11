@@ -23,7 +23,7 @@ var searchData=
   ['getenumerator_20',['GetEnumerator',['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a80409228024b21dea3c01735f67422ec',1,'PurrNet::Collections::PurrHashSet']]],
   ['gethashcode_21',['GetHashCode',['../structPurrNet_1_1Packing_1_1Half.html#a56b8b965490a529a81e4c8e934a24dff',1,'PurrNet::Packing::Half']]],
   ['getlodtier_22',['GetLODTier',['../classPurrNet_1_1NetworkIdentity.html#ae7f22c47059dbdf11779a30ef80ac9ce',1,'PurrNet::NetworkIdentity']]],
-  ['getmaxmessagesize_23',['GetMaxMessageSize',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#a8bfbc56a852756f9804ce2fdf59505f0',1,'PurrNet::Transports::FragmentationLayer']]],
+  ['getmaxmessagesize_23',['GetMaxMessageSize',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#a2372835de3e10997ed4fed14b09f98c0',1,'PurrNet::Transports::FragmentationLayer']]],
   ['getmodule_3c_20t_20_3e_24',['GetModule&lt; T &gt;',['../classPurrNet_1_1NetworkManager.html#a997afb3100d7e6b303e37ba2b8fd5ca6',1,'PurrNet::NetworkManager']]],
   ['getnearestparent_25',['GetNearestParent',['../classPurrNet_1_1NetworkIdentity.html#aacf2429591c4c7a1a12f7d110674c312',1,'PurrNet::NetworkIdentity']]],
   ['getnextid_26',['GetNextId',['../classPurrNet_1_1NetworkIdentity.html#a6894228bb2810c322ee8dff28353e7ba',1,'PurrNet::NetworkIdentity']]],
