@@ -55,6 +55,7 @@ namespace PurrNet.Editor
             { "house-cat", new Color(0.4f, 0.7f, 1f, 1f) },
             { "royal-british", new Color(0.7f, 0.45f, 0.9f, 1f) },
             { "studio", new Color(0.85f, 0.65f, 0.3f, 1f) },
+            { "admin", new Color(1f, 0.35f, 0.5f, 1f) },
         };
         private static readonly Color _categoryBg = new Color(0.16f, 0.16f, 0.16f, 1f);
         private static readonly Color _selectedAccent = new Color(0.35f, 0.65f, 0.95f, 1f);
@@ -76,6 +77,8 @@ namespace PurrNet.Editor
         private const float CategoryHeaderHeight = 20f;
         private const float CategoryGap = 8f;
         private const float SplitterWidth = 6f;
+        private const string CategoryFoldoutPreferencePrefix = "PurrNet.PackageManager.CategoryExpanded.";
+        private const string PackageWebsiteBaseUrl = "https://purrnet.dev/packages/";
         private static readonly string[] _busyFrames = { "|", "/", "-", "\\" };
 
         [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -101)]
@@ -181,6 +184,7 @@ namespace PurrNet.Editor
                 case "house-cat": return "House Cat";
                 case "royal-british": return "Royal British";
                 case "studio": return "Studio";
+                case "admin": return "Admin Only";
                 case "free": return null;
                 default: return tier;
             }
@@ -229,11 +233,11 @@ namespace PurrNet.Editor
                 normal = { textColor = new Color(0.6f, 0.6f, 0.6f, 1f) }
             };
 
-            _categoryStyle = new GUIStyle(EditorStyles.miniLabel)
+            _categoryStyle = new GUIStyle(EditorStyles.foldout)
             {
                 fontSize = 9,
                 fontStyle = FontStyle.Bold,
-                padding = new RectOffset(10, 4, 3, 3),
+                padding = new RectOffset(14, 4, 3, 3),
                 margin = new RectOffset(0, 0, 0, 0),
                 normal = { textColor = new Color(0.48f, 0.48f, 0.48f, 1f) }
             };
@@ -265,7 +269,11 @@ namespace PurrNet.Editor
                 return;
 
             foreach (var package in _packages.Packages)
+            {
+                if (package.IsHidden)
+                    continue;
                 _sortedPackages.Add((package, FindLatestByChannel(package, "release"), FindLatestByChannel(package, "dev")));
+            }
 
             _sortedPackages.Sort((a, b) => a.pkg.DisplayOrder.CompareTo(b.pkg.DisplayOrder));
 
@@ -438,8 +446,12 @@ namespace PurrNet.Editor
             for (int c = 0; c < _categories.Count; c++)
             {
                 if (c > 0) totalHeight += CategoryGap;
-                int extra = string.Equals(_categories[c].name, "Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-                totalHeight += CategoryHeaderHeight + (_categories[c].count + extra) * ListItemHeight;
+                totalHeight += CategoryHeaderHeight;
+                if (IsCategoryExpanded(_categories[c].name))
+                {
+                    int extra = string.Equals(_categories[c].name, "Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                    totalHeight += (_categories[c].count + extra) * ListItemHeight;
+                }
             }
 
             bool needsScroll = totalHeight > areaRect.height;
@@ -455,13 +467,22 @@ namespace PurrNet.Editor
                     y += CategoryGap;
                 firstCategory = false;
 
-                // Category header — non-interactive delimiter
+                // Category header
                 var catLabel = string.IsNullOrEmpty(categoryName) ? "Other" : categoryName;
                 var catRect = new Rect(0, y, viewRect.width, CategoryHeaderHeight);
 
                 EditorGUI.DrawRect(catRect, _categoryBg);
-                GUI.Label(catRect, catLabel.ToUpperInvariant(), _categoryStyle);
+                bool isExpanded = IsCategoryExpanded(categoryName);
+                bool nextExpanded = GUI.Toggle(catRect, isExpanded, catLabel.ToUpperInvariant(), _categoryStyle);
+                if (nextExpanded != isExpanded)
+                {
+                    SetCategoryExpanded(categoryName, nextExpanded);
+                    isExpanded = nextExpanded;
+                }
                 y += CategoryHeaderHeight;
+
+                if (!isExpanded)
+                    continue;
 
                 // Package items in this category
                 for (int i = startIndex; i < startIndex + count; i++)
@@ -482,6 +503,16 @@ namespace PurrNet.Editor
             }
 
             GUI.EndScrollView();
+        }
+
+        private static bool IsCategoryExpanded(string categoryName)
+        {
+            return EditorPrefs.GetBool(CategoryFoldoutPreferencePrefix + (categoryName ?? string.Empty), true);
+        }
+
+        private static void SetCategoryExpanded(string categoryName, bool isExpanded)
+        {
+            EditorPrefs.SetBool(CategoryFoldoutPreferencePrefix + (categoryName ?? string.Empty), isExpanded);
         }
 
         private void DrawListItem(PackageInfo package, VersionInfo release, VersionInfo dev, int index, Rect itemRect)
@@ -782,6 +813,9 @@ namespace PurrNet.Editor
             GUILayout.Label(package.DisplayName, _detailTitleStyle);
             GUILayout.FlexibleSpace();
 
+            if (package.IsEarlyAccess)
+                DrawBadge("EARLY ACCESS", _updateColor);
+
             if (package.IsExternal && isGitInstall)
             {
                 if (hasGitUpdate)
@@ -834,6 +868,13 @@ namespace PurrNet.Editor
 
             if (!string.IsNullOrEmpty(package.RequiredTier))
                 GUILayout.Label($"Tier: {FormatTierName(package.RequiredTier)}", _smallLabelStyle);
+
+            if (!string.IsNullOrEmpty(package.Slug))
+            {
+                if (GUILayout.Button("View on purrnet.dev", EditorStyles.linkLabel, GUILayout.ExpandWidth(false)))
+                    Application.OpenURL(PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug));
+                EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+            }
 
             if (package.IsExternal && isGitInstall)
             {
@@ -1572,13 +1613,15 @@ namespace PurrNet.Editor
                     {
                         if (gitUrl != null)
                         {
-                            var result = await PurrPackageManagerInstaller.InstallExternal(pkg, gitUrl);
+                            var result = await PurrPackageManagerInstaller.InstallExternalWithDependencies(
+                                apiKey, pkg, gitUrl, _packages.Packages);
                             if (!result.Success)
                                 errors.Add($"{pkg.DisplayName}: {result.Error}");
                         }
                         else if (version != null)
                         {
-                            var result = await PurrPackageManagerInstaller.Install(apiKey, pkg, version);
+                            var result = await PurrPackageManagerInstaller.InstallWithDependencies(
+                                apiKey, pkg, version, _packages.Packages);
                             if (!result.Success)
                                 errors.Add($"{pkg.DisplayName}: {result.Error}");
                         }
@@ -1686,7 +1729,9 @@ namespace PurrNet.Editor
             {
                 try
                 {
-                    var result = await PurrPackageManagerInstaller.InstallExternal(package, gitUrl);
+                    var apiKey = PurrPackageManagerAuth.GetApiKey();
+                    var result = await PurrPackageManagerInstaller.InstallExternalWithDependencies(
+                        apiKey, package, gitUrl, _packages?.Packages);
                     if (!result.Success)
                         EditorUtility.DisplayDialog("Install Failed", result.Error, "Ok");
                     LoadData();
@@ -1738,7 +1783,8 @@ namespace PurrNet.Editor
             try
             {
                 var apiKey = PurrPackageManagerAuth.GetApiKey();
-                var result = await PurrPackageManagerInstaller.Install(apiKey, package, version);
+                var result = await PurrPackageManagerInstaller.InstallWithDependencies(
+                    apiKey, package, version, _packages?.Packages);
 
                 if (!result.Success)
                     EditorUtility.DisplayDialog("Install Failed", result.Error, "Ok");

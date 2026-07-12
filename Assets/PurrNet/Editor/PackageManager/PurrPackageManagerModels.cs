@@ -30,6 +30,9 @@ namespace PurrNet.Editor
         [JsonProperty("id")]
         public string Id { get; private set; }
 
+        [JsonProperty("slug")]
+        public string Slug { get; private set; }
+
         [JsonProperty("display_name")]
         public string DisplayName { get; private set; }
 
@@ -41,6 +44,15 @@ namespace PurrNet.Editor
 
         [JsonProperty("required_tier")]
         public string RequiredTier { get; private set; }
+
+        [JsonProperty("is_hidden")]
+        public bool IsHidden { get; private set; }
+
+        [JsonProperty("is_early_access")]
+        public bool IsEarlyAccess { get; private set; }
+
+        [JsonProperty("dependency_ids")]
+        public string[] DependencyIds { get; private set; }
 
         [JsonProperty("entitled_version")]
         public string EntitledVersion { get; private set; }
@@ -80,11 +92,10 @@ namespace PurrNet.Editor
 
         public string GetUpmPackageName()
         {
-            if (!string.IsNullOrEmpty(UpmPackageName))
-                return UpmPackageName;
-
-            var derived = (DisplayName ?? "unknown").ToLower().Replace(" ", "-");
-            return "com.purrnet." + derived;
+            // The website reads this directly from the repository's package.json.
+            // Never guess: a fabricated manifest key can install the right files under
+            // the wrong package identity and leave Unity's lock file inconsistent.
+            return UpmPackageName;
         }
     }
 

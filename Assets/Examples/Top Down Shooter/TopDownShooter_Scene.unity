@@ -1795,6 +1795,11 @@ MonoBehaviour:
       stringValues: []
     _sendIntervalInSeconds: 0
     _useForceSend: 0
+    _initialSerializedDict:
+      keys: 
+      values: []
+      stringKeys: []
+      stringValues: []
 --- !u!1 &890272209
 GameObject:
   m_ObjectHideFlags: 0
@@ -2552,7 +2557,7 @@ MonoBehaviour:
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 1216416905}
   _tickRate: 20
-  _mtuExceededBehaviour: 1
+  _mtuExceededBehaviour: 2
   _patchLingeringProcessBug: 1
 --- !u!4 &1216416898
 Transform:
@@ -3122,6 +3127,7 @@ MonoBehaviour:
   - target: {fileID: 1353588534}
     activeAsOwner: 1
   _gameObjects: []
+  _applyInLateUpdate: 0
   _toActivate: []
   _toDeactivate: []
   _toEnable: []
@@ -3976,6 +3982,8 @@ MonoBehaviour:
   _ownerAuth: 0
   _space: 0
   _syncParent: 1
+  _syncVelocityRelativeToParent: 0
+  _useParentFramePositionError: 0
   _settingsOverride: {fileID: 0}
   _interpolationDelay: 0.05
   _predictionFactor: 0

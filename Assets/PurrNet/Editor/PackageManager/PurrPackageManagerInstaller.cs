@@ -542,6 +542,8 @@ namespace PurrNet.Editor
         private static (string key, string value)? FindInstalledEntry(PackageInfo package)
         {
             var apiName = package.GetUpmPackageName();
+            if (string.IsNullOrEmpty(apiName))
+                return null;
 
             // Check for embedded package first (Packages/{name}/ takes priority in Unity)
             if (HasEmbeddedPackage(apiName))
@@ -622,6 +624,8 @@ namespace PurrNet.Editor
 
         private static bool HasEmbeddedPackage(string upmName)
         {
+            if (string.IsNullOrEmpty(upmName))
+                return false;
             var path = Path.Combine(PackagesDirectory, upmName);
             if (!Directory.Exists(path))
                 return false;
@@ -716,8 +720,130 @@ namespace PurrNet.Editor
             PurrPackageManagerIO.SyncDirectoryTransactional(sourceDir, targetFolder);
         }
 
+        /// <summary>
+        /// Installs missing dependencies depth-first, then installs the requested package and
+        /// resolves once. Hidden packages are included in the API catalog but never shown in the UI.
+        /// Existing dependencies are left at their installed version.
+        /// </summary>
+        public static async Task<Result<bool>> InstallWithDependencies(string apiKey, PackageInfo package,
+            VersionInfo version, PackageInfo[] catalog)
+        {
+            if (version == null)
+                return Result<bool>.Fail($"'{package?.DisplayName}' has no installable version.");
+
+            var dependencies = await InstallMissingDependencies(apiKey, package, version.Channel, catalog);
+            if (!dependencies.Success)
+                return dependencies;
+
+            return await Install(apiKey, package, version);
+        }
+
+        public static async Task<Result<bool>> InstallExternalWithDependencies(string apiKey, PackageInfo package,
+            string gitUrl, PackageInfo[] catalog)
+        {
+            if (string.IsNullOrEmpty(gitUrl))
+                return Result<bool>.Fail($"'{package?.DisplayName}' has no install URL.");
+
+            var channel = string.Equals(gitUrl, package?.GitInstallUrlDev, StringComparison.Ordinal)
+                ? "dev"
+                : "release";
+            var dependencies = await InstallMissingDependencies(apiKey, package, channel, catalog);
+            if (!dependencies.Success)
+                return dependencies;
+
+            return await InstallExternal(package, gitUrl);
+        }
+
+        private static async Task<Result<bool>> InstallMissingDependencies(string apiKey, PackageInfo root,
+            string preferredChannel, PackageInfo[] catalog)
+        {
+            if (root?.DependencyIds == null || root.DependencyIds.Length == 0)
+                return Result<bool>.Ok(true);
+            if (catalog == null)
+                return Result<bool>.Fail("The package catalog is unavailable; dependencies cannot be resolved.");
+
+            var byId = new Dictionary<string, PackageInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in catalog)
+            {
+                if (item != null && !string.IsNullOrEmpty(item.Id))
+                    byId[item.Id] = item;
+            }
+
+            var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { root.Id };
+            var complete = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            async Task<Result<bool>> Ensure(PackageInfo owner)
+            {
+                if (owner.DependencyIds == null)
+                    return Result<bool>.Ok(true);
+
+                foreach (var dependencyId in owner.DependencyIds)
+                {
+                    if (complete.Contains(dependencyId))
+                        continue;
+                    if (!byId.TryGetValue(dependencyId, out var dependency))
+                        return Result<bool>.Fail($"'{owner.DisplayName}' requires a package that is missing from the catalog ({dependencyId}).");
+                    if (!visiting.Add(dependencyId))
+                        return Result<bool>.Fail($"Circular package dependency detected at '{dependency.DisplayName}'.");
+
+                    var nested = await Ensure(dependency);
+                    if (!nested.Success)
+                        return nested;
+
+                    if (!IsInstalled(dependency))
+                    {
+                        if (!dependency.HasAccess)
+                            return Result<bool>.Fail($"'{owner.DisplayName}' requires '{dependency.DisplayName}', but your account does not have access to it.");
+
+                        Result<bool> installed;
+                        if (dependency.IsExternal)
+                        {
+                            var dependencyUrl = GetGitUrlForChannel(dependency, preferredChannel);
+                            if (string.IsNullOrEmpty(dependencyUrl))
+                                return Result<bool>.Fail($"Dependency '{dependency.DisplayName}' has no install URL.");
+                            installed = await InstallExternal(dependency, dependencyUrl, false);
+                        }
+                        else
+                        {
+                            var dependencyVersion = GetLatestVersionForChannel(dependency, preferredChannel);
+                            if (dependencyVersion == null)
+                                return Result<bool>.Fail($"Dependency '{dependency.DisplayName}' has no installable version.");
+                            installed = await Install(apiKey, dependency, dependencyVersion, false);
+                        }
+
+                        if (!installed.Success)
+                            return Result<bool>.Fail($"Failed to install dependency '{dependency.DisplayName}': {installed.Error}");
+                    }
+
+                    visiting.Remove(dependencyId);
+                    complete.Add(dependencyId);
+                }
+
+                return Result<bool>.Ok(true);
+            }
+
+            return await Ensure(root);
+        }
+
+        private static VersionInfo GetLatestVersionForChannel(PackageInfo package, string preferredChannel)
+        {
+            if (package?.Versions == null || package.Versions.Length == 0)
+                return null;
+
+            foreach (var version in package.Versions)
+            {
+                if (string.Equals(version.Channel, preferredChannel, StringComparison.OrdinalIgnoreCase))
+                    return version;
+            }
+
+            return package.Versions[0];
+        }
+
         public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
+            if (package == null || string.IsNullOrEmpty(package.GetUpmPackageName()))
+                return Result<bool>.Fail($"'{package?.DisplayName ?? "Package"}' has no valid name from package.json. Refresh the package catalog and try again.");
+
             await OperationGate.WaitAsync();
             try
             {
@@ -945,6 +1071,9 @@ namespace PurrNet.Editor
 
         public static async Task<Result<bool>> InstallExternal(PackageInfo package, string gitUrl, bool resolve = true)
         {
+            if (package == null || string.IsNullOrEmpty(package.GetUpmPackageName()))
+                return Result<bool>.Fail($"'{package?.DisplayName ?? "Package"}' has no valid name from package.json. Refresh the package catalog and try again.");
+
             await OperationGate.WaitAsync();
             try
             {

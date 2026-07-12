@@ -74,7 +74,8 @@ namespace PurrNet.Editor
                 var gitUrl = match.GitInstallUrlRelease ?? match.GitInstallUrlDev;
                 if (string.IsNullOrEmpty(gitUrl))
                     return Result<bool>.Fail($"'{match.DisplayName}' is external but has no install URL.");
-                return await PurrPackageManagerInstaller.InstallExternal(match, gitUrl);
+                return await PurrPackageManagerInstaller.InstallExternalWithDependencies(
+                    PurrPackageManagerAuth.GetApiKey(), match, gitUrl, packagesResp.Value.Packages);
             }
 
             if (!match.HasAccess)
@@ -85,7 +86,8 @@ namespace PurrNet.Editor
                 return Result<bool>.Fail($"'{match.DisplayName}' has no installable version.");
 
             var apiKey = PurrPackageManagerAuth.GetApiKey();
-            return await PurrPackageManagerInstaller.Install(apiKey, match, target);
+            return await PurrPackageManagerInstaller.InstallWithDependencies(
+                apiKey, match, target, packagesResp.Value.Packages);
         }
 
         /// <summary>
