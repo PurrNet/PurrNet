@@ -866,13 +866,15 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.BeginVertical();
 
-            if (!string.IsNullOrEmpty(package.RequiredTier))
-                GUILayout.Label($"Tier: {FormatTierName(package.RequiredTier)}", _smallLabelStyle);
+            string tierName = FormatTierName(package.RequiredTier);
+            if (!string.IsNullOrEmpty(tierName))
+                GUILayout.Label($"Tier: {tierName}", _smallLabelStyle);
 
             if (!string.IsNullOrEmpty(package.Slug))
             {
-                if (GUILayout.Button("View on purrnet.dev", EditorStyles.linkLabel, GUILayout.ExpandWidth(false)))
-                    Application.OpenURL(PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug));
+                string packageUrl = PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug);
+                if (GUILayout.Button(packageUrl, EditorStyles.linkLabel, GUILayout.ExpandWidth(false)))
+                    Application.OpenURL(packageUrl);
                 EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
             }
 
