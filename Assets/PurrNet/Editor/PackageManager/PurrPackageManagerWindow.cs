@@ -49,6 +49,13 @@ namespace PurrNet.Editor
         private string _readmeLoadingPackageId;
         private string _readmeError;
         private int _readmeRequestGeneration;
+        private int _documentationTab;
+        private string _releaseNotesCachePackageId;
+        private string _releaseNotesCacheInstalledVersion;
+        private bool _releaseNotesCacheIsInstalled;
+        private VersionInfo[] _releaseNotesCacheVersions;
+        private readonly List<VersionInfo> _relevantReleaseNotes = new();
+        private readonly Dictionary<(string notes, int width), float> _releaseNotesHeightCache = new();
 
         // Cached sorted list rebuilt each frame from _packages
         private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
@@ -95,6 +102,7 @@ namespace PurrNet.Editor
         private const string PackageWebsiteBaseUrl = "https://purrnet.dev/packages/";
         private const string PackageAdminUrl = "https://purrnet.dev/admin/packages";
         private static readonly string[] _busyFrames = { "|", "/", "-", "\\" };
+        private static readonly string[] _documentationTabs = { "README", "Release Notes" };
 
         [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -101)]
         public static void ShowWindow()
@@ -903,6 +911,11 @@ namespace PurrNet.Editor
             _selectedReadmePackageId = null;
             _readmeLoadingPackageId = null;
             _readmeError = null;
+            _documentationTab = 0;
+            _releaseNotesCachePackageId = null;
+            _releaseNotesCacheInstalledVersion = null;
+            _releaseNotesCacheVersions = null;
+            _relevantReleaseNotes.Clear();
             _markdownRenderer?.ClearLayoutCache();
         }
 
@@ -1183,7 +1196,7 @@ namespace PurrNet.Editor
                     EditorGUILayout.EndHorizontal();
                 }
 
-                DrawReadmeSection();
+                DrawDocumentationTabs(package, isInstalled, installedVersion, hasUpdate);
 
                 EditorGUILayout.EndScrollView();
                 return;
@@ -1262,65 +1275,7 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
-            DrawReadmeSection();
-
-            // Changelog (non-external only)
-            if (!package.IsExternal && package.Versions != null && package.Versions.Length > 0)
-            {
-                // Collect relevant versions:
-                // - Not installed: just the latest version
-                // - Installed: only versions newer than the installed one
-                var relevantVersions = new List<VersionInfo>();
-                if (!isInstalled)
-                {
-                    // Show the latest version that has release notes
-                    foreach (var v in package.Versions)
-                    {
-                        if (!string.IsNullOrEmpty(v.ReleaseNotes))
-                        {
-                            relevantVersions.Add(v);
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    // Versions array is newest-first; collect until we hit the installed version
-                    foreach (var v in package.Versions)
-                    {
-                        if (v.Version == installedVersion)
-                            break;
-                        if (!string.IsNullOrEmpty(v.ReleaseNotes))
-                            relevantVersions.Add(v);
-                    }
-                }
-
-                if (relevantVersions.Count > 0)
-                {
-                    EditorGUILayout.Space(12);
-                    EditorGUILayout.BeginHorizontal();
-                    GUILayout.Space(8);
-                    EditorGUILayout.BeginVertical();
-                    DrawSeparator();
-                    EditorGUILayout.Space(4);
-
-                    var ptitle = isInstalled && hasUpdate
-                        ? $"What's New ({relevantVersions.Count} update{(relevantVersions.Count > 1 ? "s" : "")})"
-                        : "Release Notes";
-                    GUILayout.Label(ptitle, _detailTitleStyle);
-                    EditorGUILayout.Space(4);
-
-                    foreach (var v in relevantVersions)
-                    {
-                        DrawReleaseNotesText(v.ReleaseNotes);
-                        EditorGUILayout.Space(8);
-                    }
-
-                    EditorGUILayout.EndVertical();
-                    GUILayout.Space(8);
-                    EditorGUILayout.EndHorizontal();
-                }
-            }
+            DrawDocumentationTabs(package, isInstalled, installedVersion, hasUpdate);
 
             EditorGUILayout.Space(12);
             EditorGUILayout.EndScrollView();
@@ -1411,7 +1366,8 @@ namespace PurrNet.Editor
                     error.IndexOf("no readme", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
-        private void DrawReadmeSection()
+        private void DrawDocumentationTabs(PackageInfo package, bool isInstalled,
+            string installedVersion, bool hasUpdate)
         {
             EditorGUILayout.Space(12);
             EditorGUILayout.BeginHorizontal();
@@ -1420,18 +1376,34 @@ namespace PurrNet.Editor
             DrawSeparator();
             EditorGUILayout.Space(4);
 
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("README", _detailTitleStyle);
-            GUILayout.FlexibleSpace();
+            _documentationTab = GUILayout.Toolbar(_documentationTab, _documentationTabs,
+                EditorStyles.toolbarButton, GUILayout.Height(24));
+            EditorGUILayout.Space(6);
+
+            if (_documentationTab == 0)
+                DrawReadmeTab();
+            else
+                DrawReleaseNotesTab(GetRelevantReleaseNotes(package, isInstalled, installedVersion),
+                    isInstalled, hasUpdate);
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawReadmeTab()
+        {
             string sourceUrl = PurrMarkdownUrl.ResolveLink(null, _selectedReadme?.SourceUrl);
             if (!string.IsNullOrEmpty(sourceUrl))
             {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
                 if (GUILayout.Button("View source", EditorStyles.linkLabel, GUILayout.ExpandWidth(false)))
                     Application.OpenURL(sourceUrl);
                 EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.Space(2);
             }
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.Space(4);
 
             if (!string.IsNullOrEmpty(_readmeLoadingPackageId))
             {
@@ -1449,10 +1421,77 @@ namespace PurrNet.Editor
                 _markdownRenderer.Draw(_selectedReadmeDocument, contentWidth,
                     _detailScrollPosition.y, viewportHeight);
             }
+        }
 
-            EditorGUILayout.EndVertical();
-            GUILayout.Space(8);
-            EditorGUILayout.EndHorizontal();
+        private void DrawReleaseNotesTab(IReadOnlyList<VersionInfo> relevantVersions,
+            bool isInstalled, bool hasUpdate)
+        {
+            if (relevantVersions.Count == 0)
+            {
+                GUILayout.Label("No release notes available.", EditorStyles.centeredGreyMiniLabel);
+                return;
+            }
+
+            string title = isInstalled && hasUpdate
+                ? $"What's New ({relevantVersions.Count} update{(relevantVersions.Count > 1 ? "s" : "")})"
+                : "Latest Release Notes";
+            GUILayout.Label(title, _detailTitleStyle);
+            EditorGUILayout.Space(4);
+            float contentWidth = Mathf.Max(40f,
+                position.width - _splitWidth - SplitterWidth - 34f);
+
+            foreach (var version in relevantVersions)
+            {
+                if (!string.IsNullOrEmpty(version.Version))
+                    GUILayout.Label($"v{version.Version}", EditorStyles.boldLabel);
+                DrawReleaseNotesText(version.ReleaseNotes, contentWidth);
+                EditorGUILayout.Space(8);
+            }
+        }
+
+        private IReadOnlyList<VersionInfo> GetRelevantReleaseNotes(PackageInfo package,
+            bool isInstalled, string installedVersion)
+        {
+            if (_releaseNotesCachePackageId == package?.Id &&
+                _releaseNotesCacheInstalledVersion == installedVersion &&
+                _releaseNotesCacheIsInstalled == isInstalled &&
+                ReferenceEquals(_releaseNotesCacheVersions, package?.Versions))
+                return _relevantReleaseNotes;
+
+            _releaseNotesCachePackageId = package?.Id;
+            _releaseNotesCacheInstalledVersion = installedVersion;
+            _releaseNotesCacheIsInstalled = isInstalled;
+            _releaseNotesCacheVersions = package?.Versions;
+            _relevantReleaseNotes.Clear();
+
+            if (package?.IsExternal == true || package?.Versions == null)
+                return _relevantReleaseNotes;
+
+            if (!isInstalled)
+            {
+                // For an uninstalled package, the newest release note is the useful summary.
+                foreach (var version in package.Versions)
+                {
+                    if (!string.IsNullOrEmpty(version.ReleaseNotes))
+                    {
+                        _relevantReleaseNotes.Add(version);
+                        break;
+                    }
+                }
+                return _relevantReleaseNotes;
+            }
+
+            // Versions are newest-first. Installed packages show only notes newer than
+            // the installed version, matching the previous "What's New" behavior.
+            foreach (var version in package.Versions)
+            {
+                if (version.Version == installedVersion)
+                    break;
+                if (!string.IsNullOrEmpty(version.ReleaseNotes))
+                    _relevantReleaseNotes.Add(version);
+            }
+
+            return _relevantReleaseNotes;
         }
 
         private void DrawVersionDropdown(string channelLabel, List<VersionInfo> versions,
@@ -1617,7 +1656,7 @@ namespace PurrNet.Editor
         // the source notes are immutable, so memoize the rendered output.
         private static readonly Dictionary<string, string> _renderedNotesCache = new();
 
-        private void DrawReleaseNotesText(string notes)
+        private void DrawReleaseNotesText(string notes, float availableWidth)
         {
             if (!_renderedNotesCache.TryGetValue(notes ?? "", out var rendered))
             {
@@ -1625,9 +1664,17 @@ namespace PurrNet.Editor
                 _renderedNotesCache[notes ?? ""] = rendered;
             }
             var content = new GUIContent(rendered);
-            var width = EditorGUIUtility.currentViewWidth - 40;
-            var height = _releaseNotesStyle.CalcHeight(content, width);
-            var rect = GUILayoutUtility.GetRect(content, _releaseNotesStyle, GUILayout.Height(height));
+            int width = Mathf.Max(40, Mathf.FloorToInt(availableWidth / 8f) * 8);
+            var heightKey = (notes ?? "", width);
+            if (!_releaseNotesHeightCache.TryGetValue(heightKey, out float height))
+            {
+                if (_releaseNotesHeightCache.Count >= 512)
+                    _releaseNotesHeightCache.Clear();
+                height = _releaseNotesStyle.CalcHeight(content, width);
+                _releaseNotesHeightCache[heightKey] = height;
+            }
+            var rect = GUILayoutUtility.GetRect(content, _releaseNotesStyle,
+                GUILayout.ExpandWidth(true), GUILayout.Height(height));
             EditorGUI.SelectableLabel(rect, rendered, _releaseNotesStyle);
 
             // Clear the select-all that happens on first focus
