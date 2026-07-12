@@ -33,6 +33,12 @@ namespace PurrNet.Editor
         [JsonProperty("slug")]
         public string Slug { get; private set; }
 
+        [JsonProperty("github_owner")]
+        public string GithubOwner { get; private set; }
+
+        [JsonProperty("github_repo")]
+        public string GithubRepo { get; private set; }
+
         [JsonProperty("display_name")]
         public string DisplayName { get; private set; }
 
@@ -169,11 +175,53 @@ namespace PurrNet.Editor
 
         [JsonProperty("avatar_url")]
         public string AvatarUrl { get; private set; }
+
+        [JsonProperty("is_admin")]
+        public bool IsAdmin { get; private set; }
+    }
+
+    public class PackageRegistrationRequest
+    {
+        [JsonProperty("github_owner")]
+        public string GithubOwner { get; }
+
+        [JsonProperty("github_repo")]
+        public string GithubRepo { get; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; }
+
+        [JsonProperty("required_tier")]
+        public string RequiredTier { get; }
+
+        [JsonProperty("is_early_access")]
+        public bool IsEarlyAccess { get; }
+
+        public PackageRegistrationRequest(string githubOwner, string githubRepo, string displayName)
+        {
+            GithubOwner = githubOwner;
+            GithubRepo = githubRepo;
+            DisplayName = displayName;
+            RequiredTier = "admin";
+            IsEarlyAccess = true;
+        }
+    }
+
+    public class PackageRegistrationResponse
+    {
+        [JsonProperty("success")]
+        public bool Success { get; private set; }
+
+        [JsonProperty("package")]
+        public PackageInfo Package { get; private set; }
     }
 
     public class ApiError
     {
         [JsonProperty("error")]
         public string Error { get; private set; }
+
+        [JsonProperty("message")]
+        public string Message { get; private set; }
     }
 }

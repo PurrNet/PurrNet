@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -29,8 +30,12 @@ namespace PurrNet.Editor
         private bool _releasePopupTouched;
         private bool _devPopupTouched;
         private bool _isUpdatingAll;
+        private bool _isRegisteringRepository;
         private int _updatableCount;
         private readonly HashSet<string> _activePackageOperations = new();
+        private string _currentRepoOwner;
+        private string _currentRepoName;
+        private string _currentRepoDetectionError;
 
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
@@ -79,6 +84,7 @@ namespace PurrNet.Editor
         private const float SplitterWidth = 6f;
         private const string CategoryFoldoutPreferencePrefix = "PurrNet.PackageManager.CategoryExpanded.";
         private const string PackageWebsiteBaseUrl = "https://purrnet.dev/packages/";
+        private const string PackageAdminUrl = "https://purrnet.dev/admin/packages";
         private static readonly string[] _busyFrames = { "|", "/", "-", "\\" };
 
         [MenuItem("Tools/PurrNet/PurrNet Packages %#&p", false, -101)]
@@ -102,6 +108,7 @@ namespace PurrNet.Editor
             _logo = Resources.Load<Texture2D>("purricon");
             _userProfile = new PurrUserProfile(Repaint);
             _userProfile.Refresh();
+            DetectCurrentRepository();
             PurrPackageManagerAuth.onAuthChanged += onAuthChanged;
             LoadData();
         }
@@ -415,8 +422,28 @@ namespace PurrNet.Editor
             }
             GUI.enabled = true;
 
+            float profileRight = refreshRect.x - 4;
+            if (_userProfile?.Info?.IsAdmin == true)
+            {
+                var registeredPackage = FindCurrentRepositoryPackage();
+                var repoRect = new Rect(refreshRect.x - 104, headerRect.y + 10, 100, 22);
+                string repoLabel = registeredPackage != null
+                    ? "Manage Repo"
+                    : (_isRegisteringRepository ? BusyLabel("Registering") : "Register Repo");
+                GUI.enabled = !_isRegisteringRepository;
+                if (GUI.Button(repoRect, repoLabel))
+                {
+                    if (registeredPackage != null)
+                        OpenPackageAdmin(registeredPackage.Id);
+                    else
+                        RegisterCurrentRepository();
+                }
+                GUI.enabled = true;
+                profileRight = repoRect.x - 4;
+            }
+
             // User profile (avatar + username + login/logout)
-            var profileAnchor = new Rect(headerRect.x, headerRect.y + 10, refreshRect.x - 4 - headerRect.x, 22);
+            var profileAnchor = new Rect(headerRect.x, headerRect.y + 10, profileRight - headerRect.x, 22);
             if (_userProfile != null)
             {
                 float profileWidth = _userProfile.DrawProfileBar(profileAnchor);
@@ -434,6 +461,158 @@ namespace PurrNet.Editor
                     GUI.enabled = true;
                 }
             }
+        }
+
+        private void DetectCurrentRepository()
+        {
+            _currentRepoOwner = null;
+            _currentRepoName = null;
+            _currentRepoDetectionError = null;
+
+            try
+            {
+                string projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Application.dataPath;
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = "config --get remote.origin.url",
+                    WorkingDirectory = projectRoot,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = new System.Diagnostics.Process { StartInfo = startInfo };
+                if (!process.Start())
+                {
+                    _currentRepoDetectionError = "Could not start Git to inspect this repository.";
+                    return;
+                }
+
+                if (!process.WaitForExit(3000))
+                {
+                    process.Kill();
+                    _currentRepoDetectionError = "Git timed out while reading the origin remote.";
+                    return;
+                }
+
+                string remote = process.StandardOutput.ReadToEnd().Trim();
+                if (process.ExitCode != 0 || string.IsNullOrEmpty(remote))
+                {
+                    _currentRepoDetectionError = "This Unity project has no Git origin remote.";
+                    return;
+                }
+
+                var match = Regex.Match(remote, @"github\.com[/:](?<owner>[^/\s]+?)/(?<repo>[^/#\s]+)", RegexOptions.IgnoreCase);
+                if (!match.Success)
+                {
+                    _currentRepoDetectionError = $"The Git origin is not a GitHub repository:\n{remote}";
+                    return;
+                }
+
+                _currentRepoOwner = match.Groups["owner"].Value;
+                _currentRepoName = Regex.Replace(match.Groups["repo"].Value, @"\.git$", string.Empty, RegexOptions.IgnoreCase);
+            }
+            catch (Exception e)
+            {
+                _currentRepoDetectionError = $"Could not inspect the current Git repository:\n{e.Message}";
+            }
+        }
+
+        private PackageInfo FindCurrentRepositoryPackage()
+        {
+            if (string.IsNullOrEmpty(_currentRepoOwner) || string.IsNullOrEmpty(_currentRepoName) || _packages?.Packages == null)
+                return null;
+
+            foreach (var package in _packages.Packages)
+            {
+                if (string.Equals(package.GithubOwner, _currentRepoOwner, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(package.GithubRepo, _currentRepoName, StringComparison.OrdinalIgnoreCase))
+                    return package;
+            }
+
+            return null;
+        }
+
+        private async void RegisterCurrentRepository()
+        {
+            if (_isRegisteringRepository)
+                return;
+
+            if (string.IsNullOrEmpty(_currentRepoOwner) || string.IsNullOrEmpty(_currentRepoName))
+            {
+                EditorUtility.DisplayDialog("Repository Not Found",
+                    _currentRepoDetectionError ?? "Could not identify this project's GitHub origin.", "Ok");
+                return;
+            }
+
+            string apiKey = PurrPackageManagerAuth.GetApiKey();
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                EditorUtility.DisplayDialog("Login Required", "Log in before registering a package.", "Ok");
+                return;
+            }
+
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Register Current Repository",
+                $"Register {_currentRepoOwner}/{_currentRepoName} as a PurrNet package?\n\n" +
+                "It will start as Admin Only and Early Access so it is safe for internal testing. " +
+                "The remote repository must contain a discoverable Unity package.json.",
+                "Register",
+                "Cancel");
+            if (!confirmed)
+                return;
+
+            _isRegisteringRepository = true;
+            Repaint();
+            try
+            {
+                var registration = new PackageRegistrationRequest(_currentRepoOwner, _currentRepoName, _currentRepoName);
+                var result = await PurrPackageManagerAPI.RegisterPackage(apiKey, registration);
+                if (!result.Success)
+                {
+                    bool alreadyRegistered = result.Error?.IndexOf("already exists", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (alreadyRegistered && EditorUtility.DisplayDialog("Repository Already Registered",
+                            $"{_currentRepoOwner}/{_currentRepoName} is already registered.", "Manage on Website", "Close"))
+                    {
+                        Application.OpenURL(PackageAdminUrl);
+                    }
+                    else if (!alreadyRegistered)
+                    {
+                        EditorUtility.DisplayDialog("Registration Failed", result.Error ?? "Unknown error", "Ok");
+                    }
+                    return;
+                }
+
+                PurrPackageManagerCache.Invalidate();
+                LoadData();
+
+                string packageId = result.Value?.Package?.Id;
+                if (EditorUtility.DisplayDialog("Package Registered",
+                        $"{_currentRepoOwner}/{_currentRepoName} is now registered as Admin Only and Early Access.",
+                        "Manage on Website", "Done"))
+                {
+                    OpenPackageAdmin(packageId);
+                }
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Registration Failed", e.Message, "Ok");
+            }
+            finally
+            {
+                _isRegisteringRepository = false;
+                Repaint();
+            }
+        }
+
+        private static void OpenPackageAdmin(string packageId)
+        {
+            string url = string.IsNullOrEmpty(packageId)
+                ? PackageAdminUrl
+                : $"{PackageAdminUrl}?edit={Uri.EscapeDataString(packageId)}";
+            Application.OpenURL(url);
         }
 
 
