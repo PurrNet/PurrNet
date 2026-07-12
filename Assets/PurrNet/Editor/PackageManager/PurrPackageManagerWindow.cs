@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -40,6 +41,14 @@ namespace PurrNet.Editor
         private PackagesResponse _packages;
         private EntitlementsResponse _entitlements;
         private PurrUserProfile _userProfile;
+        [NonSerialized] private PurrMarkdownImageCache _markdownImageCache;
+        [NonSerialized] private PurrMarkdownRenderer _markdownRenderer;
+        private PackageReadmeResponse _selectedReadme;
+        private PurrMarkdownDocument _selectedReadmeDocument;
+        private string _selectedReadmePackageId;
+        private string _readmeLoadingPackageId;
+        private string _readmeError;
+        private int _readmeRequestGeneration;
 
         // Cached sorted list rebuilt each frame from _packages
         private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
@@ -106,10 +115,14 @@ namespace PurrNet.Editor
         {
             wantsMouseMove = true;
             _logo = Resources.Load<Texture2D>("purricon");
+            _markdownImageCache = new PurrMarkdownImageCache();
+            _markdownImageCache.Changed += Repaint;
+            _markdownRenderer = new PurrMarkdownRenderer(_markdownImageCache);
             _userProfile = new PurrUserProfile(Repaint);
             _userProfile.Refresh();
             DetectCurrentRepository();
             PurrPackageManagerAuth.onAuthChanged += onAuthChanged;
+            EditorGUI.hyperLinkClicked += OnMarkdownHyperLinkClicked;
             LoadData();
         }
 
@@ -121,7 +134,27 @@ namespace PurrNet.Editor
 
         private void OnDisable()
         {
+            _readmeRequestGeneration++;
             PurrPackageManagerAuth.onAuthChanged -= onAuthChanged;
+            EditorGUI.hyperLinkClicked -= OnMarkdownHyperLinkClicked;
+            if (_markdownImageCache != null)
+            {
+                _markdownImageCache.Changed -= Repaint;
+                _markdownImageCache.Dispose();
+                _markdownImageCache = null;
+            }
+            _markdownRenderer = null;
+        }
+
+        private void OnMarkdownHyperLinkClicked(EditorWindow source, HyperLinkClickedEventArgs args)
+        {
+            if (source != this || args?.hyperLinkData == null ||
+                !args.hyperLinkData.TryGetValue("href", out string href))
+                return;
+
+            string safeUrl = PurrMarkdownUrl.ResolveLink(null, href);
+            if (!string.IsNullOrEmpty(safeUrl))
+                Application.OpenURL(safeUrl);
         }
 
         private void onAuthChanged()
@@ -130,6 +163,7 @@ namespace PurrNet.Editor
             _entitlements = null;
             _errorMessage = null;
             _userProfile?.Refresh();
+            ResetSelectedReadme();
             LoadData();
             Repaint();
         }
@@ -418,6 +452,7 @@ namespace PurrNet.Editor
             {
                 PurrPackageManagerCache.Invalidate();
                 _userProfile?.Refresh();
+                ResetSelectedReadme();
                 LoadData();
             }
             GUI.enabled = true;
@@ -797,12 +832,7 @@ namespace PurrNet.Editor
             // Click to select — at the end so nothing above can interfere
             if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
             {
-                _selectedIndex = index;
-                _releasePopupIndex = -1;
-                _devPopupIndex = -1;
-                _releasePopupTouched = false;
-                _devPopupTouched = false;
-                GUI.FocusControl(null);
+                SelectListEntry(index);
                 Event.current.Use();
                 Repaint();
             }
@@ -841,18 +871,39 @@ namespace PurrNet.Editor
 
             if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
             {
-                _selectedIndex = StudiosEntryIndex;
-                _releasePopupIndex = -1;
-                _devPopupIndex = -1;
-                _releasePopupTouched = false;
-                _devPopupTouched = false;
-                GUI.FocusControl(null);
+                SelectListEntry(StudiosEntryIndex);
                 Event.current.Use();
                 Repaint();
             }
 
             if (isHover && Event.current.type == EventType.Repaint)
                 Repaint();
+        }
+
+        private void SelectListEntry(int index)
+        {
+            if (_selectedIndex == index)
+                return;
+
+            _selectedIndex = index;
+            _detailScrollPosition = Vector2.zero;
+            _releasePopupIndex = -1;
+            _devPopupIndex = -1;
+            _releasePopupTouched = false;
+            _devPopupTouched = false;
+            ResetSelectedReadme();
+            GUI.FocusControl(null);
+        }
+
+        private void ResetSelectedReadme()
+        {
+            _readmeRequestGeneration++;
+            _selectedReadme = null;
+            _selectedReadmeDocument = null;
+            _selectedReadmePackageId = null;
+            _readmeLoadingPackageId = null;
+            _readmeError = null;
+            _markdownRenderer?.ClearLayoutCache();
         }
 
         private void DrawStudiosDetail()
@@ -965,6 +1016,7 @@ namespace PurrNet.Editor
             }
 
             var (package, release, dev) = _sortedPackages[_selectedIndex];
+            EnsureSelectedReadme(package);
             var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(package);
             bool isInstalled = PurrPackageManagerInstaller.IsInstalled(package);
             bool isGitInstall = isInstalled && PurrPackageManagerInstaller.IsInstalledViaGit(package);
@@ -1131,6 +1183,8 @@ namespace PurrNet.Editor
                     EditorGUILayout.EndHorizontal();
                 }
 
+                DrawReadmeSection();
+
                 EditorGUILayout.EndScrollView();
                 return;
             }
@@ -1208,6 +1262,8 @@ namespace PurrNet.Editor
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
+            DrawReadmeSection();
+
             // Changelog (non-external only)
             if (!package.IsExternal && package.Versions != null && package.Versions.Length > 0)
             {
@@ -1268,6 +1324,135 @@ namespace PurrNet.Editor
 
             EditorGUILayout.Space(12);
             EditorGUILayout.EndScrollView();
+        }
+
+        private void EnsureSelectedReadme(PackageInfo package)
+        {
+            string packageId = package?.Id;
+            if (string.IsNullOrEmpty(packageId) || _selectedReadmePackageId == packageId ||
+                _readmeLoadingPackageId == packageId)
+                return;
+
+            int generation = ++_readmeRequestGeneration;
+            _selectedReadmePackageId = packageId;
+            _selectedReadme = null;
+            _selectedReadmeDocument = null;
+            _readmeError = null;
+            _readmeLoadingPackageId = packageId;
+            _markdownRenderer?.ClearLayoutCache();
+            LoadSelectedReadme(packageId, generation);
+        }
+
+        private async void LoadSelectedReadme(string packageId, int generation)
+        {
+            try
+            {
+                PackageReadmeResponse readme;
+                if (!PurrPackageManagerCache.TryGetPackageReadme(packageId, out readme))
+                {
+                    var result = await PurrPackageManagerAPI.GetPackageReadme(
+                        PurrPackageManagerAuth.GetApiKey(), packageId);
+                    if (!result.Success)
+                    {
+                        if (generation == _readmeRequestGeneration && _selectedReadmePackageId == packageId)
+                        {
+                            _readmeError = IsMissingReadmeError(result.Error)
+                                ? "No README available for this package."
+                                : $"README unavailable: {result.Error}";
+                            _readmeLoadingPackageId = null;
+                            Repaint();
+                        }
+                        return;
+                    }
+
+                    readme = result.Value;
+                    PurrPackageManagerCache.SetPackageReadme(packageId, readme);
+                }
+
+                if (generation != _readmeRequestGeneration || _selectedReadmePackageId != packageId)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(readme?.Markdown))
+                {
+                    _readmeError = "No README available for this package.";
+                    _readmeLoadingPackageId = null;
+                    Repaint();
+                    return;
+                }
+
+                var document = await Task.Run(() => PurrMarkdownParser.Parse(
+                    readme.Markdown, readme.BaseUrl, readme.SourceUrl));
+
+                if (generation != _readmeRequestGeneration || _selectedReadmePackageId != packageId)
+                    return;
+
+                _selectedReadme = readme;
+                _selectedReadmeDocument = document;
+                _readmeLoadingPackageId = null;
+                _markdownRenderer?.ClearLayoutCache();
+                Repaint();
+            }
+            catch (Exception exception)
+            {
+                if (generation != _readmeRequestGeneration || _selectedReadmePackageId != packageId)
+                    return;
+
+                _readmeError = $"README unavailable: {exception.Message}";
+                _readmeLoadingPackageId = null;
+                Repaint();
+            }
+        }
+
+        private static bool IsMissingReadmeError(string error)
+        {
+            return !string.IsNullOrEmpty(error) &&
+                   (error.IndexOf("404", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    error.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    error.IndexOf("no readme", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private void DrawReadmeSection()
+        {
+            EditorGUILayout.Space(12);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+            DrawSeparator();
+            EditorGUILayout.Space(4);
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("README", _detailTitleStyle);
+            GUILayout.FlexibleSpace();
+            string sourceUrl = PurrMarkdownUrl.ResolveLink(null, _selectedReadme?.SourceUrl);
+            if (!string.IsNullOrEmpty(sourceUrl))
+            {
+                if (GUILayout.Button("View source", EditorStyles.linkLabel, GUILayout.ExpandWidth(false)))
+                    Application.OpenURL(sourceUrl);
+                EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.Space(4);
+
+            if (!string.IsNullOrEmpty(_readmeLoadingPackageId))
+            {
+                GUILayout.Label("Loading README…", EditorStyles.centeredGreyMiniLabel);
+            }
+            else if (!string.IsNullOrEmpty(_readmeError))
+            {
+                EditorGUILayout.HelpBox(_readmeError, MessageType.Info);
+            }
+            else if (_selectedReadmeDocument != null && _markdownRenderer != null)
+            {
+                float contentWidth = Mathf.Max(40f,
+                    position.width - _splitWidth - SplitterWidth - 34f);
+                float viewportHeight = Mathf.Max(100f, position.height - 48f);
+                _markdownRenderer.Draw(_selectedReadmeDocument, contentWidth,
+                    _detailScrollPosition.y, viewportHeight);
+            }
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawVersionDropdown(string channelLabel, List<VersionInfo> versions,

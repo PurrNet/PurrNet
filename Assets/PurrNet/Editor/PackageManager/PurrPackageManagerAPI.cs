@@ -15,6 +15,15 @@ namespace PurrNet.Editor
             return await SendRequest<PackagesResponse>($"{BaseUrl}/packages", apiKey);
         }
 
+        public static async Task<Result<PackageReadmeResponse>> GetPackageReadme(string apiKey, string packageId)
+        {
+            if (string.IsNullOrWhiteSpace(packageId))
+                return Result<PackageReadmeResponse>.Fail("Package ID is required.");
+
+            return await SendRequest<PackageReadmeResponse>(
+                $"{BaseUrl}/packages/{Uri.EscapeDataString(packageId)}/readme", apiKey);
+        }
+
         public static async Task<Result<EntitlementsResponse>> GetEntitlements(string apiKey)
         {
             return await SendRequest<EntitlementsResponse>($"{BaseUrl}/entitlements", apiKey);

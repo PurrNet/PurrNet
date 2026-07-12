@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 
 namespace PurrNet.Editor
@@ -10,6 +11,13 @@ namespace PurrNet.Editor
         private static EntitlementsResponse _entitlements;
         private static double _packagesTime;
         private static double _entitlementsTime;
+        private static readonly Dictionary<string, ReadmeCacheEntry> _readmes = new();
+
+        private sealed class ReadmeCacheEntry
+        {
+            public PackageReadmeResponse Response;
+            public double Time;
+        }
 
         public static bool TryGetPackages(out PackagesResponse packages)
         {
@@ -47,10 +55,39 @@ namespace PurrNet.Editor
             _entitlementsTime = EditorApplication.timeSinceStartup;
         }
 
+        public static bool TryGetPackageReadme(string packageId, out PackageReadmeResponse readme)
+        {
+            if (!string.IsNullOrEmpty(packageId) && _readmes.TryGetValue(packageId, out var entry) &&
+                EditorApplication.timeSinceStartup - entry.Time < TTL)
+            {
+                readme = entry.Response;
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(packageId))
+                _readmes.Remove(packageId);
+
+            readme = null;
+            return false;
+        }
+
+        public static void SetPackageReadme(string packageId, PackageReadmeResponse readme)
+        {
+            if (string.IsNullOrEmpty(packageId))
+                return;
+
+            _readmes[packageId] = new ReadmeCacheEntry
+            {
+                Response = readme,
+                Time = EditorApplication.timeSinceStartup
+            };
+        }
+
         public static void Invalidate()
         {
             _packages = null;
             _entitlements = null;
+            _readmes.Clear();
         }
     }
 }

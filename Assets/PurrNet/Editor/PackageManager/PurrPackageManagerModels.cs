@@ -105,6 +105,21 @@ namespace PurrNet.Editor
         }
     }
 
+    public class PackageReadmeResponse
+    {
+        [JsonProperty("readme_markdown")]
+        public string Markdown { get; private set; }
+
+        [JsonProperty("readme_source_url")]
+        public string SourceUrl { get; private set; }
+
+        [JsonProperty("readme_base_url")]
+        public string BaseUrl { get; private set; }
+
+        [JsonProperty("readme_revision")]
+        public string Revision { get; private set; }
+    }
+
     public class VersionInfo
     {
         [JsonProperty("id")]
