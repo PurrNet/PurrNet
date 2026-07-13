@@ -261,6 +261,7 @@ namespace PurrNet.Packing
                 }
 
                 areEqual = false;
+                WriteBit(false);
                 Packer<T>.Write(this, newValue);
                 return false;
             }
@@ -268,9 +269,37 @@ namespace PurrNet.Packing
             if (newValue == null)
             {
                 areEqual = false;
-                Packer<T>.Write(this, default);
+                WriteBit(true);
                 return false;
             }
+
+            WriteBit(false);
+            return true;
+        }
+
+        /// <summary>
+        /// Reads the class null marker emitted by a generated delta writer. When the baseline is null,
+        /// the remainder is a full Packer payload; otherwise the caller continues reading field deltas.
+        /// </summary>
+        [UsedByIL]
+        public bool ReadDeltaClass<T>(T oldValue, ref T value)
+        {
+            if (ReadBit())
+            {
+                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
+                    disposable.Dispose();
+                value = default;
+                return false;
+            }
+
+            if (oldValue == null)
+            {
+                Packer<T>.Read(this, ref value);
+                return false;
+            }
+
+            if (value == null && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                value = FactoryCache<T>.Create();
 
             return true;
         }

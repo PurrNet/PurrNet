@@ -15,7 +15,13 @@ namespace PurrNet.Packing
             using var xList = DisposableList<T>.Create(x);
             using var yList = DisposableList<T>.Create(y);
 
-            return xList.Equals(yList);
+            for (int i = 0; i < xList.Count; i++)
+            {
+                if (!PurrEquality<T>.Equals(xList[i], yList[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         public int GetHashCode(Stack<T> obj)

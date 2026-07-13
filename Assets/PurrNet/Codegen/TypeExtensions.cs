@@ -6,6 +6,14 @@ namespace PurrNet.Codegen
 {
     public static class TypeExtensions
     {
+        public static bool IsUnmanagedType(this TypeReference typeRef)
+        {
+            // TypeSpecification.Resolve() resolves through to its element/type definition.
+            // In particular, resolving int[] returns System.Int32, which must not make the
+            // array itself eligible for NativePacker<T>/NativeDeltaPacker<T> calli dispatch.
+            return typeRef?.IsValueType == true && typeRef.Resolve()?.IsUnmanaged() == true;
+        }
+
         public static bool IsUnmanaged(this TypeDefinition typeDef)
         {
             if (!typeDef.IsValueType)

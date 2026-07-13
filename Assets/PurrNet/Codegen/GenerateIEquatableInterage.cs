@@ -3,7 +3,6 @@ using System;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using PurrNet.Packing;
-using UnityEngine;
 
 namespace PurrNet.Codegen
 {
@@ -138,40 +137,6 @@ namespace PurrNet.Codegen
             }
         }
 
-        private static bool IsPrimitiveNumeric(TypeReference type)
-        {
-            var mt = type?.MetadataType;
-            return mt is MetadataType.SByte or MetadataType.Byte or MetadataType.Int16 or MetadataType.UInt16
-                or MetadataType.Int32 or MetadataType.UInt32 or MetadataType.Int64 or MetadataType.UInt64
-                or MetadataType.Char or MetadataType.Single or MetadataType.Double or MetadataType.Boolean;
-        }
-
-        static bool TryGetEqualityOperator(TypeDefinition type, out MethodReference method)
-        {
-            if (type == null || !type.TryGetMethod("op_Equality", false, out var r) || !r.IsStatic ||
-                r.ReturnType != type.Module.TypeSystem.Boolean || !r.IsPublic)
-            {
-                method = null;
-                return false;
-            }
-
-            method = r;
-            return method != null;
-        }
-
-        private static bool TryGetEqualsFunction(TypeDefinition type, out MethodReference method)
-        {
-            if (type == null || !type.TryGetMethod("Equals", false, out var r) || r.IsStatic ||
-                r.ReturnType != type.Module.TypeSystem.Boolean || !r.IsPublic || r.Parameters[0].ParameterType.FullName != type.FullName)
-            {
-                method = null;
-                return false;
-            }
-
-            method = r;
-            return method != null;
-        }
-
         private static void ImplementBody(TypeDefinition type, MethodDefinition method, ILProcessor il)
         {
             var returnTrue = Instruction.Create(OpCodes.Ldc_I4_1);
@@ -192,8 +157,6 @@ namespace PurrNet.Codegen
                 il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
             }
 
-            var otherParam = method.Parameters[0];
-
             foreach (var field in type.Fields)
             {
                 if (field.IsStatic)
@@ -210,7 +173,6 @@ namespace PurrNet.Codegen
                     continue;
 
                 var fieldType = GenerateSerializersProcessor.ResolveGenericFieldType(field, type);
-                var resolvedFieldType = fieldType?.Resolve();
 
                 FieldReference fieldRef;
 
@@ -234,42 +196,15 @@ namespace PurrNet.Codegen
                     fieldRef = field;
                 }
 
-                bool shouldSkipEqualityCheck = field.FieldType.IsArray || field.FieldType.FullName == typeof(Quaternion).FullName;
+                // PurrEquality is byte-exact for unmanaged values and recursively uses registered
+                // comparers for managed values. Do not use ceq/op_Equality here: float signed zero,
+                // NaN payloads, and Unity's approximate vector operators are observable on the wire.
+                var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
+                    purrEqualityType, fieldType, purrEqualityCheck, type.Module);
 
-                if (IsPrimitiveNumeric(field.FieldType))
-                {
-                    PushAB(il, fieldRef);
-
-                    // check if these integer fields are equal, if not return false
-                    il.Append(Instruction.Create(OpCodes.Ceq));
-                    il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
-                }
-                else switch (shouldSkipEqualityCheck)
-                {
-                    case false when TryGetEqualityOperator(resolvedFieldType, out var opEquality):
-                        PushAB(il, field);
-
-                        il.Append(Instruction.Create(OpCodes.Call, opEquality.Import(type.Module)));
-                        il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
-                        break;
-                    case false when TryGetEqualsFunction(resolvedFieldType, out var equals):
-                        PushAB_A(type, il, fieldRef, otherParam);
-
-                        il.Append(Instruction.Create(OpCodes.Call, equals.Import(type.Module)));
-                        il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
-                        break;
-                    default:
-                    {
-                        // Fallback is PurrEquality<T>.Equals(a, b)
-                        var equalsMethod = GenerateSerializersProcessor.CreateGenericMethod(
-                            purrEqualityType, fieldType, purrEqualityCheck, type.Module);
-
-                        PushAB(il, fieldRef);
-                        il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
-                        il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
-                        break;
-                    }
-                }
+                PushAB(il, fieldRef);
+                il.Append(Instruction.Create(OpCodes.Call, equalsMethod));
+                il.Append(Instruction.Create(OpCodes.Brfalse, returnFalse));
             }
 
             il.Append(Instruction.Create(OpCodes.Br, returnTrue));
@@ -289,22 +224,6 @@ namespace PurrNet.Codegen
             il.Append(Instruction.Create(OpCodes.Ldfld, field));
         }
 
-        private static void PushAB_A(TypeDefinition type, ILProcessor il, FieldReference field, ParameterDefinition otherParam)
-        {
-            bool isOtherParamAClass = !type.IsValueType && type.IsClass;
-            il.Append(isOtherParamAClass
-                ? Instruction.Create(OpCodes.Ldarg_1)
-                : Instruction.Create(OpCodes.Ldarga_S, otherParam));
-
-            bool isFieldARefType = !field.FieldType.IsValueType && field.FieldType.Resolve()?.IsClass == true;
-
-            il.Append(isFieldARefType
-                ? Instruction.Create(OpCodes.Ldfld, field)
-                : Instruction.Create(OpCodes.Ldflda, field));
-
-            il.Append(Instruction.Create(OpCodes.Ldarg_0));
-            il.Append(Instruction.Create(OpCodes.Ldfld, field));
-        }
     }
 }
 #endif

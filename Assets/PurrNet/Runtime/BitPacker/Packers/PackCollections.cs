@@ -400,32 +400,46 @@ namespace PurrNet.Packing
 
         private static bool WriteDeltaList<T>(BitPacker packer, IList<T> oldvalue, IList<T> newvalue)
         {
-            bool areEqual = Packer.AreEqual(oldvalue, newvalue);
+            bool hasChanged = !AreListsEqual(oldvalue, newvalue);
 
-            Packer<bool>.Write(packer, areEqual);
+            packer.WriteBit(hasChanged);
 
-            if (!areEqual)
+            if (hasChanged)
                 WriteList(packer, newvalue);
 
-            return areEqual;
+            return hasChanged;
+        }
+
+        private static bool AreListsEqual<T>(IList<T> oldvalue, IList<T> newvalue)
+        {
+            if (ReferenceEquals(oldvalue, newvalue))
+                return true;
+            if (oldvalue == null || newvalue == null || oldvalue.Count != newvalue.Count)
+                return false;
+
+            for (int i = 0; i < oldvalue.Count; i++)
+            {
+                if (!PurrEquality<T>.Equals(oldvalue[i], newvalue[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         private static void ReadDeltaArray<T>(BitPacker packer, T[] oldvalue, ref T[] value)
         {
-            bool areEqual = default;
-            packer.Read(ref areEqual);
+            bool hasChanged = packer.ReadBit();
 
-            if (!areEqual)
+            if (hasChanged)
                 ReadArray(packer, ref value);
             else value = Packer.Copy(oldvalue);
         }
 
         private static void ReadDeltaList<T>(BitPacker packer, List<T> oldvalue, ref List<T> value)
         {
-            bool areEqual = default;
-            packer.Read(ref areEqual);
+            bool hasChanged = packer.ReadBit();
 
-            if (!areEqual)
+            if (hasChanged)
                 ReadList(packer, ref value);
             else value = Packer.Copy(oldvalue);
         }

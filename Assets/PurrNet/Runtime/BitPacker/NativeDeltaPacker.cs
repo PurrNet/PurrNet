@@ -67,7 +67,7 @@ namespace PurrNet.Packing
                 return;
 
             _hasWriter = true;
-            DeltaPacker.RegisterWriter(typeof(T), write.Method);
+            DeltaPacker.RegisterWriter(write, write);
             WriteFunc = ptr;
         }
 
@@ -94,7 +94,7 @@ namespace PurrNet.Packing
                 return;
 
             _hasReader = true;
-            DeltaPacker.RegisterReader(typeof(T), b.Method);
+            DeltaPacker.RegisterReader(b, b);
             ReadFunc = ptr;
         }
 

@@ -49,15 +49,14 @@ namespace PurrNet.Packing
         [UsedByIL]
         private static unsafe bool WriteDouble(BitPacker packer, double oldvalue, double newvalue)
         {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            bool hasChanged = oldvalue != newvalue;
+            ulong oldBits = *(ulong*)&oldvalue;
+            ulong newBits = *(ulong*)&newvalue;
+            bool hasChanged = oldBits != newBits;
 
             packer.WriteBit(hasChanged);
 
             if (hasChanged)
             {
-                ulong oldBits = *(ulong*)&oldvalue;
-                ulong newBits = *(ulong*)&newvalue;
                 long diff = (long)(newBits - oldBits);
                 Packer<PackedLong>.Write(packer, diff);
             }

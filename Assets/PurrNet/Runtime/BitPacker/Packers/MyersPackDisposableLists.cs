@@ -11,7 +11,7 @@ namespace PurrNet.Packing
         {
             var scope = new DeltaWritingScope(packer);
 
-            if (old.Equals(value))
+            if (ListsEqualExact(old, value))
                 return scope.Complete();
 
             if (value.isDisposed)
@@ -22,51 +22,65 @@ namespace PurrNet.Packing
 
             scope.Write<bool>(true);
 
-            DisposableList<DiffOp<T>> changes;
-
-            if (old.isDisposed)
+            var changes = default(DisposableList<DiffOp<T>>);
+            try
             {
-                using var tmp = DisposableList<T>.Create();
-                changes = MyersDiff.Diff(tmp, value);
-            }
-            else changes = MyersDiff.Diff(old, value);
+                if (old.isDisposed)
+                {
+                    using var tmp = DisposableList<T>.Create();
+                    changes = MyersDiff.Diff(tmp, value);
+                }
+                else changes = MyersDiff.Diff(old, value);
 
-            if (changes.Count > 0)
+                if (changes.Count > 0)
+                {
+                    int count = changes.Count;
+                    for (int i = 0; i < count; i++)
+                        scope.Write<DiffOp<T>>(changes[i]);
+                }
+
+                scope.Write(DiffOp<T>.FinalOperation());
+                return scope.Complete();
+            }
+            finally
             {
-                int count = changes.Count;
-                for (int i = 0; i < count; i++)
-                    scope.Write<DiffOp<T>>(changes[i]);
+                if (!changes.isDisposed)
+                {
+                    for (int i = 0; i < changes.Count; i++)
+                        changes[i].Dispose();
+                    changes.Dispose();
+                }
             }
-
-            scope.Write(DiffOp<T>.FinalOperation());
-
-            var result = scope.Complete();
-
-            for (int i = 0; i < changes.Count; i++)
-                changes[i].values.Dispose();
-            changes.Dispose();
-
-            return result;
         }
 
         [UsedByIL]
         public static void ReadDisposableDeltaList<T>(BitPacker packer, DisposableList<T> old, ref DisposableList<T> value)
         {
-            if (!DeltaReadingScope.Continue(packer, old, ref value))
+            if (!packer.ReadBit())
+            {
+                bool aliasesOld = SharesBackingList(old, value);
+                var copy = Copy(old);
+                if (!value.isDisposed && !aliasesOld)
+                    value.Dispose();
+                value = copy;
                 return;
+            }
 
             if (!packer.ReadBit())
             {
-                value.Dispose();
+                if (!value.isDisposed && !SharesBackingList(old, value))
+                    value.Dispose();
+                value = default;
                 return;
             }
 
             if (value.isDisposed || (!old.isDisposed && old.list == value.list))
                 value = DisposableList<T>.Create();
+            else
+                value.Clear();
 
             if (!old.isDisposed)
             {
-                value.Clear();
                 if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 {
                     for (int i = 0; i < old.Count; i++)
@@ -76,25 +90,74 @@ namespace PurrNet.Packing
             }
 
             var changes = DisposableList<DiffOp<T>>.Create();
-            while (true)
+            try
             {
-                var operation = Packer<DiffOp<T>>.Read(packer);
-                if (operation.type == OperationType.End)
+                while (true)
                 {
-                    operation.Dispose();
-                    break;
+                    var operation = default(DiffOp<T>);
+                    try
+                    {
+                        Packer<DiffOp<T>>.Read(packer, ref operation);
+                        if (operation.type == OperationType.End)
+                            break;
+                        changes.Add(operation);
+                        operation = default;
+                    }
+                    finally
+                    {
+                        operation.Dispose();
+                    }
                 }
-                changes.Add(operation);
-            }
 
-            if (changes.Count > 0)
+                if (changes.Count > 0)
+                    MyersDiff.Apply(value, changes);
+            }
+            finally
             {
-                MyersDiff.Apply(value, changes);
                 for (var i = 0; i < changes.Count; i++)
                     changes[i].Dispose();
+                changes.Dispose();
             }
+        }
 
-            changes.Dispose();
+        static bool ListsEqualExact<T>(DisposableList<T> left, DisposableList<T> right)
+        {
+            if (left.isDisposed && right.isDisposed)
+                return true;
+            if (left.isDisposed || right.isDisposed || left.Count != right.Count)
+                return false;
+            if (left.list == right.list)
+                return true;
+
+            for (int i = 0; i < left.Count; i++)
+            {
+                if (!PurrEquality<T>.Equals(left[i], right[i]))
+                    return false;
+            }
+            return true;
+        }
+
+        static bool SharesBackingList<T>(DisposableList<T> left, DisposableList<T> right)
+        {
+            return !left.isDisposed && !right.isDisposed && left.list == right.list;
+        }
+
+        static DisposableList<T> Copy<T>(DisposableList<T> source)
+        {
+            if (source.isDisposed)
+                return default;
+
+            var copy = DisposableList<T>.Create(source.Count);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                for (int i = 0; i < source.Count; i++)
+                    copy.Add(PurrCopy<T>.Copy(source[i]));
+            }
+            else
+            {
+                copy.AddRange(source);
+            }
+            return copy;
         }
     }
 }

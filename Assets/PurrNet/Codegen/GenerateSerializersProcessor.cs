@@ -241,7 +241,11 @@ namespace PurrNet.Codegen
                 serializerClass.Methods.Add(readMethod);
             }
 
-            if (ignoreDelta?.Contains(type) == false)
+            bool usesCustomPacker = ignoreSerialization?.Contains(type) == true ||
+                                    HasInterface(resolvedType, typeof(IPacked)) ||
+                                    HasInterface(resolvedType, typeof(IPackedSimple));
+
+            if (ignoreDelta?.Contains(type) == false && !usesCustomPacker)
                 GenerateDeltaSerializersProcessor.HandleType(assembly, type, serializerClass);
 
             GenerateIEquatableInterface.HandleType(resolvedType);
@@ -787,7 +791,7 @@ namespace PurrNet.Codegen
                     continue;
 
                 var fieldType = ResolveGenericFieldType(field, typeRef);
-                bool useNativeCalli = fieldType.Resolve()?.IsUnmanaged() == true;
+                bool useNativeCalli = fieldType.IsUnmanagedType();
                 MethodReference genericM = useNativeCalli ? null : CreateGenericMethod(packerType, fieldType, serialize, mainmodule);
 
                 // make field publicp
@@ -1113,7 +1117,7 @@ namespace PurrNet.Codegen
             TypeDefinition type, ILProcessor il, TypeReference packerType, ModuleDefinition mainmodule)
         {
             var underlyingType = type.GetField("value__").FieldType;
-            bool useNativeCalli = underlyingType.Resolve()?.IsUnmanaged() == true;
+            bool useNativeCalli = underlyingType.IsUnmanagedType();
             var enumWriteMethod = useNativeCalli ? null : CreateGenericMethod(packerType, underlyingType, serialize, mainmodule);
             var bitPackerType = mainmodule.GetTypeDefinition(typeof(BitPacker)).Import(mainmodule);
 

@@ -94,20 +94,21 @@ namespace PurrNet.Packing
             {
                 MyersPackNativeLists.ReadNativeListDelta(packer, oldList, ref resultList);
 
-                if (value.IsCreated && value.Length != (resultList.IsCreated ? resultList.Length : 0))
+                if (!resultList.IsCreated)
+                {
+                    if (value.IsCreated)
+                        value.Dispose();
+                    value = default;
+                    return;
+                }
+
+                int len = resultList.Length;
+                if (value.IsCreated && value.Length != len)
                 {
                     value.Dispose();
                     value = default;
                 }
-                if (!resultList.IsCreated)
-                    return;
-                int len = resultList.Length;
-                if (len == 0)
-                {
-                    if (value.IsCreated) value.Dispose();
-                    value = default;
-                    return;
-                }
+
                 if (!value.IsCreated)
                     value = new NativeArray<T>(len, ReadAllocator);
                 for (int i = 0; i < len; i++)
@@ -123,7 +124,7 @@ namespace PurrNet.Packing
         static NativeList<T> NativeArrayToTempList<T>(NativeArray<T> arr) where T : unmanaged
         {
             if (!arr.IsCreated)
-                return new NativeList<T>(0, Allocator.Temp);
+                return default;
             var list = new NativeList<T>(arr.Length, Allocator.Temp);
             for (int i = 0; i < arr.Length; i++)
                 list.Add(arr[i]);

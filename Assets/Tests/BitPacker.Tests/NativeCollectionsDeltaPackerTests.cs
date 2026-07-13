@@ -36,6 +36,11 @@ public class NativeCollectionsDeltaPackerTests
         return list;
     }
 
+    static bool SharesAllocation<T>(NativeList<T> left, NativeList<T> right) where T : unmanaged
+    {
+        return left.IsCreated && right.IsCreated && left.AsArray().Equals(right.AsArray());
+    }
+
     static NativeArray<int> ToNativeArray(int[] data, Allocator allocator)
     {
         if (data == null || data.Length == 0)
@@ -84,6 +89,117 @@ public class NativeCollectionsDeltaPackerTests
         {
             old.Dispose();
             current.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeList_FloatElementsPreserveSignedZeroAndNaNPayloadBits()
+    {
+        PackCollections.RegisterNativeList<float>();
+        float negativeZero = System.BitConverter.Int32BitsToSingle(unchecked((int)0x80000000u));
+        float oldNaN = System.BitConverter.Int32BitsToSingle(unchecked((int)0x7FC00001u));
+        float newNaN = System.BitConverter.Int32BitsToSingle(unchecked((int)0x7FC01234u));
+        var old = new NativeList<float>(2, TestAllocator);
+        old.Add(0f);
+        old.Add(oldNaN);
+        var current = new NativeList<float>(2, TestAllocator);
+        current.Add(negativeZero);
+        current.Add(newNaN);
+        var result = default(NativeList<float>);
+        try
+        {
+            bool hasChanged = DeltaPacker<NativeList<float>>.Write(packer, old, current);
+            Assert.IsTrue(hasChanged);
+
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeList<float>>.Read(packer, old, ref result);
+
+            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(negativeZero),
+                System.BitConverter.SingleToInt32Bits(result[0]));
+            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(newNaN),
+                System.BitConverter.SingleToInt32Bits(result[1]));
+        }
+        finally
+        {
+            if (old.IsCreated) old.Dispose();
+            if (current.IsCreated) current.Dispose();
+            if (result.IsCreated) result.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeList_UnchangedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = ToNativeList(new[] { 1, 2, 3 }, TestAllocator);
+        var current = ToNativeList(new[] { 1, 2, 3 }, TestAllocator);
+        var result = old;
+        bool decoded = false;
+        bool resultAliasesOld = true;
+        try
+        {
+            DeltaPacker<NativeList<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeList<int>>.Read(packer, old, ref result);
+            decoded = true;
+            resultAliasesOld = SharesAllocation(old, result);
+
+            result.Add(4);
+            AssertListEquals(old, new[] { 1, 2, 3 });
+            AssertListEquals(result, new[] { 1, 2, 3, 4 });
+        }
+        finally
+        {
+            if (decoded && result.IsCreated && !resultAliasesOld) result.Dispose();
+            if (old.IsCreated) old.Dispose();
+            if (current.IsCreated) current.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeList_ChangedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = ToNativeList(new[] { 1, 2, 3 }, TestAllocator);
+        var current = ToNativeList(new[] { 1, 2, 3, 4 }, TestAllocator);
+        var result = old;
+        bool decoded = false;
+        bool resultAliasesOld = true;
+        try
+        {
+            DeltaPacker<NativeList<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeList<int>>.Read(packer, old, ref result);
+            decoded = true;
+            resultAliasesOld = SharesAllocation(old, result);
+
+            AssertListEquals(old, new[] { 1, 2, 3 });
+            AssertListEquals(result, new[] { 1, 2, 3, 4 });
+        }
+        finally
+        {
+            if (decoded && result.IsCreated && !resultAliasesOld) result.Dispose();
+            if (old.IsCreated) old.Dispose();
+            if (current.IsCreated) current.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeList_NotCreatedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = ToNativeList(new[] { 1, 2, 3 }, TestAllocator);
+        var current = default(NativeList<int>);
+        var result = old;
+        try
+        {
+            DeltaPacker<NativeList<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeList<int>>.Read(packer, old, ref result);
+
+            Assert.IsFalse(result.IsCreated);
+            AssertListEquals(old, new[] { 1, 2, 3 });
+        }
+        finally
+        {
+            if (old.IsCreated) old.Dispose();
         }
     }
 

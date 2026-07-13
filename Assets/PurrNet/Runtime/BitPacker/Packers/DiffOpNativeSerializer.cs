@@ -63,17 +63,26 @@ namespace PurrNet.Packing
             var count = Packer<Size>.Read(packer);
             int len = (int)count.value;
             var list = new NativeList<T>(len, PackNativeCollections.ReadAllocator);
-            var last = default(T);
-
-            for (int i = 0; i < len; i++)
+            try
             {
-                T current = default;
-                DeltaPacker<T>.Read(packer, last, ref current);
-                last = current;
-                list.Add(current);
-            }
+                var last = default(T);
 
-            return list;
+                for (int i = 0; i < len; i++)
+                {
+                    T current = default;
+                    DeltaPacker<T>.Read(packer, last, ref current);
+                    last = current;
+                    list.Add(current);
+                }
+
+                return list;
+            }
+            catch
+            {
+                if (list.IsCreated)
+                    list.Dispose();
+                throw;
+            }
         }
 
         [UsedByIL]

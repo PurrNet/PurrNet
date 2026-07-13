@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using PurrNet.Modules;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace PurrNet.Packing
 {
@@ -66,28 +67,23 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value.IsCreated)
+                bool aliasesOld = SharesAllocation(ref old, ref value);
+                var copy = Copy(old);
+                if (value.IsCreated && !aliasesOld)
                     value.Dispose();
-                if (old.IsCreated)
-                {
-                    value = new NativeList<T>(old.Length, PackNativeCollections.ReadAllocator);
-                    for (int i = 0; i < old.Length; i++)
-                        value.Add(old[i]);
-                }
-                else
-                    value = default;
+                value = copy;
                 return;
             }
 
             if (!packer.ReadBit())
             {
-                if (value.IsCreated)
+                if (value.IsCreated && !SharesAllocation(ref old, ref value))
                     value.Dispose();
                 value = default;
                 return;
             }
 
-            if (!value.IsCreated)
+            if (!value.IsCreated || SharesAllocation(ref old, ref value))
                 value = new NativeList<T>(0, PackNativeCollections.ReadAllocator);
             else
                 value.Clear();
@@ -104,24 +100,27 @@ namespace PurrNet.Packing
                 while (true)
                 {
                     var operation = default(DiffOpNative<T>);
-                    Packer<DiffOpNative<T>>.Read(packer, ref operation);
-                    if (operation.type == OperationType.End)
+                    try
+                    {
+                        Packer<DiffOpNative<T>>.Read(packer, ref operation);
+                        if (operation.type == OperationType.End)
+                            break;
+                        changes.Add(operation);
+                        operation = default;
+                    }
+                    finally
                     {
                         operation.Dispose();
-                        break;
                     }
-                    changes.Add(operation);
                 }
 
                 if (changes.Length > 0)
-                {
                     MyersDiffNative.Apply(value, changes);
-                    for (int i = 0; i < changes.Length; i++)
-                        changes[i].Dispose();
-                }
             }
             finally
             {
+                for (int i = 0; i < changes.Length; i++)
+                    changes[i].Dispose();
                 changes.Dispose();
             }
         }
@@ -133,10 +132,30 @@ namespace PurrNet.Packing
             if (a.Length != b.Length) return false;
             for (int i = 0; i < a.Length; i++)
             {
-                if (!PurrEquality<T>.Default.Equals(a[i], b[i]))
+                if (!PurrEquality<T>.Equals(a[i], b[i]))
                     return false;
             }
             return true;
+        }
+
+        static NativeList<T> Copy<T>(NativeList<T> source) where T : unmanaged
+        {
+            if (!source.IsCreated)
+                return default;
+
+            var copy = new NativeList<T>(source.Length, PackNativeCollections.ReadAllocator);
+            for (int i = 0; i < source.Length; i++)
+                copy.Add(source[i]);
+            return copy;
+        }
+
+        static unsafe bool SharesAllocation<T>(ref NativeList<T> left, ref NativeList<T> right)
+            where T : unmanaged
+        {
+            if (!left.IsCreated || !right.IsCreated)
+                return false;
+            return NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref left) ==
+                   NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref right);
         }
     }
 }

@@ -11,27 +11,29 @@ namespace PurrNet.Packing
             if (y is null) return false;
             if (x.Count != y.Count) return false;
 
-            var keyEquality = PurrEquality<K>.Default;
-            var valueEquality = PurrEquality<V>.Default;
+            var matched = new bool[y.Count];
 
-            using var xEnumerator = x.GetEnumerator();
-            using var yEnumerator = y.GetEnumerator();
-
-            while (xEnumerator.MoveNext())
+            foreach (var xCurrent in x)
             {
-                if (!yEnumerator.MoveNext())
-                    return false;
+                int index = 0;
+                bool found = false;
+                foreach (var yCurrent in y)
+                {
+                    if (!matched[index] && PurrEquality<K>.Equals(xCurrent.Key, yCurrent.Key) &&
+                        PurrEquality<V>.Equals(xCurrent.Value, yCurrent.Value))
+                    {
+                        matched[index] = true;
+                        found = true;
+                        break;
+                    }
+                    index++;
+                }
 
-                var xCurrent = xEnumerator.Current;
-                var yCurrent = yEnumerator.Current;
-
-                if (!keyEquality.Equals(xCurrent.Key, yCurrent.Key))
-                    return false;
-                if (!valueEquality.Equals(xCurrent.Value, yCurrent.Value))
+                if (!found)
                     return false;
             }
 
-            return !yEnumerator.MoveNext();
+            return true;
         }
 
         public int GetHashCode(Dictionary<K, V> obj)

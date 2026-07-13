@@ -55,7 +55,7 @@ namespace PurrNet.Packing
                             x = v[kIndex - 1] + 1;
 
                         int y = x - k;
-                        while (x < n && y < m && PurrEquality<T>.Default.Equals(a[x], b[y]))
+                        while (x < n && y < m && PurrEquality<T>.Equals(a[x], b[y]))
                         {
                             x++;
                             y++;

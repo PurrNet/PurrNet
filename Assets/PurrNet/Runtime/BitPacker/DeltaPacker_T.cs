@@ -1,23 +1,42 @@
 ﻿using System.Runtime.CompilerServices;
+using System;
 using JetBrains.Annotations;
-using PurrNet.Modules;
-#if PURR_DELTA_CHECK
 using PurrNet.Logging;
-#endif
+using PurrNet.Modules;
+using PurrNet.Utils;
 
 namespace PurrNet.Packing
 {
     public static class DeltaPacker<T>
     {
+        /// <summary>
+        /// The delta writer for exactly <typeparamref name="T"/>, without runtime type dispatch.
+        /// </summary>
+        public static DeltaWriteFunc<T> DirectWrite;
+
+        /// <summary>
+        /// The delta reader for exactly <typeparamref name="T"/>, without runtime type dispatch.
+        /// </summary>
+        public static DeltaReadFunc<T> DirectRead;
+
+        /// <summary>
+        /// The inheritance-aware delta writer used by the public API.
+        /// </summary>
         public static DeltaWriteFunc<T> WriteFunc;
+
+        /// <summary>
+        /// The inheritance-aware delta reader used by the public API.
+        /// </summary>
         public static DeltaReadFunc<T> ReadFunc;
 
         static bool _hasWriter, _hasReader;
 
         static DeltaPacker()
         {
-            WriteFunc = DeltaPacker.FallbackWriter;
-            ReadFunc = DeltaPacker.FallbackReader;
+            DirectWrite = DeltaPacker.FallbackWriter;
+            DirectRead = DeltaPacker.FallbackReader;
+            WriteFunc = DirectWrite;
+            ReadFunc = DirectRead;
         }
 
         [UsedImplicitly]
@@ -39,8 +58,12 @@ namespace PurrNet.Packing
                 return;
 
             _hasWriter = true;
-            DeltaPacker.RegisterWriter(typeof(T), write.Method);
-            WriteFunc = write;
+            DirectWrite = write;
+
+            bool isStructOrSealed = typeof(T).IsValueType || typeof(T).IsSealed;
+            WriteFunc = isStructOrSealed ? DirectWrite : WriteClass;
+
+            DeltaPacker.RegisterWriter(DirectWrite, WriteFunc);
         }
 
         public static void RegisterReader(DeltaReadFunc<T> read)
@@ -49,8 +72,74 @@ namespace PurrNet.Packing
                 return;
 
             _hasReader = true;
-            DeltaPacker.RegisterReader(typeof(T), read.Method);
-            ReadFunc = read;
+            DirectRead = read;
+
+            bool isStructOrSealed = typeof(T).IsValueType || typeof(T).IsSealed;
+            ReadFunc = isStructOrSealed ? DirectRead : ReadClass;
+
+            DeltaPacker.RegisterReader(DirectRead, ReadFunc);
+        }
+
+        static bool WriteClass(BitPacker packer, T oldValue, T newValue)
+        {
+            var oldType = GetSerializedType(oldValue);
+            var newType = GetSerializedType(newValue);
+            bool useDirectPacker = oldType == typeof(T) && newType == typeof(T);
+
+            int changedPosition = packer.AdvanceOneBitAndSet();
+            packer.WriteBit(useDirectPacker);
+
+            bool changed = useDirectPacker
+                ? DirectWrite(packer, oldValue, newValue)
+                : PackDeltaObj.WriteDeltaObject(packer, oldValue, newValue);
+
+            if (!changed)
+                packer.ResetFlagAtAndMovePosition(changedPosition);
+
+            return changed;
+        }
+
+        static void ReadClass(BitPacker packer, T oldValue, ref T value)
+        {
+            if (!packer.ReadBit())
+            {
+                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
+                    disposable.Dispose();
+                value = Packer.Copy(oldValue);
+                return;
+            }
+
+            if (packer.ReadBit())
+            {
+                DirectRead(packer, oldValue, ref value);
+                return;
+            }
+
+            object boxedValue = value;
+            PackDeltaObj.ReadDeltaObject(packer, oldValue, ref boxedValue);
+
+            switch (boxedValue)
+            {
+                case null:
+                    value = default;
+                    break;
+                case T cast:
+                    value = cast;
+                    break;
+                default:
+                    PurrLogger.LogError($"While delta reading `{typeof(T)}`, we got `{boxedValue.GetType()}`, which is not assignable to the declared type.");
+                    value = default;
+                    break;
+            }
+        }
+
+        static Type GetSerializedType(T value)
+        {
+            if (value == null)
+                return typeof(T);
+
+            var runtimeType = value.GetType();
+            return Hasher.IsRegistered(runtimeType) ? runtimeType : typeof(T);
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -72,11 +161,41 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                value = oldValue;
+                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
+                    disposable.Dispose();
+                value = Packer.Copy(oldValue);
                 return;
             }
 
             Packer<T>.ReadFunc(packer, ref value);
+        }
+
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteUnpackedAsExactType(BitPacker packer, T oldValue, T newValue)
+        {
+            if (Packer.AreEqual(oldValue, newValue))
+            {
+                packer.WriteBit(false);
+                return false;
+            }
+
+            packer.WriteBit(true);
+            Packer<T>.DirectWrite(packer, newValue);
+            return true;
+        }
+
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ReadUnpackedAsExactType(BitPacker packer, T oldValue, ref T value)
+        {
+            if (!packer.ReadBit())
+            {
+                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
+                    disposable.Dispose();
+                value = Packer.Copy(oldValue);
+                return;
+            }
+
+            Packer<T>.DirectRead(packer, ref value);
         }
 
 #if !PURR_DELTA_CHECK

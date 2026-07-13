@@ -103,7 +103,7 @@ namespace PurrNet.Codegen
 
         static TypeReference GetDeltaPackerForType(ModuleDefinition module, TypeReference type)
         {
-            bool isUnmanaged = type?.Resolve()?.IsUnmanaged() == true;
+            bool isUnmanaged = type.IsUnmanagedType();
             if (isUnmanaged)
                 return module.GetTypeDefinition(typeof(NativeDeltaPacker<>)).Import(module);
             return module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
@@ -168,7 +168,7 @@ namespace PurrNet.Codegen
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
                 bool useDirectCall = !TryGetInlinedMethod(false, standaloneType, module, out var genericM);
-                bool standaloneUnmanaged = useDirectCall && standaloneType.Resolve()?.IsUnmanaged() == true;
+                bool standaloneUnmanaged = useDirectCall && standaloneType.IsUnmanagedType();
 
                 var variable = new VariableDefinition(standaloneType);
                 method.Body.Variables.Add(variable);
@@ -179,7 +179,7 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Stloc, variable);
 
                 if (useDirectCall && !standaloneUnmanaged)
-                    EmitLoadDeltaDelegate(il, module, standaloneType, false);
+                    EmitLoadDeltaDelegate(il, module, standaloneType, false, true);
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
@@ -209,11 +209,12 @@ namespace PurrNet.Codegen
 
             if (isClass)
             {
-                var readIsNull = bitStreamType.GetMethod("ReadIsNull", true).Import(module);
+                var readIsNull = bitStreamType.GetMethod("ReadDeltaClass", true).Import(module);
                 var genericIsNull = new GenericInstanceMethod(readIsNull);
                 genericIsNull.GenericArguments.Add(typeRef);
 
                 il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Call, genericIsNull);
                 il.Emit(OpCodes.Brfalse, endOfFunction);
@@ -226,7 +227,7 @@ namespace PurrNet.Codegen
             {
                 var underlyingType = type.GetField("value__").FieldType;
                 bool useDirectCall = !TryGetInlinedMethod(false, underlyingType, module, out var enumReadMethod);
-                bool enumUnmanaged = useDirectCall && underlyingType.Resolve()?.IsUnmanaged() == true;
+                bool enumUnmanaged = useDirectCall && underlyingType.IsUnmanagedType();
 
                 var tmpVar = new VariableDefinition(underlyingType);
 
@@ -273,7 +274,7 @@ namespace PurrNet.Codegen
 
                         // baseType is always a class (IsValueType: false), so always managed delegate path
                         if (useDirectCall)
-                            EmitLoadDeltaDelegate(il, module, baseType, false);
+                            EmitLoadDeltaDelegate(il, module, baseType, false, true);
 
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldarg_1);
@@ -331,7 +332,7 @@ namespace PurrNet.Codegen
                     else
                     {
                         useDirectCall = true;
-                        isFieldUnmanaged = fieldType.Resolve()?.IsUnmanaged() == true;
+                        isFieldUnmanaged = fieldType.IsUnmanagedType();
                     }
 
                     if (!field.IsPublic)
@@ -410,7 +411,7 @@ namespace PurrNet.Codegen
             // value = oldValue
 
             // Ldarg_2 = Packer.Copy
-            bool isUnmanaged = typeRef.Resolve()?.IsUnmanaged() == true;
+            bool isUnmanaged = typeRef.IsUnmanagedType();
 
             if (isUnmanaged)
                 il.Emit(OpCodes.Ldarg_1);
@@ -475,10 +476,10 @@ namespace PurrNet.Codegen
             if (standaloneType != null && standaloneType.FullName != type.FullName)
             {
                 bool useDirectCall = !TryGetInlinedMethod(true, standaloneType, module, out var genericM);
-                bool standaloneUnmanaged = useDirectCall && standaloneType.Resolve()?.IsUnmanaged() == true;
+                bool standaloneUnmanaged = useDirectCall && standaloneType.IsUnmanagedType();
 
                 if (useDirectCall && !standaloneUnmanaged)
-                    EmitLoadDeltaDelegate(il, module, standaloneType, true);
+                    EmitLoadDeltaDelegate(il, module, standaloneType, true, true);
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
@@ -511,6 +512,17 @@ namespace PurrNet.Codegen
 
                 il.Emit(OpCodes.Brtrue, startOfNormalDelta);
 
+                var nullValuesDiffer = il.Create(OpCodes.Nop);
+                il.Emit(OpCodes.Ldloc, isEqualVar);
+                il.Emit(OpCodes.Brfalse, nullValuesDiffer);
+
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldloc, flagPos);
+                il.Emit(OpCodes.Call, resetFlagAtAndMovePosition);
+                il.Emit(OpCodes.Ldc_I4_0);
+                il.Emit(OpCodes.Ret);
+
+                il.Append(nullValuesDiffer);
                 il.Emit(OpCodes.Ldc_I4_1);
                 il.Emit(OpCodes.Ret);
 
@@ -525,7 +537,7 @@ namespace PurrNet.Codegen
             {
                 var underlyingType = type.GetField("value__").FieldType;
                 bool useDirectCall = !TryGetInlinedMethod(true, underlyingType, module, out var enumWriteMethod);
-                bool enumUnmanaged = useDirectCall && underlyingType.Resolve()?.IsUnmanaged() == true;
+                bool enumUnmanaged = useDirectCall && underlyingType.IsUnmanagedType();
 
                 if (useDirectCall && !enumUnmanaged)
                     EmitLoadDeltaDelegate(il, module, underlyingType, true);
@@ -558,7 +570,7 @@ namespace PurrNet.Codegen
 
                         // baseType is always a class (IsValueType: false), so always managed delegate path
                         if (useDirectCall)
-                            EmitLoadDeltaDelegate(il, module, baseType, true);
+                            EmitLoadDeltaDelegate(il, module, baseType, true, true);
 
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldarg_1);
@@ -619,7 +631,7 @@ namespace PurrNet.Codegen
                     else
                     {
                         useDirectCall = true;
-                        isFieldUnmanaged = fieldType.Resolve()?.IsUnmanaged() == true;
+                        isFieldUnmanaged = fieldType.IsUnmanagedType();
                     }
 
                     if (i > 0 || isInheritedClass)
@@ -696,7 +708,7 @@ namespace PurrNet.Codegen
             il.Append(endOfIf);
             il.Emit(OpCodes.Ret);
 
-            if (writtenFields == 0)
+            if (writtenFields == 0 && !isClass)
             {
                 method.Body.Instructions.Clear();
                 method.Body.Variables.Clear();
@@ -717,10 +729,13 @@ namespace PurrNet.Codegen
         /// <summary>
         /// For managed types: emits ldsfld DeltaPacker(T).WriteFunc/ReadFunc before args.
         /// </summary>
-        static void EmitLoadDeltaDelegate(ILProcessor il, ModuleDefinition module, TypeReference fieldType, bool isWrite)
+        static void EmitLoadDeltaDelegate(ILProcessor il, ModuleDefinition module, TypeReference fieldType,
+            bool isWrite, bool exact = false)
         {
             var deltaPackerDef = module.GetTypeDefinition(typeof(DeltaPacker<>));
-            var fieldName = isWrite ? "WriteFunc" : "ReadFunc";
+            var fieldName = isWrite
+                ? exact ? "DirectWrite" : "WriteFunc"
+                : exact ? "DirectRead" : "ReadFunc";
 
             // Construct the field type: DeltaWriteFunc<!0> or DeltaReadFunc<!0>
             // We import the open delegate type and use the raw generic parameter !0 from the definition.

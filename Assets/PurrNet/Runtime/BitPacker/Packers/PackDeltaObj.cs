@@ -27,7 +27,10 @@ namespace PurrNet.Packing
                 var oldValueSanitized = oldType != newType ? null : oldvalue;
 
                 hasChanged = DeltaPacker<uint>.Write(packer, oldHash, newHash) || hasChanged;
-                hasChanged = DeltaPacker.Write(packer, newType, oldValueSanitized, newvalue) || hasChanged;
+                bool valueChanged = newType == typeof(object)
+                    ? DeltaPacker<object>.WriteUnpacked(packer, oldValueSanitized, newvalue)
+                    : DeltaPacker.WriteAsExactType(packer, newType, oldValueSanitized, newvalue);
+                hasChanged = valueChanged || hasChanged;
             }
 
             packer.WriteAt(flagPos, hasChanged);
@@ -43,7 +46,7 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable)
+                if (value is IDisposable disposable && !ReferenceEquals(value, oldvalue))
                     disposable.Dispose();
                 value = oldvalue == null ? null : Packer.Copy(oldvalue);
                 return;
@@ -62,7 +65,13 @@ namespace PurrNet.Packing
                 var newType = Hasher.ResolveType(newHash);
                 var oldValueSanitized = oldType != newType ? null : oldvalue;
 
-                DeltaPacker.Read(packer, newType, oldValueSanitized, ref value);
+                if (oldType != newType)
+                    value = null;
+
+                if (newType == typeof(object))
+                    DeltaPacker<object>.ReadUnpacked(packer, oldValueSanitized, ref value);
+                else
+                    DeltaPacker.ReadAsExactType(packer, newType, oldValueSanitized, ref value);
             }
             else
             {

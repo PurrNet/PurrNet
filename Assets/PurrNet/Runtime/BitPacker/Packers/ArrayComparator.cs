@@ -4,8 +4,6 @@ namespace PurrNet.Packing
 {
     internal readonly struct ArrayComparator<T> : IEqualityComparer<T[]>
     {
-        static readonly IEqualityComparer<T> eq = PurrEquality<T>.Default;
-
         public bool Equals(T[] x, T[] y)
         {
             if (ReferenceEquals(x, y)) return true;
@@ -17,7 +15,7 @@ namespace PurrNet.Packing
 
             for (int i = 0; i < count; i++)
             {
-                if (!eq.Equals(x[i], y[i]))
+                if (!PurrEquality<T>.Equals(x[i], y[i]))
                     return false;
             }
             return true;

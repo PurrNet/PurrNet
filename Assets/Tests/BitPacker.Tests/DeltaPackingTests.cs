@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using PurrNet;
 using PurrNet.Packing;
 
 public class DeltaPackedNumberTests
@@ -8,6 +9,7 @@ public class DeltaPackedNumberTests
     [SetUp]
     public void Setup()
     {
+        NetworkManager.CallAllRegisters();
         packer = BitPackerPool.Get();
     }
 
@@ -42,6 +44,30 @@ public class DeltaPackedNumberTests
                     Assert.That(readValue, Is.EqualTo(newVal), $"Failed with old:{oldVal} new:{newVal}");
             }
         }
+    }
+
+    [Test]
+    public void DoubleDeltaPreservesSignedZeroAndNaNPayloadBits()
+    {
+        double negativeZero = System.BitConverter.Int64BitsToDouble(unchecked((long)0x8000000000000000UL));
+        double oldNaN = System.BitConverter.Int64BitsToDouble(unchecked((long)0x7FF8000000000001UL));
+        double newNaN = System.BitConverter.Int64BitsToDouble(unchecked((long)0x7FF8000000001234UL));
+
+        AssertBitExactDoubleDelta(0d, negativeZero);
+        AssertBitExactDoubleDelta(negativeZero, 0d);
+        AssertBitExactDoubleDelta(oldNaN, newNaN);
+    }
+
+    private void AssertBitExactDoubleDelta(double oldValue, double newValue)
+    {
+        packer.ResetPositionAndMode(false);
+        Assert.IsTrue(DeltaPacker<double>.Write(packer, oldValue, newValue));
+        packer.ResetPositionAndMode(true);
+
+        double decoded = oldValue;
+        DeltaPacker<double>.Read(packer, oldValue, ref decoded);
+        Assert.AreEqual(System.BitConverter.DoubleToInt64Bits(newValue),
+            System.BitConverter.DoubleToInt64Bits(decoded));
     }
 
     /*[Test]

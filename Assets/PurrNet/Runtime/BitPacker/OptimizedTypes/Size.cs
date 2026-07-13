@@ -31,7 +31,7 @@ namespace PurrNet.Packing
 
         public override bool Equals(object obj)
         {
-            return obj is PackedULong other && Equals(other);
+            return obj is Size other && Equals(other);
         }
 
         public override int GetHashCode()

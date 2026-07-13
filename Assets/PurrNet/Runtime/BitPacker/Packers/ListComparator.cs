@@ -12,11 +12,9 @@ namespace PurrNet.Packing
             if (x.Count != y.Count) return false;
 
             int count = x.Count;
-            var elementEquality = PurrEquality<T>.Default;
-
             for (int i = 0; i < count; i++)
             {
-                if (!elementEquality.Equals(x[i], y[i]))
+                if (!PurrEquality<T>.Equals(x[i], y[i]))
                     return false;
             }
             return true;

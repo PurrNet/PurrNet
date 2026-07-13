@@ -7,6 +7,20 @@ using UnityEngine;
 
 public class DisposableListsDeltaPackerTests
 {
+    public sealed class ManagedFloatElement
+    {
+        public float value;
+    }
+
+#pragma warning disable CS0169
+    // A SyncVar field makes the closed managed element type part of the normal serializer/codegen
+    // discovery path, matching the production scenario this regression protects.
+    private sealed class ManagedFloatElementRegistrationModule : NetworkModule
+    {
+        private SyncVar<ManagedFloatElement> _probe = new SyncVar<ManagedFloatElement>();
+    }
+#pragma warning restore CS0169
+
     private BitPacker packer;
 
     [SetUp]
@@ -34,6 +48,139 @@ public class DisposableListsDeltaPackerTests
 
         old.Dispose();
         current.Dispose();
+    }
+
+    [Test]
+    public void FloatElementsPreserveSignedZeroAndNaNPayloadBits()
+    {
+        float negativeZero = System.BitConverter.Int32BitsToSingle(unchecked((int)0x80000000u));
+        float oldNaN = System.BitConverter.Int32BitsToSingle(unchecked((int)0x7FC00001u));
+        float newNaN = System.BitConverter.Int32BitsToSingle(unchecked((int)0x7FC01234u));
+        var old = DisposableList<float>.Create(new[] { 0f, oldNaN });
+        var current = DisposableList<float>.Create(new[] { negativeZero, newNaN });
+        var result = default(DisposableList<float>);
+        try
+        {
+            bool hasChanged = DeltaPacker<DisposableList<float>>.Write(packer, old, current);
+            Assert.IsTrue(hasChanged);
+
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableList<float>>.Read(packer, old, ref result);
+
+            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(negativeZero),
+                System.BitConverter.SingleToInt32Bits(result[0]));
+            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(newNaN),
+                System.BitConverter.SingleToInt32Bits(result[1]));
+        }
+        finally
+        {
+            old.Dispose();
+            current.Dispose();
+            result.Dispose();
+        }
+    }
+
+    [Test]
+    public void ManagedFloatFieldsPreserveSignedZeroBits()
+    {
+        // Keep a direct closed-type packer reference so the IL postprocessor emits the managed
+        // element serializer/equality registration used by the generic DisposableList codec.
+        using (var registrationProbe = BitPackerPool.Get())
+            Packer<ManagedFloatElement>.Write(registrationProbe, null);
+        PackCollections.RegisterDisposableList<ManagedFloatElement>();
+        float negativeZero = System.BitConverter.Int32BitsToSingle(unchecked((int)0x80000000u));
+        var old = DisposableList<ManagedFloatElement>.Create(new[]
+        {
+            new ManagedFloatElement { value = 0f }
+        });
+        var current = DisposableList<ManagedFloatElement>.Create(new[]
+        {
+            new ManagedFloatElement { value = negativeZero }
+        });
+        var result = default(DisposableList<ManagedFloatElement>);
+        try
+        {
+            bool hasChanged = DeltaPacker<DisposableList<ManagedFloatElement>>.Write(packer, old, current);
+            Assert.IsTrue(hasChanged);
+
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableList<ManagedFloatElement>>.Read(packer, old, ref result);
+
+            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(negativeZero),
+                System.BitConverter.SingleToInt32Bits(result[0].value));
+        }
+        finally
+        {
+            old.Dispose();
+            current.Dispose();
+            result.Dispose();
+        }
+    }
+
+    [Test]
+    public void ChangedFromDisposedBaselineClearsPreallocatedDestination()
+    {
+        var old = default(DisposableList<int>);
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var result = DisposableList<int>.Create(new[] { 99, 98 });
+        try
+        {
+            DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, result);
+        }
+        finally
+        {
+            current.Dispose();
+            result.Dispose();
+        }
+    }
+
+    [Test]
+    public void UnchangedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var result = old;
+        try
+        {
+            DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+            result.Add(4);
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, old);
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4 }, result);
+        }
+        finally
+        {
+            old.Dispose();
+            current.Dispose();
+            result.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var current = default(DisposableList<int>);
+        var result = old;
+        try
+        {
+            DeltaPacker<DisposableList<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableList<int>>.Read(packer, old, ref result);
+
+            Assert.IsTrue(result.isDisposed);
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, old);
+        }
+        finally
+        {
+            old.Dispose();
+        }
     }
 
     [Test]

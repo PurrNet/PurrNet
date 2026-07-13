@@ -95,17 +95,25 @@ namespace PurrNet.Packing
         {
             var count = Packer<Size>.Read(packer);
             var list = DisposableList<T>.Create(count);
-            var last = default(T);
-
-            for (var i = 0; i < count; i++)
+            try
             {
-                T current = default;
-                DeltaPacker<T>.Read(packer, last, ref current);
-                last = current;
-                list.Add(current);
-            }
+                var last = default(T);
 
-            return list;
+                for (var i = 0; i < count; i++)
+                {
+                    T current = default;
+                    DeltaPacker<T>.Read(packer, last, ref current);
+                    last = current;
+                    list.Add(current);
+                }
+
+                return list;
+            }
+            catch
+            {
+                list.Dispose();
+                throw;
+            }
         }
 
         [UsedByIL]
