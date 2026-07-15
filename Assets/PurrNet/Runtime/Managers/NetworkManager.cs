@@ -1907,6 +1907,8 @@ namespace PurrNet
         {
             if (!_transport)
                 PurrLogger.Throw<InvalidOperationException>("Transport is not set (null).");
+            
+            _lastSendTime = 0d;
             _transport.StartServer(this);
         }
 
@@ -2208,6 +2210,8 @@ namespace PurrNet
                 yield return null;
             while (_isCleaningClient)
                 yield return null;
+            
+            _lastSendTime = 0d;
             _transport.StartClient(this);
         }
 
