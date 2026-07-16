@@ -1,3 +1,10 @@
+# [1.20.0-beta.259](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.258...v1.20.0-beta.259) (2026-07-16)
+
+
+### Bug Fixes
+
+* use OnSerialize/OnDeserialize for syncvars ([2c15f29](https://github.com/PurrNet/PurrNet/commit/2c15f297f5e7ce32d4ac8d3b039acf9614ca9065))
+
 # [1.20.0-beta.258](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.257...v1.20.0-beta.258) (2026-07-16)
 
 
