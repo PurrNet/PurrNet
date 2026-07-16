@@ -146,6 +146,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnSpawn</b> (
 <tr class="memitem:a1029c4edf0f65446995abece621dc1fa"><td class="memItemLeft" align="right" valign="top"><a id="a1029c4edf0f65446995abece621dc1fa" name="a1029c4edf0f65446995abece621dc1fa"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnSpawn</b> (bool asServer)</td></tr>
 <tr class="separator:a1029c4edf0f65446995abece621dc1fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afac21bf0cf93e561908ad3f04836b9cb"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkModule.html#afac21bf0cf93e561908ad3f04836b9cb">OnSpawnerFlush</a> ()</td></tr>
+<tr class="memdesc:afac21bf0cf93e561908ad3f04836b9cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called only on the spawning peer, at the end of the frame the object was spawned in, right before batched RPCs flush. Anything queued here departs in the same flush as the spawn, ordered right behind the spawn packet.   <a href="classPurrNet_1_1NetworkModule.html#afac21bf0cf93e561908ad3f04836b9cb">More...</a><br /></td></tr>
+<tr class="separator:afac21bf0cf93e561908ad3f04836b9cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abde33af4d0639ec5d734684575189ece"><td class="memItemLeft" align="right" valign="top"><a id="abde33af4d0639ec5d734684575189ece" name="abde33af4d0639ec5d734684575189ece"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDespawned</b> ()</td></tr>
 <tr class="separator:abde33af4d0639ec5d734684575189ece"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -709,6 +712,35 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><code
 </dl>
 
 <p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncVar.html#a529fd6cdb73c036c4d907d3b30e23b3d">PurrNet.SyncVar&lt; T &gt;</a>.</p>
+
+</div>
+</div>
+<a id="afac21bf0cf93e561908ad3f04836b9cb" name="afac21bf0cf93e561908ad3f04836b9cb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afac21bf0cf93e561908ad3f04836b9cb">&#9670;&#160;</a></span>OnSpawnerFlush()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void PurrNet.NetworkModule.OnSpawnerFlush </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called only on the spawning peer, at the end of the frame the object was spawned in, right before batched RPCs flush. Anything queued here departs in the same flush as the spawn, ordered right behind the spawn packet.  </p>
+
+<p>Reimplemented in <a class="el" href="classPurrNet_1_1SyncVar.html#afbbe0be47fefeec4cbdd93b49d3dc094">PurrNet.SyncVar&lt; T &gt;</a>.</p>
 
 </div>
 </div>
