@@ -1,3 +1,10 @@
+# [1.20.0-beta.261](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.260...v1.20.0-beta.261) (2026-07-16)
+
+
+### Bug Fixes
+
+* new events being too early were causing issues ([5391544](https://github.com/PurrNet/PurrNet/commit/5391544cf00f161c9421c490e11d98da81cd8e68))
+
 # [1.20.0-beta.260](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.259...v1.20.0-beta.260) (2026-07-16)
 
 
