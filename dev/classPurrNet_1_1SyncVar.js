@@ -1,9 +1,8 @@
 var classPurrNet_1_1SyncVar =
 [
-    [ "OnDeserialize", "classPurrNet_1_1SyncVar.html#aba17e56af60499e73c7dfb1373fb9c3e", null ],
     [ "OnEarlySpawn", "classPurrNet_1_1SyncVar.html#a554329ae401393710c94d605876f48f7", null ],
+    [ "OnObserverAdded", "classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299", null ],
     [ "OnOwnerChanged", "classPurrNet_1_1SyncVar.html#ad10cca80308ced66260efb549a902081", null ],
     [ "OnPoolReset", "classPurrNet_1_1SyncVar.html#a36e597796f56c71bb965d6dbe56123d0", null ],
-    [ "OnSerialize", "classPurrNet_1_1SyncVar.html#a529fd6cdb73c036c4d907d3b30e23b3d", null ],
-    [ "OnSpawnerFlush", "classPurrNet_1_1SyncVar.html#afbbe0be47fefeec4cbdd93b49d3dc094", null ]
+    [ "OnSpawnSent", "classPurrNet_1_1SyncVar.html#aee3d203c5aa707fddb01a40aea8d88b9", null ]
 ];
