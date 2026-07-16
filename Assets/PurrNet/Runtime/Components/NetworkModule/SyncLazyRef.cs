@@ -67,7 +67,7 @@ namespace PurrNet
                 _value = null;
                 onChanged?.Invoke(old, null);
             }
-            else if (_hierarchy.TryGetIdentity(globalId.scene, globalId.id, out var identity))
+            else if (_hierarchy != null && _hierarchy.TryGetIdentity(globalId.scene, globalId.id, out var identity))
             {
                 SetFromBaseIdentity(globalId.scene, identity);
             }
@@ -80,6 +80,11 @@ namespace PurrNet
                 _hierarchy = module;
                 _hierarchy.onEarlyIdentityAdded += OnIdentityAdded;
                 _hierarchy.onIdentityRemoved += OnIdentityRemoved;
+
+                // The ID may have arrived with the spawn data, before the hierarchy was available.
+                var pending = _networkID.value;
+                if (pending.id != default)
+                    OnNetworkIDChanged(pending);
             }
         }
 

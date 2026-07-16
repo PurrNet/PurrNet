@@ -113,6 +113,9 @@ namespace PurrNet
         {
             if (!isServer)
                 _authoritative.onChangedWithOld += OnAuthoritativeChanged;
+
+            // Catch up with a value seeded from spawn data before we were subscribed.
+            OnAuthoritativeChanged(_display, _authoritative.value);
         }
 
         public override void OnDespawned()
