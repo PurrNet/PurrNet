@@ -1,14 +1,9 @@
-﻿using System.Collections.Generic;
-using System;
-using System.Buffers;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 
 namespace PurrNet.Packing
 {
     internal readonly struct DictionaryComparator<K, V> : IEqualityComparer<Dictionary<K, V>>
     {
-        private static readonly bool CanUseDefaultComparerLookup = IsExactDefaultComparerKey();
-
         private enum EnumerationResult : byte
         {
             Equal,
@@ -23,7 +18,7 @@ namespace PurrNet.Packing
             if (y is null) return false;
             if (x.Count != y.Count) return false;
 
-            bool canUseDefaultLookup = CanUseDefaultLookup() &&
+            bool canUseDefaultLookup = DefaultComparerLookup<K>.CanUse() &&
                                        ReferenceEquals(x.Comparer, EqualityComparer<K>.Default) &&
                                        ReferenceEquals(y.Comparer, EqualityComparer<K>.Default);
             switch (CompareEnumerations(x, y, canUseDefaultLookup))
@@ -46,37 +41,25 @@ namespace PurrNet.Packing
                 return true;
             }
 
-            int count = y.Count;
-            var matched = ArrayPool<bool>.Shared.Rent(count);
-            Array.Clear(matched, 0, count);
+            return MultisetEquality.MatchedEquals<PairSource, KeyValuePair<K, V>, Dictionary<K, V>.Enumerator>(
+                new PairSource(x), new PairSource(y), y.Count);
+        }
 
-            try
+        private readonly struct PairSource : IMultisetSource<KeyValuePair<K, V>, Dictionary<K, V>.Enumerator>
+        {
+            private readonly Dictionary<K, V> _value;
+
+            public PairSource(Dictionary<K, V> value)
             {
-                foreach (var xCurrent in x)
-                {
-                    int index = 0;
-                    bool found = false;
-                    foreach (var yCurrent in y)
-                    {
-                        if (!matched[index] && PurrEquality<K>.Equals(xCurrent.Key, yCurrent.Key) &&
-                            PurrEquality<V>.Equals(xCurrent.Value, yCurrent.Value))
-                        {
-                            matched[index] = true;
-                            found = true;
-                            break;
-                        }
-                        index++;
-                    }
-
-                    if (!found)
-                        return false;
-                }
-
-                return true;
+                _value = value;
             }
-            finally
+
+            public Dictionary<K, V>.Enumerator GetEnumerator() => _value.GetEnumerator();
+
+            public bool ElementEquals(in KeyValuePair<K, V> a, in KeyValuePair<K, V> b)
             {
-                ArrayPool<bool>.Shared.Return(matched);
+                return PurrEquality<K>.Equals(a.Key, b.Key) &&
+                       PurrEquality<V>.Equals(a.Value, b.Value);
             }
         }
 
@@ -107,36 +90,6 @@ namespace PurrNet.Packing
             }
 
             return yEnumerator.MoveNext() ? EnumerationResult.Different : EnumerationResult.Equal;
-        }
-
-        private static bool IsExactDefaultComparerKey()
-        {
-            var type = typeof(K);
-            if (type.IsEnum || type == typeof(IntPtr) || type == typeof(UIntPtr))
-                return true;
-
-            switch (Type.GetTypeCode(type))
-            {
-                case TypeCode.Byte:
-                case TypeCode.SByte:
-                case TypeCode.Char:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        private static bool CanUseDefaultLookup()
-        {
-            return CanUseDefaultComparerLookup ||
-                   (RuntimeHelpers.IsReferenceOrContainsReferences<K>() &&
-                    ReferenceEquals(PurrEquality<K>.Default, EqualityComparer<K>.Default));
         }
 
         public int GetHashCode(Dictionary<K, V> obj)

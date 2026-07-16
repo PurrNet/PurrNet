@@ -26,6 +26,12 @@ public struct DeltaParityManagedStructWithArray : IPackedAuto
     public int[] values;
 }
 
+public struct DeltaParityUnmanagedKey : IPackedAuto
+{
+    public int a;
+    public ushort b;
+}
+
 [RegisterNetworkType(typeof(DeltaParityDerivedA))]
 [RegisterNetworkType(typeof(DeltaParityDerivedB))]
 public class DeltaParityBase : IPackedAuto
@@ -52,6 +58,17 @@ public sealed class DeltaParityUnregisteredDerived : DeltaParityBase, IDisposabl
     {
         disposed = true;
     }
+}
+
+[RegisterNetworkType(typeof(DeltaParityStandaloneDerived))]
+public class DeltaParityStandaloneBase : IStandaloneSerializable, IPackedAuto
+{
+    public int baseValue;
+}
+
+public sealed class DeltaParityStandaloneDerived : DeltaParityStandaloneBase
+{
+    public int derivedValue;
 }
 
 public sealed class DeltaParityCustomPacked : IPacked
@@ -101,7 +118,9 @@ public class DeltaPackerParityTests
         PackCollections.RegisterList<int>();
         PackCollections.RegisterNullable<int>();
         PackCollections.RegisterHashSet<int>();
+        PackCollections.RegisterHashSet<Vector3Int>();
         PackCollections.RegisterDictionary<int, string>();
+        PackCollections.RegisterDictionary<DeltaParityUnmanagedKey, int>();
         PackCollections.RegisterQueue<int>();
         PackCollections.RegisterStack<int>();
         PackCollections.RegisterNativeArray<int>();
@@ -231,6 +250,27 @@ public class DeltaPackerParityTests
 
         result = RoundTrip(oldValue, null, true);
         Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void StandaloneSerializableDerived_ChangedDeltaReadsIntoDefaultDestination()
+    {
+        var oldValue = new DeltaParityStandaloneDerived { baseValue = 1, derivedValue = 5 };
+        var newValue = new DeltaParityStandaloneDerived { baseValue = 2, derivedValue = 5 };
+
+        _packer.ResetPositionAndMode(false);
+        bool changed = DeltaPacker<DeltaParityStandaloneDerived>.Write(_packer, oldValue, newValue);
+        Assert.That(changed, Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaParityStandaloneDerived result = default;
+        DeltaPacker<DeltaParityStandaloneDerived>.Read(_packer, oldValue, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result, Is.InstanceOf<DeltaParityStandaloneDerived>());
+        Assert.That(result.baseValue, Is.EqualTo(2));
     }
 
     [Test]
@@ -388,7 +428,7 @@ public class DeltaPackerParityTests
     }
 
     [Test]
-    public void GeneratedBaseType_UnknownRuntimeTypeHashSkipsPayloadAndKeepsBaseline()
+    public void GeneratedBaseType_UnknownRuntimeTypeHashThrows()
     {
         const uint bogusHash = 0xDEADBEEFu;
         Assert.That(Hasher.TryGetType(bogusHash, out _), Is.False);
@@ -396,29 +436,14 @@ public class DeltaPackerParityTests
         object oldValue = new DeltaParityDerivedA { baseValue = 1, a = "old" };
         uint oldHash = Hasher.GetStableHashU32(typeof(DeltaParityDerivedA));
 
-        const int payloadBits = 77;
-
         _packer.ResetPositionAndMode(false);
         _packer.WriteBit(true);
         DeltaPacker<bool>.Write(_packer, true, true);
         DeltaPacker<uint>.Write(_packer, oldHash, bogusHash);
-        _packer.WriteBits(payloadBits, 32);
-        for (int i = 0; i < payloadBits; i++)
-            _packer.WriteBit(true);
-        int sentinelPos = _packer.positionInBits;
-        _packer.WriteBits(0xABCD, 16);
 
         _packer.ResetPositionAndMode(true);
         object result = null;
-        PackDeltaObj.ReadDeltaObject(_packer, oldValue, ref result);
-
-        Assert.That(_packer.positionInBits, Is.EqualTo(sentinelPos));
-        Assert.That(_packer.ReadBits(16), Is.EqualTo((ulong)0xABCD));
-        Assert.That(result, Is.TypeOf<DeltaParityDerivedA>());
-        Assert.That(result, Is.Not.SameAs(oldValue));
-        var kept = (DeltaParityDerivedA)result;
-        Assert.That(kept.baseValue, Is.EqualTo(1));
-        Assert.That(kept.a, Is.EqualTo("old"));
+        Assert.Throws<InvalidOperationException>(() => PackDeltaObj.ReadDeltaObject(_packer, oldValue, ref result));
     }
 
     [Test]
@@ -719,6 +744,39 @@ public class DeltaPackerParityTests
 
         result = RoundTrip(oldValue, new Dictionary<int, string>(oldValue), false);
         CollectionAssert.AreEquivalent(ProjectThroughPacker(oldValue), result);
+        Assert.That(result, Is.Not.SameAs(oldValue));
+    }
+
+    [Test]
+    public void DictionaryWithUnmanagedStructKeys_RoundTripsOnChangedAndUnchangedPaths()
+    {
+        var keyA = new DeltaParityUnmanagedKey { a = 1, b = 2 };
+        var keyB = new DeltaParityUnmanagedKey { a = 3, b = 4 };
+        var keyC = new DeltaParityUnmanagedKey { a = 5, b = 6 };
+
+        var oldValue = new Dictionary<DeltaParityUnmanagedKey, int> { [keyA] = 10, [keyB] = 20 };
+        var newValue = new Dictionary<DeltaParityUnmanagedKey, int> { [keyA] = 10, [keyB] = 25, [keyC] = 30 };
+
+        var result = RoundTrip(oldValue, newValue, true);
+        CollectionAssert.AreEquivalent(ProjectThroughPacker(newValue), result);
+
+        var reordered = new Dictionary<DeltaParityUnmanagedKey, int> { [keyB] = 20, [keyA] = 10 };
+        result = RoundTrip(oldValue, reordered, false);
+        CollectionAssert.AreEquivalent(ProjectThroughPacker(oldValue), result);
+        Assert.That(result, Is.Not.SameAs(oldValue));
+    }
+
+    [Test]
+    public void HashSetWithUnmanagedStructElements_RoundTripsOnChangedAndUnchangedPaths()
+    {
+        var oldValue = new HashSet<Vector3Int> { new Vector3Int(1, 2, 3), new Vector3Int(4, 5, 6) };
+        var newValue = new HashSet<Vector3Int> { new Vector3Int(4, 5, 6), new Vector3Int(7, 8, 9) };
+
+        var result = RoundTrip(oldValue, newValue, true);
+        Assert.That(result.SetEquals(ProjectThroughPacker(newValue)), Is.True);
+
+        result = RoundTrip(oldValue, new HashSet<Vector3Int> { new Vector3Int(4, 5, 6), new Vector3Int(1, 2, 3) }, false);
+        Assert.That(result.SetEquals(ProjectThroughPacker(oldValue)), Is.True);
         Assert.That(result, Is.Not.SameAs(oldValue));
     }
 

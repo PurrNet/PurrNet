@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -108,8 +109,7 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
-                    disposable.Dispose();
+                DeltaPacker.DisposeReplaced(oldValue, ref value);
                 value = Packer.Copy(oldValue);
                 return;
             }
@@ -145,7 +145,21 @@ namespace PurrNet.Packing
                 return typeof(T);
 
             var runtimeType = value.GetType();
-            return Hasher.IsRegistered(runtimeType) ? runtimeType : typeof(T);
+            if (runtimeType == typeof(T) || Hasher.IsRegistered(runtimeType))
+                return runtimeType;
+
+            WarnUnregisteredRuntimeType(runtimeType);
+            return typeof(T);
+        }
+
+        static readonly HashSet<Type> _warnedUnregisteredTypes = new HashSet<Type>();
+
+        static void WarnUnregisteredRuntimeType(Type runtimeType)
+        {
+            if (_warnedUnregisteredTypes.Add(runtimeType))
+                PurrLogger.LogWarning(
+                    $"Delta writing `{typeof(T)}`: runtime type `{runtimeType}` isn't a registered network type, so only the `{typeof(T)}` fields will sync. " +
+                    "Reference the derived type in a serialized context or mark it with [RegisterNetworkType] if its fields should replicate.");
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -167,12 +181,13 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
-                    disposable.Dispose();
+                DeltaPacker.DisposeReplaced(oldValue, ref value);
                 value = Packer.Copy(oldValue);
                 return;
             }
 
+            if (!typeof(T).IsValueType && ReferenceEquals(value, oldValue))
+                value = default;
             Packer<T>.ReadFunc(packer, ref value);
         }
 
@@ -195,12 +210,13 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
-                    disposable.Dispose();
+                DeltaPacker.DisposeReplaced(oldValue, ref value);
                 value = Packer.Copy(oldValue);
                 return;
             }
 
+            if (!typeof(T).IsValueType && ReferenceEquals(value, oldValue))
+                value = default;
             Packer<T>.DirectRead(packer, ref value);
         }
 

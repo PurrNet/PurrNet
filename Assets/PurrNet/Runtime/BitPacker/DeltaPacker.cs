@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using PurrNet.Logging;
 
 namespace PurrNet.Packing
@@ -267,8 +268,7 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
-                    disposable.Dispose();
+                DisposeReplaced(oldValue, ref value);
                 value = Packer.Copy(oldValue);
                 return;
             }
@@ -276,6 +276,17 @@ namespace PurrNet.Packing
             if (!typeof(T).IsValueType && ReferenceEquals(value, oldValue))
                 value = default;
             Packer<T>.Read(packer, ref value);
+        }
+
+        /// <summary>Disposes the value about to be overwritten unless it aliases the baseline. Value types are skipped: ReferenceEquals can't detect struct baselines sharing pooled backing, so disposing would double-free them.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void DisposeReplaced<T>(T oldValue, ref T value)
+        {
+            if (typeof(T).IsValueType)
+                return;
+
+            if (value is IDisposable disposable && !value.GetType().IsValueType && !ReferenceEquals(value, oldValue))
+                disposable.Dispose();
         }
     }
 }

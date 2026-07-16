@@ -95,7 +95,9 @@ namespace PurrNet.Editor
         private static readonly Regex ListRegex = new(@"^\s*(?:([-+*])|(\d+)[.)])\s+(.+)$",
             RegexOptions.Compiled);
         private static readonly Regex MarkdownImageRegex = new(
-            @"(?:\[)?!\[(?<alt>[^\]]*)\]\((?<src><[^>]+>|[^\s\)]+)(?:\s+[""'].*?[""'])?\)(?:\]\((?<link><[^>]+>|[^\s\)]+)(?:\s+[""'].*?[""'])?\))?",
+            @"\[!\[(?<alt>[^\]]*)\]\((?<src><[^>]+>|[^\s\)]+)(?:\s+[""'].*?[""'])?\)\]\((?<link><[^>]+>|[^\s\)]+)(?:\s+[""'].*?[""'])?\)|!\[(?<alt>[^\]]*)\]\((?<src><[^>]+>|[^\s\)]+)(?:\s+[""'].*?[""'])?\)",
+            RegexOptions.Compiled);
+        private static readonly Regex ReferenceLinkResidueRegex = new(@"\G\](?:\[[^\]]*\])?",
             RegexOptions.Compiled);
         private static readonly Regex HtmlImageRegex = new(@"<img\b[^>]*>",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -331,7 +333,18 @@ namespace PurrNet.Editor
                         continue;
 
                     ApplyAnchorsBefore(anchors, image.Index, offset, ref anchorOffset, ref htmlLink);
-                    AppendParagraph(line.Substring(offset, image.Index - offset));
+                    string before = line.Substring(offset, image.Index - offset);
+                    int end = image.Index + image.Length;
+                    if (before.EndsWith("[", StringComparison.Ordinal))
+                    {
+                        var residue = ReferenceLinkResidueRegex.Match(line, end);
+                        if (residue.Success)
+                        {
+                            before = before.Substring(0, before.Length - 1);
+                            end += residue.Length;
+                        }
+                    }
+                    AppendParagraph(before);
                     FlushParagraph();
 
                     if (imageCount < MaxImages)
@@ -349,7 +362,7 @@ namespace PurrNet.Editor
                             AppendParagraph(image.Alt);
                         }
                     }
-                    offset = image.Index + image.Length;
+                    offset = end;
                 }
                 AppendParagraph(line.Substring(offset));
                 ApplyRemainingAnchors(anchors, anchorOffset, offset, ref htmlLink);

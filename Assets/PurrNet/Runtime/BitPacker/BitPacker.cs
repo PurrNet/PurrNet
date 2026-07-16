@@ -286,8 +286,7 @@ namespace PurrNet.Packing
         {
             if (ReadBit())
             {
-                if (value is IDisposable disposable && !ReferenceEquals(value, oldValue))
-                    disposable.Dispose();
+                DeltaPacker.DisposeReplaced(oldValue, ref value);
                 value = default;
                 return false;
             }
@@ -298,7 +297,7 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            if (value == null && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            if ((value == null || ReferenceEquals(value, oldValue)) && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 value = FactoryCache<T>.Create();
 
             return true;

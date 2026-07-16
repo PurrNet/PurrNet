@@ -4,6 +4,7 @@ using PurrNet;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
+using UnityEngine;
 
 [RegisterNetworkType(typeof(EqualityStructWithDontPack))]
 [RegisterNetworkType(typeof(EqualityStructWithNestedDontPack))]
@@ -26,6 +27,52 @@ public struct EqualityStructWithNestedDontPack
 public struct EqualityStructWithFloat
 {
     public float value;
+}
+
+public struct EqualityStructPlainUnmanaged
+{
+    public int a;
+    public ushort b;
+}
+
+public enum EqualityByteEnum : byte
+{
+    first,
+    second
+}
+
+// these stay out of [RegisterNetworkType]/RPC usage on purpose: no codegen IPurrEquatable override,
+// so they exercise the packed-range memcmp fallback the way precompiled-DLL types do
+public struct EqualityUnregisteredWithDontPack
+{
+    public int packed;
+    [DontPack] public int local;
+}
+
+public struct EqualityUnregisteredNestedDontPack
+{
+    public int outer;
+    public EqualityUnregisteredWithDontPack nested;
+}
+
+public struct EqualityUnregisteredMergeLayout
+{
+    public int a;
+    public int b;
+    [DontPack] public int skipped;
+    public int c;
+}
+
+public struct EqualityUnregisteredWithEnum
+{
+    public EqualityByteEnum mode;
+    [DontPack] public int local;
+}
+
+public struct EqualityUnregisteredOverrideWins
+{
+    public int packed;
+    [DontPack] public int local;
 }
 
 /// <summary>
@@ -277,6 +324,209 @@ public class PurrEqualityTests
     }
 
     [Test]
+    public void DefaultComparerLookup_FastPathEligibility()
+    {
+        Assert.IsTrue(DefaultComparerLookup<int>.CanUse());
+        Assert.IsTrue(DefaultComparerLookup<EqualityByteEnum>.CanUse());
+        Assert.IsTrue(DefaultComparerLookup<System.Guid>.CanUse());
+        Assert.IsTrue(DefaultComparerLookup<EqualityStructPlainUnmanaged>.CanUse());
+
+        Assert.IsFalse(DefaultComparerLookup<float>.CanUse());
+        Assert.IsFalse(DefaultComparerLookup<double>.CanUse());
+        Assert.IsFalse(DefaultComparerLookup<decimal>.CanUse());
+        Assert.IsFalse(DefaultComparerLookup<EqualityStructWithFloat>.CanUse());
+        Assert.IsFalse(DefaultComparerLookup<PlayerID>.CanUse());
+        Assert.IsFalse(DefaultComparerLookup<Vector3Int>.CanUse());
+        Assert.IsFalse(DefaultComparerLookup<EqualityUnregisteredWithDontPack>.CanUse());
+    }
+
+    [Test]
+    public void PurrEquality_DictionaryAndHashSet_PlainUnmanagedStructKeys_AreOrderIndependent()
+    {
+        PackCollections.RegisterDictionary<EqualityStructPlainUnmanaged, int>();
+        PackCollections.RegisterHashSet<EqualityStructPlainUnmanaged>();
+
+        var keyA = new EqualityStructPlainUnmanaged { a = 1, b = 2 };
+        var keyB = new EqualityStructPlainUnmanaged { a = 3, b = 4 };
+        var keyC = new EqualityStructPlainUnmanaged { a = 5, b = 6 };
+
+        var dictionaryA = new Dictionary<EqualityStructPlainUnmanaged, int>
+        {
+            [keyA] = 1,
+            [keyB] = 2,
+            [keyC] = 3
+        };
+        var dictionaryB = new Dictionary<EqualityStructPlainUnmanaged, int>
+        {
+            [keyC] = 3,
+            [keyB] = 2,
+            [keyA] = 1
+        };
+
+        Assert.IsTrue(PurrEquality<Dictionary<EqualityStructPlainUnmanaged, int>>.Equals(dictionaryA, dictionaryB));
+
+        dictionaryB[keyB] = 20;
+        Assert.IsFalse(PurrEquality<Dictionary<EqualityStructPlainUnmanaged, int>>.Equals(dictionaryA, dictionaryB));
+
+        dictionaryB[keyB] = 2;
+        dictionaryB.Remove(keyC);
+        dictionaryB[new EqualityStructPlainUnmanaged { a = 7, b = 8 }] = 3;
+        Assert.IsFalse(PurrEquality<Dictionary<EqualityStructPlainUnmanaged, int>>.Equals(dictionaryA, dictionaryB));
+
+        var setA = new HashSet<EqualityStructPlainUnmanaged> { keyA, keyB, keyC };
+        var setB = new HashSet<EqualityStructPlainUnmanaged> { keyC, keyB, keyA };
+        Assert.IsTrue(PurrEquality<HashSet<EqualityStructPlainUnmanaged>>.Equals(setA, setB));
+
+        setB.Remove(keyC);
+        setB.Add(new EqualityStructPlainUnmanaged { a = 7, b = 8 });
+        Assert.IsFalse(PurrEquality<HashSet<EqualityStructPlainUnmanaged>>.Equals(setA, setB));
+    }
+
+    [Test]
+    public void PurrEquality_Dictionary_GuidKeys_AreOrderIndependent()
+    {
+        PackCollections.RegisterDictionary<System.Guid, int>();
+
+        var keyA = System.Guid.NewGuid();
+        var keyB = System.Guid.NewGuid();
+        var a = new Dictionary<System.Guid, int> { [keyA] = 1, [keyB] = 2 };
+        var b = new Dictionary<System.Guid, int> { [keyB] = 2, [keyA] = 1 };
+
+        Assert.IsTrue(PurrEquality<Dictionary<System.Guid, int>>.Equals(a, b));
+
+        b[keyB] = 3;
+        Assert.IsFalse(PurrEquality<Dictionary<System.Guid, int>>.Equals(a, b));
+    }
+
+    [Test]
+    public void PurrEquality_Dictionary_PlayerIDKeys_KeepMemCmpSemantics()
+    {
+        PackCollections.RegisterDictionary<PlayerID, int>();
+
+        var bot = new PlayerID(5, true);
+        var human = new PlayerID(5, false);
+        var botDictionary = new Dictionary<PlayerID, int> { [bot] = 1 };
+        var botDictionaryCopy = new Dictionary<PlayerID, int> { [bot] = 1 };
+        var humanDictionary = new Dictionary<PlayerID, int> { [human] = 1 };
+
+        Assert.IsTrue(PurrEquality<Dictionary<PlayerID, int>>.Equals(botDictionary, botDictionaryCopy));
+        Assert.IsFalse(PurrEquality<Dictionary<PlayerID, int>>.Equals(botDictionary, humanDictionary));
+    }
+
+    [Test]
+    public void PurrEquality_Dictionary_FloatFieldStructKeys_RemainBitExact()
+    {
+        PackCollections.RegisterDictionary<EqualityStructWithFloat, int>();
+
+        float negativeZero = System.BitConverter.Int32BitsToSingle(unchecked((int)0x80000000u));
+        var positiveZeroDictionary = new Dictionary<EqualityStructWithFloat, int>
+        {
+            [new EqualityStructWithFloat { value = 0f }] = 1
+        };
+        var negativeZeroDictionary = new Dictionary<EqualityStructWithFloat, int>
+        {
+            [new EqualityStructWithFloat { value = negativeZero }] = 1
+        };
+
+        Assert.IsFalse(PurrEquality<Dictionary<EqualityStructWithFloat, int>>.Equals(
+            positiveZeroDictionary, negativeZeroDictionary));
+    }
+
+    [Test]
+    public void PurrEquality_UnregisteredStruct_PackedRanges_IgnoreDontPackFields()
+    {
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredWithDontPack>.memCmpComparable);
+
+        var ranges = PurrEquality<EqualityUnregisteredWithDontPack>.packedMemCmpRanges;
+        Assert.IsNotNull(ranges);
+
+        int covered = 0;
+        for (int i = 0; i < ranges.Length; i++)
+            covered += ranges[i].size;
+        Assert.AreEqual(4, covered);
+
+        var baseline = new EqualityUnregisteredWithDontPack { packed = 5, local = 1 };
+        var sameWire = new EqualityUnregisteredWithDontPack { packed = 5, local = 2 };
+        var differentWire = new EqualityUnregisteredWithDontPack { packed = 6, local = 1 };
+
+        Assert.IsTrue(PurrEquality<EqualityUnregisteredWithDontPack>.PackedMemEquals(ref baseline, ref sameWire));
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredWithDontPack>.PackedMemEquals(ref baseline, ref differentWire));
+        Assert.IsTrue(PurrEquality<EqualityUnregisteredWithDontPack>.Equals(baseline, sameWire));
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredWithDontPack>.Equals(baseline, differentWire));
+    }
+
+    [Test]
+    public void PurrEquality_UnregisteredStruct_PackedRanges_RecurseIntoNestedStructs()
+    {
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredNestedDontPack>.memCmpComparable);
+
+        var ranges = PurrEquality<EqualityUnregisteredNestedDontPack>.packedMemCmpRanges;
+        Assert.IsNotNull(ranges);
+
+        int covered = 0;
+        for (int i = 0; i < ranges.Length; i++)
+            covered += ranges[i].size;
+        Assert.AreEqual(8, covered);
+
+        var baseline = new EqualityUnregisteredNestedDontPack
+        {
+            outer = 1,
+            nested = new EqualityUnregisteredWithDontPack { packed = 5, local = 1 }
+        };
+        var sameWire = new EqualityUnregisteredNestedDontPack
+        {
+            outer = 1,
+            nested = new EqualityUnregisteredWithDontPack { packed = 5, local = 2 }
+        };
+        var differentWire = new EqualityUnregisteredNestedDontPack
+        {
+            outer = 1,
+            nested = new EqualityUnregisteredWithDontPack { packed = 6, local = 1 }
+        };
+
+        Assert.IsTrue(PurrEquality<EqualityUnregisteredNestedDontPack>.PackedMemEquals(ref baseline, ref sameWire));
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredNestedDontPack>.PackedMemEquals(ref baseline, ref differentWire));
+        Assert.IsTrue(PurrEquality<EqualityUnregisteredNestedDontPack>.Equals(baseline, sameWire));
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredNestedDontPack>.Equals(baseline, differentWire));
+    }
+
+    [Test]
+    public void PurrEquality_PackedRanges_MergeAdjacentAndHandleEnumLeaves()
+    {
+        var merged = PurrEquality.CollectMemCmpRanges(typeof(EqualityUnregisteredMergeLayout));
+        Assert.AreEqual(2, merged.Length);
+        Assert.AreEqual(0, merged[0].offset);
+        Assert.AreEqual(8, merged[0].size);
+        Assert.AreEqual(12, merged[1].offset);
+        Assert.AreEqual(4, merged[1].size);
+
+        var enumRanges = PurrEquality.CollectMemCmpRanges(typeof(EqualityUnregisteredWithEnum));
+        Assert.AreEqual(1, enumRanges.Length);
+        Assert.AreEqual(1, enumRanges[0].size);
+
+        var baseline = new EqualityUnregisteredWithEnum { mode = EqualityByteEnum.second, local = 1 };
+        var sameWire = new EqualityUnregisteredWithEnum { mode = EqualityByteEnum.second, local = 2 };
+        var differentWire = new EqualityUnregisteredWithEnum { mode = EqualityByteEnum.first, local = 1 };
+
+        Assert.IsTrue(PurrEquality<EqualityUnregisteredWithEnum>.Equals(baseline, sameWire));
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredWithEnum>.Equals(baseline, differentWire));
+    }
+
+    [Test]
+    public void PurrEquality_LateOverride_WinsOverPackedRanges()
+    {
+        var a = new EqualityUnregisteredOverrideWins { packed = 1, local = 1 };
+        var b = new EqualityUnregisteredOverrideWins { packed = 1, local = 2 };
+
+        Assert.IsTrue(PurrEquality<EqualityUnregisteredOverrideWins>.Equals(a, b));
+
+        PurrEquality<EqualityUnregisteredOverrideWins>.OverrideDefault(
+            new NeverEqualComparer<EqualityUnregisteredOverrideWins>());
+
+        Assert.IsFalse(PurrEquality<EqualityUnregisteredOverrideWins>.Equals(a, a));
+    }
+
+    [Test]
     public void PurrEquality_Default_IsNonNull_AfterUse()
     {
         _ = PurrEquality<int>.Default;
@@ -501,5 +751,12 @@ public class PurrEqualityTests
         public bool Equals(int x, int y) => false;
 
         public int GetHashCode(int obj) => 0;
+    }
+
+    private sealed class NeverEqualComparer<T> : IEqualityComparer<T>
+    {
+        public bool Equals(T x, T y) => false;
+
+        public int GetHashCode(T obj) => 0;
     }
 }

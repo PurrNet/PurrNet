@@ -1,14 +1,9 @@
-﻿using System.Collections.Generic;
-using System;
-using System.Buffers;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 
 namespace PurrNet.Packing
 {
     internal readonly struct HashsetComparator<T> : IEqualityComparer<HashSet<T>>
     {
-        private static readonly bool CanUseDefaultComparerLookup = IsExactDefaultComparerElement();
-
         public bool Equals(HashSet<T> x, HashSet<T> y)
         {
             if (ReferenceEquals(x, y)) return true;
@@ -19,7 +14,7 @@ namespace PurrNet.Packing
             if (EnumerationsMatch(x, y))
                 return true;
 
-            if (CanUseDefaultLookup() &&
+            if (DefaultComparerLookup<T>.CanUse() &&
                 ReferenceEquals(x.Comparer, EqualityComparer<T>.Default) &&
                 ReferenceEquals(y.Comparer, EqualityComparer<T>.Default))
             {
@@ -32,37 +27,22 @@ namespace PurrNet.Packing
                 return true;
             }
 
-            int count = y.Count;
-            var matched = ArrayPool<bool>.Shared.Rent(count);
-            Array.Clear(matched, 0, count);
+            return MultisetEquality.MatchedEquals<ElementSource, T, HashSet<T>.Enumerator>(
+                new ElementSource(x), new ElementSource(y), y.Count);
+        }
 
-            try
+        private readonly struct ElementSource : IMultisetSource<T, HashSet<T>.Enumerator>
+        {
+            private readonly HashSet<T> _value;
+
+            public ElementSource(HashSet<T> value)
             {
-                foreach (var xValue in x)
-                {
-                    int index = 0;
-                    bool found = false;
-                    foreach (var yValue in y)
-                    {
-                        if (!matched[index] && PurrEquality<T>.Equals(xValue, yValue))
-                        {
-                            matched[index] = true;
-                            found = true;
-                            break;
-                        }
-                        index++;
-                    }
-
-                    if (!found)
-                        return false;
-                }
-
-                return true;
+                _value = value;
             }
-            finally
-            {
-                ArrayPool<bool>.Shared.Return(matched);
-            }
+
+            public HashSet<T>.Enumerator GetEnumerator() => _value.GetEnumerator();
+
+            public bool ElementEquals(in T a, in T b) => PurrEquality<T>.Equals(a, b);
         }
 
         private static bool EnumerationsMatch(HashSet<T> x, HashSet<T> y)
@@ -80,36 +60,6 @@ namespace PurrNet.Packing
             }
 
             return !yEnumerator.MoveNext();
-        }
-
-        private static bool IsExactDefaultComparerElement()
-        {
-            var type = typeof(T);
-            if (type.IsEnum || type == typeof(IntPtr) || type == typeof(UIntPtr))
-                return true;
-
-            switch (Type.GetTypeCode(type))
-            {
-                case TypeCode.Byte:
-                case TypeCode.SByte:
-                case TypeCode.Char:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        private static bool CanUseDefaultLookup()
-        {
-            return CanUseDefaultComparerLookup ||
-                   (RuntimeHelpers.IsReferenceOrContainsReferences<T>() &&
-                    ReferenceEquals(PurrEquality<T>.Default, EqualityComparer<T>.Default));
         }
 
         public int GetHashCode(HashSet<T> obj)

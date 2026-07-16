@@ -74,11 +74,6 @@ namespace PurrNet.Editor
             return false;
         }
 
-        public static void SetPackageReadme(string packageId, PackageReadmeResponse readme)
-        {
-            TrySetPackageReadme(packageId, readme, _epoch);
-        }
-
         internal static bool TrySetPackageReadme(string packageId, PackageReadmeResponse readme,
             int expectedEpoch)
         {

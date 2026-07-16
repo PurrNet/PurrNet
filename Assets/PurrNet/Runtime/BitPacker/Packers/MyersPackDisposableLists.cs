@@ -59,7 +59,7 @@ namespace PurrNet.Packing
             if (!packer.ReadBit())
             {
                 bool aliasesOld = SharesBackingList(old, value);
-                var copy = Copy(old);
+                var copy = old.Duplicate();
                 if (!value.isDisposed && !aliasesOld)
                     value.Dispose();
                 value = copy;
@@ -140,24 +140,6 @@ namespace PurrNet.Packing
         static bool SharesBackingList<T>(DisposableList<T> left, DisposableList<T> right)
         {
             return !left.isDisposed && !right.isDisposed && left.list == right.list;
-        }
-
-        static DisposableList<T> Copy<T>(DisposableList<T> source)
-        {
-            if (source.isDisposed)
-                return default;
-
-            var copy = DisposableList<T>.Create(source.Count);
-            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-            {
-                for (int i = 0; i < source.Count; i++)
-                    copy.Add(PurrCopy<T>.Copy(source[i]));
-            }
-            else
-            {
-                copy.AddRange(source);
-            }
-            return copy;
         }
     }
 }

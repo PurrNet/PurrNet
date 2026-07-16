@@ -178,6 +178,17 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldind_Ref);
                 il.Emit(OpCodes.Stloc, variable);
 
+                // if (variable == null && oldValue != null) variable = FactoryCache<T>.Create();
+                // otherwise the standalone reader fabricates the standalone base type and the castclass below throws
+                var skipCreate = il.Create(OpCodes.Nop);
+                il.Emit(OpCodes.Ldloc, variable);
+                il.Emit(OpCodes.Brtrue, skipCreate);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Brfalse, skipCreate);
+                EmitCreateInstance(il, module, typeRef);
+                il.Emit(OpCodes.Stloc, variable);
+                il.Append(skipCreate);
+
                 if (useDirectCall && !standaloneUnmanaged)
                     EmitLoadDeltaDelegate(il, module, standaloneType, false, true);
 
@@ -751,6 +762,31 @@ namespace PurrNet.Codegen
 
             var fieldRef = new FieldReference(fieldName, constructedFieldType, genericInstance);
             il.Emit(OpCodes.Ldsfld, fieldRef);
+        }
+
+        /// <summary>
+        /// Emits ldsfld FactoryCache(T).Create + callvirt Func(T).Invoke, leaving a new T on the stack.
+        /// </summary>
+        static void EmitCreateInstance(ILProcessor il, ModuleDefinition module, TypeReference type)
+        {
+            var factoryDef = module.GetTypeDefinition(typeof(FactoryCache<>));
+            var createDef = factoryDef.GetField("Create");
+            var funcOpen = ((GenericInstanceType)createDef.FieldType).ElementType;
+
+            // Field type: Func<!0>, using the raw generic parameter from the definition.
+            var fieldType = new GenericInstanceType(funcOpen.Import(module));
+            fieldType.GenericArguments.Add(factoryDef.GenericParameters[0]);
+
+            var factoryInstance = new GenericInstanceType(factoryDef.Import(module));
+            factoryInstance.GenericArguments.Add(type);
+
+            var createField = new FieldReference("Create", fieldType, factoryInstance);
+            il.Emit(OpCodes.Ldsfld, createField);
+
+            var funcInstance = new GenericInstanceType(funcOpen.Import(module));
+            funcInstance.GenericArguments.Add(type);
+            var invokeRef = funcInstance.GetMethodRef("Invoke").Import(module);
+            il.Emit(OpCodes.Callvirt, invokeRef);
         }
 
         /// <summary>
