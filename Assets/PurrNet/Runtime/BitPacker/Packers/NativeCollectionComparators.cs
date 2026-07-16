@@ -19,7 +19,16 @@ namespace PurrNet.Packing
             if (len != y.Length) return false;
             if (len == 0) return true;
 
-            return MemEqual(ref x, ref y, len);
+            if (PurrEquality<T>.memCmpComparable)
+                return MemEqual(ref x, ref y, len);
+
+            for (int i = 0; i < len; i++)
+            {
+                if (!PurrEquality<T>.Equals(x[i], y[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         static bool MemEqual(ref NativeArray<T> a, ref NativeArray<T> b, int length)
@@ -60,7 +69,16 @@ namespace PurrNet.Packing
             if (len != y.Length) return false;
             if (len == 0) return true;
 
-            return MemEqual(x, y, len);
+            if (PurrEquality<T>.memCmpComparable)
+                return MemEqual(x, y, len);
+
+            for (int i = 0; i < len; i++)
+            {
+                if (!PurrEquality<T>.Equals(x[i], y[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         static bool MemEqual(NativeList<T> a, NativeList<T> b, int length)

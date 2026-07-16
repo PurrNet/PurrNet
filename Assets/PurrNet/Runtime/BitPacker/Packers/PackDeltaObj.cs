@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
+using PurrNet.Logging;
 using PurrNet.Utils;
 
 namespace PurrNet.Packing
@@ -30,10 +32,13 @@ namespace PurrNet.Packing
                 var oldValueSanitized = oldType != newType ? null : oldvalue;
 
                 hasChanged = DeltaPacker<uint>.Write(packer, oldHash, newHash) || hasChanged;
+
+                int lengthPos = packer.AdvanceBits(32);
                 bool valueChanged = newType == typeof(object)
                     ? DeltaPacker<object>.WriteUnpacked(packer, oldValueSanitized, newvalue)
                     : DeltaPacker.WriteAsExactType(packer, newType, oldValueSanitized, newvalue);
                 hasChanged = valueChanged || hasChanged;
+                packer.WriteBitsAt(lengthPos, (ulong)(packer.positionInBits - lengthPos - 32), 32);
             }
 
             packer.WriteAt(flagPos, hasChanged);
@@ -68,7 +73,17 @@ namespace PurrNet.Packing
                 uint newHash = default;
                 DeltaPacker<uint>.Read(packer, oldHash, ref newHash);
 
-                var newType = Hasher.ResolveType(newHash);
+                int payloadBits = (int)packer.ReadBits(32);
+
+                if (!Hasher.TryGetType(newHash, out var newType))
+                {
+                    WarnUnknownHash(newHash);
+                    packer.SetBitPosition(packer.positionInBits + payloadBits);
+                    ClearReplacedValue(oldvalue, ref value);
+                    value = oldvalue == null ? null : Packer.Copy(oldvalue);
+                    return;
+                }
+
                 var oldValueSanitized = oldType != newType ? null : oldvalue;
 
                 if (oldType != newType || (value != null && value.GetType() != newType))
@@ -83,6 +98,16 @@ namespace PurrNet.Packing
             {
                 ClearReplacedValue(oldvalue, ref value);
             }
+        }
+
+        static readonly HashSet<uint> _unknownHashes = new HashSet<uint>();
+
+        static void WarnUnknownHash(uint hash)
+        {
+            if (_unknownHashes.Add(hash))
+                PurrLogger.LogWarning(
+                    $"Delta read got unknown type hash '{hash}'; skipping the payload and keeping the previous value. " +
+                    "The sender likely has a type registered that this build doesn't (stripping, conditional compile or version mismatch).");
         }
 
         static void ClearReplacedValue(object oldvalue, ref object value)

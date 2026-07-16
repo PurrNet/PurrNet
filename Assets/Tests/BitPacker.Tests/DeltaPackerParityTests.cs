@@ -388,6 +388,40 @@ public class DeltaPackerParityTests
     }
 
     [Test]
+    public void GeneratedBaseType_UnknownRuntimeTypeHashSkipsPayloadAndKeepsBaseline()
+    {
+        const uint bogusHash = 0xDEADBEEFu;
+        Assert.That(Hasher.TryGetType(bogusHash, out _), Is.False);
+
+        object oldValue = new DeltaParityDerivedA { baseValue = 1, a = "old" };
+        uint oldHash = Hasher.GetStableHashU32(typeof(DeltaParityDerivedA));
+
+        const int payloadBits = 77;
+
+        _packer.ResetPositionAndMode(false);
+        _packer.WriteBit(true);
+        DeltaPacker<bool>.Write(_packer, true, true);
+        DeltaPacker<uint>.Write(_packer, oldHash, bogusHash);
+        _packer.WriteBits(payloadBits, 32);
+        for (int i = 0; i < payloadBits; i++)
+            _packer.WriteBit(true);
+        int sentinelPos = _packer.positionInBits;
+        _packer.WriteBits(0xABCD, 16);
+
+        _packer.ResetPositionAndMode(true);
+        object result = null;
+        PackDeltaObj.ReadDeltaObject(_packer, oldValue, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(sentinelPos));
+        Assert.That(_packer.ReadBits(16), Is.EqualTo((ulong)0xABCD));
+        Assert.That(result, Is.TypeOf<DeltaParityDerivedA>());
+        Assert.That(result, Is.Not.SameAs(oldValue));
+        var kept = (DeltaParityDerivedA)result;
+        Assert.That(kept.baseValue, Is.EqualTo(1));
+        Assert.That(kept.a, Is.EqualTo("old"));
+    }
+
+    [Test]
     public void CustomIPackedType_DeltaFallbackMatchesPackerSemantics()
     {
         var oldValue = new DeltaParityCustomPacked { serializedValue = 1, localOnlyValue = 100 };

@@ -5,6 +5,29 @@ using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 
+[RegisterNetworkType(typeof(EqualityStructWithDontPack))]
+[RegisterNetworkType(typeof(EqualityStructWithNestedDontPack))]
+public sealed class PurrEqualityRegistrationAnchor
+{
+}
+
+public struct EqualityStructWithDontPack
+{
+    public int packed;
+    [DontPack] public int local;
+}
+
+public struct EqualityStructWithNestedDontPack
+{
+    public int outer;
+    public EqualityStructWithDontPack nested;
+}
+
+public struct EqualityStructWithFloat
+{
+    public float value;
+}
+
 /// <summary>
 /// Tests for Packer.AreEqual and PurrEquality (equality checker used by delta packing and elsewhere).
 /// </summary>
@@ -204,6 +227,53 @@ public class PurrEqualityTests
 
         Assert.IsTrue(allEqual);
         Assert.AreEqual(0, allocated);
+    }
+
+    [Test]
+    public void PurrEquality_UnmanagedStruct_IgnoresDontPackFields()
+    {
+        var baseline = new EqualityStructWithDontPack { packed = 5, local = 1 };
+        var sameWire = new EqualityStructWithDontPack { packed = 5, local = 2 };
+        var differentWire = new EqualityStructWithDontPack { packed = 6, local = 1 };
+
+        Assert.IsTrue(PurrEquality<EqualityStructWithDontPack>.Equals(baseline, sameWire));
+        Assert.IsFalse(PurrEquality<EqualityStructWithDontPack>.Equals(baseline, differentWire));
+        Assert.IsTrue(Packer.AreEqual(baseline, sameWire));
+        Assert.IsFalse(Packer.AreEqual(baseline, differentWire));
+    }
+
+    [Test]
+    public void PurrEquality_UnmanagedStruct_IgnoresNestedDontPackFields()
+    {
+        var baseline = new EqualityStructWithNestedDontPack
+        {
+            outer = 1,
+            nested = new EqualityStructWithDontPack { packed = 5, local = 1 }
+        };
+        var sameWire = new EqualityStructWithNestedDontPack
+        {
+            outer = 1,
+            nested = new EqualityStructWithDontPack { packed = 5, local = 2 }
+        };
+        var differentWire = new EqualityStructWithNestedDontPack
+        {
+            outer = 1,
+            nested = new EqualityStructWithDontPack { packed = 6, local = 1 }
+        };
+
+        Assert.IsTrue(PurrEquality<EqualityStructWithNestedDontPack>.Equals(baseline, sameWire));
+        Assert.IsFalse(PurrEquality<EqualityStructWithNestedDontPack>.Equals(baseline, differentWire));
+    }
+
+    [Test]
+    public void PurrEquality_UnmanagedStructWithoutDontPack_StaysBitExact()
+    {
+        float negativeZero = System.BitConverter.Int32BitsToSingle(unchecked((int)0x80000000u));
+        var positiveZero = new EqualityStructWithFloat { value = 0f };
+        var negativeZeroStruct = new EqualityStructWithFloat { value = negativeZero };
+
+        Assert.IsFalse(PurrEquality<EqualityStructWithFloat>.Equals(positiveZero, negativeZeroStruct));
+        Assert.IsTrue(PurrEquality<EqualityStructWithFloat>.Equals(negativeZeroStruct, negativeZeroStruct));
     }
 
     [Test]
