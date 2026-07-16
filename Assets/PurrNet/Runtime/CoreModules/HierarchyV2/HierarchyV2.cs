@@ -1147,6 +1147,13 @@ namespace PurrNet.Modules
                         nid.TryAddObserver(spawner);
                 }
 
+                for (var i = 0; i < createdNids.Count; i++)
+                {
+                    var nid = createdNids[i];
+                    if (nid)
+                        nid.TriggerOnSpawnReceived();
+                }
+
                 if (!_pendingSpawns.TryAdd(data.packetIdx, createdNids))
                 {
                     PurrLogger.LogError($"CompleteSpawn: failed to add spawn packet {data.packetIdx} to pending spawns.");
@@ -1862,14 +1869,14 @@ namespace PurrNet.Modules
         {
             FlushSpawnPackets();
             SendDelayedObserverEvents();
-            TriggerSpawnerFlushEvents();
+            TriggerSpawnSentEvents();
             _manager.FlushBatchedRPCs();
             onPreFinishSpawn?.Invoke(_sceneId);
             SendDelayedCompleteSpawns();
             SpawnDelayedIdentities();
         }
 
-        private void TriggerSpawnerFlushEvents()
+        private void TriggerSpawnSentEvents()
         {
             if (_toSpawnNextFrame.Count == 0)
                 return;
@@ -1882,7 +1889,7 @@ namespace PurrNet.Modules
                 var nid = snapshot[i];
                 if (!nid || !nid.isSpawned)
                     continue;
-                nid.TriggerOnSpawnerFlush();
+                nid.TriggerOnSpawnSent();
             }
 
             ListPool<NetworkIdentity>.Destroy(snapshot);
@@ -2198,6 +2205,8 @@ namespace PurrNet.Modules
         public void ManualFinalizeSpawn(NetworkIdentity identity)
         {
             bool isHost = IsServerHost();
+
+            identity.TriggerOnSpawnReceived();
 
             identity.TriggerSpawnEvent(_asServer);
             if (isHost) identity.TriggerSpawnEvent(false);

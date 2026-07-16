@@ -149,37 +149,21 @@ namespace PurrNet
             InvalidateIsController();
         }
 
-        public override void OnSpawnerFlush()
+        public override void OnSpawnSent()
         {
-            if (_isDirty && isControllingSyncVar)
+            if (isServer || !isControllingSyncVar)
+                return;
+
+            if (_isDirty || !PurrEquality<T>.Default.Equals(_value, _initialValue))
                 FlushImmediately();
         }
 
-        public override void OnSerialize(BitPacker packer)
+        public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
-            bool diverged = !PurrEquality<T>.Default.Equals(_value, _initialValue);
-            Packer<bool>.Write(packer, diverged);
-
-            if (diverged)
-                Packer<T>.Write(packer, _value);
-        }
-
-        public override void OnDeserialize(BitPacker packer)
-        {
-            bool diverged = false;
-            Packer<bool>.Read(packer, ref diverged);
-
-            if (!diverged)
+            if (isSpawner && ownerAuth && owner == player)
                 return;
 
-            T newValue = default;
-            Packer<T>.Read(packer, ref newValue);
-
-            var oldValue = _value;
-            if (!Packer.Transform(ref _value, newValue))
-                return;
-
-            TriggerEvents(oldValue);
+            SendLatestState(player, _id, _value);
         }
 
         private void InvalidateIsController()
@@ -255,7 +239,6 @@ namespace PurrNet
                 return;
             }
 
-            // Hold while the spawn is settling; OnSpawnerFlush sends reliably behind the spawn packet.
             if (!parent.isFullySpawned)
                 return;
 

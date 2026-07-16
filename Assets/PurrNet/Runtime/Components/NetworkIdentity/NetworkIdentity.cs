@@ -1241,13 +1241,13 @@ namespace PurrNet
         /// right before batched RPCs flush. Anything queued here departs in the same flush as the
         /// spawn, ordered right behind the spawn packet.
         /// </summary>
-        protected virtual void OnSpawnerFlush() { }
+        protected virtual void OnSpawnSent() { }
 
-        internal void TriggerOnSpawnerFlush()
+        internal void TriggerOnSpawnSent()
         {
             try
             {
-                OnSpawnerFlush();
+                OnSpawnSent();
             }
             catch (Exception e)
             {
@@ -1258,7 +1258,38 @@ namespace PurrNet
             {
                 try
                 {
-                    _externalModulesView[i].OnSpawnerFlush();
+                    _externalModulesView[i].OnSpawnSent();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called only on peers that created the object from a spawn packet, once the entire
+        /// packet has been deserialized and early-spawned. Everything that spawned alongside
+        /// this object exists at this point; safe to react to spawn data.
+        /// </summary>
+        protected virtual void OnSpawnReceived() { }
+
+        internal void TriggerOnSpawnReceived()
+        {
+            try
+            {
+                OnSpawnReceived();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
+            for (int i = 0; i < _externalModulesView.Count; i++)
+            {
+                try
+                {
+                    _externalModulesView[i].OnSpawnReceived();
                 }
                 catch (Exception e)
                 {

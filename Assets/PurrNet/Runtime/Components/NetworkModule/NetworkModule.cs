@@ -81,7 +81,16 @@ namespace PurrNet
         /// right before batched RPCs flush. Anything queued here departs in the same flush as the
         /// spawn, ordered right behind the spawn packet.
         /// </summary>
-        public virtual void OnSpawnerFlush()
+        public virtual void OnSpawnSent()
+        {
+        }
+
+        /// <summary>
+        /// Called only on peers that created the object from a spawn packet, once the entire
+        /// packet has been deserialized and early-spawned. Everything that spawned alongside
+        /// this object exists at this point; safe to react to spawn data.
+        /// </summary>
+        public virtual void OnSpawnReceived()
         {
         }
 
