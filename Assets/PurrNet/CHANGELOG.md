@@ -1,3 +1,10 @@
+# [1.20.0-beta.262](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.261...v1.20.0-beta.262) (2026-07-16)
+
+
+### Bug Fixes
+
+* ensure SyncVar old timing, new events actually seem to allow for this in a cleaner more backwards compatible way funnily enough ([5ea249b](https://github.com/PurrNet/PurrNet/commit/5ea249b1749e9ee75b2426250309cc20435983e8))
+
 # [1.20.0-beta.261](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.260...v1.20.0-beta.261) (2026-07-16)
 
 
