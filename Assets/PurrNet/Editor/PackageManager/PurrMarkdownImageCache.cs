@@ -31,19 +31,19 @@ namespace PurrNet.Editor
 
         internal readonly struct ImageSnapshot
         {
-            public ImageStatus Status { get; }
-            public Texture2D Texture { get; }
-            public string Error { get; }
-            public int Width { get; }
-            public int Height { get; }
+            public ImageStatus status { get; }
+            public Texture2D texture { get; }
+            public string error { get; }
+            public int width { get; }
+            public int height { get; }
 
             internal ImageSnapshot(ImageStatus status, Texture2D texture, string error, int width, int height)
             {
-                Status = status;
-                Texture = texture;
-                Error = error;
-                Width = width;
-                Height = height;
+                this.status = status;
+                this.texture = texture;
+                this.error = error;
+                this.width = width;
+                this.height = height;
             }
         }
 
@@ -67,7 +67,7 @@ namespace PurrNet.Editor
                 LastAccess = lastAccess;
             }
 
-            public ImageSnapshot Snapshot => new ImageSnapshot(Status, Texture, Error, Width, Height);
+            public ImageSnapshot snapshot => new ImageSnapshot(Status, Texture, Error, Width, Height);
         }
 
         private enum ImageFormat
@@ -103,16 +103,20 @@ namespace PurrNet.Editor
             public readonly bool Success;
             public readonly byte[] Bytes;
             public readonly string Error;
+            public readonly string RedirectLocation;
 
-            private DownloadResult(bool success, byte[] bytes, string error)
+            private DownloadResult(bool success, byte[] bytes, string error, string redirectLocation)
             {
                 Success = success;
                 Bytes = bytes;
                 Error = error;
+                RedirectLocation = redirectLocation;
             }
 
-            public static DownloadResult Ok(byte[] bytes) => new DownloadResult(true, bytes, null);
-            public static DownloadResult Fail(string error) => new DownloadResult(false, null, error);
+            public static DownloadResult Ok(byte[] bytes) => new DownloadResult(true, bytes, null, null);
+            public static DownloadResult Fail(string error) => new DownloadResult(false, null, error, null);
+            public static DownloadResult Redirect(string location) =>
+                new DownloadResult(false, null, null, location);
         }
 
         /// <summary>
@@ -125,7 +129,7 @@ namespace PurrNet.Editor
             private readonly long _maxBytes;
             private readonly MemoryStream _stream;
 
-            public bool ExceededLimit { get; private set; }
+            public bool exceededLimit { get; private set; }
 
             public BoundedDownloadHandler(long maxBytes) : base(new byte[ReceiveBufferBytes])
             {
@@ -136,7 +140,7 @@ namespace PurrNet.Editor
             protected override void ReceiveContentLengthHeader(ulong contentLength)
             {
                 if (contentLength > (ulong)_maxBytes)
-                    ExceededLimit = true;
+                    exceededLimit = true;
             }
 
             protected override bool ReceiveData(byte[] data, int dataLength)
@@ -144,9 +148,9 @@ namespace PurrNet.Editor
                 if (data == null || dataLength <= 0)
                     return true;
 
-                if (ExceededLimit || dataLength > _maxBytes - _stream.Length)
+                if (exceededLimit || dataLength > _maxBytes - _stream.Length)
                 {
-                    ExceededLimit = true;
+                    exceededLimit = true;
                     return false;
                 }
 
@@ -189,9 +193,11 @@ namespace PurrNet.Editor
 
         private readonly Queue<CacheEntry> _queue = new Queue<CacheEntry>();
         private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
+        private readonly object _diskIoLock = new object();
         private readonly int _mainThreadId;
         private readonly SynchronizationContext _mainContext;
         private readonly string _diskCacheRoot;
+        private readonly long _maxDiskBytes;
 
         private int _activeRequests;
         private int _readyEntries;
@@ -202,18 +208,26 @@ namespace PurrNet.Editor
 
         public event Action Changed;
 
-        public PurrMarkdownImageCache()
+        public PurrMarkdownImageCache() : this(null, MaxDiskBytes, true)
+        {
+        }
+
+        internal PurrMarkdownImageCache(string diskCacheRoot, long maxDiskBytes, bool pruneOnStart)
         {
             _mainThreadId = Thread.CurrentThread.ManagedThreadId;
             _mainContext = SynchronizationContext.Current;
             if (_mainContext == null)
                 throw new InvalidOperationException(
                     "PurrMarkdownImageCache must be created on the Unity Editor main thread.");
-            _diskCacheRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Library", "PurrNet",
-                "PackageManager", "MarkdownImages", "v1"));
+            _diskCacheRoot = string.IsNullOrWhiteSpace(diskCacheRoot)
+                ? Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Library", "PurrNet",
+                    "PackageManager", "MarkdownImages", "v1"))
+                : Path.GetFullPath(diskCacheRoot);
+            _maxDiskBytes = Math.Max(0, maxDiskBytes);
 
             // Pruning is intentionally fire-and-forget and never reports progress to IMGUI.
-            _ = Task.Run(PruneDiskCacheSafe);
+            if (pruneOnStart)
+                _ = Task.Run(PruneDiskCacheSafe);
         }
 
         /// <summary>
@@ -225,7 +239,7 @@ namespace PurrNet.Editor
             if (_disposed)
                 return new ImageSnapshot(ImageStatus.Failed, null, "The image cache has been disposed.", 0, 0);
 
-            if (!TryNormalizeUrl(absoluteUrl, out var normalized, out var validationError))
+            if (!PurrMarkdownUrl.TryNormalizeImageUrl(absoluteUrl, out var normalized, out var validationError))
                 return new ImageSnapshot(ImageStatus.Unsupported, null, validationError, 0, 0);
 
             if (!_entries.TryGetValue(normalized, out var entry))
@@ -237,7 +251,7 @@ namespace PurrNet.Editor
                 _entries.Add(normalized, entry);
                 QueueEntry(entry);
                 TrimTrackedEntries();
-                return entry.Snapshot;
+                return entry.snapshot;
             }
 
             entry.LastAccess = ++_accessCounter;
@@ -252,7 +266,7 @@ namespace PurrNet.Editor
                 QueueEntry(entry);
             }
 
-            return entry.Snapshot;
+            return entry.snapshot;
         }
 
         public void Dispose()
@@ -413,17 +427,80 @@ namespace PurrNet.Editor
 
         private async Task<DownloadResult> DownloadBytesAsync(CacheEntry entry, CancellationToken cancellationToken)
         {
+            string currentUrl = entry.Url;
+            for (int redirectCount = 0; ; redirectCount++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!PurrMarkdownUrl.TryNormalizeImageUrl(currentUrl, out string normalizedUrl,
+                        out string validationError))
+                    return DownloadResult.Fail(validationError);
+                currentUrl = normalizedUrl;
+
+                string dnsError = await ValidateResolvedHostAsync(currentUrl, cancellationToken);
+                if (!string.IsNullOrEmpty(dnsError))
+                    return DownloadResult.Fail(dnsError);
+
+                var result = await DownloadSingleRequestAsync(entry, currentUrl, cancellationToken);
+                if (string.IsNullOrEmpty(result.RedirectLocation))
+                    return result;
+
+                if (redirectCount >= RedirectLimit)
+                    return DownloadResult.Fail("Image redirect limit exceeded.");
+                if (!PurrMarkdownUrl.TryResolveImageRedirect(currentUrl, result.RedirectLocation,
+                        out string redirectedUrl, out string redirectError))
+                    return DownloadResult.Fail(redirectError);
+                currentUrl = redirectedUrl;
+            }
+        }
+
+        private static async Task<string> ValidateResolvedHostAsync(string absoluteUrl,
+            CancellationToken cancellationToken)
+        {
+            if (!Uri.TryCreate(absoluteUrl, UriKind.Absolute, out var uri))
+                return "Image URL is invalid.";
+
+            // DNS validation closes the normal private-address path, but UnityWebRequest
+            // performs its own resolution afterward. A first-party proxy that pins the
+            // validated destination is still needed to eliminate DNS-rebinding TOCTOU fully.
+            try
+            {
+                Task<IPAddress[]> lookup = Dns.GetHostAddressesAsync(uri.DnsSafeHost);
+                Task timeout = Task.Delay(TimeSpan.FromSeconds(RequestTimeoutSeconds), cancellationToken);
+                if (await Task.WhenAny(lookup, timeout) != lookup)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return "Image host DNS lookup timed out.";
+                }
+
+                var addresses = await lookup;
+                cancellationToken.ThrowIfCancellationRequested();
+                return PurrMarkdownUrl.TryValidatePublicAddresses(addresses, out string error) ? null : error;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                return $"Image host DNS lookup failed: {e.Message}";
+            }
+        }
+
+        private async Task<DownloadResult> DownloadSingleRequestAsync(CacheEntry entry, string url,
+            CancellationToken cancellationToken)
+        {
             BoundedDownloadHandler handler = null;
             UnityWebRequest request = null;
 
             try
             {
                 handler = new BoundedDownloadHandler(MaxDownloadBytes);
-                request = new UnityWebRequest(entry.Url, UnityWebRequest.kHttpVerbGET)
+                request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbGET)
                 {
                     downloadHandler = handler,
                     timeout = RequestTimeoutSeconds,
-                    redirectLimit = RedirectLimit
+                    // Redirect targets must go back through URL normalization and DNS checks.
+                    redirectLimit = 0
                 };
                 request.SetRequestHeader("Accept", "image/png,image/jpeg;q=0.9,*/*;q=0.1");
                 entry.Request = request;
@@ -453,8 +530,16 @@ namespace PurrNet.Editor
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (handler.ExceededLimit)
+                if (handler.exceededLimit)
                     return DownloadResult.Fail("Image exceeds the 8 MiB download limit.");
+
+                if (request.responseCode >= 300 && request.responseCode <= 399)
+                {
+                    string location = request.GetResponseHeader("Location");
+                    return string.IsNullOrWhiteSpace(location)
+                        ? DownloadResult.Fail($"Image redirect (HTTP {request.responseCode}) has no Location header.")
+                        : DownloadResult.Redirect(location);
+                }
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {
@@ -630,79 +715,6 @@ namespace PurrNet.Editor
                 Changed?.Invoke();
         }
 
-        private static bool TryNormalizeUrl(string absoluteUrl, out string normalized, out string error)
-        {
-            normalized = null;
-            error = null;
-
-            if (string.IsNullOrWhiteSpace(absoluteUrl) ||
-                !Uri.TryCreate(absoluteUrl, UriKind.Absolute, out var uri))
-            {
-                error = "Image URL is not an absolute URL.";
-                return false;
-            }
-
-            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-            {
-                error = "Only HTTPS image URLs are supported.";
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo))
-            {
-                error = "Image URL has an invalid host or embedded credentials.";
-                return false;
-            }
-
-            var host = uri.DnsSafeHost.TrimEnd('.');
-            if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
-                host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase) ||
-                host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
-            {
-                error = "Local image hosts are not allowed.";
-                return false;
-            }
-
-            if (IPAddress.TryParse(host, out var address) && IsPrivateOrLocalAddress(address))
-            {
-                error = "Private or local image addresses are not allowed.";
-                return false;
-            }
-
-            // HttpRequestUrl excludes fragments, which do not identify different response bytes.
-            normalized = uri.GetComponents(UriComponents.HttpRequestUrl, UriFormat.UriEscaped);
-            return true;
-        }
-
-        private static bool IsPrivateOrLocalAddress(IPAddress address)
-        {
-            if (IPAddress.IsLoopback(address))
-                return true;
-
-            if (address.IsIPv4MappedToIPv6)
-                return IsPrivateOrLocalAddress(address.MapToIPv4());
-
-            var bytes = address.GetAddressBytes();
-            if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-            {
-                return bytes[0] == 0 || bytes[0] == 10 || bytes[0] == 127 ||
-                       (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127) ||
-                       (bytes[0] == 169 && bytes[1] == 254) ||
-                       (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
-                       (bytes[0] == 192 && bytes[1] == 168) ||
-                       (bytes[0] == 198 && (bytes[1] == 18 || bytes[1] == 19)) ||
-                       bytes[0] >= 224;
-            }
-
-            if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-            {
-                return address.IsIPv6LinkLocal || address.IsIPv6SiteLocal || bytes[0] == 0xff ||
-                       (bytes[0] & 0xfe) == 0xfc;
-            }
-
-            return true;
-        }
-
         private static InspectionResult InspectImage(byte[] bytes)
         {
             if (bytes == null || bytes.Length == 0)
@@ -817,133 +829,143 @@ namespace PurrNet.Editor
 
         private byte[] ReadDiskEntrySafe(string url)
         {
-            try
+            lock (_diskIoLock)
             {
-                var path = GetDiskPath(url);
-                if (!File.Exists(path))
-                    return null;
-
-                var info = new FileInfo(path);
-                if (info.Length <= 0 || info.Length > MaxDownloadBytes ||
-                    DateTime.UtcNow - info.LastWriteTimeUtc > TimeSpan.FromDays(MaxDiskAgeDays))
-                {
-                    File.Delete(path);
-                    return null;
-                }
-
-                var bytes = File.ReadAllBytes(path);
                 try
                 {
-                    File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+                    var path = GetDiskPath(url);
+                    if (!File.Exists(path))
+                        return null;
+
+                    var info = new FileInfo(path);
+                    if (info.Length <= 0 || info.Length > MaxDownloadBytes ||
+                        DateTime.UtcNow - info.LastWriteTimeUtc > TimeSpan.FromDays(MaxDiskAgeDays))
+                    {
+                        File.Delete(path);
+                        return null;
+                    }
+
+                    var bytes = File.ReadAllBytes(path);
+                    try
+                    {
+                        File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+                    }
+                    catch
+                    {
+                        // Timestamp is only an LRU hint.
+                    }
+
+                    return bytes;
                 }
                 catch
                 {
-                    // Timestamp is only an LRU hint.
+                    return null;
                 }
-
-                return bytes;
-            }
-            catch
-            {
-                return null;
             }
         }
 
-        private void WriteDiskEntrySafe(string url, byte[] bytes)
+        internal void WriteDiskEntrySafe(string url, byte[] bytes)
         {
             if (bytes == null || bytes.Length == 0 || bytes.LongLength > MaxDownloadBytes)
                 return;
 
-            string tempPath = null;
-            try
+            lock (_diskIoLock)
             {
-                Directory.CreateDirectory(_diskCacheRoot);
-                var path = GetDiskPath(url);
-                tempPath = Path.Combine(_diskCacheRoot,
-                    $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
-                File.WriteAllBytes(tempPath, bytes);
-
-                if (File.Exists(path))
-                    File.Replace(tempPath, path, null);
-                else
-                    File.Move(tempPath, path);
-
-                tempPath = null;
-            }
-            catch
-            {
-                // Disk caching is optional and must never affect rendering.
-            }
-            finally
-            {
-                if (tempPath != null)
+                string tempPath = null;
+                try
                 {
-                    try
-                    {
-                        if (File.Exists(tempPath))
-                            File.Delete(tempPath);
-                    }
-                    catch
-                    {
-                        // Best effort cleanup.
-                    }
+                    Directory.CreateDirectory(_diskCacheRoot);
+                    var path = GetDiskPath(url);
+                    tempPath = Path.Combine(_diskCacheRoot,
+                        $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+                    File.WriteAllBytes(tempPath, bytes);
+
+                    if (File.Exists(path))
+                        File.Replace(tempPath, path, null);
+                    else
+                        File.Move(tempPath, path);
+
+                    tempPath = null;
+                    // Enforce the cap after every successful write. Constructor-only pruning
+                    // allowed one image-heavy browsing session to grow without a bound.
+                    PruneDiskCacheCore();
+                }
+                catch
+                {
+                    // Disk caching is optional and must never affect rendering.
+                }
+                finally
+                {
+                    if (tempPath != null)
+                        TryDeleteFile(tempPath);
                 }
             }
         }
 
         private void DeleteDiskEntrySafe(string url)
         {
-            try
+            lock (_diskIoLock)
             {
-                var path = GetDiskPath(url);
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-            catch
-            {
-                // A bad disk entry simply remains until the next prune.
+                try
+                {
+                    var path = GetDiskPath(url);
+                    if (File.Exists(path))
+                        File.Delete(path);
+                }
+                catch
+                {
+                    // A bad disk entry simply remains until the next prune.
+                }
             }
         }
 
         private void PruneDiskCacheSafe()
         {
-            try
+            lock (_diskIoLock)
             {
-                if (!Directory.Exists(_diskCacheRoot))
-                    return;
-
-                var files = new List<FileInfo>();
-                long totalBytes = 0;
-                var now = DateTime.UtcNow;
-                foreach (var path in Directory.GetFiles(_diskCacheRoot, "*.img", SearchOption.TopDirectoryOnly))
+                try
                 {
-                    var info = new FileInfo(path);
-                    if (info.Length <= 0 || info.Length > MaxDownloadBytes ||
-                        now - info.LastWriteTimeUtc > TimeSpan.FromDays(MaxDiskAgeDays))
-                    {
-                        TryDeleteFile(path);
-                        continue;
-                    }
-
-                    files.Add(info);
-                    totalBytes += info.Length;
+                    PruneDiskCacheCore();
                 }
-
-                if (totalBytes <= MaxDiskBytes)
-                    return;
-
-                files.Sort((a, b) => a.LastWriteTimeUtc.CompareTo(b.LastWriteTimeUtc));
-                foreach (var file in files)
+                catch
                 {
-                    if (totalBytes <= MaxDiskBytes)
-                        break;
-                    if (TryDeleteFile(file.FullName))
-                        totalBytes -= file.Length;
+                    // Disk caching is optional.
                 }
             }
-            catch
+        }
+
+        private void PruneDiskCacheCore()
+        {
+            if (!Directory.Exists(_diskCacheRoot))
+                return;
+
+            var files = new List<FileInfo>();
+            long totalBytes = 0;
+            var now = DateTime.UtcNow;
+            foreach (var path in Directory.GetFiles(_diskCacheRoot, "*.img", SearchOption.TopDirectoryOnly))
             {
-                // Disk caching is optional.
+                var info = new FileInfo(path);
+                if (info.Length <= 0 || info.Length > MaxDownloadBytes ||
+                    now - info.LastWriteTimeUtc > TimeSpan.FromDays(MaxDiskAgeDays))
+                {
+                    TryDeleteFile(path);
+                    continue;
+                }
+
+                files.Add(info);
+                totalBytes += info.Length;
+            }
+
+            if (totalBytes <= _maxDiskBytes)
+                return;
+
+            files.Sort((a, b) => a.LastWriteTimeUtc.CompareTo(b.LastWriteTimeUtc));
+            foreach (var file in files)
+            {
+                if (totalBytes <= _maxDiskBytes)
+                    break;
+                if (TryDeleteFile(file.FullName))
+                    totalBytes -= file.Length;
             }
         }
 

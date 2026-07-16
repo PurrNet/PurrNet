@@ -431,7 +431,11 @@ namespace PurrNet.Packing
             bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
+            {
+                if (ReferenceEquals(value, oldvalue))
+                    value = null;
                 ReadArray(packer, ref value);
+            }
             else value = Packer.Copy(oldvalue);
         }
 
@@ -440,7 +444,11 @@ namespace PurrNet.Packing
             bool hasChanged = packer.ReadBit();
 
             if (hasChanged)
+            {
+                if (ReferenceEquals(value, oldvalue))
+                    value = null;
                 ReadList(packer, ref value);
+            }
             else value = Packer.Copy(oldvalue);
         }
 

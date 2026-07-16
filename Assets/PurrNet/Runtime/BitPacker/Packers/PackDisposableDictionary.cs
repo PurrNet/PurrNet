@@ -126,6 +126,8 @@ namespace PurrNet.Packing
         {
             bool hasChanged = default;
             packer.Read(ref hasChanged);
+            bool aliasesOld = !oldvalue.isDisposed && !value.isDisposed &&
+                              ReferenceEquals(oldvalue.dictionary, value.dictionary);
 
             if (!hasChanged)
             {
@@ -135,7 +137,7 @@ namespace PurrNet.Packing
                     return;
                 }
 
-                if (value.isDisposed)
+                if (value.isDisposed || aliasesOld)
                     value = DisposableDictionary<TKey, TValue>.Create();
                 else value.Clear();
 
@@ -152,12 +154,14 @@ namespace PurrNet.Packing
 
             if (newCount.value < 0)
             {
-                if (!value.isDisposed)
+                if (aliasesOld)
+                    value = default;
+                else if (!value.isDisposed)
                     value.Dispose();
                 return;
             }
 
-            if (value.isDisposed || value.dictionary == null)
+            if (value.isDisposed || value.dictionary == null || aliasesOld)
                 value = DisposableDictionary<TKey, TValue>.Create();
             else value.Clear();
 

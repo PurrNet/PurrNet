@@ -1300,6 +1300,7 @@ namespace PurrNet.Editor
 
         private async void LoadSelectedReadme(string packageId, int generation)
         {
+            int cacheEpoch = PurrPackageManagerCache.Epoch;
             try
             {
                 PackageReadmeResponse readme;
@@ -1321,13 +1322,23 @@ namespace PurrNet.Editor
                     }
 
                     readme = result.Value;
-                    PurrPackageManagerCache.SetPackageReadme(packageId, readme);
+                    if (generation != _readmeRequestGeneration || _selectedReadmePackageId != packageId)
+                        return;
+                    if (!PurrPackageManagerCache.TrySetPackageReadme(packageId, readme, cacheEpoch))
+                    {
+                        // The shared cache was invalidated while this request was in flight.
+                        // Let the next draw issue a request in the new cache/auth epoch.
+                        _selectedReadmePackageId = null;
+                        _readmeLoadingPackageId = null;
+                        Repaint();
+                        return;
+                    }
                 }
 
                 if (generation != _readmeRequestGeneration || _selectedReadmePackageId != packageId)
                     return;
 
-                if (string.IsNullOrWhiteSpace(readme?.Markdown))
+                if (string.IsNullOrWhiteSpace(readme?.markdown))
                 {
                     _readmeError = "No README available for this package.";
                     _readmeLoadingPackageId = null;
@@ -1336,7 +1347,7 @@ namespace PurrNet.Editor
                 }
 
                 var document = await Task.Run(() => PurrMarkdownParser.Parse(
-                    readme.Markdown, readme.BaseUrl, readme.SourceUrl));
+                    readme.markdown, readme.baseUrl, readme.sourceUrl));
 
                 if (generation != _readmeRequestGeneration || _selectedReadmePackageId != packageId)
                     return;
@@ -1393,7 +1404,7 @@ namespace PurrNet.Editor
 
         private void DrawReadmeTab()
         {
-            string sourceUrl = PurrMarkdownUrl.ResolveLink(null, _selectedReadme?.SourceUrl);
+            string sourceUrl = PurrMarkdownUrl.ResolveLink(null, _selectedReadme?.sourceUrl);
             if (!string.IsNullOrEmpty(sourceUrl))
             {
                 EditorGUILayout.BeginHorizontal();

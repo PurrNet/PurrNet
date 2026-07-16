@@ -2621,9 +2621,7 @@ namespace PurrNet.Codegen
                 var param = newMethod.Parameters[i];
 
                 bool shouldIgnore = ShouldIgnore(methodRpc.Signature.type, param, i, paramCount, out _);
-                var resolved = param.ParameterType.Resolve();
-
-                if (shouldIgnore || resolved != null && resolved.IsUnmanaged())
+                if (shouldIgnore || param.ParameterType.IsUnmanagedType())
                 {
                     code.Append(Instruction.Create(OpCodes.Ldarg, param));
                     continue;

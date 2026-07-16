@@ -137,8 +137,6 @@ namespace PurrNet.Codegen
                     continue;
 
                 var fieldType = GenerateSerializersProcessor.ResolveGenericFieldType(field, type);
-                var resolvedFieldType = fieldType?.Resolve();
-
                 FieldReference fieldRef;
 
                 if (type.HasGenericParameters)
@@ -161,7 +159,7 @@ namespace PurrNet.Codegen
                     fieldRef = field;
                 }
 
-                bool isUnmanaged = resolvedFieldType != null && resolvedFieldType.IsUnmanaged();
+                bool isUnmanaged = fieldType.IsUnmanagedType();
 
                 if (isUnmanaged)
                     continue;

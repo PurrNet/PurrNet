@@ -23,27 +23,27 @@ namespace PurrNet.Editor
 
     internal sealed class PurrMarkdownBlock
     {
-        public PurrMarkdownBlockKind Kind { get; }
-        public string Text { get; }
-        public IReadOnlyList<string> Items { get; }
-        public int Level { get; }
-        public string Url { get; }
-        public string LinkUrl { get; }
-        public float RequestedWidth { get; }
-        public float RequestedHeight { get; }
+        public PurrMarkdownBlockKind kind { get; }
+        public string text { get; }
+        public IReadOnlyList<string> items { get; }
+        public int level { get; }
+        public string url { get; }
+        public string linkUrl { get; }
+        public float requestedWidth { get; }
+        public float requestedHeight { get; }
 
         private PurrMarkdownBlock(PurrMarkdownBlockKind kind, string text = null,
             IReadOnlyList<string> items = null, int level = 0, string url = null,
             string linkUrl = null, float requestedWidth = 0, float requestedHeight = 0)
         {
-            Kind = kind;
-            Text = text ?? string.Empty;
-            Items = items;
-            Level = level;
-            Url = url;
-            LinkUrl = linkUrl;
-            RequestedWidth = requestedWidth;
-            RequestedHeight = requestedHeight;
+            this.kind = kind;
+            this.text = text ?? string.Empty;
+            this.items = items;
+            this.level = level;
+            this.url = url;
+            this.linkUrl = linkUrl;
+            this.requestedWidth = requestedWidth;
+            this.requestedHeight = requestedHeight;
         }
 
         public static PurrMarkdownBlock Paragraph(string text) =>
@@ -72,13 +72,13 @@ namespace PurrNet.Editor
 
     internal sealed class PurrMarkdownDocument
     {
-        public IReadOnlyList<PurrMarkdownBlock> Blocks { get; }
-        public string LinkBaseUrl { get; }
+        public IReadOnlyList<PurrMarkdownBlock> blocks { get; }
+        public string linkBaseUrl { get; }
 
         internal PurrMarkdownDocument(IReadOnlyList<PurrMarkdownBlock> blocks, string linkBaseUrl)
         {
-            Blocks = blocks;
-            LinkBaseUrl = linkBaseUrl;
+            this.blocks = blocks;
+            this.linkBaseUrl = linkBaseUrl;
         }
     }
 
@@ -107,6 +107,8 @@ namespace PurrNet.Editor
             RegexOptions.Compiled);
         private static readonly Regex AnchorOpenRegex = new(@"<a\b[^>]*\bhref\s*=\s*(?:""(?<dq>[^""]*)""|'(?<sq>[^']*)'|(?<bare>[^\s>]+))[^>]*>",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex AnchorCloseRegex = new(@"</a\s*>",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly struct ImageMatch
         {
@@ -128,6 +130,20 @@ namespace PurrNet.Editor
                 Link = link;
                 Width = width;
                 Height = height;
+            }
+        }
+
+        private readonly struct AnchorMatch
+        {
+            public readonly int Index;
+            public readonly string Link;
+            public readonly bool IsOpen;
+
+            public AnchorMatch(int index, string link, bool isOpen)
+            {
+                Index = index;
+                Link = link;
+                IsOpen = isOpen;
             }
         }
 
@@ -234,18 +250,11 @@ namespace PurrNet.Editor
                     continue;
                 }
 
-                var anchor = AnchorOpenRegex.Match(line);
-                if (anchor.Success)
-                    htmlLink = WebUtility.HtmlDecode(GetCapture(anchor, "dq", "sq", "bare"));
-
-                if (trimmed.StartsWith("</a", StringComparison.OrdinalIgnoreCase))
-                {
-                    htmlLink = null;
-                    continue;
-                }
+                var anchors = FindAnchors(line);
 
                 if (string.IsNullOrWhiteSpace(line))
                 {
+                    ApplyRemainingAnchors(anchors, 0, 0, ref htmlLink);
                     FlushParagraph();
                     FlushList();
                     continue;
@@ -260,6 +269,7 @@ namespace PurrNet.Editor
                     if (headingText.Length > 8192)
                         headingText = headingText.Substring(0, 8192) + "…";
                     Add(PurrMarkdownBlock.Heading(headingText, heading.Groups[1].Value.Length));
+                    ApplyRemainingAnchors(anchors, 0, 0, ref htmlLink);
                     continue;
                 }
 
@@ -268,6 +278,7 @@ namespace PurrNet.Editor
                     FlushParagraph();
                     FlushList();
                     Add(PurrMarkdownBlock.Rule());
+                    ApplyRemainingAnchors(anchors, 0, 0, ref htmlLink);
                     continue;
                 }
 
@@ -284,6 +295,7 @@ namespace PurrNet.Editor
                         string item = list.Groups[3].Value.Trim();
                         listItems.Add(item.Length <= 8192 ? item : item.Substring(0, 8192) + "…");
                     }
+                    ApplyRemainingAnchors(anchors, 0, 0, ref htmlLink);
                     continue;
                 }
 
@@ -296,19 +308,29 @@ namespace PurrNet.Editor
                     if (quote.Length > MaxBlockCharacters)
                         quote = quote.Substring(0, MaxBlockCharacters) + "…";
                     Add(PurrMarkdownBlock.Quote(quote));
+                    ApplyRemainingAnchors(anchors, 0, 0, ref htmlLink);
                     continue;
                 }
 
-                var images = FindImages(line, htmlLink);
+                var images = FindImages(line);
                 if (images.Count == 0)
                 {
                     AppendParagraph(line);
+                    ApplyRemainingAnchors(anchors, 0, 0, ref htmlLink);
                     continue;
                 }
 
                 int offset = 0;
+                int anchorOffset = 0;
                 foreach (var image in images)
                 {
+                    // Markdown and HTML image regexes can both match the same source range
+                    // (for example, an HTML image in Markdown alt text). Prefer the earliest,
+                    // longest match and ignore any nested/overlapping match.
+                    if (image.Index < offset)
+                        continue;
+
+                    ApplyAnchorsBefore(anchors, image.Index, offset, ref anchorOffset, ref htmlLink);
                     AppendParagraph(line.Substring(offset, image.Index - offset));
                     FlushParagraph();
 
@@ -330,9 +352,7 @@ namespace PurrNet.Editor
                     offset = image.Index + image.Length;
                 }
                 AppendParagraph(line.Substring(offset));
-
-                if (line.IndexOf("</a", StringComparison.OrdinalIgnoreCase) >= 0)
-                    htmlLink = null;
+                ApplyRemainingAnchors(anchors, anchorOffset, offset, ref htmlLink);
             }
 
             if (inCode && code.Length > 0)
@@ -346,7 +366,7 @@ namespace PurrNet.Editor
             return new PurrMarkdownDocument(blocks, sourceUrl);
         }
 
-        private static List<ImageMatch> FindImages(string line, string currentHtmlLink)
+        private static List<ImageMatch> FindImages(string line)
         {
             var matches = new List<ImageMatch>();
 
@@ -362,7 +382,6 @@ namespace PurrNet.Editor
             {
                 string source = null;
                 string alt = null;
-                string link = currentHtmlLink;
                 float width = 0;
                 float height = 0;
 
@@ -377,10 +396,49 @@ namespace PurrNet.Editor
                 }
 
                 if (!string.IsNullOrEmpty(source))
-                    matches.Add(new ImageMatch(match.Index, match.Length, alt, source, link, width, height));
+                    matches.Add(new ImageMatch(match.Index, match.Length, alt, source, null, width, height));
             }
 
             return matches.OrderBy(m => m.Index).ThenByDescending(m => m.Length).ToList();
+        }
+
+        private static List<AnchorMatch> FindAnchors(string line)
+        {
+            var matches = new List<AnchorMatch>();
+            foreach (Match match in AnchorOpenRegex.Matches(line))
+            {
+                matches.Add(new AnchorMatch(match.Index,
+                    WebUtility.HtmlDecode(GetCapture(match, "dq", "sq", "bare")), true));
+            }
+
+            foreach (Match match in AnchorCloseRegex.Matches(line))
+                matches.Add(new AnchorMatch(match.Index, null, false));
+
+            return matches.OrderBy(match => match.Index).ThenBy(match => match.IsOpen ? 0 : 1).ToList();
+        }
+
+        private static void ApplyAnchorsBefore(IReadOnlyList<AnchorMatch> anchors, int beforeIndex,
+            int consumedUntil, ref int anchorOffset, ref string htmlLink)
+        {
+            while (anchorOffset < anchors.Count && anchors[anchorOffset].Index < beforeIndex)
+            {
+                var anchor = anchors[anchorOffset++];
+                if (anchor.Index < consumedUntil)
+                    continue;
+                htmlLink = anchor.IsOpen ? anchor.Link : null;
+            }
+        }
+
+        private static void ApplyRemainingAnchors(IReadOnlyList<AnchorMatch> anchors, int anchorOffset,
+            int consumedUntil, ref string htmlLink)
+        {
+            while (anchorOffset < anchors.Count)
+            {
+                var anchor = anchors[anchorOffset++];
+                if (anchor.Index < consumedUntil)
+                    continue;
+                htmlLink = anchor.IsOpen ? anchor.Link : null;
+            }
         }
 
         private static void TryParseDimension(string value, out float dimension)
@@ -473,19 +531,63 @@ namespace PurrNet.Editor
         {
             value = Escape(value);
             var codeTokens = new List<string>();
+            string tokenPrefix = null;
+            const char tokenSuffix = '\uE001';
             value = CodeRegex.Replace(value, match =>
             {
+                if (tokenPrefix == null)
+                {
+                    // A per-call marker avoids corrupting literal private-use characters in
+                    // untrusted README text. The marker is removed before returning.
+                    do
+                    {
+                        tokenPrefix = $"\uE000PurrCode{Guid.NewGuid():N}:";
+                    } while (value.IndexOf(tokenPrefix, StringComparison.Ordinal) >= 0);
+                }
+
                 int index = codeTokens.Count;
                 codeTokens.Add($"<color=#88cccc>{match.Groups[1].Value}</color>");
-                return $"\uE000{index}\uE001";
+                return $"{tokenPrefix}{index}{tokenSuffix}";
             });
             value = BoldAsteriskRegex.Replace(value, "<b>$1</b>");
             value = BoldUnderscoreRegex.Replace(value, "<b>$1</b>");
             value = ItalicAsteriskRegex.Replace(value, "<i>$1</i>");
             value = ItalicUnderscoreRegex.Replace(value, "<i>$1</i>");
-            for (int i = 0; i < codeTokens.Count; i++)
-                value = value.Replace($"\uE000{i}\uE001", codeTokens[i]);
-            return value;
+
+            if (codeTokens.Count == 0)
+                return value;
+
+            // Restore all code spans in one forward pass. Replacing once per token made a
+            // code-heavy maximum-size block quadratic on Unity's IMGUI thread.
+            var restored = new StringBuilder(value.Length + codeTokens.Count * 16);
+            int offset = 0;
+            while (offset < value.Length)
+            {
+                int marker = value.IndexOf(tokenPrefix, offset, StringComparison.Ordinal);
+                if (marker < 0)
+                {
+                    restored.Append(value, offset, value.Length - offset);
+                    break;
+                }
+
+                restored.Append(value, offset, marker - offset);
+                int digitsStart = marker + tokenPrefix.Length;
+                int suffix = value.IndexOf(tokenSuffix, digitsStart);
+                if (suffix < 0 || !int.TryParse(value.Substring(digitsStart, suffix - digitsStart),
+                        NumberStyles.None, CultureInfo.InvariantCulture, out int index) ||
+                    index < 0 || index >= codeTokens.Count)
+                {
+                    // This cannot occur for markers emitted above, but preserve text safely if
+                    // future formatting changes ever split a marker.
+                    restored.Append(value, marker, value.Length - marker);
+                    break;
+                }
+
+                restored.Append(codeTokens[index]);
+                offset = suffix + 1;
+            }
+
+            return restored.ToString();
         }
 
         private static string MakeLink(string label, string url)
@@ -545,9 +647,10 @@ namespace PurrNet.Editor
                 uri = builder.Uri;
             }
 
-            if (GithubImageHosts.Contains(uri.Host))
-                return ImageProxyBase + Uri.EscapeDataString(uri.AbsoluteUri);
-            return uri.AbsoluteUri;
+            string result = GithubImageHosts.Contains(uri.Host)
+                ? ImageProxyBase + Uri.EscapeDataString(uri.AbsoluteUri)
+                : uri.AbsoluteUri;
+            return TryNormalizeImageUrl(result, out string normalized, out _) ? normalized : null;
         }
 
         public static string ResolveLink(string baseUrl, string candidate)
@@ -588,9 +691,95 @@ namespace PurrNet.Editor
 
             if (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
                 return null;
-            if (!string.IsNullOrEmpty(uri.UserInfo) || IsObviouslyLocal(uri.Host))
+            if (!string.IsNullOrEmpty(uri.UserInfo) || IsObviouslyLocal(uri.DnsSafeHost))
                 return null;
             return uri.AbsoluteUri;
+        }
+
+        internal static bool TryNormalizeImageUrl(string absoluteUrl, out string normalized, out string error)
+        {
+            normalized = null;
+            error = null;
+
+            if (string.IsNullOrWhiteSpace(absoluteUrl) ||
+                !Uri.TryCreate(absoluteUrl, UriKind.Absolute, out var uri))
+            {
+                error = "Image URL is not an absolute URL.";
+                return false;
+            }
+
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                error = "Only HTTPS image URLs are supported.";
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo))
+            {
+                error = "Image URL has an invalid host or embedded credentials.";
+                return false;
+            }
+
+            string host = uri.DnsSafeHost.TrimEnd('.');
+            if (IsObviouslyLocal(host))
+            {
+                error = "Private or local image hosts are not allowed.";
+                return false;
+            }
+
+            try
+            {
+                // Strip fragments (which never identify different response bytes) and a
+                // trailing DNS root dot so every redirect is checked in one canonical form.
+                var builder = new UriBuilder(uri) { Host = host, Fragment = string.Empty };
+                normalized = builder.Uri.GetComponents(UriComponents.HttpRequestUrl, UriFormat.UriEscaped);
+                return true;
+            }
+            catch (UriFormatException)
+            {
+                error = "Image URL could not be normalized.";
+                return false;
+            }
+        }
+
+        internal static bool TryResolveImageRedirect(string currentUrl, string location,
+            out string normalized, out string error)
+        {
+            normalized = null;
+            error = null;
+            if (!Uri.TryCreate(currentUrl, UriKind.Absolute, out var current) ||
+                string.IsNullOrWhiteSpace(location) || !Uri.TryCreate(current, location, out var redirect))
+            {
+                error = "Image redirect has an invalid Location header.";
+                return false;
+            }
+
+            return TryNormalizeImageUrl(redirect.AbsoluteUri, out normalized, out error);
+        }
+
+        internal static bool TryValidatePublicAddresses(IEnumerable<IPAddress> addresses, out string error)
+        {
+            error = null;
+            bool found = false;
+            if (addresses != null)
+            {
+                foreach (var address in addresses)
+                {
+                    found = true;
+                    // Reject mixed public/private DNS answers too: a client cannot control
+                    // which answer UnityWebRequest ultimately chooses.
+                    if (address == null || IsPrivateOrLocalAddress(address))
+                    {
+                        error = "Image host resolves to a private, local, or reserved address.";
+                        return false;
+                    }
+                }
+            }
+
+            if (found)
+                return true;
+            error = "Image host did not resolve to an address.";
+            return false;
         }
 
         private static bool TryResolveRepoRoot(Uri baseUri, string candidate, out Uri resolved)
@@ -613,6 +802,7 @@ namespace PurrNet.Editor
 
         private static bool IsObviouslyLocal(string host)
         {
+            host = host?.TrimEnd('.');
             if (string.IsNullOrWhiteSpace(host) || host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
                 host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase) ||
                 host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
@@ -620,17 +810,57 @@ namespace PurrNet.Editor
 
             if (!IPAddress.TryParse(host, out var address))
                 return host.IndexOf('.') < 0;
-            if (IPAddress.IsLoopback(address) || address.IsIPv6LinkLocal || address.IsIPv6SiteLocal)
+            return IsPrivateOrLocalAddress(address);
+        }
+
+        internal static bool IsPrivateOrLocalAddress(IPAddress address)
+        {
+            if (address == null || IPAddress.IsLoopback(address) ||
+                address.Equals(IPAddress.Any) || address.Equals(IPAddress.None) ||
+                address.Equals(IPAddress.IPv6Any) || address.Equals(IPAddress.IPv6None))
                 return true;
+
+            if (address.IsIPv4MappedToIPv6)
+                return IsPrivateOrLocalAddress(address.MapToIPv4());
+
             var bytes = address.GetAddressBytes();
             if (address.AddressFamily == AddressFamily.InterNetwork)
             {
                 return bytes[0] == 0 || bytes[0] == 10 || bytes[0] == 127 ||
+                       (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127) ||
                        (bytes[0] == 169 && bytes[1] == 254) ||
                        (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
-                       (bytes[0] == 192 && bytes[1] == 168) || bytes[0] >= 224;
+                       (bytes[0] == 192 && bytes[1] == 0 && bytes[2] == 0) ||
+                       (bytes[0] == 192 && bytes[1] == 0 && bytes[2] == 2) ||
+                       (bytes[0] == 192 && bytes[1] == 88 && bytes[2] == 99) ||
+                       (bytes[0] == 192 && bytes[1] == 168) ||
+                       (bytes[0] == 198 && (bytes[1] == 18 || bytes[1] == 19)) ||
+                       (bytes[0] == 198 && bytes[1] == 51 && bytes[2] == 100) ||
+                       (bytes[0] == 203 && bytes[1] == 0 && bytes[2] == 113) ||
+                       bytes[0] >= 224;
             }
-            return bytes.Length == 16 && (bytes[0] & 0xfe) == 0xfc;
+
+            if (address.AddressFamily != AddressFamily.InterNetworkV6 || bytes.Length != 16)
+                return true;
+
+            if (address.IsIPv6LinkLocal || address.IsIPv6SiteLocal || bytes[0] == 0xff ||
+                (bytes[0] & 0xfe) == 0xfc)
+                return true;
+
+            // Today, publicly routed IPv6 unicast space is within 2000::/3. Treat every
+            // other allocation as reserved rather than attempting a request to it.
+            if ((bytes[0] & 0xe0) != 0x20)
+                return true;
+
+            // IETF protocol assignments (2001::/23), documentation (2001:db8::/32 and
+            // 3fff::/20), and deprecated 6to4 (2002::/16) are not public image endpoints.
+            if (bytes[0] == 0x20 && bytes[1] == 0x01 && (bytes[2] & 0xfe) == 0)
+                return true;
+            if (bytes[0] == 0x20 && bytes[1] == 0x01 && bytes[2] == 0x0d && bytes[3] == 0xb8)
+                return true;
+            if (bytes[0] == 0x20 && bytes[1] == 0x02)
+                return true;
+            return bytes[0] == 0x3f && bytes[1] == 0xff && (bytes[2] & 0xf0) == 0;
         }
     }
 }

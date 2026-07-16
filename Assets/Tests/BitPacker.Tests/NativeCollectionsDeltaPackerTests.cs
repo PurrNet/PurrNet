@@ -456,6 +456,103 @@ public class NativeCollectionsDeltaPackerTests
     }
 
     [Test]
+    public void NativeArray_ChangedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = ToNativeArray(new[] { 1, 2, 3 }, TestAllocator);
+        var current = ToNativeArray(new[] { 4, 5, 6 }, TestAllocator);
+        var result = old;
+        try
+        {
+            DeltaPacker<NativeArray<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeArray<int>>.Read(packer, old, ref result);
+
+            AssertArrayEquals(old, new[] { 1, 2, 3 });
+            AssertArrayEquals(result, new[] { 4, 5, 6 });
+            Assert.IsFalse(old.Equals(result));
+        }
+        finally
+        {
+            bool aliasesOld = old.IsCreated && result.IsCreated && old.Equals(result);
+            if (result.IsCreated && !aliasesOld) result.Dispose();
+            if (old.IsCreated) old.Dispose();
+            if (current.IsCreated) current.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeArray_UnchangedReadIntoAliasedDestinationReturnsIndependentCopy()
+    {
+        var old = ToNativeArray(new[] { 1, 2, 3 }, TestAllocator);
+        var current = ToNativeArray(new[] { 1, 2, 3 }, TestAllocator);
+        var result = old;
+        try
+        {
+            DeltaPacker<NativeArray<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeArray<int>>.Read(packer, old, ref result);
+
+            Assert.IsFalse(old.Equals(result));
+            result[0] = 99;
+            AssertArrayEquals(old, new[] { 1, 2, 3 });
+            AssertArrayEquals(result, new[] { 99, 2, 3 });
+        }
+        finally
+        {
+            bool aliasesOld = old.IsCreated && result.IsCreated && old.Equals(result);
+            if (result.IsCreated && !aliasesOld) result.Dispose();
+            if (old.IsCreated) old.Dispose();
+            if (current.IsCreated) current.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeArray_LengthChangedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = ToNativeArray(new[] { 1, 2, 3 }, TestAllocator);
+        var current = ToNativeArray(new[] { 1, 2, 3, 4 }, TestAllocator);
+        var result = old;
+        try
+        {
+            DeltaPacker<NativeArray<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeArray<int>>.Read(packer, old, ref result);
+
+            AssertArrayEquals(old, new[] { 1, 2, 3 });
+            AssertArrayEquals(result, new[] { 1, 2, 3, 4 });
+            Assert.IsFalse(old.Equals(result));
+        }
+        finally
+        {
+            bool aliasesOld = old.IsCreated && result.IsCreated && old.Equals(result);
+            if (result.IsCreated && !aliasesOld) result.Dispose();
+            if (old.IsCreated) old.Dispose();
+            if (current.IsCreated) current.Dispose();
+        }
+    }
+
+    [Test]
+    public void NativeArray_NotCreatedReadIntoAliasedDestinationPreservesBaseline()
+    {
+        var old = ToNativeArray(new[] { 1, 2, 3 }, TestAllocator);
+        var current = default(NativeArray<int>);
+        var result = old;
+        try
+        {
+            DeltaPacker<NativeArray<int>>.Write(packer, old, current);
+            packer.ResetPositionAndMode(true);
+            DeltaPacker<NativeArray<int>>.Read(packer, old, ref result);
+
+            Assert.IsFalse(result.IsCreated);
+            AssertArrayEquals(old, new[] { 1, 2, 3 });
+        }
+        finally
+        {
+            if (old.IsCreated) old.Dispose();
+        }
+    }
+
+    [Test]
     public void NativeArray_EmptyToItems()
     {
         var old = default(NativeArray<int>);

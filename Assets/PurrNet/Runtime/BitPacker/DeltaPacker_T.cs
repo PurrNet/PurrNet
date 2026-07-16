@@ -91,7 +91,12 @@ namespace PurrNet.Packing
 
             bool changed = useDirectPacker
                 ? DirectWrite(packer, oldValue, newValue)
-                : PackDeltaObj.WriteDeltaObject(packer, oldValue, newValue);
+                : PackDeltaObj.WriteDeltaObject(
+                    packer,
+                    oldValue,
+                    newValue,
+                    oldValue == null ? null : oldType,
+                    newValue == null ? null : newType);
 
             if (!changed)
                 packer.ResetFlagAtAndMovePosition(changedPosition);
@@ -116,7 +121,8 @@ namespace PurrNet.Packing
             }
 
             object boxedValue = value;
-            PackDeltaObj.ReadDeltaObject(packer, oldValue, ref boxedValue);
+            var oldType = oldValue == null ? null : GetSerializedType(oldValue);
+            PackDeltaObj.ReadDeltaObject(packer, oldValue, oldType, ref boxedValue);
 
             switch (boxedValue)
             {

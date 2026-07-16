@@ -12,6 +12,9 @@ namespace PurrNet.Editor
         private static double _packagesTime;
         private static double _entitlementsTime;
         private static readonly Dictionary<string, ReadmeCacheEntry> _readmes = new();
+        private static int _epoch;
+
+        internal static int Epoch => _epoch;
 
         private sealed class ReadmeCacheEntry
         {
@@ -73,18 +76,31 @@ namespace PurrNet.Editor
 
         public static void SetPackageReadme(string packageId, PackageReadmeResponse readme)
         {
+            TrySetPackageReadme(packageId, readme, _epoch);
+        }
+
+        internal static bool TrySetPackageReadme(string packageId, PackageReadmeResponse readme,
+            int expectedEpoch)
+        {
+            if (expectedEpoch != _epoch)
+                return false;
             if (string.IsNullOrEmpty(packageId))
-                return;
+                return false;
 
             _readmes[packageId] = new ReadmeCacheEntry
             {
                 Response = readme,
                 Time = EditorApplication.timeSinceStartup
             };
+            return true;
         }
 
         public static void Invalidate()
         {
+            unchecked
+            {
+                _epoch++;
+            }
             _packages = null;
             _entitlements = null;
             _readmes.Clear();

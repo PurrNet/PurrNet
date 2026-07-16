@@ -25,6 +25,7 @@ namespace PurrNet.Editor
         private GUIStyle[] _headingStyles;
         private bool _lastProSkin;
         private float _lastPixelsPerPoint;
+        private int _lastLayoutWidth = -1;
 
         private readonly struct HeightKey : IEquatable<HeightKey>
         {
@@ -56,36 +57,45 @@ namespace PurrNet.Editor
         {
             _richText.Clear();
             _heightCache.Clear();
+            _lastLayoutWidth = -1;
         }
 
         public void Draw(PurrMarkdownDocument document, float availableWidth,
             float scrollY, float viewportHeight)
         {
-            if (document?.Blocks == null)
+            if (document?.blocks == null)
                 return;
 
             EnsureStyles();
             availableWidth = Mathf.Max(40f, availableWidth);
-            foreach (var block in document.Blocks)
+            int layoutWidth = Mathf.Max(40, Mathf.FloorToInt(availableWidth / 8f) * 8);
+            if (_lastLayoutWidth != layoutWidth)
             {
-                switch (block.Kind)
+                // The document is rendered at one width at a time. Retaining every block at
+                // every historical splitter width allowed this dictionary to grow without bound.
+                _heightCache.Clear();
+                _lastLayoutWidth = layoutWidth;
+            }
+            foreach (var block in document.blocks)
+            {
+                switch (block.kind)
                 {
                     case PurrMarkdownBlockKind.Heading:
-                        DrawTextBlock(block, HeadingStyle(block.Level), availableWidth,
-                            100 + Mathf.Clamp(block.Level, 1, 6), document.LinkBaseUrl);
+                        DrawTextBlock(block, HeadingStyle(block.level), availableWidth,
+                            100 + Mathf.Clamp(block.level, 1, 6), document.linkBaseUrl);
                         break;
                     case PurrMarkdownBlockKind.Paragraph:
-                        DrawTextBlock(block, _bodyStyle, availableWidth, 1, document.LinkBaseUrl);
+                        DrawTextBlock(block, _bodyStyle, availableWidth, 1, document.linkBaseUrl);
                         break;
                     case PurrMarkdownBlockKind.UnorderedList:
                     case PurrMarkdownBlockKind.OrderedList:
-                        DrawList(block, document.LinkBaseUrl, availableWidth);
+                        DrawList(block, document.linkBaseUrl, availableWidth);
                         break;
                     case PurrMarkdownBlockKind.Code:
                         DrawCode(block, availableWidth);
                         break;
                     case PurrMarkdownBlockKind.Quote:
-                        DrawQuote(block, availableWidth, document.LinkBaseUrl);
+                        DrawQuote(block, availableWidth, document.linkBaseUrl);
                         break;
                     case PurrMarkdownBlockKind.Rule:
                         DrawRule();
@@ -95,8 +105,8 @@ namespace PurrNet.Editor
                         break;
                 }
 
-                if (block.Kind != PurrMarkdownBlockKind.Rule)
-                    GUILayout.Space(block.Kind == PurrMarkdownBlockKind.Heading ? 5f : 3f);
+                if (block.kind != PurrMarkdownBlockKind.Rule)
+                    GUILayout.Space(block.kind == PurrMarkdownBlockKind.Heading ? 5f : 3f);
             }
         }
 
@@ -177,15 +187,15 @@ namespace PurrNet.Editor
             if (!_richText.TryGetValue(block, out string rendered))
             {
                 var builder = new StringBuilder();
-                for (int i = 0; i < block.Items.Count; i++)
+                for (int i = 0; i < block.items.Count; i++)
                 {
                     if (i > 0)
                         builder.AppendLine();
-                    string prefix = block.Kind == PurrMarkdownBlockKind.OrderedList
+                    string prefix = block.kind == PurrMarkdownBlockKind.OrderedList
                         ? $"{i + 1}.  "
                         : "•  ";
                     builder.Append(prefix);
-                    builder.Append(PurrMarkdownInline.ToRichText(block.Items[i], linkBaseUrl));
+                    builder.Append(PurrMarkdownInline.ToRichText(block.items[i], linkBaseUrl));
                 }
                 rendered = builder.ToString();
                 _richText[block] = rendered;
@@ -200,11 +210,11 @@ namespace PurrNet.Editor
 
         private void DrawCode(PurrMarkdownBlock block, float width)
         {
-            var content = new GUIContent(block.Text);
+            var content = new GUIContent(block.text);
             float height = GetHeight(block, content, _codeStyle, width, 3);
             var rect = GUILayoutUtility.GetRect(content, _codeStyle,
                 GUILayout.ExpandWidth(true), GUILayout.Height(height));
-            EditorGUI.SelectableLabel(rect, block.Text, _codeStyle);
+            EditorGUI.SelectableLabel(rect, block.text, _codeStyle);
         }
 
         private void DrawQuote(PurrMarkdownBlock block, float width, string linkBaseUrl)
@@ -235,7 +245,7 @@ namespace PurrNet.Editor
         private void DrawImage(PurrMarkdownBlock block, float availableWidth,
             float scrollY, float viewportHeight)
         {
-            var snapshot = _images.GetOrRequest(block.Url, false);
+            var snapshot = _images.GetOrRequest(block.url, false);
             CalculateImageSize(block, snapshot, availableWidth, out float width, out float height);
             var rowRect = GUILayoutUtility.GetRect(availableWidth, height,
                 GUILayout.ExpandWidth(true), GUILayout.Height(height));
@@ -244,19 +254,19 @@ namespace PurrNet.Editor
             bool nearViewport = rowRect.yMax >= scrollY - prefetch &&
                                 rowRect.yMin <= scrollY + viewportHeight + prefetch;
             if (nearViewport && Event.current.type == EventType.Repaint &&
-                snapshot.Status == PurrMarkdownImageCache.ImageStatus.Missing)
+                ShouldRequestNearViewport(snapshot.status))
             {
-                snapshot = _images.GetOrRequest(block.Url, true);
+                snapshot = _images.GetOrRequest(block.url, true);
             }
 
             var imageRect = new Rect(rowRect.x + (rowRect.width - width) * 0.5f,
                 rowRect.y, width, height);
-            if (snapshot.Status == PurrMarkdownImageCache.ImageStatus.Ready && snapshot.Texture != null)
+            if (snapshot.status == PurrMarkdownImageCache.ImageStatus.Ready && snapshot.texture != null)
             {
                 if (Event.current.type == EventType.Repaint)
-                    GUI.DrawTexture(imageRect, snapshot.Texture, ScaleMode.ScaleToFit, true);
+                    GUI.DrawTexture(imageRect, snapshot.texture, ScaleMode.ScaleToFit, true);
 
-                string target = block.LinkUrl ?? block.Url;
+                string target = block.linkUrl ?? block.url;
                 if (!string.IsNullOrEmpty(target))
                 {
                     EditorGUIUtility.AddCursorRect(imageRect, MouseCursor.Link);
@@ -270,24 +280,24 @@ namespace PurrNet.Editor
                 EditorGUI.DrawRect(imageRect, new Color(0.3f, 0.3f, 0.3f, 0.12f));
 
             string label;
-            switch (snapshot.Status)
+            switch (snapshot.status)
             {
                 case PurrMarkdownImageCache.ImageStatus.Failed:
-                    label = string.IsNullOrEmpty(block.Text) ? "Image unavailable" : block.Text;
+                    label = string.IsNullOrEmpty(block.text) ? "Image unavailable" : block.text;
                     break;
                 case PurrMarkdownImageCache.ImageStatus.Unsupported:
-                    label = string.IsNullOrEmpty(block.Text) ? "Unsupported image format" : block.Text;
+                    label = string.IsNullOrEmpty(block.text) ? "Unsupported image format" : block.text;
                     break;
                 default:
-                    label = string.IsNullOrEmpty(block.Text) ? "Loading image…" : $"Loading {block.Text}…";
+                    label = string.IsNullOrEmpty(block.text) ? "Loading image…" : $"Loading {block.text}…";
                     break;
             }
 
-            GUI.Label(imageRect, new GUIContent(label, snapshot.Error), _imageStatusStyle);
-            if (snapshot.Status == PurrMarkdownImageCache.ImageStatus.Failed ||
-                snapshot.Status == PurrMarkdownImageCache.ImageStatus.Unsupported)
+            GUI.Label(imageRect, new GUIContent(label, snapshot.error), _imageStatusStyle);
+            if (snapshot.status == PurrMarkdownImageCache.ImageStatus.Failed ||
+                snapshot.status == PurrMarkdownImageCache.ImageStatus.Unsupported)
             {
-                string target = block.LinkUrl ?? block.Url;
+                string target = block.linkUrl ?? block.url;
                 if (!string.IsNullOrEmpty(target))
                 {
                     EditorGUIUtility.AddCursorRect(imageRect, MouseCursor.Link);
@@ -297,12 +307,18 @@ namespace PurrNet.Editor
             }
         }
 
+        internal static bool ShouldRequestNearViewport(PurrMarkdownImageCache.ImageStatus status)
+        {
+            return status == PurrMarkdownImageCache.ImageStatus.Missing ||
+                   status == PurrMarkdownImageCache.ImageStatus.Failed;
+        }
+
         private static void CalculateImageSize(PurrMarkdownBlock block,
             PurrMarkdownImageCache.ImageSnapshot snapshot, float availableWidth,
             out float width, out float height)
         {
-            float naturalWidth = snapshot.Width > 0 ? snapshot.Width : block.RequestedWidth;
-            float naturalHeight = snapshot.Height > 0 ? snapshot.Height : block.RequestedHeight;
+            float naturalWidth = snapshot.width > 0 ? snapshot.width : block.requestedWidth;
+            float naturalHeight = snapshot.height > 0 ? snapshot.height : block.requestedHeight;
             if (naturalWidth <= 0 || naturalHeight <= 0)
             {
                 width = availableWidth;
@@ -310,11 +326,11 @@ namespace PurrNet.Editor
                 return;
             }
 
-            float maxWidth = block.RequestedWidth > 0
-                ? Mathf.Min(availableWidth, block.RequestedWidth)
+            float maxWidth = block.requestedWidth > 0
+                ? Mathf.Min(availableWidth, block.requestedWidth)
                 : availableWidth;
-            float maxHeight = block.RequestedHeight > 0
-                ? Mathf.Min(MaxImageHeight, block.RequestedHeight)
+            float maxHeight = block.requestedHeight > 0
+                ? Mathf.Min(MaxImageHeight, block.requestedHeight)
                 : MaxImageHeight;
             float scale = Mathf.Min(1f, Mathf.Min(maxWidth / naturalWidth, maxHeight / naturalHeight));
             width = Mathf.Max(1f, naturalWidth * scale);
@@ -325,7 +341,7 @@ namespace PurrNet.Editor
         {
             if (!_richText.TryGetValue(block, out string rendered))
             {
-                rendered = PurrMarkdownInline.ToRichText(block.Text, linkBaseUrl);
+                rendered = PurrMarkdownInline.ToRichText(block.text, linkBaseUrl);
                 _richText[block] = rendered;
             }
             return rendered;

@@ -94,16 +94,22 @@ namespace PurrNet.Packing
             {
                 MyersPackNativeLists.ReadNativeListDelta(packer, oldList, ref resultList);
 
+                bool aliasesOld = SharesAllocation(old, value);
+
                 if (!resultList.IsCreated)
                 {
-                    if (value.IsCreated)
+                    if (value.IsCreated && !aliasesOld)
                         value.Dispose();
                     value = default;
                     return;
                 }
 
                 int len = resultList.Length;
-                if (value.IsCreated && value.Length != len)
+                if (aliasesOld)
+                {
+                    value = new NativeArray<T>(len, ReadAllocator);
+                }
+                else if (value.IsCreated && value.Length != len)
                 {
                     value.Dispose();
                     value = default;
@@ -129,6 +135,11 @@ namespace PurrNet.Packing
             for (int i = 0; i < arr.Length; i++)
                 list.Add(arr[i]);
             return list;
+        }
+
+        static bool SharesAllocation<T>(NativeArray<T> left, NativeArray<T> right) where T : unmanaged
+        {
+            return left.IsCreated && right.IsCreated && left.Equals(right);
         }
 
         [UsedByIL]

@@ -9,6 +9,12 @@ namespace PurrNet.Packing
         [UsedImplicitly]
         public static bool WriteDeltaObject(BitPacker packer, object oldvalue, object newvalue)
         {
+            return WriteDeltaObject(packer, oldvalue, newvalue, oldvalue?.GetType(), newvalue?.GetType());
+        }
+
+        internal static bool WriteDeltaObject(BitPacker packer, object oldvalue, object newvalue,
+            Type oldType, Type newType)
+        {
             int flagPos = packer.AdvanceBits(1);
 
             bool oldHasValue = oldvalue != null;
@@ -18,9 +24,6 @@ namespace PurrNet.Packing
 
             if (newHasValue)
             {
-                var oldType = oldvalue?.GetType();
-                var newType = newvalue.GetType();
-
                 var oldHash = Hasher.GetStableHashU32(oldType);
                 var newHash = Hasher.GetStableHashU32(newType);
 
@@ -44,10 +47,14 @@ namespace PurrNet.Packing
         [UsedImplicitly]
         public static void ReadDeltaObject(BitPacker packer, object oldvalue, ref object value)
         {
+            ReadDeltaObject(packer, oldvalue, oldvalue?.GetType(), ref value);
+        }
+
+        internal static void ReadDeltaObject(BitPacker packer, object oldvalue, Type oldType, ref object value)
+        {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable && !ReferenceEquals(value, oldvalue))
-                    disposable.Dispose();
+                ClearReplacedValue(oldvalue, ref value);
                 value = oldvalue == null ? null : Packer.Copy(oldvalue);
                 return;
             }
@@ -57,7 +64,6 @@ namespace PurrNet.Packing
 
             if (hasValue)
             {
-                var oldType = oldvalue?.GetType();
                 uint oldHash = Hasher.GetStableHashU32(oldType);
                 uint newHash = default;
                 DeltaPacker<uint>.Read(packer, oldHash, ref newHash);
@@ -65,8 +71,8 @@ namespace PurrNet.Packing
                 var newType = Hasher.ResolveType(newHash);
                 var oldValueSanitized = oldType != newType ? null : oldvalue;
 
-                if (oldType != newType)
-                    value = null;
+                if (oldType != newType || (value != null && value.GetType() != newType))
+                    ClearReplacedValue(oldvalue, ref value);
 
                 if (newType == typeof(object))
                     DeltaPacker<object>.ReadUnpacked(packer, oldValueSanitized, ref value);
@@ -75,8 +81,15 @@ namespace PurrNet.Packing
             }
             else
             {
-                value = null;
+                ClearReplacedValue(oldvalue, ref value);
             }
+        }
+
+        static void ClearReplacedValue(object oldvalue, ref object value)
+        {
+            if (value is IDisposable disposable && !ReferenceEquals(value, oldvalue))
+                disposable.Dispose();
+            value = null;
         }
     }
 }

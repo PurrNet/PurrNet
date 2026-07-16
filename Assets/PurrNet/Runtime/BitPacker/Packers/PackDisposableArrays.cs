@@ -13,6 +13,8 @@ namespace PurrNet.Packing
 
         public static void ReadDisposablArrayDelta<T>(BitPacker packer, DisposableArray<T> oldValue, ref DisposableArray<T> value)
         {
+            bool aliasesOld = !oldValue.isDisposed && !value.isDisposed &&
+                              ReferenceEquals(oldValue.array, value.array);
             using var oldDisposableList = oldValue.isDisposed ? default : DisposableList<T>.Create(oldValue);
             DisposableList<T> newDisposableList = default;
 
@@ -20,11 +22,13 @@ namespace PurrNet.Packing
 
             if (newDisposableList.isDisposed)
             {
-                value.Dispose();
+                if (aliasesOld)
+                    value = default;
+                else value.Dispose();
                 return;
             }
 
-            if (value.isDisposed)
+            if (value.isDisposed || aliasesOld)
             {
                 value = DisposableArray<T>.Create(newDisposableList);
                 newDisposableList.Dispose();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Packing;
+using PurrNet.Pooling;
 using PurrNet.Utils;
 using Unity.Collections;
 using UnityEngine;
@@ -16,6 +17,12 @@ public sealed class DeltaParityAutoClass : IPackedAuto
 
 public sealed class DeltaParityUnmanagedArrayField : IPackedAuto
 {
+    public int[] values;
+}
+
+public struct DeltaParityManagedStructWithArray : IPackedAuto
+{
+    public int number;
     public int[] values;
 }
 
@@ -34,6 +41,17 @@ public sealed class DeltaParityDerivedA : DeltaParityBase
 public sealed class DeltaParityDerivedB : DeltaParityBase
 {
     public Vector3 b;
+}
+
+[DontPack]
+public sealed class DeltaParityUnregisteredDerived : DeltaParityBase, IDisposable
+{
+    public bool disposed { get; private set; }
+
+    public void Dispose()
+    {
+        disposed = true;
+    }
 }
 
 public sealed class DeltaParityCustomPacked : IPacked
@@ -87,6 +105,9 @@ public class DeltaPackerParityTests
         PackCollections.RegisterQueue<int>();
         PackCollections.RegisterStack<int>();
         PackCollections.RegisterNativeArray<int>();
+        PackCollections.RegisterDisposableDictionary<int, string>();
+        PackCollections.RegisterDisposableHashSet<int>();
+        PackCollections.RegisterDisposableArray<int>();
 
         _packer = BitPackerPool.Get();
     }
@@ -213,6 +234,57 @@ public class DeltaPackerParityTests
     }
 
     [Test]
+    public void GeneratedManagedStruct_PackerCopyDeepCopiesArray()
+    {
+        var source = new DeltaParityManagedStructWithArray
+        {
+            number = 7,
+            values = new[] { 1, 2, 3 }
+        };
+
+        var copy = Packer.Copy(source);
+
+        Assert.That(copy.number, Is.EqualTo(source.number));
+        CollectionAssert.AreEqual(source.values, copy.values);
+        Assert.That(copy.values, Is.Not.SameAs(source.values));
+
+        copy.values[0] = 99;
+        Assert.That(source.values[0], Is.EqualTo(1));
+    }
+
+    [Test]
+    public void GeneratedManagedStruct_UnchangedDeltaReadDeepCopiesBaselineArray()
+    {
+        var baseline = new DeltaParityManagedStructWithArray
+        {
+            number = 7,
+            values = new[] { 1, 2, 3 }
+        };
+        var replacedArray = new[] { 8, 9 };
+        var result = new DeltaParityManagedStructWithArray
+        {
+            number = -1,
+            values = replacedArray
+        };
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<DeltaParityManagedStructWithArray>.Write(_packer, baseline, baseline), Is.False);
+        Assert.That(_packer.positionInBits, Is.EqualTo(1));
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<DeltaParityManagedStructWithArray>.Read(_packer, baseline, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(1));
+        Assert.That(result.number, Is.EqualTo(baseline.number));
+        CollectionAssert.AreEqual(baseline.values, result.values);
+        Assert.That(result.values, Is.Not.SameAs(baseline.values));
+        Assert.That(result.values, Is.Not.SameAs(replacedArray));
+
+        result.values[0] = 99;
+        Assert.That(baseline.values[0], Is.EqualTo(1));
+    }
+
+    [Test]
     public void GeneratedBaseType_PreservesRuntimeTypeLikePacker()
     {
         DeltaParityBase oldValue = new DeltaParityDerivedA { baseValue = 1, a = "old" };
@@ -228,6 +300,91 @@ public class DeltaPackerParityTests
         var expectedDerived = (DeltaParityDerivedB)expected;
         Assert.That(derived.baseValue, Is.EqualTo(expectedDerived.baseValue));
         Assert.That(derived.b, Is.EqualTo(expectedDerived.b));
+    }
+
+    [Test]
+    public void GeneratedBaseType_RegisteredAndUnregisteredRuntimeTransitionsMatchPacker()
+    {
+        Assert.That(Hasher.IsRegistered(typeof(DeltaParityUnregisteredDerived)), Is.False);
+
+        DeltaParityBase unregistered = new DeltaParityUnregisteredDerived { baseValue = 11 };
+        DeltaParityBase registered = new DeltaParityDerivedB { baseValue = 22, b = new Vector3(3, 4, 5) };
+
+        var toRegistered = RoundTripWithProjectedBaseline(unregistered, registered);
+        Assert.That(toRegistered, Is.TypeOf<DeltaParityDerivedB>());
+        Assert.That(toRegistered.baseValue, Is.EqualTo(registered.baseValue));
+        Assert.That(((DeltaParityDerivedB)toRegistered).b, Is.EqualTo(((DeltaParityDerivedB)registered).b));
+
+        var toUnregistered = RoundTripWithProjectedBaseline(registered, unregistered);
+        var expected = ProjectThroughPacker(unregistered);
+        Assert.That(toUnregistered.GetType(), Is.EqualTo(expected.GetType()));
+        Assert.That(toUnregistered.baseValue, Is.EqualTo(expected.baseValue));
+    }
+
+    [Test]
+    public void GeneratedBaseType_ReplacesWrongRuntimeDestinationAndConsumesDelta()
+    {
+        DeltaParityBase oldValue = new DeltaParityDerivedA { baseValue = 1, a = "old" };
+        DeltaParityBase newValue = new DeltaParityDerivedA { baseValue = 2, a = "new" };
+        var receiverBaseline = ProjectThroughPacker(oldValue);
+        var replaced = new DeltaParityUnregisteredDerived { baseValue = 99 };
+        DeltaParityBase result = replaced;
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<DeltaParityBase>.Write(_packer, oldValue, newValue), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<DeltaParityBase>.Read(_packer, receiverBaseline, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        Assert.That(replaced.disposed, Is.True);
+        Assert.That(result, Is.TypeOf<DeltaParityDerivedA>());
+        Assert.That(result.baseValue, Is.EqualTo(newValue.baseValue));
+        Assert.That(((DeltaParityDerivedA)result).a, Is.EqualTo(((DeltaParityDerivedA)newValue).a));
+    }
+
+    [Test]
+    public void GeneratedBaseType_RuntimeTypeTransitionDisposesDistinctDestination()
+    {
+        DeltaParityBase oldValue = new DeltaParityDerivedA { baseValue = 1, a = "old" };
+        DeltaParityBase newValue = new DeltaParityDerivedB { baseValue = 2, b = new Vector3(3, 4, 5) };
+        var receiverBaseline = ProjectThroughPacker(oldValue);
+        var replaced = new DeltaParityUnregisteredDerived { baseValue = 99 };
+        DeltaParityBase result = replaced;
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<DeltaParityBase>.Write(_packer, oldValue, newValue), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<DeltaParityBase>.Read(_packer, receiverBaseline, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        Assert.That(replaced.disposed, Is.True);
+        Assert.That(result, Is.TypeOf<DeltaParityDerivedB>());
+        Assert.That(result.baseValue, Is.EqualTo(newValue.baseValue));
+        Assert.That(((DeltaParityDerivedB)result).b, Is.EqualTo(((DeltaParityDerivedB)newValue).b));
+    }
+
+    [Test]
+    public void GeneratedBaseType_NullTransitionDisposesDistinctDestination()
+    {
+        DeltaParityBase oldValue = new DeltaParityDerivedA { baseValue = 1, a = "old" };
+        var receiverBaseline = ProjectThroughPacker(oldValue);
+        var replaced = new DeltaParityUnregisteredDerived { baseValue = 99 };
+        DeltaParityBase result = replaced;
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<DeltaParityBase>.Write(_packer, oldValue, null), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<DeltaParityBase>.Read(_packer, receiverBaseline, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        Assert.That(replaced.disposed, Is.True);
+        Assert.That(result, Is.Null);
     }
 
     [Test]
@@ -354,6 +511,29 @@ public class DeltaPackerParityTests
     }
 
     [Test]
+    public void ArrayDelta_ChangedReadDoesNotMutateAliasedBaseline()
+    {
+        var oldValue = new[] { 1, 2, 3 };
+        var newValue = new[] { 1, 4, 3 };
+        var result = oldValue;
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<int[]>.Write(_packer, oldValue, newValue), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<int[]>.Read(_packer, oldValue, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        CollectionAssert.AreEqual(new[] { 1, 2, 3 }, oldValue);
+        CollectionAssert.AreEqual(newValue, result);
+        Assert.That(result, Is.Not.SameAs(oldValue));
+
+        result[0] = 99;
+        Assert.That(oldValue[0], Is.EqualTo(1));
+    }
+
+    [Test]
     public void ListDelta_ChangedAndUnchangedContractsMatchOtherDeltaPackers()
     {
         var oldValue = new List<int> { 1, 2, 3 };
@@ -365,6 +545,29 @@ public class DeltaPackerParityTests
         result = RoundTrip(oldValue, new List<int> { 1, 2, 3 }, false);
         CollectionAssert.AreEqual(ProjectThroughPacker(oldValue), result);
         Assert.That(result, Is.Not.SameAs(oldValue));
+    }
+
+    [Test]
+    public void ListDelta_ChangedReadDoesNotMutateAliasedBaseline()
+    {
+        var oldValue = new List<int> { 1, 2, 3 };
+        var newValue = new List<int> { 1, 4, 3 };
+        var result = oldValue;
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<List<int>>.Write(_packer, oldValue, newValue), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<List<int>>.Read(_packer, oldValue, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        CollectionAssert.AreEqual(new[] { 1, 2, 3 }, oldValue);
+        CollectionAssert.AreEqual(newValue, result);
+        Assert.That(result, Is.Not.SameAs(oldValue));
+
+        result[0] = 99;
+        Assert.That(oldValue[0], Is.EqualTo(1));
     }
 
     [Test]
@@ -486,6 +689,30 @@ public class DeltaPackerParityTests
     }
 
     [Test]
+    public void DictionaryFallback_ChangedReadDoesNotMutateAliasedBaseline()
+    {
+        var oldValue = new Dictionary<int, string> { [1] = "one", [2] = "two" };
+        var newValue = new Dictionary<int, string> { [1] = "one", [2] = "changed" };
+        var result = oldValue;
+
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<Dictionary<int, string>>.Write(_packer, oldValue, newValue), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<Dictionary<int, string>>.Read(_packer, oldValue, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+        CollectionAssert.AreEquivalent(
+            new Dictionary<int, string> { [1] = "one", [2] = "two" }, oldValue);
+        CollectionAssert.AreEquivalent(newValue, result);
+        Assert.That(result, Is.Not.SameAs(oldValue));
+
+        result[1] = "mutated";
+        Assert.That(oldValue[1], Is.EqualTo("one"));
+    }
+
+    [Test]
     public void QueueWithoutSpecializedDelta_UsesPackerFallback()
     {
         var oldValue = new Queue<int>(new[] { 1, 2, 3 });
@@ -533,6 +760,277 @@ public class DeltaPackerParityTests
         }
     }
 
+    [Test]
+    public void DisposableDictionaryDelta_UnchangedAliasedDestinationCopiesBaseline()
+    {
+        var oldValue = DisposableDictionary<int, string>.Create(
+            new Dictionary<int, string> { [1] = "one", [2] = "two" });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableDictionary<int, string>>.Write(
+                _packer, oldValue, oldValue), Is.False);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableDictionary<int, string>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(writtenBits, Is.EqualTo(1));
+            Assert.That(oldValue.Count, Is.EqualTo(2));
+            Assert.That(result.Count, Is.EqualTo(2));
+            Assert.That(result.dictionary, Is.Not.SameAs(oldValue.dictionary));
+
+            result.Add(3, "three");
+            Assert.That(oldValue.ContainsKey(3), Is.False);
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableDictionaryDelta_ChangedAliasedDestinationPreservesBaseline()
+    {
+        var oldValue = DisposableDictionary<int, string>.Create(
+            new Dictionary<int, string> { [1] = "one", [2] = "two" });
+        var newValue = DisposableDictionary<int, string>.Create(
+            new Dictionary<int, string> { [1] = "one", [2] = "changed", [3] = "three" });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableDictionary<int, string>>.Write(
+                _packer, oldValue, newValue), Is.True);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableDictionary<int, string>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(oldValue.Count, Is.EqualTo(2));
+            Assert.That(oldValue[2], Is.EqualTo("two"));
+            Assert.That(result.Count, Is.EqualTo(3));
+            Assert.That(result[2], Is.EqualTo("changed"));
+            Assert.That(result.dictionary, Is.Not.SameAs(oldValue.dictionary));
+
+            result[1] = "mutated";
+            Assert.That(oldValue[1], Is.EqualTo("one"));
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!newValue.isDisposed) newValue.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableDictionaryDelta_DisposedAliasedDestinationPreservesBaseline()
+    {
+        var oldValue = DisposableDictionary<int, string>.Create(
+            new Dictionary<int, string> { [1] = "one", [2] = "two" });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableDictionary<int, string>>.Write(
+                _packer, oldValue, default), Is.True);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableDictionary<int, string>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(result.isDisposed, Is.True);
+            Assert.That(oldValue.isDisposed, Is.False);
+            Assert.That(oldValue.Count, Is.EqualTo(2));
+            Assert.That(oldValue[2], Is.EqualTo("two"));
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableHashSetDelta_UnchangedAliasedDestinationCopiesBaseline()
+    {
+        var oldValue = DisposableHashSet<int>.Create(new[] { 1, 2, 3 });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableHashSet<int>>.Write(_packer, oldValue, oldValue), Is.False);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableHashSet<int>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(writtenBits, Is.EqualTo(1));
+            Assert.That(oldValue.SetEquals(new[] { 1, 2, 3 }), Is.True);
+            Assert.That(result.SetEquals(oldValue), Is.True);
+            Assert.That(result.set, Is.Not.SameAs(oldValue.set));
+
+            result.Add(99);
+            Assert.That(oldValue.Contains(99), Is.False);
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableHashSetDelta_ChangedAliasedDestinationPreservesBaseline()
+    {
+        var oldValue = DisposableHashSet<int>.Create(new[] { 1, 2, 3 });
+        var newValue = DisposableHashSet<int>.Create(new[] { 2, 3, 4 });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableHashSet<int>>.Write(_packer, oldValue, newValue), Is.True);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableHashSet<int>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(oldValue.SetEquals(new[] { 1, 2, 3 }), Is.True);
+            Assert.That(result.SetEquals(newValue), Is.True);
+            Assert.That(result.set, Is.Not.SameAs(oldValue.set));
+
+            result.Add(99);
+            Assert.That(oldValue.Contains(99), Is.False);
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!newValue.isDisposed) newValue.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableHashSetDelta_DisposedAliasedDestinationPreservesBaseline()
+    {
+        var oldValue = DisposableHashSet<int>.Create(new[] { 1, 2, 3 });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableHashSet<int>>.Write(_packer, oldValue, default), Is.True);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableHashSet<int>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(result.isDisposed, Is.True);
+            Assert.That(oldValue.isDisposed, Is.False);
+            Assert.That(oldValue.SetEquals(new[] { 1, 2, 3 }), Is.True);
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableArrayDelta_UnchangedAliasedDestinationCopiesBaseline()
+    {
+        var oldValue = DisposableArray<int>.Create(new[] { 1, 2, 3 });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableArray<int>>.Write(_packer, oldValue, oldValue), Is.False);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableArray<int>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(writtenBits, Is.EqualTo(1));
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, oldValue);
+            CollectionAssert.AreEqual(oldValue, result);
+            Assert.That(result.array, Is.Not.SameAs(oldValue.array));
+
+            result[0] = 99;
+            Assert.That(oldValue[0], Is.EqualTo(1));
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableArrayDelta_ChangedAliasedDestinationPreservesBaseline()
+    {
+        var oldValue = DisposableArray<int>.Create(new[] { 1, 2, 3 });
+        var newValue = DisposableArray<int>.Create(new[] { 1, 4, 3 });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableArray<int>>.Write(_packer, oldValue, newValue), Is.True);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableArray<int>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, oldValue);
+            CollectionAssert.AreEqual(newValue, result);
+            Assert.That(result.array, Is.Not.SameAs(oldValue.array));
+
+            result[0] = 99;
+            Assert.That(oldValue[0], Is.EqualTo(1));
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!newValue.isDisposed) newValue.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableArrayDelta_DisposedAliasedDestinationPreservesBaseline()
+    {
+        var oldValue = DisposableArray<int>.Create(new[] { 1, 2, 3 });
+        var result = oldValue;
+        try
+        {
+            _packer.ResetPositionAndMode(false);
+            Assert.That(DeltaPacker<DisposableArray<int>>.Write(_packer, oldValue, default), Is.True);
+            int writtenBits = _packer.positionInBits;
+
+            _packer.ResetPositionAndMode(true);
+            DeltaPacker<DisposableArray<int>>.Read(_packer, oldValue, ref result);
+
+            Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
+            Assert.That(result.isDisposed, Is.True);
+            Assert.That(oldValue.isDisposed, Is.False);
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, oldValue);
+        }
+        finally
+        {
+            if (!result.isDisposed) result.Dispose();
+            if (!oldValue.isDisposed) oldValue.Dispose();
+        }
+    }
+
     private void AssertChangedRoundTrip<T>(T oldValue, T newValue)
     {
         T expected = ProjectThroughPacker(newValue);
@@ -567,6 +1065,21 @@ public class DeltaPackerParityTests
         // Model the receiver's baseline as the value produced by the normal Packer path.
         T result = ProjectThroughPacker(oldValue);
         DeltaPacker<T>.Read(_packer, oldValue, ref result);
+        return result;
+    }
+
+    private T RoundTripWithProjectedBaseline<T>(T oldValue, T newValue)
+    {
+        _packer.ResetPositionAndMode(false);
+        Assert.That(DeltaPacker<T>.Write(_packer, oldValue, newValue), Is.True);
+        int writtenBits = _packer.positionInBits;
+
+        T receiverBaseline = ProjectThroughPacker(oldValue);
+        T result = ProjectThroughPacker(oldValue);
+        _packer.ResetPositionAndMode(true);
+        DeltaPacker<T>.Read(_packer, receiverBaseline, ref result);
+
+        Assert.That(_packer.positionInBits, Is.EqualTo(writtenBits));
         return result;
     }
 

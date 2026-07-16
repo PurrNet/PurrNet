@@ -272,6 +272,9 @@ namespace PurrNet.Packing
                 value = Packer.Copy(oldValue);
                 return;
             }
+
+            if (!typeof(T).IsValueType && ReferenceEquals(value, oldValue))
+                value = default;
             Packer<T>.Read(packer, ref value);
         }
     }

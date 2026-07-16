@@ -47,6 +47,8 @@ namespace PurrNet.Packing
         {
             bool hasChanged = default;
             packer.Read(ref hasChanged);
+            bool aliasesOld = !oldValue.isDisposed && !value.isDisposed &&
+                              ReferenceEquals(oldValue.set, value.set);
 
             if (!hasChanged)
             {
@@ -56,7 +58,7 @@ namespace PurrNet.Packing
                     return;
                 }
 
-                if (value.isDisposed)
+                if (value.isDisposed || aliasesOld)
                     value = DisposableHashSet<T>.Create();
                 else value.Clear();
 
@@ -73,12 +75,14 @@ namespace PurrNet.Packing
 
             if (newCount.value < 0)
             {
-                if (!value.isDisposed)
+                if (aliasesOld)
+                    value = default;
+                else if (!value.isDisposed)
                     value.Dispose();
                 return;
             }
 
-            if (value.isDisposed || value.set == null)
+            if (value.isDisposed || value.set == null || aliasesOld)
                 value = DisposableHashSet<T>.Create();
             else value.Clear();
 
