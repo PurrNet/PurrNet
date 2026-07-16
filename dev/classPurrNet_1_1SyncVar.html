@@ -124,9 +124,6 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>ActionWithOl
 <tr class="memitem:ad10cca80308ced66260efb549a902081"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#ad10cca80308ced66260efb549a902081">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool isSpawnEvent, bool asServer)</td></tr>
 <tr class="memdesc:ad10cca80308ced66260efb549a902081"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1SyncVar.html#ad10cca80308ced66260efb549a902081">More...</a><br /></td></tr>
 <tr class="separator:ad10cca80308ced66260efb549a902081"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a973d03543b86b48a915ffe0dbd3c9299"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool isSpawner)</td></tr>
-<tr class="memdesc:a973d03543b86b48a915ffe0dbd3c9299"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncVar.html#a973d03543b86b48a915ffe0dbd3c9299">More...</a><br /></td></tr>
-<tr class="separator:a973d03543b86b48a915ffe0dbd3c9299"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1eea70edd6babb6ae71ba1bdf61e19e1"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a1eea70edd6babb6ae71ba1bdf61e19e1">OnInitializeModules</a> ()</td></tr>
 <tr class="separator:a1eea70edd6babb6ae71ba1bdf61e19e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a554329ae401393710c94d605876f48f7"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a554329ae401393710c94d605876f48f7">OnEarlySpawn</a> ()</td></tr>
@@ -134,6 +131,12 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>ActionWithOl
 <tr class="separator:a554329ae401393710c94d605876f48f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4232d33db28e40ded702b4eab7210a8e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a4232d33db28e40ded702b4eab7210a8e">OnSpawn</a> ()</td></tr>
 <tr class="separator:a4232d33db28e40ded702b4eab7210a8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a529fd6cdb73c036c4d907d3b30e23b3d"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a529fd6cdb73c036c4d907d3b30e23b3d">OnSerialize</a> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memdesc:a529fd6cdb73c036c4d907d3b30e23b3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on the spawner to attach custom data to the parent's spawn packet. Whatever you write here travels with the object and is read back in OnDeserialize.   <a href="classPurrNet_1_1SyncVar.html#a529fd6cdb73c036c4d907d3b30e23b3d">More...</a><br /></td></tr>
+<tr class="separator:a529fd6cdb73c036c4d907d3b30e23b3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba17e56af60499e73c7dfb1373fb9c3e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#aba17e56af60499e73c7dfb1373fb9c3e">OnDeserialize</a> (<a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a> packer)</td></tr>
+<tr class="memdesc:aba17e56af60499e73c7dfb1373fb9c3e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on peers that create the object, after the spawn packet arrives. Read the data back in the same order you wrote it in OnSerialize.   <a href="classPurrNet_1_1SyncVar.html#aba17e56af60499e73c7dfb1373fb9c3e">More...</a><br /></td></tr>
+<tr class="separator:aba17e56af60499e73c7dfb1373fb9c3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa339797f6bd178e3be6d2fc6e2051c37"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#aa339797f6bd178e3be6d2fc6e2051c37">OnDespawned</a> ()</td></tr>
 <tr class="separator:aa339797f6bd178e3be6d2fc6e2051c37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f5699108cd7796f905904f8abf4d673"><td class="memItemLeft" align="right" valign="top"><a id="a7f5699108cd7796f905904f8abf4d673" name="a7f5699108cd7796f905904f8abf4d673"></a>
@@ -353,6 +356,42 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <tr class="separator:a97aebd580ff022b5e5df0aad4f3a4bd2 inherit pro_static_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="aba17e56af60499e73c7dfb1373fb9c3e" name="aba17e56af60499e73c7dfb1373fb9c3e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aba17e56af60499e73c7dfb1373fb9c3e">&#9670;&#160;</a></span>OnDeserialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnDeserialize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td>
+          <td class="paramname"><em>packer</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called on peers that create the object, after the spawn packet arrives. Read the data back in the same order you wrote it in OnSerialize.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packer</td><td>The packer to read your data from</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a29a49c427f0894585b4b9797abe5838e">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
 <a id="aa339797f6bd178e3be6d2fc6e2051c37" name="aa339797f6bd178e3be6d2fc6e2051c37"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa339797f6bd178e3be6d2fc6e2051c37">&#9670;&#160;</a></span>OnDespawned()</h2>
 
@@ -433,53 +472,6 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 </div><div class="memdoc">
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a>.</p>
-
-</div>
-</div>
-<a id="a973d03543b86b48a915ffe0dbd3c9299" name="a973d03543b86b48a915ffe0dbd3c9299"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a973d03543b86b48a915ffe0dbd3c9299">&#9670;&#160;</a></span>OnObserverAdded()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnObserverAdded </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
-          <td class="paramname"><em>player</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>isSpawner</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Called when an observer is added. Server only.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">player</td><td>The observer player id</td></tr>
-    <tr><td class="paramname">isSpawner</td><td>If this object was just spawned and the observer is the spawner</td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#af5eaddc8cdab129670207485eb8bd787">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>
@@ -626,6 +618,42 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="a529fd6cdb73c036c4d907d3b30e23b3d" name="a529fd6cdb73c036c4d907d3b30e23b3d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a529fd6cdb73c036c4d907d3b30e23b3d">&#9670;&#160;</a></span>OnSerialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnSerialize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classPurrNet_1_1Packing_1_1BitPacker.html">BitPacker</a>&#160;</td>
+          <td class="paramname"><em>packer</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called on the spawner to attach custom data to the parent's spawn packet. Whatever you write here travels with the object and is read back in OnDeserialize.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packer</td><td>The packer to write your data into</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#abef4f01121d94dfb6a9583a6c428a199">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>
