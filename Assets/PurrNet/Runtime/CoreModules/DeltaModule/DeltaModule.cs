@@ -453,23 +453,23 @@ namespace PurrNet.Modules
                 if (entry.playerId != sender)
                      continue;
 
-                // add sorted
+                // add sorted, one entry per key: keep only the newest valueId
                 for (int j = 0; j < entry.entries.Count; j++)
                 {
                     var existing = entry.entries[j];
+
+                    if (existing.keyType.value == acknowledge.keyType.value &&
+                        existing.keyHash.value == acknowledge.keyHash.value)
+                    {
+                        if (acknowledge.valueId.value > existing.valueId.value)
+                            entry.entries[j] = acknowledge;
+                        return;
+                    }
 
                     if (existing.keyType.value > acknowledge.keyType.value ||
                         (existing.keyType.value == acknowledge.keyType.value && existing.keyHash.value > acknowledge.keyHash.value))
                     {
                         entry.entries.Insert(j, acknowledge);
-                        return;
-                    }
-
-                    // Check if already acknowledged
-                    if (existing.keyType.value == acknowledge.keyType.value &&
-                        existing.keyHash.value == acknowledge.keyHash.value &&
-                        existing.valueId.value >= acknowledge.valueId.value)
-                    {
                         return;
                     }
                 }

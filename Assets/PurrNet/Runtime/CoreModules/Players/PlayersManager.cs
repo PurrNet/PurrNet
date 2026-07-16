@@ -83,7 +83,7 @@ namespace PurrNet.Modules
 
     public delegate void OnPlayerEvent(PlayerID player);
 
-    public class PlayersManager : INetworkModule, IConnectionListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
+    public class PlayersManager : INetworkModule, IConnectionListener, IConnectionStateListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
     {
         private readonly AuthModule _authModule;
         private readonly BroadcastModule _broadcastModule;
@@ -637,6 +637,15 @@ namespace PurrNet.Modules
 
         public void OnConnected(Connection conn, bool asServer)
         {
+        }
+
+        public void OnConnectionState(ConnectionState state, bool asServer)
+        {
+            if (!asServer || state != ConnectionState.Disconnected)
+                return;
+
+            for (var i = _players.Count - 1; i >= 0; i--)
+                UnregisterPlayer(_players[i]);
         }
 
         public void OnDisconnected(Connection conn, bool asServer)

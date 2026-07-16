@@ -6,6 +6,7 @@ namespace PurrNet.Analyzers
     {
         private const string RpcCategory = "PurrNet.RPC";
         private const string NetworkModuleCategory = "PurrNet.NetworkModule";
+        private const string SerializationCategory = "PurrNet.Serialization";
 
         public static readonly DiagnosticDescriptor MultipleRpcAttributes = Error(
             "PN0001",
@@ -72,33 +73,39 @@ namespace PurrNet.Analyzers
             "Local execution flag was not unset",
             "PurrCompilerFlags.EnterLocalExecution must be paired with ExitLocalExecution");
 
+        public static readonly DiagnosticDescriptor RegisterNetworkTypeForeignType = Error(
+            "PN0014",
+            "RegisterNetworkType target is declared in another assembly",
+            "[RegisterNetworkType] for '{0}' is ignored because '{0}' is declared in assembly '{1}'; apply the attribute to a type in that assembly",
+            SerializationCategory);
+
         public static readonly DiagnosticDescriptor NetworkModuleOutsideNetworkType = Warning(
             "PN0101",
-            "NetworkModule field is not declared on a network type",
-            "NetworkModule field '{0}' is not registered because '{1}' does not inherit NetworkIdentity or NetworkModule");
+            "NetworkModule member is not declared on a network type",
+            "NetworkModule member '{0}' is not registered because '{1}' does not inherit NetworkIdentity or NetworkModule");
 
         public static readonly DiagnosticDescriptor StaticNetworkModuleField = Warning(
             "PN0102",
-            "Static NetworkModule field is not registered",
-            "Static NetworkModule field '{0}' is not registered");
+            "Static NetworkModule member is not registered",
+            "Static NetworkModule member '{0}' is not registered");
 
         public static readonly DiagnosticDescriptor NetworkModuleProperty = Warning(
             "PN0103",
             "NetworkModule property is not registered",
-            "NetworkModule property '{0}' is not registered; use a field initialized before spawn");
+            "NetworkModule property '{0}' is not registered; use a field or auto-property initialized before spawn");
 
         public static readonly DiagnosticDescriptor UninitializedNetworkModuleField = Warning(
             "PN0104",
-            "NetworkModule field may be null when modules are initialized",
-            "NetworkModule field '{0}' has no initializer or assignment in a constructor, Awake, or OnInitializeModules");
+            "NetworkModule member may be null when modules are initialized",
+            "NetworkModule member '{0}' has no initializer or assignment in a constructor, Awake, or OnInitializeModules");
 
         public static readonly DiagnosticDescriptor NetworkModuleFieldReassignedAfterInitialization = Warning(
             "PN0105",
-            "NetworkModule field is assigned after module initialization",
-            "Assign NetworkModule field '{0}' in a field initializer, constructor, Awake, or OnInitializeModules so it is registered correctly");
+            "NetworkModule member is assigned after module initialization",
+            "Assign NetworkModule member '{0}' in an initializer, constructor, Awake, or OnInitializeModules so it is registered correctly");
 
-        private static DiagnosticDescriptor Error(string id, string title, string messageFormat) =>
-            new DiagnosticDescriptor(id, title, messageFormat, RpcCategory, DiagnosticSeverity.Error, true);
+        private static DiagnosticDescriptor Error(string id, string title, string messageFormat, string category = RpcCategory) =>
+            new DiagnosticDescriptor(id, title, messageFormat, category, DiagnosticSeverity.Error, true);
 
         private static DiagnosticDescriptor Warning(string id, string title, string messageFormat) =>
             new DiagnosticDescriptor(id, title, messageFormat, NetworkModuleCategory, DiagnosticSeverity.Warning, true);

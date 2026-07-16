@@ -4981,6 +4981,11 @@ namespace PurrNet.Codegen
             if (IsGeneric(typeReference, typeof(Nullable<>)))
                 return true;
 
+            if (typeReference is GenericInstanceType unityCollection &&
+                (unityCollection.ElementType.FullName == "Unity.Collections.NativeArray`1" ||
+                 unityCollection.ElementType.FullName == "Unity.Collections.NativeList`1"))
+                return true;
+
             if (typeReference is ArrayType)
                 return true;
 

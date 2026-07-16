@@ -87,21 +87,82 @@ namespace PurrNet.Analyzers
             if (!symbols.IsNetworkModule(property.Type))
                 return;
 
-            context.ReportDiagnostic(Diagnostic.Create(
-                PurrNetDiagnostics.NetworkModuleProperty,
-                property.Locations.FirstOrDefault(),
-                property.Name));
+            // Auto-properties are registered through their compiler-generated backing field,
+            // so they follow the same rules as fields instead of PN0103.
+            var backingField = GetBackingField(property);
+
+            if (backingField == null)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    PurrNetDiagnostics.NetworkModuleProperty,
+                    property.Locations.FirstOrDefault(),
+                    property.Name));
+                return;
+            }
+
+            if (property.IsStatic)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    PurrNetDiagnostics.StaticNetworkModuleField,
+                    property.Locations.FirstOrDefault(),
+                    property.Name));
+                return;
+            }
+
+            var containingType = property.ContainingType;
+
+            if (!symbols.IsNetworkType(containingType))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    PurrNetDiagnostics.NetworkModuleOutsideNetworkType,
+                    property.Locations.FirstOrDefault(),
+                    property.Name,
+                    containingType?.Name ?? "<unknown>"));
+                return;
+            }
+
+            if (!IsUnitySerializedField(backingField) &&
+                !HasNonNullPropertyInitializer(context.Compilation, property) &&
+                !HasAssignmentInInitializationMethod(context.Compilation, property))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    PurrNetDiagnostics.UninitializedNetworkModuleField,
+                    property.Locations.FirstOrDefault(),
+                    property.Name));
+            }
+        }
+
+        private static IFieldSymbol? GetBackingField(IPropertySymbol property)
+        {
+            var containingType = property.ContainingType;
+            if (containingType == null)
+                return null;
+
+            foreach (var member in containingType.GetMembers())
+            {
+                if (member is IFieldSymbol field &&
+                    SymbolEqualityComparer.Default.Equals(field.AssociatedSymbol, property))
+                {
+                    return field;
+                }
+            }
+
+            return null;
         }
 
         private static void AnalyzeAssignment(OperationAnalysisContext context, PurrNetSymbols symbols)
         {
             var assignment = (ISimpleAssignmentOperation)context.Operation;
-            var field = UnwrapFieldReference(assignment.Target);
+            var member = UnwrapMemberReference(assignment.Target, out var memberType);
 
-            if (field == null || !symbols.IsNetworkModule(field.Type))
+            if (member == null || !symbols.IsNetworkModule(memberType))
                 return;
 
-            if (!symbols.IsNetworkType(field.ContainingType))
+            // Non-auto properties are already covered by PN0103.
+            if (member is IPropertySymbol property && GetBackingField(property) == null)
+                return;
+
+            if (!symbols.IsNetworkType(member.ContainingType))
                 return;
 
             if (IsAllowedInitializationMethod(context.ContainingSymbol as IMethodSymbol))
@@ -110,17 +171,26 @@ namespace PurrNet.Analyzers
             context.ReportDiagnostic(Diagnostic.Create(
                 PurrNetDiagnostics.NetworkModuleFieldReassignedAfterInitialization,
                 assignment.Syntax.GetLocation(),
-                field.Name));
+                member.Name));
         }
 
-        private static IFieldSymbol? UnwrapFieldReference(IOperation operation)
+        private static ISymbol? UnwrapMemberReference(IOperation operation, out ITypeSymbol? memberType)
         {
             while (operation is IConversionOperation conversion)
                 operation = conversion.Operand;
 
-            return operation is IFieldReferenceOperation fieldReference
-                ? fieldReference.Field
-                : null;
+            switch (operation)
+            {
+                case IFieldReferenceOperation fieldReference:
+                    memberType = fieldReference.Field.Type;
+                    return fieldReference.Field;
+                case IPropertyReferenceOperation propertyReference:
+                    memberType = propertyReference.Property.Type;
+                    return propertyReference.Property;
+                default:
+                    memberType = null;
+                    return null;
+            }
         }
 
         private static bool HasNonNullFieldInitializer(Compilation compilation, IFieldSymbol field)
@@ -138,6 +208,30 @@ namespace PurrNet.Analyzers
 
                 var semanticModel = compilation.GetSemanticModel(declarator.SyntaxTree);
                 var constantValue = semanticModel.GetConstantValue(declarator.Initializer.Value);
+                if (constantValue.HasValue && constantValue.Value == null)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool HasNonNullPropertyInitializer(Compilation compilation, IPropertySymbol property)
+        {
+            foreach (var reference in property.DeclaringSyntaxReferences)
+            {
+                if (reference.GetSyntax() is not PropertyDeclarationSyntax declaration ||
+                    declaration.Initializer == null)
+                {
+                    continue;
+                }
+
+                if (IsNullLikeExpression(declaration.Initializer.Value))
+                    continue;
+
+                var semanticModel = compilation.GetSemanticModel(declaration.SyntaxTree);
+                var constantValue = semanticModel.GetConstantValue(declaration.Initializer.Value);
                 if (constantValue.HasValue && constantValue.Value == null)
                     continue;
 
@@ -179,9 +273,9 @@ namespace PurrNet.Analyzers
             return false;
         }
 
-        private static bool HasAssignmentInInitializationMethod(Compilation compilation, IFieldSymbol field)
+        private static bool HasAssignmentInInitializationMethod(Compilation compilation, ISymbol member)
         {
-            var containingType = field.ContainingType;
+            var containingType = member.ContainingType;
             if (containingType == null)
                 return false;
 
@@ -191,15 +285,15 @@ namespace PurrNet.Analyzers
                     continue;
 
                 var semanticModel = compilation.GetSemanticModel(typeDeclaration.SyntaxTree);
-                foreach (var member in typeDeclaration.Members)
+                foreach (var typeMember in typeDeclaration.Members)
                 {
-                    if (!IsInitializationMember(member))
+                    if (!IsInitializationMember(typeMember))
                         continue;
 
-                    foreach (var assignment in member.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+                    foreach (var assignment in typeMember.DescendantNodes().OfType<AssignmentExpressionSyntax>())
                     {
                         var assignedSymbol = semanticModel.GetSymbolInfo(assignment.Left).Symbol;
-                        if (SymbolEqualityComparer.Default.Equals(assignedSymbol, field))
+                        if (SymbolEqualityComparer.Default.Equals(assignedSymbol, member))
                             return true;
                     }
                 }

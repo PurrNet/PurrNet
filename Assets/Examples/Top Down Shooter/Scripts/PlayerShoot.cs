@@ -1,6 +1,7 @@
 #if UNITY_PHYSICS_3D
 
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace PurrNet.Examples.TopDownShooter
 {
@@ -15,7 +16,8 @@ namespace PurrNet.Examples.TopDownShooter
 
         private void Update()
         {
-            if (!Input.GetMouseButtonDown(0))
+            var mouse = Mouse.current;
+            if (mouse == null || !mouse.leftButton.wasPressedThisFrame)
                 return;
 
             var trs = transform;

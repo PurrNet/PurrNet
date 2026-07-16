@@ -2,6 +2,7 @@
 
 using PurrNet.Logging;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace PurrNet.Examples.TopDownShooter
 {
@@ -66,7 +67,17 @@ namespace PurrNet.Examples.TopDownShooter
             if (!_controller)
                 return;
 
-            Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            var keyboard = Keyboard.current;
+            Vector2 input = Vector2.zero;
+
+            if (keyboard != null)
+            {
+                if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) input.x -= 1;
+                if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) input.x += 1;
+                if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) input.y -= 1;
+                if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) input.y += 1;
+            }
+
             Vector3 targetMove = new Vector3(input.x, 0, input.y).normalized;
 
             currentMove = Vector3.Lerp(currentMove, targetMove, acceleration * Time.deltaTime);
@@ -76,7 +87,7 @@ namespace PurrNet.Examples.TopDownShooter
             else
                 _verticalVelocity -= gravity * Time.deltaTime;
 
-            if (Input.GetKeyDown(KeyCode.Space) && _controller.isGrounded)
+            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame && _controller.isGrounded)
                 _verticalVelocity = jumpForce;
 
             currentMove.y = _verticalVelocity;
