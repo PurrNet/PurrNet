@@ -1,3 +1,10 @@
+# [1.20.0-beta.260](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.259...v1.20.0-beta.260) (2026-07-16)
+
+
+### Features
+
+* introduce OnSpawnerFlush, complements OnSerialize for both client and server spawning ([9551f65](https://github.com/PurrNet/PurrNet/commit/9551f65cf04ec234cfae8ed44fbc8d10355fe6e0))
+
 # [1.20.0-beta.259](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.258...v1.20.0-beta.259) (2026-07-16)
 
 
