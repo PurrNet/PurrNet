@@ -134,14 +134,6 @@ namespace PurrNet
             _subscribedTicker.onTick -= OnTick;
         }
 
-        public override void OnObserverAdded(PlayerID player, bool isSpawner)
-        {
-            if (isSpawner && ownerAuth && owner == player)
-                return;
-
-            SendLatestState(player, _id, _value);
-        }
-
         public override void OnInitializeModules()
         {
             InvalidateIsController();
@@ -155,6 +147,33 @@ namespace PurrNet
         public override void OnSpawn()
         {
             InvalidateIsController();
+        }
+
+        public override void OnSerialize(BitPacker packer)
+        {
+            bool diverged = !PurrEquality<T>.Default.Equals(_value, _initialValue);
+            Packer<bool>.Write(packer, diverged);
+
+            if (diverged)
+                Packer<T>.Write(packer, _value);
+        }
+
+        public override void OnDeserialize(BitPacker packer)
+        {
+            bool diverged = false;
+            Packer<bool>.Read(packer, ref diverged);
+
+            if (!diverged)
+                return;
+
+            T newValue = default;
+            Packer<T>.Read(packer, ref newValue);
+
+            var oldValue = _value;
+            if (!Packer.Transform(ref _value, newValue))
+                return;
+
+            TriggerEvents(oldValue);
         }
 
         private void InvalidateIsController()
