@@ -1,3 +1,10 @@
+# [1.20.0-beta.258](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.257...v1.20.0-beta.258) (2026-07-16)
+
+
+### Bug Fixes
+
+* player leave event; roslyn analyser miss-fires ([860845e](https://github.com/PurrNet/PurrNet/commit/860845ef717be770e3911570b7d00553ea492522))
+
 # [1.20.0-beta.257](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.256...v1.20.0-beta.257) (2026-07-11)
 
 
