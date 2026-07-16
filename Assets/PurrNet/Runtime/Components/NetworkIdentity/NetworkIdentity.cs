@@ -1236,6 +1236,37 @@ namespace PurrNet
             }
         }
 
+        /// <summary>
+        /// Called only on the spawning peer, at the end of the frame the object was spawned in,
+        /// right before batched RPCs flush. Anything queued here departs in the same flush as the
+        /// spawn, ordered right behind the spawn packet.
+        /// </summary>
+        protected virtual void OnSpawnerFlush() { }
+
+        internal void TriggerOnSpawnerFlush()
+        {
+            try
+            {
+                OnSpawnerFlush();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
+            for (int i = 0; i < _externalModulesView.Count; i++)
+            {
+                try
+                {
+                    _externalModulesView[i].OnSpawnerFlush();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
+        }
+
         internal void TriggerSpawnEvent(bool asServer)
         {
             RecacheHasConnectedOwner();

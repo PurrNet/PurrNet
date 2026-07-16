@@ -149,6 +149,12 @@ namespace PurrNet
             InvalidateIsController();
         }
 
+        public override void OnSpawnerFlush()
+        {
+            if (_isDirty && isControllingSyncVar)
+                FlushImmediately();
+        }
+
         public override void OnSerialize(BitPacker packer)
         {
             bool diverged = !PurrEquality<T>.Default.Equals(_value, _initialValue);
@@ -248,6 +254,10 @@ namespace PurrNet
                 UnsubscribeFromTickManager();
                 return;
             }
+
+            // Hold while the spawn is settling; OnSpawnerFlush sends reliably behind the spawn packet.
+            if (!parent.isFullySpawned)
+                return;
 
             if (_isDirty)
             {

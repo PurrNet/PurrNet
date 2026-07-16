@@ -76,6 +76,15 @@ namespace PurrNet
         {
         }
 
+        /// <summary>
+        /// Called only on the spawning peer, at the end of the frame the object was spawned in,
+        /// right before batched RPCs flush. Anything queued here departs in the same flush as the
+        /// spawn, ordered right behind the spawn packet.
+        /// </summary>
+        public virtual void OnSpawnerFlush()
+        {
+        }
+
         public virtual void OnDespawned()
         {
         }

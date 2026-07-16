@@ -1862,10 +1862,30 @@ namespace PurrNet.Modules
         {
             FlushSpawnPackets();
             SendDelayedObserverEvents();
+            TriggerSpawnerFlushEvents();
             _manager.FlushBatchedRPCs();
             onPreFinishSpawn?.Invoke(_sceneId);
             SendDelayedCompleteSpawns();
             SpawnDelayedIdentities();
+        }
+
+        private void TriggerSpawnerFlushEvents()
+        {
+            if (_toSpawnNextFrame.Count == 0)
+                return;
+
+            var snapshot = ListPool<NetworkIdentity>.Instantiate();
+            snapshot.AddRange(_toSpawnNextFrame);
+
+            for (var i = 0; i < snapshot.Count; i++)
+            {
+                var nid = snapshot[i];
+                if (!nid || !nid.isSpawned)
+                    continue;
+                nid.TriggerOnSpawnerFlush();
+            }
+
+            ListPool<NetworkIdentity>.Destroy(snapshot);
         }
 
         private void CompletePendingSpawnsFor(NetworkIdentity toSpawn, bool isHost)
