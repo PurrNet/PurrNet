@@ -103,6 +103,38 @@ namespace PurrNet
             return v;
         }
 
+        public static NetworkTransformState Lerp(in NetworkTransformState from, in NetworkTransformState to, float t)
+        {
+            var s = to;
+
+            if (from.data.position.HasValue && to.data.position.HasValue)
+            {
+                var a = from.data.position.Value;
+                var b = to.data.position.Value;
+                s.data.position = new CompressedVector3(
+                    new CompressedFloat(LerpInt(a.x.rounded, b.x.rounded, t)),
+                    new CompressedFloat(LerpInt(a.y.rounded, b.y.rounded, t)),
+                    new CompressedFloat(LerpInt(a.z.rounded, b.z.rounded, t)));
+            }
+
+            var r = s.data.rotation;
+            r.x = new NormalizedFloat(LerpLong(from.data.rotation.x.value, to.data.rotation.x.value, t));
+            r.y = new NormalizedFloat(LerpLong(from.data.rotation.y.value, to.data.rotation.y.value, t));
+            r.z = new NormalizedFloat(LerpLong(from.data.rotation.z.value, to.data.rotation.z.value, t));
+            r.w = new NormalizedFloat(LerpLong(from.data.rotation.w.value, to.data.rotation.w.value, t));
+            s.data.rotation = r;
+
+            s.data.scale = new CompressedVector3(
+                new CompressedFloat(LerpInt(from.data.scale.x.rounded, to.data.scale.x.rounded, t)),
+                new CompressedFloat(LerpInt(from.data.scale.y.rounded, to.data.scale.y.rounded, t)),
+                new CompressedFloat(LerpInt(from.data.scale.z.rounded, to.data.scale.z.rounded, t)));
+
+            return s;
+
+            static int LerpInt(int a, int b, float t) => a + (int)Math.Round((b - (double)a) * t);
+            static long LerpLong(long a, long b, float t) => a + (long)Math.Round((b - (double)a) * t);
+        }
+
         public static NetworkTransformState Predict(in NetworkTransformState baseline, in NetworkTransformVelocity v, int dist)
         {
             var s = baseline;

@@ -282,6 +282,20 @@ public class NetworkTransformProtocolTests
         Assert.That(NTUnreliable.PredictionMatches(slowPredicted, slowTo, slowVelocity), Is.True);
     }
 
+    [Test]
+    public void StateLerpBlendsAllComponents()
+    {
+        var a = LinearState(Vector3.zero);
+        var b = LinearState(new Vector3(1f, 0f, 0f));
+        b.data.scale = (CompressedVector3)(Vector3.one * 3f);
+
+        var mid = NetworkTransformVelocity.Lerp(a, b, 0.5f);
+
+        Assert.That(mid.data.position!.Value.x.rounded, Is.EqualTo(500));
+        Assert.That(mid.data.scale.x.rounded, Is.EqualTo(2000));
+        Assert.That(mid.data.rotation, Is.EqualTo((PackedQuaternion)Quaternion.identity));
+    }
+
     private static NetworkTransformState LinearState(Vector3 position)
     {
         return new NetworkTransformState

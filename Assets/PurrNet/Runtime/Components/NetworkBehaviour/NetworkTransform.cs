@@ -66,6 +66,13 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private bool _predictiveSync;
 
+        [Tooltip("How far receivers project received motion toward real time. " +
+                 "0 renders only received data, adding a few ticks of delay but never showing a guess. " +
+                 "1 projects fully to real time, causing rubberbanding when motion changes. " +
+                 "Values between trade delay against correction artifacts.")]
+        [SerializeField, PurrLock, Range(0f, 1f)]
+        private float _extrapolation;
+
         /// <summary>
         /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
@@ -121,9 +128,14 @@ namespace PurrNet
         public bool ownerAuth => _ownerAuth;
 
         /// <summary>
-        /// Whether predictive send suppression and receiver-side extrapolation are enabled.
+        /// Whether predictive send suppression is enabled.
         /// </summary>
         public bool predictiveSync => _predictiveSync;
+
+        /// <summary>
+        /// How far receivers project received motion toward real time (0..1).
+        /// </summary>
+        public float extrapolation => _extrapolation;
 
         Interpolated<Vector3WithParent> _position;
         Interpolated<QuaternionWithParent> _rotation;
@@ -940,18 +952,132 @@ namespace PurrNet
             _hasAuthoritativeRecvGen = false;
             _hasAppliedSeq = false;
             _hasLastAppliedState = false;
+            ClearPredictionAnchors();
         }
 
         private NetworkTransformState _lastAppliedState;
         private ushort _lastAppliedSenderTick;
         private bool _hasLastAppliedState;
 
-        private void BackfillGap(in NetworkTransformState previous, in NetworkTransformState state, int gap, Transform p)
-        {
-            var velocity = NetworkTransformVelocity.Derive(previous, state, gap);
+        private const int PREDICT_BLEND_TICKS = 4;
 
-            for (int step = 1; step < gap; step++)
-                AddStateToBuffers(NetworkTransformVelocity.Predict(previous, velocity, step), p);
+        private NetworkTransformState _anchorState;
+        private NetworkTransformVelocity _anchorVelocity;
+        private uint _anchorLocalTick;
+        private int _anchorGap;
+        private bool _hasPredictionAnchor;
+
+        private NetworkTransformState _prevAnchorState;
+        private NetworkTransformVelocity _prevAnchorVelocity;
+        private uint _prevAnchorLocalTick;
+        private int _prevAnchorGap;
+        private uint _blendStartTick;
+        private bool _hasPrevAnchor;
+
+        private uint _lastPredictionTick;
+
+        private void ClearPredictionAnchors()
+        {
+            _hasPredictionAnchor = false;
+            _hasPrevAnchor = false;
+        }
+
+        private void SetPredictionAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
+        {
+            var nm = networkManager;
+            uint localTick = nm && nm.tickModule != null ? nm.tickModule.localTick : 0u;
+
+            if (_hasPredictionAnchor)
+            {
+                _prevAnchorState = _anchorState;
+                _prevAnchorVelocity = _anchorVelocity;
+                _prevAnchorLocalTick = _anchorLocalTick;
+                _prevAnchorGap = _anchorGap;
+                _blendStartTick = localTick;
+                _hasPrevAnchor = true;
+            }
+
+            _anchorState = state;
+            _anchorVelocity = velocity;
+            _anchorLocalTick = localTick;
+            _anchorGap = gap;
+            _hasPredictionAnchor = true;
+        }
+
+        internal bool TryTickPrediction(uint localTick, out NetworkTransformState state)
+        {
+            state = default;
+
+            if (!_predictiveSync || _cachedIsController || !_hasPredictionAnchor)
+                return false;
+
+            if (_lastPredictionTick == localTick)
+                return false;
+
+            _lastPredictionTick = localTick;
+
+            int offset = Mathf.RoundToInt((1f - _extrapolation) * _predictiveSpacing);
+            long maxAge = _predictiveSpacing + 2;
+
+            var predicted = ProjectAnchor(_anchorState, _anchorVelocity, _anchorGap,
+                (long)localTick - _anchorLocalTick, offset, maxAge);
+
+            if (_hasPrevAnchor)
+            {
+                long blend = (long)localTick - _blendStartTick;
+                if (blend >= PREDICT_BLEND_TICKS)
+                {
+                    _hasPrevAnchor = false;
+                }
+                else
+                {
+                    var old = ProjectAnchor(_prevAnchorState, _prevAnchorVelocity, _prevAnchorGap,
+                        (long)localTick - _prevAnchorLocalTick, offset, maxAge);
+                    predicted = NetworkTransformVelocity.Lerp(old, predicted, (blend + 1f) / (PREDICT_BLEND_TICKS + 1f));
+                }
+            }
+
+            state = predicted;
+            return true;
+        }
+
+        private static NetworkTransformState ProjectAnchor(in NetworkTransformState anchor,
+            in NetworkTransformVelocity velocity, int gap, long age, int offset, long maxAge)
+        {
+            if (age < 0)
+                age = 0;
+
+            long renderAge = age - offset;
+            if (renderAge < -gap)
+                renderAge = -gap;
+            if (renderAge > maxAge)
+                renderAge = maxAge;
+
+            return NetworkTransformVelocity.Predict(anchor, velocity, (int)renderAge);
+        }
+
+        internal void ApplyPredictedSample(in NetworkTransformState state, NetworkIdentity frameParent)
+        {
+            var p = state.frame switch
+            {
+                NetworkTransformFrame.LocalIdentity => frameParent.transform,
+                NetworkTransformFrame.LocalStatic => _trs.parent,
+                _ => null
+            };
+
+            AddStateToBuffers(state, p);
+        }
+
+        private void TeleportBuffers(in NetworkTransformState state, Transform p)
+        {
+            if (syncPosition)
+                _position.Teleport(MakePositionSample(p, state.data));
+
+            if (syncRotation)
+                _rotation.Teleport(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+
+            if (syncScale)
+                _scale.Teleport(new ScaleWithParent(p, state.data.scale));
         }
 
         private void AddStateToBuffers(in NetworkTransformState state, Transform p)
@@ -1129,6 +1255,7 @@ namespace PurrNet
         private void AdoptState(in NetworkTransformState state)
         {
             _hasLastAppliedState = false;
+            ClearPredictionAnchors();
             _lastReadData = state.data;
             _currentData = state.data;
             _latestData = state.data;
@@ -1425,8 +1552,25 @@ namespace PurrNet
             _lastAppliedSenderTick = senderTick;
             _hasLastAppliedState = true;
 
-            if (gap >= 2 && gap <= NTUnreliable.PREDICTIVE_MAX_BACKFILL)
-                BackfillGap(previous, state, gap, p);
+            if (_predictiveSync)
+            {
+                if (isAbsolute)
+                {
+                    ClearPredictionAnchors();
+                    SetPredictionAnchor(state, default, 0);
+                    TeleportBuffers(state, p);
+                }
+                else
+                {
+                    int velocityGap = gap >= 1 && gap <= NTUnreliable.PREDICTIVE_MAX_BACKFILL ? gap : 0;
+                    var velocity = velocityGap >= 1
+                        ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
+                        : default;
+                    SetPredictionAnchor(state, velocity, velocityGap);
+                }
+
+                return true;
+            }
 
             AddStateToBuffers(state, p);
 

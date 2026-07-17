@@ -95,6 +95,7 @@ namespace PurrNet.Modules
     {
         public ushort tick;
         public NetworkTransformState state;
+        public bool restConfirmed;
     }
 
     internal struct NTUnreliableGeneration

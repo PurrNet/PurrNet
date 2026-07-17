@@ -152,3 +152,4 @@ MonoBehaviour:
   _ownerAuth: 1
   _interpolationTiming: 0
   _predictiveSync: 1
+  _extrapolation: 0

@@ -885,24 +885,36 @@ namespace PurrNet.Modules
 
             bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == genEpoch;
 
+            var current = nt.capturedState;
+            NTLastPredictiveWrite lastWrite = default;
+            bool hasLastWrite = nt.predictiveSync && stream.lastPredictiveWrite.TryGetValue(nid, out lastWrite);
+
             // Suppression must not depend on baseline age — a resting object's baseline never
             // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
-            if (hasAcked && baseline.revision == nt.capturedRevision)
+            // Predictive receivers project the last velocity forward, so rest must be confirmed
+            // by a repeated identical state before this transform can go fully silent.
+            if (hasAcked && baseline.revision == nt.capturedRevision &&
+                (!nt.predictiveSync || !hasLastWrite || lastWrite.restConfirmed))
                 return NTWriteResult.SkipAcked;
-
-            var current = nt.capturedState;
 
             if (nt.predictiveSync)
             {
-                if (stream.lastPredictiveWrite.TryGetValue(nid, out var lastWrite))
+                if (hasLastWrite)
                 {
                     int sinceLastWrite = (short)(currentTick - lastWrite.tick);
-                    if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing &&
+                    bool resting = current.Equals(lastWrite.state);
+                    bool restGate = !resting || lastWrite.restConfirmed;
+                    if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing && restGate &&
                         nt.IsChordInterpolable(lastWrite.state, lastWrite.tick, currentTick, current))
                         return NTWriteResult.Hold;
                 }
 
-                stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite { tick = currentTick, state = current };
+                stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite
+                {
+                    tick = currentTick,
+                    state = current,
+                    restConfirmed = hasLastWrite && current.Equals(lastWrite.state)
+                };
             }
 
             int dist = hasAcked ? (int)(stream.nextOrder - baseline.order) : 0;
@@ -1252,12 +1264,32 @@ namespace PurrNet.Modules
             }
         }
 
+        private void PredictReceivedStates(uint localTick)
+        {
+            for (var i = 0; i < _networkTransforms.Count; i++)
+            {
+                var nt = _networkTransforms[i];
+                if (!nt || !nt.TryTickPrediction(localTick, out var state))
+                    continue;
+
+                NetworkIdentity frameParent = null;
+                if (state.frame == NetworkTransformFrame.LocalIdentity &&
+                    (!_factory.TryGetIdentity(_scene, state.parentId, out frameParent) || !frameParent))
+                    continue;
+
+                nt.ApplyPredictedSample(state, frameParent);
+            }
+        }
+
         public void PostFixedUpdate()
         {
             using var _ = _postFixedUpdateMarker.Auto();
 
             var localPlayer = GetLocalPlayer();
-            _currentTick = (ushort)_manager.tickModule.localTick;
+            uint localTick = _manager.tickModule.localTick;
+            _currentTick = (ushort)localTick;
+
+            PredictReceivedStates(localTick);
 
             int ntCount = _networkTransforms.Count;
             _changedTransforms.Clear();
