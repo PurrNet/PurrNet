@@ -8,6 +8,9 @@ namespace PurrNet.Modules
 {
     public class NetworkTransformModule : INetworkModule, IPromoteToServerModule
     {
+        public static long entriesWrittenCount;
+        public static long predictiveHoldCount;
+
         static readonly ProfilerMarker _postFixedUpdateMarker = new ProfilerMarker("NetworkTransform.PostFixedUpdate");
         static readonly ProfilerMarker _gatherStateMarker = new ProfilerMarker("NetworkTransform.GatherState");
         static readonly ProfilerMarker _prepareUnreliableMarker = new ProfilerMarker("NetworkTransform.PrepareState");
@@ -26,6 +29,7 @@ namespace PurrNet.Modules
         private readonly SceneID _scene;
         private readonly HierarchyFactory _factory;
         private bool _asServer;
+        private ushort _currentTick;
 
         public NetworkTransformModule(NetworkManager manager, PlayersBroadcaster broadcaster,
             ScenePlayersModule scenePlayers, SceneID scene, HierarchyFactory factory)
@@ -242,11 +246,12 @@ namespace PurrNet.Modules
         }
 
         private static bool TryGetRecvBaseline(NTUnreliableRecvStream stream, ushort seq, NetworkID nid,
-            out NetworkTransformState state, out NetworkTransformVelocity velocity, out byte gen)
+            out NetworkTransformState state, out NetworkTransformVelocity velocity, out byte gen, out ushort tick)
         {
             state = default;
             velocity = default;
             gen = default;
+            tick = default;
 
             ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
             if (!slot.used || slot.seq != seq || slot.entries == null)
@@ -266,6 +271,7 @@ namespace PurrNet.Modules
                     state = list[mid].state;
                     velocity = list[mid].velocity;
                     gen = list[mid].gen;
+                    tick = list[mid].tick;
                     return true;
                 }
 
@@ -384,11 +390,13 @@ namespace PurrNet.Modules
                             ok = true;
                         }
                         else if (dist > 0 && TryGetRecvBaseline(stream, (ushort)(data.seq - dist), lastNid,
-                                     out var baseline, out var baseVel, out gen))
+                                     out var baseline, out var baseVel, out gen, out var baselineTick) &&
+                                 (short)(data.tick - baselineTick) >= 1)
                         {
-                            var predicted = NTUnreliable.GetDeltaPrediction(baseline, baseVel, dist);
+                            int tickDist = (short)(data.tick - baselineTick);
+                            var predicted = NTUnreliable.GetDeltaPrediction(baseline, baseVel, tickDist);
                             state = nt.ReadDeltaState(packet, baseline, predicted);
-                            velocity = NetworkTransformVelocity.Derive(baseline, state, dist);
+                            velocity = NetworkTransformVelocity.Derive(baseline, state, tickDist);
                             ok = true;
                         }
                         else
@@ -405,13 +413,14 @@ namespace PurrNet.Modules
                             if (state.frame == NetworkTransformFrame.LocalIdentity)
                                 _factory.TryGetIdentity(_scene, state.parentId, out frameParent);
 
-                            if (nt.TryApplyUnreliableState(state, gen, packetOrder, frameParent, isAbsolute))
+                            if (nt.TryApplyUnreliableState(state, gen, packetOrder, data.tick, frameParent, isAbsolute))
                             {
                                 decoded.Add(new NTUnreliableEntry
                                 {
                                     nid = lastNid,
                                     state = state,
                                     velocity = velocity,
+                                    tick = data.tick,
                                     gen = gen
                                 });
                                 recorded = true;
@@ -544,6 +553,7 @@ namespace PurrNet.Modules
                 {
                     state = entry.state,
                     velocity = entry.velocity,
+                    tick = entry.tick,
                     gen = entry.gen,
                     genEpoch = entry.genEpoch,
                     revision = entry.revision,
@@ -617,6 +627,7 @@ namespace PurrNet.Modules
             if (_sendStreams.TryGetValue(key, out var stream))
             {
                 stream.acked.Remove(data.id);
+                stream.lastPredictiveWrite.Remove(data.id);
                 stream.nackFloor[data.id] = stream.nextOrder;
 
                 if (stream.pendingInitialized && TryGetRegisteredTransform(data.id, out var nt))
@@ -857,8 +868,8 @@ namespace PurrNet.Modules
             return payloadBytes * 8L;
         }
 
-        private static bool TryWriteEntry(BitPacker tmp, NetworkTransform nt, NTUnreliableSendStream stream,
-            int lastDist, out int newLastDist, out NetworkTransformVelocity velocity, out byte gen,
+        private static NTWriteResult TryWriteEntry(BitPacker tmp, NetworkTransform nt, NTUnreliableSendStream stream,
+            ushort currentTick, int lastDist, out int newLastDist, out NetworkTransformVelocity velocity, out byte gen,
             out uint genEpoch)
         {
             newLastDist = lastDist;
@@ -877,13 +888,26 @@ namespace PurrNet.Modules
             // Suppression must not depend on baseline age — a resting object's baseline never
             // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
             if (hasAcked && baseline.revision == nt.capturedRevision)
-                return false;
+                return NTWriteResult.SkipAcked;
 
             var current = nt.capturedState;
 
             int dist = hasAcked ? (int)(stream.nextOrder - baseline.order) : 0;
-            bool canDelta = hasAcked && dist >= 1 && dist <= NTUnreliable.MAX_BASELINE_AGE &&
+            int tickDist = hasAcked ? (short)(currentTick - baseline.tick) : 0;
+            bool canDelta = hasAcked && dist >= 1 && dist <= NTUnreliable.MAX_BASELINE_AGE && tickDist >= 1 &&
                             nt.CanDeltaAgainst(baseline.state);
+
+            if (canDelta && nt.predictiveSync &&
+                NTUnreliable.ShouldSuppressPredictively(current, baseline, tickDist) &&
+                stream.lastPredictiveWrite.TryGetValue(nid, out var lastWrite))
+            {
+                int sinceLastWrite = (short)(currentTick - lastWrite);
+                if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing)
+                    return NTWriteResult.Hold;
+            }
+
+            if (nt.predictiveSync)
+                stream.lastPredictiveWrite[nid] = currentTick;
 
             if (canDelta)
             {
@@ -902,9 +926,9 @@ namespace PurrNet.Modules
                     newLastDist = dist;
                 }
 
-                var predicted = NTUnreliable.GetDeltaPrediction(baseline.state, baseline.velocity, dist);
+                var predicted = NTUnreliable.GetDeltaPrediction(baseline.state, baseline.velocity, tickDist);
                 nt.WriteDeltaState(tmp, baseline.state, predicted);
-                velocity = NetworkTransformVelocity.Derive(baseline.state, current, dist);
+                velocity = NetworkTransformVelocity.Derive(baseline.state, current, tickDist);
             }
             else
             {
@@ -913,7 +937,7 @@ namespace PurrNet.Modules
                 nt.WriteAbsoluteState(tmp);
             }
 
-            return true;
+            return NTWriteResult.Written;
         }
 
         private void FlushUnreliablePacket(PlayerID player, NTUnreliableSendStream stream, BitPacker packer,
@@ -932,7 +956,7 @@ namespace PurrNet.Modules
             stream.nextSeq += 1;
             stream.nextOrder += 1;
 
-            var delta = new NetworkTransformUnreliableDelta(_scene, seq, packer);
+            var delta = new NetworkTransformUnreliableDelta(_scene, seq, _currentTick, packer);
 
             if (_recvStreams.TryGetValue(player, out var recv) && recv.ackInit && recv.ackDirty)
             {
@@ -982,12 +1006,23 @@ namespace PurrNet.Modules
                     continue;
                 }
 
-                if (!TryWriteEntry(tmp, nt, stream, lastDist, out var newLastDist, out var velocity,
-                        out var wireGen, out var wireGenEpoch))
+                var writeResult = TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out var newLastDist,
+                    out var velocity, out var wireGen, out var wireGenEpoch);
+
+                if (writeResult == NTWriteResult.SkipAcked)
                 {
                     stream.pending.RemoveAt(i);
                     continue;
                 }
+
+                if (writeResult == NTWriteResult.Hold)
+                {
+                    predictiveHoldCount++;
+                    i++;
+                    continue;
+                }
+
+                entriesWrittenCount++;
 
                 int entryBits = tmp.positionInBits;
 
@@ -1002,8 +1037,8 @@ namespace PurrNet.Modules
                     lastLen = default;
 
                     // the flush advanced nextOrder; baseline distances change, so re-encode
-                    if (!TryWriteEntry(tmp, nt, stream, lastDist, out newLastDist, out velocity, out wireGen,
-                            out wireGenEpoch))
+                    if (TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out newLastDist, out velocity,
+                            out wireGen, out wireGenEpoch) != NTWriteResult.Written)
                         continue;
                     entryBits = tmp.positionInBits;
                 }
@@ -1032,6 +1067,7 @@ namespace PurrNet.Modules
                     nid = nt.id.Value,
                     state = nt.capturedState,
                     velocity = velocity,
+                    tick = _currentTick,
                     gen = wireGen,
                     genEpoch = wireGenEpoch,
                     revision = nt.capturedRevision
@@ -1101,6 +1137,7 @@ namespace PurrNet.Modules
                 foreach (var stream in _sendStreams.Values)
                 {
                     stream.acked.Remove(nid);
+                    stream.lastPredictiveWrite.Remove(nid);
                     stream.nackFloor.Remove(nid);
                     stream.generationOverrides.Remove(nid);
                     RemovePending(stream, nid);
@@ -1150,6 +1187,7 @@ namespace PurrNet.Modules
                 return;
 
             stream.acked.Remove(nid);
+            stream.lastPredictiveWrite.Remove(nid);
             stream.nackFloor.Remove(nid);
             stream.generationOverrides.Remove(nid);
             PurgeRing(stream.ring, nid);
@@ -1218,6 +1256,7 @@ namespace PurrNet.Modules
             using var _ = _postFixedUpdateMarker.Auto();
 
             var localPlayer = GetLocalPlayer();
+            _currentTick = (ushort)_manager.tickModule.localTick;
 
             int ntCount = _networkTransforms.Count;
             _changedTransforms.Clear();

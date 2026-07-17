@@ -36,5 +36,11 @@ namespace NetworkTransformFilterTest
         {
             _speed = Random.Range(0.2f, 5f);
         }
+
+        [ContextMenu("Randomize rotation")]
+        private void RandomizeRotation()
+        {
+            _angularVelocity = Random.insideUnitSphere * 30f;
+        }
     }
 }

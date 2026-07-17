@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet.Packing;
 using PurrNet.Pooling;
@@ -25,13 +26,15 @@ namespace PurrNet.Modules
     {
         public SceneID scene;
         public readonly ushort seq;
+        public readonly ushort tick;
         public NetworkTransformUnreliableAckHeader? ack;
         public readonly ByteData packet;
 
-        public NetworkTransformUnreliableDelta(SceneID context, ushort seq, BitPacker packer)
+        public NetworkTransformUnreliableDelta(SceneID context, ushort seq, ushort tick, BitPacker packer)
         {
             scene = context;
             this.seq = seq;
+            this.tick = tick;
             ack = null;
             packet = packer.ToByteData();
         }
@@ -61,6 +64,7 @@ namespace PurrNet.Modules
         public NetworkID nid;
         public NetworkTransformState state;
         public NetworkTransformVelocity velocity;
+        public ushort tick;
         public byte gen;
         // Send-side only: non-wrapping epoch behind the byte gen.
         public uint genEpoch;
@@ -72,11 +76,19 @@ namespace PurrNet.Modules
     {
         public NetworkTransformState state;
         public NetworkTransformVelocity velocity;
+        public ushort tick;
         public byte gen;
         public uint genEpoch;
         public uint revision;
         // Monotonic packet order — ushort seq wraps, so age math uses this instead.
         public uint order;
+    }
+
+    internal enum NTWriteResult
+    {
+        Written,
+        SkipAcked,
+        Hold
     }
 
     internal struct NTUnreliableGeneration
@@ -107,6 +119,7 @@ namespace PurrNet.Modules
         // else the ack covering the NACKed packet resurrects the phantom (acks are cumulative).
         public readonly Dictionary<NetworkID, uint> nackFloor = new();
         public readonly Dictionary<NetworkID, NTUnreliableBaseline> acked = new();
+        public readonly Dictionary<NetworkID, ushort> lastPredictiveWrite = new();
         // A targeted reliable reset advances the NetworkTransform's global generation, while
         // unaffected peers remain on their existing wire generation until the next global reset.
         public readonly Dictionary<NetworkID, NTUnreliableGeneration> generationOverrides = new();
@@ -139,6 +152,11 @@ namespace PurrNet.Modules
         public const int ACK_INTERVAL_TICKS = 4;
         public const int ACK_PACKET_THRESHOLD = 24;
 
+        public const int PREDICTIVE_MAX_BACKFILL = 24;
+        public const int PREDICTIVE_POS_TOLERANCE = 2;
+        public const int PREDICTIVE_ROT_TOLERANCE = 4;
+        public const int PREDICTIVE_SCALE_TOLERANCE = 2;
+
         public static NetworkTransformState GetDeltaPrediction(in NetworkTransformState baseline,
             in NetworkTransformVelocity velocity, int distance)
         {
@@ -150,6 +168,71 @@ namespace PurrNet.Modules
         public static bool ShouldApplyOrder(bool hasApplied, long lastApplied, long incoming)
         {
             return !hasApplied || incoming > lastApplied;
+        }
+
+        public static bool ShouldSuppressPredictively(in NetworkTransformState current,
+            in NTUnreliableBaseline baseline, int tickDist)
+        {
+            if (tickDist < 1 || tickDist > MAX_PREDICTED_BASELINE_AGE)
+                return false;
+
+            if (current.frame != baseline.state.frame || !current.parentId.Equals(baseline.state.parentId))
+                return false;
+
+            if (baseline.velocity.isZero)
+                return false;
+
+            var predicted = GetDeltaPrediction(baseline.state, baseline.velocity, tickDist);
+            return PredictionMatches(predicted, current, baseline.velocity);
+        }
+
+        private static long ScaledTolerance(long baseTolerance, long velocityComponent)
+        {
+            long scaled = Math.Abs(velocityComponent) >> (NetworkTransformVelocity.FRACTION_BITS + 1);
+            return scaled > baseTolerance ? scaled : baseTolerance;
+        }
+
+        public static bool PredictionMatches(in NetworkTransformState predicted, in NetworkTransformState current,
+            in NetworkTransformVelocity velocity)
+        {
+            var p = predicted.data;
+            var c = current.data;
+
+            if (p.absolutePosition.HasValue || c.absolutePosition.HasValue)
+            {
+                if (!p.absolutePosition.HasValue || !c.absolutePosition.HasValue)
+                    return false;
+                if (!p.absolutePosition.Value.Equals(c.absolutePosition.Value))
+                    return false;
+            }
+            else
+            {
+                if (p.position.HasValue != c.position.HasValue)
+                    return false;
+
+                if (p.position.HasValue)
+                {
+                    var pp = p.position.Value;
+                    var cp = c.position.Value;
+                    if (Math.Abs(pp.x.rounded - (long)cp.x.rounded) > ScaledTolerance(PREDICTIVE_POS_TOLERANCE, velocity.posX) ||
+                        Math.Abs(pp.y.rounded - (long)cp.y.rounded) > ScaledTolerance(PREDICTIVE_POS_TOLERANCE, velocity.posY) ||
+                        Math.Abs(pp.z.rounded - (long)cp.z.rounded) > ScaledTolerance(PREDICTIVE_POS_TOLERANCE, velocity.posZ))
+                        return false;
+                }
+            }
+
+            if (Math.Abs(p.rotation.x.value - (long)c.rotation.x.value) > ScaledTolerance(PREDICTIVE_ROT_TOLERANCE, velocity.rotX) ||
+                Math.Abs(p.rotation.y.value - (long)c.rotation.y.value) > ScaledTolerance(PREDICTIVE_ROT_TOLERANCE, velocity.rotY) ||
+                Math.Abs(p.rotation.z.value - (long)c.rotation.z.value) > ScaledTolerance(PREDICTIVE_ROT_TOLERANCE, velocity.rotZ) ||
+                Math.Abs(p.rotation.w.value - (long)c.rotation.w.value) > ScaledTolerance(PREDICTIVE_ROT_TOLERANCE, velocity.rotW))
+                return false;
+
+            if (Math.Abs(p.scale.x.rounded - (long)c.scale.x.rounded) > ScaledTolerance(PREDICTIVE_SCALE_TOLERANCE, velocity.scaleX) ||
+                Math.Abs(p.scale.y.rounded - (long)c.scale.y.rounded) > ScaledTolerance(PREDICTIVE_SCALE_TOLERANCE, velocity.scaleY) ||
+                Math.Abs(p.scale.z.rounded - (long)c.scale.z.rounded) > ScaledTolerance(PREDICTIVE_SCALE_TOLERANCE, velocity.scaleZ))
+                return false;
+
+            return true;
         }
 
         public static void Release(NTUnreliableSlot[] ring)

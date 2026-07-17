@@ -17,12 +17,14 @@ namespace NetworkTransformFilterTest
         [SerializeField, Min(0f)] private float _timeScale = 1f;
 
         private float _elapsed;
+        private bool _hasInitialState;
 
         protected override void OnSpawned()
         {
             base.OnSpawned();
             _elapsed = 0f;
             CaptureInitialState();
+            _hasInitialState = true;
         }
 
         protected abstract void CaptureInitialState();
@@ -43,7 +45,7 @@ namespace NetworkTransformFilterTest
 
         private void Step(float delta)
         {
-            if (!isSpawned || !isController)
+            if (!_hasInitialState || !isSpawned || !isController)
                 return;
 
             _elapsed += delta * _timeScale;

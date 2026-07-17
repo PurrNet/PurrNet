@@ -59,6 +59,13 @@ namespace PurrNet
         [SerializeField]
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
+        [Tooltip("Experimental: while the motion matches a steady model, the controller lowers its send rate " +
+                 "and receivers interpolate across the gaps between received states. " +
+                 "Greatly reduces bandwidth for steady motion at the cost of added interpolation latency. " +
+                 "Receivers never extrapolate; only received states are rendered.")]
+        [SerializeField, PurrLock]
+        private bool _predictiveSync;
+
         /// <summary>
         /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
@@ -112,6 +119,11 @@ namespace PurrNet
         /// Whether the client controls the transform if they are the owner.
         /// </summary>
         public bool ownerAuth => _ownerAuth;
+
+        /// <summary>
+        /// Whether predictive send suppression and receiver-side extrapolation are enabled.
+        /// </summary>
+        public bool predictiveSync => _predictiveSync;
 
         Interpolated<Vector3WithParent> _position;
         Interpolated<QuaternionWithParent> _rotation;
@@ -394,6 +406,10 @@ namespace PurrNet
             ntModule.Unregister(this);
         }
 
+        private int _predictiveSpacing = 2;
+
+        internal int predictiveSendSpacing => _predictiveSpacing;
+
         protected override void OnSpawned()
         {
             int ticksPerSec = networkManager.tickModule.tickRate;
@@ -402,6 +418,8 @@ namespace PurrNet
             if (syncPosition) _position.maxBufferSize = ticksPerBuffer;
             if (syncRotation) _rotation.maxBufferSize = ticksPerBuffer;
             if (syncScale) _scale.maxBufferSize = ticksPerBuffer;
+
+            _predictiveSpacing = Mathf.Clamp(ticksPerBuffer - 2, 2, 4);
         }
 
         protected override void OnObserverAdded(PlayerID player)
@@ -921,6 +939,31 @@ namespace PurrNet
             _hasRecvGen = false;
             _hasAuthoritativeRecvGen = false;
             _hasAppliedSeq = false;
+            _hasLastAppliedState = false;
+        }
+
+        private NetworkTransformState _lastAppliedState;
+        private ushort _lastAppliedSenderTick;
+        private bool _hasLastAppliedState;
+
+        private void BackfillGap(in NetworkTransformState previous, in NetworkTransformState state, int gap, Transform p)
+        {
+            var velocity = NetworkTransformVelocity.Derive(previous, state, gap);
+
+            for (int step = 1; step < gap; step++)
+                AddStateToBuffers(NetworkTransformVelocity.Predict(previous, velocity, step), p);
+        }
+
+        private void AddStateToBuffers(in NetworkTransformState state, Transform p)
+        {
+            if (syncPosition)
+                _position.Add(MakePositionSample(p, state.data));
+
+            if (syncRotation)
+                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+
+            if (syncScale)
+                _scale.Add(new ScaleWithParent(p, state.data.scale));
         }
 
         internal void ResetUnreliableStream()
@@ -1026,6 +1069,7 @@ namespace PurrNet
 
         private void AdoptState(in NetworkTransformState state)
         {
+            _hasLastAppliedState = false;
             _lastReadData = state.data;
             _currentData = state.data;
             _latestData = state.data;
@@ -1266,7 +1310,7 @@ namespace PurrNet
         }
 
         internal bool TryApplyUnreliableState(in NetworkTransformState state, byte gen, long packetOrder,
-            NetworkIdentity frameParent, bool isAbsolute)
+            ushort senderTick, NetworkIdentity frameParent, bool isAbsolute)
         {
             if (_cachedIsController)
                 return true;
@@ -1307,18 +1351,25 @@ namespace PurrNet
                 _ => null
             };
 
+            int gap = 0;
+
+            if (_predictiveSync && !isAbsolute && _hasLastAppliedState &&
+                state.frame == _lastAppliedState.frame && state.parentId.Equals(_lastAppliedState.parentId))
+                gap = (short)(senderTick - _lastAppliedSenderTick);
+
+            var previous = _lastAppliedState;
+
             _lastAppliedOrder = packetOrder;
             _hasAppliedSeq = true;
             _lastReadData = state.data;
+            _lastAppliedState = state;
+            _lastAppliedSenderTick = senderTick;
+            _hasLastAppliedState = true;
 
-            if (syncPosition)
-                _position.Add(MakePositionSample(p, state.data));
+            if (gap >= 2 && gap <= NTUnreliable.PREDICTIVE_MAX_BACKFILL)
+                BackfillGap(previous, state, gap, p);
 
-            if (syncRotation)
-                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
-
-            if (syncScale)
-                _scale.Add(new ScaleWithParent(p, state.data.scale));
+            AddStateToBuffers(state, p);
 
             return true;
         }

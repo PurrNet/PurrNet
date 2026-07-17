@@ -174,6 +174,116 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void PredictiveSuppressionHoldsOnModelMotionOnly()
+    {
+        var baseline = new NTUnreliableBaseline
+        {
+            state = LinearState(Vector3.zero),
+            velocity = new NetworkTransformVelocity { posX = 40 << NetworkTransformVelocity.FRACTION_BITS }
+        };
+
+        for (int tickDist = 1; tickDist <= NTUnreliable.MAX_PREDICTED_BASELINE_AGE; tickDist++)
+        {
+            var onModel = LinearState(new Vector3(tickDist * 40 * CompressedFloat.PRECISION, 0f, 0f));
+            Assert.That(NTUnreliable.ShouldSuppressPredictively(onModel, baseline, tickDist), Is.True);
+        }
+
+        var jittered = LinearState(new Vector3((40 + 20) * CompressedFloat.PRECISION, 0f, 0f));
+        Assert.That(NTUnreliable.ShouldSuppressPredictively(jittered, baseline, 1), Is.True);
+
+        var offModel = LinearState(new Vector3((40 + 21) * CompressedFloat.PRECISION, 0f, 0f));
+        Assert.That(NTUnreliable.ShouldSuppressPredictively(offModel, baseline, 1), Is.False);
+
+        var atLimit = LinearState(new Vector3(
+            (NTUnreliable.MAX_PREDICTED_BASELINE_AGE + 1) * 40 * CompressedFloat.PRECISION, 0f, 0f));
+        Assert.That(NTUnreliable.ShouldSuppressPredictively(
+            atLimit, baseline, NTUnreliable.MAX_PREDICTED_BASELINE_AGE + 1), Is.False);
+
+        Assert.That(NTUnreliable.ShouldSuppressPredictively(baseline.state, baseline, 0), Is.False);
+
+        var restingBaseline = new NTUnreliableBaseline { state = baseline.state };
+        Assert.That(NTUnreliable.ShouldSuppressPredictively(baseline.state, restingBaseline, 1), Is.False);
+    }
+
+    [Test]
+    public void PredictiveSuppressionRejectsFrameChanges()
+    {
+        var baseline = new NTUnreliableBaseline
+        {
+            state = LinearState(Vector3.zero),
+            velocity = new NetworkTransformVelocity { posX = 40 << NetworkTransformVelocity.FRACTION_BITS }
+        };
+
+        var reframed = LinearState(new Vector3(40 * CompressedFloat.PRECISION, 0f, 0f));
+        reframed.frame = NetworkTransformFrame.LocalIdentity;
+        reframed.parentId = new NetworkID(5);
+
+        Assert.That(NTUnreliable.ShouldSuppressPredictively(reframed, baseline, 1), Is.False);
+    }
+
+    [Test]
+    public void PredictionMatchesRespectsPerComponentTolerances()
+    {
+        var predicted = LinearState(Vector3.one);
+
+        var withinPos = LinearState(Vector3.one);
+        withinPos.data.position = new CompressedVector3(
+            new CompressedFloat(1000 + NTUnreliable.PREDICTIVE_POS_TOLERANCE),
+            new CompressedFloat(1000), new CompressedFloat(1000));
+        Assert.That(NTUnreliable.PredictionMatches(predicted, withinPos, default), Is.True);
+
+        var beyondPos = LinearState(Vector3.one);
+        beyondPos.data.position = new CompressedVector3(
+            new CompressedFloat(1000 + NTUnreliable.PREDICTIVE_POS_TOLERANCE + 1),
+            new CompressedFloat(1000), new CompressedFloat(1000));
+        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, default), Is.False);
+
+        var fastVelocity = new NetworkTransformVelocity { posX = 100 << NetworkTransformVelocity.FRACTION_BITS };
+        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, fastVelocity), Is.True);
+
+        var rotated = LinearState(Vector3.one);
+        rotated.data.rotation = Quaternion.Euler(0f, 5f, 0f);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, rotated, default), Is.False);
+
+        var scaled = LinearState(Vector3.one);
+        scaled.data.scale = (CompressedVector3)(Vector3.one * 1.5f);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, scaled, default), Is.False);
+    }
+
+    [Test]
+    public void TickBasedVelocityRoundTripsLinearMotion()
+    {
+        var from = LinearState(Vector3.zero);
+        var to = LinearState(new Vector3(1.2f, -0.6f, 0.3f));
+
+        const int dist = 6;
+        var velocity = NetworkTransformVelocity.Derive(from, to, dist);
+        var predicted = NetworkTransformVelocity.Predict(from, velocity, dist);
+
+        Assert.That(predicted.data.position, Is.EqualTo(to.data.position));
+        Assert.That(NTUnreliable.PredictionMatches(predicted, to, velocity), Is.True);
+
+        var slowTo = LinearState(new Vector3(0.01f, 0f, 0f));
+        var slowVelocity = NetworkTransformVelocity.Derive(from, slowTo, 3);
+        var slowPredicted = NetworkTransformVelocity.Predict(from, slowVelocity, 3);
+        Assert.That(NTUnreliable.PredictionMatches(slowPredicted, slowTo, slowVelocity), Is.True);
+    }
+
+    private static NetworkTransformState LinearState(Vector3 position)
+    {
+        return new NetworkTransformState
+        {
+            frame = NetworkTransformFrame.World,
+            data = new NetworkTransformData
+            {
+                position = (CompressedVector3)position,
+                rotation = Quaternion.identity,
+                scale = Vector3.one
+            }
+        };
+    }
+
+    [Test]
     public void EntryBoundsRejectCursorRewindAndOverflow()
     {
         Assert.That(NetworkTransformModule.IsValidEntryBounds(10, 1, 11), Is.True);
@@ -196,7 +306,7 @@ public class NetworkTransformProtocolTests
             Packer<int>.Write(packer, 1);
             DeltaPacker<PackedInt>.Write(packer, default, new PackedInt(-1));
             DeltaPacker<NetworkID>.Write(packer, default, new NetworkID(10));
-            var malformed = new NetworkTransformUnreliableDelta(default, 1, packer);
+            var malformed = new NetworkTransformUnreliableDelta(default, 1, 0, packer);
             handler.Invoke(module, new object[] { PlayerID.Server, malformed, false });
         }
 
@@ -206,7 +316,7 @@ public class NetworkTransformProtocolTests
         using (var packer = BitPackerPool.Get())
         {
             Packer<int>.Write(packer, 0);
-            var validEmpty = new NetworkTransformUnreliableDelta(default, 2, packer);
+            var validEmpty = new NetworkTransformUnreliableDelta(default, 2, 0, packer);
             handler.Invoke(module, new object[] { PlayerID.Server, validEmpty, false });
         }
 
@@ -228,7 +338,7 @@ public class NetworkTransformProtocolTests
         {
             // Claims one entry, but omits its length, NetworkID, header, and body.
             Packer<int>.Write(packer, 1);
-            var truncated = new NetworkTransformUnreliableDelta(default, 1, packer);
+            var truncated = new NetworkTransformUnreliableDelta(default, 1, 0, packer);
 
             Assert.DoesNotThrow(() =>
                 handler.Invoke(module, new object[] { PlayerID.Server, truncated, false }));
@@ -402,11 +512,11 @@ public class NetworkTransformProtocolTests
             DisableSynchronizedFields(nt);
 
             Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)20), Is.True);
-            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, null, true), Is.False);
+            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, 0, null, true), Is.False);
             Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(20));
 
             Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)250), Is.True);
-            Assert.That(nt.TryApplyUnreliableState(default, 3, 2, null, true), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(default, 3, 2, 0, null, true), Is.True);
             Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(3));
         }
         finally
@@ -427,7 +537,7 @@ public class NetworkTransformProtocolTests
             SetField(nt, "_recvGen", (byte)20);
             SetField(nt, "_hasRecvGen", true);
 
-            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, null, true), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, 0, null, true), Is.True);
             Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(10));
         }
         finally
