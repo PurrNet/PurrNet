@@ -242,6 +242,7 @@ namespace PurrNet
         {
             if (!target) return;
             if (_generating) return;
+            if (Application.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode) return;
 
             _generating = true;
             try
@@ -276,7 +277,7 @@ namespace PurrNet
                 {
                     target.Refresh();
                     EditorUtility.SetDirty(target);
-                    AssetDatabase.SaveAssets();
+                    AssetDatabase.SaveAssetIfDirty(target);
                 }
             }
             catch (Exception e)

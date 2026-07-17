@@ -157,9 +157,11 @@ namespace PurrNet
 #if UNITY_EDITOR
             UpdatePrefabGuids();
 #endif
-            if (autoGenerate)
+            if (autoGenerate &&
+                !EditorApplication.isPlayingOrWillChangePlaymode &&
+                !EditorApplication.isCompiling &&
+                !EditorApplication.isUpdating)
             {
-                // schedule for next editor update
                 EditorApplication.delayCall += Generate;
             }
         }
@@ -284,6 +286,7 @@ namespace PurrNet
             if (ApplicationContext.isClone) return;
             if (!this) return;
             if (_generating) return;
+            if (Application.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode) return;
 
             _generating = true;
             try
@@ -296,7 +299,7 @@ namespace PurrNet
                     {
                         prefabs.Clear();
                         EditorUtility.SetDirty(this);
-                        AssetDatabase.SaveAssets();
+                        AssetDatabase.SaveAssetIfDirty(this);
                     }
                     return;
                 }
@@ -338,7 +341,7 @@ namespace PurrNet
                 if (removed > 0 || added > 0)
                 {
                     EditorUtility.SetDirty(this);
-                    AssetDatabase.SaveAssets();
+                    AssetDatabase.SaveAssetIfDirty(this);
                 }
             }
             catch (Exception e)

@@ -417,6 +417,8 @@ namespace PurrNet
 #if UNITY_EDITOR
         public void GenerateAssets()
         {
+            if (Application.isPlaying || UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) return;
+
             var enabledTypes = enabledTypeNames.Select(Type.GetType).Where(t => t != null).ToArray();
             var found = AssetScannerUtility.ScanAssets(folder, enabledTypes, searchAllIfNoFolder);
             var linkedAssets = AssetScannerUtility.CollectLinkedNetworkAssets(this);
@@ -455,7 +457,7 @@ namespace PurrNet
             {
                 Refresh();
                 UnityEditor.EditorUtility.SetDirty(this);
-                UnityEditor.AssetDatabase.SaveAssets();
+                UnityEditor.AssetDatabase.SaveAssetIfDirty(this);
             }
 
             CleanupNullEntries();

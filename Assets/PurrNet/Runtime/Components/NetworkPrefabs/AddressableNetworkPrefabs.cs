@@ -438,8 +438,13 @@ namespace PurrNet
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            if (autoGenerate)
+            if (autoGenerate &&
+                !UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode &&
+                !UnityEditor.EditorApplication.isCompiling &&
+                !UnityEditor.EditorApplication.isUpdating)
+            {
                 UnityEditor.EditorApplication.delayCall += OnAutoGenerate;
+            }
         }
 
         private void OnAutoGenerate()
