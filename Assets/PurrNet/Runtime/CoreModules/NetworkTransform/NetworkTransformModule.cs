@@ -892,22 +892,23 @@ namespace PurrNet.Modules
 
             var current = nt.capturedState;
 
+            if (nt.predictiveSync)
+            {
+                if (stream.lastPredictiveWrite.TryGetValue(nid, out var lastWrite))
+                {
+                    int sinceLastWrite = (short)(currentTick - lastWrite.tick);
+                    if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing &&
+                        nt.IsChordInterpolable(lastWrite.state, lastWrite.tick, currentTick, current))
+                        return NTWriteResult.Hold;
+                }
+
+                stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite { tick = currentTick, state = current };
+            }
+
             int dist = hasAcked ? (int)(stream.nextOrder - baseline.order) : 0;
             int tickDist = hasAcked ? (short)(currentTick - baseline.tick) : 0;
             bool canDelta = hasAcked && dist >= 1 && dist <= NTUnreliable.MAX_BASELINE_AGE && tickDist >= 1 &&
                             nt.CanDeltaAgainst(baseline.state);
-
-            if (canDelta && nt.predictiveSync &&
-                NTUnreliable.ShouldSuppressPredictively(current, baseline, tickDist) &&
-                stream.lastPredictiveWrite.TryGetValue(nid, out var lastWrite))
-            {
-                int sinceLastWrite = (short)(currentTick - lastWrite);
-                if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing)
-                    return NTWriteResult.Hold;
-            }
-
-            if (nt.predictiveSync)
-                stream.lastPredictiveWrite[nid] = currentTick;
 
             if (canDelta)
             {
@@ -1269,7 +1270,7 @@ namespace PurrNet.Modules
                 {
                     uint previousRevision = nt.capturedRevision;
                     nt.GatherState();
-                    nt.CaptureUnreliableState();
+                    nt.CaptureUnreliableState(_currentTick);
 
                     if (nt.capturedRevision != previousRevision)
                         _changedTransforms.Add(nt);

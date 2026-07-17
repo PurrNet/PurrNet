@@ -174,51 +174,64 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
-    public void PredictiveSuppressionHoldsOnModelMotionOnly()
+    public void ChordCheckAcceptsLinearHistoryAndRejectsDeviation()
     {
-        var baseline = new NTUnreliableBaseline
-        {
-            state = LinearState(Vector3.zero),
-            velocity = new NetworkTransformVelocity { posX = 40 << NetworkTransformVelocity.FRACTION_BITS }
-        };
+        var go = new GameObject(nameof(ChordCheckAcceptsLinearHistoryAndRejectsDeviation));
 
-        for (int tickDist = 1; tickDist <= NTUnreliable.MAX_PREDICTED_BASELINE_AGE; tickDist++)
+        try
         {
-            var onModel = LinearState(new Vector3(tickDist * 40 * CompressedFloat.PRECISION, 0f, 0f));
-            Assert.That(NTUnreliable.ShouldSuppressPredictively(onModel, baseline, tickDist), Is.True);
+            var nt = go.AddComponent<NetworkTransform>();
+
+            for (ushort tick = 0; tick <= 4; tick++)
+            {
+                SetField(nt, "_currentData", new NetworkTransformData
+                {
+                    position = (CompressedVector3)new Vector3(tick * 0.1f, 0f, 0f),
+                    rotation = Quaternion.identity,
+                    scale = Vector3.one
+                });
+                nt.CaptureUnreliableState(tick);
+            }
+
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 0, 4,
+                LinearState(new Vector3(0.4f, 0f, 0f))), Is.True);
+
+            SetField(nt, "_currentData", new NetworkTransformData
+            {
+                position = (CompressedVector3)new Vector3(0.9f, 0f, 0f),
+                rotation = Quaternion.identity,
+                scale = Vector3.one
+            });
+            nt.CaptureUnreliableState(2);
+
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 0, 4,
+                LinearState(new Vector3(0.4f, 0f, 0f))), Is.False);
         }
-
-        var jittered = LinearState(new Vector3((40 + 20) * CompressedFloat.PRECISION, 0f, 0f));
-        Assert.That(NTUnreliable.ShouldSuppressPredictively(jittered, baseline, 1), Is.True);
-
-        var offModel = LinearState(new Vector3((40 + 21) * CompressedFloat.PRECISION, 0f, 0f));
-        Assert.That(NTUnreliable.ShouldSuppressPredictively(offModel, baseline, 1), Is.False);
-
-        var atLimit = LinearState(new Vector3(
-            (NTUnreliable.MAX_PREDICTED_BASELINE_AGE + 1) * 40 * CompressedFloat.PRECISION, 0f, 0f));
-        Assert.That(NTUnreliable.ShouldSuppressPredictively(
-            atLimit, baseline, NTUnreliable.MAX_PREDICTED_BASELINE_AGE + 1), Is.False);
-
-        Assert.That(NTUnreliable.ShouldSuppressPredictively(baseline.state, baseline, 0), Is.False);
-
-        var restingBaseline = new NTUnreliableBaseline { state = baseline.state };
-        Assert.That(NTUnreliable.ShouldSuppressPredictively(baseline.state, restingBaseline, 1), Is.False);
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
     }
 
     [Test]
-    public void PredictiveSuppressionRejectsFrameChanges()
+    public void ChordCheckRejectsMissingHistory()
     {
-        var baseline = new NTUnreliableBaseline
+        var go = new GameObject(nameof(ChordCheckRejectsMissingHistory));
+
+        try
         {
-            state = LinearState(Vector3.zero),
-            velocity = new NetworkTransformVelocity { posX = 40 << NetworkTransformVelocity.FRACTION_BITS }
-        };
+            var nt = go.AddComponent<NetworkTransform>();
 
-        var reframed = LinearState(new Vector3(40 * CompressedFloat.PRECISION, 0f, 0f));
-        reframed.frame = NetworkTransformFrame.LocalIdentity;
-        reframed.parentId = new NetworkID(5);
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 10, 14,
+                LinearState(new Vector3(0.4f, 0f, 0f))), Is.False);
 
-        Assert.That(NTUnreliable.ShouldSuppressPredictively(reframed, baseline, 1), Is.False);
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 10, 11,
+                LinearState(new Vector3(0.1f, 0f, 0f))), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
     }
 
     [Test]

@@ -1017,7 +1017,61 @@ namespace PurrNet
             }
         }
 
+        private const int CAPTURE_HISTORY_SIZE = 8;
+
+        private readonly NetworkTransformState[] _historyStates = new NetworkTransformState[CAPTURE_HISTORY_SIZE];
+        private readonly ushort[] _historyTicks = new ushort[CAPTURE_HISTORY_SIZE];
+        private readonly bool[] _historyUsed = new bool[CAPTURE_HISTORY_SIZE];
+
+        private bool TryGetCapturedAt(ushort tick, out NetworkTransformState state)
+        {
+            int slot = tick % CAPTURE_HISTORY_SIZE;
+            if (_historyUsed[slot] && _historyTicks[slot] == tick)
+            {
+                state = _historyStates[slot];
+                return true;
+            }
+
+            state = default;
+            return false;
+        }
+
+        internal bool IsChordInterpolable(in NetworkTransformState from, ushort fromTick, ushort currentTick,
+            in NetworkTransformState current)
+        {
+            int gap = (short)(currentTick - fromTick);
+            if (gap <= 1)
+                return true;
+
+            if (current.frame != from.frame || !current.parentId.Equals(from.parentId))
+                return false;
+
+            var chord = NetworkTransformVelocity.Derive(from, current, gap);
+
+            for (int step = 1; step < gap; step++)
+            {
+                if (!TryGetCapturedAt((ushort)(fromTick + step), out var actual))
+                    return false;
+
+                if (actual.frame != from.frame || !actual.parentId.Equals(from.parentId))
+                    return false;
+
+                var expected = NetworkTransformVelocity.Predict(from, chord, step);
+                if (!NTUnreliable.PredictionMatches(expected, actual, chord))
+                    return false;
+            }
+
+            return true;
+        }
+
         internal void CaptureUnreliableState()
+        {
+            var nm = networkManager;
+            ushort tick = nm && nm.tickModule != null ? (ushort)nm.tickModule.localTick : (ushort)0;
+            CaptureUnreliableState(tick);
+        }
+
+        internal void CaptureUnreliableState(ushort tick)
         {
             var state = currentState;
 
@@ -1045,6 +1099,11 @@ namespace PurrNet
                 _capturedRevision++;
                 _hasCapturedState = true;
             }
+
+            int slot = tick % CAPTURE_HISTORY_SIZE;
+            _historyStates[slot] = _capturedState;
+            _historyTicks[slot] = tick;
+            _historyUsed[slot] = true;
         }
 
         private bool usesNetworkFrame => _syncPosition == SyncMode.Local ||

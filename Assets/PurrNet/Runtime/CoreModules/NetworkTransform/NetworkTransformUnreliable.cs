@@ -91,6 +91,12 @@ namespace PurrNet.Modules
         Hold
     }
 
+    internal struct NTLastPredictiveWrite
+    {
+        public ushort tick;
+        public NetworkTransformState state;
+    }
+
     internal struct NTUnreliableGeneration
     {
         public byte gen;
@@ -119,7 +125,7 @@ namespace PurrNet.Modules
         // else the ack covering the NACKed packet resurrects the phantom (acks are cumulative).
         public readonly Dictionary<NetworkID, uint> nackFloor = new();
         public readonly Dictionary<NetworkID, NTUnreliableBaseline> acked = new();
-        public readonly Dictionary<NetworkID, ushort> lastPredictiveWrite = new();
+        public readonly Dictionary<NetworkID, NTLastPredictiveWrite> lastPredictiveWrite = new();
         // A targeted reliable reset advances the NetworkTransform's global generation, while
         // unaffected peers remain on their existing wire generation until the next global reset.
         public readonly Dictionary<NetworkID, NTUnreliableGeneration> generationOverrides = new();
@@ -168,22 +174,6 @@ namespace PurrNet.Modules
         public static bool ShouldApplyOrder(bool hasApplied, long lastApplied, long incoming)
         {
             return !hasApplied || incoming > lastApplied;
-        }
-
-        public static bool ShouldSuppressPredictively(in NetworkTransformState current,
-            in NTUnreliableBaseline baseline, int tickDist)
-        {
-            if (tickDist < 1 || tickDist > MAX_PREDICTED_BASELINE_AGE)
-                return false;
-
-            if (current.frame != baseline.state.frame || !current.parentId.Equals(baseline.state.parentId))
-                return false;
-
-            if (baseline.velocity.isZero)
-                return false;
-
-            var predicted = GetDeltaPrediction(baseline.state, baseline.velocity, tickDist);
-            return PredictionMatches(predicted, current, baseline.velocity);
         }
 
         private static long ScaledTolerance(long baseTolerance, long velocityComponent)
