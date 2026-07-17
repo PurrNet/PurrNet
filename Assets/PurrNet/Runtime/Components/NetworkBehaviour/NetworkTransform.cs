@@ -73,6 +73,12 @@ namespace PurrNet
         [SerializeField, PurrLock, Range(0f, 1f)]
         private float _extrapolation;
 
+        [Tooltip("Maximum time between sends while motion stays predictable. " +
+                 "Higher values save more bandwidth but add more interpolation delay at low " +
+                 "extrapolation values and larger corrections at high ones.")]
+        [SerializeField, PurrLock, Range(0.05f, 0.5f)]
+        private float _maxSendInterval = 0.2f;
+
         /// <summary>
         /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
@@ -431,7 +437,8 @@ namespace PurrNet
             if (syncRotation) _rotation.maxBufferSize = ticksPerBuffer;
             if (syncScale) _scale.maxBufferSize = ticksPerBuffer;
 
-            _predictiveSpacing = Mathf.Clamp(ticksPerBuffer - 2, 2, 4);
+            _predictiveSpacing = Mathf.Clamp(Mathf.RoundToInt(ticksPerSec * _maxSendInterval), 2,
+                CAPTURE_HISTORY_SIZE - 2);
         }
 
         protected override void OnObserverAdded(PlayerID player)
@@ -976,10 +983,71 @@ namespace PurrNet
 
         private uint _lastPredictionTick;
 
+        private const int RECV_HISTORY_SIZE = 16;
+
+        private readonly NetworkTransformState[] _recvStates = new NetworkTransformState[RECV_HISTORY_SIZE];
+        private readonly ushort[] _recvTicks = new ushort[RECV_HISTORY_SIZE];
+        private int _recvCount;
+        private int _recvHead;
+
+        private void PushReceivedSample(ushort senderTick, in NetworkTransformState state)
+        {
+            _recvHead = (_recvHead + 1) % RECV_HISTORY_SIZE;
+            _recvStates[_recvHead] = state;
+            _recvTicks[_recvHead] = senderTick;
+            if (_recvCount < RECV_HISTORY_SIZE)
+                _recvCount++;
+        }
+
+        private NetworkTransformState SampleReceivedHistory(ushort targetTick)
+        {
+            NetworkTransformState upperState = default;
+            NetworkTransformState lowerState = default;
+            ushort upperTick = 0;
+            ushort lowerTick = 0;
+            bool hasUpper = false;
+            bool hasLower = false;
+
+            for (int i = 0; i < _recvCount; i++)
+            {
+                int idx = (_recvHead - i + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+                short diff = (short)(_recvTicks[idx] - targetTick);
+
+                if (diff <= 0)
+                {
+                    lowerState = _recvStates[idx];
+                    lowerTick = _recvTicks[idx];
+                    hasLower = true;
+                    break;
+                }
+
+                upperState = _recvStates[idx];
+                upperTick = _recvTicks[idx];
+                hasUpper = true;
+            }
+
+            if (!hasLower)
+                return hasUpper ? upperState : _anchorState;
+
+            if (!hasUpper || lowerTick == upperTick)
+                return lowerState;
+
+            short span = (short)(upperTick - lowerTick);
+            if (span <= 0)
+                return upperState;
+
+            if (lowerState.frame != upperState.frame || !lowerState.parentId.Equals(upperState.parentId))
+                return upperState;
+
+            short into = (short)(targetTick - lowerTick);
+            return NetworkTransformVelocity.Lerp(lowerState, upperState, into / (float)span);
+        }
+
         private void ClearPredictionAnchors()
         {
             _hasPredictionAnchor = false;
             _hasPrevAnchor = false;
+            _recvCount = 0;
         }
 
         private void SetPredictionAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
@@ -1017,10 +1085,23 @@ namespace PurrNet
             _lastPredictionTick = localTick;
 
             int offset = Mathf.RoundToInt((1f - _extrapolation) * _predictiveSpacing);
-            long maxAge = _predictiveSpacing + 2;
+            long maxAhead = _predictiveSpacing + 2;
 
-            var predicted = ProjectAnchor(_anchorState, _anchorVelocity, _anchorGap,
-                (long)localTick - _anchorLocalTick, offset, maxAge);
+            long age = (long)localTick - _anchorLocalTick;
+            if (age < 0)
+                age = 0;
+
+            long rel = age - offset;
+            if (rel > maxAhead)
+                rel = maxAhead;
+
+            if (rel < 0)
+            {
+                state = SampleReceivedHistory((ushort)(_lastAppliedSenderTick + rel));
+                return true;
+            }
+
+            var predicted = NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
 
             if (_hasPrevAnchor)
             {
@@ -1031,29 +1112,19 @@ namespace PurrNet
                 }
                 else
                 {
-                    var old = ProjectAnchor(_prevAnchorState, _prevAnchorVelocity, _prevAnchorGap,
-                        (long)localTick - _prevAnchorLocalTick, offset, maxAge);
+                    long prevAge = (long)localTick - _prevAnchorLocalTick - offset;
+                    if (prevAge < 0)
+                        prevAge = 0;
+                    if (prevAge > maxAhead)
+                        prevAge = maxAhead;
+
+                    var old = NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, (int)prevAge);
                     predicted = NetworkTransformVelocity.Lerp(old, predicted, (blend + 1f) / (PREDICT_BLEND_TICKS + 1f));
                 }
             }
 
             state = predicted;
             return true;
-        }
-
-        private static NetworkTransformState ProjectAnchor(in NetworkTransformState anchor,
-            in NetworkTransformVelocity velocity, int gap, long age, int offset, long maxAge)
-        {
-            if (age < 0)
-                age = 0;
-
-            long renderAge = age - offset;
-            if (renderAge < -gap)
-                renderAge = -gap;
-            if (renderAge > maxAge)
-                renderAge = maxAge;
-
-            return NetworkTransformVelocity.Predict(anchor, velocity, (int)renderAge);
         }
 
         internal void ApplyPredictedSample(in NetworkTransformState state, NetworkIdentity frameParent)
@@ -1143,7 +1214,7 @@ namespace PurrNet
             }
         }
 
-        private const int CAPTURE_HISTORY_SIZE = 8;
+        private const int CAPTURE_HISTORY_SIZE = 16;
 
         private readonly NetworkTransformState[] _historyStates = new NetworkTransformState[CAPTURE_HISTORY_SIZE];
         private readonly ushort[] _historyTicks = new ushort[CAPTURE_HISTORY_SIZE];
@@ -1569,6 +1640,7 @@ namespace PurrNet
                     SetPredictionAnchor(state, velocity, velocityGap);
                 }
 
+                PushReceivedSample(senderTick, state);
                 return true;
             }
 

@@ -153,3 +153,4 @@ MonoBehaviour:
   _interpolationTiming: 0
   _predictiveSync: 1
   _extrapolation: 0
+  _maxSendInterval: 0.4
