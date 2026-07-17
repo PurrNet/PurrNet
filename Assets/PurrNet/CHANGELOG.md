@@ -1,3 +1,10 @@
+# [1.20.0-beta.263](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.262...v1.20.0-beta.263) (2026-07-17)
+
+
+### Bug Fixes
+
+* Potential error when generating assets during playmode or compilation ([85b39f8](https://github.com/PurrNet/PurrNet/commit/85b39f82e6a4299adeba9d1608cf93ed31f7b460))
+
 # [1.20.0-beta.262](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.261...v1.20.0-beta.262) (2026-07-16)
 
 
