@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    [CreateAssetMenu(fileName = "NetworkTransformOrbitalStrategy",
-        menuName = "PurrNet/Network Transform Orbital Strategy")]
-    public class NetworkTransformOrbitalStrategy : NetworkTransformStrategySettings
+    [CreateAssetMenu(fileName = "NetworkTransformArcStrategy",
+        menuName = "PurrNet/Network Transform Arc Strategy")]
+    public class NetworkTransformArcStrategy : NetworkTransformStrategySettings
     {
         private Vector3 _fitPrev;
         private Vector3 _fitFrom;

@@ -10,7 +10,7 @@ public class StrategyBenchmarkScenario : BenchmarkScenario
     {
         var nt = CreatePrefab(manager, nameof(StrategyBenchmarkScenario) + "_Obj");
 
-        var strategy = ScriptableObject.CreateInstance<NetworkTransformOrbitalStrategy>();
+        var strategy = ScriptableObject.CreateInstance<NetworkTransformArcStrategy>();
         strategy.maxSendInterval = _maxSendInterval;
         strategy.extrapolation = _extrapolation;
         nt.SetStrategySettings(strategy);
