@@ -36,7 +36,7 @@ namespace NetworkTransformFilterTest
             _axisA.Normalize();
             _axisB = Vector3.Cross(_normal, _axisA).normalized;
 
-            _center = transform.position - _axisA * _radiusA;
+            _center = transform.position;
         }
 
         protected override void Apply(float time)
@@ -57,6 +57,17 @@ namespace NetworkTransformFilterTest
             {
                 transform.rotation = Quaternion.Euler(_angularVelocity * time) * _startRotation;
             }
+        }
+
+        [ContextMenu("Randomize")]
+        private void Randomize()
+        {
+            _radiusA = Random.Range(6f, 20f);
+            _radiusB = Random.Range(6f, 20f);
+            _degreesPerSecond = Random.Range(10f, 100f);
+            _planeNormal = Random.insideUnitSphere.normalized;
+            _angularVelocity = Random.insideUnitSphere * 50f;
+            _faceVelocity = Random.Range(0, 2) >  0;
         }
     }
 }
