@@ -8,47 +8,6 @@ namespace PurrNet
         menuName = "PurrNet/Network Transform Orbital Strategy")]
     public class NetworkTransformOrbitalStrategy : NetworkTransformStrategySettings
     {
-        internal override bool CanSkip(NetworkTransform nt, in NetworkTransformState from, ushort fromTick,
-            ushort currentTick, in NetworkTransformState current)
-        {
-            int gap = (short)(currentTick - fromTick);
-            if (gap <= 1)
-                return true;
-
-            if (current.frame != from.frame || !current.parentId.Equals(from.parentId))
-                return false;
-
-            if (!TryGetPosition(from, out var pFrom) || !TryGetPosition(current, out var pCurrent))
-                return base.CanSkip(nt, from, fromTick, currentTick, current);
-
-            if (!nt.TryGetCapturedAt((ushort)(fromTick + gap / 2), out var midState) ||
-                !TryGetPosition(midState, out var pMid))
-                return false;
-
-            if (!TryFitCircle(pFrom, pMid, pCurrent, out var center))
-                return base.CanSkip(nt, from, fromTick, currentTick, current);
-
-            var chordVelocity = NetworkTransformVelocity.Derive(from, current, gap);
-
-            for (int step = 1; step < gap; step++)
-            {
-                if (!nt.TryGetCapturedAt((ushort)(fromTick + step), out var actual))
-                    return false;
-
-                if (actual.frame != from.frame || !actual.parentId.Equals(from.parentId))
-                    return false;
-
-                float t = step / (float)gap;
-                var expected = NetworkTransformVelocity.Lerp(from, current, t);
-                expected.data.position = (CompressedVector3)ArcPoint(center, pFrom, pCurrent, t);
-
-                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
-                    return false;
-            }
-
-            return true;
-        }
-
         internal override bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
             in NetworkTransformState to, float t, out NetworkTransformState result)
         {

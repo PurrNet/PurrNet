@@ -13,35 +13,6 @@ namespace PurrNet
 
         private static int _depth;
 
-        internal override bool CanSkip(NetworkTransform nt, in NetworkTransformState from, ushort fromTick,
-            ushort currentTick, in NetworkTransformState current)
-        {
-            if (strategies == null || strategies.Length == 0)
-                return base.CanSkip(nt, from, fromTick, currentTick, current);
-
-            if (_depth > 4)
-                return false;
-
-            _depth++;
-
-            try
-            {
-                for (int i = 0; i < strategies.Length; i++)
-                {
-                    var strategy = strategies[i];
-                    if (strategy && strategy != this &&
-                        strategy.CanSkip(nt, from, fromTick, currentTick, current))
-                        return true;
-                }
-
-                return false;
-            }
-            finally
-            {
-                _depth--;
-            }
-        }
-
         internal override bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
             in NetworkTransformState to, float t, out NetworkTransformState result)
         {

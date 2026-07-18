@@ -95,6 +95,8 @@ namespace PurrNet.Modules
     {
         public ushort tick;
         public NetworkTransformState state;
+        public NetworkTransformState prevState;
+        public bool hasPrev;
         public bool restConfirmed;
     }
 

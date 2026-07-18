@@ -905,7 +905,8 @@ namespace PurrNet.Modules
                     bool resting = current.Equals(lastWrite.state);
                     bool restGate = !resting || lastWrite.restConfirmed;
                     if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing && restGate &&
-                        nt.strategySettings.CanSkip(nt, lastWrite.state, lastWrite.tick, currentTick, current))
+                        nt.strategySettings.CanSkip(nt, lastWrite.prevState, lastWrite.hasPrev,
+                            lastWrite.state, lastWrite.tick, currentTick, current))
                         return NTWriteResult.Hold;
                 }
 
@@ -913,6 +914,8 @@ namespace PurrNet.Modules
                 {
                     tick = currentTick,
                     state = current,
+                    prevState = lastWrite.state,
+                    hasPrev = hasLastWrite,
                     restConfirmed = hasLastWrite && current.Equals(lastWrite.state)
                 };
             }

@@ -25,6 +25,13 @@ namespace NetworkTransformFilterTest
             _elapsed = 0f;
             CaptureInitialState();
             _hasInitialState = true;
+            enabled = isController;
+        }
+
+        protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
+        {
+            base.OnOwnerChanged(oldOwner, newOwner, asServer);
+            enabled = isController;
         }
 
         protected abstract void CaptureInitialState();

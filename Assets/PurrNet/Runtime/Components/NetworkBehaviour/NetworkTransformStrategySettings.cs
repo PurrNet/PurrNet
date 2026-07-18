@@ -1,3 +1,4 @@
+using PurrNet.Modules;
 using UnityEngine;
 
 namespace PurrNet
@@ -18,10 +19,36 @@ namespace PurrNet
         [Range(0f, 1f)]
         public float extrapolation;
 
-        internal virtual bool CanSkip(NetworkTransform nt, in NetworkTransformState from, ushort fromTick,
-            ushort currentTick, in NetworkTransformState current)
+        internal bool CanSkip(NetworkTransform nt, in NetworkTransformState prev, bool hasPrev,
+            in NetworkTransformState from, ushort fromTick, ushort currentTick, in NetworkTransformState current)
         {
-            return nt.IsChordInterpolable(from, fromTick, currentTick, current);
+            int gap = (short)(currentTick - fromTick);
+            if (gap <= 1)
+                return true;
+
+            if (current.frame != from.frame || !current.parentId.Equals(from.parentId))
+                return false;
+
+            var chordVelocity = NetworkTransformVelocity.Derive(from, current, gap);
+
+            for (int step = 1; step < gap; step++)
+            {
+                if (!nt.TryGetCapturedAt((ushort)(fromTick + step), out var actual))
+                    return false;
+
+                if (actual.frame != from.frame || !actual.parentId.Equals(from.parentId))
+                    return false;
+
+                float t = step / (float)gap;
+
+                if (!hasPrev || !TryReconstruct(prev, from, current, t, out var expected))
+                    expected = NetworkTransformVelocity.Lerp(from, current, t);
+
+                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
+                    return false;
+            }
+
+            return true;
         }
 
         internal virtual bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
