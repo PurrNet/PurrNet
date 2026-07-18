@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a6c8e0f1b3d5a7c9e1f3a5c7e9b1d52, type: 3}
+  m_Name: RacetrackStrategy
+  m_EditorClassIdentifier:
+  maxSendInterval: 0.4
+  extrapolation: 0
+  strategies:
+  - {fileID: 11400000, guid: 5b8e1d3f7a294c6e8f0b2d4a6c8e0f21, type: 2}
+  - {fileID: 11400000, guid: 9c4e6f8a0b2d4c6e8f0a2c4e6a8c0e42, type: 2}
