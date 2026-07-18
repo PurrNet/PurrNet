@@ -171,6 +171,7 @@ MonoBehaviour:
     _value: 1
     _ownerAuth: 1
     _sendIntervalInSeconds: 0
+    _initialValue: 1
 --- !u!114 &6798584989352981788
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -248,6 +249,7 @@ MonoBehaviour:
     _value: 0
     _ownerAuth: 0
     _sendIntervalInSeconds: 0
+    _initialValue: 0
 --- !u!143 &4393774338475174367
 CharacterController:
   m_ObjectHideFlags: 0
@@ -326,6 +328,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 1
+  _strategySettings: {fileID: 11400000, guid: 9c4e6f8a0b2d4c6e8f0a2c4e6a8c0e42, type: 2}
 --- !u!114 &468800014021081407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -361,6 +364,7 @@ MonoBehaviour:
   _gameObjects:
   - target: {fileID: 871477370877421358}
     activeAsOwner: 0
+  _applyInLateUpdate: 0
   _toActivate: []
   _toDeactivate: []
   _toEnable: []
@@ -415,6 +419,7 @@ MonoBehaviour:
     _value: Loading...
     _ownerAuth: 1
     _sendIntervalInSeconds: 0
+    _initialValue: Loading...
 --- !u!1 &6426148537294609696
 GameObject:
   m_ObjectHideFlags: 0
@@ -544,6 +549,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 1
+  _strategySettings: {fileID: 0}
 --- !u!1001 &1278614181189473711
 PrefabInstance:
   m_ObjectHideFlags: 0

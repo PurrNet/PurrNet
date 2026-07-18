@@ -11,6 +11,6 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7e2f4a6c8b0d4e2f9a1c3e5b7d9f1a30, type: 3}
   m_Name: ArcStrategy
-  m_EditorClassIdentifier:
-  maxSendInterval: 0.4
+  m_EditorClassIdentifier: 
+  maxSendInterval: 0.2
   extrapolation: 0
