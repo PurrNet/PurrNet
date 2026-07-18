@@ -94,6 +94,7 @@ namespace PurrNet.Modules
     internal struct NTLastPredictiveWrite
     {
         public ushort tick;
+        public ushort prevTick;
         public NetworkTransformState state;
         public NetworkTransformState prevState;
         public bool hasPrev;

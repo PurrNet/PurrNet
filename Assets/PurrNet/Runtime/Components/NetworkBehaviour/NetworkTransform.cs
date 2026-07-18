@@ -128,6 +128,30 @@ namespace PurrNet
 
         internal NetworkTransformStrategySettings strategySettings => _strategySettings;
 
+        private ushort _skipCacheFrom;
+        private ushort _skipCacheCurrent;
+        private ushort _skipCachePrev;
+        private bool _skipCacheHasPrev;
+        private bool _skipCacheResult;
+        private bool _hasSkipCache;
+
+        internal bool CanSkipCached(in NTLastPredictiveWrite lastWrite, ushort currentTick,
+            in NetworkTransformState current)
+        {
+            if (_hasSkipCache && _skipCacheFrom == lastWrite.tick && _skipCacheCurrent == currentTick &&
+                _skipCacheHasPrev == lastWrite.hasPrev && _skipCachePrev == lastWrite.prevTick)
+                return _skipCacheResult;
+
+            _skipCacheResult = _strategySettings.CanSkip(this, lastWrite.prevState, lastWrite.hasPrev,
+                lastWrite.state, lastWrite.tick, currentTick, current);
+            _skipCacheFrom = lastWrite.tick;
+            _skipCacheCurrent = currentTick;
+            _skipCachePrev = lastWrite.prevTick;
+            _skipCacheHasPrev = lastWrite.hasPrev;
+            _hasSkipCache = true;
+            return _skipCacheResult;
+        }
+
         /// <summary>
         /// Assigns the sync strategy settings at runtime. Call before spawning for full effect;
         /// when called on a spawned transform the new settings apply immediately.

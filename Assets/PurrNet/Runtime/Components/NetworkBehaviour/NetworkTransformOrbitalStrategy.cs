@@ -8,6 +8,13 @@ namespace PurrNet
         menuName = "PurrNet/Network Transform Orbital Strategy")]
     public class NetworkTransformOrbitalStrategy : NetworkTransformStrategySettings
     {
+        private Vector3 _fitPrev;
+        private Vector3 _fitFrom;
+        private Vector3 _fitTo;
+        private Vector3 _fitCenter;
+        private bool _fitValid;
+        private bool _hasFit;
+
         internal override bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
             in NetworkTransformState to, float t, out NetworkTransformState result)
         {
@@ -21,11 +28,20 @@ namespace PurrNet
                 !TryGetPosition(to, out var pTo))
                 return false;
 
-            if (!TryFitCircle(pPrev, pFrom, pTo, out var center))
+            if (!_hasFit || _fitPrev != pPrev || _fitFrom != pFrom || _fitTo != pTo)
+            {
+                _fitValid = TryFitCircle(pPrev, pFrom, pTo, out _fitCenter);
+                _fitPrev = pPrev;
+                _fitFrom = pFrom;
+                _fitTo = pTo;
+                _hasFit = true;
+            }
+
+            if (!_fitValid)
                 return false;
 
             result = NetworkTransformVelocity.Lerp(from, to, t);
-            result.data.position = (CompressedVector3)ArcPoint(center, pFrom, pTo, t);
+            result.data.position = (CompressedVector3)ArcPoint(_fitCenter, pFrom, pTo, t);
             return true;
         }
 
