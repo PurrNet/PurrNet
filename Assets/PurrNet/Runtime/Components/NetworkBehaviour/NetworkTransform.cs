@@ -128,6 +128,32 @@ namespace PurrNet
 
         internal NetworkTransformStrategySettings strategySettings => _strategySettings;
 
+        /// <summary>
+        /// Assigns the sync strategy settings at runtime. Call before spawning for full effect;
+        /// when called on a spawned transform the new settings apply immediately.
+        /// </summary>
+        public void SetStrategySettings(NetworkTransformStrategySettings settings)
+        {
+            _strategySettings = settings;
+            ApplyStrategySettings();
+        }
+
+        private void ApplyStrategySettings()
+        {
+            _hasStrategy = _strategySettings;
+
+            if (!_hasStrategy)
+                return;
+
+            _extrapolationValue = _strategySettings.extrapolation;
+
+            var nm = networkManager;
+            if (nm && nm.tickModule != null)
+                _predictiveSpacing = Mathf.Clamp(
+                    Mathf.RoundToInt(nm.tickModule.tickRate * _strategySettings.maxSendInterval), 2,
+                    CAPTURE_HISTORY_SIZE - 2);
+        }
+
         Interpolated<Vector3WithParent> _position;
         Interpolated<QuaternionWithParent> _rotation;
         Interpolated<ScaleWithParent> _scale;
@@ -422,15 +448,7 @@ namespace PurrNet
             if (syncRotation) _rotation.maxBufferSize = ticksPerBuffer;
             if (syncScale) _scale.maxBufferSize = ticksPerBuffer;
 
-            _hasStrategy = _strategySettings;
-
-            if (_hasStrategy)
-            {
-                _extrapolationValue = _strategySettings.extrapolation;
-                _predictiveSpacing = Mathf.Clamp(
-                    Mathf.RoundToInt(ticksPerSec * _strategySettings.maxSendInterval), 2,
-                    CAPTURE_HISTORY_SIZE - 2);
-            }
+            ApplyStrategySettings();
         }
 
         protected override void OnObserverAdded(PlayerID player)

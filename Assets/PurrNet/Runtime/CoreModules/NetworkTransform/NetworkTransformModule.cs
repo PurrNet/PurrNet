@@ -891,8 +891,6 @@ namespace PurrNet.Modules
 
             // Suppression must not depend on baseline age — a resting object's baseline never
             // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
-            // Predictive receivers project the last velocity forward, so rest must be confirmed
-            // by a repeated identical state before this transform can go fully silent.
             if (hasAcked && baseline.revision == nt.capturedRevision &&
                 (!nt.hasSyncStrategy || !hasLastWrite || lastWrite.restConfirmed))
                 return NTWriteResult.SkipAcked;

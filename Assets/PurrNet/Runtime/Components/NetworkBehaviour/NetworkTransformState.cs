@@ -46,7 +46,6 @@ namespace PurrNet
                               scaleX == 0 && scaleY == 0 && scaleZ == 0 &&
                               rotX == 0 && rotY == 0 && rotZ == 0 && rotW == 0;
 
-        // Velocities are fixed-point: raw quantization units per tick scaled by 1 << FRACTION_BITS.
         // Keeps the worst-case rotation diff inside the NormalizedFloat 15-bit prefix budget:
         // |pred| <= 1024 + (MAX_ROT >> FRACTION_BITS)*dist, zigzag(|diff|) must stay <= 32767,
         // which caps MAX_PREDICTED_BASELINE_AGE at 55 with MAX_ROT >> FRACTION_BITS = 256.
