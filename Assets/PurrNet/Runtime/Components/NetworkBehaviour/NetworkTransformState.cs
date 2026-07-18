@@ -117,11 +117,17 @@ namespace PurrNet
                     new CompressedFloat(LerpInt(a.z.rounded, b.z.rounded, t)));
             }
 
+            var fr = from.data.rotation;
+            var tr = to.data.rotation;
+            long dot = fr.x.value * tr.x.value + fr.y.value * tr.y.value +
+                       fr.z.value * tr.z.value + fr.w.value * tr.w.value;
+            long sign = dot < 0 ? -1 : 1;
+
             var r = s.data.rotation;
-            r.x = new NormalizedFloat(LerpLong(from.data.rotation.x.value, to.data.rotation.x.value, t));
-            r.y = new NormalizedFloat(LerpLong(from.data.rotation.y.value, to.data.rotation.y.value, t));
-            r.z = new NormalizedFloat(LerpLong(from.data.rotation.z.value, to.data.rotation.z.value, t));
-            r.w = new NormalizedFloat(LerpLong(from.data.rotation.w.value, to.data.rotation.w.value, t));
+            r.x = new NormalizedFloat(LerpLong(fr.x.value, sign * tr.x.value, t));
+            r.y = new NormalizedFloat(LerpLong(fr.y.value, sign * tr.y.value, t));
+            r.z = new NormalizedFloat(LerpLong(fr.z.value, sign * tr.z.value, t));
+            r.w = new NormalizedFloat(LerpLong(fr.w.value, sign * tr.w.value, t));
             s.data.rotation = r;
 
             s.data.scale = new CompressedVector3(

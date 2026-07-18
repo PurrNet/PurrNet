@@ -78,8 +78,8 @@ namespace NetworkTransformFilterTest
         [ContextMenu("Randomize")]
         private void Randomize()
         {
-            _straightLength = Random.Range(10f, 30f);
-            _turnRadius = Random.Range(3f, 10f);
+            _straightLength = Random.Range(5f, 20f);
+            _turnRadius = Random.Range(2f, 7f);
             _speed = Random.Range(2f, 10f);
         }
     }
