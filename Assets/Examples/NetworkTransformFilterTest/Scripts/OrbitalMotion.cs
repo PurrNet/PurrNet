@@ -64,7 +64,7 @@ namespace NetworkTransformFilterTest
         {
             _radiusA = Random.Range(6f, 15f);
             _radiusB = Random.Range(6f, 15f);
-            _degreesPerSecond = Random.Range(3f, 500f);
+            _degreesPerSecond = Random.Range(3f, 50f);
             _planeNormal = Random.insideUnitSphere.normalized;
             _angularVelocity = Random.insideUnitSphere * 50f;
             _faceVelocity = Random.Range(0, 2) >  0;

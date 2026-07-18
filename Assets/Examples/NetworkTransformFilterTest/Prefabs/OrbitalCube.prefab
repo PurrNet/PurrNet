@@ -56,13 +56,13 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  _timing: 0
+  _timing: 1
   _timeScale: 1
-  _radiusA: 9.211777
-  _radiusB: 10.157469
-  _degreesPerSecond: 89.30584
-  _planeNormal: {x: -0.36388168, y: 0.8550788, z: 0.3693647}
-  _faceVelocity: 1
+  _radiusA: 5
+  _radiusB: 5
+  _degreesPerSecond: 30
+  _planeNormal: {x: 0, y: 1, z: 0}
+  _faceVelocity: 0
   _angularVelocity: {x: -32.646008, y: 15.670676, z: -30.501587}
 --- !u!33 &1955295869748550316
 MeshFilter:
