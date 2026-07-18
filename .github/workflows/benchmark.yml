@@ -103,7 +103,7 @@ jobs:
     # Skip when handed a prebuilt player (e.g. the scaling curve reusing size-10's build).
     if: ${{ inputs.player_artifact == '' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
