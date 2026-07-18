@@ -17,5 +17,18 @@ namespace PurrNet
                  "1 projects fully to real time, causing rubberbanding when motion changes.")]
         [Range(0f, 1f)]
         public float extrapolation;
+
+        internal virtual bool CanSkip(NetworkTransform nt, in NetworkTransformState from, ushort fromTick,
+            ushort currentTick, in NetworkTransformState current)
+        {
+            return nt.IsChordInterpolable(from, fromTick, currentTick, current);
+        }
+
+        internal virtual bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
+            in NetworkTransformState to, float t, out NetworkTransformState result)
+        {
+            result = default;
+            return false;
+        }
     }
 }

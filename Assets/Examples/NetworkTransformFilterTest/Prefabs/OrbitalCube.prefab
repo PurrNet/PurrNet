@@ -153,4 +153,4 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _strategySettings: {fileID: 0}
+  _strategySettings: {fileID: 11400000, guid: 9c4e6f8a0b2d4c6e8f0a2c4e6a8c0e42, type: 2}

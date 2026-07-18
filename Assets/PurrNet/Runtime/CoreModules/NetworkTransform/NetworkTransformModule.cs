@@ -905,7 +905,7 @@ namespace PurrNet.Modules
                     bool resting = current.Equals(lastWrite.state);
                     bool restGate = !resting || lastWrite.restConfirmed;
                     if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing && restGate &&
-                        nt.IsChordInterpolable(lastWrite.state, lastWrite.tick, currentTick, current))
+                        nt.strategySettings.CanSkip(nt, lastWrite.state, lastWrite.tick, currentTick, current))
                         return NTWriteResult.Hold;
                 }
 

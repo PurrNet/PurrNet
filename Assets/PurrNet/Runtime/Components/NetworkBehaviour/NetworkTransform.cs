@@ -126,6 +126,8 @@ namespace PurrNet
         /// </summary>
         public bool hasSyncStrategy => _hasStrategy;
 
+        internal NetworkTransformStrategySettings strategySettings => _strategySettings;
+
         Interpolated<Vector3WithParent> _position;
         Interpolated<QuaternionWithParent> _rotation;
         Interpolated<ScaleWithParent> _scale;
@@ -998,6 +1000,9 @@ namespace PurrNet
             bool hasUpper = false;
             bool hasLower = false;
 
+            NetworkTransformState prevState = default;
+            bool hasPrev = false;
+
             for (int i = 0; i < _recvCount; i++)
             {
                 int idx = (_recvHead - i + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
@@ -1008,6 +1013,14 @@ namespace PurrNet
                     lowerState = _recvStates[idx];
                     lowerTick = _recvTicks[idx];
                     hasLower = true;
+
+                    if (i + 1 < _recvCount)
+                    {
+                        int prevIdx = (_recvHead - i - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+                        prevState = _recvStates[prevIdx];
+                        hasPrev = true;
+                    }
+
                     break;
                 }
 
@@ -1029,8 +1042,13 @@ namespace PurrNet
             if (lowerState.frame != upperState.frame || !lowerState.parentId.Equals(upperState.parentId))
                 return upperState;
 
-            short into = (short)(targetTick - lowerTick);
-            return NetworkTransformVelocity.Lerp(lowerState, upperState, into / (float)span);
+            float t = (short)(targetTick - lowerTick) / (float)span;
+
+            if (hasPrev && _strategySettings &&
+                _strategySettings.TryReconstruct(prevState, lowerState, upperState, t, out var shaped))
+                return shaped;
+
+            return NetworkTransformVelocity.Lerp(lowerState, upperState, t);
         }
 
         private void ClearPredictionAnchors()
@@ -1210,7 +1228,7 @@ namespace PurrNet
         private readonly ushort[] _historyTicks = new ushort[CAPTURE_HISTORY_SIZE];
         private readonly bool[] _historyUsed = new bool[CAPTURE_HISTORY_SIZE];
 
-        private bool TryGetCapturedAt(ushort tick, out NetworkTransformState state)
+        internal bool TryGetCapturedAt(ushort tick, out NetworkTransformState state)
         {
             int slot = tick % CAPTURE_HISTORY_SIZE;
             if (_historyUsed[slot] && _historyTicks[slot] == tick)
