@@ -159,7 +159,7 @@ namespace PurrNet.Modules
         public const int ACK_INTERVAL_TICKS = 4;
         public const int ACK_PACKET_THRESHOLD = 24;
 
-        public const int PREDICTIVE_MAX_BACKFILL = 24;
+        public const int PREDICTIVE_MAX_BACKFILL = 34;
         public const int PREDICTIVE_POS_TOLERANCE = 2;
         public const int PREDICTIVE_ROT_TOLERANCE = 4;
         public const int PREDICTIVE_SCALE_TOLERANCE = 2;

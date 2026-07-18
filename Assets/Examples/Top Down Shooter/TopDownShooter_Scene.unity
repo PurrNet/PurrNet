@@ -1671,6 +1671,9 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+  _predictiveSync: 0
+  _extrapolation: 0
+  _maxSendInterval: 0.2
 --- !u!65 &863271034
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2347,6 +2350,9 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+  _predictiveSync: 0
+  _extrapolation: 0
+  _maxSendInterval: 0.2
 --- !u!4 &1129046907
 Transform:
   m_ObjectHideFlags: 0
@@ -2454,6 +2460,37 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: -5430065717346110456, guid: b47f702682bd69f44b0bb40b1944276e, type: 3}
+--- !u!1 &1183577488
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1183577489}
+  m_Layer: 0
+  m_Name: Test
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1183577489
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1183577488}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.80049, y: -2.98189, z: 6.1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1185781566
 GameObject:
   m_ObjectHideFlags: 0
@@ -2995,6 +3032,9 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+  _predictiveSync: 0
+  _extrapolation: 0
+  _maxSendInterval: 0.2
 --- !u!65 &1353588530
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4595,3 +4635,4 @@ SceneRoots:
   - {fileID: 1523968763}
   - {fileID: 198233782}
   - {fileID: 1871993795}
+  - {fileID: 1183577489}

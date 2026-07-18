@@ -151,6 +151,4 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _predictiveSync: 1
-  _extrapolation: 0
-  _maxSendInterval: 0.4
+  _strategySettings: {fileID: 11400000, guid: 5b8e1d3f7a294c6e8f0b2d4a6c8e0f21, type: 2}
