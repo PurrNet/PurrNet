@@ -1043,6 +1043,7 @@ namespace PurrNet
             bool hasLower = false;
 
             NetworkTransformState prevState = default;
+            ushort prevTick = 0;
             bool hasPrev = false;
 
             for (int i = 0; i < _recvCount; i++)
@@ -1060,6 +1061,7 @@ namespace PurrNet
                     {
                         int prevIdx = (_recvHead - i - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
                         prevState = _recvStates[prevIdx];
+                        prevTick = _recvTicks[prevIdx];
                         hasPrev = true;
                     }
 
@@ -1081,10 +1083,23 @@ namespace PurrNet
             if (span <= 0)
                 return upperState;
 
-            if (lowerState.frame != upperState.frame || !lowerState.parentId.Equals(upperState.parentId))
-                return upperState;
+            short into = (short)(targetTick - lowerTick);
 
-            float t = (short)(targetTick - lowerTick) / (float)span;
+            if (lowerState.frame != upperState.frame || !lowerState.parentId.Equals(upperState.parentId))
+            {
+                if (!hasPrev || prevState.frame != lowerState.frame ||
+                    !prevState.parentId.Equals(lowerState.parentId))
+                    return lowerState;
+
+                int prevGap = (short)(lowerTick - prevTick);
+                if (prevGap < 1)
+                    return lowerState;
+
+                var chord = NetworkTransformVelocity.Derive(prevState, lowerState, prevGap);
+                return NetworkTransformVelocity.Predict(lowerState, chord, into);
+            }
+
+            float t = into / (float)span;
 
             if (hasPrev && _strategySettings &&
                 _strategySettings.TryReconstruct(prevState, lowerState, upperState, t, out var shaped))
@@ -1098,6 +1113,8 @@ namespace PurrNet
             _hasPredictionAnchor = false;
             _hasPrevAnchor = false;
             _recvCount = 0;
+            _hasLastSample = false;
+            _seamOffset = Vector3.zero;
         }
 
         private void SetPredictionAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
@@ -1153,6 +1170,11 @@ namespace PurrNet
 
             var predicted = NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
 
+            if (_hasPrevAnchor &&
+                (_prevAnchorState.frame != _anchorState.frame ||
+                 !_prevAnchorState.parentId.Equals(_anchorState.parentId)))
+                _hasPrevAnchor = false;
+
             if (_hasPrevAnchor)
             {
                 long blend = (long)localTick - _blendStartTick;
@@ -1177,6 +1199,14 @@ namespace PurrNet
             return true;
         }
 
+        private const float SEAM_OFFSET_DECAY = 0.8f;
+
+        private NetworkTransformFrame _lastSampleFrame;
+        private NetworkID _lastSampleParentId;
+        private Vector3 _lastSampleWorldPos;
+        private Vector3 _seamOffset;
+        private bool _hasLastSample;
+
         internal void ApplyPredictedSample(in NetworkTransformState state, NetworkIdentity frameParent)
         {
             var p = state.frame switch
@@ -1185,6 +1215,38 @@ namespace PurrNet
                 NetworkTransformFrame.LocalStatic => _trs.parent,
                 _ => null
             };
+
+            if (syncPosition && state.data.position.HasValue)
+            {
+                var quantized = state.data.position.Value;
+                var localPos = new Vector3(quantized.x.value, quantized.y.value, quantized.z.value);
+                bool isLocal = _syncPosition == SyncMode.Local && p;
+                var world = isLocal ? p.TransformPoint(localPos) : localPos;
+
+                if (_hasLastSample &&
+                    (state.frame != _lastSampleFrame || !state.parentId.Equals(_lastSampleParentId)))
+                    _seamOffset += _lastSampleWorldPos - world;
+
+                _lastSampleFrame = state.frame;
+                _lastSampleParentId = state.parentId;
+
+                if (_seamOffset.sqrMagnitude > 0.000001f)
+                {
+                    _seamOffset *= SEAM_OFFSET_DECAY;
+                    world += _seamOffset;
+
+                    var adjusted = state;
+                    adjusted.data.position = (CompressedVector3)(isLocal ? p.InverseTransformPoint(world) : world);
+                    _lastSampleWorldPos = world;
+                    _hasLastSample = true;
+                    AddStateToBuffers(adjusted, p);
+                    return;
+                }
+
+                _seamOffset = Vector3.zero;
+                _lastSampleWorldPos = world;
+                _hasLastSample = true;
+            }
 
             AddStateToBuffers(state, p);
         }

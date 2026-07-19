@@ -1671,9 +1671,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _predictiveSync: 0
-  _extrapolation: 0
-  _maxSendInterval: 0.2
+  _strategySettings: {fileID: 0}
 --- !u!65 &863271034
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2350,9 +2348,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _predictiveSync: 0
-  _extrapolation: 0
-  _maxSendInterval: 0.2
+  _strategySettings: {fileID: 0}
 --- !u!4 &1129046907
 Transform:
   m_ObjectHideFlags: 0
@@ -2586,7 +2582,7 @@ MonoBehaviour:
   _startClientFlags: 3
   _cookieScope: 1
   _dontDestroyOnLoad: 1
-  _transport: {fileID: 1216416902}
+  _transport: {fileID: 1216416912}
   _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
   _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
@@ -2718,8 +2714,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.Transports.PurrTransport
   _masterServer: https://purrtransport.purrservers.com/
   _roomName: 4bb50bc5e6834b37b2f215c6f9517013
-  _region: france
-  _host: purrtransport-france.purrservers.com
+  _region: nj-us
+  _host: purrtransport-nj-us.purrservers.com
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
   _useNat: 1
@@ -3032,9 +3028,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _predictiveSync: 0
-  _extrapolation: 0
-  _maxSendInterval: 0.2
+  _strategySettings: {fileID: 11400000, guid: 9c4e6f8a0b2d4c6e8f0a2c4e6a8c0e42, type: 2}
 --- !u!65 &1353588530
 BoxCollider:
   m_ObjectHideFlags: 0
