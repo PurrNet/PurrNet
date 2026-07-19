@@ -15,7 +15,8 @@ namespace PurrNet
             bool excludeSender = false,
             CompressionLevel compressionLevel = CompressionLevel.None,
             float asyncTimeoutInSec = 5f,
-            bool deltaPacked = false)
+            bool deltaPacked = false,
+            MTUBehaviour mtuExceeded = MTUBehaviour.NetworkManager)
         {
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using PurrNet.Logging;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
@@ -40,8 +41,9 @@ namespace PurrNet.Modules
 #if UNITY_INCLUDE_TESTS
     internal interface IRPCBatchBackend
     {
+        MTUExceededBehaviour mtuExceededBehaviour { get; }
         int GetMTU(PlayerID player, Channel channel, bool asServer);
-        void Send(PlayerID player, RPCBatchPacket data, Channel channel);
+        void Send(PlayerID player, RPCBatchPacket data, Channel channel, MTUExceededBehaviour? mtuOverride = null);
         void Subscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback);
         void Unsubscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback);
     }
@@ -137,13 +139,7 @@ namespace PurrNet.Modules
                 for (int i = 0; i < _batchCount; i++)
                 {
                     ref var batch = ref _batches[i];
-                    var data = new RPCBatchPacket
-                    {
-                        count = batch.batchCount,
-                        data = new BitData(batch.batchedData)
-                    };
-
-                    Send(batch.key.playerId, data, batch.key.channel);
+                    SendBatch(ref batch);
                     batch.batchedData.Dispose();
                 }
 
@@ -187,6 +183,9 @@ namespace PurrNet.Modules
 
         private void SendBatch(ref PendingBatchedData batch)
         {
+            if (batch.batchCount == 0)
+                return;
+
             var data = new RPCBatchPacket
             {
                 count = batch.batchCount,
@@ -197,16 +196,40 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Send(PlayerID player, RPCBatchPacket data, Channel channel)
+        private void Send(PlayerID player, RPCBatchPacket data, Channel channel,
+            MTUExceededBehaviour? mtuOverride = null)
         {
 #if UNITY_INCLUDE_TESTS
             if (_playersManager != null)
-                _playersManager.Send(player, data, channel);
+                _playersManager.Send(player, data, channel, mtuOverride);
             else
-                _backend.Send(player, data, channel);
+                _backend.Send(player, data, channel, mtuOverride);
 #else
-            _playersManager.Send(player, data, channel);
+            _playersManager.Send(player, data, channel, mtuOverride);
 #endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private MTUExceededBehaviour ResolveMTUBehaviour(Channel channel, MTUBehaviour mtuOverride)
+        {
+            // sequencing is a channel-wide property; per-message overrides only apply to Unreliable
+            if (channel != Channel.UnreliableSequenced &&
+                mtuOverride != MTUBehaviour.NetworkManager)
+                return mtuOverride.Resolve(default);
+
+#if UNITY_INCLUDE_TESTS
+            return _playersManager != null
+                ? _playersManager.mtuExceededBehaviour
+                : _backend.mtuExceededBehaviour;
+#else
+            return _playersManager.mtuExceededBehaviour;
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsUnreliable(Channel channel)
+        {
+            return channel is Channel.Unreliable or Channel.UnreliableSequenced;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -339,7 +362,7 @@ namespace PurrNet.Modules
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void QueueCached(PlayerID target, in UnionRPCHeader header, in BitData content, Size contentLen,
-            Channel channel, ulong stateVersion)
+            Channel channel, ulong stateVersion, MTUBehaviour mtuOverride)
         {
             var batchIdx = GetBatchIndex(target, channel);
             ref var batch = ref _batches[batchIdx];
@@ -360,11 +383,57 @@ namespace PurrNet.Modules
                 }
             }
 
+            if (batch.batchCount == 0 && IsUnreliable(channel) &&
+                ((entryBitLength + 7) >> 3) + 10 >= batch.cachedMTU)
+            {
+                switch (ResolveMTUBehaviour(channel, mtuOverride))
+                {
+                    case MTUExceededBehaviour.UpgradeToReliable:
+                        ResetBatchEncoderState(ref batch);
+                        PurrLogger.LogWarning(
+                            $"RPC exceeds MTU ({(entryBitLength + 7) >> 3} bytes, MTU {batch.cachedMTU}). " +
+                            $"Upgrading {channel} to {Channel.ReliableOrdered}.");
+                        QueueDirect(target, header, content, Channel.ReliableOrdered, mtuOverride);
+                        return;
+                    case MTUExceededBehaviour.Drop:
+                        ResetBatchEncoderState(ref batch);
+                        PurrLogger.LogError(
+                            $"RPC exceeds MTU ({(entryBitLength + 7) >> 3} bytes, MTU {batch.cachedMTU}). " +
+                            $"Dropping {channel} packet.");
+                        return;
+                    default:
+                        batch.batchedData.WriteBitsWithoutConsumingItUnchecked(entryData, entryBitLength);
+                        SendSoloEntry(ref batch, channel);
+                        return;
+                }
+            }
+
             batch.batchedData.WriteBitsWithoutConsumingItUnchecked(entryData, entryBitLength);
             ++batch.batchCount;
             batch.lastHeader = header;
             batch.lastDataLen = contentLen;
             batch.stateVersion = stateVersion;
+        }
+
+        private void SendSoloEntry(ref PendingBatchedData batch, Channel channel)
+        {
+            var packet = new RPCBatchPacket
+            {
+                count = 1,
+                data = new BitData(batch.batchedData)
+            };
+
+            Send(batch.key.playerId, packet, channel, MTUExceededBehaviour.Fragment);
+            ResetBatchEncoderState(ref batch);
+        }
+
+        private static void ResetBatchEncoderState(ref PendingBatchedData batch)
+        {
+            batch.batchedData.ResetPositionAndMode(false);
+            batch.lastHeader = default;
+            batch.lastDataLen = default;
+            batch.stateVersion = 0;
+            batch.batchCount = 0;
         }
 
         private unsafe void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
@@ -395,7 +464,8 @@ namespace PurrNet.Modules
             _batchReceivedMarker.End();
         }
 
-        public unsafe void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel)
+        public unsafe void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel,
+            MTUBehaviour mtuOverride = MTUBehaviour.NetworkManager)
         {
             ValidateChannel(channel);
             _queueMultiMarker.Begin();
@@ -403,7 +473,7 @@ namespace PurrNet.Modules
             if (targets.Count < 3)
             {
                 for (var i = targets.Count - 1; i >= 0; i--)
-                    QueueDirect(targets[i], header, content, channel);
+                    QueueDirect(targets[i], header, content, channel, mtuOverride);
 
                 _queueMultiMarker.End();
                 return;
@@ -415,7 +485,7 @@ namespace PurrNet.Modules
             var contentLen = content.bitLength;
 
             for (var i = targets.Count - 1; i >= 0; i--)
-                QueueCached(targets[i], header, content, contentLen, channel, stateVersion);
+                QueueCached(targets[i], header, content, contentLen, channel, stateVersion, mtuOverride);
 
             _queueMultiMarker.End();
         }
@@ -446,7 +516,9 @@ namespace PurrNet.Modules
                 throw new ArgumentOutOfRangeException(nameof(channel), channel, null);
         }
 
-        public unsafe void Queue(IReadOnlyList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel, ObserverFilter filter = default)
+        public unsafe void Queue(IReadOnlyList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel,
+            ObserverFilter filter = default,
+            MTUBehaviour mtuOverride = MTUBehaviour.NetworkManager)
         {
             ValidateChannel(channel);
             _queueMultiMarker.Begin();
@@ -459,7 +531,7 @@ namespace PurrNet.Modules
                 {
                     var target = targets[i];
                     if (!hasFilter || !filter.ShouldSkip(target))
-                        QueueDirect(target, header, content, channel);
+                        QueueDirect(target, header, content, channel, mtuOverride);
                 }
 
                 _queueMultiMarker.End();
@@ -475,14 +547,14 @@ namespace PurrNet.Modules
             {
                 var target = targets[i];
                 if (hasFilter && filter.ShouldSkip(target)) continue;
-                QueueCached(target, header, content, contentLen, channel, stateVersion);
+                QueueCached(target, header, content, contentLen, channel, stateVersion, mtuOverride);
             }
 
             _queueMultiMarker.End();
         }
 
         private unsafe void QueueDirect(PlayerID target, in UnionRPCHeader header, in BitData content,
-            Channel channel)
+            Channel channel, MTUBehaviour mtuOverride)
         {
             var batchIdx = GetBatchIndex(target, channel);
             ref var batch = ref _batches[batchIdx];
@@ -512,6 +584,34 @@ namespace PurrNet.Modules
                 }
             }
 
+            // the entry alone exceeds the MTU; the packer only holds this entry's header at this point
+            if (batch.batchCount == 0 && IsUnreliable(channel) &&
+                batch.batchedData.positionInBytes + contentByteLen + 10 >= batch.cachedMTU)
+            {
+                int size = batch.batchedData.positionInBytes + contentByteLen;
+                switch (ResolveMTUBehaviour(channel, mtuOverride))
+                {
+                    case MTUExceededBehaviour.UpgradeToReliable:
+                        ResetBatchEncoderState(ref batch);
+                        PurrLogger.LogWarning(
+                            $"RPC exceeds MTU ({size} bytes, MTU {batch.cachedMTU}). " +
+                            $"Upgrading {channel} to {Channel.ReliableOrdered}.");
+                        QueueDirect(target, header, content, Channel.ReliableOrdered, mtuOverride);
+                        return;
+                    case MTUExceededBehaviour.Drop:
+                        ResetBatchEncoderState(ref batch);
+                        PurrLogger.LogError(
+                            $"RPC exceeds MTU ({size} bytes, MTU {batch.cachedMTU}). " +
+                            $"Dropping {channel} packet.");
+                        return;
+                    default:
+                        if (contentLen.value > 0)
+                            batch.batchedData.WriteBitDataWithoutConsumingIt(content);
+                        SendSoloEntry(ref batch, channel);
+                        return;
+                }
+            }
+
             ++batch.batchCount;
             batch.lastHeader = header;
             batch.lastDataLen = contentLen;
@@ -521,12 +621,13 @@ namespace PurrNet.Modules
                 batch.batchedData.WriteBitDataWithoutConsumingIt(content);
         }
 
-        public unsafe void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel)
+        public unsafe void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel,
+            MTUBehaviour mtuOverride = MTUBehaviour.NetworkManager)
         {
             ValidateChannel(channel);
             _queueSingleMarker.Begin();
 
-            QueueDirect(target, header, content, channel);
+            QueueDirect(target, header, content, channel, mtuOverride);
             _queueSingleMarker.End();
         }
 

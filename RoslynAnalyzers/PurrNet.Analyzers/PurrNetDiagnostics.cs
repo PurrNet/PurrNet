@@ -104,10 +104,16 @@ namespace PurrNet.Analyzers
             "NetworkModule member is assigned after module initialization",
             "Assign NetworkModule member '{0}' in an initializer, constructor, Awake, or OnInitializeModules so it is registered correctly");
 
+        public static readonly DiagnosticDescriptor MtuOverrideOnSequencedChannel = Warning(
+            "PN0106",
+            "mtuExceeded override is ignored on UnreliableSequenced",
+            "mtuExceeded override on '{0}' is ignored on UnreliableSequenced; the NetworkManager setting governs the whole channel",
+            RpcCategory);
+
         private static DiagnosticDescriptor Error(string id, string title, string messageFormat, string category = RpcCategory) =>
             new DiagnosticDescriptor(id, title, messageFormat, category, DiagnosticSeverity.Error, true);
 
-        private static DiagnosticDescriptor Warning(string id, string title, string messageFormat) =>
-            new DiagnosticDescriptor(id, title, messageFormat, NetworkModuleCategory, DiagnosticSeverity.Warning, true);
+        private static DiagnosticDescriptor Warning(string id, string title, string messageFormat, string category = NetworkModuleCategory) =>
+            new DiagnosticDescriptor(id, title, messageFormat, category, DiagnosticSeverity.Warning, true);
     }
 }
