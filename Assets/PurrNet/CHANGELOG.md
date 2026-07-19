@@ -1,3 +1,11 @@
+# [1.20.0-beta.266](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.265...v1.20.0-beta.266) (2026-07-19)
+
+
+### Bug Fixes
+
+* interpolation saturation ([3c3147c](https://github.com/PurrNet/PurrNet/commit/3c3147c7542669b3776fff873fec4b758a34f69a))
+* interpolation saturation ([ec045ce](https://github.com/PurrNet/PurrNet/commit/ec045ce569e7ca304694cde31a894b2c5b0ea3ee))
+
 # [1.20.0-beta.265](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.264...v1.20.0-beta.265) (2026-07-19)
 
 
