@@ -590,7 +590,7 @@ namespace PurrNet.Modules
             return null;
         }
 
-        void ApplyParentChange(NetworkIdentity identity, NetworkIdentity parent, int[] path, bool refreshVisibility, bool worldPositionStays = true)
+        void ApplyParentChange(NetworkIdentity identity, NetworkIdentity parent, int[] path, bool refreshVisibility, bool worldPositionStays = true, bool applyToTransform = true)
         {
             var idTrs = identity.transform;
             var oldParent = identity.parent;
@@ -609,19 +609,22 @@ namespace PurrNet.Modules
 
             ListPool<NetworkIdentity>.Destroy(tmpList);
 
-            var nt = identity.GetComponent<NetworkTransform>();
-            if (nt) nt.StartIgnoringParentChanges();
+            if (applyToTransform)
+            {
+                var nt = identity.GetComponent<NetworkTransform>();
+                if (nt) nt.StartIgnoringParentChanges();
 
-            var nrb = identity.GetComponent<NetworkRigidbody>();
-            if (nrb) nrb.StartIgnoringParentChanges();
+                var nrb = identity.GetComponent<NetworkRigidbody>();
+                if (nrb) nrb.StartIgnoringParentChanges();
 
-            if (parent)
-                HierarchyPool.WalkThePath(parent.transform, idTrs, path, worldPositionStays);
-            else
-                idTrs.SetParent(null, worldPositionStays);
+                if (parent)
+                    HierarchyPool.WalkThePath(parent.transform, idTrs, path, worldPositionStays);
+                else
+                    idTrs.SetParent(null, worldPositionStays);
 
-            if (nt) nt.StopIgnoringParentChanges();
-            if (nrb) nrb.StopIgnoringParentChanges();
+                if (nt) nt.StopIgnoringParentChanges();
+                if (nrb) nrb.StopIgnoringParentChanges();
+            }
 
             if (parent)
                 parent.AddDirectChild(first);
@@ -1571,7 +1574,7 @@ namespace PurrNet.Modules
 
             var baseNid = new NetworkID(_nextId++, scope);
             SetupIdsLocally(id, ref baseNid);
-            ApplyParentChange(id, id.parent, id.invertedPathToNearestParent, false);
+            ApplyParentChange(id, id.parent, id.invertedPathToNearestParent, false, applyToTransform: false);
 
             if (!_asServer)
             {
