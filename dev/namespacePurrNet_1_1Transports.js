@@ -19,5 +19,6 @@ var namespacePurrNet_1_1Transports =
     [ "RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", "classPurrNet_1_1Transports_1_1UDPTransport" ],
     [ "WebTransport", "classPurrNet_1_1Transports_1_1WebTransport.html", null ],
+    [ "MTUBehaviour", "namespacePurrNet_1_1Transports.html#a995a08be1b68a789fb34d53016826d8e", null ],
     [ "MTUExceededBehaviour", "namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701", null ]
 ];
