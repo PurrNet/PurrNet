@@ -94,8 +94,6 @@ namespace PurrNet
                 {
                     _idleTime += deltaTime;
 
-                    // an idle stream never fills the min buffer; flush what we
-                    // have or a settled value would never be presented
                     bool starved = _buffer.Count > 0 && _idleTime >= _tickDelta * 2f;
 
                     if (!starved)
