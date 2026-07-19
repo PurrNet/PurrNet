@@ -1,3 +1,10 @@
+# [1.20.0-beta.264](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.263...v1.20.0-beta.264) (2026-07-19)
+
+
+### Bug Fixes
+
+* compare BitData by value (made delta validator fail) ([edfdd58](https://github.com/PurrNet/PurrNet/commit/edfdd58f7be4ad199b394d1c3c538c118797497a))
+
 # [1.20.0-beta.263](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.262...v1.20.0-beta.263) (2026-07-17)
 
 
