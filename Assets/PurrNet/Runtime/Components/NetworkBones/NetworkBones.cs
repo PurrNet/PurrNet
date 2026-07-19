@@ -27,6 +27,21 @@ namespace PurrNet
         private DisposableList<Transform> _bones = DisposableList<Transform>.Create(512);
         private BoneInfo[] _bonesInfo;
 
+        /// <summary>
+        /// Extra bones to sync on top of the ones gathered from SkinnedMeshRenderers.
+        /// Must be set before this identity is spawned.
+        /// </summary>
+        public Transform[] extraBones
+        {
+            get => _extraBones;
+            set => _extraBones = value;
+        }
+
+        /// <summary>
+        /// Number of bones gathered for syncing. Populated once spawned.
+        /// </summary>
+        public int boneCount => _bones.Count;
+
         private Interpolated<Vector3>[] _positions;
         private Interpolated<Quaternion>[] _rotations;
         private Interpolated<Vector3>[] _scales;
