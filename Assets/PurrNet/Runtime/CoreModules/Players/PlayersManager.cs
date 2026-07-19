@@ -110,6 +110,8 @@ namespace PurrNet.Modules
 
         public NetworkID? lastNid { get; private set; }
 
+        public MTUExceededBehaviour mtuExceededBehaviour => _networkManager.mtuExceededBehaviour;
+
         public int GetMTU(PlayerID player, Channel channel, bool asServer)
         {
             if (!asServer)
@@ -169,23 +171,29 @@ namespace PurrNet.Modules
             _playerBroadcaster = broadcaster;
         }
 
-        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(player, data, method);
+        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(player, data, method, mtuOverride);
 
-        public void Send<T>(IReadOnlyList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void Send<T>(IReadOnlyList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void SendList<T>(IList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void SendList<T>(IList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void Send<T>(IEnumerable<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void Send<T>(IEnumerable<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendToServer(data, method);
+        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.SendToServer(data, method, mtuOverride);
 
-        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendToAll(data, method);
+        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.SendToAll(data, method, mtuOverride);
 
         public void Unsubscribe<T>(PlayerBroadcastDelegate<T> callback) where T : new()
             => _playerBroadcaster.Unsubscribe(callback);

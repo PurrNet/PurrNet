@@ -8,6 +8,7 @@ public class NetworkBonesRoot : NetworkIdentity
     public NetworkBones networkBones;
     public Transform[] skinnedBones;
     public Transform extraBone;
+    public Transform[] allBones;
 
     public static void ResetAll() => LocalInstance = null;
 

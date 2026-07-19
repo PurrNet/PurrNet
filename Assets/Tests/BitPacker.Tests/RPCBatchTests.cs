@@ -14,6 +14,7 @@ public class RPCBatchTests
         public PlayerID target;
         public Channel channel;
         public Size count;
+        public MTUExceededBehaviour? mtuOverride;
         public BitPacker data;
     }
 
@@ -23,13 +24,14 @@ public class RPCBatchTests
         PlayerBroadcastDelegate<RPCBatchPacket> _callback;
 
         public int mtu = int.MaxValue;
+        public MTUExceededBehaviour mtuExceededBehaviour { get; set; } = MTUExceededBehaviour.Fragment;
         public PlayerID deliveringTarget { get; private set; }
         public Channel deliveringChannel { get; private set; }
         public IReadOnlyList<CapturedBatch> sent => _sent;
 
         public int GetMTU(PlayerID player, Channel channel, bool asServer) => mtu;
 
-        public void Send(PlayerID player, RPCBatchPacket packet, Channel channel)
+        public void Send(PlayerID player, RPCBatchPacket packet, Channel channel, MTUExceededBehaviour? mtuOverride = null)
         {
             var copy = BitPackerPool.Get();
             copy.WriteBitDataWithoutConsumingIt(packet.data);
@@ -38,6 +40,7 @@ public class RPCBatchTests
                 target = player,
                 channel = channel,
                 count = packet.count,
+                mtuOverride = mtuOverride,
                 data = copy
             });
         }
@@ -354,6 +357,185 @@ public class RPCBatchTests
                 for (int sequence = 0; sequence < sequenceCount; sequence++)
                     Assert.That(values[sequence], Is.EqualTo(sequence));
             }
+        }
+    }
+
+    [Test]
+    public void OversizedUnreliableEntryDropsWhenOverrideIsDrop()
+    {
+        var target = new PlayerID(50, false);
+        using var backend = new TestRPCBatchBackend { mtu = 64 };
+        using var batch = new RPCBatch(backend, (_, _, _, _) => { });
+        using var payload = BitPackerPool.Get();
+
+        UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
+        try
+        {
+            WritePayload(payload, 0, 100);
+            batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
+                MTUExceededBehaviourOverride.Drop);
+            batch.Flush();
+        }
+        finally
+        {
+            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false;
+        }
+
+        Assert.That(backend.sent, Is.Empty);
+    }
+
+    [Test]
+    public void OversizedUnreliableEntryUpgradesToReliableWhenOverrideIsUpgrade()
+    {
+        var target = new PlayerID(51, false);
+        var received = new Dictionary<BatchKey, List<int>>();
+        using var backend = new TestRPCBatchBackend { mtu = 64 };
+        using var batch = new RPCBatch(backend,
+            (_, header, content, _) => RecordReceived(backend, received, header, content));
+        using var payload = BitPackerPool.Get();
+
+        WritePayload(payload, 0, 100);
+        batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
+            MTUExceededBehaviourOverride.UpgradeToReliable);
+        batch.Flush();
+
+        Assert.That(backend.Count(target, Channel.Unreliable), Is.Zero);
+        Assert.That(backend.Count(target, Channel.ReliableOrdered), Is.EqualTo(1));
+
+        backend.DeliverAll();
+        Assert.That(received[new BatchKey { playerId = target, channel = Channel.ReliableOrdered }],
+            Is.EqualTo(new[] { 0 }));
+    }
+
+    [Test]
+    public void OversizedUnreliableEntrySoloSendsWithForcedFragmentOverride()
+    {
+        var target = new PlayerID(52, false);
+        var received = new Dictionary<BatchKey, List<int>>();
+        using var backend = new TestRPCBatchBackend { mtu = 64 };
+        using var batch = new RPCBatch(backend,
+            (_, header, content, _) => RecordReceived(backend, received, header, content));
+        using var payload = BitPackerPool.Get();
+
+        WritePayload(payload, 0, 8);
+        batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
+            MTUExceededBehaviourOverride.Fragment);
+        WritePayload(payload, 1, 100);
+        batch.Queue(target, MakeHeader(Channel.Unreliable, 1), new BitData(payload), Channel.Unreliable,
+            MTUExceededBehaviourOverride.Fragment);
+
+        // the pending small entry is flushed first, then the oversized entry is sent solo
+        Assert.That(backend.sent, Has.Count.EqualTo(2));
+        Assert.That(backend.sent[0].channel, Is.EqualTo(Channel.Unreliable));
+        Assert.That(backend.sent[0].mtuOverride, Is.Null);
+        Assert.That(backend.sent[1].channel, Is.EqualTo(Channel.Unreliable));
+        Assert.That(backend.sent[1].count.value, Is.EqualTo(1));
+        Assert.That(backend.sent[1].mtuOverride, Is.EqualTo(MTUExceededBehaviour.Fragment));
+
+        batch.Flush();
+        Assert.That(backend.sent, Has.Count.EqualTo(2));
+
+        backend.DeliverAll();
+        Assert.That(received[new BatchKey { playerId = target, channel = Channel.Unreliable }],
+            Is.EqualTo(new[] { 0, 1 }));
+    }
+
+    [Test]
+    public void OversizedUnreliableEntryFollowsBackendDefaultWithoutOverride()
+    {
+        var target = new PlayerID(53, false);
+        using var backend = new TestRPCBatchBackend { mtu = 64, mtuExceededBehaviour = MTUExceededBehaviour.Drop };
+        using var batch = new RPCBatch(backend, (_, _, _, _) => { });
+        using var payload = BitPackerPool.Get();
+
+        UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
+        try
+        {
+            WritePayload(payload, 0, 100);
+            batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable);
+            batch.Flush();
+        }
+        finally
+        {
+            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false;
+        }
+
+        Assert.That(backend.sent, Is.Empty);
+    }
+
+    [Test]
+    public void SequencedChannelIgnoresPerRpcOverride()
+    {
+        var target = new PlayerID(57, false);
+
+        // global Drop wins over a per-RPC Fragment override on the sequenced channel
+        using (var backend = new TestRPCBatchBackend { mtu = 64, mtuExceededBehaviour = MTUExceededBehaviour.Drop })
+        using (var batch = new RPCBatch(backend, (_, _, _, _) => { }))
+        using (var payload = BitPackerPool.Get())
+        {
+            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
+            try
+            {
+                WritePayload(payload, 0, 100);
+                batch.Queue(target, MakeHeader(Channel.UnreliableSequenced, 0), new BitData(payload),
+                    Channel.UnreliableSequenced, MTUExceededBehaviourOverride.Fragment);
+                batch.Flush();
+            }
+            finally
+            {
+                UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false;
+            }
+
+            Assert.That(backend.sent, Is.Empty);
+        }
+
+        // global Fragment wins over a per-RPC Drop override on the sequenced channel
+        using (var backend = new TestRPCBatchBackend { mtu = 64 })
+        using (var batch = new RPCBatch(backend, (_, _, _, _) => { }))
+        using (var payload = BitPackerPool.Get())
+        {
+            WritePayload(payload, 0, 100);
+            batch.Queue(target, MakeHeader(Channel.UnreliableSequenced, 0), new BitData(payload),
+                Channel.UnreliableSequenced, MTUExceededBehaviourOverride.Drop);
+
+            Assert.That(backend.sent, Has.Count.EqualTo(1));
+            Assert.That(backend.sent[0].channel, Is.EqualTo(Channel.UnreliableSequenced));
+            Assert.That(backend.sent[0].count.value, Is.EqualTo(1));
+            Assert.That(backend.sent[0].mtuOverride, Is.EqualTo(MTUExceededBehaviour.Fragment));
+        }
+    }
+
+    [Test]
+    public void OversizedFanoutEntryUpgradesToReliablePerTarget()
+    {
+        var targets = new[]
+        {
+            new PlayerID(54, false),
+            new PlayerID(55, false),
+            new PlayerID(56, false)
+        };
+        var received = new Dictionary<BatchKey, List<int>>();
+        using var backend = new TestRPCBatchBackend { mtu = 64 };
+        using var batch = new RPCBatch(backend,
+            (_, header, content, _) => RecordReceived(backend, received, header, content));
+        using var payload = BitPackerPool.Get();
+
+        WritePayload(payload, 0, 100);
+        batch.Queue(targets, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
+            mtuOverride: MTUExceededBehaviourOverride.UpgradeToReliable);
+        batch.Flush();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Assert.That(backend.Count(targets[i], Channel.Unreliable), Is.Zero);
+            Assert.That(backend.Count(targets[i], Channel.ReliableOrdered), Is.EqualTo(1));
+        }
+
+        backend.DeliverAll();
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Assert.That(received[new BatchKey { playerId = targets[i], channel = Channel.ReliableOrdered }],
+                Is.EqualTo(new[] { 0 }));
         }
     }
 

@@ -14,7 +14,8 @@ namespace PurrNet
             bool requireServer = true,
             CompressionLevel compressionLevel = CompressionLevel.None,
             float asyncTimeoutInSec = 5f,
-            bool deltaPacked = false)
+            bool deltaPacked = false,
+            MTUExceededBehaviourOverride mtuExceededBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
         }
     }

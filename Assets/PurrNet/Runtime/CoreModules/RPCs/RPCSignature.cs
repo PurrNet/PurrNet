@@ -41,6 +41,7 @@ namespace PurrNet
         public IList<PlayerID> targetPlayerList;
         public StripCodeModeOverride stripCodeMode;
         public bool deltaPacked;
+        public MTUExceededBehaviourOverride mtuExceededBehaviour;
 
         public DisposableList<PlayerID> GetTargets()
         {
@@ -59,7 +60,8 @@ namespace PurrNet
         [UsedImplicitly]
         public static RPCSignature Make(RPCType type, Channel channel, bool runLocally, bool requireOwnership,
             bool bufferLast, bool requireServer, bool excludeOwner, string name, bool isStatic, float asyncTimoutInSec,
-            CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked)
+            CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked,
+            MTUExceededBehaviourOverride mtuExceededBehaviour)
         {
             return new RPCSignature
             {
@@ -78,14 +80,16 @@ namespace PurrNet
                 rpcName = name,
                 asyncTimeoutInSec = asyncTimoutInSec,
                 compressionLevel = compressionLevel,
-                deltaPacked = deltaPacked
+                deltaPacked = deltaPacked,
+                mtuExceededBehaviour = mtuExceededBehaviour
             };
         }
 
         [UsedImplicitly]
         public static RPCSignature MakeWithTarget(RPCType type, Channel channel, bool runLocally, bool requireOwnership,
             bool bufferLast, bool requireServer, bool excludeOwner, string name, bool isStatic, float asyncTimoutInSec,
-            CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked, PlayerID? playerID, IEnumerable<PlayerID> players, IList<PlayerID> playersList)
+            CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked,
+            MTUExceededBehaviourOverride mtuExceededBehaviour, PlayerID? playerID, IEnumerable<PlayerID> players, IList<PlayerID> playersList)
         {
             return new RPCSignature
             {
@@ -104,7 +108,8 @@ namespace PurrNet
                 rpcName = name,
                 asyncTimeoutInSec = asyncTimoutInSec,
                 compressionLevel = compressionLevel,
-                deltaPacked = deltaPacked
+                deltaPacked = deltaPacked,
+                mtuExceededBehaviour = mtuExceededBehaviour
             };
         }
     }

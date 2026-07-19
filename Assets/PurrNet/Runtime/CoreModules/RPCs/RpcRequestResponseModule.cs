@@ -463,10 +463,12 @@ namespace PurrNet.Modules
                 return;
             }
 
+            var mtuOverride = info.compileTimeSignature.mtuExceededBehaviour.AsOverride();
+
             if (info.asServer)
-                _playersManager.Send(info.sender, responsePacket, channel);
+                _playersManager.Send(info.sender, responsePacket, channel, mtuOverride);
             else
-                _playersManager.SendToServer(responsePacket, channel);
+                _playersManager.SendToServer(responsePacket, channel, mtuOverride);
         }
 
         private static void SendEmptyResponse(RPCInfo info, uint reqId, NetworkManager manager)

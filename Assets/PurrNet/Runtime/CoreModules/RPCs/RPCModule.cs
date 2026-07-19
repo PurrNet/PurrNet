@@ -273,7 +273,7 @@ namespace PurrNet.Modules
                     if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                    serverRpcModule.BatchToServer(packet, signature.channel);
+                    serverRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceededBehaviour);
                     break;
                 }
                 case RPCType.ObserversRPC:
@@ -286,7 +286,7 @@ namespace PurrNet.Modules
                             if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                                 Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                            module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel);
+                            module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceededBehaviour);
                         }
                         else
                         {
@@ -313,7 +313,7 @@ namespace PurrNet.Modules
                             }
 #endif
 
-                            module.BatchToTargets(all, packet, signature.channel, filter);
+                            module.BatchToTargets(all, packet, signature.channel, filter, signature.mtuExceededBehaviour);
                         }
                     }
                     else
@@ -322,7 +322,7 @@ namespace PurrNet.Modules
                         if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                             Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                        module.BatchToServer(packet, signature.channel);
+                        module.BatchToServer(packet, signature.channel, signature.mtuExceededBehaviour);
                     }
                     break;
                 }
@@ -338,12 +338,12 @@ namespace PurrNet.Modules
                             nm.TryGetModule<RPCModule>(false, out var hostClientModule))
                         {
                             packet.targetPlayerId = PlayerID.Server;
-                            hostClientModule.BatchToServer(packet, signature.channel);
+                            hostClientModule.BatchToServer(packet, signature.channel, signature.mtuExceededBehaviour);
                             break;
                         }
 
                         using var targets = signature.GetTargets();
-                        module.BatchToTargets(targets, packet, signature.channel);
+                        module.BatchToTargets(targets, packet, signature.channel, signature.mtuExceededBehaviour);
                     }
                     else
                     {
@@ -351,7 +351,7 @@ namespace PurrNet.Modules
                         for (int i = 0; i < targets.Count; i++)
                         {
                             packet.targetPlayerId = targets[i];
-                            module.BatchToServer(packet, signature.channel);
+                            module.BatchToServer(packet, signature.channel, signature.mtuExceededBehaviour);
                         }
                     }
                     break;
@@ -428,7 +428,7 @@ namespace PurrNet.Modules
                         finalList.Add(observer);
                     }
 
-                    playersManager.Send(finalList, data, signature.channel);
+                    playersManager.Send(finalList, data, signature.channel, signature.mtuExceededBehaviour.AsOverride());
                     finalList.Dispose();
 
                     if (data is StaticRPCPacket staticRpc)
@@ -452,7 +452,7 @@ namespace PurrNet.Modules
                     }
                     else if (!isTargetingServer)
                     {
-                        playersManager.Send(data.targetPlayerId, data, signature.channel);
+                        playersManager.Send(data.targetPlayerId, data, signature.channel, signature.mtuExceededBehaviour.AsOverride());
                     }
 
                     if (data is StaticRPCPacket staticRpc)
@@ -1095,75 +1095,87 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToServer(RPCPacket normalRpc, Channel signatureChannel)
+        public void BatchToServer(RPCPacket normalRpc, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(normalRpc.header), normalRpc.data, signatureChannel);
+            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(normalRpc.header), normalRpc.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToServer(ChildRPCPacket childRpc, Channel signatureChannel)
+        public void BatchToServer(ChildRPCPacket childRpc, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(childRpc.header), childRpc.data, signatureChannel);
+            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(childRpc.header), childRpc.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToServer(StaticRPCPacket staticRpc, Channel signatureChannel)
+        public void BatchToServer(StaticRPCPacket staticRpc, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(staticRpc.header), staticRpc.data, signatureChannel);
+            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(staticRpc.header), staticRpc.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel)
+        public void BatchToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTarget(PlayerID player, RPCPacket packet, Channel signatureChannel)
+        public void BatchToTarget(PlayerID player, RPCPacket packet, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTarget(PlayerID player, ChildRPCPacket packet, Channel signatureChannel)
+        public void BatchToTarget(PlayerID player, ChildRPCPacket packet, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel)
+        public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel)
+        public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTarget(PlayerID player, StaticRPCPacket packet, Channel signatureChannel)
+        public void BatchToTarget(PlayerID player, StaticRPCPacket packet, Channel signatureChannel,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel);
+            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(IReadOnlyList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel, ObserverFilter filter = default,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default)
+        public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default,
+            MTUExceededBehaviourOverride mtuBehaviour = MTUExceededBehaviourOverride.NetworkManager)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter);
+            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
