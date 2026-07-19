@@ -1,3 +1,10 @@
+# [1.20.0-beta.265](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.264...v1.20.0-beta.265) (2026-07-19)
+
+
+### Bug Fixes
+
+* don't walk the parent path if you are the one spawning ([1535247](https://github.com/PurrNet/PurrNet/commit/15352470a9acfb664f5e4e9f1c42c78a000fd443))
+
 # [1.20.0-beta.264](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.263...v1.20.0-beta.264) (2026-07-19)
 
 
