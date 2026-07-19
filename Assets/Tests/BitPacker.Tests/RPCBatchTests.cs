@@ -373,7 +373,7 @@ public class RPCBatchTests
         {
             WritePayload(payload, 0, 100);
             batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
-                MTUExceededBehaviourOverride.Drop);
+                MTUBehaviour.Drop);
             batch.Flush();
         }
         finally
@@ -396,7 +396,7 @@ public class RPCBatchTests
 
         WritePayload(payload, 0, 100);
         batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
-            MTUExceededBehaviourOverride.UpgradeToReliable);
+            MTUBehaviour.UpgradeToReliable);
         batch.Flush();
 
         Assert.That(backend.Count(target, Channel.Unreliable), Is.Zero);
@@ -419,10 +419,10 @@ public class RPCBatchTests
 
         WritePayload(payload, 0, 8);
         batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
-            MTUExceededBehaviourOverride.Fragment);
+            MTUBehaviour.Fragment);
         WritePayload(payload, 1, 100);
         batch.Queue(target, MakeHeader(Channel.Unreliable, 1), new BitData(payload), Channel.Unreliable,
-            MTUExceededBehaviourOverride.Fragment);
+            MTUBehaviour.Fragment);
 
         // the pending small entry is flushed first, then the oversized entry is sent solo
         Assert.That(backend.sent, Has.Count.EqualTo(2));
@@ -478,7 +478,7 @@ public class RPCBatchTests
             {
                 WritePayload(payload, 0, 100);
                 batch.Queue(target, MakeHeader(Channel.UnreliableSequenced, 0), new BitData(payload),
-                    Channel.UnreliableSequenced, MTUExceededBehaviourOverride.Fragment);
+                    Channel.UnreliableSequenced, MTUBehaviour.Fragment);
                 batch.Flush();
             }
             finally
@@ -496,7 +496,7 @@ public class RPCBatchTests
         {
             WritePayload(payload, 0, 100);
             batch.Queue(target, MakeHeader(Channel.UnreliableSequenced, 0), new BitData(payload),
-                Channel.UnreliableSequenced, MTUExceededBehaviourOverride.Drop);
+                Channel.UnreliableSequenced, MTUBehaviour.Drop);
 
             Assert.That(backend.sent, Has.Count.EqualTo(1));
             Assert.That(backend.sent[0].channel, Is.EqualTo(Channel.UnreliableSequenced));
@@ -522,7 +522,7 @@ public class RPCBatchTests
 
         WritePayload(payload, 0, 100);
         batch.Queue(targets, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
-            mtuOverride: MTUExceededBehaviourOverride.UpgradeToReliable);
+            mtuOverride: MTUBehaviour.UpgradeToReliable);
         batch.Flush();
 
         for (int i = 0; i < targets.Length; i++)

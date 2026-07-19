@@ -73,7 +73,7 @@ public class IdentityMtuBehaviourRpcs : NetworkIdentity
     [ObserversRpc(channel: Channel.Unreliable)]
     public void SendDefaultOversized(byte[] data) => defaultReceived = true;
 
-    [ObserversRpc(channel: Channel.Unreliable, mtuExceededBehaviour: MTUExceededBehaviourOverride.Fragment)]
+    [ObserversRpc(channel: Channel.Unreliable, mtuExceeded: MTUBehaviour.Fragment)]
     public void SendFragmentOversized(byte[] data)
     {
         fragmentReceived = true;
@@ -81,7 +81,7 @@ public class IdentityMtuBehaviourRpcs : NetworkIdentity
             fragmentCorrupt = true;
     }
 
-    [ObserversRpc(channel: Channel.Unreliable, mtuExceededBehaviour: MTUExceededBehaviourOverride.UpgradeToReliable)]
+    [ObserversRpc(channel: Channel.Unreliable, mtuExceeded: MTUBehaviour.UpgradeToReliable)]
     public void SendUpgradeOversized(byte[] data)
     {
         upgradeReceived = true;
@@ -89,7 +89,7 @@ public class IdentityMtuBehaviourRpcs : NetworkIdentity
             upgradeCorrupt = true;
     }
 
-    [ServerRpc(channel: Channel.Unreliable, requireOwnership: false, mtuExceededBehaviour: MTUExceededBehaviourOverride.Fragment)]
+    [ServerRpc(channel: Channel.Unreliable, requireOwnership: false, mtuExceeded: MTUBehaviour.Fragment)]
     public void SendToServerFragment(byte[] data, RPCInfo info = default)
     {
         serverFragmentSenders.Add(info.sender.id.value);

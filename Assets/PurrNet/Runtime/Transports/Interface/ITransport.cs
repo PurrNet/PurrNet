@@ -135,7 +135,7 @@ namespace PurrNet.Transports
     /// Ignored on <see cref="Channel.UnreliableSequenced"/>: sequencing is a channel-wide
     /// property, so the NetworkManager setting governs that whole channel.
     /// </summary>
-    public enum MTUExceededBehaviourOverride : byte
+    public enum MTUBehaviour : byte
     {
         /// <summary>
         /// Follow the behaviour configured on the NetworkManager.
@@ -152,22 +152,22 @@ namespace PurrNet.Transports
         Fragment = 3
     }
 
-    public static class MTUExceededBehaviourOverrideExtensions
+    public static class MTUBehaviourExtensions
     {
-        public static MTUExceededBehaviour Resolve(this MTUExceededBehaviourOverride value, MTUExceededBehaviour fallback)
+        public static MTUExceededBehaviour Resolve(this MTUBehaviour value, MTUExceededBehaviour fallback)
         {
             switch (value)
             {
-                case MTUExceededBehaviourOverride.UpgradeToReliable: return MTUExceededBehaviour.UpgradeToReliable;
-                case MTUExceededBehaviourOverride.Drop: return MTUExceededBehaviour.Drop;
-                case MTUExceededBehaviourOverride.Fragment: return MTUExceededBehaviour.Fragment;
+                case MTUBehaviour.UpgradeToReliable: return MTUExceededBehaviour.UpgradeToReliable;
+                case MTUBehaviour.Drop: return MTUExceededBehaviour.Drop;
+                case MTUBehaviour.Fragment: return MTUExceededBehaviour.Fragment;
                 default: return fallback;
             }
         }
 
-        public static MTUExceededBehaviour? AsOverride(this MTUExceededBehaviourOverride value)
+        public static MTUExceededBehaviour? AsOverride(this MTUBehaviour value)
         {
-            if (value == MTUExceededBehaviourOverride.NetworkManager)
+            if (value == MTUBehaviour.NetworkManager)
                 return null;
             return value.Resolve(default);
         }

@@ -5,7 +5,7 @@ using PurrNet;
 using PurrNet.Transports;
 using UnityEngine;
 
-// Proves the per-RPC mtuExceededBehaviour override end to end over the real transport in
+// Proves the per-RPC mtuExceeded override end to end over the real transport in
 // player builds: with the NetworkManager global set to Drop, an oversized unreliable
 // ObserversRpc declared Fragment must arrive intact through real fragmentation, one
 // declared UpgradeToReliable must arrive, and one without an override must be dropped;

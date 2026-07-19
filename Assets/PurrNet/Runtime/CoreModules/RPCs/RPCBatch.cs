@@ -210,11 +210,11 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private MTUExceededBehaviour ResolveMTUBehaviour(Channel channel, MTUExceededBehaviourOverride mtuOverride)
+        private MTUExceededBehaviour ResolveMTUBehaviour(Channel channel, MTUBehaviour mtuOverride)
         {
             // sequencing is a channel-wide property; per-message overrides only apply to Unreliable
             if (channel != Channel.UnreliableSequenced &&
-                mtuOverride != MTUExceededBehaviourOverride.NetworkManager)
+                mtuOverride != MTUBehaviour.NetworkManager)
                 return mtuOverride.Resolve(default);
 
 #if UNITY_INCLUDE_TESTS
@@ -362,7 +362,7 @@ namespace PurrNet.Modules
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void QueueCached(PlayerID target, in UnionRPCHeader header, in BitData content, Size contentLen,
-            Channel channel, ulong stateVersion, MTUExceededBehaviourOverride mtuOverride)
+            Channel channel, ulong stateVersion, MTUBehaviour mtuOverride)
         {
             var batchIdx = GetBatchIndex(target, channel);
             ref var batch = ref _batches[batchIdx];
@@ -465,7 +465,7 @@ namespace PurrNet.Modules
         }
 
         public unsafe void Queue(DisposableList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel,
-            MTUExceededBehaviourOverride mtuOverride = MTUExceededBehaviourOverride.NetworkManager)
+            MTUBehaviour mtuOverride = MTUBehaviour.NetworkManager)
         {
             ValidateChannel(channel);
             _queueMultiMarker.Begin();
@@ -518,7 +518,7 @@ namespace PurrNet.Modules
 
         public unsafe void Queue(IReadOnlyList<PlayerID> targets, UnionRPCHeader header, BitData content, Channel channel,
             ObserverFilter filter = default,
-            MTUExceededBehaviourOverride mtuOverride = MTUExceededBehaviourOverride.NetworkManager)
+            MTUBehaviour mtuOverride = MTUBehaviour.NetworkManager)
         {
             ValidateChannel(channel);
             _queueMultiMarker.Begin();
@@ -554,7 +554,7 @@ namespace PurrNet.Modules
         }
 
         private unsafe void QueueDirect(PlayerID target, in UnionRPCHeader header, in BitData content,
-            Channel channel, MTUExceededBehaviourOverride mtuOverride)
+            Channel channel, MTUBehaviour mtuOverride)
         {
             var batchIdx = GetBatchIndex(target, channel);
             ref var batch = ref _batches[batchIdx];
@@ -622,7 +622,7 @@ namespace PurrNet.Modules
         }
 
         public unsafe void Queue(PlayerID target, UnionRPCHeader header, BitData content, Channel channel,
-            MTUExceededBehaviourOverride mtuOverride = MTUExceededBehaviourOverride.NetworkManager)
+            MTUBehaviour mtuOverride = MTUBehaviour.NetworkManager)
         {
             ValidateChannel(channel);
             _queueSingleMarker.Begin();

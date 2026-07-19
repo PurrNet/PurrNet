@@ -463,7 +463,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            var mtuOverride = info.compileTimeSignature.mtuExceededBehaviour.AsOverride();
+            var mtuOverride = info.compileTimeSignature.mtuExceeded.AsOverride();
 
             if (info.asServer)
                 _playersManager.Send(info.sender, responsePacket, channel, mtuOverride);

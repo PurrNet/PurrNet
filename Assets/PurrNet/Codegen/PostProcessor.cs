@@ -21,7 +21,7 @@ using Unity.CompilationPipeline.Common.Diagnostics;
 using Unity.CompilationPipeline.Common.ILPostProcessing;
 using UnityEngine.Scripting;
 using Channel = PurrNet.Transports.Channel;
-using MTUExceededBehaviourOverride = PurrNet.Transports.MTUExceededBehaviourOverride;
+using MTUBehaviour = PurrNet.Transports.MTUBehaviour;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
 using ParameterAttributes = Mono.Cecil.ParameterAttributes;
 
@@ -133,7 +133,7 @@ namespace PurrNet.Codegen
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[4].Value;
                     var stripCode = (StripCodeModeOverride)attribute.ConstructorArguments[5].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[6].Value;
-                    var mtuExceededBehaviour = (MTUExceededBehaviourOverride)attribute.ConstructorArguments[7].Value;
+                    var mtuExceeded = (MTUBehaviour)attribute.ConstructorArguments[7].Value;
 
                     data = new RPCSignature
                     {
@@ -149,7 +149,7 @@ namespace PurrNet.Codegen
                         compressionLevel = compressionLevel,
                         stripCodeMode = stripCode,
                         deltaPacked = deltaPacked,
-                        mtuExceededBehaviour = mtuExceededBehaviour
+                        mtuExceeded = mtuExceeded
                     };
                     rpcCount++;
                 }
@@ -170,7 +170,7 @@ namespace PurrNet.Codegen
                     var compressionLevel = (CompressionLevel)attribute.ConstructorArguments[6].Value;
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[7].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[8].Value;
-                    var mtuExceededBehaviour = (MTUExceededBehaviourOverride)attribute.ConstructorArguments[9].Value;
+                    var mtuExceeded = (MTUBehaviour)attribute.ConstructorArguments[9].Value;
 
                     if (bufferLast && deltaPacked)
                     {
@@ -192,7 +192,7 @@ namespace PurrNet.Codegen
                         asyncTimeoutInSec = asyncTimeoutInSec,
                         compressionLevel = compressionLevel,
                         deltaPacked = deltaPacked,
-                        mtuExceededBehaviour = mtuExceededBehaviour
+                        mtuExceeded = mtuExceeded
                     };
                     rpcCount++;
                 }
@@ -211,7 +211,7 @@ namespace PurrNet.Codegen
                     var compressionLevel = (CompressionLevel)attribute.ConstructorArguments[4].Value;
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[5].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[6].Value;
-                    var mtuExceededBehaviour = (MTUExceededBehaviourOverride)attribute.ConstructorArguments[7].Value;
+                    var mtuExceeded = (MTUBehaviour)attribute.ConstructorArguments[7].Value;
 
                     if (bufferLast && deltaPacked)
                     {
@@ -233,7 +233,7 @@ namespace PurrNet.Codegen
                         asyncTimeoutInSec = asyncTimeoutInSec,
                         compressionLevel = compressionLevel,
                         deltaPacked = deltaPacked,
-                        mtuExceededBehaviour = mtuExceededBehaviour
+                        mtuExceeded = mtuExceeded
                     };
                     rpcCount++;
                 }
@@ -249,10 +249,10 @@ namespace PurrNet.Codegen
             }
 
             if (data.channel == Channel.UnreliableSequenced &&
-                data.mtuExceededBehaviour != MTUExceededBehaviourOverride.NetworkManager)
+                data.mtuExceeded != MTUBehaviour.NetworkManager)
             {
                 Warning(messages,
-                    "mtuExceededBehaviour override is ignored on UnreliableSequenced; the NetworkManager setting governs the whole channel",
+                    "mtuExceeded override is ignored on UnreliableSequenced; the NetworkManager setting governs the whole channel",
                     method);
             }
 
@@ -3339,7 +3339,7 @@ namespace PurrNet.Codegen
             code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.compressionLevel));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.excludeSender ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.deltaPacked ? 1 : 0));
-            code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.mtuExceededBehaviour));
+            code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.mtuExceeded));
         }
 
         private static void PushRPCSignature(ModuleDefinition module, ILProcessor code, RPCMethod rpc,

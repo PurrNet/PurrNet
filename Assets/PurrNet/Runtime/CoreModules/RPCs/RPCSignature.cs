@@ -41,7 +41,7 @@ namespace PurrNet
         public IList<PlayerID> targetPlayerList;
         public StripCodeModeOverride stripCodeMode;
         public bool deltaPacked;
-        public MTUExceededBehaviourOverride mtuExceededBehaviour;
+        public MTUBehaviour mtuExceeded;
 
         public DisposableList<PlayerID> GetTargets()
         {
@@ -61,7 +61,7 @@ namespace PurrNet
         public static RPCSignature Make(RPCType type, Channel channel, bool runLocally, bool requireOwnership,
             bool bufferLast, bool requireServer, bool excludeOwner, string name, bool isStatic, float asyncTimoutInSec,
             CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked,
-            MTUExceededBehaviourOverride mtuExceededBehaviour)
+            MTUBehaviour mtuExceeded)
         {
             return new RPCSignature
             {
@@ -81,7 +81,7 @@ namespace PurrNet
                 asyncTimeoutInSec = asyncTimoutInSec,
                 compressionLevel = compressionLevel,
                 deltaPacked = deltaPacked,
-                mtuExceededBehaviour = mtuExceededBehaviour
+                mtuExceeded = mtuExceeded
             };
         }
 
@@ -89,7 +89,7 @@ namespace PurrNet
         public static RPCSignature MakeWithTarget(RPCType type, Channel channel, bool runLocally, bool requireOwnership,
             bool bufferLast, bool requireServer, bool excludeOwner, string name, bool isStatic, float asyncTimoutInSec,
             CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked,
-            MTUExceededBehaviourOverride mtuExceededBehaviour, PlayerID? playerID, IEnumerable<PlayerID> players, IList<PlayerID> playersList)
+            MTUBehaviour mtuExceeded, PlayerID? playerID, IEnumerable<PlayerID> players, IList<PlayerID> playersList)
         {
             return new RPCSignature
             {
@@ -109,7 +109,7 @@ namespace PurrNet
                 asyncTimeoutInSec = asyncTimoutInSec,
                 compressionLevel = compressionLevel,
                 deltaPacked = deltaPacked,
-                mtuExceededBehaviour = mtuExceededBehaviour
+                mtuExceeded = mtuExceeded
             };
         }
     }
