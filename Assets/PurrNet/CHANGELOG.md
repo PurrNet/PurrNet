@@ -1,3 +1,10 @@
+# [1.20.0-beta.267](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.266...v1.20.0-beta.267) (2026-07-19)
+
+
+### Features
+
+* allow RPCs to override MTU exceeded behavior ([6717f92](https://github.com/PurrNet/PurrNet/commit/6717f929bbee9923fbfcf8b1ef370ab8827cfc4a))
+
 # [1.20.0-beta.266](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.265...v1.20.0-beta.266) (2026-07-19)
 
 
