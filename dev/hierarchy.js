@@ -167,6 +167,7 @@ var hierarchy =
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
       [ "PurrNet.NetworkTransformData", "structPurrNet_1_1NetworkTransformData.html", null ],
+      [ "PurrNet.Packing.BitData", "structPurrNet_1_1Packing_1_1BitData.html", null ],
       [ "PurrNet.Packing.BitPacker", "classPurrNet_1_1Packing_1_1BitPacker.html", null ],
       [ "PurrNet.Packing.CompressedFloat", "structPurrNet_1_1Packing_1_1CompressedFloat.html", null ],
       [ "PurrNet.Packing.CompressedVector2", "structPurrNet_1_1Packing_1_1CompressedVector2.html", null ],
