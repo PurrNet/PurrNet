@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/PurrNet/PurrNet/compare/v1.20.1...v1.20.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* probably safe to remove this workaround now ([d4ea518](https://github.com/PurrNet/PurrNet/commit/d4ea518eca0dbac1430b85fdf1df81f65bc1f9e5))
+
 ## [1.20.1](https://github.com/PurrNet/PurrNet/compare/v1.20.0...v1.20.1) (2026-07-20)
 
 
