@@ -119,17 +119,9 @@ namespace AssetStoreTools.Uploader.Data
             return result;
         }
 
-        public async Task<bool> ValidatePackageUploadedVersions()
+        public bool IsCurrentUnityVersionSupported()
         {
-            var unityVersionSupported = string.Compare(Application.unityVersion, Constants.Uploader.MinRequiredUnitySupportVersion, StringComparison.Ordinal) >= 0;
-            if (unityVersionSupported)
-                return true;
-
-            var response = await _services.GetPackageUploadedVersions(Package, 5000);
-            if (response.Cancelled || response.Success == false)
-                return true;
-
-            return response.UnityVersions.Any(x => string.Compare(x, Constants.Uploader.MinRequiredUnitySupportVersion, StringComparison.Ordinal) >= 0);
+            return string.Compare(Application.unityVersion, Constants.Uploader.MinRequiredUnitySupportVersion, StringComparison.Ordinal) >= 0;
         }
 
         private bool ValidatePackageBeforeUpload(string packagePath, out string error)

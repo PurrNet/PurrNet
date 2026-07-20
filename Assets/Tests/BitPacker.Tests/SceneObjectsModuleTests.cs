@@ -8,9 +8,23 @@ using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
 using UnityEditor.SceneManagement;
 #endif
+#if UNITY_6000_3_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 public class SceneObjectsModuleTests
 {
+    private static ObjectId GetObjectId(Object obj)
+    {
+#if UNITY_6000_3_OR_NEWER
+        return obj.GetEntityId();
+#else
+        return obj.GetInstanceID();
+#endif
+    }
+
     [Test]
     public void GetSceneIdentitiesIgnoresPurrNetPoolRoots()
     {
@@ -67,7 +81,7 @@ public class SceneObjectsModuleTests
         Assert.IsNotNull(markerType, "PurrNet pool root marker type was not found.");
 
         var existingMarkers = Resources.FindObjectsOfTypeAll(markerType)
-            .Select(marker => marker.GetInstanceID())
+            .Select(GetObjectId)
             .ToHashSet();
 
         var managerRoot = new GameObject("PoolWarmupManager");
@@ -98,7 +112,7 @@ public class SceneObjectsModuleTests
 
             var newMarkers = Resources.FindObjectsOfTypeAll(markerType)
                 .OfType<Component>()
-                .Where(marker => !existingMarkers.Contains(marker.GetInstanceID()))
+                .Where(marker => !existingMarkers.Contains(GetObjectId(marker)))
                 .ToArray();
 
             Assert.That(newMarkers, Has.Length.EqualTo(1));

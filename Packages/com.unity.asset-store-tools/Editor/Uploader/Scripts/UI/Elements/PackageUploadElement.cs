@@ -151,7 +151,7 @@ namespace AssetStoreTools.Uploader.UI.Elements
         {
             DisableInteraction();
 
-            if (await ValidateUnityVersionsBeforeUpload() == false)
+            if (!ValidateUnityVersionBeforeUpload())
             {
                 EnableInteraction();
                 return;
@@ -183,30 +183,18 @@ namespace AssetStoreTools.Uploader.UI.Elements
             await OnUploadingStopped(response);
         }
 
-        private async Task<bool> ValidateUnityVersionsBeforeUpload()
+        private bool ValidateUnityVersionBeforeUpload()
         {
-            var validationEnabled = ASToolsPreferences.Instance.UploadVersionCheck;
-            if (!validationEnabled)
+            if (!ASToolsPreferences.Instance.UploadVersionCheck)
                 return true;
 
-            var requiredVersionUploaded = await _workflow.ValidatePackageUploadedVersions();
-            if (requiredVersionUploaded)
+            if (_workflow.IsCurrentUnityVersionSupported())
                 return true;
 
-            var result = EditorUtility.DisplayDialogComplex("Asset Store Tools", $"You may upload this package, but you will need to add a package using Unity version {Constants.Uploader.MinRequiredUnitySupportVersion} " +
-                "or higher to be able to submit a new asset", "Upload", "Cancel", "Upload and do not display this again");
+            EditorUtility.DisplayDialog("Asset Store Tools", $"The Unity version used to upload your package is outdated. Please use version {Constants.Uploader.MinRequiredUnitySupportVersion} " +
+                "or higher to submit new assets or update existing assets.", "OK");
 
-            switch (result)
-            {
-                case 1:
-                    return false;
-                case 2:
-                    ASToolsPreferences.Instance.UploadVersionCheck = false;
-                    ASToolsPreferences.Instance.Save();
-                    break;
-            }
-
-            return true;
+            return false;
         }
 
         private void UpdateProgressBar(UploadStatus? status, float? progress)

@@ -40,8 +40,9 @@ namespace AssetStoreTools.Validator.TestMethods
                     Debug.LogWarning("Unable to get Scene in " + path);
                     continue;
                 }
-
-#if UNITY_2023_1_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
+                var particleSystems = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include);
+#elif UNITY_2023_1_OR_NEWER
                 var particleSystems = GameObject.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 #else
                 var particleSystems = GameObject.FindObjectsOfType<ParticleSystem>();

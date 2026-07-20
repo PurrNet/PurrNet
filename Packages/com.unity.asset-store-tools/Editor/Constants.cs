@@ -89,7 +89,7 @@ namespace AssetStoreTools
 
         public class Uploader
         {
-            public const string MinRequiredUnitySupportVersion = "2021.3";
+            public const string MinRequiredUnitySupportVersion = "2022.3";
             public const long MaxPackageSizeBytes = 6576668672; // 6 GB + 128MB of headroom
             public const string AccountRegistrationUrl = "https://publisher.unity.com/access";
             public const string AccountForgottenPasswordUrl = "https://id.unity.com/password/new";

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEngine;
 
 namespace AssetStoreTools.Exporter
 {

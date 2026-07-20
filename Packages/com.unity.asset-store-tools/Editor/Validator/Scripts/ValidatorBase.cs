@@ -74,7 +74,9 @@ namespace AssetStoreTools.Validator
                 var test = tests[i];
 
                 EditorUtility.DisplayProgressBar("Validating", $"Running validation: {i + 1} - {test.Title}", (float)i / _automatedTests.Count);
-
+#if AB_BUILDER
+                Debug.Log($"Running validation {i + 1}/{_automatedTests.Count}: {test.Title}");
+#endif
                 test.Run(config);
 
                 // Adjust result based on categories

@@ -1,10 +1,12 @@
 using AssetStoreTools.Validator.Data;
 using AssetStoreTools.Validator.Services.Validation;
 using AssetStoreTools.Validator.TestDefinitions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace AssetStoreTools.Validator.TestMethods
 {
@@ -12,6 +14,15 @@ namespace AssetStoreTools.Validator.TestMethods
     {
         private GenericTestConfig _config;
         private IAssetUtilityService _assetUtility;
+
+        private class AssetClashCheckResult
+        {
+            public List<Object> FullPathClashes = new List<Object>();
+            public List<Object> GuidAndNameClashes = new List<Object>();
+            public List<Object> GuidClashes = new List<Object>();
+
+            public bool HasIssues => FullPathClashes.Count > 0 || GuidAndNameClashes.Count > 0;
+        }
 
         // Constructor also accepts dependency injection of registered IValidatorService types
         public CheckProjectTemplateAssets(GenericTestConfig config, IAssetUtilityService assetUtility)
@@ -25,24 +36,25 @@ namespace AssetStoreTools.Validator.TestMethods
             var result = new TestResult() { Status = TestResultStatus.Undefined };
 
             var assets = _assetUtility.GetObjectsFromAssets<Object>(_config.ValidationPaths, AssetType.All);
-            var invalidAssetsByGuid = CheckGuids(assets);
-            var invalidAssetsByPath = CheckPaths(assets);
+            var clashCheckResult = GetInvalidAssets(assets);
 
-            var hasIssues = invalidAssetsByGuid.Length > 0
-                || invalidAssetsByPath.Length > 0;
-
-            if (hasIssues)
+            if (clashCheckResult.HasIssues)
             {
-                result.Status = TestResultStatus.VariableSeverityIssue;
-
-                if (invalidAssetsByPath.Length > 0)
+                if (clashCheckResult.FullPathClashes.Count > 0)
                 {
-                    result.AddMessage("The following assets were found to have an asset path which is common to project template asset paths. They should be renamed or moved:", null, invalidAssetsByPath);
+                    result.Status = TestResultStatus.VariableSeverityIssue;
+                    result.AddMessage("The following assets were found to have an asset path which is common to project template asset paths. They should be renamed or moved to avoid overwriting user assets:", null, clashCheckResult.FullPathClashes.ToArray());
                 }
 
-                if (invalidAssetsByGuid.Length > 0)
+                if (clashCheckResult.GuidAndNameClashes.Count > 0)
                 {
-                    result.AddMessage("The following assets were found to be using a GUID which is common to project template asset GUIDs. They should be assigned a new GUID:", null, invalidAssetsByGuid);
+                    result.Status = TestResultStatus.VariableSeverityIssue;
+                    result.AddMessage("The following assets were found to be using the same GUID and name combination as one of the more common project template assets. They should be assigned a new GUID to avoid overwriting user assets.\n\n" +
+                        "One of the easier ways to assign existing assets a new GUID is by duplicating them:\n" +
+                        "- Select the asset in the Project window\n" +
+                        "- From the Unity Editor's menu bar select 'Edit > Duplicate'\n" +
+                        "- If any other assets reference this asset, change those references to point at the duplicated asset\n" +
+                        "- Delete the original asset and rename the duplicate", null, clashCheckResult.GuidAndNameClashes.ToArray());
                 }
             }
             else
@@ -54,32 +66,67 @@ namespace AssetStoreTools.Validator.TestMethods
             return result;
         }
 
-        private Object[] CheckGuids(IEnumerable<Object> assets)
+        private AssetClashCheckResult GetInvalidAssets(IEnumerable<Object> assets)
         {
-            var clashingAssets = new List<Object>();
-            foreach (var asset in assets)
-            {
-                if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var guid, out long _))
-                    continue;
+            var result = new AssetClashCheckResult();
 
-                if (CommonTemplateAssets.Any(x => x.Key.Equals(guid, System.StringComparison.OrdinalIgnoreCase)))
-                    clashingAssets.Add(asset);
+            foreach(var asset in assets)
+            {
+                if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var assetGuid, out long _))
+                    continue;
+                var assetPath = AssetDatabase.GetAssetPath(asset);
+
+                foreach(var kvp in CommonTemplateAssets)
+                {
+                    var comparedGuid = kvp.Key;
+                    var comparedPath = kvp.Value;
+
+                    var assetsClash = AssetsClash(assetGuid, assetPath, comparedGuid, comparedPath,
+                        fullPathClash: () =>
+                        {
+                            result.FullPathClashes.Add(asset);
+                        },
+                        guidAndNameClash: () =>
+                        {
+                            result.GuidAndNameClashes.Add(asset);
+                        },
+                        guidClash: () =>
+                        {
+                            result.GuidClashes.Add(asset);
+                        });
+
+                    if (assetsClash)
+                        break;
+                }
             }
 
-            return clashingAssets.ToArray();
+            return result;
         }
 
-        private Object[] CheckPaths(IEnumerable<Object> assets)
+        private bool AssetsClash(string sourceGuid, string sourcePath, string targetGuid, string targetPath, Action fullPathClash, Action guidAndNameClash, Action guidClash)
         {
-            var clashingAssets = new List<Object>();
-            foreach (var asset in assets)
+            if(sourcePath.Equals(targetPath, StringComparison.OrdinalIgnoreCase))
             {
-                var assetPath = AssetDatabase.GetAssetPath(asset);
-                if (CommonTemplateAssets.Any(x => x.Value.Equals(assetPath, System.StringComparison.OrdinalIgnoreCase)))
-                    clashingAssets.Add(asset);
+                fullPathClash?.Invoke();
+                return true;
             }
 
-            return clashingAssets.ToArray();
+            if(sourceGuid.Equals(targetGuid, StringComparison.OrdinalIgnoreCase))
+            {
+                var sourceName = sourcePath.Split('/').Last();
+                var targetName = targetPath.Split('/').Last();
+
+                if(sourceName.Equals(targetName))
+                {
+                    guidAndNameClash?.Invoke();
+                    return true;
+                }
+
+                guidClash?.Invoke();
+                return true;
+            }
+
+            return false;
         }
 
         private Dictionary<string, string> CommonTemplateAssets = new Dictionary<string, string>()

@@ -55,14 +55,14 @@ namespace AssetStoreTools.Validator.TestMethods
 
                 if (scriptResult.ForbiddenNamespaces.Count > 0)
                 {
-                    result.Status = TestResultStatus.Fail;
+                    result.Status = TestResultStatus.VariableSeverityIssue;
                     result.AddMessage("The following scripts contain namespaces starting with a 'Unity' keyword:");
                     AddJoinedMessage(result, scriptResult.ForbiddenNamespaces);
                 }
 
                 if (assemblyResult.ForbiddenNamespaces.Count > 0)
                 {
-                    result.Status = TestResultStatus.Fail;
+                    result.Status = TestResultStatus.VariableSeverityIssue;
                     result.AddMessage("The following assemblies contain namespaces starting with a 'Unity' keyword:");
                     AddJoinedMessage(result, assemblyResult.ForbiddenNamespaces);
                 }

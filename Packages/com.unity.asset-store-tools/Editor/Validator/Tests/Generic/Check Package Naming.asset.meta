@@ -10,7 +10,7 @@ AssetOrigin:
   serializedVersion: 1
   productId: 115
   packageName: Asset Store Publishing Tools
-  packageVersion: 12.0.1
+  packageVersion: 12.0.5
   assetPath: Packages/com.unity.asset-store-tools/Editor/Validator/Tests/Generic/Check
     Package Naming.asset
-  uploadId: 724584
+  uploadId: 930154
