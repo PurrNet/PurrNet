@@ -1,3 +1,17 @@
+# [1.21.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.20.2...v1.21.0-beta.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* collider rollback improvements and incorrect math ([62375c2](https://github.com/PurrNet/PurrNet/commit/62375c2af2246ac5f14a0a3632259868d8d6d3a6))
+* collider rollback spatial performance ([37808ac](https://github.com/PurrNet/PurrNet/commit/37808ac7d96dab23c495b5ec74eb8af37f7f3dfa))
+
+
+### Features
+
+* collider rollback performance + benchmarks + tests ([5b5410d](https://github.com/PurrNet/PurrNet/commit/5b5410d46565cda221fa23ab4454c9c8315d73ee))
+* TryGetClosest for collder rollback ([4709f2c](https://github.com/PurrNet/PurrNet/commit/4709f2ce15284b3685e75c9bba3ceb33bcce21b0))
+
 ## [1.20.2](https://github.com/PurrNet/PurrNet/compare/v1.20.1...v1.20.2) (2026-07-20)
 
 
