@@ -28,5 +28,6 @@ var searchData=
   ['disposablelist_3c_20transform_20_3e_25',['DisposableList&lt; Transform &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
   ['distancerule_26',['DistanceRule',['../classPurrNet_1_1DistanceRule.html',1,'PurrNet']]],
   ['dontdeltacompressattribute_27',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
-  ['dontpackattribute_28',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]]
+  ['dontpackattribute_28',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]],
+  ['droppedsample_29',['DroppedSample',['../structPurrNet_1_1Profiler_1_1DroppedSample.html',1,'PurrNet::Profiler']]]
 ];

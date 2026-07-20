@@ -6,6 +6,7 @@ var namespacePurrNet_1_1Transports =
     [ "CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", "classPurrNet_1_1Transports_1_1CompositeTransport" ],
     [ "Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ],
     [ "FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", "classPurrNet_1_1Transports_1_1FragmentationLayer" ],
+    [ "FragmentDropInfo", "structPurrNet_1_1Transports_1_1FragmentDropInfo.html", "structPurrNet_1_1Transports_1_1FragmentDropInfo" ],
     [ "GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", "classPurrNet_1_1Transports_1_1GenericTransport" ],
     [ "HostJoinInfo", "structPurrNet_1_1Transports_1_1HostJoinInfo.html", null ],
     [ "IConnectable", "interfacePurrNet_1_1Transports_1_1IConnectable.html", null ],
@@ -19,6 +20,7 @@ var namespacePurrNet_1_1Transports =
     [ "RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", "classPurrNet_1_1Transports_1_1UDPTransport" ],
     [ "WebTransport", "classPurrNet_1_1Transports_1_1WebTransport.html", null ],
+    [ "FragmentDropReason", "namespacePurrNet_1_1Transports.html#aea2a3e5dce25f82108029db663db2216", null ],
     [ "MTUBehaviour", "namespacePurrNet_1_1Transports.html#a995a08be1b68a789fb34d53016826d8e", null ],
     [ "MTUExceededBehaviour", "namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701", null ]
 ];

@@ -94,14 +94,12 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Transports_1_1Fragment
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="classPurrNet_1_1Transports_1_1FragmentationLayer-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Transports.FragmentationLayer Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Allocation-free-on-the-hot-path message fragmentation and bounded reassembly. Fragment loss is never recovered here: an incomplete message expires as a unit.  
- <a href="classPurrNet_1_1Transports_1_1FragmentationLayer.html#details">More...</a></p>
 <div class="dynheader">
 Inheritance diagram for PurrNet.Transports.FragmentationLayer:</div>
 <div class="dyncontent">
@@ -136,11 +134,11 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>Receive</b> (<a class
 <tr class="separator:ab83d88e00006c32a27a123abc641444e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acecef5f0f41be032f0456a896f74c01e"><td class="memItemLeft" align="right" valign="top"><a id="acecef5f0f41be032f0456a896f74c01e" name="acecef5f0f41be032f0456a896f74c01e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Receive</b> (int senderId, byte streamId, bool sequenced, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> data, out <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a> assembled)</td></tr>
-<tr class="memdesc:acecef5f0f41be032f0456a896f74c01e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Processes a packet for a sender and logical stream. Sequenced streams discard older incomplete messages as soon as any newer message is observed. Reassembled data remains valid until the next completed reassembly, Reset, or disposal.  <br /></td></tr>
+<tr class="memdesc:acecef5f0f41be032f0456a896f74c01e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Processes a packet for a sender and logical stream. Sequenced streams discard older incomplete messages as soon as any newer message is observed. Reassembled data remains valid until the next completed reassembly, the next idle buffer release in <a class="el" href="classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae807bae572f1fa3b13f8d1fee5eed5b8" title="Runs stale cleanup at most once per interval and releases the internal send and reassembly buffers on...">CleanupStaleIfDue</a>, Reset, or disposal.  <br /></td></tr>
 <tr class="separator:acecef5f0f41be032f0456a896f74c01e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae807bae572f1fa3b13f8d1fee5eed5b8"><td class="memItemLeft" align="right" valign="top"><a id="ae807bae572f1fa3b13f8d1fee5eed5b8" name="ae807bae572f1fa3b13f8d1fee5eed5b8"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>CleanupStaleIfDue</b> (int maxAgeMs, int intervalMs)</td></tr>
-<tr class="memdesc:ae807bae572f1fa3b13f8d1fee5eed5b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs stale cleanup at most once per interval. <br /></td></tr>
+<tr class="memdesc:ae807bae572f1fa3b13f8d1fee5eed5b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs stale cleanup at most once per interval and releases the internal send and reassembly buffers once they have been idle for a full interval.  <br /></td></tr>
 <tr class="separator:ae807bae572f1fa3b13f8d1fee5eed5b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afabcecb90fa4b9997b7f148df8bd3671"><td class="memItemLeft" align="right" valign="top"><a id="afabcecb90fa4b9997b7f148df8bd3671" name="afabcecb90fa4b9997b7f148df8bd3671"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>CleanupStale</b> (int maxAgeMs)</td></tr>
@@ -167,6 +165,13 @@ static int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMaxSequenced
 <tr class="memdesc:aee4df19ad64c3765fcefd3c7e74c5124"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the largest sequenced message accepted for the supplied packet size. <br /></td></tr>
 <tr class="separator:aee4df19ad64c3765fcefd3c7e74c5124"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a33425c5c1bc8a10bc9b6f852f7954dfe"><td class="memItemLeft" align="right" valign="top"><a id="a33425c5c1bc8a10bc9b6f852f7954dfe" name="a33425c5c1bc8a10bc9b6f852f7954dfe"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1FragmentDropInfo.html">FragmentDropInfo</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onMessageDropped</b></td></tr>
+<tr class="memdesc:a33425c5c1bc8a10bc9b6f852f7954dfe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Raised when a fragmented message is discarded without completing. Not raised for sender removal or Reset.  <br /></td></tr>
+<tr class="separator:a33425c5c1bc8a10bc9b6f852f7954dfe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
 <tr class="memitem:ae9a82772968d3bf5fd32dada806f042f"><td class="memItemLeft" align="right" valign="top"><a id="ae9a82772968d3bf5fd32dada806f042f" name="ae9a82772968d3bf5fd32dada806f042f"></a>
@@ -188,10 +193,7 @@ const int&#160;</td><td class="memItemRight" valign="bottom"><b>MAX_FRAGMENTS</b
 const int&#160;</td><td class="memItemRight" valign="bottom"><b>MAX_MESSAGE_SIZE</b> = 1024 * 1024</td></tr>
 <tr class="separator:a0e2ae5dafad8049dfb8a89d9d7441979"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Allocation-free-on-the-hot-path message fragmentation and bounded reassembly. Fragment loss is never recovered here: an incomplete message expires as a unit. </p>
-<p >Header format: Unfragmented: [1 byte: 0x00] [payload] Sequenced: [1 byte: 0x02] [4 bytes: messageId] [payload] Fragmented: [1 byte: 0x01] [4 bytes: messageId] [4 bytes: totalLength] [2 bytes: fragmentStride] [1 byte: fragmentIndex] [1 byte: totalFragments] [payload]  </p>
-</div><hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Transports/FragmentationLayer.cs</li>
 </ul>
 </div><!-- contents -->

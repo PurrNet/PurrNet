@@ -206,6 +206,7 @@ static <a class="el" href="structPurrNet_1_1Pooling_1_1DisposableList.html">Disp
 Properties</h2></td></tr>
 <tr class="memitem:ab864fae9fd00e12ddd90d16b892e2273"><td class="memItemLeft" align="right" valign="top"><a id="ab864fae9fd00e12ddd90d16b892e2273" name="ab864fae9fd00e12ddd90d16b892e2273"></a>
 List&lt; T &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>list</b><code> [get]</code></td></tr>
+<tr class="memdesc:ab864fae9fd00e12ddd90d16b892e2273"><td class="mdescLeft">&#160;</td><td class="mdescRight">Direct access to the backing list. This hands out mutable access, so if the buffer is shared with a snapshot it is unshared first. Prefer the regular list API for reads; it never forces an unshare. Do not cache the returned reference across a Duplicate() or history save: writes through a cached reference bypass copy-on-write and can corrupt shared snapshots.  <br /></td></tr>
 <tr class="separator:ab864fae9fd00e12ddd90d16b892e2273"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a841e4b12729e5eedacc3ef600459db28"><td class="memItemLeft" align="right" valign="top"><a id="a841e4b12729e5eedacc3ef600459db28" name="a841e4b12729e5eedacc3ef600459db28"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>Count</b><code> [get]</code></td></tr>

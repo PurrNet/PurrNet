@@ -43,6 +43,7 @@ var hierarchy =
         [ "PurrNet.RpcTargetDisconnectedException", "classPurrNet_1_1RpcTargetDisconnectedException.html", null ]
       ] ]
     ] ],
+    [ "PurrNet.Transports.FragmentDropInfo", "structPurrNet_1_1Transports_1_1FragmentDropInfo.html", null ],
     [ "PurrNet.Modules.GameObjectFrameworkPiece", "structPurrNet_1_1Modules_1_1GameObjectFrameworkPiece.html", null ],
     [ "PurrNet.Pooling.GenericPool< T >", "classPurrNet_1_1Pooling_1_1GenericPool.html", [
       [ "PurrNet.Pooling.CollectionPool< T, I >", "classPurrNet_1_1Pooling_1_1CollectionPool.html", null ]
@@ -188,6 +189,7 @@ var hierarchy =
       [ "PurrNet.Pooling.DisposableHashSet< T >", "structPurrNet_1_1Pooling_1_1DisposableHashSet.html", null ],
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
       [ "PurrNet.Profiler.BroadcastSample", "structPurrNet_1_1Profiler_1_1BroadcastSample.html", null ],
+      [ "PurrNet.Profiler.DroppedSample", "structPurrNet_1_1Profiler_1_1DroppedSample.html", null ],
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
       [ "PurrNet.RPCManifestKey", "structPurrNet_1_1RPCManifestKey.html", null ],
       [ "PurrNet.SceneID", "structPurrNet_1_1SceneID.html", null ],

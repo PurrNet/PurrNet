@@ -7,5 +7,7 @@ var searchData=
   ['forcesyncfor_4',['ForceSyncFor',['../classPurrNet_1_1NetworkRigidbody.html#a390362c0481733d175190856810cff48',1,'PurrNet::NetworkRigidbody']]],
   ['forcesyncwindowremaining_5',['forceSyncWindowRemaining',['../classPurrNet_1_1NetworkRigidbody.html#abbf3ab24f5f3c6e45643304b663d1ce0',1,'PurrNet::NetworkRigidbody']]],
   ['fragment_5foverhead_6',['FRAGMENT_OVERHEAD',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae0251cf4a93d36d118e7261a8dabbe4f',1,'PurrNet::Transports::FragmentationLayer']]],
-  ['fragmentationlayer_7',['FragmentationLayer',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html',1,'PurrNet::Transports']]]
+  ['fragmentationlayer_7',['FragmentationLayer',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html',1,'PurrNet::Transports']]],
+  ['fragmentdropinfo_8',['FragmentDropInfo',['../structPurrNet_1_1Transports_1_1FragmentDropInfo.html',1,'PurrNet::Transports']]],
+  ['fragmentdropreason_9',['FragmentDropReason',['../namespacePurrNet_1_1Transports.html#aea2a3e5dce25f82108029db663db2216',1,'PurrNet::Transports']]]
 ];

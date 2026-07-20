@@ -115,7 +115,8 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><b>ConnectionPair</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1FragmentationLayer.html">FragmentationLayer</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocation-free-on-the-hot-path message fragmentation and bounded reassembly. Fragment loss is never recovered here: an incomplete message expires as a unit.  <a href="classPurrNet_1_1Transports_1_1FragmentationLayer.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Transports_1_1FragmentDropInfo.html">FragmentDropInfo</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1GenericTransport.html">GenericTransport</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -152,6 +153,9 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
+<tr class="memitem:aea2a3e5dce25f82108029db663db2216"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacePurrNet_1_1Transports.html#aea2a3e5dce25f82108029db663db2216">FragmentDropReason</a> : byte </td></tr>
+<tr class="memdesc:aea2a3e5dce25f82108029db663db2216"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocation-free-on-the-hot-path message fragmentation and bounded reassembly. Fragment loss is never recovered here: an incomplete message expires as a unit.  <a href="namespacePurrNet_1_1Transports.html#aea2a3e5dce25f82108029db663db2216">More...</a><br /></td></tr>
+<tr class="separator:aea2a3e5dce25f82108029db663db2216"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa884600a78aa44215cb4e0256951c431"><td class="memItemLeft" align="right" valign="top"><a id="aa884600a78aa44215cb4e0256951c431" name="aa884600a78aa44215cb4e0256951c431"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><b>ConnectionState</b> </td></tr>
 <tr class="separator:aa884600a78aa44215cb4e0256951c431"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa5445fa7ab9a4640b501543bb11b5701"><td class="memItemLeft" align="right" valign="top"><a id="aa5445fa7ab9a4640b501543bb11b5701" name="aa5445fa7ab9a4640b501543bb11b5701"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a> : byte </td></tr>
@@ -183,6 +187,24 @@ delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>OnConnected<
 delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDisconnected</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, DisconnectReason reason, bool asServer)</td></tr>
 <tr class="separator:a0b22b7efe1130541716460fc173272af"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Enumeration Type Documentation</h2>
+<a id="aea2a3e5dce25f82108029db663db2216" name="aea2a3e5dce25f82108029db663db2216"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aea2a3e5dce25f82108029db663db2216">&#9670;&#160;</a></span>FragmentDropReason</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="namespacePurrNet_1_1Transports.html#aea2a3e5dce25f82108029db663db2216">PurrNet.Transports.FragmentDropReason</a> : byte</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Allocation-free-on-the-hot-path message fragmentation and bounded reassembly. Fragment loss is never recovered here: an incomplete message expires as a unit. </p>
+<p >Header format: Unfragmented: [1 byte: 0x00] [payload] Sequenced: [1 byte: 0x02] [4 bytes: messageId] [payload] Fragmented: [1 byte: 0x01] [4 bytes: messageId] [4 bytes: totalLength] [2 bytes: fragmentStride] [1 byte: fragmentIndex] [1 byte: totalFragments] [payload]  </p>
+
+</div>
+</div>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

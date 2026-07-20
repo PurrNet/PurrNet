@@ -138,7 +138,7 @@ var annotated_dup =
         [ "DisposableArray", "structPurrNet_1_1Pooling_1_1DisposableArray.html", "structPurrNet_1_1Pooling_1_1DisposableArray" ],
         [ "DisposableDictionary", "structPurrNet_1_1Pooling_1_1DisposableDictionary.html", "structPurrNet_1_1Pooling_1_1DisposableDictionary" ],
         [ "DisposableHashSet", "structPurrNet_1_1Pooling_1_1DisposableHashSet.html", "structPurrNet_1_1Pooling_1_1DisposableHashSet" ],
-        [ "DisposableList", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
+        [ "DisposableList", "structPurrNet_1_1Pooling_1_1DisposableList.html", "structPurrNet_1_1Pooling_1_1DisposableList" ],
         [ "GenericPool", "classPurrNet_1_1Pooling_1_1GenericPool.html", null ],
         [ "HashSetPool", "classPurrNet_1_1Pooling_1_1HashSetPool.html", null ],
         [ "ListPool", "classPurrNet_1_1Pooling_1_1ListPool.html", null ],
@@ -148,6 +148,7 @@ var annotated_dup =
       [ "Profiler", "namespacePurrNet_1_1Profiler.html", [
         [ "BandwidthEntry", "structPurrNet_1_1Profiler_1_1BandwidthEntry.html", null ],
         [ "BroadcastSample", "structPurrNet_1_1Profiler_1_1BroadcastSample.html", null ],
+        [ "DroppedSample", "structPurrNet_1_1Profiler_1_1DroppedSample.html", "structPurrNet_1_1Profiler_1_1DroppedSample" ],
         [ "RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
         [ "TickSample", "classPurrNet_1_1Profiler_1_1TickSample.html", null ]
       ] ],
@@ -164,6 +165,7 @@ var annotated_dup =
         [ "CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", "classPurrNet_1_1Transports_1_1CompositeTransport" ],
         [ "Connection", "structPurrNet_1_1Transports_1_1Connection.html", null ],
         [ "FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", "classPurrNet_1_1Transports_1_1FragmentationLayer" ],
+        [ "FragmentDropInfo", "structPurrNet_1_1Transports_1_1FragmentDropInfo.html", "structPurrNet_1_1Transports_1_1FragmentDropInfo" ],
         [ "GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", "classPurrNet_1_1Transports_1_1GenericTransport" ],
         [ "HostJoinInfo", "structPurrNet_1_1Transports_1_1HostJoinInfo.html", null ],
         [ "IConnectable", "interfacePurrNet_1_1Transports_1_1IConnectable.html", null ],
