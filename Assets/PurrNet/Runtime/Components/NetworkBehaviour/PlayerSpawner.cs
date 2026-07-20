@@ -24,7 +24,6 @@ namespace PurrNet
     [AddComponentMenu("PurrNet/Player Spawner")]
     public class PlayerSpawner : PurrMonoBehaviour
     {
-        [SerializeField, HideInInspector] private NetworkIdentity playerPrefab;
         [SerializeField] private GameObject _playerPrefab;
         [Tooltip("Even if rules are to not despawn on disconnect, this will ignore that and always spawn a player.")]
         [SerializeField] private bool _ignoreNetworkRules;
@@ -90,15 +89,6 @@ namespace PurrNet
 
             if (hadNullEntry)
                 PurrLogger.LogWarning($"Some spawn points were invalid and have been cleaned up.", this);
-        }
-
-        private void OnValidate()
-        {
-            if (playerPrefab)
-            {
-                _playerPrefab = playerPrefab.gameObject;
-                playerPrefab = null;
-            }
         }
 
         public override void Subscribe(NetworkManager manager, bool asServer)
