@@ -1,9 +1,11 @@
+using JetBrains.Annotations;
 using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine.Scripting;
 
 namespace PurrNet
 {
+    [MeansImplicitUse]
     public class ObserversRpcAttribute : PreserveAttribute
     {
         [UsedByIL]

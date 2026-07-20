@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine.Scripting;
@@ -12,6 +13,7 @@ namespace PurrNet
         Best
     }
 
+    [MeansImplicitUse]
     public class ServerRpcAttribute : PreserveAttribute
     {
         [UsedByIL]
