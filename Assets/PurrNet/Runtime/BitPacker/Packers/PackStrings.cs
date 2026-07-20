@@ -1,3 +1,4 @@
+using System.Buffers;
 using PurrNet.Modules;
 
 namespace PurrNet.Packing
@@ -53,14 +54,24 @@ namespace PurrNet.Packing
                     $"This likely indicates a corrupted or truncated network packet.");
             }
 
-            var chars = new char[strLen];
-
-            for (int i = 0; i < strLen; i++)
+            if (strLen == 0)
             {
-                packer.Read(ref chars[i]);
+                value = string.Empty;
+                return;
             }
 
-            value = new string(chars);
+            var chars = ArrayPool<char>.Shared.Rent(strLen);
+            try
+            {
+                for (int i = 0; i < strLen; i++)
+                    packer.Read(ref chars[i]);
+
+                value = new string(chars, 0, strLen);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(chars);
+            }
         }
 
         [UsedByIL]

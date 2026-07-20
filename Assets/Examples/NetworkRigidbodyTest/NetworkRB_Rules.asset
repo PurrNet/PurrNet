@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: NetworkRB_Rules
   m_EditorClassIdentifier: 
   _hostMigrationRules:
-    enabled: 1
     migrateAsHost: 1
+    sharePlayerCookiesWithPeers: 1
   _defaultSpawnRules:
     spawnAuth: 1
     despawnAuth: -1

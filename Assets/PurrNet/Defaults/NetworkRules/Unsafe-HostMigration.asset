@@ -13,10 +13,8 @@ MonoBehaviour:
   m_Name: Unsafe-HostMigration
   m_EditorClassIdentifier: 
   _hostMigrationRules:
-    enabled: 1
     migrateAsHost: 1
-    identitiesAlwaysVisible: 1
-    scenesAlwaysPublic: 1
+    sharePlayerCookiesWithPeers: 1
   _defaultSpawnRules:
     spawnAuth: 1
     despawnAuth: -1

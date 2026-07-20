@@ -1,4 +1,5 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
+using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Packing;
@@ -12,7 +13,7 @@ namespace PurrNet.Modules
 {
     public partial class ScenesModule
     {
-        private struct PendingAddressableSceneOperation
+        public struct PendingAddressableSceneOperation
         {
             public string guid;
             public AsyncOperationHandle<SceneInstance> handle;
@@ -32,6 +33,29 @@ namespace PurrNet.Modules
         private readonly Dictionary<string, List<SceneID>> _addressableSceneGuidToIds =
             new Dictionary<string, List<SceneID>>();
 
+        public delegate void OnAddressableSceneEvent(SceneID sceneId, string guid, bool asServer);
+
+        /// <summary>
+        /// Fired when an Addressable scene begins loading.
+        /// </summary>
+        public event OnAddressableSceneEvent onAddressableSceneStartLoading;
+
+        /// <summary>
+        /// Fired when an Addressable scene has finished loading and is registered.
+        /// </summary>
+        public event OnAddressableSceneEvent onAddressableSceneLoaded;
+
+        /// <summary>
+        /// Registers a completion callback on the addressable scene handle so that the
+        /// scene is processed as soon as it loads, rather than waiting for the next
+        /// FixedUpdate. This prevents a race condition where scene objects' Start()
+        /// fires before PurrNet has processed the loaded scene.
+        /// </summary>
+        private void RegisterAddressableCompletionCallback(AsyncOperationHandle<SceneInstance> handle)
+        {
+            handle.Completed += _ => ProcessCompletedAddressableLoads();
+        }
+
         partial void ProcessCompletedAddressableLoads()
         {
             for (var i = _pendingAddressableOperations.Count - 1; i >= 0; i--)
@@ -44,18 +68,11 @@ namespace PurrNet.Modules
                 if (op.handle.Status == AsyncOperationStatus.Succeeded)
                 {
                     var scene = op.handle.Result.Scene;
+                    _sceneActionScenes.Add(op.idToAssign);
                     AddScene(scene, op.settings, op.idToAssign);
-                    _addressableSceneHandles[op.idToAssign] = op.handle;
-                    if (!string.IsNullOrEmpty(op.guid))
-                    {
-                        _addressableSceneIdToGuid[op.idToAssign] = op.guid;
-                        if (!_addressableSceneGuidToIds.TryGetValue(op.guid, out var list))
-                        {
-                            list = new List<SceneID>();
-                            _addressableSceneGuidToIds[op.guid] = list;
-                        }
-                        list.Add(op.idToAssign);
-                    }
+                    RegisterAddressableSceneHandle(op.idToAssign, op.guid, op.handle);
+                    
+                    onAddressableSceneLoaded?.Invoke(op.idToAssign, op.guid, _asServer);
                 }
                 else
                 {
@@ -96,6 +113,9 @@ namespace PurrNet.Modules
                 idToAssign = action.sceneID,
                 settings = action.parameters
             });
+            _sceneActionScenes.Add(action.sceneID);
+
+            RegisterAddressableCompletionCallback(handle);
 
             if (_asServer && _networkManager.isHost)
             {
@@ -107,7 +127,11 @@ namespace PurrNet.Modules
                     idToAssign = action.sceneID,
                     settings = action.parameters
                 });
+                clientModule._sceneActionScenes.Add(action.sceneID);
+                clientModule.RegisterAddressableCompletionCallback(handle);
             }
+
+            onAddressableSceneStartLoading?.Invoke(action.sceneID, guid, _asServer);
         }
 
         private bool IsScenePendingAddressable(SceneID sceneId)
@@ -121,29 +145,226 @@ namespace PurrNet.Modules
             return false;
         }
 
+        private bool IsAddressableScenePending(SceneID sceneId, string guid)
+        {
+            for (var i = 0; i < _pendingAddressableOperations.Count; i++)
+            {
+                var operation = _pendingAddressableOperations[i];
+                if (operation.idToAssign != sceneId)
+                    continue;
+
+                return string.IsNullOrEmpty(guid) || operation.guid == guid;
+            }
+
+            return false;
+        }
+
         private bool TryUnloadAddressableScene(SceneID sceneId, UnloadSceneOptions options)
         {
-            if (!_addressableSceneHandles.TryGetValue(sceneId, out var handle))
+            return TryRemoveAddressableScene(sceneId, options, false);
+        }
+
+        private bool TryReconcileLoadedAddressableTransferScene(
+            LoadAddressableSceneAction loadAction,
+            ICollection<SceneID> replayLoadEvents)
+        {
+            var guid = loadAction.guid.value;
+            if (string.IsNullOrEmpty(guid))
                 return false;
 
-            if (!_scenes.TryGetValue(sceneId, out var state))
-                return false;
-
-            Addressables.UnloadSceneAsync(handle, options);
-            _addressableSceneHandles.Remove(sceneId);
-            if (_addressableSceneIdToGuid.TryGetValue(sceneId, out var guid))
+            if (_scenes.TryGetValue(loadAction.sceneID, out var existing))
             {
-                _addressableSceneIdToGuid.Remove(sceneId);
-                if (_addressableSceneGuidToIds.TryGetValue(guid, out var list))
+                if (IsLoadedAddressableScene(loadAction.sceneID, guid, existing))
                 {
-                    list.Remove(sceneId);
-                    if (list.Count == 0)
-                        _addressableSceneGuidToIds.Remove(guid);
+                    _scenes[loadAction.sceneID] = new SceneState(existing.scene, loadAction.parameters);
+                    _sceneActionScenes.Add(loadAction.sceneID);
+                    RegisterAddressableSceneGuid(loadAction.sceneID, guid);
+                    replayLoadEvents.Add(loadAction.sceneID);
+                    return true;
                 }
+
+                RemoveExistingTransferScene(loadAction.sceneID, existing);
             }
-            RemoveScene(state.scene);
+
+            if (!_addressableSceneGuidToIds.TryGetValue(guid, out var sceneIds))
+                return false;
+
+            var ids = new List<SceneID>(sceneIds);
+            for (var i = 0; i < ids.Count; i++)
+            {
+                var oldId = ids[i];
+                if (!_scenes.TryGetValue(oldId, out var state))
+                    continue;
+
+                if (!state.scene.IsValid() || !state.scene.isLoaded)
+                    continue;
+
+                MoveAddressableSceneRegistration(oldId, loadAction.sceneID, guid);
+                BindLoadedTransferScene(state.scene, loadAction.parameters, loadAction.sceneID);
+                replayLoadEvents.Add(loadAction.sceneID);
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsLoadedAddressableScene(SceneID sceneId, string guid, SceneState state)
+        {
+            if (!state.scene.IsValid() || !state.scene.isLoaded)
+                return false;
+
+            return _addressableSceneIdToGuid.TryGetValue(sceneId, out var existingGuid) && existingGuid == guid;
+        }
+
+        private void RemoveExistingTransferScene(SceneID sceneId, SceneState state)
+        {
+            if (TryRemoveAddressableScene(sceneId, UnloadSceneOptions.None, true))
+                return;
+
+            RemoveScene(state.scene, true);
+
+            if (!ShouldKeepLocalSceneDuringTransfer(state.scene) && state.scene.IsValid() && state.scene.isLoaded)
+                SceneManager.UnloadSceneAsync(state.scene);
+        }
+
+        private void RemoveStaleAddressableTransferScenes(
+            IReadOnlyDictionary<SceneID, string> targetAddressableScenes)
+        {
+            for (var i = _pendingAddressableOperations.Count - 1; i >= 0; i--)
+            {
+                var operation = _pendingAddressableOperations[i];
+                if (targetAddressableScenes.TryGetValue(operation.idToAssign, out var guid) &&
+                    operation.guid == guid)
+                {
+                    continue;
+                }
+
+                if (operation.handle.IsValid())
+                    Addressables.UnloadSceneAsync(operation.handle, UnloadSceneOptions.None);
+
+                _pendingAddressableOperations.RemoveAt(i);
+            }
+
+            var ids = new List<SceneID>(_addressableSceneIdToGuid.Keys);
+            for (var i = 0; i < ids.Count; i++)
+            {
+                var id = ids[i];
+                var existingGuid = _addressableSceneIdToGuid[id];
+                if (targetAddressableScenes.TryGetValue(id, out var targetGuid) && existingGuid == targetGuid)
+                    continue;
+
+                TryRemoveAddressableScene(id, UnloadSceneOptions.None, true);
+            }
+        }
+
+        partial void RebuildAddressableHistoryFromLoadedScenes()
+        {
+            for (var i = 0; i < _rawScenes.Count; i++)
+            {
+                var id = _rawScenes[i];
+                if (!_sceneActionScenes.Contains(id))
+                    continue;
+
+                if (!_scenes.TryGetValue(id, out var state))
+                    continue;
+
+                if (!state.scene.IsValid() || !state.scene.isLoaded)
+                    continue;
+
+                if (!_addressableSceneIdToGuid.TryGetValue(id, out var guid))
+                    continue;
+
+                _history.AddLoadAddressableAction(new LoadAddressableSceneAction
+                {
+                    guid = guid,
+                    sceneID = id,
+                    parameters = state.settings
+                });
+            }
+        }
+
+        private bool TryRemoveAddressableScene(
+            SceneID sceneId,
+            UnloadSceneOptions options,
+            bool playUnloadEventsImmediately)
+        {
+            var hasHandle = _addressableSceneHandles.TryGetValue(sceneId, out var handle);
+            var hasState = _scenes.TryGetValue(sceneId, out var state);
+
+            if (!hasHandle && !hasState && !_addressableSceneIdToGuid.ContainsKey(sceneId))
+                return false;
+
+            if (hasHandle && handle.IsValid())
+                Addressables.UnloadSceneAsync(handle, options);
+            else if (hasState && !ShouldKeepLocalSceneDuringTransfer(state.scene) &&
+                     state.scene.IsValid() && state.scene.isLoaded)
+                SceneManager.UnloadSceneAsync(state.scene);
+
+            UnregisterAddressableScene(sceneId);
+            if (hasState)
+                RemoveScene(state.scene, playUnloadEventsImmediately);
 
             return true;
+        }
+
+        private void RegisterAddressableSceneHandle(
+            SceneID sceneId,
+            string guid,
+            AsyncOperationHandle<SceneInstance> handle)
+        {
+            if (handle.IsValid())
+                _addressableSceneHandles[sceneId] = handle;
+
+            RegisterAddressableSceneGuid(sceneId, guid);
+        }
+
+        private void RegisterAddressableSceneGuid(SceneID sceneId, string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return;
+
+            _addressableSceneIdToGuid[sceneId] = guid;
+            if (!_addressableSceneGuidToIds.TryGetValue(guid, out var list))
+            {
+                list = new List<SceneID>();
+                _addressableSceneGuidToIds[guid] = list;
+            }
+
+            if (!list.Contains(sceneId))
+                list.Add(sceneId);
+        }
+
+        private void MoveAddressableSceneRegistration(SceneID oldId, SceneID newId, string guid)
+        {
+            if (_addressableSceneHandles.TryGetValue(oldId, out var handle))
+            {
+                _addressableSceneHandles.Remove(oldId);
+                if (handle.IsValid())
+                    _addressableSceneHandles[newId] = handle;
+            }
+
+            UnregisterAddressableSceneGuid(oldId);
+            RegisterAddressableSceneGuid(newId, guid);
+        }
+
+        private void UnregisterAddressableScene(SceneID sceneId)
+        {
+            _addressableSceneHandles.Remove(sceneId);
+            UnregisterAddressableSceneGuid(sceneId);
+        }
+
+        private void UnregisterAddressableSceneGuid(SceneID sceneId)
+        {
+            if (!_addressableSceneIdToGuid.TryGetValue(sceneId, out var guid))
+                return;
+
+            _addressableSceneIdToGuid.Remove(sceneId);
+            if (!_addressableSceneGuidToIds.TryGetValue(guid, out var list))
+                return;
+
+            list.Remove(sceneId);
+            if (list.Count == 0)
+                _addressableSceneGuidToIds.Remove(guid);
         }
 
         /// <summary>
@@ -168,8 +389,6 @@ namespace PurrNet.Modules
                 PurrLogger.LogError("LoadAddressableSceneAsync failed: AssetReference is null or invalid");
                 return default;
             }
-
-            HostMigrationCompatibility(ref settings);
 
             var idToAssign = GetNextID();
             var guid = sceneRef.AssetGUID;
@@ -200,6 +419,7 @@ namespace PurrNet.Modules
                 sceneID = idToAssign,
                 parameters = settings
             });
+            _sceneActionScenes.Add(idToAssign);
 
             var parameters = new LoadSceneParameters(settings.mode, settings.physicsMode);
             var handle = Addressables.LoadSceneAsync(sceneRef, parameters, true, 100);
@@ -212,6 +432,8 @@ namespace PurrNet.Modules
                 settings = settings
             });
 
+            RegisterAddressableCompletionCallback(handle);
+
             if (_networkManager.isHost)
             {
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
@@ -222,6 +444,8 @@ namespace PurrNet.Modules
                     idToAssign = idToAssign,
                     settings = settings
                 });
+                clientModule._sceneActionScenes.Add(idToAssign);
+                clientModule.RegisterAddressableCompletionCallback(handle);
             }
 
             return handle;
@@ -247,8 +471,6 @@ namespace PurrNet.Modules
                 PurrLogger.LogError("LoadAddressableSceneAsync failed: GUID is null or empty");
                 return default;
             }
-
-            HostMigrationCompatibility(ref settings);
 
             var idToAssign = GetNextID();
 
@@ -278,6 +500,7 @@ namespace PurrNet.Modules
                 sceneID = idToAssign,
                 parameters = settings
             });
+            _sceneActionScenes.Add(idToAssign);
 
             var parameters = new LoadSceneParameters(settings.mode, settings.physicsMode);
             var handle = Addressables.LoadSceneAsync(guid, parameters, true, 100);
@@ -290,6 +513,8 @@ namespace PurrNet.Modules
                 settings = settings
             });
 
+            RegisterAddressableCompletionCallback(handle);
+
             if (_networkManager.isHost)
             {
                 var clientModule = _networkManager.GetModule<ScenesModule>(false);
@@ -300,9 +525,21 @@ namespace PurrNet.Modules
                     idToAssign = idToAssign,
                     settings = settings
                 });
+                clientModule._sceneActionScenes.Add(idToAssign);
+                clientModule.RegisterAddressableCompletionCallback(handle);
             }
 
             return handle;
+        }
+
+        /// <summary>
+        /// Returns the pending addressable operations for this module.
+        /// This allows you to check if a scene is still loading or unloading and the progress of the operation.
+        /// </summary>
+        /// <returns>List of pending operations</returns>
+        public IReadOnlyList<PendingAddressableSceneOperation> GetPendingAddressableOperations()
+        {
+            return _pendingAddressableOperations;
         }
 
         /// <summary>

@@ -94,5 +94,31 @@ namespace PurrNet.Packing
             data = new BitData(packer, origin, lengthInt);
             packer.EnsurePadding();
         }
+
+        [UsedByIL]
+        public static bool WriteDelta(this BitPacker packer, BitData oldValue, BitData newValue)
+        {
+            Write(packer, newValue);
+            return true;
+        }
+
+        [UsedByIL]
+        public static void ReadDelta(this BitPacker packer, BitData oldValue, ref BitData newValue)
+        {
+            Read(packer, ref newValue);
+        }
+
+        [UsedByIL]
+        public static bool WriteDelta(this BitPacker packer, BitPacker oldValue, BitPacker newValue)
+        {
+            Write(packer, newValue);
+            return true;
+        }
+
+        [UsedByIL]
+        public static void ReadDelta(this BitPacker packer, BitPacker oldValue, ref BitPacker newValue)
+        {
+            Read(packer, ref newValue);
+        }
     }
 }

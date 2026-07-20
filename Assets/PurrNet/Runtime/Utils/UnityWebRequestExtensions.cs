@@ -64,7 +64,7 @@ namespace PurrNet
             {
                 return (IAwaiter)typeof(UnityWebRequestAsyncOperation)
                     .GetMethod("GetAwaiter")
-                    .Invoke(asyncOp, null);
+                    ?.Invoke(asyncOp, null);
             }
 
             return new UnityWebRequestAwaiter(asyncOp);

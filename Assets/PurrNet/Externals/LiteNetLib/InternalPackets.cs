@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Net;
 using LiteNetLib.Utils;
 
 namespace LiteNetLib
 {
-    internal sealed class NetConnectRequestPacket
+    public sealed class NetConnectRequestPacket
     {
         public const int HeaderSize = 18;
         public readonly long ConnectionTime;
@@ -13,8 +13,7 @@ namespace LiteNetLib
         public readonly NetDataReader Data;
         public readonly int PeerId;
 
-        private NetConnectRequestPacket(long connectionTime, byte connectionNumber, int localId, byte[] targetAddress,
-            NetDataReader data)
+        private NetConnectRequestPacket(long connectionTime, byte connectionNumber, int localId, byte[] targetAddress, NetDataReader data)
         {
             ConnectionTime = connectionTime;
             ConnectionNumber = connectionNumber;
@@ -23,12 +22,10 @@ namespace LiteNetLib
             PeerId = localId;
         }
 
-        public static int GetProtocolId(NetPacket packet)
-        {
-            return BitConverter.ToInt32(packet.RawData, 1);
-        }
+        internal static int GetProtocolId(NetPacket packet) =>
+            BitConverter.ToInt32(packet.RawData, 1);
 
-        public static NetConnectRequestPacket FromData(NetPacket packet)
+        internal static NetConnectRequestPacket FromData(NetPacket packet)
         {
             if (packet.ConnectionNumber >= NetConstants.MaxConnectionNumber)
                 return null;
@@ -40,7 +37,7 @@ namespace LiteNetLib
             int peerId = BitConverter.ToInt32(packet.RawData, 13);
 
             //Get target address
-            int addrSize = packet.RawData[HeaderSize - 1];
+            int addrSize = packet.RawData[HeaderSize-1];
             if (addrSize != 16 && addrSize != 28)
                 return null;
             byte[] addressBytes = new byte[addrSize];
@@ -48,17 +45,16 @@ namespace LiteNetLib
 
             // Read data and create request
             var reader = new NetDataReader(null, 0, 0);
-            if (packet.Size > HeaderSize + addrSize)
+            if (packet.Size > HeaderSize+addrSize)
                 reader.SetSource(packet.RawData, HeaderSize + addrSize, packet.Size);
 
             return new NetConnectRequestPacket(connectionTime, packet.ConnectionNumber, peerId, addressBytes, reader);
         }
 
-        public static NetPacket Make(NetDataWriter connectData, SocketAddress addressBytes, long connectTime,
-            int localId)
+        internal static NetPacket Make(ReadOnlySpan<byte> connectData, SocketAddress addressBytes, long connectTime, int localId)
         {
             //Make initial packet
-            var packet = new NetPacket(PacketProperty.ConnectRequest, connectData.Length + addressBytes.Size);
+            var packet = new NetPacket(PacketProperty.ConnectRequest, connectData.Length+addressBytes.Size);
 
             //Add data
             FastBitConverter.GetBytes(packet.RawData, 1, NetConstants.ProtocolId);
@@ -67,7 +63,7 @@ namespace LiteNetLib
             packet.RawData[HeaderSize - 1] = (byte)addressBytes.Size;
             for (int i = 0; i < addressBytes.Size; i++)
                 packet.RawData[HeaderSize + i] = addressBytes[i];
-            Buffer.BlockCopy(connectData.Data, 0, packet.RawData, HeaderSize + addressBytes.Size, connectData.Length);
+            connectData.CopyTo(packet.RawData.AsSpan(HeaderSize + addressBytes.Size));
             return packet;
         }
     }
@@ -122,9 +118,9 @@ namespace LiteNetLib
             return packet;
         }
 
-        public static NetPacket MakeNetworkChanged(NetPeer peer)
+        public static NetPacket MakeNetworkChanged(LiteNetPeer peer)
         {
-            var packet = new NetPacket(PacketProperty.PeerNotFound, Size - 1);
+            var packet = new NetPacket(PacketProperty.PeerNotFound, Size-1);
             FastBitConverter.GetBytes(packet.RawData, 1, peer.ConnectTime);
             packet.RawData[9] = peer.ConnectionNum;
             packet.RawData[10] = 1;

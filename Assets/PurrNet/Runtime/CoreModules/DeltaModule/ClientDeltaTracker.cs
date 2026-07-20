@@ -78,7 +78,7 @@ namespace PurrNet.Modules
             while (low <= high)
             {
                 int mid = (low + high) / 2;
-                if (_history[mid].enterTime < threshold)
+                if (_history[mid].enterTime >= threshold)
                 {
                     result = mid;
                     high = mid - 1;
@@ -108,10 +108,14 @@ namespace PurrNet.Modules
 
         public int FindBestMatch(out uint key)
         {
-            key = mostRecentId;
             int index = BinarySearch(mostRecentId);
             if (index < _history.Count && _history[index].key == mostRecentId)
+            {
+                key = mostRecentId;
                 return index;
+            }
+
+            key = 0;
             return -1;
         }
 
@@ -121,15 +125,10 @@ namespace PurrNet.Modules
             if (_history.Count < MAX_HISTORY_SIZE)
                 return 0;
 
-            if (_history.Count == 0)
-                return 0;
-
-            bool isFirstOldEnough = _history[0].enterTime < Time.unscaledTime - maxAge;
-
-            if (!isFirstOldEnough)
-                return 0;
-
             int removeUpTo = BinarySearchOlderThan(maxAge);
+
+            if (removeUpTo == 0)
+                return 0;
 
             for (int i = 0; i < removeUpTo; i++)
             {
@@ -236,11 +235,11 @@ namespace PurrNet.Modules
                 var old = _history[index];
                 if (old.value is IDisposable disposable)
                     disposable.Dispose();
-                _history[index] = new Entry { key = id, value = Packer.Copy(newValue) };
+                _history[index] = new Entry { key = id, value = Packer.Copy(newValue), enterTime = Time.unscaledTime };
             }
             else
             {
-                _history.Insert(index, new Entry { key = id, value = Packer.Copy(newValue) });
+                _history.Insert(index, new Entry { key = id, value = Packer.Copy(newValue), enterTime = Time.unscaledTime });
             }
         }
     }

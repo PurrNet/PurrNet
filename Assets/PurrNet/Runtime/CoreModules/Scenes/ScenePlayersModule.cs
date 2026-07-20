@@ -92,6 +92,7 @@ namespace PurrNet.Modules
                 else _players.onLocalPlayerReceivedID += OnLocalPlayerReady;
 
                 _scenes.onSceneLoaded += OnClientSceneLoaded;
+                _scenes.onSceneUnloaded += OnClientSceneUnloaded;
             }
         }
 
@@ -123,7 +124,8 @@ namespace PurrNet.Modules
             else
             {
                 _players.onLocalPlayerReceivedID -= OnLocalPlayerReady;
-                _scenes.onSceneUnloaded -= OnClientSceneLoaded;
+                _scenes.onSceneLoaded -= OnClientSceneLoaded;
+                _scenes.onSceneUnloaded -= OnClientSceneUnloaded;
             }
         }
 
@@ -161,6 +163,15 @@ namespace PurrNet.Modules
             _players.SendToServer(new ClientFinishedLoadingScene { scene = scene });
         }
 
+        private void OnClientSceneUnloaded(SceneID scene, bool asServer)
+        {
+            if (!_players.localPlayerId.HasValue)
+                return;
+
+            onPlayerLeftScene?.Invoke(_players.localPlayerId.Value, scene, asServer);
+            onPlayerUnloadedScene?.Invoke(_players.localPlayerId.Value, scene, asServer);
+        }
+
         private void RemoteClientLoadedScene(PlayerID player, ClientFinishedLoadingScene data, bool asServer)
         {
             if (!_scenePlayers.TryGetValue(data.scene, out var playersInScene))
@@ -171,8 +182,10 @@ namespace PurrNet.Modules
 
             if (_sceneLoadedPlayers.TryGetValue(data.scene, out var loadedPlayers))
             {
-                if (!loadedPlayers.Contains(player))
-                    loadedPlayers.Add(player);
+                if (loadedPlayers.Contains(player))
+                    return;
+
+                loadedPlayers.Add(player);
             }
             else
             {
@@ -197,8 +210,10 @@ namespace PurrNet.Modules
 
             if (_sceneLoadedPlayers.TryGetValue(scene, out var loadedPlayers))
             {
-                if (!loadedPlayers.Contains(bot))
-                    loadedPlayers.Add(bot);
+                if (loadedPlayers.Contains(bot))
+                    return;
+
+                loadedPlayers.Add(bot);
             }
             else
             {
@@ -267,18 +282,6 @@ namespace PurrNet.Modules
 
         private void OnPlayerJoined(PlayerID player, bool isReconnect, bool asServer)
         {
-            if (isReconnect && !_manager.networkRules.ShouldRemovePlayerFromSceneOnLeave())
-            {
-                /*foreach (var (scene, players) in _scenePlayers)
-                {
-                    if (players.Contains(player))
-                        continue;
-
-                    AddPlayerToScene
-                }*/
-                return;
-            }
-
             for (var i = 0; i < _scenes.scenes.Count; i++)
             {
                 var scene = _scenes.scenes[i];
@@ -287,6 +290,9 @@ namespace PurrNet.Modules
                     continue;
 
                 if (!state.settings.isPublic)
+                    continue;
+
+                if (!state.scene.IsValid() || !state.scene.isLoaded)
                     continue;
 
                 AddPlayerToScene(player, scene);
@@ -346,13 +352,56 @@ namespace PurrNet.Modules
                 return;
             }
 
-            if (!playersInScene.Contains(player))
+            if (playersInScene.Contains(player))
             {
-                playersInScene.Add(player);
-                onPlayerJoinedScene?.Invoke(player, scene, _asServer);
-                if(player.isBot)
-                    NotifyBotSceneLoaded(player, scene);
+                if (!IsPlayerLoadedInScene(player, scene))
+                {
+                    if (CanRestoreLoadedStateWithoutSceneAction(scene))
+                        MarkPlayerLoadedInScene(player, scene);
+                }
+
+                return;
             }
+
+            playersInScene.Add(player);
+            onPlayerJoinedScene?.Invoke(player, scene, _asServer);
+            if(player.isBot)
+                NotifyBotSceneLoaded(player, scene);
+        }
+
+        private bool CanRestoreLoadedStateWithoutSceneAction(SceneID scene)
+        {
+            if (!_scenes.TryGetSceneState(scene, out var state))
+                return false;
+
+            if (!state.settings.isPublic)
+                return false;
+
+            if (!state.scene.IsValid() || !state.scene.isLoaded)
+                return false;
+
+            if (_manager.gameObject.scene.handle == state.scene.handle)
+                return true;
+
+            var originalScene = _manager.originalScene;
+            return originalScene.IsValid() && originalScene.handle == state.scene.handle;
+        }
+
+        private void MarkPlayerLoadedInScene(PlayerID player, SceneID scene)
+        {
+            if (!_sceneLoadedPlayers.TryGetValue(scene, out var loadedPlayers))
+            {
+                PurrLogger.LogError($"SceneID '{scene}' not found in scene loaded players dictionary");
+                return;
+            }
+
+            if (loadedPlayers.Contains(player))
+                return;
+
+            loadedPlayers.Add(player);
+            onPrePlayerLoadedScene?.Invoke(player, scene, _asServer);
+            onPlayerLoadedScene?.Invoke(player, scene, _asServer);
+            onPostPlayerLoadedScene?.Invoke(player, scene, _asServer);
         }
 
         public bool TryGetScenesForPlayer(PlayerID playerId, out SceneID[] scenes)

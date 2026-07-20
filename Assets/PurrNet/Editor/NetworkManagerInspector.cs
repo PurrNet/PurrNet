@@ -23,6 +23,7 @@ namespace PurrNet.Editor
         private SerializedProperty _transport;
         private SerializedProperty _tickRate;
         private SerializedProperty _visibilityRules;
+        private SerializedProperty _mtuExceededBehaviour;
         private SerializedProperty _patchLingeringProcessBug;
 
         private bool _showStatusFoldout = true;
@@ -52,6 +53,7 @@ namespace PurrNet.Editor
             _transport = serializedObject.FindProperty("_transport");
             _tickRate = serializedObject.FindProperty("_tickRate");
             _visibilityRules = serializedObject.FindProperty("_visibilityRules");
+            _mtuExceededBehaviour = serializedObject.FindProperty("_mtuExceededBehaviour");
             _patchLingeringProcessBug = serializedObject.FindProperty("_patchLingeringProcessBug");
             _authenticator = serializedObject.FindProperty("_authenticator");
 
@@ -176,6 +178,14 @@ namespace PurrNet.Editor
         {
             EditorGUILayout.PropertyField(_startServerFlags);
             EditorGUILayout.PropertyField(_startClientFlags);
+
+            if (NetworkManager.areFlagsDisabled)
+            {
+                EditorGUILayout.HelpBox(
+                    "Auto start flags are globally disabled via NetworkManager.DisableFlags(). " +
+                    "The server/client will NOT auto start until a matching number of EnableFlags() calls are made.",
+                    MessageType.Warning);
+            }
             EditorGUILayout.PropertyField(_cookieScope);
 
             bool isRunning = _networkManager && (_networkManager.isClient || _networkManager.isServer);
@@ -185,7 +195,7 @@ namespace PurrNet.Editor
             EditorGUILayout.PropertyField(_transport);
             DrawNetworkPrefabs();
             if(_addressableNetworkPrefabs != null)
-                EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+                DrawAddressableNetworkPrefabs();
             DrawNetworkAssets();
             EditorGUILayout.PropertyField(_networkRules);
             EditorGUILayout.PropertyField(_visibilityRules);
@@ -201,6 +211,7 @@ namespace PurrNet.Editor
 
             GUI.enabled = isDisconnected;
             RenderTickSlider();
+            EditorGUILayout.PropertyField(_mtuExceededBehaviour, new GUIContent("MTU Exceeded Behaviour"));
             EditorGUILayout.PropertyField(_stopPlayingOnDisconnect);
             EditorGUILayout.PropertyField(_patchLingeringProcessBug);
             GUI.enabled = true;
@@ -245,6 +256,31 @@ namespace PurrNet.Editor
 
             EditorGUILayout.EndHorizontal();
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        private void DrawAddressableNetworkPrefabs()
+        {
+            EditorGUILayout.BeginHorizontal();
+            Color originalBgColor = GUI.backgroundColor;
+
+            EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+            GUI.backgroundColor = originalBgColor;
+
+            if (_addressableNetworkPrefabs.objectReferenceValue == null)
+            {
+                if (GUILayout.Button("New", GUILayout.Width(50)))
+                    CreateNewAddressableNetworkPrefabs();
+            }
+
+            EditorGUILayout.EndHorizontal();
+        }
+#else
+        private void DrawAddressableNetworkPrefabs()
+        {
+            EditorGUILayout.PropertyField(_addressableNetworkPrefabs);
+        }
+#endif
+
 
         private void DrawStatusFoldout()
         {
@@ -308,7 +344,7 @@ namespace PurrNet.Editor
 
             if (_networkManager.TryGetPlayerScenes(playerId, out var scenes) && scenes.Length > 0)
             {
-                DrawPlayerScenes(scenes);
+                DrawPlayerScenes(playerId, scenes);
             }
             else
             {
@@ -318,7 +354,7 @@ namespace PurrNet.Editor
             EditorGUI.indentLevel--;
         }
 
-        private void DrawPlayerScenes(SceneID[] scenes)
+        private void DrawPlayerScenes(PlayerID player, SceneID[] scenes)
         {
             EditorGUILayout.LabelField("Scenes (SceneId):");
             foreach (var sceneId in scenes)
@@ -326,8 +362,10 @@ namespace PurrNet.Editor
                 if (!_networkManager.TryGetScene(sceneId, out var scene))
                     continue;
 
+                bool loaded = _networkManager.scenePlayersModule.IsPlayerLoadedInScene(player, sceneId);
+
                 EditorGUI.indentLevel++;
-                EditorGUILayout.LabelField($"- {scene.name} ({sceneId})");
+                EditorGUILayout.LabelField($"- {scene.name}; ID: {sceneId}; Loaded: {loaded})");
                 EditorGUI.indentLevel--;
             }
         }
@@ -480,5 +518,24 @@ namespace PurrNet.Editor
 
             EditorGUIUtility.PingObject(networkAssets);
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        private void CreateNewAddressableNetworkPrefabs()
+        {
+            string folderPath = "Assets";
+
+            var addressableNetworkPrefabs = ScriptableObject.CreateInstance<AddressableNetworkPrefabs>();
+            string assetPath = $"{folderPath}/AddressableNetworkPrefabs.asset";
+            assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
+
+            AssetDatabase.CreateAsset(addressableNetworkPrefabs, assetPath);
+            AssetDatabase.SaveAssets();
+
+            _addressableNetworkPrefabs.objectReferenceValue = addressableNetworkPrefabs;
+            serializedObject.ApplyModifiedProperties();
+
+            EditorGUIUtility.PingObject(addressableNetworkPrefabs);
+        }
+#endif
     }
 }

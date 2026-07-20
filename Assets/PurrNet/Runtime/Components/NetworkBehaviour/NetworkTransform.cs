@@ -1,6 +1,9 @@
+using System;
+using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Utils;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -9,22 +12,32 @@ namespace PurrNet
     [AddComponentMenu("PurrNet/Network Transform")]
     public sealed class NetworkTransform : NetworkIdentity, INetworkTransform
     {
+        public static INetworkTransformPositionTransform defaultPositionTransform { get; set; }
+
         [Header("What to Sync")]
         [Tooltip("Whether to sync the position of the transform. And if so, in what space.")]
         [SerializeField, PurrLock]
         private SyncMode _syncPosition = SyncMode.World;
 
-        [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")] [SerializeField, PurrLock]
+        [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")]
+        [SerializeField, PurrLock]
         private SyncMode _syncRotation = SyncMode.World;
 
-        [Tooltip("Whether to sync the scale of the transform.")] [SerializeField, PurrLock]
+        [Tooltip("Whether to sync the scale of the transform.")]
+        [SerializeField, PurrLock]
         private bool _syncScale = true;
 
-        [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentiy.")]
+        [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.")]
         [SerializeField, PurrLock]
         private bool _syncParent = true;
 
-        [Header("How to Sync")] [Tooltip("What to interpolate when syncing the transform.")] [SerializeField, PurrLock]
+        [Tooltip("Forces any attached Rigidbody to sleep if not the controller, to ensure better syncing when RB is present.")]
+        [SerializeField, PurrLock]
+        private bool _forceSleepRb = true;
+
+        [Header("How to Sync")]
+        [Tooltip("What to interpolate when syncing the transform.")]
+        [SerializeField, PurrLock]
         private TransformSyncMode _interpolateSettings =
             TransformSyncMode.Position | TransformSyncMode.Rotation | TransformSyncMode.Scale;
         [Tooltip("The minimum amount of buffered ticks to store.\nThis is used for interpolation.")]
@@ -47,7 +60,7 @@ namespace PurrNet
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
         /// <summary>
-        /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentiy.
+        /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
         public bool syncParent => _syncParent;
 
@@ -104,7 +117,16 @@ namespace PurrNet
         Interpolated<QuaternionWithParent> _rotation;
         Interpolated<ScaleWithParent> _scale;
 
-        public Vector3 latestReadPosition => _lastReadData.position;
+        public Vector3 latestReadPosition
+        {
+            get
+            {
+                if (_lastReadData.absolutePosition.HasValue &&
+                    TryResolvePositionTransform(out var trs))
+                    return trs.ToLocal(this, _lastReadData.absolutePosition.Value);
+                return _lastReadData.position.GetValueOrDefault();
+            }
+        }
 
         public Quaternion latestReadRotation => _lastReadData.rotation;
 
@@ -113,68 +135,105 @@ namespace PurrNet
         private Transform _trs;
 #if UNITY_PHYSICS_3D
         private Rigidbody _rb;
+        private bool _hasRigidbody;
 #endif
 #if UNITY_PHYSICS_2D
         private Rigidbody2D _rb2d;
+        private bool _hasRigidbody2D;
 #endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
 #endif
 
-        private bool _prevWasController;
-
         public Vector3 position { get; private set; }
         public Quaternion rotation { get; private set; }
         public Vector3 localScale { get; private set; }
 
+        private Action _onLateLateUpdate;
+
+        private bool _positionTransformExplicit;
+        private bool _useAbsoluteFrame;
+
+#if UNITY_PHYSICS_3D
+        private Vector3 _pendingRbPosition;
+        private Quaternion _pendingRbRotation;
+        private bool _pendingRbHasPosition;
+        private bool _pendingRbHasRotation;
+#endif
+
+        public INetworkTransformPositionTransform positionTransform { get; private set; }
+
+        public void SetPositionTransform(INetworkTransformPositionTransform transform)
+        {
+            positionTransform = transform;
+            _positionTransformExplicit = transform != null;
+        }
+
+        private void ResolvePositionTransform()
+        {
+            if (!_positionTransformExplicit)
+                positionTransform = defaultPositionTransform;
+
+            _useAbsoluteFrame = positionTransform != null &&
+                                (_syncPosition == SyncMode.World ||
+                                 (_syncPosition == SyncMode.Local && _trs && !_trs.parent));
+        }
+
         private void Awake()
         {
+            _onLateLateUpdate = LateLateUpdate;
             _trs = transform;
 #if UNITY_PHYSICS_3D
             _rb = GetComponent<Rigidbody>();
+            _hasRigidbody = _rb;
             _controller = GetComponent<CharacterController>();
 #endif
 #if UNITY_PHYSICS_2D
             _rb2d = GetComponent<Rigidbody2D>();
+            _hasRigidbody2D = _rb2d;
 #endif
         }
 
         private void OnEnable()
         {
-            UnityLatestUpdate.onLatestUpdate += LateLateUpdate;
+            UnityLatestUpdate.onLatestUpdate += _onLateLateUpdate;
 
-            if (_trs == null)
+            if (!_trs)
                 return;
 
-            // Reset delta compression state to prevent stale reference points
-            _currentData = GetCurrentTransformData();
-            _latestData = _currentData;
-            _lastReadData = _currentData;
-            _lastSentDelta = _currentData;
-
-            // Force sync if we're the controller and spawned
-            if (_wasOnSpawnedCalled && isController) {
-                ForceSync();
+            if (_wasOnSpawnedCalled)
+            {
+                if (_cachedIsController)
+                {
+                    ForceSync();
+                }
+                else
+                {
+                    RefreshCurrentState();
+                    TeleportToData(_currentData);
+                }
             }
         }
 
         private void OnDisable()
         {
-            UnityLatestUpdate.onLatestUpdate -= LateLateUpdate;
+            UnityLatestUpdate.onLatestUpdate -= _onLateLateUpdate;
         }
 
         protected override void OnEarlySpawn()
         {
             _trs = transform;
+            ReCacheIsController();
+            ResolvePositionTransform();
 
             float sendDelta = networkManager.tickModule.tickDelta;
             var p = _trs.parent;
 
+            var data = GetCurrentTransformData();
+
             if (syncPosition)
             {
-                var currentPos = _syncPosition == SyncMode.World ?
-                    new Vector3WithParent(p, false, _trs.position) :
-                    new Vector3WithParent(p, true, _trs.localPosition);
+                var currentPos = MakePositionSample(p, data);
                 _position = new Interpolated<Vector3WithParent>(interpolatePosition ? Vector3WithParent.Lerp : Vector3WithParent.NoLerp,
                     sendDelta, currentPos, _maxBufferSize, _minBufferSize);
             }
@@ -196,10 +255,50 @@ namespace PurrNet
                     sendDelta, currentScale, _maxBufferSize, _minBufferSize);
             }
 
-            _currentData = GetCurrentTransformData();
-            _latestData = _currentData;
-            _lastReadData = _currentData;
-            _lastSentDelta = _currentData;
+            _currentData = data;
+            _latestData = data;
+            _lastReadData = data;
+            _lastSentDelta = data;
+
+            ResetUnreliableRecvState();
+            BumpSendGen();
+#if UNITY_PHYSICS_3D
+            _pendingRbHasPosition = false;
+            _pendingRbHasRotation = false;
+#endif
+            RefreshLatestFrame();
+            _currentFrame = _latestFrame;
+            _currentParentId = _latestParentId;
+            CaptureUnreliableState();
+        }
+
+        private Vector3WithParent MakePositionSample(Transform p, NetworkTransformData data)
+        {
+            if (data.absolutePosition.HasValue)
+            {
+                if (TryResolvePositionTransform(out var trs))
+                    return new Vector3WithParent(this, trs, data.absolutePosition.Value);
+
+                PurrLogger.LogError(
+                    $"'{name}' received an absolute-frame position but has no {nameof(INetworkTransformPositionTransform)} " +
+                    $"to decode it. Assign one via {nameof(SetPositionTransform)} or {nameof(defaultPositionTransform)}.", this);
+            }
+            if (!data.position.HasValue)
+            {
+                PurrLogger.LogError(
+                    $"'{name}' received a {nameof(NetworkTransformData)} with no position in either frame. " +
+                    $"Holding the current transform instead of snapping to the parent origin.", this);
+                bool local = _syncPosition == SyncMode.Local;
+                return new Vector3WithParent(p, local, local ? _trs.localPosition : _trs.position);
+            }
+
+            return new Vector3WithParent(p, _syncPosition == SyncMode.Local, data.position.Value);
+        }
+
+        private bool TryResolvePositionTransform(out INetworkTransformPositionTransform transform)
+        {
+            transform = positionTransform ?? defaultPositionTransform;
+            return transform != null;
         }
 
         protected override void OnOwnerReconnected(PlayerID ownerId)
@@ -212,9 +311,14 @@ namespace PurrNet
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
         {
             _cachedConnectedOwner = hasConnectedOwner;
-            _cachedIsController = IsController(_ownerAuth);
+            ReCacheIsController();
+            BumpSendGen();
 
-            if (!enabled) {
+            if (isServer)
+                ResetUnreliableRecvState();
+
+            if (!enabled)
+            {
                 return;
             }
 
@@ -226,26 +330,37 @@ namespace PurrNet
 
             if (asServer)
             {
+                var state = currentState;
+
                 if (newOwner.HasValue && newOwner != localPlayer)
-                    SendLatestState(newOwner.Value, _currentData, false);
+                    SendLatestState(newOwner.Value, state, false, _sendGen);
 
                 if (oldOwner.HasValue && newOwner != oldOwner && oldOwner != localPlayer)
-                    SendLatestState(oldOwner.Value, _currentData, false);
+                    SendLatestState(oldOwner.Value, state, false, _sendGen);
             }
             else if (newOwner == localPlayer && !isServer)
             {
-                _currentData = GetCurrentTransformData();
-                _latestData = _currentData;
-                SendLatestStateToServer(_currentData);
-                _lastSentDelta = _currentData;
+                RefreshCurrentState();
+                SendLatestStateToServer(currentState, _sendGen);
             }
+        }
+
+        private void ReCacheIsController()
+        {
+            var wasController = _cachedIsController;
+            _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
         }
 
         private bool _wasOnSpawnedCalled;
 
         protected override void OnSpawned(bool asServer)
         {
+            var wasController = _cachedIsController;
             _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
             _wasOnSpawnedCalled = true;
 
             if (!networkManager.TryGetModule<NetworkTransformFactory>(asServer, out var factory))
@@ -256,10 +371,8 @@ namespace PurrNet
 
             if (!asServer && !isServer && IsController(localPlayerForced, _ownerAuth, false))
             {
-                _currentData = GetCurrentTransformData();
-                _latestData = _currentData;
-                SendLatestStateToServer(_currentData);
-                _lastSentDelta = _currentData;
+                RefreshCurrentState();
+                SendLatestStateToServer(currentState, _sendGen);
             }
 
             ntModule.Register(this);
@@ -293,7 +406,10 @@ namespace PurrNet
 
         protected override void OnObserverAdded(PlayerID player)
         {
-            if (!enabled) {
+            InvalidateObserverBaseline(player, true);
+
+            if (!enabled)
+            {
                 return;
             }
 
@@ -301,7 +417,22 @@ namespace PurrNet
                 return;
 
             if (!_ownerAuth || player != owner)
-                SendLatestState(player, _currentData, true);
+                SendLatestState(player, currentState, true, _sendGen);
+        }
+
+        protected override void OnObserverRemoved(PlayerID player)
+        {
+            InvalidateObserverBaseline(player, false);
+        }
+
+        private void InvalidateObserverBaseline(PlayerID player, bool enqueue)
+        {
+            if (!networkManager || !id.HasValue)
+                return;
+
+            if (networkManager.TryGetModule<NetworkTransformFactory>(isServer, out var factory) &&
+                factory.TryGetModule(sceneId, out var ntModule))
+                ntModule.InvalidateSendBaseline(player, id.Value, enqueue);
         }
 
         /// <summary>
@@ -312,9 +443,9 @@ namespace PurrNet
             if (target == localPlayer)
                 return;
 
-            _currentData = GetCurrentTransformData();
-            _latestData = _currentData;
-            SendLatestState(target, _currentData, true);
+            BumpSendGen(target);
+            RefreshCurrentState();
+            SendLatestState(target, currentState, true, _sendGen);
         }
 
         /// <summary>
@@ -325,50 +456,58 @@ namespace PurrNet
             if (!_cachedIsController)
                 return;
 
-            _currentData = GetCurrentTransformData();
-            _latestData = _currentData;
+            BumpSendGen();
+            RefreshCurrentState();
             _lastSentDelta = _currentData;
+            var state = currentState;
 
             if (isServer)
             {
                 int obCount = observers.Count;
+                var localP = localPlayer;
+
                 for (var i = 0; i < obCount; i++)
                 {
                     var observer = observers[i];
 
-                    if (owner == observer)
+                    if ((_ownerAuth && owner == observer) || observer == localP)
                         continue;
 
-                    SendLatestState(observer, _currentData, true);
+                    SendLatestState(observer, state, true, _sendGen);
                 }
             }
             else
             {
-                ForceSyncServer(_currentData);
+                ForceSyncServer(state, _sendGen);
             }
         }
 
         [ServerRpc]
-        private void ForceSyncServer(NetworkTransformData data)
+        private void ForceSyncServer(NetworkTransformState state, byte gen, RPCInfo info = default)
         {
-            if (!_ownerAuth)
+            if (!_ownerAuth || !IsControlling(info.sender, false))
                 return;
 
-            _lastReadData = data;
-            _currentData = data;
+            if (!ForceAdoptRecvGen(gen))
+                return;
 
-            TeleportToData(data);
+            BumpSendGen();
+            AdoptState(state);
+            _lastSentDelta = state.data;
+            TeleportToState(state);
             ApplyLerpedPosition();
 
             int obCount = observers.Count;
+            var localP = localPlayer;
+
             for (var i = 0; i < obCount; i++)
             {
                 var observer = observers[i];
 
-                if (owner == observer)
+                if (owner == observer || observer == localP)
                     continue;
 
-                SendLatestState(observer, data, true);
+                SendLatestState(observer, state, true, _sendGen);
             }
         }
 
@@ -380,7 +519,13 @@ namespace PurrNet
         {
             var p = _trs.parent;
             if (syncPosition && targetPos.HasValue)
-                _position.Teleport(new Vector3WithParent(p, _syncPosition == SyncMode.Local, targetPos.Value));
+            {
+                if (_useAbsoluteFrame)
+                    _position.Teleport(new Vector3WithParent(this, positionTransform,
+                        positionTransform.ToAbsolute(this, targetPos.Value)));
+                else
+                    _position.Teleport(new Vector3WithParent(p, _syncPosition == SyncMode.Local, targetPos.Value));
+            }
             if (syncRotation && targetRot.HasValue)
                 _rotation.Teleport(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, targetRot.Value));
             if (syncScale && targetScale.HasValue)
@@ -388,25 +533,41 @@ namespace PurrNet
         }
 
         [ServerRpc]
-        private void SendLatestStateToServer(NetworkTransformData data, RPCInfo info = default)
+        private void SendLatestStateToServer(NetworkTransformState state, byte gen, RPCInfo info = default)
         {
-            _lastReadData = data;
-            _currentData = data;
-            TeleportToData(data);
+            if (!_ownerAuth || !IsControlling(info.sender, false))
+                return;
+
+            if (!ForceAdoptRecvGen(gen))
+                return;
+
+            BumpSendGen();
+            AdoptState(state);
+            _lastSentDelta = state.data;
+            TeleportToState(state);
             ApplyLerpedPosition();
         }
 
         [TargetRpc]
-        private void SendLatestState(PlayerID player, NetworkTransformData data, bool applyPosition)
+        private void SendLatestState(PlayerID player, NetworkTransformState state, bool applyPosition, byte gen)
         {
-            _lastReadData = data;
-            _currentData = data;
+            TryApplyTargetedState(state, applyPosition, gen);
+        }
+
+        internal bool TryApplyTargetedState(in NetworkTransformState state, bool applyPosition, byte gen)
+        {
+            if (!ForceAdoptRecvGen(gen))
+                return false;
+
+            AdoptState(state);
 
             if (applyPosition)
             {
-                TeleportToData(data);
+                TeleportToState(state);
                 ApplyLerpedPosition();
             }
+
+            return true;
         }
 
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
@@ -415,16 +576,53 @@ namespace PurrNet
             if (!isSpawned)
                 return;
 
-            bool isNotController = !_cachedIsController;
+            if (_cachedIsController)
+                return;
 
-            if (isNotController)
+#if UNITY_PHYSICS_3D
+            ApplyPendingRigidbodyPose();
+#endif
+
+            if (_forceSleepRb)
             {
 #if UNITY_PHYSICS_3D
-                if (_rb) _rb.Sleep();
+                if (_hasRigidbody && _rb) _rb.Sleep();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_rb2d) _rb2d.Sleep();
+                if (_hasRigidbody2D && _rb2d) _rb2d.Sleep();
 #endif
+            }
+        }
+#endif
+
+#if UNITY_PHYSICS_3D
+        private void ApplyPendingRigidbodyPose()
+        {
+            if (!_hasRigidbody || !_rb)
+                return;
+
+            if (_pendingRbHasPosition)
+            {
+                _pendingRbHasPosition = false;
+                if ((_rb.position - _pendingRbPosition).sqrMagnitude > 0.00000001f)
+                {
+                    if (_forceSleepRb)
+                        _rb.position = _pendingRbPosition;
+                    else
+                        _rb.MovePosition(_pendingRbPosition);
+                }
+            }
+
+            if (_pendingRbHasRotation)
+            {
+                _pendingRbHasRotation = false;
+                if (Quaternion.Angle(_rb.rotation, _pendingRbRotation) > 0.005f)
+                {
+                    if (_forceSleepRb)
+                        _rb.rotation = _pendingRbRotation;
+                    else
+                        _rb.MoveRotation(_pendingRbRotation);
+                }
             }
         }
 #endif
@@ -447,6 +645,25 @@ namespace PurrNet
                 UpdateNT();
         }
 
+        private void OnIsControlledChanged(bool isController)
+        {
+            if (!isController)
+            {
+                _latestData = GetCurrentTransformData();
+                RefreshLatestFrame();
+                TeleportToData(_latestData);
+            }
+            else
+            {
+#if UNITY_PHYSICS_3D
+                if (_rb) _rb.WakeUp();
+#endif
+#if UNITY_PHYSICS_2D
+                if (_rb2d) _rb2d.WakeUp();
+#endif
+            }
+        }
+
         private void UpdateNT()
         {
             if (!isSpawned)
@@ -456,27 +673,8 @@ namespace PurrNet
 
             if (!isLocalController)
                 ApplyLerpedPosition();
-
             _latestData = GetCurrentTransformData();
-            if (isLocalController)
-                TeleportToData(_latestData);
-
-#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-            if (_prevWasController != isLocalController)
-            {
-#if UNITY_PHYSICS_3D
-                if (isLocalController && _rb)
-                    _rb.WakeUp();
-#endif
-
-#if UNITY_PHYSICS_2D
-                if (isLocalController && _rb2d)
-                    _rb2d.WakeUp();
-#endif
-
-                _prevWasController = isLocalController;
-            }
-#endif
+            RefreshLatestFrame();
         }
 
         private void ApplyLerpedPosition()
@@ -491,14 +689,34 @@ namespace PurrNet
             if (syncPosition)
             {
                 var worldPos = _position.Advance(Time.unscaledDeltaTime).position;
-                _trs.position = worldPos;
+#if UNITY_PHYSICS_3D
+                if (_hasRigidbody && _rb)
+                {
+                    _pendingRbPosition = worldPos;
+                    _pendingRbHasPosition = true;
+                }
+                else
+#endif
+                {
+                    _trs.position = worldPos;
+                }
                 position = worldPos;
             }
 
             if (syncRotation)
             {
                 var worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
-                _trs.rotation = worldRot;
+#if UNITY_PHYSICS_3D
+                if (_hasRigidbody && _rb)
+                {
+                    _pendingRbRotation = worldRot;
+                    _pendingRbHasRotation = true;
+                }
+                else
+#endif
+                {
+                    _trs.rotation = worldRot;
+                }
                 rotation = worldRot;
             }
 
@@ -519,23 +737,49 @@ namespace PurrNet
 
         private NetworkTransformData GetCurrentTransformData()
         {
-            var pos = _syncPosition switch
-            {
-                SyncMode.World => _trs.position,
-                SyncMode.Local => _trs.localPosition,
-                _ => Vector3.zero
-            };
+            Vector3 pos;
+            Quaternion rot;
 
-            var rot = _syncRotation switch
+            if (_syncPosition == _syncRotation)
             {
-                SyncMode.World => _trs.rotation,
-                SyncMode.Local => _trs.localRotation,
-                _ => Quaternion.identity
-            };
+                switch (_syncPosition)
+                {
+                    case SyncMode.World:
+                        _trs.GetPositionAndRotation(out pos, out rot);
+                        break;
+                    case SyncMode.Local:
+                        _trs.GetLocalPositionAndRotation(out pos, out rot);
+                        break;
+                    case SyncMode.No:
+                    default:
+                        pos = Vector3.zero;
+                        rot = Quaternion.identity;
+                        break;
+                }
+            }
+            else
+            {
+                pos = _syncPosition switch
+                {
+                    SyncMode.World => _trs.position,
+                    SyncMode.Local => _trs.localPosition,
+                    _ => Vector3.zero
+                };
 
+                rot = _syncRotation switch
+                {
+                    SyncMode.World => _trs.rotation,
+                    SyncMode.Local => _trs.localRotation,
+                    _ => Quaternion.identity
+                };
+            }
 
             var ntScale = _syncScale ? _trs.localScale : default;
-            return new NetworkTransformData(pos, rot, ntScale);
+
+            if (_useAbsoluteFrame)
+                return new NetworkTransformData(null, positionTransform.ToAbsolute(this, pos), rot, ntScale);
+
+            return new NetworkTransformData((CompressedVector3)pos, null, rot, ntScale);
         }
 
         void OnTransformParentChanged()
@@ -545,6 +789,20 @@ namespace PurrNet
 
             if (_isIgnoringParentChanges)
                 return;
+
+            if (_cachedIsController)
+            {
+                _latestData = GetCurrentTransformData();
+                RefreshLatestFrame();
+            }
+
+            if (_syncPosition == SyncMode.Local && positionTransform != null)
+            {
+                bool wasAbsolute = _useAbsoluteFrame;
+                ResolvePositionTransform();
+                if (wasAbsolute != _useAbsoluteFrame)
+                    ForceSync();
+            }
 
             if (!_syncParent)
                 return;
@@ -578,7 +836,7 @@ namespace PurrNet
             var p = _trs.parent;
 
             if (syncPosition)
-                _position.Teleport(new Vector3WithParent(p, _syncPosition == SyncMode.Local, data.position));
+                _position.Teleport(MakePositionSample(p, data));
 
             if (syncRotation)
                 _rotation.Teleport(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, data.rotation));
@@ -587,81 +845,21 @@ namespace PurrNet
                 _scale.Teleport(new ScaleWithParent(p, data.scale));
         }
 
-        private void ApplyData(NetworkTransformData data)
-        {
-            var p = _trs.parent;
-            if (syncPosition)
-                _position.Add(new Vector3WithParent(p, _syncPosition == SyncMode.Local, data.position));
-
-            if (syncRotation)
-                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, data.rotation));
-
-            if (syncScale)
-                _scale.Add(new ScaleWithParent(p, data.scale));
-        }
-
         private NetworkTransformData _latestData;
-
         private NetworkTransformData _currentData;
         private NetworkTransformData _lastReadData;
         private NetworkTransformData _lastSentDelta;
 
-        public bool HasChanges()
-        {
-            return !_currentData.Equals(_lastSentDelta);
-        }
-
-        public bool DeltaWrite(BitPacker packer)
-        {
-            bool hasChanged = false;
-
-            if (syncPosition)
-                hasChanged = DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.position, _currentData.position);
-
-            if (syncRotation)
-            {
-                hasChanged = DeltaPacker<PackedQuaternion>.Write(packer, _lastSentDelta.rotation, _currentData.rotation) ||
-                          hasChanged;
-            }
-
-            if (syncScale)
-            {
-                hasChanged = DeltaPacker<CompressedVector3>.Write(packer, _lastSentDelta.scale, _currentData.scale) ||
-                          hasChanged;
-            }
-
-            return hasChanged;
-        }
-
-        public void DeltaRead(BitPacker packet)
-        {
-            _lastReadData = DeltaRead(packet, _lastReadData);
-            ApplyData(_lastReadData);
-        }
-
-        NetworkTransformData DeltaRead(BitPacker packet, NetworkTransformData oldValue)
-        {
-            var pos = oldValue.position;
-            var rot = oldValue.rotation;
-            var ntScale = oldValue.scale;
-
-            if (syncPosition)
-                DeltaPacker<CompressedVector3>.Read(packet, pos, ref oldValue.position);
-
-            if (syncRotation)
-                DeltaPacker<PackedQuaternion>.Read(packet, rot, ref oldValue.rotation);
-
-            if (syncScale)
-                DeltaPacker<CompressedVector3>.Read(packet, ntScale, ref oldValue.scale);
-
-            return oldValue;
-        }
-
         public void GatherState()
         {
             _currentData = _latestData;
-            if (_cachedIsController)
-                TeleportToData(_currentData);
+            _currentFrame = _latestFrame;
+            _currentParentId = _latestParentId;
+        }
+
+        public bool HasChanges()
+        {
+            return !_currentData.Equals(_lastSentDelta);
         }
 
         public void DeltaSave()
@@ -669,11 +867,474 @@ namespace PurrNet
             _lastSentDelta = _currentData;
         }
 
+        private NetworkTransformState _capturedState;
+        private bool _hasCapturedState;
+        private uint _capturedRevision;
+        private byte _sendGen;
+        private byte _recvGen;
+        private bool _hasRecvGen;
+        // A reliable snapshot is an authoritative epoch anchor. After one arrives, a negative
+        // signed byte delta is stale; normal byte wrap still presents as a positive delta.
+        private bool _hasAuthoritativeRecvGen;
+        private long _lastAppliedOrder;
+        private bool _hasAppliedSeq;
+
+        internal NetworkTransformState capturedState => _capturedState;
+
+        internal uint capturedRevision => _capturedRevision;
+
+        internal byte sendGen => _sendGen;
+
+        private uint _sendGenEpoch;
+
+        internal uint sendGenEpoch => _sendGenEpoch;
+
+        private void BumpSendGen()
+        {
+            _sendGen++;
+            _sendGenEpoch++;
+
+            if (TryGetNetworkTransformModule(out var ntModule) && id.HasValue)
+                ntModule.ClearGenerationOverrides(id.Value);
+        }
+
+        private void BumpSendGen(PlayerID target)
+        {
+            if (TryGetNetworkTransformModule(out var ntModule) && id.HasValue)
+                ntModule.PrepareTargetedReset(target, id.Value, _sendGen, _sendGenEpoch);
+
+            _sendGen++;
+            _sendGenEpoch++;
+        }
+
+        private bool TryGetNetworkTransformModule(out NetworkTransformModule ntModule)
+        {
+            ntModule = null;
+
+            return networkManager &&
+                   networkManager.TryGetModule<NetworkTransformFactory>(isServer, out var factory) &&
+                   factory.TryGetModule(sceneId, out ntModule);
+        }
+
+        private void ResetUnreliableRecvState()
+        {
+            _hasRecvGen = false;
+            _hasAuthoritativeRecvGen = false;
+            _hasAppliedSeq = false;
+        }
+
+        internal void ResetUnreliableStream()
+        {
+            BumpSendGen();
+            ResetUnreliableRecvState();
+        }
+
+        private bool ForceAdoptRecvGen(byte gen)
+        {
+            bool alreadyAhead = _hasRecvGen && _hasAppliedSeq && gen == _recvGen;
+
+            _recvGen = gen;
+            _hasRecvGen = true;
+            _hasAuthoritativeRecvGen = true;
+
+            if (!alreadyAhead)
+                _hasAppliedSeq = false;
+
+            return !alreadyAhead;
+        }
+
+        private Transform _cachedParentTrs;
+        private NetworkIdentity _cachedParentIdentity;
+        private NetworkTransformFrame _latestFrame;
+        private NetworkID _latestParentId;
+        private NetworkTransformFrame _currentFrame;
+        private NetworkID _currentParentId;
+
+        private void RefreshLatestFrame()
+        {
+            var p = _trs.parent;
+
+            if (!ReferenceEquals(p, _cachedParentTrs))
+            {
+                _cachedParentTrs = p;
+                _cachedParentIdentity = p && p.TryGetComponent<NetworkIdentity>(out var found) ? found : null;
+            }
+
+            var parentIdentity = _cachedParentIdentity;
+
+            if (_syncParent && parentIdentity && parentIdentity.isSpawned && parentIdentity.id.HasValue)
+            {
+                _latestFrame = NetworkTransformFrame.LocalIdentity;
+                _latestParentId = parentIdentity.id.Value;
+            }
+            else
+            {
+                _latestFrame = p ? NetworkTransformFrame.LocalStatic : NetworkTransformFrame.World;
+                _latestParentId = default;
+            }
+        }
+
+        internal void CaptureUnreliableState()
+        {
+            var state = currentState;
+
+            if (!syncPosition)
+            {
+                state.data.position = default(CompressedVector3);
+                state.data.absolutePosition = null;
+            }
+
+            if (!syncRotation)
+                state.data.rotation = Quaternion.identity;
+
+            if (!syncScale)
+                state.data.scale = default;
+
+            if (!usesNetworkFrame)
+            {
+                state.frame = NetworkTransformFrame.World;
+                state.parentId = default;
+            }
+
+            if (!_hasCapturedState || !_capturedState.Equals(state))
+            {
+                _capturedState = state;
+                _capturedRevision++;
+                _hasCapturedState = true;
+            }
+        }
+
+        private bool usesNetworkFrame => _syncPosition == SyncMode.Local ||
+                                         _syncRotation == SyncMode.Local ||
+                                         _syncScale;
+
+        private NetworkTransformState currentState => new NetworkTransformState
+        {
+            data = _currentData,
+            frame = _currentFrame,
+            parentId = _currentParentId
+        };
+
+        private void RefreshCurrentState()
+        {
+            _currentData = GetCurrentTransformData();
+            _latestData = _currentData;
+            RefreshLatestFrame();
+            _currentFrame = _latestFrame;
+            _currentParentId = _latestParentId;
+        }
+
+        private void AdoptState(in NetworkTransformState state)
+        {
+            _lastReadData = state.data;
+            _currentData = state.data;
+            _latestData = state.data;
+            _latestFrame = state.frame;
+            _latestParentId = state.parentId;
+            _currentFrame = state.frame;
+            _currentParentId = state.parentId;
+        }
+
+        private Transform ResolveFrameParent(in NetworkTransformState state)
+        {
+            switch (state.frame)
+            {
+                case NetworkTransformFrame.LocalIdentity:
+                    if (networkManager.TryGetModule<HierarchyFactory>(isServer, out var factory) &&
+                        factory.TryGetIdentity(sceneId, state.parentId, out var identity) && identity)
+                        return identity.transform;
+                    return _trs.parent;
+                case NetworkTransformFrame.LocalStatic:
+                    return _trs.parent;
+                case NetworkTransformFrame.World:
+                default:
+                    return null;
+            }
+        }
+
+        private void TeleportToState(in NetworkTransformState state)
+        {
+            var p = ResolveFrameParent(state);
+
+            if (syncPosition)
+                _position.Teleport(MakePositionSample(p, state.data));
+
+            if (syncRotation)
+                _rotation.Teleport(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+
+            if (syncScale)
+                _scale.Teleport(new ScaleWithParent(p, state.data.scale));
+        }
+
+        internal bool CanDeltaAgainst(in NetworkTransformState baseline)
+        {
+            return baseline.data.absolutePosition.HasValue == _capturedState.data.absolutePosition.HasValue;
+        }
+
+        internal void WriteAbsoluteState(BitPacker packer)
+        {
+            var state = _capturedState;
+
+            if (usesNetworkFrame)
+            {
+                packer.WriteBits((ulong)state.frame, 2);
+                if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    Packer<NetworkID>.Write(packer, state.parentId);
+            }
+
+            if (syncPosition)
+            {
+                bool isAbsolute = state.data.absolutePosition.HasValue;
+                packer.WriteBits(isAbsolute ? 1UL : 0UL, 1);
+
+                if (isAbsolute)
+                    Packer<double3>.Write(packer, state.data.absolutePosition.Value);
+                else
+                    Packer<CompressedVector3>.Write(packer, state.data.position.GetValueOrDefault());
+            }
+
+            if (syncRotation)
+                Packer<PackedQuaternion>.Write(packer, state.data.rotation);
+
+            if (syncScale)
+                Packer<CompressedVector3>.Write(packer, state.data.scale);
+        }
+
+        internal NetworkTransformState ReadAbsoluteState(BitPacker packer)
+        {
+            var state = default(NetworkTransformState);
+
+            if (usesNetworkFrame)
+            {
+                state.frame = (NetworkTransformFrame)packer.ReadBits(2);
+                if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    Packer<NetworkID>.Read(packer, ref state.parentId);
+            }
+            else
+            {
+                state.frame = NetworkTransformFrame.World;
+            }
+
+            if (syncPosition)
+            {
+                bool isAbsolute = packer.ReadBits(1) == 1;
+                if (isAbsolute)
+                {
+                    double3 pos = default;
+                    Packer<double3>.Read(packer, ref pos);
+                    state.data.absolutePosition = pos;
+                }
+                else
+                {
+                    CompressedVector3 pos = default;
+                    Packer<CompressedVector3>.Read(packer, ref pos);
+                    state.data.position = pos;
+                }
+            }
+            else
+            {
+                state.data.position = default(CompressedVector3);
+            }
+
+            if (syncRotation)
+                Packer<PackedQuaternion>.Read(packer, ref state.data.rotation);
+            else
+                state.data.rotation = Quaternion.identity;
+
+            if (syncScale)
+                Packer<CompressedVector3>.Read(packer, ref state.data.scale);
+
+            return state;
+        }
+
+        internal void WriteDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
+        {
+            var state = _capturedState;
+
+            if (usesNetworkFrame)
+            {
+                bool sameFrame = state.frame == baseline.frame && state.parentId.Equals(baseline.parentId);
+                packer.WriteBits(sameFrame ? 1UL : 0UL, 1);
+                if (!sameFrame)
+                {
+                    packer.WriteBits((ulong)state.frame, 2);
+                    if (state.frame == NetworkTransformFrame.LocalIdentity)
+                        DeltaPacker<NetworkID>.Write(packer, baseline.parentId, state.parentId);
+                }
+            }
+
+            if (syncPosition)
+            {
+                if (state.data.absolutePosition.HasValue)
+                {
+                    var oldPos = baseline.data.absolutePosition.GetValueOrDefault();
+                    var newPos = state.data.absolutePosition.GetValueOrDefault();
+                    bool changed = !oldPos.Equals(newPos);
+                    packer.WriteBits(changed ? 1UL : 0UL, 1);
+                    if (changed)
+                        DeltaPacker<double3>.Write(packer, oldPos, newPos);
+                }
+                else
+                {
+                    var newPos = state.data.position.GetValueOrDefault();
+                    bool changed = !baseline.data.position.GetValueOrDefault().Equals(newPos);
+                    packer.WriteBits(changed ? 1UL : 0UL, 1);
+                    if (changed)
+                        DeltaPacker<CompressedVector3>.Write(packer, predicted.data.position.GetValueOrDefault(), newPos);
+                }
+            }
+
+            if (syncRotation)
+            {
+                bool changed = !state.data.rotation.Equals(baseline.data.rotation);
+                packer.WriteBits(changed ? 1UL : 0UL, 1);
+                if (changed)
+                    DeltaPacker<PackedQuaternion>.Write(packer, predicted.data.rotation, state.data.rotation);
+            }
+
+            if (syncScale)
+            {
+                bool changed = !state.data.scale.Equals(baseline.data.scale);
+                packer.WriteBits(changed ? 1UL : 0UL, 1);
+                if (changed)
+                    DeltaPacker<CompressedVector3>.Write(packer, predicted.data.scale, state.data.scale);
+            }
+        }
+
+        internal NetworkTransformState ReadDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
+        {
+            var state = default(NetworkTransformState);
+
+            if (usesNetworkFrame)
+            {
+                bool sameFrame = packer.ReadBits(1) == 1;
+                if (sameFrame)
+                {
+                    state.frame = baseline.frame;
+                    state.parentId = baseline.parentId;
+                }
+                else
+                {
+                    state.frame = (NetworkTransformFrame)packer.ReadBits(2);
+                    if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    {
+                        state.parentId = baseline.parentId;
+                        DeltaPacker<NetworkID>.Read(packer, baseline.parentId, ref state.parentId);
+                    }
+                }
+            }
+            else
+            {
+                state.frame = NetworkTransformFrame.World;
+            }
+
+            state.data = baseline.data;
+
+            if (syncPosition && packer.ReadBits(1) == 1)
+            {
+                if (baseline.data.absolutePosition.HasValue)
+                {
+                    var oldPos = baseline.data.absolutePosition.Value;
+                    var newPos = oldPos;
+                    DeltaPacker<double3>.Read(packer, oldPos, ref newPos);
+                    state.data.absolutePosition = newPos;
+                }
+                else
+                {
+                    var refPos = predicted.data.position.GetValueOrDefault();
+                    var newPos = refPos;
+                    DeltaPacker<CompressedVector3>.Read(packer, refPos, ref newPos);
+                    state.data.position = newPos;
+                }
+            }
+
+            if (syncRotation && packer.ReadBits(1) == 1)
+            {
+                state.data.rotation = predicted.data.rotation;
+                DeltaPacker<PackedQuaternion>.Read(packer, predicted.data.rotation, ref state.data.rotation);
+            }
+
+            if (syncScale && packer.ReadBits(1) == 1)
+            {
+                var refScale = predicted.data.scale;
+                var newScale = refScale;
+                DeltaPacker<CompressedVector3>.Read(packer, refScale, ref newScale);
+                state.data.scale = newScale;
+            }
+
+            return state;
+        }
+
+        internal bool TryApplyUnreliableState(in NetworkTransformState state, byte gen, long packetOrder,
+            NetworkIdentity frameParent, bool isAbsolute)
+        {
+            if (_cachedIsController)
+                return true;
+
+            if (_hasRecvGen)
+            {
+                var genDiff = (sbyte)(gen - _recvGen);
+
+                switch (genDiff)
+                {
+                    case < 0 when _hasAuthoritativeRecvGen || !isAbsolute || genDiff >= -8:
+                        return false;
+                    case < 0:
+                    case > 0:
+                        _recvGen = gen;
+                        _hasAppliedSeq = false;
+                        break;
+                }
+            }
+            else
+            {
+                _recvGen = gen;
+                _hasRecvGen = true;
+                _hasAuthoritativeRecvGen = false;
+                _hasAppliedSeq = false;
+            }
+
+            if (!NTUnreliable.ShouldApplyOrder(_hasAppliedSeq, _lastAppliedOrder, packetOrder))
+                return true;
+
+            if (state.frame == NetworkTransformFrame.LocalIdentity && !frameParent)
+                return false;
+
+            var p = state.frame switch
+            {
+                NetworkTransformFrame.LocalIdentity => frameParent.transform,
+                NetworkTransformFrame.LocalStatic => _trs.parent,
+                _ => null
+            };
+
+            _lastAppliedOrder = packetOrder;
+            _hasAppliedSeq = true;
+            _lastReadData = state.data;
+
+            if (syncPosition)
+                _position.Add(MakePositionSample(p, state.data));
+
+            if (syncRotation)
+                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+
+            if (syncScale)
+                _scale.Add(new ScaleWithParent(p, state.data.scale));
+
+            return true;
+        }
+
         private bool _cachedConnectedOwner;
 
         protected override void OnOwnerDisconnected(PlayerID ownerId)
         {
             _cachedConnectedOwner = false;
+            BumpSendGen();
+            if (isServer)
+                ResetUnreliableRecvState();
+            var wasController = _cachedIsController;
+            _cachedIsController = IsController(_ownerAuth);
+            if (wasController != _cachedIsController)
+                OnIsControlledChanged(_cachedIsController);
         }
 
         public bool IsControlling(PlayerID player, bool asServer)

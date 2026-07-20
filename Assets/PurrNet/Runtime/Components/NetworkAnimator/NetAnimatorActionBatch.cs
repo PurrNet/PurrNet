@@ -44,6 +44,7 @@ namespace PurrNet
             }
             else
             {
+                SyncAssetReferences(animator, actions);
                 SyncParameters(ignoreHashes, animator, actions);
                 SyncAnimationState(animator, actions);
 
@@ -134,6 +135,32 @@ namespace PurrNet
             }
         }
 
+        private static void SyncAssetReferences(Animator animator, DisposableList<NetAnimatorRPC> actions)
+        {
+            var nm = NetworkManager.main;
+            var assets = nm ? nm.networkAssets : null;
+            if (!assets)
+                return;
+
+            var controller = animator.runtimeAnimatorController;
+            if (controller && assets.TryGetIndex(controller, out _))
+            {
+                actions.Add(new NetAnimatorRPC(new SetRuntimeAnimatorController
+                {
+                    controller = controller
+                }));
+            }
+
+            var avatar = animator.avatar;
+            if (avatar && assets.TryGetIndex(avatar, out _))
+            {
+                actions.Add(new NetAnimatorRPC(new SetAvatar
+                {
+                    avatar = avatar
+                }));
+            }
+        }
+
         private static void SyncAnimationState(Animator animator, DisposableList<NetAnimatorRPC> actions)
         {
             if (!animator.runtimeAnimatorController)
@@ -148,6 +175,15 @@ namespace PurrNet
                     layer = i,
                     normalizedTime = info.normalizedTime
                 }));
+
+                if (i == 0)
+                    continue;
+
+                actions.Add(new NetAnimatorRPC(new SetLayerWeight
+                {
+                    layerIndex = i,
+                    weight = animator.GetLayerWeight(i)
+                }));
             }
         }
 
@@ -156,11 +192,11 @@ namespace PurrNet
             if (!animator.runtimeAnimatorController)
                 return;
 
-            int paramCount = animator.parameterCount;
+            var parameters = animator.parameters;
 
-            for (var i = 0; i < paramCount; i++)
+            for (var i = 0; i < parameters.Length; i++)
             {
-                var param = animator.parameters[i];
+                var param = parameters[i];
 
                 if (ignoreHashes.Contains(param.nameHash))
                     continue;
@@ -171,8 +207,9 @@ namespace PurrNet
                     {
                         var setBool = new SetBool
                         {
-                            value = animator.GetBool(param.name),
-                            nameHash = param.nameHash
+                            value = animator.GetBool(param.nameHash),
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         actions.Add(new NetAnimatorRPC(setBool));
@@ -182,8 +219,9 @@ namespace PurrNet
                     {
                         var setFloat = new SetFloat
                         {
-                            value = animator.GetFloat(param.name),
-                            nameHash = param.nameHash
+                            value = animator.GetFloat(param.nameHash),
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         actions.Add(new NetAnimatorRPC(setFloat));
@@ -193,8 +231,9 @@ namespace PurrNet
                     {
                         var setInteger = new SetInteger
                         {
-                            value = animator.GetInteger(param.name),
-                            nameHash = param.nameHash
+                            value = animator.GetInteger(param.nameHash),
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         actions.Add(new NetAnimatorRPC(setInteger));

@@ -26,7 +26,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 871477370877421358}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0.55992234, y: -0, z: -0, w: 0.8285451}
   m_LocalPosition: {x: 0, y: 1.9, z: 0}
   m_LocalScale: {x: 0.08, y: 0.08, z: 0.08}
   m_ConstrainProportionsScale: 1
@@ -118,7 +118,6 @@ GameObject:
   - component: {fileID: 8989118555565616075}
   - component: {fileID: 6099025641715272783}
   - component: {fileID: 4393774338475174367}
-  - component: {fileID: 9029450125345654683}
   - component: {fileID: 5061607183926739309}
   - component: {fileID: 468800014021081407}
   - component: {fileID: -1040345342283036543}
@@ -158,6 +157,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6532a5d975c940146994b2be84053df8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Internal.Examples::PlayerHeadLamp
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -165,12 +166,11 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _lampIsOn:
     _value: 1
     _ownerAuth: 1
     _sendIntervalInSeconds: 0
+    _initialValue: 1
 --- !u!114 &6798584989352981788
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,6 +183,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 817f00a8b1748484fa837fad3cb9ac28, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -190,8 +192,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _visuals:
     _reference: {fileID: 7133067894972459132}
   moveSpeed: 4
@@ -210,6 +210,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7993de99671eec42ad040029a9f6593, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -217,8 +219,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   bulletPrefab: {fileID: 6263184292926161676, guid: e013d4a382956084e907feb2a3501cf8, type: 3}
 --- !u!114 &6099025641715272783
 MonoBehaviour:
@@ -232,6 +232,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f888c0a97f882af4b9ff62f84d211951, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -239,8 +241,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   maxHealth: 100
   _healthText:
     _reference: {fileID: 2339485392063238819}
@@ -248,6 +248,7 @@ MonoBehaviour:
     _value: 0
     _ownerAuth: 0
     _sendIntervalInSeconds: 0
+    _initialValue: 0
 --- !u!143 &4393774338475174367
 CharacterController:
   m_ObjectHideFlags: 0
@@ -273,27 +274,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0.75, z: 0}
---- !u!114 &9029450125345654683
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2021845121686469242}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d589309a8b0b45f44a0ddd1e2e82017a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _isSetup: 0
-  _prefabId: -2147483648
-  _componentIndex: -2147483648
-  _shouldBePooled: 0
-  _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
-  _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
 --- !u!114 &5061607183926739309
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -306,6 +286,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 817fe5016bd0a2a49a95b6eb338bb132, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -313,16 +295,15 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _syncPosition: 2
   _syncRotation: 2
   _syncScale: 0
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 255
   _minBufferSize: 1
   _maxBufferSize: 2
-  _characterControllerPatch: 1
+  _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 1
 --- !u!114 &468800014021081407
@@ -337,6 +318,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39d5e4b97b1615f4aae984a3d5f4235f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -344,8 +327,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _components:
   - target: {fileID: 6798584989352981788}
     activeAsOwner: 1
@@ -360,6 +341,7 @@ MonoBehaviour:
   _gameObjects:
   - target: {fileID: 871477370877421358}
     activeAsOwner: 0
+  _applyInLateUpdate: 0
   _toActivate: []
   _toDeactivate: []
   _toEnable: []
@@ -376,6 +358,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70b82c667138195418700db341faddab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Examples::TestScriptNB
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -383,8 +367,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   prefab: {fileID: 5061703843092929407, guid: 6ed01b8a124e8c74788db5bf2caa512b, type: 3}
   p_parent: {fileID: 6183224292089968140}
   pos: {x: 1, y: 2, z: 3}
@@ -401,6 +383,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a02debaf1d37534c8849eaa034822fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Internal.Examples::PlayerNameTest
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -408,8 +392,11 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
+  PlayerName:
+    _value: Loading...
+    _ownerAuth: 1
+    _sendIntervalInSeconds: 0
+    _initialValue: Loading...
 --- !u!1 &6426148537294609696
 GameObject:
   m_ObjectHideFlags: 0
@@ -458,6 +445,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dbe775319f3e9a249829cec13ab24f7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -465,13 +454,12 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   bodies:
   - {fileID: 8899729376433070502}
   - {fileID: 2125669350971959550}
   - {fileID: 3114173323945344206}
   - {fileID: 8913748296582932277}
+  _random: 0
 --- !u!1 &8887981878880113861
 GameObject:
   m_ObjectHideFlags: 0
@@ -518,6 +506,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 817fe5016bd0a2a49a95b6eb338bb132, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -525,12 +515,11 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _syncPosition: 2
   _syncRotation: 2
   _syncScale: 1
   _syncParent: 1
+  _forceSleepRb: 1
   _interpolateSettings: 255
   _minBufferSize: 1
   _maxBufferSize: 4
@@ -642,6 +631,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b2213188c66e534489205d559c59594, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkBones
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -649,8 +640,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _sendRatePerSecond: 10
   _extraBones: []
@@ -786,6 +775,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b2213188c66e534489205d559c59594, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkBones
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -793,8 +784,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _sendRatePerSecond: 10
   _extraBones: []
@@ -928,6 +917,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b2213188c66e534489205d559c59594, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkBones
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -935,8 +926,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _sendRatePerSecond: 10
   _extraBones: []
@@ -1050,6 +1039,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b2213188c66e534489205d559c59594, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkBones
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -1057,8 +1048,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _ownerAuth: 1
   _sendRatePerSecond: 10
   _extraBones: []

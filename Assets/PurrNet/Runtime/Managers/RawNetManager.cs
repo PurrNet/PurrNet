@@ -29,6 +29,10 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private int _tickRate = 20;
 
+        [Tooltip("What to do when a packet exceeds the MTU on an unreliable channel.")]
+        [SerializeField]
+        private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Fragment;
+
         private ModulesCollection _serverModules;
         private ModulesCollection _clientModules;
 
@@ -65,7 +69,35 @@ namespace PurrNet
         private bool _isCleaningClient;
         private bool _isCleaningServer;
 
-        public ITransport rawTransport => _transport ? _transport.transport : null;
+        private ITransport _transportLayer;
+
+        public ITransport rawTransport
+        {
+            get
+            {
+                EnsureTransportLayer();
+                return _transportLayer;
+            }
+        }
+
+        private void EnsureTransportLayer()
+        {
+            if (_transportLayer == null && _transport)
+            {
+                _transportLayer = _transport.transport;
+                if (_transportLayer == null)
+                    throw new InvalidOperationException(PurrLogger.FormatMessage("Transport is not set (null)."));
+            }
+        }
+
+        /// <summary>
+        /// What to do when a packet exceeds the MTU on an unreliable channel.
+        /// </summary>
+        public MTUExceededBehaviour mtuExceededBehaviour
+        {
+            get => _mtuExceededBehaviour;
+            set => _mtuExceededBehaviour = value;
+        }
 
         /// <summary>
         /// The state of the server connection.
@@ -75,7 +107,7 @@ namespace PurrNet
         {
             get
             {
-                var state = !_transport ? ConnectionState.Disconnected : _transport.transport.listenerState;
+                var state = _transportLayer == null ? ConnectionState.Disconnected : _transportLayer.listenerState;
                 return state == ConnectionState.Disconnected && _isCleaningServer
                     ? ConnectionState.Disconnecting
                     : state;
@@ -90,7 +122,7 @@ namespace PurrNet
         {
             get
             {
-                var state = !_transport ? ConnectionState.Disconnected : _transport.transport.clientState;
+                var state = _transportLayer == null ? ConnectionState.Disconnected : _transportLayer.clientState;
                 return state == ConnectionState.Disconnected && _isCleaningClient
                     ? ConnectionState.Disconnecting
                     : state;
@@ -98,8 +130,8 @@ namespace PurrNet
         }
 
         public bool isOffline => !isServer && !isClient;
-        public bool isServer => _transport && _transport.transport.listenerState == ConnectionState.Connected;
-        public bool isClient => _transport && _transport.transport.clientState == ConnectionState.Connected;
+        public bool isServer => _transportLayer != null && _transportLayer.listenerState == ConnectionState.Connected;
+        public bool isClient => _transportLayer != null && _transportLayer.clientState == ConnectionState.Connected;
         public NetworkRules networkRules => null;
         public TickManager tickModule => _serverTickManager ?? _clientTickManager;
 
@@ -149,6 +181,12 @@ namespace PurrNet
         {
             _serverModules = new ModulesCollection(this, true);
             _clientModules = new ModulesCollection(this, false);
+            EnsureTransportLayer();
+        }
+
+        private void OnDestroy()
+        {
+            _transportLayer = null;
         }
 
         private void Start()
@@ -339,8 +377,8 @@ namespace PurrNet
             _serverModules.TriggerOnUpdate();
             _clientModules.TriggerOnUpdate();
 
-            if (_transport)
-                _transport.transport.UnityUpdate(Time.deltaTime);
+            if (_transportLayer != null)
+                _transportLayer.UnityUpdate(Time.deltaTime);
         }
 
         public void RegisterModules(ModulesCollection modules, bool asServer)
@@ -409,6 +447,8 @@ namespace PurrNet
             }
         }
 
+        private double _lastSendTime;
+
         private void OnTick()
         {
             bool serverConnected = serverState == ConnectionState.Connected;
@@ -420,8 +460,8 @@ namespace PurrNet
             if (clientConnected)
                 _clientModules.TriggerOnPreFixedUpdate();
 
-            if (_transport)
-                _transport.transport.ReceiveMessages(tickModule.tickDelta);
+            if (_transportLayer != null)
+                _transportLayer.ReceiveMessages(tickModule.tickDelta);
 
             if (serverConnected)
                 _serverModules.TriggerOnFixedUpdate();
@@ -435,8 +475,13 @@ namespace PurrNet
             if (clientConnected)
                 _clientModules.TriggerOnPostFixedUpdate();
 
-            if (_transport)
-                _transport.transport.SendMessages(tickModule.tickDelta);
+            if (_transportLayer != null)
+            {
+                var now = UnityEngine.Time.unscaledTimeAsDouble;
+                var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : tickModule.tickDelta;
+                _lastSendTime = now;
+                _transportLayer.SendMessages(sendDelta);
+            }
 
             if (_isCleaningClient && _clientModules.Cleanup())
             {

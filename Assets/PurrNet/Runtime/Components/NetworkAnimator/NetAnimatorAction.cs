@@ -52,7 +52,60 @@ namespace PurrNet
         SetIKHintPosition,
         SetIKPositionWeight,
         SetIKRotationWeight,
-        SetIKHintPositionWeight
+        SetIKHintPositionWeight,
+        SetRuntimeAnimatorController,
+        SetAvatar,
+        SetTarget,
+        StartPlayback,
+        StopPlayback
+    }
+
+    internal static class AnimParamPacking
+    {
+        public static void Serialize(BitPacker packer, ref int nameHash, ref int paramIndexPlusOne)
+        {
+            bool hasIndex = paramIndexPlusOne is >= 1 and <= 256;
+            Packer<bool>.Serialize(packer, ref hasIndex);
+
+            if (hasIndex)
+            {
+                byte index = packer.isWriting ? (byte)(paramIndexPlusOne - 1) : default;
+                Packer<byte>.Serialize(packer, ref index);
+
+                if (packer.isReading)
+                {
+                    paramIndexPlusOne = index + 1;
+                    nameHash = 0;
+                }
+            }
+            else
+            {
+                Packer<int>.Serialize(packer, ref nameHash);
+
+                if (packer.isReading)
+                    paramIndexPlusOne = 0;
+            }
+        }
+    }
+
+    internal struct SetRuntimeAnimatorController : IPackedAuto
+    {
+        public RuntimeAnimatorController controller;
+
+        public void Apply(Animator anim)
+        {
+            anim.runtimeAnimatorController = controller;
+        }
+    }
+
+    internal struct SetAvatar : IPackedAuto
+    {
+        public Avatar avatar;
+
+        public void Apply(Animator anim)
+        {
+            anim.avatar = avatar;
+        }
     }
 
     internal struct SetIKHintPosition : IPackedAuto
@@ -166,10 +219,17 @@ namespace PurrNet
         }
     }
 
-    internal struct SetBool : IPackedAuto
+    internal struct SetBool : IPackedSimple
     {
         public int nameHash;
+        public int paramIndexPlusOne;
         public bool value;
+
+        public void Serialize(BitPacker packer)
+        {
+            AnimParamPacking.Serialize(packer, ref nameHash, ref paramIndexPlusOne);
+            Packer<bool>.Serialize(packer, ref value);
+        }
 
         public void Apply(Animator anim)
         {
@@ -177,10 +237,17 @@ namespace PurrNet
         }
     }
 
-    internal struct SetFloat : IPackedAuto
+    internal struct SetFloat : IPackedSimple
     {
         public int nameHash;
+        public int paramIndexPlusOne;
         public float value;
+
+        public void Serialize(BitPacker packer)
+        {
+            AnimParamPacking.Serialize(packer, ref nameHash, ref paramIndexPlusOne);
+            Packer<float>.Serialize(packer, ref value);
+        }
 
         public void Apply(Animator anim)
         {
@@ -188,10 +255,17 @@ namespace PurrNet
         }
     }
 
-    internal struct SetInteger : IPackedAuto
+    internal struct SetInteger : IPackedSimple
     {
         public int nameHash;
+        public int paramIndexPlusOne;
         public int value;
+
+        public void Serialize(BitPacker packer)
+        {
+            AnimParamPacking.Serialize(packer, ref nameHash, ref paramIndexPlusOne);
+            Packer<int>.Serialize(packer, ref value);
+        }
 
         public void Apply(Animator anim)
         {
@@ -199,9 +273,15 @@ namespace PurrNet
         }
     }
 
-    internal struct SetTrigger : IPackedAuto
+    internal struct SetTrigger : IPackedSimple
     {
         public int nameHash;
+        public int paramIndexPlusOne;
+
+        public void Serialize(BitPacker packer)
+        {
+            AnimParamPacking.Serialize(packer, ref nameHash, ref paramIndexPlusOne);
+        }
 
         public void Apply(Animator anim)
         {
@@ -209,9 +289,15 @@ namespace PurrNet
         }
     }
 
-    internal struct ResetTrigger : IPackedAuto
+    internal struct ResetTrigger : IPackedSimple
     {
         public int nameHash;
+        public int paramIndexPlusOne;
+
+        public void Serialize(BitPacker packer)
+        {
+            AnimParamPacking.Serialize(packer, ref nameHash, ref paramIndexPlusOne);
+        }
 
         public void Apply(Animator anim)
         {
@@ -556,6 +642,33 @@ namespace PurrNet
         }
     }
 
+    internal struct SetTarget : IPackedAuto
+    {
+        public AvatarTarget targetIndex;
+        public float targetNormalizedTime;
+
+        public void Apply(Animator anim)
+        {
+            anim.SetTarget(targetIndex, targetNormalizedTime);
+        }
+    }
+
+    internal struct StartPlayback : IPackedAuto
+    {
+        public void Apply(Animator anim)
+        {
+            anim.StartPlayback();
+        }
+    }
+
+    internal struct StopPlayback : IPackedAuto
+    {
+        public void Apply(Animator anim)
+        {
+            anim.StopPlayback();
+        }
+    }
+
     internal struct NetAnimatorRPC : IPackedSimple
     {
         internal NetAnimatorAction type;
@@ -581,7 +694,7 @@ namespace PurrNet
         private SetWriteDefaultValuesOnDisable _writeDefaultValuesOnDisable;
         private SetLogWarnings _logWarnings;
         private SetLayersAffectMassCenter _layersAffectMassCenter;
-        private ResetTrigger _resetTrigger;
+        internal ResetTrigger _resetTrigger;
         private Play_STATEHASH_LAYER_NORMALIZEDTIME _play_STATEHASH_LAYER_NORMALIZEDTIME;
         private Play_STATEHASH_LAYER _play_STATEHASH_LAYER;
         private PLAY_STATEHASH _PLAY_STATEHASH;
@@ -607,6 +720,23 @@ namespace PurrNet
         internal SetIKPositionWeight _setIKPositionWeight;
         internal SetIKRotationWeight _setIKRotationWeight;
         internal SetIKHintPositionWeight _setIKHintPositionWeight;
+        private SetRuntimeAnimatorController _setRuntimeAnimatorController;
+        private SetAvatar _setAvatar;
+        private SetTarget _setTarget;
+        private StartPlayback _startPlayback;
+        private StopPlayback _stopPlayback;
+
+        public NetAnimatorRPC(SetRuntimeAnimatorController action) : this()
+        {
+            type = NetAnimatorAction.SetRuntimeAnimatorController;
+            _setRuntimeAnimatorController = action;
+        }
+
+        public NetAnimatorRPC(SetAvatar action) : this()
+        {
+            type = NetAnimatorAction.SetAvatar;
+            _setAvatar = action;
+        }
 
         public NetAnimatorRPC(SetBoneLocalRotation action) : this()
         {
@@ -890,6 +1020,24 @@ namespace PurrNet
             _setLookAtWeight = action;
         }
 
+        public NetAnimatorRPC(SetTarget action) : this()
+        {
+            type = NetAnimatorAction.SetTarget;
+            _setTarget = action;
+        }
+
+        public NetAnimatorRPC(StartPlayback action) : this()
+        {
+            type = NetAnimatorAction.StartPlayback;
+            _startPlayback = action;
+        }
+
+        public NetAnimatorRPC(StopPlayback action) : this()
+        {
+            type = NetAnimatorAction.StopPlayback;
+            _stopPlayback = action;
+        }
+
         public void Apply(Animator anim)
         {
             switch (type)
@@ -942,6 +1090,12 @@ namespace PurrNet
                 case NetAnimatorAction.SetIKPositionWeight: _setIKPositionWeight.Apply(anim); break;
                 case NetAnimatorAction.SetIKRotationWeight: _setIKRotationWeight.Apply(anim); break;
                 case NetAnimatorAction.SetIKHintPositionWeight: _setIKHintPositionWeight.Apply(anim); break;
+                case NetAnimatorAction.SetRuntimeAnimatorController:
+                    _setRuntimeAnimatorController.Apply(anim); break;
+                case NetAnimatorAction.SetAvatar: _setAvatar.Apply(anim); break;
+                case NetAnimatorAction.SetTarget: _setTarget.Apply(anim); break;
+                case NetAnimatorAction.StartPlayback: _startPlayback.Apply(anim); break;
+                case NetAnimatorAction.StopPlayback: _stopPlayback.Apply(anim); break;
                 default:
                     throw new System.NotImplementedException(type.ToString());
             }
@@ -1034,6 +1188,16 @@ namespace PurrNet
                     Packer<SetIKRotationWeight>.Serialize(packer, ref _setIKRotationWeight); break;
                 case NetAnimatorAction.SetIKHintPositionWeight:
                     Packer<SetIKHintPositionWeight>.Serialize(packer, ref _setIKHintPositionWeight); break;
+                case NetAnimatorAction.SetRuntimeAnimatorController:
+                    Packer<SetRuntimeAnimatorController>.Serialize(packer, ref _setRuntimeAnimatorController); break;
+                case NetAnimatorAction.SetAvatar:
+                    Packer<SetAvatar>.Serialize(packer, ref _setAvatar); break;
+                case NetAnimatorAction.SetTarget:
+                    Packer<SetTarget>.Serialize(packer, ref _setTarget); break;
+                case NetAnimatorAction.StartPlayback:
+                    Packer<StartPlayback>.Serialize(packer, ref _startPlayback); break;
+                case NetAnimatorAction.StopPlayback:
+                    Packer<StopPlayback>.Serialize(packer, ref _stopPlayback); break;
                 default:
                     throw new System.NotImplementedException(type.ToString());
             }

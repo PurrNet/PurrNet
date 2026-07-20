@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Modules;
@@ -98,11 +98,22 @@ namespace PurrNet
             Packer.Read(stream, type, ref values[index]); // delta serializion breaks here
         }
 
+        // Used for parameters that are closed on the method's open generic parameters at compile
+        // time (e.g. `GenericPair<T>` where `T` is the RPC's method-generic). The codegen builds
+        // the closed Type at runtime from `types[]` and routes the read through the runtime-typed
+        // Packer.Read instead of the strongly-typed Packer<T>.
+        [UsedByIL]
+        public void ReadType(Type type, int index)
+        {
+            Packer.Read(stream, type, ref values[index]);
+        }
+
         [UsedImplicitly]
         public void Read<T>(int index)
         {
             T value = default;
             Packer<T>.Read(stream, ref value);
+            AsyncPackableHelper.PrepareAfterUnpack(ref value);
             values[index] = value;
         }
     }

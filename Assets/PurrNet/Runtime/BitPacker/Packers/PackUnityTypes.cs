@@ -64,17 +64,30 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
-        public static void Write(this BitPacker packer, Vector2 value)
+        public static unsafe void Write(this BitPacker packer, Vector2 value)
         {
-            packer.Write(value.x);
-            packer.Write(value.y);
+            var x = value.x;
+            var y = value.y;
+
+            uint xbits = *(uint*)&x;
+            uint ybits = *(uint*)&y;
+
+            ulong xyBits = ((ulong)xbits << 32) | ybits;
+
+            packer.EnsureBitsExist(64);
+            packer.WriteBitsWithoutChecks(xyBits, 64);
         }
 
         [UsedByIL]
-        public static void Read(this BitPacker packer, ref Vector2 value)
+        public static unsafe void Read(this BitPacker packer, ref Vector2 value)
         {
-            packer.Read(ref value.x);
-            packer.Read(ref value.y);
+            ulong xyBits = packer.ReadBits(64);
+
+            uint xbits = (uint)(xyBits >> 32);
+            uint ybits = (uint)(xyBits & 0xFFFFFFFF);
+
+            value.x = *(float*)&xbits;
+            value.y = *(float*)&ybits;
         }
 
         [UsedByIL]
@@ -148,21 +161,41 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
-        public static void Write(this BitPacker packer, Vector4 value)
+        public static unsafe void Write(this BitPacker packer, Vector4 value)
         {
-            packer.Write(value.x);
-            packer.Write(value.y);
-            packer.Write(value.z);
-            packer.Write(value.w);
+            var x = value.x;
+            var y = value.y;
+            var z = value.z;
+            var w = value.w;
+
+            uint xbits = *(uint*)&x;
+            uint ybits = *(uint*)&y;
+            uint zbits = *(uint*)&z;
+            uint wbits = *(uint*)&w;
+
+            ulong xyBits = ((ulong)xbits << 32) | ybits;
+            ulong zwBits = ((ulong)zbits << 32) | wbits;
+
+            packer.EnsureBitsExist(128);
+            packer.WriteBitsWithoutChecks(xyBits, 64);
+            packer.WriteBitsWithoutChecks(zwBits, 64);
         }
 
         [UsedByIL]
-        public static void Read(this BitPacker packer, ref Vector4 value)
+        public static unsafe void Read(this BitPacker packer, ref Vector4 value)
         {
-            packer.Read(ref value.x);
-            packer.Read(ref value.y);
-            packer.Read(ref value.z);
-            packer.Read(ref value.w);
+            ulong xyBits = packer.ReadBits(64);
+            ulong zwBits = packer.ReadBits(64);
+
+            uint xbits = (uint)(xyBits >> 32);
+            uint ybits = (uint)(xyBits & 0xFFFFFFFF);
+            uint zbits = (uint)(zwBits >> 32);
+            uint wbits = (uint)(zwBits & 0xFFFFFFFF);
+
+            value.x = *(float*)&xbits;
+            value.y = *(float*)&ybits;
+            value.z = *(float*)&zbits;
+            value.w = *(float*)&wbits;
         }
 
         [UsedByIL]
@@ -203,46 +236,110 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
-        public static void Write(this BitPacker packer, Quaternion value)
+        public static unsafe void Write(this BitPacker packer, Quaternion value)
         {
-            packer.Write(value.x);
-            packer.Write(value.y);
-            packer.Write(value.z);
-            packer.Write(value.w);
+            var x = value.x;
+            var y = value.y;
+            var z = value.z;
+            var w = value.w;
+
+            uint xbits = *(uint*)&x;
+            uint ybits = *(uint*)&y;
+            uint zbits = *(uint*)&z;
+            uint wbits = *(uint*)&w;
+
+            ulong xyBits = ((ulong)xbits << 32) | ybits;
+            ulong zwBits = ((ulong)zbits << 32) | wbits;
+
+            packer.EnsureBitsExist(128);
+            packer.WriteBitsWithoutChecks(xyBits, 64);
+            packer.WriteBitsWithoutChecks(zwBits, 64);
         }
 
         [UsedByIL]
-        public static void Read(this BitPacker packer, ref Quaternion value)
+        public static unsafe void Read(this BitPacker packer, ref Quaternion value)
         {
-            packer.Read(ref value.x);
-            packer.Read(ref value.y);
-            packer.Read(ref value.z);
-            packer.Read(ref value.w);
+            ulong xyBits = packer.ReadBits(64);
+            ulong zwBits = packer.ReadBits(64);
+
+            uint xbits = (uint)(xyBits >> 32);
+            uint ybits = (uint)(xyBits & 0xFFFFFFFF);
+            uint zbits = (uint)(zwBits >> 32);
+            uint wbits = (uint)(zwBits & 0xFFFFFFFF);
+
+            value.x = *(float*)&xbits;
+            value.y = *(float*)&ybits;
+            value.z = *(float*)&zbits;
+            value.w = *(float*)&wbits;
         }
+
+        #if UNITY_2017_3_OR_NEWER
+        [UsedByIL]
+        public static void Write(this BitPacker packer, Pose value)
+        {
+            packer.Write(value.position);
+            packer.Write(value.rotation);
+        }
+
+        [UsedByIL]
+        private static bool DeltaWritePose(BitPacker packer, Pose old, Pose newValue)
+        {
+            var delta = new DeltaWritingScope(packer);
+
+            delta.Write(old.position, newValue.position);
+            delta.Write(old.rotation, newValue.rotation);
+
+            return delta.Complete();
+        }
+
+        [UsedByIL]
+        public static void Read(this BitPacker packer, ref Pose value)
+        {
+            packer.Read(ref value.position);
+            packer.Read(ref value.rotation);
+        }
+
+        [UsedByIL]
+        private static void DeltaReadPose(BitPacker packer, Pose old, ref Pose value)
+        {
+            if (!packer.ReadBit())
+            {
+                value.position = old.position;
+                value.rotation = old.rotation;
+                return;
+            }
+
+            var position = old.position;
+            var rotation = old.rotation;
+
+            DeltaPacker<Vector3>.Read(packer, old.position, ref position);
+            DeltaPacker<Quaternion>.Read(packer, old.rotation, ref rotation);
+
+            value.position = position;
+            value.rotation = rotation;
+        }
+        #endif
 
         [UsedByIL]
         public static void Write(this BitPacker packer, Color32 value)
         {
-            packer.Write(value.r);
-            packer.Write(value.g);
-            packer.Write(value.b);
-            packer.Write(value.a);
+            uint packed = ((uint)value.r << 24) | ((uint)value.g << 16) | ((uint)value.b << 8) | value.a;
+
+            packer.EnsureBitsExist(32);
+            packer.WriteBitsWithoutChecks(packed, 32);
         }
 
         [UsedByIL]
         public static void Read(this BitPacker packer, ref Color32 value)
         {
-            byte r = default;
-            byte g = default;
-            byte b = default;
-            byte a = default;
+            uint packed = (uint)packer.ReadBits(32);
 
-            packer.Read(ref r);
-            packer.Read(ref g);
-            packer.Read(ref b);
-            packer.Read(ref a);
-
-            value = new Color32(r, g, b, a);
+            value = new Color32(
+                (byte)(packed >> 24),
+                (byte)(packed >> 16),
+                (byte)(packed >> 8),
+                (byte)packed
+            );
         }
 
         [UsedByIL]
@@ -261,28 +358,38 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL]
-        public static void Write(this BitPacker packer, Rect value)
+        public static unsafe void Write(this BitPacker packer, Rect value)
         {
-            packer.Write(value.x);
-            packer.Write(value.y);
-            packer.Write(value.width);
-            packer.Write(value.height);
+            var x = value.x;
+            var y = value.y;
+            var w = value.width;
+            var h = value.height;
+
+            uint xbits = *(uint*)&x;
+            uint ybits = *(uint*)&y;
+            uint wbits = *(uint*)&w;
+            uint hbits = *(uint*)&h;
+
+            ulong xyBits = ((ulong)xbits << 32) | ybits;
+            ulong whBits = ((ulong)wbits << 32) | hbits;
+
+            packer.EnsureBitsExist(128);
+            packer.WriteBitsWithoutChecks(xyBits, 64);
+            packer.WriteBitsWithoutChecks(whBits, 64);
         }
 
         [UsedByIL]
-        public static void Read(this BitPacker packer, ref Rect value)
+        public static unsafe void Read(this BitPacker packer, ref Rect value)
         {
-            float x = default;
-            float y = default;
-            float width = default;
-            float height = default;
+            ulong xyBits = packer.ReadBits(64);
+            ulong whBits = packer.ReadBits(64);
 
-            packer.Read(ref x);
-            packer.Read(ref y);
-            packer.Read(ref width);
-            packer.Read(ref height);
+            uint xbits = (uint)(xyBits >> 32);
+            uint ybits = (uint)(xyBits & 0xFFFFFFFF);
+            uint wbits = (uint)(whBits >> 32);
+            uint hbits = (uint)(whBits & 0xFFFFFFFF);
 
-            value = new Rect(x, y, width, height);
+            value = new Rect(*(float*)&xbits, *(float*)&ybits, *(float*)&wbits, *(float*)&hbits);
         }
 
         [UsedByIL]

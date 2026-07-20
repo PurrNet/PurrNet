@@ -1,10 +1,10 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using JetBrains.Annotations;
 
 namespace PurrNet
 {
@@ -13,9 +13,13 @@ namespace PurrNet
     {
         private NetworkAssets _target;
         private SerializedProperty _folderProp;
-        [UsedImplicitly]
-        private SerializedProperty _autoGenerateProp;
         private SerializedProperty _assetsProp;
+        private SerializedProperty _linkedProp;
+        private ReorderableList _reorderableList;
+        private string _searchFilter = "";
+
+        private const float SPACING = 8f;
+        private const float INDEX_WIDTH = 30f;
 
         private bool _showTypeList;
         private string _typeSearch = "";
@@ -23,26 +27,13 @@ namespace PurrNet
         private int _typePage = 0;
         private const int TypesPerPage = 10;
 
-        [UsedImplicitly]
-        private const int AssetsPerPage = 20;
-        [UsedImplicitly]
-        private int _assetPage;
-
-        private static GUIStyle DescriptionStyle()
-        {
-            return new GUIStyle(GUI.skin.label)
-            {
-                wordWrap = true
-            };
-        }
-
         private void OnEnable()
         {
             _cachedTypes = null;
             _target = (NetworkAssets)target;
             _folderProp = serializedObject.FindProperty("folder");
-            _autoGenerateProp = serializedObject.FindProperty("autoGenerate");
             _assetsProp = serializedObject.FindProperty("assets");
+            _linkedProp = serializedObject.FindProperty("linkedNetworkAssets");
 
             _cachedTypes = _target.AvailableTypeNames
                 .Select(Type.GetType)
@@ -50,29 +41,56 @@ namespace PurrNet
                 .OrderByDescending(t => _target.enabledTypeNames.Contains(t.AssemblyQualifiedName))
                 .ThenBy(t => t.Name)
                 .ToList();
+
+            SetupReorderableList();
+        }
+
+        private void SetupReorderableList()
+        {
+            _reorderableList = new ReorderableList(serializedObject, _assetsProp, true, true, true, true);
+            _reorderableList.elementHeight = EditorGUIUtility.singleLineHeight;
+
+            _reorderableList.drawHeaderCallback = (Rect rect) =>
+            {
+                EditorGUI.LabelField(new Rect(rect.x, rect.y, INDEX_WIDTH, rect.height), "ID");
+                EditorGUI.LabelField(new Rect(rect.x + INDEX_WIDTH + SPACING, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), "Asset");
+            };
+
+            _reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
+            {
+                var element = _assetsProp.GetArrayElementAtIndex(index);
+
+                float x = rect.x;
+                EditorGUI.LabelField(new Rect(x, rect.y, INDEX_WIDTH, rect.height), index.ToString());
+                x += INDEX_WIDTH + SPACING;
+
+                EditorGUI.BeginDisabledGroup(_target.autoGenerate);
+                EditorGUI.PropertyField(new Rect(x, rect.y, rect.width - INDEX_WIDTH - SPACING, rect.height), element, GUIContent.none);
+                EditorGUI.EndDisabledGroup();
+            };
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            GUILayout.Label("Network Assets", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField(
-                "This asset is used to store Unity objects (e.g., Materials, Sprites, Scriptables) to reference them by index for efficient networking.",
-                DescriptionStyle());
-            GUILayout.Space(10);
 
-            EditorGUILayout.PropertyField(_folderProp);
+            SharedAssetEditorUI.DrawHeader(
+                "Network Assets",
+                "This asset is used to store Unity objects (e.g., Materials, Sprites, Scriptables) " +
+                "to reference them by index for efficient networking.");
+
+            SharedAssetEditorUI.DrawGenerationSettingsTop(_folderProp, _target);
 
             GUILayout.BeginHorizontal();
-
             DrawToggleButton("Auto generate", ref _target.autoGenerate);
-            if (GUILayout.Button("Generate", GUILayout.Width(1), GUILayout.ExpandWidth(true)))
-            {
-                Generate();
-            }
-
             GUILayout.EndHorizontal();
 
+            SharedAssetEditorUI.DrawGenerateButton(() =>
+            {
+                _target.GenerateAssets();
+                serializedObject.Update();
+                _assetsProp = serializedObject.FindProperty("assets");
+            });
 
             if (GUILayout.Button("Refresh Type List"))
             {
@@ -80,9 +98,16 @@ namespace PurrNet
             }
 
             DrawTypeToggleFoldout();
-            GUILayout.Space(10);
 
-            DrawAssetList();
+            SharedAssetEditorUI.DrawLinkedField(_linkedProp);
+
+            SharedAssetEditorUI.DrawEntryList(_reorderableList, _target.autoGenerate,
+                ref _searchFilter, i =>
+                {
+                    if (i >= _assetsProp.arraySize) return null;
+                    var obj = _assetsProp.GetArrayElementAtIndex(i).objectReferenceValue;
+                    return obj ? obj.name : null;
+                });
 
             serializedObject.ApplyModifiedProperties();
 
@@ -95,18 +120,7 @@ namespace PurrNet
 
         private void DrawToggleButton(string label, ref bool value)
         {
-            GUI.color = value ? Color.green : Color.white;
-            if (GUILayout.Button(label, GUILayout.Width(1), GUILayout.ExpandWidth(true)))
-            {
-                value = !value;
-                EditorUtility.SetDirty(_target);
-            }
-            GUI.color = Color.white;
-        }
-
-        private void DrawAssetList()
-        {
-            EditorGUILayout.PropertyField(_assetsProp, true);
+            value = SharedAssetEditorUI.DrawToggleButton(label, value, _target);
         }
 
         private void DrawTypeToggleFoldout()
@@ -182,64 +196,6 @@ namespace PurrNet
                 Debug.LogException(e);
                 throw;
             }
-        }
-
-        private void Generate()
-        {
-            if (!_target.folder) return;
-
-            var enabledTypes = _target.enabledTypeNames
-                .Select(Type.GetType)
-                .Where(t => t != null)
-                .ToArray();
-
-            string path = AssetDatabase.GetAssetPath(_target.folder);
-            string[] guids = AssetDatabase.FindAssets("", new[] { path });
-
-            var found = new HashSet<UnityEngine.Object>();
-            foreach (var guid in guids)
-            {
-                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-
-                if (assetPath.EndsWith(".unity"))
-                    continue;
-
-                var all = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                foreach (var obj in all)
-                {
-                    if (!obj) continue;
-
-                    var ns = obj.GetType().Namespace;
-                    if (ns != null && ns.Contains("UnityEditor"))
-                        continue;
-
-                    if (obj && enabledTypes.Any(t => t.IsAssignableFrom(obj.GetType())) && !_target.assets.Contains(obj))
-                        _target.assets.Add(obj);
-                }
-            }
-
-            bool changed = false;
-
-            foreach (var obj in found)
-            {
-                if (!_target.assets.Contains(obj))
-                {
-                    _target.assets.Add(obj);
-                    changed = true;
-                }
-            }
-
-            if (changed)
-            {
-                _target.Refresh();
-                EditorUtility.SetDirty(_target);
-                AssetDatabase.SaveAssets();
-            }
-
-            _target.Refresh();
-
-            EditorUtility.SetDirty(_target);
-            AssetDatabase.SaveAssets();
         }
 
         private static List<Type> GetTypesWithAssetsSorted(NetworkAssets target)

@@ -1,4 +1,5 @@
 #if ADDRESSABLES_PURRNET_SUPPORT
+using System;
 using System.Collections.Generic;
 using PurrNet;
 using PurrNet.Packing;
@@ -8,10 +9,17 @@ namespace PurrNet.Modules
 {
     public class AddressablesSyncModule : INetworkModule
     {
+        public delegate void OnClientAddressableLoadStateChanged(PlayerID player, string guid, bool loaded);
+        
         private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
 
         private readonly Dictionary<PlayerID, HashSet<string>> _clientLoadedGuids = new();
+
+        /// <summary>
+        /// Fired on the server when a client reports that an Addressable asset has been loaded or unloaded.
+        /// </summary>
+        public event OnClientAddressableLoadStateChanged onClientLoadStateChanged;
 
         public AddressablesSyncModule(NetworkManager manager, PlayersManager playersManager)
         {
@@ -63,7 +71,9 @@ namespace PurrNet.Modules
             if (string.IsNullOrEmpty(guid))
                 return;
 
-            await _manager.addressableNetworkPrefabs.LoadPrefabByGuidAsync(guid);
+            var prefabData = await _manager.addressableNetworkPrefabs.LoadPrefabByGuidAsync(guid);
+            if (prefabData.prefab)
+                SendLoadState(guid, true);
         }
 
         private void OnClientLoadStateChanged(string guid, bool loaded)
@@ -94,23 +104,57 @@ namespace PurrNet.Modules
                 _clientLoadedGuids[player] = set;
             }
 
+            var guid = packet.guid.value ?? string.Empty;
+
             if (packet.loaded)
-                set.Add(packet.guid.value ?? string.Empty);
+                set.Add(guid);
             else
-                set.Remove(packet.guid.value ?? string.Empty);
+                set.Remove(guid);
+
+            onClientLoadStateChanged?.Invoke(player, guid, packet.loaded);
 
             if (packet.loaded && _manager.TryGetModule<HierarchyFactory>(true, out var factory))
                 factory.EvaluateVisibilityForPlayer(player);
         }
+        
+        /// <summary>
+        /// Gets which GUIDs the given client has loaded
+        /// </summary>
+        /// <param name="player">Player to search for loaded GUIDs</param>
+        /// <returns>Which GUIDs the player has confirmed loaded</returns>
+        public IReadOnlyCollection<string> GetLoadedGuidsForPlayer(PlayerID player)
+        {
+            return _clientLoadedGuids.TryGetValue(player, out var set) ? set : (IReadOnlyCollection<string>)Array.Empty<string>();
+        }
 
-        public void OnPlayerLeft(PlayerID player, bool asServer)
+        private void OnPlayerLeft(PlayerID player, bool asServer)
         {
             if (!asServer)
                 return;
             
             _clientLoadedGuids.Remove(player);
         }
+        
+        /// <summary>
+        /// Returns all players that have reported the given Addressable GUID as loaded.
+        /// </summary>
+        public IReadOnlyList<PlayerID> GetPlayersWithGuidLoaded(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return Array.Empty<PlayerID>();
 
+            var result = new List<PlayerID>();
+            foreach (var (player, guids) in _clientLoadedGuids)
+            {
+                if (guids.Contains(guid))
+                    result.Add(player);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Checks whether a client has loaded a specific GUID
+        /// </summary>
         public bool ClientHasLoaded(PlayerID player, string assetGuid)
         {
             if (string.IsNullOrEmpty(assetGuid))
@@ -122,6 +166,9 @@ namespace PurrNet.Modules
             return set.Contains(assetGuid);
         }
 
+        /// <summary>
+        /// Sends the request to a player to prepare/warmup/fetch a specific GUID
+        /// </summary>
         public void RequestPlayerToLoad(PlayerID player, string assetGuid)
         {
             if (string.IsNullOrEmpty(assetGuid) || player.isServer)

@@ -2,24 +2,24 @@ using System.Collections.Generic;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
+using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
-    public struct NetworkTransformDelta : IPackedAuto
-    {
-        public SceneID scene;
-        public readonly ByteData packet;
-
-        public NetworkTransformDelta(SceneID context, BitPacker packer)
-        {
-            scene = context;
-            packet = packer.ToByteData();
-        }
-    }
-
     public class NetworkTransformModule : INetworkModule, IPromoteToServerModule
     {
+        static readonly ProfilerMarker _postFixedUpdateMarker = new ProfilerMarker("NetworkTransform.PostFixedUpdate");
+        static readonly ProfilerMarker _gatherStateMarker = new ProfilerMarker("NetworkTransform.GatherState");
+        static readonly ProfilerMarker _prepareUnreliableMarker = new ProfilerMarker("NetworkTransform.PrepareState");
+        static readonly ProfilerMarker _queueChangedMarker = new ProfilerMarker("NetworkTransform.QueueChangedState");
+        static readonly ProfilerMarker _decodeUnreliableMarker = new ProfilerMarker("NetworkTransform.DecodeState");
+        static readonly ProfilerMarker _processAckMarker = new ProfilerMarker("NetworkTransform.ProcessAck");
+        static readonly ProfilerMarker _flushAckMarker = new ProfilerMarker("NetworkTransform.FlushAck");
+
         private readonly List<NetworkTransform> _networkTransforms = new();
+        private readonly List<NetworkTransform> _changedTransforms = new();
+        private readonly Dictionary<PlayerID, NTUnreliableSendStream> _sendStreams = new();
+        private readonly Dictionary<PlayerID, NTUnreliableRecvStream> _recvStreams = new();
         private readonly ScenePlayersModule _scenePlayers;
         private readonly PlayersBroadcaster _broadcaster;
         private readonly NetworkManager _manager;
@@ -40,6 +40,10 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
+            ReleaseAllStreams();
+
+            for (var i = 0; i < _networkTransforms.Count; i++)
+                _networkTransforms[i].ResetUnreliableStream();
         }
 
         public void PostPromoteToServerModule()
@@ -49,42 +53,617 @@ namespace PurrNet.Modules
         public void Enable(bool asServer)
         {
             _asServer = asServer;
-            _broadcaster.Subscribe<NetworkTransformDelta>(OnNetworkTransformDelta);
+            _broadcaster.Subscribe<NetworkTransformUnreliableDelta>(OnUnreliableDelta);
+            _broadcaster.Subscribe<NetworkTransformUnreliableAck>(OnUnreliableAck);
+            _broadcaster.Subscribe<NetworkTransformUnreliableNack>(OnUnreliableNack);
+            _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
         }
 
         public void Disable(bool asServer)
         {
-            _broadcaster.Unsubscribe<NetworkTransformDelta>(OnNetworkTransformDelta);
+            _broadcaster.Unsubscribe<NetworkTransformUnreliableDelta>(OnUnreliableDelta);
+            _broadcaster.Unsubscribe<NetworkTransformUnreliableAck>(OnUnreliableAck);
+            _broadcaster.Unsubscribe<NetworkTransformUnreliableNack>(OnUnreliableNack);
+            _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
+            ReleaseAllStreams();
         }
 
-        private void OnNetworkTransformDelta(PlayerID player, NetworkTransformDelta data, bool asServer)
+        private void ReleaseAllStreams()
+        {
+            foreach (var stream in _sendStreams.Values)
+                NTUnreliable.Release(stream.ring);
+            foreach (var stream in _recvStreams.Values)
+                NTUnreliable.Release(stream.ring);
+            _sendStreams.Clear();
+            _recvStreams.Clear();
+        }
+
+        private void OnPlayerUnloadedScene(PlayerID player, SceneID scene, bool asServer)
+        {
+            if (scene != _scene)
+                return;
+
+            // Client streams are keyed PlayerID.Server; when the local player leaves the scene
+            // both ends must restart, or a re-join pairs a fresh sender seq with a stale recv window.
+            if (!asServer)
+            {
+                ReleaseAllStreams();
+                return;
+            }
+
+            if (_sendStreams.Remove(player, out var send))
+                NTUnreliable.Release(send.ring);
+            if (_recvStreams.Remove(player, out var recv))
+                NTUnreliable.Release(recv.ring);
+        }
+
+        internal NTUnreliableSendStream GetSendStream(PlayerID player)
+        {
+            if (!_sendStreams.TryGetValue(player, out var stream))
+            {
+                stream = new NTUnreliableSendStream();
+                _sendStreams.Add(player, stream);
+            }
+
+            return stream;
+        }
+
+        internal static void AddPending(NTUnreliableSendStream stream, NetworkTransform nt)
+        {
+            if (!nt || !nt.id.HasValue)
+                return;
+
+            var nid = nt.id.Value;
+            int lo = 0;
+            int hi = stream.pending.Count - 1;
+
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                var midNt = stream.pending[mid];
+                if (!midNt || !midNt.id.HasValue)
+                {
+                    stream.pending.RemoveAt(mid);
+                    hi = stream.pending.Count - 1;
+                    continue;
+                }
+
+                var midNid = midNt.id.Value;
+                if (midNid.Equals(nid))
+                {
+                    stream.pending[mid] = nt;
+                    return;
+                }
+
+                if (midNid < nid)
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+
+            stream.pending.Insert(lo, nt);
+        }
+
+        internal static bool RemovePending(NTUnreliableSendStream stream, NetworkID nid)
+        {
+            int lo = 0;
+            int hi = stream.pending.Count - 1;
+
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                var midNt = stream.pending[mid];
+                if (!midNt || !midNt.id.HasValue)
+                {
+                    stream.pending.RemoveAt(mid);
+                    hi = stream.pending.Count - 1;
+                    continue;
+                }
+
+                var midNid = midNt.id.Value;
+                if (midNid.Equals(nid))
+                {
+                    stream.pending.RemoveAt(mid);
+                    return true;
+                }
+
+                if (midNid < nid)
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+
+            return false;
+        }
+
+        internal NTUnreliableRecvStream GetRecvStream(PlayerID player)
+        {
+            if (!_recvStreams.TryGetValue(player, out var stream))
+            {
+                stream = new NTUnreliableRecvStream();
+                _recvStreams.Add(player, stream);
+            }
+
+            return stream;
+        }
+
+        internal static bool MarkReceived(NTUnreliableRecvStream stream, ushort seq, out long packetOrder)
+        {
+            if (!stream.ackInit)
+            {
+                stream.ackInit = true;
+                stream.latestSeq = seq;
+                stream.latestOrder = 0;
+                stream.ackBits = 0;
+                packetOrder = 0;
+                return true;
+            }
+
+            var diff = (short)(seq - stream.latestSeq);
+
+            switch (diff)
+            {
+                case > 0:
+                {
+                    stream.ackBits = diff switch
+                    {
+                        >= 33 => 0,
+                        32 => 1u << 31,
+                        _ => (stream.ackBits << diff) | (1u << (diff - 1))
+                    };
+
+                    stream.latestOrder += diff;
+                    stream.latestSeq = seq;
+                    packetOrder = stream.latestOrder;
+                    return true;
+                }
+                case 0:
+                    packetOrder = stream.latestOrder;
+                    return false;
+            }
+
+            int d = -diff;
+            if (d > 32)
+            {
+                packetOrder = stream.latestOrder - d;
+                return false;
+            }
+
+            uint mask = 1u << (d - 1);
+            if ((stream.ackBits & mask) != 0)
+            {
+                packetOrder = stream.latestOrder - d;
+                return false;
+            }
+
+            stream.ackBits |= mask;
+            packetOrder = stream.latestOrder - d;
+            return true;
+        }
+
+        private static bool TryGetRecvBaseline(NTUnreliableRecvStream stream, ushort seq, NetworkID nid,
+            out NetworkTransformState state, out NetworkTransformVelocity velocity, out byte gen)
+        {
+            state = default;
+            velocity = default;
+            gen = default;
+
+            ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
+            if (!slot.used || slot.seq != seq || slot.entries == null)
+                return false;
+
+            // Entries are ascending-nid by construction (packets are written from the id-sorted list).
+            var list = slot.entries;
+            int lo = 0, hi = list.Count - 1;
+
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                var midNid = list[mid].nid;
+
+                if (midNid.Equals(nid))
+                {
+                    state = list[mid].state;
+                    velocity = list[mid].velocity;
+                    gen = list[mid].gen;
+                    return true;
+                }
+
+                if (nid > midNid)
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+
+            return false;
+        }
+
+        internal static bool IsValidEntryBounds(int bodyStart, int bodyLength, int packetEnd)
+        {
+            return bodyStart >= 0 && bodyStart <= packetEnd &&
+                   bodyLength > 0 && bodyLength <= packetEnd - bodyStart;
+        }
+
+        private void OnUnreliableDelta(PlayerID player, NetworkTransformUnreliableDelta data, bool asServer)
         {
             if (data.scene != _scene)
                 return;
 
-            using var packet = BitPackerPool.Get(data.packet);
+            var sender = asServer ? player : PlayerID.Server;
+            var stream = GetRecvStream(sender);
 
-            packet.ResetPositionAndMode(true);
-
-            int ntCount = default;
-            NetworkID lastNid = default;
-            PackedInt lastLen = default;
-
-            Packer<int>.Read(packet, ref ntCount);
-
-            for (var i = 0; i < ntCount; i++)
+            if (data.ack.HasValue && _sendStreams.TryGetValue(sender, out var sendStream))
             {
-                PackedInt length = default;
-                DeltaPacker<PackedInt>.Read(packet, lastLen, ref length);
-                lastLen = length;
-                DeltaPacker<NetworkID>.Read(packet, lastNid, ref lastNid);
+                var ack = data.ack.Value;
+                ProcessAck(sendStream, ack.seq, ack.ackBits);
+            }
 
-                if (_factory.TryGetIdentity(_scene, lastNid, out var identity) && identity is NetworkTransform nt &&
-                    (!asServer || nt.IsControlling(player, false)))
+            using var decodeScope = _decodeUnreliableMarker.Auto();
+
+            bool oldAckInit = stream.ackInit;
+            ushort oldLatestSeq = stream.latestSeq;
+            long oldLatestOrder = stream.latestOrder;
+            uint oldAckBits = stream.ackBits;
+            bool oldAckDirty = stream.ackDirty;
+
+            if (!MarkReceived(stream, data.seq, out var packetOrder))
+                return;
+
+            bool committed = false;
+            var decoded = ListPool<NTUnreliableEntry>.Instantiate();
+
+            try
+            {
+                using var packet = BitPackerPool.Get(data.packet);
+                packet.ResetPositionAndMode(true);
+
+                long packetEndLong = data.packet.length * 8L;
+                if (packetEndLong > int.MaxValue)
+                    return;
+                int packetEnd = (int)packetEndLong;
+
+                int ntCount = default;
+                int lastDist = 0;
+                NetworkID lastNid = default;
+                PackedInt lastLen = default;
+
+                Packer<int>.Read(packet, ref ntCount);
+
+                // Every entry consumes at least one body bit in addition to its framing.
+                // This rejects hostile counts before they can turn a tiny packet into a long loop.
+                if (ntCount < 0 || ntCount > packetEnd - packet.positionInBits)
+                    return;
+
+                for (var i = 0; i < ntCount; i++)
                 {
-                    nt.DeltaRead(packet);
+                    PackedInt length = default;
+                    DeltaPacker<PackedInt>.Read(packet, lastLen, ref length);
+                    lastLen = length;
+                    DeltaPacker<NetworkID>.Read(packet, lastNid, ref lastNid);
+
+                    int bodyStart = packet.positionInBits;
+                    if (!IsValidEntryBounds(bodyStart, length.value, packetEnd))
+                        return;
+                    int bodyEnd = bodyStart + length.value;
+
+                    // The abs/gen/dist header is fixed-layout and MUST be consumed even for entries
+                    // that get skipped: the dist chain is cross-entry decoder state.
+                    bool isAbsolute = packet.ReadBits(1) == 1;
+                    byte gen = default;
+                    int dist = 0;
+
+                    if (isAbsolute)
+                    {
+                        Packer<byte>.Read(packet, ref gen);
+                    }
+                    else if (packet.ReadBits(1) == 1)
+                    {
+                        dist = lastDist;
+                    }
+                    else
+                    {
+                        dist = (int)packet.ReadBits(NTUnreliable.DISTANCE_BITS) + 1;
+                        lastDist = dist;
+                    }
+
+                    if (packet.positionInBits > bodyEnd)
+                        return;
+
+                    bool recorded = false;
+
+                    if (_factory.TryGetIdentity(_scene, lastNid, out var identity) && identity is NetworkTransform nt &&
+                        (!asServer || nt.IsControlling(player, false)))
+                    {
+                        NetworkTransformState state = default;
+                        NetworkTransformVelocity velocity = default;
+                        bool ok;
+
+                        if (isAbsolute)
+                        {
+                            state = nt.ReadAbsoluteState(packet);
+                            ok = true;
+                        }
+                        else if (dist > 0 && TryGetRecvBaseline(stream, (ushort)(data.seq - dist), lastNid,
+                                     out var baseline, out var baseVel, out gen))
+                        {
+                            var predicted = NTUnreliable.GetDeltaPrediction(baseline, baseVel, dist);
+                            state = nt.ReadDeltaState(packet, baseline, predicted);
+                            velocity = NetworkTransformVelocity.Derive(baseline, state, dist);
+                            ok = true;
+                        }
+                        else
+                        {
+                            ok = false;
+                        }
+
+                        if (packet.positionInBits > bodyEnd)
+                            return;
+
+                        if (ok)
+                        {
+                            NetworkIdentity frameParent = null;
+                            if (state.frame == NetworkTransformFrame.LocalIdentity)
+                                _factory.TryGetIdentity(_scene, state.parentId, out frameParent);
+
+                            if (nt.TryApplyUnreliableState(state, gen, packetOrder, frameParent, isAbsolute))
+                            {
+                                decoded.Add(new NTUnreliableEntry
+                                {
+                                    nid = lastNid,
+                                    state = state,
+                                    velocity = velocity,
+                                    gen = gen
+                                });
+                                recorded = true;
+                            }
+                        }
+                    }
+
+                    // Anything not recorded must not become an acked baseline on the sender —
+                    // acks are packet-granular, so a NACK is the only per-entry signal.
+                    if (!recorded)
+                        SendNack(sender, lastNid);
+
+                    packet.SetBitPosition(bodyEnd);
                 }
-                else packet.SkipBits(length);
+
+                ref var slot = ref stream.ring[data.seq % NTUnreliable.RING_SIZE];
+                if (slot.entries != null)
+                    ListPool<NTUnreliableEntry>.Destroy(slot.entries);
+                slot = new NTUnreliableSlot { used = true, seq = data.seq, entries = decoded };
+                decoded = null;
+                stream.ackDirty = true;
+                stream.packetsSinceAck++;
+                committed = true;
+            }
+            catch (System.Exception exception) when (exception is System.IndexOutOfRangeException or
+                                                      System.ArgumentOutOfRangeException or
+                                                      System.OverflowException)
+            {
+                // A short or otherwise malformed packet is equivalent to packet loss. The finally
+                // block restores the receive window so a corrupt datagram cannot be acknowledged.
+            }
+            finally
+            {
+                if (decoded != null)
+                    ListPool<NTUnreliableEntry>.Destroy(decoded);
+
+                if (!committed)
+                {
+                    stream.ackInit = oldAckInit;
+                    stream.latestSeq = oldLatestSeq;
+                    stream.latestOrder = oldLatestOrder;
+                    stream.ackBits = oldAckBits;
+                    stream.ackDirty = oldAckDirty;
+                }
+            }
+
+            if (committed && ShouldFlushAckAfterPacket(stream))
+                SendStandaloneAck(sender, stream);
+        }
+
+        internal static bool ShouldFlushAckAfterPacket(NTUnreliableRecvStream stream)
+        {
+            return stream.ackDirty && stream.packetsSinceAck >= NTUnreliable.ACK_PACKET_THRESHOLD;
+        }
+
+        internal static bool ShouldFlushAckAfterTick(NTUnreliableRecvStream stream)
+        {
+            if (!stream.ackDirty)
+                return false;
+
+            stream.ackDelayTicks++;
+            return stream.ackDelayTicks >= NTUnreliable.ACK_INTERVAL_TICKS;
+        }
+
+        private void OnUnreliableAck(PlayerID player, NetworkTransformUnreliableAck data, bool asServer)
+        {
+            if (data.scene != _scene)
+                return;
+
+            var key = asServer ? player : PlayerID.Server;
+            if (_sendStreams.TryGetValue(key, out var stream))
+                ProcessAck(stream, data.seq, data.ackBits);
+        }
+
+        internal void ProcessAck(NTUnreliableSendStream stream, ushort seq, uint ackBits)
+        {
+            using var _ = _processAckMarker.Auto();
+            List<NetworkID> completed = null;
+
+            try
+            {
+                TryAdoptAck(stream, seq, ref completed);
+                for (int i = 0; i < 32; i++)
+                {
+                    if ((ackBits & (1u << i)) != 0)
+                        TryAdoptAck(stream, (ushort)(seq - 1 - i), ref completed);
+                }
+
+                if (completed != null)
+                    RemovePending(stream, completed);
+            }
+            finally
+            {
+                if (completed != null)
+                    ListPool<NetworkID>.Destroy(completed);
+            }
+        }
+
+        private void TryAdoptAck(NTUnreliableSendStream stream, ushort seq, ref List<NetworkID> completed)
+        {
+            ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
+            if (!slot.used || slot.seq != seq || slot.acked)
+                return;
+
+            slot.acked = true;
+
+            var list = slot.entries;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var entry = list[i];
+
+                // ACK slots are processed newest-first. Once a newer state for this transform was
+                // adopted, older retransmissions cannot improve its baseline or complete a newer
+                // revision, so skip the registration/generation work entirely.
+                if (stream.acked.TryGetValue(entry.nid, out var currentBaseline) &&
+                    slot.order <= currentBaseline.order)
+                    continue;
+
+                if (!TryGetRegisteredTransform(entry.nid, out var nt))
+                    continue;
+
+                if (stream.nackFloor.TryGetValue(entry.nid, out var floor))
+                {
+                    if (slot.order < floor)
+                        continue;
+                    stream.nackFloor.Remove(entry.nid);
+                }
+
+                currentBaseline = new NTUnreliableBaseline
+                {
+                    state = entry.state,
+                    velocity = entry.velocity,
+                    gen = entry.gen,
+                    genEpoch = entry.genEpoch,
+                    revision = entry.revision,
+                    order = slot.order
+                };
+                stream.acked[entry.nid] = currentBaseline;
+
+                uint expectedEpoch = stream.generationOverrides.Count > 0 &&
+                                     stream.generationOverrides.TryGetValue(entry.nid, out var generation)
+                    ? generation.epoch
+                    : nt.sendGenEpoch;
+
+                if (currentBaseline.genEpoch == expectedEpoch &&
+                    currentBaseline.revision == nt.capturedRevision)
+                {
+                    completed ??= ListPool<NetworkID>.Instantiate();
+                    completed.Add(entry.nid);
+                }
+            }
+
+            // Once this packet is acknowledged, every state needed for future deltas lives
+            // in stream.acked. Retaining the packet's full snapshots until ring wrap makes
+            // clean-link memory scale with 64 packets instead of the actual in-flight window.
+            ListPool<NTUnreliableEntry>.Destroy(slot.entries);
+            slot.entries = null;
+        }
+
+        private static int CompareNetworkIds(NetworkID a, NetworkID b)
+        {
+            if (a.Equals(b))
+                return 0;
+            return a < b ? -1 : 1;
+        }
+
+        internal static void RemovePending(NTUnreliableSendStream stream, List<NetworkID> completed)
+        {
+            if (stream.pending.Count == 0 || completed.Count == 0)
+                return;
+
+            completed.Sort(CompareNetworkIds);
+
+            int completedIndex = 0;
+            int writeIndex = 0;
+
+            for (int readIndex = 0; readIndex < stream.pending.Count; readIndex++)
+            {
+                var nt = stream.pending[readIndex];
+                if (!nt || !nt.id.HasValue)
+                    continue;
+
+                var nid = nt.id.Value;
+
+                while (completedIndex < completed.Count && completed[completedIndex] < nid)
+                    completedIndex++;
+
+                bool remove = completedIndex < completed.Count && completed[completedIndex].Equals(nid);
+                if (!remove)
+                    stream.pending[writeIndex++] = nt;
+            }
+
+            if (writeIndex < stream.pending.Count)
+                stream.pending.RemoveRange(writeIndex, stream.pending.Count - writeIndex);
+        }
+
+        private void OnUnreliableNack(PlayerID player, NetworkTransformUnreliableNack data, bool asServer)
+        {
+            if (data.scene != _scene)
+                return;
+
+            var key = asServer ? player : PlayerID.Server;
+            if (_sendStreams.TryGetValue(key, out var stream))
+            {
+                stream.acked.Remove(data.id);
+                stream.nackFloor[data.id] = stream.nextOrder;
+
+                if (stream.pendingInitialized && TryGetRegisteredTransform(data.id, out var nt))
+                {
+                    var localPlayer = GetLocalPlayer();
+                    if (IsSendCandidate(nt, key, localPlayer))
+                        AddPending(stream, nt);
+                }
+            }
+        }
+
+        private void SendNack(PlayerID sender, NetworkID nid)
+        {
+            // Reliable: the NACK is the only per-entry correction against packet-granular acks;
+            // losing it while the ack lands wedges a resting object on a phantom baseline.
+            var nack = new NetworkTransformUnreliableNack { scene = _scene, id = nid };
+            _broadcaster.Send(sender, nack, Channel.ReliableUnordered);
+        }
+
+        private void SendStandaloneAck(PlayerID sender, NTUnreliableRecvStream stream)
+        {
+            using var _ = _flushAckMarker.Auto();
+
+            stream.ackDirty = false;
+            stream.ackDelayTicks = 0;
+            stream.packetsSinceAck = 0;
+
+            var ack = new NetworkTransformUnreliableAck
+            {
+                scene = _scene,
+                seq = stream.latestSeq,
+                ackBits = stream.ackBits
+            };
+            _broadcaster.Send(sender, ack, Channel.Unreliable);
+        }
+
+        private void FlushAcks()
+        {
+            foreach (var (sender, stream) in _recvStreams)
+            {
+                if (!stream.ackDirty)
+                    continue;
+
+                if (!ShouldFlushAckAfterTick(stream))
+                    continue;
+
+                SendStandaloneAck(sender, stream);
             }
         }
 
@@ -95,34 +674,349 @@ namespace PurrNet.Modules
             return PlayerID.Server;
         }
 
-        private bool PrepareDeltaState(BitPacker packer, PlayerID player)
+        private bool IsSendCandidate(NetworkTransform nt, PlayerID player, PlayerID localPlayer)
         {
-            var localPlayer = GetLocalPlayer();
-            int ntCount = _networkTransforms.Count;
-            bool anyWritten = false;
+            if (!nt || !nt.IsSpawned(_asServer) || !nt.id.HasValue)
+                return false;
 
-            var controlled = ListPool<NetworkTransform>.Instantiate();
+            if (player == PlayerID.Server)
+                return nt.IsControlling(localPlayer, false);
 
-            GatherCandidates(player, ntCount, localPlayer, controlled);
+            return !nt.IsControlling(player, false) && nt.IsObserver(player);
+        }
 
-            NetworkID lastNid = default;
-            int count = controlled.Count;
-            var countPos = packer.positionInBits;
+        private NTUnreliableSendStream PrepareSendStream(PlayerID player, PlayerID localPlayer)
+        {
+            var stream = GetSendStream(player);
+            if (stream.pendingInitialized)
+                return stream;
 
+            stream.pendingInitialized = true;
+
+            for (int i = 0; i < _networkTransforms.Count; i++)
+            {
+                var nt = _networkTransforms[i];
+                if (IsSendCandidate(nt, player, localPlayer))
+                    AddPending(stream, nt);
+            }
+
+            return stream;
+        }
+
+        private void QueueChangedStates(List<NetworkTransform> changed, PlayerID localPlayer)
+        {
+            using var _ = _queueChangedMarker.Auto();
+
+            foreach (var (player, stream) in _sendStreams)
+            {
+                if (!stream.pendingInitialized)
+                    continue;
+
+                // Binary insertion is cheaper for tiny changesets. Larger changesets are
+                // already NetworkID-sorted by the gather loop, so merge them in linear time.
+                if (changed.Count <= 4)
+                {
+                    for (int i = 0; i < changed.Count; i++)
+                    {
+                        var nt = changed[i];
+                        if (IsSendCandidate(nt, player, localPlayer))
+                            AddPending(stream, nt);
+                    }
+                    continue;
+                }
+
+                // A continuously moving transform normally remains pending while its previous
+                // revision is in flight. In that common benchmark/gameplay case every changed ID
+                // is already present, so avoid allocating and copying the same full list again.
+                if (!HasMissingSendCandidate(stream, changed, player, localPlayer))
+                    continue;
+
+                var additions = ListPool<NetworkTransform>.Instantiate();
+                try
+                {
+                    for (int i = 0; i < changed.Count; i++)
+                    {
+                        var nt = changed[i];
+                        if (IsSendCandidate(nt, player, localPlayer))
+                            additions.Add(nt);
+                    }
+
+                    MergePending(stream, additions);
+                }
+                finally
+                {
+                    ListPool<NetworkTransform>.Destroy(additions);
+                }
+            }
+        }
+
+        private bool HasMissingSendCandidate(NTUnreliableSendStream stream, List<NetworkTransform> changed,
+            PlayerID player, PlayerID localPlayer)
+        {
+            int pendingIndex = 0;
+
+            for (int changedIndex = 0; changedIndex < changed.Count; changedIndex++)
+            {
+                var nt = changed[changedIndex];
+                if (!nt || !nt.id.HasValue)
+                    continue;
+
+                var nid = nt.id.Value;
+                bool found = false;
+
+                while (pendingIndex < stream.pending.Count)
+                {
+                    var pending = stream.pending[pendingIndex];
+                    if (!pending || !pending.id.HasValue)
+                        return true;
+
+                    var pendingId = pending.id.Value;
+                    if (pendingId < nid)
+                    {
+                        pendingIndex++;
+                        continue;
+                    }
+
+                    found = pendingId.Equals(nid);
+                    break;
+                }
+
+                if (!found && IsSendCandidate(nt, player, localPlayer))
+                    return true;
+            }
+
+            return false;
+        }
+
+        internal static void MergePending(NTUnreliableSendStream stream, List<NetworkTransform> additions)
+        {
+            if (additions.Count == 0)
+                return;
+
+            if (stream.pending.Count == 0)
+            {
+                stream.pending.AddRange(additions);
+                return;
+            }
+
+            var merged = ListPool<NetworkTransform>.Instantiate();
+            try
+            {
+                int pendingIndex = 0;
+                int additionIndex = 0;
+
+                while (pendingIndex < stream.pending.Count && additionIndex < additions.Count)
+                {
+                    var pending = stream.pending[pendingIndex];
+                    var addition = additions[additionIndex];
+                    var pendingId = pending.id!.Value;
+                    var additionId = addition.id!.Value;
+
+                    if (pendingId.Equals(additionId))
+                    {
+                        merged.Add(addition);
+                        pendingIndex++;
+                        additionIndex++;
+                    }
+                    else if (pendingId < additionId)
+                    {
+                        merged.Add(pending);
+                        pendingIndex++;
+                    }
+                    else
+                    {
+                        merged.Add(addition);
+                        additionIndex++;
+                    }
+                }
+
+                while (pendingIndex < stream.pending.Count)
+                    merged.Add(stream.pending[pendingIndex++]);
+                while (additionIndex < additions.Count)
+                    merged.Add(additions[additionIndex++]);
+
+                stream.pending.Clear();
+                stream.pending.AddRange(merged);
+            }
+            finally
+            {
+                ListPool<NetworkTransform>.Destroy(merged);
+            }
+        }
+
+        // Worst-case bits for one entry's framing (len delta + nid delta).
+        private const int ENTRY_HEADER_BITS = 128;
+        // Wrapper overhead: broadcast type hash + scene + seq + ByteData length prefix.
+        private const int UNRELIABLE_PACKET_OVERHEAD = 32;
+
+        internal static long CalculateBudgetBits(int transportMtu)
+        {
+            long payloadBytes = (long)transportMtu - UNRELIABLE_PACKET_OVERHEAD;
+            if (payloadBytes < 128)
+                payloadBytes = 128;
+            return payloadBytes * 8L;
+        }
+
+        private static bool TryWriteEntry(BitPacker tmp, NetworkTransform nt, NTUnreliableSendStream stream,
+            int lastDist, out int newLastDist, out NetworkTransformVelocity velocity, out byte gen,
+            out uint genEpoch)
+        {
+            newLastDist = lastDist;
+            velocity = default;
+            var nid = nt.id!.Value;
+            var generation = stream.generationOverrides.Count > 0 &&
+                             stream.generationOverrides.TryGetValue(nid, out var overridden)
+                ? overridden
+                : new NTUnreliableGeneration { gen = nt.sendGen, epoch = nt.sendGenEpoch };
+            gen = generation.gen;
+            genEpoch = generation.epoch;
+            tmp.ResetPositionAndMode(false);
+
+            bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == genEpoch;
+
+            // Suppression must not depend on baseline age — a resting object's baseline never
+            // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
+            if (hasAcked && baseline.revision == nt.capturedRevision)
+                return false;
+
+            var current = nt.capturedState;
+
+            int dist = hasAcked ? (int)(stream.nextOrder - baseline.order) : 0;
+            bool canDelta = hasAcked && dist >= 1 && dist <= NTUnreliable.MAX_BASELINE_AGE &&
+                            nt.CanDeltaAgainst(baseline.state);
+
+            if (canDelta)
+            {
+                gen = baseline.gen;
+                genEpoch = baseline.genEpoch;
+                tmp.WriteBits(0, 1);
+
+                if (dist == lastDist)
+                {
+                    tmp.WriteBits(1, 1);
+                }
+                else
+                {
+                    tmp.WriteBits(0, 1);
+                    tmp.WriteBits((ulong)(dist - 1), NTUnreliable.DISTANCE_BITS);
+                    newLastDist = dist;
+                }
+
+                var predicted = NTUnreliable.GetDeltaPrediction(baseline.state, baseline.velocity, dist);
+                nt.WriteDeltaState(tmp, baseline.state, predicted);
+                velocity = NetworkTransformVelocity.Derive(baseline.state, current, dist);
+            }
+            else
+            {
+                tmp.WriteBits(1, 1);
+                Packer<byte>.Write(tmp, gen);
+                nt.WriteAbsoluteState(tmp);
+            }
+
+            return true;
+        }
+
+        private void FlushUnreliablePacket(PlayerID player, NTUnreliableSendStream stream, BitPacker packer,
+            List<NTUnreliableEntry> pending, int countPos, int writtenCount)
+        {
+            var lastPos = packer.positionInBits;
+            packer.SetBitPosition(countPos);
+            Packer<int>.Write(packer, writtenCount);
+            packer.SetBitPosition(lastPos);
+
+            ushort seq = stream.nextSeq;
+            ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
+            if (slot.entries != null)
+                ListPool<NTUnreliableEntry>.Destroy(slot.entries);
+            slot = new NTUnreliableSlot { used = true, seq = seq, order = stream.nextOrder, entries = pending };
+            stream.nextSeq += 1;
+            stream.nextOrder += 1;
+
+            var delta = new NetworkTransformUnreliableDelta(_scene, seq, packer);
+
+            if (_recvStreams.TryGetValue(player, out var recv) && recv.ackInit && recv.ackDirty)
+            {
+                recv.ackDirty = false;
+                recv.ackDelayTicks = 0;
+                recv.packetsSinceAck = 0;
+                delta.ack = new NetworkTransformUnreliableAckHeader
+                {
+                    seq = recv.latestSeq,
+                    ackBits = recv.ackBits
+                };
+            }
+
+            _broadcaster.Send(player, delta, Channel.Unreliable);
+
+            packer.Dispose();
+        }
+
+        private void SendUnreliableStates(PlayerID player, NTUnreliableSendStream stream)
+        {
+            _prepareUnreliableMarker.Begin();
+
+            if (stream.budgetBits == 0)
+                stream.budgetBits = CalculateBudgetBits(_manager.GetMTU(player, Channel.Unreliable, _asServer));
+
+            long budgetBits = stream.budgetBits;
+
+            BitPacker packer = null;
+            List<NTUnreliableEntry> pending = null;
+            int countPos = 0;
             int writtenCount = 0;
+            int lastDist = 0;
+            NetworkID lastNid = default;
             PackedInt lastLen = default;
-            Packer<int>.Write(packer, 0);
 
             using var tmp = BitPackerPool.Get();
 
-            for (var i = 0; i < count; i++)
+            for (var i = 0; i < stream.pending.Count;)
             {
-                var nt = controlled[i];
-                nt.DeltaWrite(tmp);
-                anyWritten = true;
+                var nt = stream.pending[i];
 
-                PackedInt length = tmp.positionInBits;
+                // Observer, ownership, registration, and reset callbacks maintain membership.
+                // Keep only a defensive destroyed/unregistered guard in the hot send loop.
+                if (!nt || !nt.id.HasValue)
+                {
+                    stream.pending.RemoveAt(i);
+                    continue;
+                }
 
+                if (!TryWriteEntry(tmp, nt, stream, lastDist, out var newLastDist, out var velocity,
+                        out var wireGen, out var wireGenEpoch))
+                {
+                    stream.pending.RemoveAt(i);
+                    continue;
+                }
+
+                int entryBits = tmp.positionInBits;
+
+                if (writtenCount > 0 && packer!.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
+                {
+                    FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
+                    packer = null;
+                    pending = null;
+                    writtenCount = 0;
+                    lastDist = 0;
+                    lastNid = default;
+                    lastLen = default;
+
+                    // the flush advanced nextOrder; baseline distances change, so re-encode
+                    if (!TryWriteEntry(tmp, nt, stream, lastDist, out newLastDist, out velocity, out wireGen,
+                            out wireGenEpoch))
+                        continue;
+                    entryBits = tmp.positionInBits;
+                }
+
+                if (packer == null)
+                {
+                    packer = BitPackerPool.Get();
+                    pending = ListPool<NTUnreliableEntry>.Instantiate();
+                    countPos = packer.positionInBits;
+                    Packer<int>.Write(packer, 0);
+                }
+
+                PackedInt length = entryBits;
                 tmp.ResetPositionAndMode(true);
 
                 DeltaPacker<PackedInt>.Write(packer, lastLen, length);
@@ -130,50 +1024,32 @@ namespace PurrNet.Modules
                 DeltaPacker<NetworkID>.Write(packer, lastNid, nt.id!.Value);
                 packer.WriteBits(tmp, length);
 
-                tmp.ResetPositionAndMode(false);
-
                 lastNid = nt.id.Value;
+                lastDist = newLastDist;
                 writtenCount += 1;
+                pending.Add(new NTUnreliableEntry
+                {
+                    nid = nt.id.Value,
+                    state = nt.capturedState,
+                    velocity = velocity,
+                    gen = wireGen,
+                    genEpoch = wireGenEpoch,
+                    revision = nt.capturedRevision
+                });
+                i++;
             }
 
-            var lastPos = packer.positionInBits;
-            packer.SetBitPosition(countPos);
-            Packer<int>.Write(packer, writtenCount);
-            packer.SetBitPosition(lastPos);
+            if (writtenCount > 0)
+                FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
 
-            ListPool<NetworkTransform>.Destroy(controlled);
-
-            return anyWritten;
+            _prepareUnreliableMarker.End();
         }
 
-        private void GatherCandidates(PlayerID player, int ntCount, PlayerID localPlayer, List<NetworkTransform> controlled)
+        private void SendStatesTo(PlayerID player, PlayerID localPlayer)
         {
-            if (player == PlayerID.Server)
-            {
-                for (var i = 0; i < ntCount; i++)
-                {
-                    var nt = _networkTransforms[i];
-
-                    if (!nt.IsSpawned(_asServer) || !nt.id.HasValue)
-                        continue;
-
-                    if (nt.IsControlling(localPlayer, false) && nt.HasChanges())
-                        controlled.Add(nt);
-                }
-            }
-            else
-            {
-                for (var i = 0; i < ntCount; i++)
-                {
-                    var nt = _networkTransforms[i];
-
-                    if (!nt.IsSpawned(_asServer) || !nt.id.HasValue)
-                        continue;
-
-                    if (!nt.IsControlling(player, false) && nt.IsObserver(player) && nt.HasChanges())
-                        controlled.Add(nt);
-                }
-            }
+            var stream = PrepareSendStream(player, localPlayer);
+            if (stream.pending.Count > 0)
+                SendUnreliableStates(player, stream);
         }
 
         public void Register(NetworkTransform networkTransform)
@@ -181,6 +1057,19 @@ namespace PurrNet.Modules
             if (!networkTransform.id.HasValue)
                 return;
             AddTrs(networkTransform);
+
+            if (_sendStreams.Count == 0)
+                return;
+
+            var localPlayer = GetLocalPlayer();
+            foreach (var (player, stream) in _sendStreams)
+            {
+                if (!stream.pendingInitialized)
+                    continue;
+
+                if (IsSendCandidate(networkTransform, player, localPlayer))
+                    AddPending(stream, networkTransform);
+            }
         }
 
         private void AddTrs(NetworkTransform networkTransform)
@@ -205,27 +1094,155 @@ namespace PurrNet.Modules
         public void Unregister(NetworkTransform networkTransform)
         {
             _networkTransforms.Remove(networkTransform);
+
+            if (networkTransform.id.HasValue)
+            {
+                var nid = networkTransform.id.Value;
+                foreach (var stream in _sendStreams.Values)
+                {
+                    stream.acked.Remove(nid);
+                    stream.nackFloor.Remove(nid);
+                    stream.generationOverrides.Remove(nid);
+                    RemovePending(stream, nid);
+                    PurgeRing(stream.ring, nid);
+                }
+
+                foreach (var stream in _recvStreams.Values)
+                    PurgeRing(stream.ring, nid);
+            }
+        }
+
+        private bool TryGetRegisteredTransform(NetworkID nid, out NetworkTransform result)
+        {
+            int lo = 0;
+            int hi = _networkTransforms.Count - 1;
+
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                var nt = _networkTransforms[mid];
+                if (!nt || !nt.id.HasValue)
+                {
+                    result = null;
+                    return false;
+                }
+
+                var midNid = nt.id.Value;
+                if (midNid.Equals(nid))
+                {
+                    result = nt;
+                    return true;
+                }
+
+                if (midNid < nid)
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+
+            result = null;
+            return false;
+        }
+
+        internal void InvalidateSendBaseline(PlayerID player, NetworkID nid, bool enqueue = true)
+        {
+            if (!_sendStreams.TryGetValue(player, out var stream))
+                return;
+
+            stream.acked.Remove(nid);
+            stream.nackFloor.Remove(nid);
+            stream.generationOverrides.Remove(nid);
+            PurgeRing(stream.ring, nid);
+
+            if (enqueue && stream.pendingInitialized && TryGetRegisteredTransform(nid, out var nt) &&
+                IsSendCandidate(nt, player, GetLocalPlayer()))
+                AddPending(stream, nt);
+            else
+                RemovePending(stream, nid);
+        }
+
+        internal void PrepareTargetedReset(PlayerID target, NetworkID nid, byte gen, uint genEpoch)
+        {
+            foreach (var (player, stream) in _sendStreams)
+            {
+                if (player == target)
+                {
+                    InvalidateSendBaseline(target, nid, true);
+                    continue;
+                }
+
+                if (!stream.generationOverrides.ContainsKey(nid))
+                    stream.generationOverrides[nid] = new NTUnreliableGeneration { gen = gen, epoch = genEpoch };
+            }
+        }
+
+        internal void ClearGenerationOverrides(NetworkID nid)
+        {
+            bool hasTransform = TryGetRegisteredTransform(nid, out var nt);
+            var localPlayer = hasTransform ? GetLocalPlayer() : default;
+
+            foreach (var (player, stream) in _sendStreams)
+            {
+                stream.generationOverrides.Remove(nid);
+
+                if (!hasTransform || !stream.pendingInitialized)
+                    continue;
+
+                if (IsSendCandidate(nt, player, localPlayer))
+                    AddPending(stream, nt);
+                else
+                    RemovePending(stream, nid);
+            }
+        }
+
+        // A late ack must not resurrect a despawned nid's baseline for a pooled object
+        // that respawned with the same NetworkID.
+        private static void PurgeRing(NTUnreliableSlot[] ring, NetworkID nid)
+        {
+            for (int i = 0; i < ring.Length; i++)
+            {
+                var entries = ring[i].entries;
+                if (entries == null)
+                    continue;
+
+                for (int e = entries.Count - 1; e >= 0; e--)
+                {
+                    if (entries[e].nid.Equals(nid))
+                        entries.RemoveAt(e);
+                }
+            }
         }
 
         public void PostFixedUpdate()
         {
+            using var _ = _postFixedUpdateMarker.Auto();
+
             var localPlayer = GetLocalPlayer();
 
             int ntCount = _networkTransforms.Count;
+            _changedTransforms.Clear();
 
+            _gatherStateMarker.Begin();
             for (var i = 0; i < ntCount; i++)
             {
                 var nt = _networkTransforms[i];
                 if (nt.IsControlling(localPlayer, _asServer))
+                {
+                    uint previousRevision = nt.capturedRevision;
                     nt.GatherState();
+                    nt.CaptureUnreliableState();
+
+                    if (nt.capturedRevision != previousRevision)
+                        _changedTransforms.Add(nt);
+                }
             }
+            _gatherStateMarker.End();
+
+            QueueChangedStates(_changedTransforms, localPlayer);
 
             if (!_asServer)
             {
-                using var packer = BitPackerPool.Get();
-
-                if (PrepareDeltaState(packer, PlayerID.Server) && packer.positionInBits > 0)
-                    _broadcaster.SendToServer(new NetworkTransformDelta(_scene, packer));
+                SendStatesTo(PlayerID.Server, localPlayer);
             }
             else if (_scenePlayers.TryGetPlayersInScene(_scene, out var players))
             {
@@ -235,13 +1252,14 @@ namespace PurrNet.Modules
                     if (player == localPlayer)
                         continue;
 
-                    using var packer = BitPackerPool.Get();
-
-                    if (PrepareDeltaState(packer, player) && packer.positionInBits > 0)
-                        _broadcaster.Send(player, new NetworkTransformDelta(_scene, packer));
+                    SendStatesTo(player, localPlayer);
                 }
             }
 
+            FlushAcks();
+
+            // Preserve the public legacy HasChanges/Delta* contract. This mirrors the old
+            // module's save point without participating in the new per-peer baselines.
             for (var i = 0; i < ntCount; i++)
             {
                 var nt = _networkTransforms[i];

@@ -1,4 +1,4 @@
-﻿using PurrNet.Pooling;
+using PurrNet.Pooling;
 
 namespace PurrNet.Packing
 {
@@ -6,35 +6,103 @@ namespace PurrNet.Packing
     {
         public static bool WriteDisposableHashSetDelta<T>(BitPacker packer, DisposableHashSet<T> oldValue, DisposableHashSet<T> newValue)
         {
-            using var oldDisposableList = oldValue.isDisposed ? default : DisposableList<T>.Create(oldValue);
-            using var newDisposableList = newValue.isDisposed ? default : DisposableList<T>.Create(newValue);
-            return DeltaPacker<DisposableList<T>>.Write(packer, oldDisposableList, newDisposableList);
+            var start = packer.AdvanceBits(1);
+
+            bool hasChanged;
+
+            PackedInt oldCount = oldValue.isDisposed ? -1 : oldValue.Count;
+            PackedInt newCount = newValue.isDisposed ? -1 : newValue.Count;
+
+            hasChanged = DeltaPacker<PackedInt>.Write(packer, oldCount, newCount);
+
+            if (newCount > 0)
+            {
+                DisposableList<T> oldItemsList = default;
+                using var newItemsList = DisposableList<T>.Create(newCount.value);
+
+                if (oldCount.value >= 0)
+                {
+                    oldItemsList = DisposableList<T>.Create(oldCount.value);
+                    foreach (var item in oldValue)
+                        oldItemsList.Add(item);
+                }
+
+                foreach (var item in newValue)
+                    newItemsList.Add(item);
+
+                hasChanged = DeltaPacker<DisposableList<T>>.Write(packer, oldItemsList, newItemsList) || hasChanged;
+
+                oldItemsList.Dispose();
+            }
+
+            packer.WriteAt(start, hasChanged);
+
+            if (!hasChanged)
+                packer.SetBitPosition(start + 1);
+
+            return hasChanged;
         }
 
         public static void ReadDisposableHashSetDelta<T>(BitPacker packer, DisposableHashSet<T> oldValue, ref DisposableHashSet<T> value)
         {
-            using var oldDisposableList = oldValue.isDisposed ? default : DisposableList<T>.Create(oldValue);
-            DisposableList<T> newDisposableList = default;
+            bool hasChanged = default;
+            packer.Read(ref hasChanged);
 
-            DeltaPacker<DisposableList<T>>.Read(packer, oldDisposableList, ref newDisposableList);
-
-            if (newDisposableList.isDisposed)
+            if (!hasChanged)
             {
-                value.Dispose();
+                if (oldValue.isDisposed)
+                {
+                    value.Dispose();
+                    return;
+                }
+
+                if (value.isDisposed)
+                    value = DisposableHashSet<T>.Create();
+                else value.Clear();
+
+                foreach (var item in oldValue)
+                    value.Add(item);
+
                 return;
             }
 
-            if (value.isDisposed)
+            PackedInt oldCount = oldValue.isDisposed ? -1 : oldValue.Count;
+            PackedInt newCount = default;
+
+            DeltaPacker<PackedInt>.Read(packer, oldCount, ref newCount);
+
+            if (newCount.value < 0)
             {
-                value = DisposableHashSet<T>.Create(newDisposableList);
-            }
-            else
-            {
-                value.Clear();
-                value.UnionWith(newDisposableList);
+                if (!value.isDisposed)
+                    value.Dispose();
+                return;
             }
 
-            newDisposableList.Dispose();
+            if (value.isDisposed || value.set == null)
+                value = DisposableHashSet<T>.Create();
+            else value.Clear();
+
+            if (newCount.value == 0)
+                return;
+
+            DisposableList<T> oldItemsList = default;
+
+            if (oldCount.value >= 0)
+            {
+                oldItemsList = DisposableList<T>.Create(oldCount.value);
+                foreach (var item in oldValue)
+                    oldItemsList.Add(item);
+            }
+
+            var itemsList = DisposableList<T>.Create(newCount.value);
+
+            DeltaPacker<DisposableList<T>>.Read(packer, oldItemsList, ref itemsList);
+
+            for (int i = 0; i < itemsList.Count; i++)
+                value.Add(itemsList[i]);
+
+            oldItemsList.Dispose();
+            itemsList.Dispose();
         }
     }
 }

@@ -8,6 +8,8 @@ namespace PurrNet
     {
         private Texture2D _cache;
 
+        public SyncSpriteFile(bool ownerAuth = false, int maxKBPerSec = 15) : base(ownerAuth, maxKBPerSec) { }
+
         public override void FromBytes(ArraySegment<byte> bytes, ref Sprite content)
         {
             if (!_cache)

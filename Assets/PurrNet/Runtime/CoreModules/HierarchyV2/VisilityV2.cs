@@ -76,6 +76,9 @@ namespace PurrNet.Modules
             bool removed = false;
 
             int ccount = identities.Count;
+            if (ccount == 0)
+                return removed;
+
             for (var i = 0; i < ccount; i++)
             {
                 var identity = identities[i];
@@ -84,11 +87,25 @@ namespace PurrNet.Modules
             }
 
             var directChildren = identities[0].directChildren;
+            if (directChildren == null)
+                return removed;
+
             var dcount = directChildren.Count;
 
             for (var i = 0; i < dcount; i++)
             {
-                removed |= RefreshVisibilityForGameObject(directChildren[i].transform, player);
+                if (i >= directChildren.Count)
+                    break;
+
+                var child = directChildren[i];
+                if (!child)
+                    continue;
+
+                var childTransform = child.transform;
+                if (!childTransform)
+                    continue;
+
+                removed |= RefreshVisibilityForGameObject(childTransform, player);
             }
 
             return removed;
@@ -100,6 +117,9 @@ namespace PurrNet.Modules
             transform.GetComponents(identities.list);
 
             int ccount = identities.Count;
+            if (ccount == 0)
+                return;
+
             for (var i = 0; i < ccount; i++)
             {
                 var identity = identities[i];
@@ -109,10 +129,26 @@ namespace PurrNet.Modules
             }
 
             var directChildren = identities[0].directChildren;
+            if (directChildren == null)
+                return;
+
             var dcount = directChildren.Count;
 
             for (var i = 0; i < dcount; i++)
-                ClearVisibilityForGameObject(directChildren[i].transform, players);
+            {
+                if (i >= directChildren.Count)
+                    break;
+
+                var child = directChildren[i];
+                if (!child)
+                    continue;
+
+                var childTransform = child.transform;
+                if (!childTransform)
+                    continue;
+
+                ClearVisibilityForGameObject(childTransform, players);
+            }
         }
 
         private void RefreshVisibilityForGameObject(PlayerID player, Transform transform,
@@ -122,6 +158,9 @@ namespace PurrNet.Modules
 
             transform.GetComponents(identities.list);
 
+            if (identities.Count == 0)
+                return;
+
             var isVisible = Evaluate(player, identities.list, ref rules, isParentVisible, out bool fullyChanged, transform);
             bool shouldTrigger = !wasParentDirtied && fullyChanged;
 
@@ -129,12 +168,25 @@ namespace PurrNet.Modules
                 wasParentDirtied = true;
 
             var directChildren = identities[0].directChildren;
-            var count = directChildren.Count;
-
-            for (var i = 0; i < count; i++)
+            if (directChildren != null)
             {
-                var pair = directChildren[i];
-                RefreshVisibilityForGameObject(player, pair.transform, rules, isVisible, wasParentDirtied);
+                var count = directChildren.Count;
+
+                for (var i = 0; i < count; i++)
+                {
+                    if (i >= directChildren.Count)
+                        break;
+
+                    var pair = directChildren[i];
+                    if (!pair)
+                        continue;
+
+                    var childTransform = pair.transform;
+                    if (!childTransform)
+                        continue;
+
+                    RefreshVisibilityForGameObject(player, childTransform, rules, isVisible, wasParentDirtied);
+                }
             }
 
             if (shouldTrigger)

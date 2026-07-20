@@ -28,6 +28,8 @@ namespace PurrNet
             }
         }
 
+        protected SyncAsset(bool ownerAuth = false, int maxKBPerSec = 15) : base(ownerAuth, maxKBPerSec) { }
+
         public abstract void FromBytes(ArraySegment<byte> bytes, ref T content);
 
         public abstract ArraySegment<byte> GetBytes(T content);

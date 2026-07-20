@@ -1,0 +1,101 @@
+name: Benchmark Scaling Curve
+
+# Runs the distributed benchmark at increasing connection counts (10 / 25 / 50 / ~100),
+# one size at a time (sequential to stay under the 60-concurrent-job cap and to avoid
+# tailnet hostname collisions), then renders a combined scaling table.
+#
+# size-10 builds the player once; the larger sizes reuse that artifact (player_artifact)
+# instead of rebuilding the identical ~2.5GB IL2CPP player four times.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bench_seconds:
+        description: "Steady-state measurement window, seconds"
+        required: true
+        default: "20"
+      bench_objects:
+        description: "NetworkTransform objects the server replicates"
+        required: true
+        default: "50"
+      ping_rate:
+        description: "RTT pings per second per measured client"
+        required: true
+        default: "10"
+
+jobs:
+  size-10:
+    uses: ./.github/workflows/benchmark.yml
+    secrets: inherit
+    with:
+      measured_clients: "10"
+      loadgen_jobs: "0"
+      procs_per_loadgen: "0"
+      bench_seconds: ${{ inputs.bench_seconds }}
+      bench_objects: ${{ inputs.bench_objects }}
+      ping_rate: ${{ inputs.ping_rate }}
+      tag: "s10"
+
+  size-25:
+    needs: size-10
+    uses: ./.github/workflows/benchmark.yml
+    secrets: inherit
+    with:
+      measured_clients: "25"
+      loadgen_jobs: "0"
+      procs_per_loadgen: "0"
+      bench_seconds: ${{ inputs.bench_seconds }}
+      bench_objects: ${{ inputs.bench_objects }}
+      ping_rate: ${{ inputs.ping_rate }}
+      tag: "s25"
+      player_artifact: "bench-player-s10"
+
+  size-50:
+    needs: size-25
+    uses: ./.github/workflows/benchmark.yml
+    secrets: inherit
+    with:
+      measured_clients: "50"
+      loadgen_jobs: "0"
+      procs_per_loadgen: "0"
+      bench_seconds: ${{ inputs.bench_seconds }}
+      bench_objects: ${{ inputs.bench_objects }}
+      ping_rate: ${{ inputs.ping_rate }}
+      tag: "s50"
+      player_artifact: "bench-player-s10"
+
+  size-100:
+    needs: size-50
+    uses: ./.github/workflows/benchmark.yml
+    secrets: inherit
+    with:
+      measured_clients: "54"
+      loadgen_jobs: "4"
+      procs_per_loadgen: "12"
+      bench_seconds: ${{ inputs.bench_seconds }}
+      bench_objects: ${{ inputs.bench_objects }}
+      ping_rate: ${{ inputs.ping_rate }}
+      tag: "s100"
+      player_artifact: "bench-player-s10"
+
+  combine:
+    needs: [size-10, size-25, size-50, size-100]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for aggregation scripts)
+        uses: actions/checkout@v4
+
+      - name: Download scaling datapoints
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bench-scaling-*
+          path: all
+          merge-multiple: true
+
+      - name: Render scaling curve
+        run: |
+          bash .github/scripts/bench-scaling.sh \
+            all \
+            "${{ inputs.bench_seconds }}" \
+            "${{ inputs.bench_objects }}"

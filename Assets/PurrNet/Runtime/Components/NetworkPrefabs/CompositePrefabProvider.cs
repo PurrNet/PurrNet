@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PurrNet.Logging;
@@ -5,14 +6,29 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    public class CompositePrefabProvider : IPrefabProvider, IAsyncPrefabProvider
+    public class CompositePrefabProvider : IPrefabProvider, IAsyncPrefabProvider, IPersistentPrefabProvider
     {
         private readonly List<IPrefabProvider> _providers = new();
         private readonly List<int> _offsets = new();
         private readonly List<int> _counts = new();
         private readonly Dictionary<int, PrefabData> _unified = new();
+        private readonly Dictionary<GameObject, PrefabData> _prefabCache = new();
 
         public IEnumerable<PrefabData> allPrefabs => _unified.Values;
+        public IEnumerable<string> persistentIds
+        {
+            get
+            {
+                for (int i = 0; i < _providers.Count; i++)
+                {
+                    if (_providers[i] is not IPersistentPrefabProvider persistentProvider)
+                        continue;
+
+                    foreach (var persistentId in persistentProvider.persistentIds)
+                        yield return persistentId;
+                }
+            }
+        }
 
         /// <summary>
         /// Adds a provider to the composite. Providers must be added in
@@ -21,6 +37,18 @@ namespace PurrNet
         public void AddProvider(IPrefabProvider provider)
         {
             _providers.Add(provider);
+        }
+
+        public void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
+        {
+            if (_providers.Count == 0)
+            {
+                PurrLogger.LogError("CompositePrefabProvider: no providers registered, cannot add runtime prefab.");
+                return;
+            }
+
+            _providers[0].AddRuntimePrefab(uniqueName, prefab, pooled, warmup);
+            Refresh();
         }
 
         /// <summary>
@@ -32,6 +60,7 @@ namespace PurrNet
             _unified.Clear();
             _offsets.Clear();
             _counts.Clear();
+            _prefabCache.Clear();
 
             int offset = 0;
 
@@ -122,6 +151,12 @@ namespace PurrNet
 
         public bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData)
         {
+            if (prefab)
+            {
+                if (_prefabCache.TryGetValue(prefab, out prefabData))
+                    return true;
+            }
+
             foreach (var data in _unified.Values)
             {
                 if (data.prefab == prefab)
@@ -144,8 +179,76 @@ namespace PurrNet
                         warmupCount = pd.warmupCount
                     };
                     _unified[unifiedId] = prefabData;
+
+                    if (prefab)
+                        _prefabCache[prefab] = prefabData;
+
                     return true;
                 }
+            }
+
+            prefabData = default;
+            return false;
+        }
+
+        public bool TryGetPersistentId(int prefabId, out string persistentId)
+        {
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                int count = _counts[i];
+                if (prefabId < _offsets[i] || prefabId >= _offsets[i] + count)
+                    continue;
+
+                if (_providers[i] is IPersistentPrefabProvider persistentProvider)
+                    return persistentProvider.TryGetPersistentId(prefabId - _offsets[i], out persistentId);
+
+                persistentId = null;
+                return false;
+            }
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPersistentId(GameObject prefab, out string persistentId)
+        {
+            if (TryGetPrefabData(prefab, out var prefabData))
+                return TryGetPersistentId(prefabData.prefabId, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData)
+        {
+            if (string.IsNullOrEmpty(persistentId))
+            {
+                prefabData = default;
+                return false;
+            }
+
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                if (_providers[i] is not IPersistentPrefabProvider persistentProvider)
+                    continue;
+
+                if (!persistentProvider.TryGetPrefabDataByPersistentId(persistentId, out var localData))
+                    continue;
+
+                int unifiedId = _offsets[i] + localData.prefabId;
+                prefabData = new PrefabData
+                {
+                    prefabId = unifiedId,
+                    prefab = localData.prefab,
+                    pooled = localData.pooled,
+                    warmupCount = localData.warmupCount
+                };
+
+                _unified[unifiedId] = prefabData;
+                if (prefabData.prefab)
+                    _prefabCache[prefabData.prefab] = prefabData;
+
+                return true;
             }
 
             prefabData = default;

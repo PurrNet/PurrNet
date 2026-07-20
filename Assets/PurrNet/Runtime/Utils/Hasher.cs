@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
 using PurrNet.Logging;
@@ -29,6 +30,8 @@ namespace PurrNet.Utils
 
         static readonly Dictionary<Type, uint> _hashes = new Dictionary<Type, uint>();
         static readonly Dictionary<uint, Type> _decoder = new Dictionary<uint, Type>();
+        static readonly Dictionary<uint, Type> _bruteForceCache = new Dictionary<uint, Type>();
+        static readonly HashSet<Assembly> _scannedAssemblies = new HashSet<Assembly>();
 
         public static uint Hash(Type type)
         {
@@ -51,14 +54,93 @@ namespace PurrNet.Utils
             }
         }
 
+        public static Type BruteForceFind(uint hash)
+        {
+            if (_decoder.TryGetValue(hash, out var registered))
+                return registered;
+
+            ScanLoadedAssemblies();
+
+            return _bruteForceCache.GetValueOrDefault(hash);
+        }
+
+        static void ScanLoadedAssemblies()
+        {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            for (int i = 0; i < assemblies.Length; i++)
+            {
+                var asm = assemblies[i];
+                if (!_scannedAssemblies.Add(asm))
+                    continue;
+
+                Type[] types;
+                try
+                {
+                    types = asm.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    types = ex.Types;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                for (int t = 0; t < types.Length; t++)
+                {
+                    var type = types[t];
+                    if (type?.FullName == null)
+                        continue;
+                    var h = Hash(type);
+                    _bruteForceCache[h] = type;
+                }
+            }
+        }
+
+        public static void PrintHashError(uint hash)
+        {
+            var meantToBe = BruteForceFind(hash);
+
+            if (meantToBe == null)
+            {
+                PurrLogger.LogError($"Can't resolve type hash '{hash}'; either a corrupt packet," +
+                                    $" or the remote has a type that doesn't exist in this build.");
+                return;
+            }
+
+            PurrLogger.LogError(
+                $"Can't resolve type hash '{hash}' ({meantToBe.FullName}); type exists locally but has no registered packer." +
+                $" Likely a codegen mismatch between builds (conditional compile, stripping, or an asmdef difference), or the type isn't intended for networking."
+            );
+        }
+
+        static void ThrowHashError(uint hash)
+        {
+            var meantToBe = BruteForceFind(hash);
+
+            if (meantToBe == null)
+            {
+                throw new InvalidOperationException(
+                    PurrLogger.FormatMessage($"Can't resolve type hash '{hash}'; either a corrupt packet," +
+                                             $" or the remote has a type that doesn't exist in this build.")
+                );
+            }
+
+            throw new InvalidOperationException(
+                PurrLogger.FormatMessage(
+                    $"Can't resolve type hash '{hash}' ({meantToBe.FullName}); type exists locally but has no registered packer." +
+                    $" Likely a codegen mismatch between builds (conditional compile, stripping, or an asmdef difference), or the type isn't intended for networking.")
+            );
+        }
+
         public static Type ResolveType(uint hash)
         {
             if (_decoder.TryGetValue(hash, out var type))
                 return type;
 
-            throw new InvalidOperationException(
-                PurrLogger.FormatMessage($"Type with hash '{hash}' not found.")
-            );
+            ThrowHashError(hash);
+            return null;
         }
 
         public static bool TryGetType(uint hash, out Type type)
@@ -143,6 +225,8 @@ namespace PurrNet.Utils
         {
             _hashes.Clear();
             _decoder.Clear();
+            _bruteForceCache.Clear();
+            _scannedAssemblies.Clear();
         }
     }
 }

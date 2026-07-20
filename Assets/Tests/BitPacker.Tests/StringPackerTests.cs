@@ -1,3 +1,4 @@
+using System.Text;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Packing;
@@ -61,6 +62,17 @@ public class StringPackerTests
         Packer<string>.Write(packer, value);
         packer.ResetPositionAndMode(true);
         var read = Packer<string>.Read(packer);
+        Assert.AreEqual(value, read);
+    }
+
+    [Test]
+    public void EncodingString_LongUtf8_Roundtrip()
+    {
+        var value = new string('x', 300) + "\u00f8\u2603";
+        packer.ResetPositionAndMode(false);
+        packer.WriteString(Encoding.UTF8, value);
+        packer.ResetPositionAndMode(true);
+        var read = packer.ReadString(Encoding.UTF8);
         Assert.AreEqual(value, read);
     }
 

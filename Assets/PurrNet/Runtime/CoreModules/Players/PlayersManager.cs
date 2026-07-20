@@ -18,10 +18,14 @@ namespace PurrNet.Modules
         [JsonProperty]
         public NetworkID lastNidId { get; }
 
-        public ServerLoginResponse(PlayerID playerId, NetworkID lastNidId)
+        [JsonProperty]
+        public string cookie { get; }
+
+        public ServerLoginResponse(PlayerID playerId, NetworkID lastNidId, string cookie = null)
         {
             this.playerId = playerId;
             this.lastNidId = lastNidId;
+            this.cookie = cookie;
         }
     }
 
@@ -79,7 +83,7 @@ namespace PurrNet.Modules
 
     public delegate void OnPlayerEvent(PlayerID player);
 
-    public class PlayersManager : INetworkModule, IConnectionListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
+    public class PlayersManager : INetworkModule, IConnectionListener, IConnectionStateListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
     {
         private readonly AuthModule _authModule;
         private readonly BroadcastModule _broadcastModule;
@@ -97,6 +101,8 @@ namespace PurrNet.Modules
 
         private readonly List<PlayerID> _players = new List<PlayerID>();
         private readonly HashSet<PlayerID> _allSeenPlayers = new HashSet<PlayerID>();
+        private readonly HashSet<int> _promotedStaleConnectionIds = new HashSet<int>();
+        private PlayerID? _promotedLocalPlayerId;
 
         public IReadOnlyList<PlayerID> players => _players;
 
@@ -104,11 +110,19 @@ namespace PurrNet.Modules
 
         public NetworkID? lastNid { get; private set; }
 
+        public MTUExceededBehaviour mtuExceededBehaviour => _networkManager.mtuExceededBehaviour;
+
         public int GetMTU(PlayerID player, Channel channel, bool asServer)
         {
+            if (!asServer)
+            {
+                return _networkManager.rawTransport.GetMTU(default, channel, false);
+            }
+
             if (_playerToConnection.TryGetValue(player, out var p))
-                return _networkManager.transport.transport.GetMTU(p, channel, asServer);
-            return 1024;
+                return _networkManager.rawTransport.GetMTU(p, channel, true);
+
+            return 500;
         }
 
         /// <summary>
@@ -157,23 +171,29 @@ namespace PurrNet.Modules
             _playerBroadcaster = broadcaster;
         }
 
-        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(player, data, method);
+        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(player, data, method, mtuOverride);
 
-        public void Send<T>(IReadOnlyList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void Send<T>(IReadOnlyList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void SendList<T>(IList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void SendList<T>(IList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void Send<T>(IEnumerable<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void Send<T>(IEnumerable<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendToServer(data, method);
+        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.SendToServer(data, method, mtuOverride);
 
-        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendToAll(data, method);
+        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.SendToAll(data, method, mtuOverride);
 
         public void Unsubscribe<T>(PlayerBroadcastDelegate<T> callback) where T : new()
             => _playerBroadcaster.Unsubscribe(callback);
@@ -294,6 +314,7 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            _promotedLocalPlayerId = localPlayerId;
             Disable(false);
             _asServer = true;
             Enable(true);
@@ -320,8 +341,22 @@ namespace PurrNet.Modules
         {
             using var keys = DisposableList<Connection>.Create(_connectionToPlayerId.Keys);
             for (var i = 0; i < keys.Count; i++)
+            {
+                if (_promotedLocalPlayerId.HasValue &&
+                    _connectionToPlayerId.TryGetValue(keys[i], out var playerId) &&
+                    playerId == _promotedLocalPlayerId.Value)
+                {
+                    _connectionToPlayerId.Remove(keys[i]);
+                    _playerToConnection.Remove(playerId);
+                    _promotedStaleConnectionIds.Add(keys[i].connectionId);
+                    continue;
+                }
+
                 _networkManager.TriggerConnectionLeft(keys[i], true);
+            }
+
             _connectionToPlayerId.Clear();
+            _promotedLocalPlayerId = null;
         }
 
         public void Enable(bool asServer)
@@ -380,21 +415,35 @@ namespace PurrNet.Modules
 
             if (_players.Contains(playerId))
             {
-                // Player is already connected?
-                _transport.CloseConnection(conn);
-                PurrLogger.LogError(
-                    "Client connected using a cookie from an already connected player; closing their connection.");
-                return;
+                if (_playerToConnection.TryGetValue(playerId, out var oldConn) && oldConn != conn)
+                {
+                    PurrLogger.LogWarning(
+                        "Client reconnected with the cookie of a still-connected player; closing their previous connection.");
+                    _transport.CloseConnection(oldConn);
+                    ReplacePlayerConnection(playerId, oldConn, conn);
+                }
+                else if (_playerToConnection.ContainsKey(playerId))
+                {
+                    _transport.CloseConnection(conn);
+                    PurrLogger.LogError(
+                        "Client connected using a cookie from an already connected player; closing their connection.");
+                    return;
+                }
             }
 
             var lastNidId = new NetworkID(0, playerId);
             if (_lastNidId.TryGetValue(playerId, out var lastNidRes))
                 lastNidId = lastNidRes;
 
-            _broadcastModule.Send(conn, new ServerLoginResponse(playerId, lastNidId));
+            _broadcastModule.Send(conn, new ServerLoginResponse(playerId, lastNidId, data.cookie));
 
             SendSnapshotToClient(conn);
-            if (RegisterPlayer(conn, playerId, out var isReconnect))
+            if (IsPlayerConnection(conn, playerId))
+            {
+                SendNewUserToAllClients(conn, playerId);
+                TriggerOnJoinedEvent(playerId, true);
+            }
+            else if (RegisterPlayer(conn, playerId, out var isReconnect))
             {
                 SendNewUserToAllClients(conn, playerId);
                 TriggerOnJoinedEvent(playerId, isReconnect);
@@ -439,6 +488,9 @@ namespace PurrNet.Modules
 
         private void OnClientLoginResponse(Connection conn, ServerLoginResponse data, bool asServer)
         {
+            if (!string.IsNullOrEmpty(data.cookie))
+                _authModule.SetClientConnectionCookie(data.cookie);
+
             localPlayerId = data.playerId;
             lastNid = data.lastNidId;
             onLocalPlayerReceivedID?.Invoke(data.playerId);
@@ -455,7 +507,7 @@ namespace PurrNet.Modules
             string cookie = null;
             NetworkID? playerLastNid = null;
 
-            if (_networkManager.networkRules.IsHostMigrationEnabled())
+            if (_networkManager.networkRules && _networkManager.networkRules.ShouldSharePlayerCookiesWithPeers())
             {
                 if (_playerIdToCookie.TryGetValue(playerId, out var playerCookie))
                     cookie = playerCookie;
@@ -480,6 +532,21 @@ namespace PurrNet.Modules
             _broadcastModule.Send(conn, new PlayerSnapshotEvent(batch));
         }
 
+        private void ReplacePlayerConnection(PlayerID playerId, Connection oldConn, Connection newConn)
+        {
+            _connectionToPlayerId.Remove(oldConn);
+            _playerToConnection[playerId] = newConn;
+
+            if (newConn.isValid)
+                _connectionToPlayerId[newConn] = playerId;
+        }
+
+        private bool IsPlayerConnection(Connection conn, PlayerID playerId)
+        {
+            return _connectionToPlayerId.TryGetValue(conn, out var registeredPlayer) &&
+                   registeredPlayer == playerId;
+        }
+
         private bool RegisterPlayer(Connection conn, PlayerID player, out bool isReconnect)
         {
             if (_connectionToPlayerId.ContainsKey(conn))
@@ -488,7 +555,8 @@ namespace PurrNet.Modules
                 return false;
             }
 
-            _players.Add(player);
+            if (!_players.Contains(player))
+                _players.Add(player);
 
             if (conn.isValid)
             {
@@ -502,46 +570,98 @@ namespace PurrNet.Modules
 
         private void TriggerOnJoinedEvent(PlayerID player, bool isReconnect)
         {
-            onPrePlayerJoined?.Invoke(player, isReconnect, _asServer);
-            onPlayerJoined?.Invoke(player, isReconnect, _asServer);
-            onPostPlayerJoined?.Invoke(player, isReconnect, _asServer);
+            try
+            {
+                onPrePlayerJoined?.Invoke(player, isReconnect, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPlayerJoined?.Invoke(player, isReconnect, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPostPlayerJoined?.Invoke(player, isReconnect, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
         }
 
         private void UnregisterPlayer(Connection conn)
         {
-            if (!_connectionToPlayerId.TryGetValue(conn, out var player))
+            if (!_connectionToPlayerId.TryGetValue(conn, out var playerID))
                 return;
 
-            onPrePlayerLeft?.Invoke(player, _asServer);
+            try
+            {
+                onPrePlayerLeft?.Invoke(playerID, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
 
-            _players.Remove(player);
-            _playerToConnection.Remove(player);
+            _players.Remove(playerID);
+            _playerToConnection.Remove(playerID);
             _connectionToPlayerId.Remove(conn);
 
-            onPlayerLeft?.Invoke(player, _asServer);
-            onPostPlayerLeft?.Invoke(player, _asServer);
+            try
+            {
+                onPlayerLeft?.Invoke(playerID, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPostPlayerLeft?.Invoke(playerID, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
         }
 
         private void UnregisterPlayer(PlayerID playerId)
         {
-            onPrePlayerLeft?.Invoke(playerId, _asServer);
+            try
+            {
+                onPrePlayerLeft?.Invoke(playerId, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
 
             if (_playerToConnection.TryGetValue(playerId, out var conn))
                 _connectionToPlayerId.Remove(conn);
             _players.Remove(playerId);
             _playerToConnection.Remove(playerId);
 
-            onPlayerLeft?.Invoke(playerId, _asServer);
-            onPostPlayerLeft?.Invoke(playerId, _asServer);
+            try
+            {
+                onPlayerLeft?.Invoke(playerId, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
+
+            try
+            {
+                onPostPlayerLeft?.Invoke(playerId, _asServer);
+            }
+            catch (Exception e) { PurrLogger.LogException(e); }
         }
 
         public void OnConnected(Connection conn, bool asServer)
         {
         }
 
+        public void OnConnectionState(ConnectionState state, bool asServer)
+        {
+            if (!asServer || state != ConnectionState.Disconnected)
+                return;
+
+            for (var i = _players.Count - 1; i >= 0; i--)
+                UnregisterPlayer(_players[i]);
+        }
+
         public void OnDisconnected(Connection conn, bool asServer)
         {
             if (!asServer) return;
+
+            if (_promotedStaleConnectionIds.Remove(conn.connectionId))
+                return;
 
             if (_connectionToPlayerId.TryGetValue(conn, out var playerId))
                 SendUserLeftToAllClients(playerId);

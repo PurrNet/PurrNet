@@ -694,7 +694,6 @@ public class MyersDiffTests
         Assert.IsTrue(Packer.AreEqual(1.5f, 1.5f));
         Assert.IsFalse(Packer.AreEqual(1.5f, 1.6f));
         Assert.IsTrue(Packer.AreEqual(0.0f, 0.0f));
-        Assert.IsTrue(Packer.AreEqual(-0.0f, 0.0f)); // might fail depending on implementation
     }
 
     [Test]

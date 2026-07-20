@@ -26,7 +26,7 @@ namespace AssetStoreTools.Uploader.Data
         IEnumerable<string> GetAllPaths();
         ValidationResult Validate();
         Task<PackageExporterResult> ExportPackage(string outputPath);
-        Task<bool> ValidatePackageUploadedVersions();
+        bool IsCurrentUnityVersionSupported();
 
         Task<PackageUploadResponse> UploadPackage(string exportedPackagePath);
         void AbortUpload();

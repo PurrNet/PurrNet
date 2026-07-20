@@ -70,7 +70,7 @@ namespace PurrNet.Modules
 
     internal struct LoadSceneAction
     {
-        public int buildIndex;
+        public uint scenePathHash;
         public SceneID sceneID;
         public PurrSceneSettings parameters;
 
@@ -85,7 +85,7 @@ namespace PurrNet.Modules
 
         public override string ToString()
         {
-            return $"LoadSceneAction: {{ buildIndex: {buildIndex}, sceneID: {sceneID}, parameters: {parameters} }}";
+            return $"LoadSceneAction: {{ scenePathHash: {scenePathHash}, sceneID: {sceneID}, parameters: {parameters} }}";
         }
     }
 
@@ -160,6 +160,13 @@ namespace PurrNet.Modules
             _pending.Clear();
             hasUnflushedActions = false;
             OptimizeHistory();
+        }
+
+        internal void Clear()
+        {
+            _actions.Clear();
+            _pending.Clear();
+            hasUnflushedActions = false;
         }
 
         private readonly List<SceneID> _sceneIds = new List<SceneID>();

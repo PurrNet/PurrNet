@@ -9,7 +9,7 @@ namespace PurrNet.Transports
 
     internal delegate void OnCompositeConnected(int transportIdx, Connection conn, bool asServer);
 
-    internal delegate void OnCompositeDisconnected(int transportIdx, Connection conn, bool asServer);
+    internal delegate void OnCompositeDisconnected(int transportIdx, Connection conn, DisconnectReason reason, bool asServer);
 
     internal class CompositeTransportEvents
     {
@@ -24,6 +24,8 @@ namespace PurrNet.Transports
 
         public void Subscribe(int idx, ITransport transport)
         {
+            Unsubscribe();
+
             index = idx;
             _transport = transport;
 
@@ -49,7 +51,7 @@ namespace PurrNet.Transports
 
         private void OnDisconnected(Connection conn, DisconnectReason reason, bool asServer)
         {
-            onDisconnected?.Invoke(index, conn, asServer);
+            onDisconnected?.Invoke(index, conn, reason, asServer);
         }
 
         private void OnConnected(Connection conn, bool asServer)
@@ -105,6 +107,8 @@ namespace PurrNet.Transports
         [SerializeField, HideInInspector] private GenericTransport[] _transports = { };
 
         private GenericTransport _clientTransport;
+        private readonly HashSet<GenericTransport> _serverTransportFilter = new HashSet<GenericTransport>();
+        private bool _hasServerTransportFilter;
 
         public GenericTransport clientTransport => _clientTransport;
 
@@ -115,6 +119,38 @@ namespace PurrNet.Transports
         public event OnConnectionState onConnectionState;
 
         public IReadOnlyList<GenericTransport> transports => _transports;
+
+        /// <summary>
+        /// Limits which child transports the composite starts when listening.
+        /// </summary>
+        public void SetServerTransportFilter(IReadOnlyList<GenericTransport> transports)
+        {
+            _serverTransportFilter.Clear();
+
+            if (transports == null)
+            {
+                _hasServerTransportFilter = false;
+                return;
+            }
+
+            for (int i = 0; i < transports.Count; i++)
+            {
+                var transport = transports[i];
+                if (transport)
+                    _serverTransportFilter.Add(transport);
+            }
+
+            _hasServerTransportFilter = true;
+        }
+
+        /// <summary>
+        /// Clears the server transport filter so every assigned child transport can listen again.
+        /// </summary>
+        public void ClearServerTransportFilter()
+        {
+            _serverTransportFilter.Clear();
+            _hasServerTransportFilter = false;
+        }
 
         public IReadOnlyList<Connection> connections => _connections;
 
@@ -203,12 +239,17 @@ namespace PurrNet.Transports
 
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
-            return channel switch
+            if (asServer)
             {
-                Channel.Unreliable => 1024,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
-                _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
-            };
+                var pair = _rawConnections[target.connectionId];
+                var protocol = _transports[pair.transportIdx];
+                return protocol.transport.GetMTU(pair.originalConnection, channel, true);
+            }
+
+            if (_clientTransport)
+                return _clientTransport.transport.GetMTU(target, channel, false);
+
+            throw new NotSupportedException("No supported transport found for client.");
         }
 
         private void Awake()
@@ -218,7 +259,7 @@ namespace PurrNet.Transports
 
             _wasAwakeCalled = true;
 
-            if (_clientTransport == null)
+            if (!_clientTransport)
             {
                 for (int i = 0; i < _transports.Length; i++)
                 {
@@ -303,7 +344,7 @@ namespace PurrNet.Transports
             }
         }
 
-        private void OnTransportDisconnected(int transportidx, Connection conn, bool asServer)
+        private void OnTransportDisconnected(int transportidx, Connection conn, DisconnectReason reason, bool asServer)
         {
             switch (asServer)
             {
@@ -321,13 +362,14 @@ namespace PurrNet.Transports
                 if (_router.Remove(pair, out var target))
                 {
                     _connections.Remove(target);
-                    onDisconnected?.Invoke(target, DisconnectReason.Timeout, true);
+                    onDisconnected?.Invoke(target, reason, true);
                 }
                 else Debug.LogError($"Connection {conn} coming from transport {transportidx} is not routed.");
             }
             else
             {
-                onDisconnected?.Invoke(conn, DisconnectReason.Timeout, false);
+                _clientEvent.Unsubscribe();
+                onDisconnected?.Invoke(conn, reason, false);
             }
         }
 
@@ -409,7 +451,7 @@ namespace PurrNet.Transports
 
             for (int i = 0; i < _transports.Length; i++)
             {
-                if (_transports[i])
+                if (_transports[i] && ShouldStartServerTransport(_transports[i]))
                 {
                     var e = _events[i];
                     if (!e.isSubscribed)
@@ -430,6 +472,11 @@ namespace PurrNet.Transports
             }
 
             TriggerConnectionStateEvent(true);
+        }
+
+        private bool ShouldStartServerTransport(GenericTransport transport)
+        {
+            return !_hasServerTransportFilter || _serverTransportFilter.Contains(transport);
         }
 
         public void Listen(ushort port)
@@ -464,6 +511,7 @@ namespace PurrNet.Transports
             _connections.Clear();
             _router.Clear();
             _rawConnections.Clear();
+            ClearServerTransportFilter();
         }
 
         public void Disconnect()

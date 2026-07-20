@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using PurrNet.Logging;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ namespace PurrNet.Modules
         public SceneID sceneId;
         public SpawnID packetIdx;
         public GameObjectPrototype prototype;
+        public BitData customData;
 
         [DontPack]
         internal List<NetworkIdentity> localcache;
@@ -75,6 +77,8 @@ namespace PurrNet.Modules
 
         public void Dispose()
         {
+            if (customData.packer is { isWrapper: false })
+                customData.Dispose();
             prototype.Dispose();
             if (localcache != null)
             {

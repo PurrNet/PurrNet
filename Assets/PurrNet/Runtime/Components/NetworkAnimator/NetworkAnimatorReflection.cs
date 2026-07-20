@@ -12,6 +12,36 @@ namespace PurrNet
 
         private bool _wasController;
 
+        private AnimatorControllerParameter[] _cachedParameters;
+        private RuntimeAnimatorController _cachedController;
+        private readonly Dictionary<int, int> _paramIndexByHash = new Dictionary<int, int>();
+
+        private AnimatorControllerParameter[] GetCachedParameters()
+        {
+            var controller = _animator.runtimeAnimatorController;
+            if (_cachedParameters == null || _cachedController != controller ||
+                _cachedParameters.Length != _animator.parameterCount)
+            {
+                _cachedController = controller;
+                _cachedParameters = _animator.parameters;
+
+                _paramIndexByHash.Clear();
+                for (var i = 0; i < _cachedParameters.Length; i++)
+                    _paramIndexByHash[_cachedParameters[i].nameHash] = i;
+            }
+
+            return _cachedParameters;
+        }
+
+        private int GetParamIndexPlusOne(int nameHash)
+        {
+            if (!_animator || !_animator.runtimeAnimatorController)
+                return 0;
+
+            GetCachedParameters();
+            return _paramIndexByHash.TryGetValue(nameHash, out var index) ? index + 1 : 0;
+        }
+
         protected override void OnSpawned()
         {
             _wasController = IsController(_ownerAuth);
@@ -39,11 +69,11 @@ namespace PurrNet
             if (!_animator || !_animator.runtimeAnimatorController)
                 return;
 
-            int paramCount = _animator.parameterCount;
+            var parameters = GetCachedParameters();
 
-            for (var i = 0; i < paramCount; i++)
+            for (var i = 0; i < parameters.Length; i++)
             {
-                var param = _animator.parameters[i];
+                var param = parameters[i];
 
                 if (_dontSyncHashes.Contains(param.nameHash))
                     continue;
@@ -51,13 +81,13 @@ namespace PurrNet
                 switch (param.type)
                 {
                     case AnimatorControllerParameterType.Bool:
-                        _boolValues[param.nameHash] = _animator.GetBool(param.name);
+                        _boolValues[param.nameHash] = _animator.GetBool(param.nameHash);
                         break;
                     case AnimatorControllerParameterType.Float:
-                        _floatValues[param.nameHash] = _animator.GetFloat(param.name);
+                        _floatValues[param.nameHash] = _animator.GetFloat(param.nameHash);
                         break;
                     case AnimatorControllerParameterType.Int:
-                        _intValues[param.nameHash] = _animator.GetInteger(param.name);
+                        _intValues[param.nameHash] = _animator.GetInteger(param.nameHash);
                         break;
                 }
             }
@@ -68,11 +98,11 @@ namespace PurrNet
             if (!_animator || !_animator.runtimeAnimatorController)
                 return;
 
-            int paramCount = _animator.parameterCount;
+            var parameters = GetCachedParameters();
 
-            for (var i = 0; i < paramCount; i++)
+            for (var i = 0; i < parameters.Length; i++)
             {
-                var param = _animator.parameters[i];
+                var param = parameters[i];
 
                 if (_dontSyncHashes.Contains(param.nameHash))
                     continue;
@@ -81,13 +111,16 @@ namespace PurrNet
                 {
                     case AnimatorControllerParameterType.Bool:
                     {
-                        if (_boolValues.TryGetValue(param.nameHash, out var v) && v == _animator.GetBool(param.name))
+                        var current = _animator.GetBool(param.nameHash);
+
+                        if (_boolValues.TryGetValue(param.nameHash, out var v) && v == current)
                             continue;
 
                         var setBool = new SetBool
                         {
-                            value = _animator.GetBool(param.name),
-                            nameHash = param.nameHash
+                            value = current,
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         _boolValues[param.nameHash] = setBool.value;
@@ -98,14 +131,17 @@ namespace PurrNet
                     }
                     case AnimatorControllerParameterType.Float:
                     {
+                        var current = _animator.GetFloat(param.nameHash);
+
                         if (_floatValues.TryGetValue(param.nameHash, out var v) &&
-                            Mathf.Approximately(v, _animator.GetFloat(param.name)))
+                            Mathf.Approximately(v, current))
                             continue;
 
                         var setFloat = new SetFloat
                         {
-                            value = _animator.GetFloat(param.name),
-                            nameHash = param.nameHash
+                            value = current,
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         _floatValues[param.nameHash] = setFloat.value;
@@ -116,13 +152,16 @@ namespace PurrNet
                     }
                     case AnimatorControllerParameterType.Int:
                     {
-                        if (_intValues.TryGetValue(param.nameHash, out var v) && v == _animator.GetInteger(param.name))
+                        var current = _animator.GetInteger(param.nameHash);
+
+                        if (_intValues.TryGetValue(param.nameHash, out var v) && v == current)
                             continue;
 
                         var setInteger = new SetInteger
                         {
-                            value = _animator.GetInteger(param.name),
-                            nameHash = param.nameHash
+                            value = current,
+                            nameHash = param.nameHash,
+                            paramIndexPlusOne = i + 1
                         };
 
                         _intValues[param.nameHash] = setInteger.value;

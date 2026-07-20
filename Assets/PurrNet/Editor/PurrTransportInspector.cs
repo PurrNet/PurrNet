@@ -14,6 +14,9 @@ namespace PurrNet.Editor
         private SerializedProperty _host;
         private SerializedProperty _timeoutInSeconds;
         private SerializedProperty _pollEventsInUpdate;
+        private SerializedProperty _useNat;
+        private SerializedProperty _natResolveTimeout;
+        private SerializedProperty _networkSimulation;
 
         private bool _lookingForBestRegion;
         string[] _regions = Array.Empty<string>();
@@ -27,6 +30,9 @@ namespace PurrNet.Editor
             _host = serializedObject.FindProperty("_host");
             _timeoutInSeconds = serializedObject.FindProperty("_timeoutInSeconds");
             _pollEventsInUpdate = serializedObject.FindProperty("_pollEventsInUpdate");
+            _useNat = serializedObject.FindProperty("_useNat");
+            _natResolveTimeout = serializedObject.FindProperty("_natResolveTimeout");
+            _networkSimulation = serializedObject.FindProperty("_networkSimulation");
 
             if (!EditorApplication.isPlayingOrWillChangePlaymode)
                 LoadRegions();
@@ -129,7 +135,6 @@ namespace PurrNet.Editor
             var server = _masterServer.stringValue;
             if (Uri.TryCreate(server, UriKind.Absolute, out var url) && url.Host.EndsWith("purrtransport.purrservers.com"))
             {
-                // draw help box saying this is meant for dev use only
                 EditorGUILayout.HelpBox("This server is meant for development use only.\n" +
                                         "Usage in production is strictly prohibited.\n" +
                                         "You need to host your own relay servers for production.", MessageType.Warning);
@@ -181,13 +186,73 @@ namespace PurrNet.Editor
 
             EditorGUILayout.PropertyField(_timeoutInSeconds);
             EditorGUILayout.PropertyField(_pollEventsInUpdate);
+            EditorGUILayout.PropertyField(_useNat, new GUIContent("Use NAT",
+                "Attempt a direct P2P link via NAT hole-punching. Fully transparent to the " +
+                "game: traffic falls back to the relay automatically when P2P is unavailable."));
+
+            if (_useNat.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(_natResolveTimeout, new GUIContent("NAT Resolve Timeout",
+                    "Seconds to wait for a NAT punch to establish a direct P2P link before " +
+                    "falling back to the relay. Keep this comfortably below your connection/" +
+                    "auth timeout so a failed punch still falls back in time."));
+                if (_natResolveTimeout.floatValue < 1f)
+                    _natResolveTimeout.floatValue = 1f;
+                EditorGUI.indentLevel--;
+            }
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.PropertyField(_networkSimulation, new GUIContent("Network Simulation (UDP)"));
 
             if (GUILayout.Button("Refresh"))
                 LoadRegions();
 
             TransportInspector.DrawTransportStatus(transport);
 
+            DrawConnectionMode(transport);
+
             serializedObject.ApplyModifiedProperties();
         }
+
+        private void DrawConnectionMode(PurrTransport transport)
+        {
+            if (!Application.isPlaying)
+                return;
+
+            var link = transport.clientSessionLink;
+            string clientLine = link switch
+            {
+                PurrTransport.SessionLink.P2P => "Direct P2P (NAT)",
+                PurrTransport.SessionLink.Relay => "Relay",
+                PurrTransport.SessionLink.Resolving => "resolving NAT punch…",
+                _ => null
+            };
+
+            int total = transport.connections.Count;
+            bool hasHost = total > 0;
+
+            if (clientLine == null && !hasHost)
+                return;
+
+            EditorGUILayout.Space(4);
+
+            if (clientLine != null)
+                EditorGUILayout.LabelField("Client session", clientLine);
+
+            if (hasHost)
+            {
+                EditorGUILayout.LabelField("Host links",
+                    $"{transport.p2pConnectionCount} P2P / {total - transport.p2pConnectionCount} relay");
+
+                foreach (var conn in transport.connections)
+                {
+                    var isP2p = transport.GetP2pEndpoint(conn) != null;
+                    EditorGUILayout.LabelField($"    conn {conn.connectionId}", isP2p ? "P2P" : "Relay");
+                }
+            }
+        }
+
+        public override bool RequiresConstantRepaint() => Application.isPlaying;
     }
 }

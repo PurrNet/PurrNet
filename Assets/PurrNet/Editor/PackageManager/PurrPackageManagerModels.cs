@@ -30,6 +30,15 @@ namespace PurrNet.Editor
         [JsonProperty("id")]
         public string Id { get; private set; }
 
+        [JsonProperty("slug")]
+        public string Slug { get; private set; }
+
+        [JsonProperty("github_owner")]
+        public string GithubOwner { get; private set; }
+
+        [JsonProperty("github_repo")]
+        public string GithubRepo { get; private set; }
+
         [JsonProperty("display_name")]
         public string DisplayName { get; private set; }
 
@@ -41,6 +50,15 @@ namespace PurrNet.Editor
 
         [JsonProperty("required_tier")]
         public string RequiredTier { get; private set; }
+
+        [JsonProperty("is_hidden")]
+        public bool IsHidden { get; private set; }
+
+        [JsonProperty("is_early_access")]
+        public bool IsEarlyAccess { get; private set; }
+
+        [JsonProperty("dependency_ids")]
+        public string[] DependencyIds { get; private set; }
 
         [JsonProperty("entitled_version")]
         public string EntitledVersion { get; private set; }
@@ -80,11 +98,10 @@ namespace PurrNet.Editor
 
         public string GetUpmPackageName()
         {
-            if (!string.IsNullOrEmpty(UpmPackageName))
-                return UpmPackageName;
-
-            var derived = (DisplayName ?? "unknown").ToLower().Replace(" ", "-");
-            return "com.purrnet." + derived;
+            // The website reads this directly from the repository's package.json.
+            // Never guess: a fabricated manifest key can install the right files under
+            // the wrong package identity and leave Unity's lock file inconsistent.
+            return UpmPackageName;
         }
     }
 
@@ -141,13 +158,70 @@ namespace PurrNet.Editor
         [JsonProperty("premium-tools")]
         public bool PremiumTools { get; private set; }
 
+        [JsonProperty("studio-tools")]
+        public bool StudioTools { get; private set; }
+
         [JsonProperty("supporter")]
         public bool Supporter { get; private set; }
+    }
+
+    public class UserInfo
+    {
+        [JsonProperty("id")]
+        public string Id { get; private set; }
+
+        [JsonProperty("username")]
+        public string Username { get; private set; }
+
+        [JsonProperty("avatar_url")]
+        public string AvatarUrl { get; private set; }
+
+        [JsonProperty("is_admin")]
+        public bool IsAdmin { get; private set; }
+    }
+
+    public class PackageRegistrationRequest
+    {
+        [JsonProperty("github_owner")]
+        public string GithubOwner { get; }
+
+        [JsonProperty("github_repo")]
+        public string GithubRepo { get; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; }
+
+        [JsonProperty("required_tier")]
+        public string RequiredTier { get; }
+
+        [JsonProperty("is_early_access")]
+        public bool IsEarlyAccess { get; }
+
+        public PackageRegistrationRequest(string githubOwner, string githubRepo, string displayName)
+        {
+            GithubOwner = githubOwner;
+            GithubRepo = githubRepo;
+            DisplayName = displayName;
+            RequiredTier = "admin";
+            IsEarlyAccess = true;
+        }
+    }
+
+    public class PackageRegistrationResponse
+    {
+        [JsonProperty("success")]
+        public bool Success { get; private set; }
+
+        [JsonProperty("package")]
+        public PackageInfo Package { get; private set; }
     }
 
     public class ApiError
     {
         [JsonProperty("error")]
         public string Error { get; private set; }
+
+        [JsonProperty("message")]
+        public string Message { get; private set; }
     }
 }

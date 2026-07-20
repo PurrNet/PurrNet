@@ -14,8 +14,32 @@ namespace PurrNet
     {
         public int prefabId;
         public GameObject prefab;
-        public bool pooled;
-        public int warmupCount;
+        public PoolingConfig pooling;
+
+        /// <summary>Shim for backwards compatibility. Use pooling.pooled instead.</summary>
+        public bool pooled
+        {
+            get => pooling.pooled;
+            set => pooling.pooled = value;
+        }
+
+        /// <summary>Shim for backwards compatibility. Use pooling.warmupCount instead.</summary>
+        public int warmupCount
+        {
+            get => pooling.warmupCount;
+            set => pooling.warmupCount = value;
+        }
+    }
+
+    public interface IPersistentPrefabProvider
+    {
+        IEnumerable<string> persistentIds { get; }
+
+        bool TryGetPersistentId(int prefabId, out string persistentId);
+
+        bool TryGetPersistentId(GameObject prefab, out string persistentId);
+
+        bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData);
     }
 
     public interface IPrefabProvider
@@ -25,6 +49,8 @@ namespace PurrNet
         bool TryGetPrefabData(int prefabId, out PrefabData prefabData);
 
         bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData);
+
+        void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5);
 
         void Refresh();
     }
@@ -36,6 +62,8 @@ namespace PurrNet
         public abstract bool TryGetPrefabData(int prefabId, out PrefabData prefabData);
 
         public abstract bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData);
+
+        public abstract void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5);
 
         public abstract void Refresh();
     }

@@ -10,7 +10,7 @@ using PurrNet.Utils;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncVar<T> : NetworkModule
+    public class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver
     {
         private TickManager _tickManager;
 
@@ -80,6 +80,7 @@ namespace PurrNet
             _wasLastDirty = false;
             _id = 0;
             _ignoreServerUpdates = false;
+            _value = _initialValue;
         }
 
         public override void OnOwnerDisconnected(PlayerID ownerId)
@@ -90,6 +91,9 @@ namespace PurrNet
         public override void OnOwnerReconnected(PlayerID ownerId)
         {
             InvalidateIsController();
+
+            if (_ownerAuth && isServer)
+                SendLatestState(ownerId, _id, _value);
         }
 
         public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawnEvent, bool asServer)
@@ -101,12 +105,15 @@ namespace PurrNet
 
             if (_ownerAuth)
             {
-                _id = 0;
+                if (asServer || !isOwner)
+                    _id = 0;
 
                 if (isOwner)
                     SetDirty();
             }
         }
+
+        private TickManager _subscribedTicker;
 
         private void SubscribeToTickManager()
         {
@@ -114,7 +121,8 @@ namespace PurrNet
                 return;
 
             _isSubscribedToTickManager = true;
-            networkManager.tickModule.onTick += OnTick;
+            _subscribedTicker = networkManager.tickModule;
+            _subscribedTicker.onTick += OnTick;
         }
 
         private void UnsubscribeFromTickManager()
@@ -123,15 +131,7 @@ namespace PurrNet
                 return;
 
             _isSubscribedToTickManager = false;
-            networkManager.tickModule.onTick -= OnTick;
-        }
-
-        public override void OnObserverAdded(PlayerID player, bool isSpawner)
-        {
-            if (isSpawner && ownerAuth && owner == player)
-                return;
-
-            SendLatestState(player, _id, _value);
+            _subscribedTicker.onTick -= OnTick;
         }
 
         public override void OnInitializeModules()
@@ -149,6 +149,23 @@ namespace PurrNet
             InvalidateIsController();
         }
 
+        public override void OnSpawnSent()
+        {
+            if (isServer || !isControllingSyncVar)
+                return;
+
+            if (_isDirty || !PurrEquality<T>.Default.Equals(_value, _initialValue))
+                FlushImmediately();
+        }
+
+        public override void OnObserverAdded(PlayerID player, bool isSpawner)
+        {
+            if (isSpawner && ownerAuth && owner == player)
+                return;
+
+            SendLatestState(player, _id, _value);
+        }
+
         private void InvalidateIsController()
         {
             bool old = isControllingSyncVar;
@@ -164,18 +181,25 @@ namespace PurrNet
         {
             InvalidateIsController();
 
-            if (isControllingSyncVar)
+            try
             {
-                _id += 1;
-                FlushImmediately();
+                if (isControllingSyncVar && parent)
+                {
+                    ForceSendReliable();
+                    _lastSendTime = Time.time;
+                }
             }
-
-            UnsubscribeFromTickManager();
+            finally
+            {
+                _wasLastDirty = false;
+                _isDirty = false;
+                UnsubscribeFromTickManager();
+            }
         }
 
         public void SetDirty()
         {
-            if (_isDirty || !isControllingSyncVar)
+            if (!isControllingSyncVar)
                 return;
 
             _isDirty = true;
@@ -187,15 +211,15 @@ namespace PurrNet
         private void ForceSendUnreliable()
         {
             if (isServer)
-                SendToAll(_id++, _value);
-            else SendToServer(_id++, _value);
+                SendToAll(++_id, _value);
+            else SendToServer(++_id, _value);
         }
 
         private void ForceSendReliable()
         {
             if (isServer)
-                SendToAllReliably(_id++, _value);
-            else SendToServerReliably(_id++, _value);
+                SendToAllReliably(++_id, _value);
+            else SendToServerReliably(++_id, _value);
         }
 
         public void FlushImmediately()
@@ -209,11 +233,14 @@ namespace PurrNet
 
         public void OnTick()
         {
-            if (!isControllingSyncVar)
+            if (!isControllingSyncVar || !parent)
             {
                 UnsubscribeFromTickManager();
                 return;
             }
+
+            if (!parent.isFullySpawned)
+                return;
 
             if (_isDirty)
             {
@@ -237,9 +264,12 @@ namespace PurrNet
 
         private ulong _id;
         private bool _wasLastDirty;
+        [SerializeField, HideInInspector]
+        private T _initialValue;
 
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
         {
+            _initialValue = initialValue;
             _value = initialValue;
             _sendIntervalInSeconds = sendIntervalInSeconds;
             _ownerAuth = ownerAuth;
@@ -252,7 +282,11 @@ namespace PurrNet
                 return;
 
             if (_ignoreServerUpdates)
+            {
+                if (packetId.value > _id)
+                    _id = packetId.value;
                 return;
+            }
 
             _id = packetId.value;
 
@@ -358,6 +392,15 @@ namespace PurrNet
         public override string ToString()
         {
             return value.ToString();
+        }
+
+        public void OnBeforeSerialize()
+        {
+        }
+
+        public void OnAfterDeserialize()
+        {
+            _initialValue = _value;
         }
     }
 }

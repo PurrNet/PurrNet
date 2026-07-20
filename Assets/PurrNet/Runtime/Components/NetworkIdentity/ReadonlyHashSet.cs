@@ -124,7 +124,10 @@ namespace PurrNet.Collections
         }
 
         /// <inheritdoc/>
-        public IEnumerator<T> GetEnumerator() => set.GetEnumerator();
+        public HashSet<T>.Enumerator GetEnumerator() => set.GetEnumerator();
+
+        /// <inheritdoc/>
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => set.GetEnumerator();
 
         /// <inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => set.GetEnumerator();

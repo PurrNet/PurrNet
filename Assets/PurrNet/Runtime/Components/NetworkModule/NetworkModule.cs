@@ -9,6 +9,7 @@ using PurrNet.Profiler;
 
 namespace PurrNet
 {
+    [Serializable]
     public class NetworkModule
     {
         public NetworkIdentity parent { get; private set; }
@@ -76,11 +77,47 @@ namespace PurrNet
         {
         }
 
+        /// <summary>
+        /// Called only on the spawning peer, at the end of the frame the object was spawned in,
+        /// right before batched RPCs flush. Anything queued here departs in the same flush as the
+        /// spawn, ordered right behind the spawn packet.
+        /// </summary>
+        public virtual void OnSpawnSent()
+        {
+        }
+
+        /// <summary>
+        /// Called only on peers that created the object from a spawn packet, once the entire
+        /// packet has been deserialized and early-spawned. Everything that spawned alongside
+        /// this object exists at this point; safe to react to spawn data.
+        /// </summary>
+        public virtual void OnSpawnReceived()
+        {
+        }
+
         public virtual void OnDespawned()
         {
         }
 
         public virtual void OnDespawned(bool asServer)
+        {
+        }
+
+        /// <summary>
+        /// Called on the spawner to attach custom data to the parent's spawn packet.
+        /// Whatever you write here travels with the object and is read back in OnDeserialize.
+        /// </summary>
+        /// <param name="packer">The packer to write your data into</param>
+        public virtual void OnSerialize(BitPacker packer)
+        {
+        }
+
+        /// <summary>
+        /// Called on peers that create the object, after the spawn packet arrives.
+        /// Read the data back in the same order you wrote it in OnSerialize.
+        /// </summary>
+        /// <param name="packer">The packer to read your data from</param>
+        public virtual void OnDeserialize(BitPacker packer)
         {
         }
 
@@ -181,7 +218,8 @@ namespace PurrNet
             if (!parent.ValidateSendingRPC(signature, out var module))
                 return;
 
-            module.AppendToBufferedRPCs(packet, signature);
+            if (signature.bufferLast)
+                module.AppendToBufferedRPCs(packet, signature);
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             parent.SendRPCChild(_myType, module, packet, signature);
@@ -195,13 +233,13 @@ namespace PurrNet
 #endif
 
         [UsedByIL]
-        protected bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer) where T : struct, IRpc
+        protected bool ValidateReceivingRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
             Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, parent);
 #endif
-            return parent && parent.ValidateIncomingRPC(info, signature, data, asServer);
+            return parent && parent.ValidateIncomingRPC(info, signature, data, asServer, requestId, isAwaitable);
         }
 
         [UsedByIL]
@@ -221,7 +259,7 @@ namespace PurrNet
                     BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
                 gmethod = method?.MakeGenericMethod(rpcHeader.types);
 
-                NetworkIdentity.genericMethods.Add(key, gmethod);
+                NetworkIdentity.genericMethods.Add(key.CloneForStorage(), gmethod);
             }
 
             if (gmethod == null)

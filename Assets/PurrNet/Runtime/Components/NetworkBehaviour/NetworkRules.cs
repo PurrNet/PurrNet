@@ -10,11 +10,11 @@ namespace PurrNet
     [Serializable]
     public struct HostMigrationRules
     {
-        [UsedImplicitly] public bool enabled;
         [Tooltip("If enabled, new server will also start as client (server+client)")]
         [UsedImplicitly] public bool migrateAsHost;
-        [UsedImplicitly] public bool identitiesAlwaysVisible;
-        [UsedImplicitly] public bool scenesAlwaysPublic;
+
+        [Tooltip("Unsafe: include player reconnect cookies in player snapshots so a promoted peer can preserve PlayerIDs.")]
+        [UsedImplicitly] public bool sharePlayerCookiesWithPeers;
     }
 
     public enum SceneCleanupMode
@@ -75,6 +75,9 @@ namespace PurrNet
 
         [Tooltip("On disconnect, despawn all objects that were spawned during the session")]
         public bool cleanupSpawnedObjects;
+
+        [Tooltip("Include runtime-instantiated scene objects when collecting scene identities")]
+        public bool includeInstantiatedSceneObjects;
     }
 
     [Serializable]
@@ -138,10 +141,26 @@ namespace PurrNet
         public ActionAuth changeParentAuth;
     }
 
+    public enum VersionMismatchBehaviour
+    {
+        /// <summary>
+        /// Log a warning but allow the connection.
+        /// </summary>
+        Warning,
+
+        /// <summary>
+        /// Deny the connection on version mismatch.
+        /// </summary>
+        Deny
+    }
+
     [Serializable]
     public struct MiscRules
     {
         [Range(1, 10)] public int syncedTickUpdateInterval;
+
+        [Tooltip("How to handle client/server version mismatches. Warning logs but allows connection; Deny rejects the connection.")]
+        public VersionMismatchBehaviour versionMismatchBehaviour;
     }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
@@ -165,10 +184,7 @@ namespace PurrNet
         [SerializeField]
         private HostMigrationRules _hostMigrationRules = new HostMigrationRules
         {
-            enabled = false,
-            migrateAsHost = true,
-            identitiesAlwaysVisible = true,
-            scenesAlwaysPublic = true
+            migrateAsHost = true
         };
 
         [SerializeField]
@@ -179,7 +195,8 @@ namespace PurrNet
             defaultOwner = DefaultOwner.SpawnerIfClientOnly,
             propagateOwnershipByDefault = true,
             despawnIfOwnerDisconnects = true,
-            cleanupSpawnedObjects = true
+            cleanupSpawnedObjects = true,
+            includeInstantiatedSceneObjects = false
         };
 
         [SerializeField]
@@ -343,6 +360,11 @@ namespace PurrNet
             return _defaultMiscRules.syncedTickUpdateInterval;
         }
 
+        public VersionMismatchBehaviour GetVersionMismatchBehaviour()
+        {
+            return _defaultMiscRules.versionMismatchBehaviour;
+        }
+
         public bool ShouldCleanupSpawnedObjectsOnDisconnect()
         {
             return _defaultSpawnRules.cleanupSpawnedObjects;
@@ -368,24 +390,19 @@ namespace PurrNet
             return _defaultRpcRules.targetRpcsCanTargetServer;
         }
 
-        public bool IsHostMigrationEnabled()
-        {
-            return _hostMigrationRules.enabled;
-        }
-
-        public bool ShouldForceVisibilityToAlwaysVisible()
-        {
-            return _hostMigrationRules.identitiesAlwaysVisible;
-        }
-
-        public bool ShouldForceSceneToAlwaysPublic()
-        {
-            return _hostMigrationRules.scenesAlwaysPublic;
-        }
-
         public bool ShouldMigrateAsHost()
         {
             return _hostMigrationRules.migrateAsHost;
+        }
+
+        public bool ShouldSharePlayerCookiesWithPeers()
+        {
+            return _hostMigrationRules.sharePlayerCookiesWithPeers;
+        }
+
+        public bool ShouldIncludeInstantiatedSceneObjects()
+        {
+            return _defaultSpawnRules.includeInstantiatedSceneObjects;
         }
     }
 }

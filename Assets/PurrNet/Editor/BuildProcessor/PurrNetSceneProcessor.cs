@@ -1,7 +1,8 @@
 using System.IO;
-using Newtonsoft.Json.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using PurrNet.Pooling;
-using UnityEditor;
+using PurrNet.Utils;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -9,69 +10,52 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Editor
 {
-    public class PurrNetSceneProcessor : IProcessSceneWithReport, IPreprocessBuildWithReport,
-        IPostprocessBuildWithReport
+    public class PurrNetSceneProcessor : IProcessSceneWithReport, IPreprocessBuildWithReport
     {
         public int callbackOrder => 0;
 
-        public void OnPostprocessBuild(BuildReport report)
+        static string ComputeProjectId()
         {
-            Cleanup();
-        }
-
-        private static void Cleanup()
-        {
-            const string VERSION = "Assets/Resources/PurrVersion.json";
-
-            if (File.Exists(VERSION))
-                File.Delete(VERSION);
-
-            if (File.Exists(VERSION + ".meta"))
-                File.Delete(VERSION + ".meta");
-
-            if (Directory.Exists("Assets/Resources"))
+            try
             {
-                var files = Directory.GetFiles("Assets/Resources");
-                var dirs = Directory.GetDirectories("Assets/Resources");
+                var path = Path.Combine(Application.dataPath, "..", "ProjectSettings", "ProjectSettings.asset");
 
-                bool isResourcesFolderEmpty = files.Length == 0 &&
-                                              dirs.Length == 0;
+                if (!File.Exists(path))
+                    return null;
 
-                if (isResourcesFolderEmpty)
+                foreach (var line in File.ReadLines(path))
                 {
-                    Directory.Delete("Assets/Resources");
-                    if (File.Exists("Assets/Resources.meta"))
-                        File.Delete("Assets/Resources.meta");
+                    var trimmed = line.TrimStart();
+
+                    if (!trimmed.StartsWith("productGUID:"))
+                        continue;
+
+                    var guid = trimmed.Substring("productGUID:".Length).Trim();
+
+                    if (string.IsNullOrEmpty(guid))
+                        break;
+
+                    using var sha = SHA256.Create();
+                    var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(guid));
+
+                    var sb = new StringBuilder(hash.Length * 2);
+                    foreach (var b in hash)
+                        sb.Append(b.ToString("x2"));
+
+                    return sb.ToString();
                 }
             }
+            catch
+            {
+                // Not critical
+            }
 
-            AssetDatabase.Refresh();
-        }
-
-        static string TryFindVersion()
-        {
-            var packagePath = AssetDatabase.GUIDToAssetPath("0ec978dbed50a6f4b9a57580867f1fae");
-
-            if (string.IsNullOrEmpty(packagePath))
-                return "v?";
-
-            var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(packagePath);
-
-            if (textAsset == null)
-                return "v?";
-
-            var json = JObject.Parse(textAsset.text);
-            return 'v' + (json["version"]?.ToString() ?? "?");
+            return null;
         }
 
         public void OnPreprocessBuild(BuildReport report)
         {
-            const string VERSION = "Assets/Resources/PurrVersion.json";
-
-            Directory.CreateDirectory(Path.GetDirectoryName(VERSION) ?? string.Empty);
-            File.WriteAllText(VERSION, TryFindVersion());
-
-            AssetDatabase.Refresh();
+            ApplicationConstants.Set("projectId", ComputeProjectId());
         }
 
         public void OnProcessScene(Scene scene, BuildReport report)

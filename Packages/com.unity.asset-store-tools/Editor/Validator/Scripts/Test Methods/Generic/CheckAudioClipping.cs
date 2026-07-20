@@ -38,7 +38,11 @@ namespace AssetStoreTools.Validator.TestMethods
             var losslessAudioClips = _assetUtility.GetObjectsFromAssets(_config.ValidationPaths, AssetType.NonLossyAudio).Select(x => x as AudioClip).ToList();
             foreach (var clip in losslessAudioClips)
             {
+#if UNITY_6000_3_OR_NEWER
+                var path = AssetDatabase.GetAssetPath(clip.GetEntityId());
+#else
                 var path = AssetDatabase.GetAssetPath(clip.GetInstanceID());
+#endif
 
                 if (IsClipping(clip, TOLERANCE, PEAK_STEPS, clippingThreshold))
                     clippingAudioClips.Add(clip, path);
@@ -47,8 +51,11 @@ namespace AssetStoreTools.Validator.TestMethods
             var lossyAudioClips = _assetUtility.GetObjectsFromAssets(_config.ValidationPaths, AssetType.LossyAudio).Select(x => x as AudioClip).ToList();
             foreach (var clip in lossyAudioClips)
             {
+#if UNITY_6000_3_OR_NEWER
+                var path = AssetDatabase.GetAssetPath(clip.GetEntityId());
+#else
                 var path = AssetDatabase.GetAssetPath(clip.GetInstanceID());
-
+#endif
                 if (IsClipping(clip, TOLERANCE, PEAK_STEPS, clippingThreshold))
                     clippingAudioClips.Add(clip, path);
             }

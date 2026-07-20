@@ -24,10 +24,13 @@ namespace PurrNet
 
             isInitialized = true;
 
-            for (int i = 0; i < _rules.Length; i++)
+            if (_rules != null)
             {
-                _rules[i].Setup(manager);
-                _raw_rules.Add(_rules[i]);
+                for (int i = 0; i < _rules.Length; i++)
+                {
+                    _rules[i].Setup(manager);
+                    _raw_rules.Add(_rules[i]);
+                }
             }
 
             _raw_rules.Sort((a, b) =>
@@ -48,6 +51,8 @@ namespace PurrNet
                     return;
                 }
             }
+
+            _raw_rules.Add(rule);
         }
 
         public void RemoveRule(INetworkVisibilityRule rule)
@@ -57,10 +62,6 @@ namespace PurrNet
 
         public bool CanSee(PlayerID player, NetworkIdentity target)
         {
-            var rules = target.networkRules;
-            if (rules && rules.IsHostMigrationEnabled() && rules.ShouldForceVisibilityToAlwaysVisible())
-                return true;
-
             for (int i = 0; i < _raw_rules.Count; i++)
             {
                 if (_raw_rules[i].CanSee(player, target))

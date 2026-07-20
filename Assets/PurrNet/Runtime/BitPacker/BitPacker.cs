@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -203,31 +204,48 @@ namespace PurrNet.Packing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureBitExists()
+        {
+            if ((_positionInBits & 7) == 0)
+                EnsureBitsExist(1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureBitsExist(int bits)
         {
             int targetPos = _positionInBits + bits;
-            int requiredBytes = _isReading ? (targetPos + 7) >> 3 : ((targetPos + 7) >> 3) + 8;
+            int requiredBytes = (targetPos + 7) >> 3;
 
+            if (_isReading)
+            {
+                if (requiredBytes > _buffer.Length)
+                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
+                return;
+            }
+
+            requiredBytes += 8;
             if (requiredBytes > _buffer.Length)
             {
-                if (_isReading)
-                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
-                int newSize = Math.Max(_buffer.Length * 2, ((targetPos + 7) >> 3) + 8);
+                int newSize = Math.Max(_buffer.Length * 2, requiredBytes);
                 Array.Resize(ref _buffer, newSize);
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureBitsExist(int positionInBits, int bits)
         {
             int targetPos = positionInBits + bits;
-            var bufferBitSize = _buffer.Length * 8;
+            int bufferBitSize = _buffer.Length * 8;
 
             if (targetPos > bufferBitSize)
             {
                 if (_isReading)
                     throw new IndexOutOfRangeException("Not enough bits in the buffer. | " + targetPos + " > " +
                                                        bufferBitSize);
-                Array.Resize(ref _buffer, _buffer.Length * 2);
+
+                int requiredBytes = ((targetPos + 7) >> 3) + 8;
+                int newSize = Math.Max(_buffer.Length * 2, requiredBytes);
+                Array.Resize(ref _buffer, newSize);
             }
         }
 
@@ -288,45 +306,168 @@ namespace PurrNet.Packing
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteBitDataWithoutConsumingIt(BitData data)
         {
-            int toRead = (int)data.bitLength.value;
-            if (toRead == 0) return;
-
-            var other = data.packer;
-            var beforeBitPosition = other._positionInBits;
-
-            other._positionInBits = data.bitOrigin;
-            EnsureBitsExist(toRead);
-
-            int chunks = toRead / 64;
-            byte excess = (byte)(toRead % 64);
-
-            for (int i = 0; i < chunks; i++)
-                WriteBitsWithoutChecks(other.ReadBits(64), 64);
-
-            if (excess != 0)
-                WriteBitsWithoutChecks(other.ReadBits(excess), excess);
-
-            other.SetBitPosition(beforeBitPosition);
+            CopyBitsWithoutConsuming(data.packer, (int)data.bitOrigin.value, (int)data.bitLength.value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteBitsWithoutConsumingIt(BitPacker packer, int bits)
         {
+            CopyBitsWithoutConsuming(packer, 0, bits);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteBitsWithoutConsumingItUnchecked(BitPacker packer, int bits)
+        {
+            if (bits == 0)
+                return;
+
             EnsureBitsExist(bits);
+            CopyBitsFromValidatedSource(packer, 0, bits);
+        }
 
-            var beforeBitPosition = packer._positionInBits;
-            packer.SetBitPosition(0);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CopyBitsWithoutConsuming(BitPacker other, int bitOrigin, int bits)
+        {
+            if (bits == 0)
+                return;
 
-            int chunks = bits / 64;
-            byte excess = (byte)(bits % 64);
+            EnsureBitsExist(bits);
+            other.EnsureBitsExist(bitOrigin, bits);
+            CopyBitsFromValidatedSource(other, bitOrigin, bits);
+        }
 
-            for (int i = 0; i < chunks; i++)
-                WriteBitsWithoutChecks(packer.ReadBits(64), 64);
-            if (excess != 0)
-                WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+        private unsafe void CopyBitsFromValidatedSource(BitPacker other, int bitOrigin, int bits)
+        {
+            if (((_positionInBits | bitOrigin) & 7) == 0)
+            {
+                int fullBytes = bits >> 3;
+                if (fullBytes > 0)
+                {
+                    other._buffer.AsSpan(bitOrigin >> 3, fullBytes)
+                        .CopyTo(_buffer.AsSpan(_positionInBits >> 3, fullBytes));
+                    _positionInBits += fullBytes << 3;
+                }
 
-            packer.SetBitPosition(beforeBitPosition);
+                byte remainingBits = (byte)(bits & 7);
+                if (remainingBits != 0)
+                    WriteBitsWithoutChecks(other._buffer[(bitOrigin >> 3) + fullBytes], remainingBits);
+                return;
+            }
+
+            bool hasIndependentByteAlignedSource = (bitOrigin & 7) == 0 && !ReferenceEquals(_buffer, other._buffer);
+            if (hasIndependentByteAlignedSource)
+            {
+                if (bits >= 80)
+                {
+                    CopyByteAlignedSourceToUnalignedDestination(other, bitOrigin >> 3, bits);
+                    return;
+                }
+
+                int sourcePosition = other._positionInBits;
+                other._positionInBits = bitOrigin;
+                int chunks = bits >> 6;
+                byte excess = (byte)(bits & 63);
+                for (int i = 0; i < chunks; i++)
+                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(64), 64);
+                if (excess != 0)
+                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(excess), excess);
+                other._positionInBits = sourcePosition;
+                return;
+            }
+
+            int beforeBitPosition = other._positionInBits;
+            other._positionInBits = bitOrigin;
+
+            try
+            {
+                int chunks = bits >> 6;
+                byte excess = (byte)(bits & 63);
+
+                for (int i = 0; i < chunks; i++)
+                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(64), 64);
+                if (excess != 0)
+                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(excess), excess);
+            }
+            finally
+            {
+                other._positionInBits = beforeBitPosition;
+            }
+        }
+
+        private unsafe void CopyByteAlignedSourceToUnalignedDestination(BitPacker other, int sourceByteOrigin,
+            int bits)
+        {
+            int chunks = bits >> 6;
+            byte excess = (byte)(bits & 63);
+            int destinationBitOffset = _positionInBits & 7;
+            ulong preservedLowBits = (1UL << destinationBitOffset) - 1;
+            byte overflowMask = (byte)((1 << destinationBitOffset) - 1);
+
+            fixed (byte* source = &other._buffer[sourceByteOrigin])
+            fixed (byte* destination = &_buffer[_positionInBits >> 3])
+            {
+                for (int i = 0; i < chunks; i++)
+                {
+                    byte* destinationChunk = destination + (i << 3);
+                    ulong value = *(ulong*)(source + (i << 3));
+                    ulong existing = *(ulong*)destinationChunk;
+#if PURR_ENDIAN
+                    if (!BitConverter.IsLittleEndian)
+                    {
+                        value = BinaryPrimitives.ReverseEndianness(value);
+                        existing = BinaryPrimitives.ReverseEndianness(existing);
+                    }
+#endif
+                    ulong result = (existing & preservedLowBits) | (value << destinationBitOffset);
+#if PURR_ENDIAN
+                    if (!BitConverter.IsLittleEndian)
+                        result = BinaryPrimitives.ReverseEndianness(result);
+#endif
+                    *(ulong*)destinationChunk = result;
+
+                    byte highData = (byte)(value >> (64 - destinationBitOffset));
+                    byte* overflowByte = destinationChunk + 8;
+                    *overflowByte = (byte)((*overflowByte & ~overflowMask) | (highData & overflowMask));
+                }
+
+                if (excess != 0)
+                {
+                    ulong value = 0;
+                    byte* remainingSource = source + (chunks << 3);
+                    int bytesToRead = (excess + 7) >> 3;
+                    for (int i = 0; i < bytesToRead; i++)
+                        value |= (ulong)remainingSource[i] << (i << 3);
+
+                    byte* destinationChunk = destination + (chunks << 3);
+                    ulong dataMask = (1UL << excess) - 1;
+                    ulong writeMask = dataMask << destinationBitOffset;
+                    ulong existing = *(ulong*)destinationChunk;
+#if PURR_ENDIAN
+                    if (!BitConverter.IsLittleEndian)
+                        existing = BinaryPrimitives.ReverseEndianness(existing);
+#endif
+                    ulong result = (existing & ~writeMask) | ((value & dataMask) << destinationBitOffset);
+#if PURR_ENDIAN
+                    if (!BitConverter.IsLittleEndian)
+                        result = BinaryPrimitives.ReverseEndianness(result);
+#endif
+                    *(ulong*)destinationChunk = result;
+
+                    int overflow = excess + destinationBitOffset - 64;
+                    if (overflow > 0)
+                    {
+                        byte highMask = (byte)((1 << overflow) - 1);
+                        byte highData = (byte)(value >> (64 - destinationBitOffset));
+                        byte* overflowByte = destinationChunk + 8;
+                        *overflowByte = (byte)((*overflowByte & ~highMask) | (highData & highMask));
+                    }
+                }
+            }
+
+            _positionInBits += bits;
         }
 
         public void WriteBits(BitPacker packer, int bits)
@@ -350,7 +491,7 @@ namespace PurrNet.Packing
 
         public bool WriteBit(bool data)
         {
-            EnsureBitsExist(1);
+            EnsureBitExists();
             var byteIdx = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
 
@@ -425,21 +566,39 @@ namespace PurrNet.Packing
         {
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
+            int available = _buffer.Length - bytePos;
 
             fixed (byte* b = &_buffer[bytePos])
             {
-                ulong raw = *(ulong*)b;
-#if PURR_ENDIAN
-                if (!BitConverter.IsLittleEndian)
-                    raw = BinaryPrimitives.ReverseEndianness(raw);
-#endif
-                raw >>= bitOffset;
+                ulong raw;
 
-                int overflow = bits + bitOffset - 64;
-                if (overflow > 0)
+                if (available >= 9)
                 {
-                    ulong highByte = (ulong)b[8] << (64 - bitOffset);
-                    raw |= highByte;
+                    // Fast path: enough room for ulong read + overflow byte
+                    raw = *(ulong*)b;
+#if PURR_ENDIAN
+                    if (!BitConverter.IsLittleEndian)
+                        raw = BinaryPrimitives.ReverseEndianness(raw);
+#endif
+                    raw >>= bitOffset;
+
+                    int overflow = bits + bitOffset - 64;
+                    if (overflow > 0)
+                    {
+                        ulong highByte = (ulong)b[8] << (64 - bitOffset);
+                        raw |= highByte;
+                    }
+                }
+                else
+                {
+                    // Safe path: near end of buffer, read byte-by-byte
+                    // Assembles in little-endian order, no endian swap needed
+                    raw = 0;
+                    int toCopy = available < 8 ? available : 8;
+                    for (int i = 0; i < toCopy; i++)
+                        raw |= (ulong)b[i] << (i * 8);
+
+                    raw >>= bitOffset;
                 }
 
                 _positionInBits += bits;
@@ -535,10 +694,21 @@ namespace PurrNet.Packing
             // Write length (31 bits)
             WriteBits((ulong)byteCount, 31);
 
-            // Encode directly into buffer
-            var temp = byteCount <= 256 ? stackalloc byte[byteCount] : new byte[byteCount];
-            encoding.GetBytes(value, temp);
-            WriteBytes(temp);
+            byte[] rented = null;
+            Span<byte> temp = byteCount <= 256
+                ? stackalloc byte[byteCount]
+                : (rented = ArrayPool<byte>.Shared.Rent(byteCount)).AsSpan(0, byteCount);
+
+            try
+            {
+                encoding.GetBytes(value, temp);
+                WriteBytes(temp);
+            }
+            finally
+            {
+                if (rented != null)
+                    ArrayPool<byte>.Shared.Return(rented);
+            }
         }
 
         public string ReadString(Encoding encoding)
@@ -550,10 +720,21 @@ namespace PurrNet.Packing
             // Length
             int len = (int)ReadBits(31);
 
-            // Read bytes
-            var temp = len <= 256 ? stackalloc byte[len] : new byte[len];
-            ReadBytes(temp);
-            return encoding.GetString(temp);
+            byte[] rented = null;
+            Span<byte> temp = len <= 256
+                ? stackalloc byte[len]
+                : (rented = ArrayPool<byte>.Shared.Rent(len)).AsSpan(0, len);
+
+            try
+            {
+                ReadBytes(temp);
+                return encoding.GetString(temp);
+            }
+            finally
+            {
+                if (rented != null)
+                    ArrayPool<byte>.Shared.Return(rented);
+            }
         }
 
         public char ReadChar()

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-#if UNITY_EDITOR && PURR_LEAKS_CHECK
 using PurrNet.Pooling;
-#endif
 using UnityEngine;
 
 namespace PurrNet
@@ -50,36 +48,53 @@ namespace PurrNet
                 action = action,
             };
 
-            int insertIdx = _executeASAP.Count;
-
-            for (int i = 0; i < _executeASAP.Count; i++)
+            lock (_executeASAP)
             {
-                var cur = _executeASAP[i];
-                if (cur.priority > priority ||
-                    (cur.priority == priority && cur.subPriority > subPriority))
-                {
-                    insertIdx = i;
-                    break;
-                }
-            }
+                int insertIdx = _executeASAP.Count;
 
-            _executeASAP.Insert(insertIdx, item);
+                for (int i = 0; i < _executeASAP.Count; i++)
+                {
+                    var cur = _executeASAP[i];
+                    if (cur.priority > priority ||
+                        (cur.priority == priority && cur.subPriority > subPriority))
+                    {
+                        insertIdx = i;
+                        break;
+                    }
+                }
+
+                _executeASAP.Insert(insertIdx, item);
+            }
         }
 
         public static void TriggerPendingAsaps()
         {
-            for (var i = 0; i < _executeASAP.Count; i++)
+            List<PriorityAction> toRun;
+            lock (_executeASAP)
             {
-                var action = _executeASAP[i];
-
-                try
+                if (_executeASAP.Count == 0)
+                    return;
+                toRun = ListPool<PriorityAction>.Instantiate();
+                toRun.AddRange(_executeASAP);
+                _executeASAP.Clear();
+            }
+            try
+            {
+                for (var i = 0; i < toRun.Count; i++)
                 {
-                    action.action?.Invoke();
+                    try
+                    {
+                        toRun[i].action?.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
                 }
-                catch (Exception e)
-                {
-                    Debug.LogException(e);
-                }
+            }
+            finally
+            {
+                ListPool<PriorityAction>.Destroy(toRun);
             }
         }
 
@@ -121,7 +136,8 @@ namespace PurrNet
             onUpdate = null;
             onFixedUpdate = null;
             onLatestUpdate = null;
-            _executeASAP.Clear();
+            lock (_executeASAP)
+                _executeASAP.Clear();
 
             if (_instance)
                 return;

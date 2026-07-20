@@ -143,7 +143,7 @@ namespace PurrNet.Packing
 
             if (!Hasher.TryGetType(hash, out var type))
             {
-                PurrLogger.LogError($"Type with hash '{hash}' not found.");
+                Hasher.PrintHashError(hash);
                 value = default;
                 return;
             }
@@ -225,10 +225,15 @@ namespace PurrNet.Packing
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool AreEqual<T>(T a, T b) => PurrEquality<T>.Default.Equals(a, b);
+        public static bool AreEqual<T>(T a, T b) => PurrEquality<T>.Equals(a, b);
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool AreEqualRef<T>(ref T a, ref T b) => PurrEquality<T>.Default.Equals(a, b);
+        public static bool AreEqualRef<T>(ref T a, ref T b)
+        {
+            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return PurrEquality<T>.MemEquals(ref a, ref b);
+            return PurrEquality<T>.Default.Equals(a, b);
+        }
 
         static readonly Dictionary<Type, MethodInfo> _writeExactMethods = new Dictionary<Type, MethodInfo>();
         static readonly Dictionary<Type, MethodInfo> _writeWrappedMethods = new Dictionary<Type, MethodInfo>();
@@ -452,9 +457,7 @@ namespace PurrNet.Packing
             }
             catch (Exception e)
             {
-                PurrLogger.LogError(e.InnerException != null
-                    ? $"Failed to read value of type '{type}'.\n{e.InnerException.Message}\n{e.InnerException.StackTrace}"
-                    : $"Failed to read value of type '{type}'.\n{e.Message}\n{e.StackTrace}");
+                PurrLogger.LogError($"Failed to read value of type '{type}'.\n{e.InnerException ?? e}");
             }
         }
 
@@ -477,9 +480,7 @@ namespace PurrNet.Packing
             }
             catch (Exception e)
             {
-                PurrLogger.LogError(e.InnerException != null
-                    ? $"Failed to read value of type '{type}'.\n{e.InnerException.Message}\n{e.InnerException.StackTrace}"
-                    : $"Failed to read value of type '{type}'.\n{e.Message}\n{e.StackTrace}");
+                PurrLogger.LogError($"Failed to read value of type '{type}'.\n{e.InnerException ?? e}");
             }
         }
 

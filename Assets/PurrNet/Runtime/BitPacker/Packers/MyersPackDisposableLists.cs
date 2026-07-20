@@ -1,4 +1,5 @@
-﻿using PurrNet.Modules;
+﻿using System.Runtime.CompilerServices;
+using PurrNet.Modules;
 using PurrNet.Pooling;
 
 namespace PurrNet.Packing
@@ -60,13 +61,26 @@ namespace PurrNet.Packing
                 return;
             }
 
-            if (value.isDisposed || (!old.isDisposed && old.list == value.list))
+            if (value.isDisposed)
+            {
                 value = DisposableList<T>.Create();
+            }
+            else if (!old.isDisposed && old.rawList == value.rawList)
+            {
+                if (!value.SharesHandleWith(old))
+                    value.Dispose();
+                value = DisposableList<T>.Create();
+            }
 
             if (!old.isDisposed)
             {
                 value.Clear();
-                value.AddRange(old);
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                {
+                    for (int i = 0; i < old.Count; i++)
+                        value.Add(PurrCopy<T>.Copy(old[i]));
+                }
+                else value.AddRange(old);
             }
 
             var changes = DisposableList<DiffOp<T>>.Create();

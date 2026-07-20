@@ -10,18 +10,25 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace PurrNet
 {
     [CreateAssetMenu(fileName = "AddressableNetworkPrefabs", menuName = "PurrNet/Network Prefabs/Addressable Network Prefabs", order = -200)]
-    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAsyncPrefabProvider
+    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAsyncPrefabProvider, IPersistentPrefabProvider
     {
         [Serializable]
         public struct Entry
         {
             public AssetReferenceGameObject asset;
-            public bool pooled;
-            public int warmupCount;
         }
-        
+
         [SerializeField] private bool _preloadAtStartup = true;
         [SerializeField] private List<Entry> _entries = new();
+
+        [Tooltip("Will also get entries from these linked AddressableNetworkPrefabs.")]
+        public List<AddressableNetworkPrefabs> linkedAddressablePrefabs = new();
+
+        public bool autoGenerate;
+        public UnityEngine.Object folder;
+
+        [Tooltip("When no folder is set, search all of Assets/ instead of doing nothing.")]
+        public bool searchAllIfNoFolder;
 
         /// <summary>
         /// Whether all registered Addressable prefabs have been loaded and are ready for use.
@@ -32,6 +39,16 @@ namespace PurrNet
         private readonly Dictionary<string, int> _guidToId = new();
         private readonly Dictionary<int, string> _idToGuid = new();
         private readonly List<AsyncOperationHandle<GameObject>> _loadHandles = new();
+        private readonly List<RuntimePrefabEntry> _runtimePrefabs = new();
+        private int _runtimePrefabStartId;
+
+        private struct RuntimePrefabEntry
+        {
+            public string uniqueName;
+            public GameObject prefab;
+            public bool pooled;
+            public int warmupCount;
+        }
 
         /// <summary>
         /// The entries registered in this asset. Read-only access for external inspection.
@@ -43,9 +60,14 @@ namespace PurrNet
         /// </summary>
         public int count => _entries.Count;
 
-        public bool preloadAtStartup => _preloadAtStartup;
+        public bool preloadAtStartup
+        {
+            get => _preloadAtStartup;
+            set => _preloadAtStartup = value;
+        }
 
         public override IEnumerable<PrefabData> allPrefabs => _prefabLookup.Values;
+        public IEnumerable<string> persistentIds => _guidToId.Keys;
 
         /// <summary>
         /// Tries to get the loaded prefab data for a given asset GUID.
@@ -58,6 +80,11 @@ namespace PurrNet
 
             prefabData = default;
             return false;
+        }
+
+        public bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData)
+        {
+            return TryGetPrefabDataByGuid(persistentId, out prefabData);
         }
 
         public override bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
@@ -76,13 +103,80 @@ namespace PurrNet
                 }
             }
 
+            // Fallback: match by name for addressable bundle-loaded prefabs
+            // where the reference is a different instance than the registered one
+            var prefabName = prefab ? prefab.name : null;
+            if (prefabName != null)
+            {
+                PrefabData? candidate = null;
+                bool ambiguous = false;
+
+                foreach (var data in _prefabLookup.Values)
+                {
+                    if (data.prefab && data.prefab.name == prefabName)
+                    {
+                        if (candidate.HasValue)
+                        {
+                            ambiguous = true;
+                            break;
+                        }
+                        candidate = data;
+                    }
+                }
+
+                if (candidate.HasValue && !ambiguous)
+                {
+                    prefabData = candidate.Value;
+                    return true;
+                }
+            }
+
             prefabData = default;
             return false;
+        }
+
+        public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
+        {
+            _runtimePrefabs.Add(new RuntimePrefabEntry
+            {
+                uniqueName = uniqueName,
+                prefab = prefab,
+                pooled = pooled,
+                warmupCount = warmup
+            });
+
+            Refresh();
         }
 
         public bool TryGetGuid(int localPrefabId, out string assetGuid)
         {
             return _idToGuid.TryGetValue(localPrefabId, out assetGuid);
+        }
+
+        public bool TryGetPersistentId(int prefabId, out string persistentId)
+        {
+            return TryGetGuid(prefabId, out persistentId);
+        }
+
+        public bool TryGetPersistentId(GameObject prefab, out string persistentId)
+        {
+            if (TryGetPrefabData(prefab, out var prefabData))
+                return TryGetPersistentId(prefabData.prefabId, out persistentId);
+
+            persistentId = null;
+            return false;
+        }
+
+        public bool TryGetPrefabByPersistentId(string persistentId, out GameObject prefab)
+        {
+            if (TryGetPrefabDataByPersistentId(persistentId, out var prefabData))
+            {
+                prefab = prefabData.prefab;
+                return prefab;
+            }
+
+            prefab = null;
+            return false;
         }
 
         public static event Action<string, bool> onLoadStateChanged;
@@ -92,7 +186,7 @@ namespace PurrNet
             onLoadStateChanged?.Invoke(guid, loaded);
         }
 
-        public System.Collections.Generic.IEnumerable<string> GetLoadedGuids()
+        public IEnumerable<string> GetLoadedGuids()
         {
             foreach (var kvp in _prefabLookup)
             {
@@ -114,6 +208,7 @@ namespace PurrNet
         /// <summary>
         /// Rebuilds the internal lookup tables from the entry list.
         /// Assigns deterministic IDs sorted by asset GUID.
+        /// Includes entries from linked AddressableNetworkPrefabs (deduped by GUID).
         /// Note: PrefabData.prefab will be null until LoadAllAsync is called.
         /// The IDs assigned here are local to this provider and will be
         /// offset by the CompositePrefabProvider when combined with other providers.
@@ -124,27 +219,40 @@ namespace PurrNet
             _guidToId.Clear();
             _idToGuid.Clear();
 
-            var sorted = new List<(string guid, int originalIndex)>();
+            var seenGuids = new HashSet<string>();
+            var sorted = new List<(string guid, Entry entry)>();
+            var visited = new HashSet<AddressableNetworkPrefabs>();
 
-            for (int i = 0; i < _entries.Count; i++)
+            void CollectEntries(AddressableNetworkPrefabs provider)
             {
-                var entry = _entries[i];
-                if (entry.asset == null || !entry.asset.RuntimeKeyIsValid())
-                    continue;
+                if (!provider || !visited.Add(provider)) return;
 
-                var guid = entry.asset.AssetGUID;
-                if (string.IsNullOrEmpty(guid))
-                    continue;
+                for (int i = 0; i < provider._entries.Count; i++)
+                {
+                    var entry = provider._entries[i];
+                    if (entry.asset == null || !entry.asset.RuntimeKeyIsValid())
+                        continue;
 
-                sorted.Add((guid, i));
+                    var guid = entry.asset.AssetGUID;
+                    if (string.IsNullOrEmpty(guid) || !seenGuids.Add(guid))
+                        continue;
+
+                    sorted.Add((guid, entry));
+                }
+
+                if (provider.linkedAddressablePrefabs == null) return;
+                for (int i = 0; i < provider.linkedAddressablePrefabs.Count; i++)
+                {
+                    var link = provider.linkedAddressablePrefabs[i];
+                    if (link) CollectEntries(link);
+                }
             }
 
-            sorted.Sort((a, b) => string.CompareOrdinal(a.guid, b.guid));
+            CollectEntries(this);
 
             for (int i = 0; i < sorted.Count; i++)
             {
-                var (guid, originalIndex) = sorted[i];
-                var entry = _entries[originalIndex];
+                var (guid, _) = sorted[i];
 
                 _guidToId[guid] = i;
                 _idToGuid[i] = guid;
@@ -152,8 +260,31 @@ namespace PurrNet
                 {
                     prefabId = i,
                     prefab = null,
-                    pooled = entry.pooled,
-                    warmupCount = entry.warmupCount
+                    pooled = false,
+                    warmupCount = 0
+                };
+            }
+
+            int runtimeStart = sorted.Count;
+            _runtimePrefabStartId = runtimeStart;
+            for (int i = 0; i < _runtimePrefabs.Count; i++)
+            {
+                var rt = _runtimePrefabs[i];
+                if (!rt.prefab) continue;
+
+                int id = runtimeStart + i;
+                if (!string.IsNullOrEmpty(rt.uniqueName) && seenGuids.Add(rt.uniqueName))
+                {
+                    _guidToId[rt.uniqueName] = id;
+                    _idToGuid[id] = rt.uniqueName;
+                }
+
+                _prefabLookup[id] = new PrefabData
+                {
+                    prefabId = id,
+                    prefab = rt.prefab,
+                    pooled = rt.pooled,
+                    warmupCount = rt.warmupCount
                 };
             }
         }
@@ -289,6 +420,8 @@ namespace PurrNet
             for (int i = 0; i < keys.Count; i++)
             {
                 var key = keys[i];
+                if (key >= _runtimePrefabStartId)
+                    continue;
                 if (_prefabLookup.TryGetValue(key, out var data))
                 {
                     data.prefab = null;
@@ -301,6 +434,61 @@ namespace PurrNet
         {
             ReleaseAll();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (autoGenerate &&
+                !UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode &&
+                !UnityEditor.EditorApplication.isCompiling &&
+                !UnityEditor.EditorApplication.isUpdating)
+            {
+                UnityEditor.EditorApplication.delayCall += OnAutoGenerate;
+            }
+        }
+
+        private void OnAutoGenerate()
+        {
+            // Actual generation is handled by the editor (AddressableNetworkPrefabsEditor)
+            // because it requires UnityEditor.AddressableAssets which is in a separate editor assembly.
+            // This triggers via onAutoGenerateRequested event.
+            if (!this) return;
+            onAutoGenerateRequested?.Invoke(this);
+        }
+
+        /// <summary>
+        /// Event fired when auto-generation is triggered via OnValidate.
+        /// The editor subscribes to this to perform the actual generation.
+        /// </summary>
+        public static event Action<AddressableNetworkPrefabs> onAutoGenerateRequested;
+
+        /// <summary>
+        /// Gets the set of GUIDs already registered as entries.
+        /// Used by the editor during generation to avoid duplicates.
+        /// </summary>
+        public HashSet<string> GetExistingGuids()
+        {
+            var guids = new HashSet<string>();
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                var entry = _entries[i];
+                if (entry.asset != null && entry.asset.RuntimeKeyIsValid())
+                    guids.Add(entry.asset.AssetGUID);
+            }
+            return guids;
+        }
+
+        /// <summary>
+        /// Adds an entry by asset reference. Used by the editor during generation.
+        /// </summary>
+        public void AddEntry(AssetReferenceGameObject assetRef)
+        {
+            _entries.Add(new Entry
+            {
+                asset = assetRef
+            });
+        }
+#endif
     }
 }
 #endif

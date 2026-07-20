@@ -142,7 +142,6 @@ namespace LiteNetLib.Utils
                 offset += 16;
                 length -= 16;
             }
-
             while (--length >= 0)
                 crcLocal = Table[(byte)(crcLocal ^ input[offset++])] ^ crcLocal >> 8;
             return crcLocal ^ uint.MaxValue;

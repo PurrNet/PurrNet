@@ -1,0 +1,204 @@
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using PurrNet;
+using UnityEngine;
+
+public class StateMachineServerAuthScenario : Scenario
+{
+    [SerializeField] private float _spawnTimeoutSeconds = 15f;
+    [SerializeField] private float _stateTimeoutSeconds = 30f;
+
+    private const int BarrierInitial = 6000;
+    private const int BarrierInsertedCurrent = 6001;
+    private const int BarrierPhaseOne = 6002;
+    private const int BarrierAddedCurrent = 6003;
+    private const int BarrierFinal = 6004;
+    private const int BarrierExpandedBase = 6020;
+    private const float BarrierTimeoutSeconds = 60f;
+
+    private StateMachineTestRig _prefab;
+
+    void CreatePrefab()
+    {
+        StateMachineTestRig.ResetAll(nameof(StateMachineServerAuthScenario));
+        _prefab = StateMachineTestPrefabBuilder.Create(nameof(StateMachineServerAuthScenario), ownerAuth: false);
+    }
+
+    /// <summary>Creates and registers the server-authoritative state machine test prefab.</summary>
+    public override void Setup(ScenarioContext ctx, NetworkManager manager)
+    {
+        CreatePrefab();
+        manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
+    }
+
+    /// <summary>Runs state machine list mutation checks with server authority.</summary>
+    public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
+    {
+        if (ctx.isServer)
+            Instantiate(_prefab);
+
+        var failures = new List<string>();
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            () => StateMachineTestRig.GetLocalInstance(_prefab.name) != null,
+            _spawnTimeoutSeconds,
+            failures,
+            () => $"spawn timeout: role={ctx.role}, players={ctx.networkManager.playerCount}/{ctx.expectedConnections}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        var inst = StateMachineTestRig.GetLocalInstance(_prefab.name);
+
+        if (inst == null)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesInitial,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw initial state list; got {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierInitial,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"initial barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        if (ctx.isServer)
+        {
+            inst.InsertRegressionState();
+
+            if (!inst.SetStateToOriginalLast())
+                failures.Add("SetState to original last state returned false");
+        }
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesInsertedCurrent,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw inserted-current state; got {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierInsertedCurrent,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"inserted-current barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        if (ctx.isServer && !inst.RemoveRegressionState())
+            failures.Add("RemoveState for inserted state returned false");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesPhaseOne,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw phase-one remap; got {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierPhaseOne,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"phase-one barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        if (ctx.isServer)
+        {
+            inst.AddExtraState();
+
+            if (!inst.SetStateToAdded())
+                failures.Add("SetState to added state returned false");
+        }
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesAddedCurrent,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw added-current state; got {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierAddedCurrent,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"added-current barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        if (ctx.isServer)
+            inst.RemoveFirstState();
+
+        await StateMachineScenarioOps.WaitOrFail(
+            ctx,
+            inst.MatchesFinal,
+            _stateTimeoutSeconds,
+            failures,
+            () => $"never saw final remap; got {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.WaitBarrierOrFail(
+            ctx,
+            BarrierFinal,
+            BarrierTimeoutSeconds,
+            failures,
+            () => $"final barrier timeout: {inst.Describe()}");
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        await StateMachineScenarioOps.RunExpandedChecks(
+            ctx,
+            inst,
+            ctx.isServer,
+            BarrierExpandedBase,
+            _stateTimeoutSeconds,
+            BarrierTimeoutSeconds,
+            failures);
+
+        if (failures.Count > 0)
+            return ScenarioResult.Fail(string.Join(" | ", failures));
+
+        if (ctx.role == NetworkRole.Client && inst.MachineIsController(false))
+            failures.Add("pure client reports IsController(ownerAuth:false)=true for a server-auth state machine");
+
+        return failures.Count == 0
+            ? ScenarioResult.Ok()
+            : ScenarioResult.Fail(string.Join(" | ", failures));
+    }
+}

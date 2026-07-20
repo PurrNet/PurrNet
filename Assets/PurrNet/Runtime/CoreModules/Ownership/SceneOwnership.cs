@@ -31,6 +31,7 @@ namespace PurrNet.Modules
                     {
                         identity.internalOwnerServer = owner;
                         identity.internalOwnerClient = null;
+                        identity.RecacheHasConnectedOwner();
                     }
                 }
             }

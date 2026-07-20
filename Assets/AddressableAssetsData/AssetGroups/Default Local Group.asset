@@ -11,23 +11,18 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
   m_Name: Default Local Group
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
   m_GroupName: Default Local Group
-  m_GUID: d995fd8290f74d04885ee309c463eff3
+  m_GUID: 9ebd81d5f1d245c4d844773650d29e79
   m_SerializeEntries:
-  - m_GUID: 59f20f308aff60045adccd2cdee2a9e6
-    m_Address: Assets/Examples/AddressablesTest/Prefabs/TestAddressable.prefab
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: a6d4e95d4ff5efd4b863db7ac955d323
-    m_Address: Assets/Examples/AddressablesTest/AddressablesAdditive_Scene.unity
+  - m_GUID: c41b9a783d694893a97bc1cae588df22
+    m_Address: Assets/PlayModeTests/AddressableSceneTransferTarget.unity
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
-  m_Settings: {fileID: 11400000, guid: e502b0d2149c6a04e90746d3f378d377, type: 2}
+  m_Settings: {fileID: 11400000, guid: 8d6edcfac3e55ce498036dae42a062c3, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 1f390be123240d0448a3572411d41563, type: 2}
-    - {fileID: 11400000, guid: 381a08e22597e3b48ab1d4be4347c2b2, type: 2}
+    - {fileID: 11400000, guid: f2ab24708446fb04caa4b9f1de9b56e6, type: 2}
+    - {fileID: 11400000, guid: 546b3132239a11b408fdcab87212449c, type: 2}

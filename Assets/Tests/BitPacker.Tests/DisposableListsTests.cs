@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Packing;
@@ -64,6 +66,121 @@ public class DisposableListsTests
         var areEqual = PurrEquality<DisposableList<int>>.Equals(list, copy);
 
         Assert.IsTrue(areEqual, "Lists should be equal");
+    }
+
+    [Test]
+    public void DisposableList_ConcreteEnumerator_WalksItems()
+    {
+        var list = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        try
+        {
+            var enumerator = list.GetEnumerator();
+            Assert.AreEqual(typeof(List<int>.Enumerator), enumerator.GetType());
+
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(1, enumerator.Current);
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(2, enumerator.Current);
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual(3, enumerator.Current);
+            Assert.IsFalse(enumerator.MoveNext());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableArray_ConcreteEnumerator_WalksLogicalItemsOnly()
+    {
+        var array = DisposableArray<int>.Create(new[] { 7, 8 });
+        try
+        {
+            var values = new List<int>();
+            foreach (var item in array)
+                values.Add(item);
+
+            CollectionAssert.AreEqual(new[] { 7, 8 }, values);
+        }
+        finally
+        {
+            array.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableArray_Contains_IgnoresRentedTail()
+    {
+        var array = DisposableArray<int>.Create(new[] { 1, 2 });
+        try
+        {
+            Assert.IsFalse(array.Contains(0));
+        }
+        finally
+        {
+            array.Dispose();
+        }
+    }
+
+    [Test]
+    public void DisposableArray_CopyTo_HonorsArrayIndex()
+    {
+        var array = DisposableArray<int>.Create(new[] { 4, 5 });
+        try
+        {
+            var destination = new[] { -1, -1, -1, -1 };
+            array.CopyTo(destination, 1);
+            CollectionAssert.AreEqual(new[] { -1, 4, 5, -1 }, destination);
+        }
+        finally
+        {
+            array.Dispose();
+        }
+    }
+
+    [Test]
+    public void SyncList_ConcreteEnumerator_WalksItems()
+    {
+        var syncList = new SyncList<int>(new List<int> { 4, 5, 6 });
+        var enumerator = syncList.GetEnumerator();
+        Assert.AreEqual(typeof(List<int>.Enumerator), enumerator.GetType());
+
+        Assert.IsTrue(enumerator.MoveNext());
+        Assert.AreEqual(4, enumerator.Current);
+        Assert.IsTrue(enumerator.MoveNext());
+        Assert.AreEqual(5, enumerator.Current);
+        Assert.IsTrue(enumerator.MoveNext());
+        Assert.AreEqual(6, enumerator.Current);
+        Assert.IsFalse(enumerator.MoveNext());
+    }
+
+    [Test]
+    public void CopiedHandleIsDisposedWithOriginal()
+    {
+        var list = DisposableList<int>.Create(new[] { 1, 2, 3 });
+        var copy = list;
+
+        list.Dispose();
+
+        Assert.IsTrue(copy.isDisposed);
+        Assert.IsNull(copy.list);
+        Assert.Throws<ObjectDisposedException>(() => _ = copy.Count);
+        Assert.DoesNotThrow(() => copy.Dispose());
+    }
+
+    [Test]
+    public void CopiedArrayHandleIsDisposedWithOriginal()
+    {
+        var array = DisposableArray<string>.Create(new[] { "a", "b" });
+        var copy = array;
+
+        array.Dispose();
+
+        Assert.IsTrue(copy.isDisposed);
+        Assert.IsNull(copy.array);
+        Assert.Throws<ObjectDisposedException>(() => _ = copy[0]);
+        Assert.DoesNotThrow(() => copy.Dispose());
     }
 
 

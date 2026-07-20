@@ -97,6 +97,8 @@ namespace AssetStoreTools.Validator.UI.Elements
                 doubleClickSelectsWord = false,
                 tripleClickSelectsLine = false
             };
+            // BUG: a tag elements can only contain 127 characters
+            testCaseDescription.Q<TextElement>().enableRichText = true;
             testCaseDescription.AddToClassList("validator-test-content-textfield");
 
 #if UNITY_2022_1_OR_NEWER

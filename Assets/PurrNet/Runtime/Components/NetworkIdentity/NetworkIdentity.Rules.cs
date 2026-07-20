@@ -12,6 +12,8 @@ namespace PurrNet
 
         private readonly PurrHashSet<PlayerID> _whitelist = new PurrHashSet<PlayerID>();
 
+        private readonly PurrHashSet<PlayerID> _whiteBlackDirtyPlayers = new PurrHashSet<PlayerID>();
+
         private readonly PurrHashSet<PlayerID> _blacklist = new PurrHashSet<PlayerID>();
 
         /// <summary>
@@ -39,19 +41,21 @@ namespace PurrNet
 
             if (_whitelist.Add(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
         }
 
-        private void SetVisibilityDirty()
+        private void SetVisibilityDirty(PlayerID player)
         {
             if (!_whiteBlackDirty)
             {
                 RegisterTickEvent(true);
                 _whiteBlackDirty = true;
             }
+
+            _whiteBlackDirtyPlayers.Add(player);
         }
 
         public bool BlacklistPlayer(PlayerID player)
@@ -65,7 +69,7 @@ namespace PurrNet
 
             if (_blacklist.Add(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
@@ -82,7 +86,7 @@ namespace PurrNet
 
             if (_whitelist.Remove(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
@@ -99,7 +103,7 @@ namespace PurrNet
 
             if (_blacklist.Remove(player))
             {
-                SetVisibilityDirty();
+                SetVisibilityDirty(player);
                 return true;
             }
             return false;
@@ -107,6 +111,26 @@ namespace PurrNet
 
         public NetworkRules networkRules =>
             _networkRules ? _networkRules : networkManager ? networkManager.networkRules : null;
+
+        /// <summary>
+        /// Override the per-identity <see cref="NetworkRules"/> that this identity uses, taking
+        /// precedence over the <see cref="NetworkManager"/>'s default rules. Pass <c>null</c> to
+        /// fall back to the manager's rules. Set this before spawn for predictable behavior;
+        /// runtime changes only affect rule queries made after the call.
+        /// </summary>
+        public void SetNetworkRules(NetworkRules rules)
+        {
+            _networkRules = rules;
+        }
+
+        /// <summary>
+        /// Override the per-identity visibility ruleset, taking precedence over the
+        /// <see cref="NetworkManager"/>'s default visibility rules. Pass <c>null</c> to fall back.
+        /// </summary>
+        public void SetVisibilityRules(NetworkVisibilityRuleSet rules)
+        {
+            _visitiblityRules = rules;
+        }
 
         [UsedImplicitly]
         public NetworkVisibilityRuleSet visibilityRules => _visitiblityRules ? _visitiblityRules :

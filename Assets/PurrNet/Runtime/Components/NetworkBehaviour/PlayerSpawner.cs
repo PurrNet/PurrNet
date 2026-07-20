@@ -30,6 +30,7 @@ namespace PurrNet
         [SerializeField] private bool _ignoreNetworkRules;
 
         [SerializeField] private List<Transform> spawnPoints = new List<Transform>();
+        public IReadOnlyList<Transform> SpawnPoints => spawnPoints;
         private int _currentSpawnPoint;
 
         private IProvideSpawnPoints _spawnPointProvider;
@@ -152,9 +153,13 @@ namespace PurrNet
                 return;
 
             bool isDestroyOnDisconnectEnabled = main.networkRules.ShouldDespawnOnOwnerDisconnect();
-            if (!_ignoreNetworkRules && !isDestroyOnDisconnectEnabled && main.TryGetModule(out GlobalOwnershipModule ownership, true) &&
-                ownership.PlayerOwnsSomething(player))
-                return;
+            if (!_ignoreNetworkRules && !isDestroyOnDisconnectEnabled)
+            {
+                bool ownershipModuleHasExistingOwner =
+                    main.TryGetModule(out GlobalOwnershipModule ownership, true) && ownership.PlayerOwnsSomething(player);
+                if (ownershipModuleHasExistingOwner)
+                    return;
+            }
 
             GameObject newPlayer;
 

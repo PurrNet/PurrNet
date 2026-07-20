@@ -73,5 +73,19 @@ namespace PurrNet.Editor
             SymbolsHelper.AddSymbol("PURR_ENDIAN");
         }
 #endif
+
+#if PURRNET_DISABLE_ASSET_REGISTRY_AUTO_GENERATION
+        [MenuItem("Tools/PurrNet/Features/Enable Asset Registry Auto Generation", priority = 105)]
+        private static void InstallAssetRegistryAutoGeneration()
+        {
+            SymbolsHelper.RemoveSymbol("PURRNET_DISABLE_ASSET_REGISTRY_AUTO_GENERATION");
+        }
+#else
+        [MenuItem("Tools/PurrNet/Features/Disable Asset Registry Auto Generation", priority = 105)]
+        private static void UninstallAssetRegistryAutoGeneration()
+        {
+            SymbolsHelper.AddSymbol("PURRNET_DISABLE_ASSET_REGISTRY_AUTO_GENERATION");
+        }
+#endif
     }
 }

@@ -9,8 +9,14 @@ namespace PurrNet.Packing
 
         public BitDataScope(BitData data)
         {
-            packer = data.packer;
+            if (data.packer == null)
+            {
+                lastBitPosition = 0;
+                packer = default;
+                return;
+            }
 
+            packer = data.packer;
             lastBitPosition = packer.positionInBits;
             packer.SetBitPosition(data.bitOrigin);
         }

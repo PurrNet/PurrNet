@@ -4,6 +4,7 @@ using System.Reflection;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Modules;
+using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Utils;
 using UnityEngine;
@@ -281,22 +282,33 @@ namespace PurrNet
             return asServer;
         }
 
-        public bool hasConnectedOwner
+        /// <summary>
+        /// Whether this object's owner is currently connected.
+        /// On the server this means the owner is loaded in this scene; on a client it means the owner is connected.
+        /// Cached and refreshed on owner-change / owner-disconnect / owner-reconnect / spawn events.
+        /// </summary>
+        public bool hasConnectedOwner => _cachedHasConnectedOwner;
+
+        private bool _cachedHasConnectedOwner;
+
+        private bool ComputeHasConnectedOwner()
         {
-            get
+            if (!owner.HasValue || !isSpawned)
+                return false;
+
+            if (isServer)
             {
-                if (!owner.HasValue || !isSpawned)
-                    return false;
-
-                if (isServer)
-                {
-                    return networkManager.TryGetModule<ScenePlayersModule>(true, out var scenesModule) &&
-                           scenesModule.IsPlayerLoadedInScene(owner.Value, sceneId);
-                }
-
-                return networkManager.TryGetModule<PlayersManager>(false, out var module) &&
-                       module.IsPlayerConnected(owner.Value);
+                return networkManager.TryGetModule<ScenePlayersModule>(true, out var scenesModule) &&
+                       scenesModule.IsPlayerLoadedInScene(owner.Value, sceneId);
             }
+
+            return networkManager.TryGetModule<PlayersManager>(false, out var module) &&
+                   module.IsPlayerConnected(owner.Value);
+        }
+
+        internal void RecacheHasConnectedOwner()
+        {
+            _cachedHasConnectedOwner = ComputeHasConnectedOwner();
         }
 
         internal PlayerID? internalOwnerServer;
@@ -373,6 +385,9 @@ namespace PurrNet
 
         public NetworkIdentity GetRootIdentity()
         {
+            if (!this)
+                return null;
+
             var lastKnown = gameObject.GetComponent<NetworkIdentity>();
             var currentParent = parent;
 
@@ -573,6 +588,8 @@ namespace PurrNet
         {
             if (_tickRegisteredClient <= 0)
             {
+                InternalTick();
+
                 try
                 {
                     _ticker?.OnTick(_serverTickManager.tickDelta);
@@ -601,16 +618,64 @@ namespace PurrNet
         {
             if (_whiteBlackDirty)
             {
+                foreach (var player in _whiteBlackDirtyPlayers)
+                    EvaluateVisibility(player);
+
+                _whiteBlackDirtyPlayers.Clear();
                 _whiteBlackDirty = false;
-                EvaluateVisibility();
                 UnregisterTickEvent(true);
             }
         }
 
         internal PlayerID? GetOwner(bool asServer) => asServer ? internalOwnerServer : internalOwnerClient;
 
+        internal bool HasOwner(bool asServer) => GetOwner(asServer).HasValue;
+
         [UsedImplicitly]
         public bool IsSpawned(bool asServer) => asServer ? _isSpawnedServer : _isSpawnedClient;
+
+        /// <summary>
+        /// Invokes custom spawn serialization on all external modules and then this identity.
+        /// This is used internally for spawn packets and can be used by manual spawn flows that need the same data pipeline.
+        /// </summary>
+        /// <param name="packer">The packer to write custom data into.</param>
+        public void TriggerOnSerialize(BitPacker packer)
+        {
+            for (int i = 0; i < _externalModulesView.Count; i++)
+                _externalModulesView[i].OnSerialize(packer);
+            OnSerialize(packer);
+        }
+
+        /// <summary>
+        /// Invokes custom spawn deserialization on all external modules and then this identity.
+        /// Manual spawn flows should call this after identity setup and before early-spawn if they need spawn-packet ordering.
+        /// </summary>
+        /// <param name="packer">The packer to read custom data from.</param>
+        public void TriggerOnDeserialize(BitPacker packer)
+        {
+            for (int i = 0; i < _externalModulesView.Count; i++)
+                _externalModulesView[i].OnDeserialize(packer);
+            OnDeserialize(packer);
+        }
+
+        /// <summary>
+        /// Called on the spawner to attach custom data to the spawn packet.
+        /// Whatever you write here travels with the object and is read back in OnDeserialize.
+        /// </summary>
+        /// <param name="packer">The packer to write your data into</param>
+        protected virtual void OnSerialize(BitPacker packer)
+        {
+        }
+
+        /// <summary>
+        /// Called on peers that create the object, after the spawn packet arrives.
+        /// Read the data back in the same order you wrote it in OnSerialize.
+        /// Only called if something was actually written during OnSerialize.
+        /// </summary>
+        /// <param name="packer">The packer to read your data from</param>
+        protected virtual void OnDeserialize(BitPacker packer)
+        {
+        }
 
         /// <summary>
         /// Called when this object is spawned
@@ -689,9 +754,9 @@ namespace PurrNet
         /// </summary>
         /// <param name="oldOwner">The old owner of this object</param>
         /// <param name="newOwner">The new owner of this object</param>
-        /// <param name="selfRequest">If this object was just spawned and the newOwner is the spawner</param>
+        /// <param name="isSpawner">True when this fires as part of the spawn pipeline and the newOwner is the spawner. False for all other ownership changes (including post-spawn GiveOwnership/RemoveOwnership).</param>
         /// <param name="asServer">Is this on the server</param>
-        protected virtual void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool selfRequest, bool asServer)
+        protected virtual void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawner, bool asServer)
         {
         }
 
@@ -853,6 +918,7 @@ namespace PurrNet
             _idClient = null;
             internalOwnerServer = null;
             internalOwnerClient = null;
+            _cachedHasConnectedOwner = false;
             _moduleId = 0;
             _modules.Clear();
             _externalModulesView.Clear();
@@ -872,6 +938,7 @@ namespace PurrNet
             isManualSpawn = false;
             _whitelist.Clear();
             _blacklist.Clear();
+            _whiteBlackDirtyPlayers.Clear();
         }
 
         private void OnChildDespawned(NetworkIdentity networkIdentity)
@@ -1079,7 +1146,7 @@ namespace PurrNet
         {
             if (!player.HasValue)
             {
-                RemoveOwnership();
+                RemoveOwnership(propagateToChildren);
                 return;
             }
 
@@ -1119,8 +1186,14 @@ namespace PurrNet
             if (ApplicationContext.isQuitting)
                 return;
 
+            if (parent)
+                parent.RemoveDirectChild(this);
+
             TriggerDespawnEvent(false);
             TriggerDespawnEvent(true);
+
+            _serverHierarchy?.CleanupDestroyedIdentity(this);
+            _clientHierarchy?.CleanupDestroyedIdentity(this);
 
             _ticker = null;
         }
@@ -1163,8 +1236,72 @@ namespace PurrNet
             }
         }
 
+        /// <summary>
+        /// Called only on the spawning peer, at the end of the frame the object was spawned in,
+        /// right before batched RPCs flush. Anything queued here departs in the same flush as the
+        /// spawn, ordered right behind the spawn packet.
+        /// </summary>
+        protected virtual void OnSpawnSent() { }
+
+        internal void TriggerOnSpawnSent()
+        {
+            try
+            {
+                OnSpawnSent();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
+            for (int i = 0; i < _externalModulesView.Count; i++)
+            {
+                try
+                {
+                    _externalModulesView[i].OnSpawnSent();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called only on peers that created the object from a spawn packet, once the entire
+        /// packet has been deserialized and early-spawned. Everything that spawned alongside
+        /// this object exists at this point; safe to react to spawn data.
+        /// </summary>
+        protected virtual void OnSpawnReceived() { }
+
+        internal void TriggerOnSpawnReceived()
+        {
+            try
+            {
+                OnSpawnReceived();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
+            for (int i = 0; i < _externalModulesView.Count; i++)
+            {
+                try
+                {
+                    _externalModulesView[i].OnSpawnReceived();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
+        }
+
         internal void TriggerSpawnEvent(bool asServer)
         {
+            RecacheHasConnectedOwner();
+
             InternalOnSpawn(asServer);
 
             try
@@ -1268,7 +1405,7 @@ namespace PurrNet
             }
         }
 
-        internal void TriggerDespawnEvent(bool asServer)
+        internal void TriggerDespawnEvent(bool asServer, bool preserveModules = false)
         {
             if (!IsSpawned(asServer)) return;
 
@@ -1326,7 +1463,9 @@ namespace PurrNet
                 _isSpawnedServer = false;
             else _isSpawnedClient = false;
 
-            if (_spawnedCount == 0)
+            RecacheHasConnectedOwner();
+
+            if (_spawnedCount == 0 && !preserveModules)
             {
                 _externalModulesView.Clear();
                 _modules.Clear();
@@ -1335,6 +1474,8 @@ namespace PurrNet
 
         internal void TriggerOnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer, bool isSpawner)
         {
+            RecacheHasConnectedOwner();
+
             try
             {
                 OnOwnerChanged(oldOwner, newOwner, asServer);
@@ -1377,6 +1518,8 @@ namespace PurrNet
 
         internal void TriggerOnOwnerDisconnected(PlayerID ownerId)
         {
+            _cachedHasConnectedOwner = false;
+
             try
             {
                 OnOwnerDisconnected(ownerId);
@@ -1401,6 +1544,8 @@ namespace PurrNet
 
         internal void TriggerOnOwnerReconnected(PlayerID ownerId, bool asServer)
         {
+            _cachedHasConnectedOwner = true;
+
             try
             {
                 OnOwnerReconnected(ownerId);

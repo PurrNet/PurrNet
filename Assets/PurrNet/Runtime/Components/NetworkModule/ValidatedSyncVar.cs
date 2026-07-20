@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using PurrNet.Packing;
 using PurrNet.Transports;
 using UnityEngine;
@@ -13,7 +14,34 @@ namespace PurrNet
         public delegate bool ServerValidationHandler(T oldValue, T newValue);
         public delegate void ValidationFailedHandler(T failedValue, T authoritativeValue);
 
-        public event ServerValidationHandler serverValidation;
+        private List<ServerValidationHandler> _serverValidators;
+
+        public event ServerValidationHandler serverValidation
+        {
+            add
+            {
+                if (value == null)
+                    return;
+
+                _serverValidators ??= new List<ServerValidationHandler>(1);
+                _serverValidators.Add(value);
+            }
+            remove
+            {
+                if (_serverValidators == null || value == null)
+                    return;
+
+                for (int i = _serverValidators.Count - 1; i >= 0; i--)
+                {
+                    if (_serverValidators[i] != value)
+                        continue;
+
+                    _serverValidators.RemoveAt(i);
+                    return;
+                }
+            }
+        }
+
         public event ValidationFailedHandler onValidationFail;
 
 
@@ -27,6 +55,7 @@ namespace PurrNet
         private uint _nextPacketId;
         private uint _lastAppliedServerId;
         private uint _pendingId;
+        private bool _hasPending;
 
         public static implicit operator T(ValidatedSyncVar<T> syncVar) => syncVar._display;
 
@@ -41,15 +70,15 @@ namespace PurrNet
             get => _display;
             set
             {
-                if (!parent.IsController(true))
+                if (!isServer && !isOwner)
                     return;
 
                 var old = _display;
+                if ((old == null && value == null) || (old != null && old.Equals(value)))
+                    return;
+
                 if (isServer)
                 {
-                    if ((old == null && value == null) || (old != null && old.Equals(value))) return;
-                    _display = value;
-                    TriggerEvents(old, _display, false);
                     ServerValidateAndApply(value);
                     return;
                 }
@@ -57,11 +86,9 @@ namespace PurrNet
                 if (!owner.HasValue)
                     return;
 
-                if ((old == null && value == null) || (old != null && old.Equals(value)))
-                    return;
-
                 _display = value;
                 _pendingId = ++_nextPacketId;
+                _hasPending = true;
                 TriggerEvents(old, _display, false);
 
                 using var pack = BitPackerPool.Get();
@@ -74,36 +101,39 @@ namespace PurrNet
         {
             onChanged = null;
             onChangedWithOld = null;
-            serverValidation = null;
+            _serverValidators?.Clear();
             onValidationFail = null;
             _nextPacketId = 0;
             _lastAppliedServerId = 0;
             _pendingId = 0;
+            _hasPending = false;
         }
 
         public override void OnEarlySpawn()
         {
-            if (!isServer && !isOwner)
+            if (!isServer)
                 _authoritative.onChangedWithOld += OnAuthoritativeChanged;
         }
 
         public override void OnDespawned()
         {
-            if (!isServer && !isOwner)
+            if (!isServer)
                 _authoritative.onChangedWithOld -= OnAuthoritativeChanged;
         }
 
         public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool isSpawnEvent, bool asServer)
         {
             _authoritative.onChangedWithOld -= OnAuthoritativeChanged;
-            if (!isServer && !isOwner)
+            if (!isServer)
                 _authoritative.onChangedWithOld += OnAuthoritativeChanged;
         }
 
         private void OnAuthoritativeChanged(T oldAuth, T newAuth)
         {
-            if (isOwner) return;
+            if (isOwner && _hasPending) return;
             var old = _display;
+            if ((old == null && newAuth == null) || (old != null && old.Equals(newAuth)))
+                return;
             _display = newAuth;
             TriggerEvents(old, _display, true);
         }
@@ -114,21 +144,24 @@ namespace PurrNet
             try { onChangedWithOld?.Invoke(oldValue, newValue, serverValidated); } catch (Exception e) { Debug.LogException(e); }
         }
 
-        private void ApplyAuthoritative(T v)
+        private void ApplyAuthoritative(T oldValue, T newValue)
         {
-            var oldDisplay = _display;
-            _authoritative.value = v;
-            _display = v;
-            TriggerEvents(oldDisplay, v, true);
+            _authoritative.value = newValue;
+            _display = newValue;
+            TriggerEvents(oldValue, newValue, true);
         }
 
         private bool RunServerValidators(T oldValue, T newValue)
         {
-            var list = serverValidation?.GetInvocationList();
-            if (list == null) return true;
-            for (int i = 0; i < list.Length; i++)
-                if (!((ServerValidationHandler)list[i]).Invoke(oldValue, newValue))
+            if (_serverValidators == null)
+                return true;
+
+            for (int i = 0; i < _serverValidators.Count; i++)
+            {
+                if (!_serverValidators[i].Invoke(oldValue, newValue))
                     return false;
+            }
+
             return true;
         }
 
@@ -137,13 +170,17 @@ namespace PurrNet
             var current = _authoritative.value;
             if (!RunServerValidators(current, proposed))
             {
-                var old = _display;
+                var oldDisplay = _display;
                 _display = current;
-                if (!Equals(old, _display)) TriggerEvents(old, _display, true);
+                if (!Equals(oldDisplay, _display)) TriggerEvents(oldDisplay, _display, true);
                 onValidationFail?.Invoke(proposed, current);
                 return;
             }
-            ApplyAuthoritative(proposed);
+
+            var previousDisplay = _display;
+            _display = proposed;
+            TriggerEvents(previousDisplay, proposed, false);
+            ApplyAuthoritative(previousDisplay, proposed);
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: false)]
@@ -179,9 +216,10 @@ namespace PurrNet
                 }
 
                 _lastAppliedServerId = packetId;
-                ApplyAuthoritative(proposed);
+                ApplyAuthoritative(currentAuth, proposed);
 
                 using var ack = BitPackerPool.Get();
+                Packer<T>.Write(ack, currentAuth);
                 Packer<T>.Write(ack, proposed);
                 AcceptOwner(sender, packetId, ack);
             }
@@ -195,11 +233,13 @@ namespace PurrNet
                 if (isServer) return;
                 if (packetId < _pendingId) return;
 
+                T old = default;
                 T v = default;
+                Packer<T>.Read(payload, ref old);
                 Packer<T>.Read(payload, ref v);
-                var old = _display;
                 _display = v;
                 _pendingId = packetId;
+                _hasPending = false;
                 TriggerEvents(old, v, true);
             }
         }
@@ -220,6 +260,7 @@ namespace PurrNet
                 var old = _display;
                 _display = authoritativeNow;
                 _pendingId = packetId;
+                _hasPending = false;
                 TriggerEvents(old, _display, true);
                 onValidationFail?.Invoke(failed, authoritativeNow);
             }

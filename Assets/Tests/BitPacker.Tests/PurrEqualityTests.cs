@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Packing;
@@ -49,6 +50,33 @@ public class PurrEqualityTests
         Assert.IsTrue(Packer.AreEqual(true, true));
         Assert.IsTrue(Packer.AreEqual(false, false));
         Assert.IsFalse(Packer.AreEqual(true, false));
+    }
+
+    [Test]
+    public void PurrEquality_Dictionary_SameAndDifferentValues()
+    {
+        PackCollections.RegisterDictionary<int, string>();
+        var a = new Dictionary<int, string> { { 1, "one" }, { 2, "two" } };
+        var b = new Dictionary<int, string> { { 1, "one" }, { 2, "two" } };
+
+        Assert.IsTrue(PurrEquality<Dictionary<int, string>>.Equals(a, b));
+
+        b[2] = "deux";
+        Assert.IsFalse(PurrEquality<Dictionary<int, string>>.Equals(a, b));
+    }
+
+    [Test]
+    public void PurrEquality_HashSet_SameAndDifferentValues()
+    {
+        PackCollections.RegisterHashSet<int>();
+        var a = new HashSet<int> { 1, 2, 3 };
+        var b = new HashSet<int> { 1, 2, 3 };
+
+        Assert.IsTrue(PurrEquality<HashSet<int>>.Equals(a, b));
+
+        b.Remove(2);
+        b.Add(4);
+        Assert.IsFalse(PurrEquality<HashSet<int>>.Equals(a, b));
     }
 
     [Test]
