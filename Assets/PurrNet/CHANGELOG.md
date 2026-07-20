@@ -1,3 +1,16 @@
+# [1.20.0-beta.268](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.267...v1.20.0-beta.268) (2026-07-20)
+
+
+### Bug Fixes
+
+* misuage protection for disposable list ([83a9086](https://github.com/PurrNet/PurrNet/commit/83a908637babd3c6bf5faf070c0c11cc79b50e96))
+
+
+### Features
+
+* events that allow cheaper disposable collection packing ([5d94039](https://github.com/PurrNet/PurrNet/commit/5d94039fd9e2f121ee4cfed4a842654e79a9eb16))
+* improved fragmenation + profiler dropped stats ([050c9c4](https://github.com/PurrNet/PurrNet/commit/050c9c41ef4667b479ccacd78c69e7562d7d1860))
+
 # [1.20.0-beta.267](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.266...v1.20.0-beta.267) (2026-07-19)
 
 
