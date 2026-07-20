@@ -73,7 +73,7 @@ namespace PurrNet.Analyzers
             "Local execution flag was not unset",
             "PurrCompilerFlags.EnterLocalExecution must be paired with ExitLocalExecution");
 
-        public static readonly DiagnosticDescriptor RegisterNetworkTypeForeignType = Error(
+        public static readonly DiagnosticDescriptor RegisterNetworkTypeForeignType = Warning(
             "PN0014",
             "RegisterNetworkType target is declared in another assembly",
             "[RegisterNetworkType] for '{0}' is ignored because '{0}' is declared in assembly '{1}'; apply the attribute to a type in that assembly",
