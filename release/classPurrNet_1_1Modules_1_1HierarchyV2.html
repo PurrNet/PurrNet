@@ -126,6 +126,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>TransferToNewServer</
 <tr class="memitem:a5b9c0cee4620229828f3130554330407"><td class="memItemLeft" align="right" valign="top"><a id="a5b9c0cee4620229828f3130554330407" name="a5b9c0cee4620229828f3130554330407"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Cleanup</b> ()</td></tr>
 <tr class="separator:a5b9c0cee4620229828f3130554330407"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a48091ee5539828725b6add896cb0102f"><td class="memItemLeft" align="right" valign="top"><a id="a48091ee5539828725b6add896cb0102f" name="a48091ee5539828725b6add896cb0102f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>OnParentChanged</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, Transform parent, bool worldPositionStays=true)</td></tr>
+<tr class="separator:a48091ee5539828725b6add896cb0102f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaa8402318b604dd6bcdae13a6d3722ab"><td class="memItemLeft" align="right" valign="top"><a id="aaa8402318b604dd6bcdae13a6d3722ab" name="aaa8402318b604dd6bcdae13a6d3722ab"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EvaluateAllVisibilities</b> ()</td></tr>
 <tr class="memdesc:aaa8402318b604dd6bcdae13a6d3722ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the visibility of all spawned network identities for all players in the current scene. This operation gathers the list of players currently present in the scene and applies a visibility evaluation for each player based on the active set of spawned network identities. Intended to be called when visibility recalculations are required, such as after significant state changes.  <br /></td></tr>
@@ -161,6 +164,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>PostNetworkMessages</
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualEarlySpawn</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id)</td></tr>
 <tr class="memdesc:a5340886582f3249661b41dde044b3029"><td class="mdescLeft">&#160;</td><td class="mdescRight">For manual spawning of identities. After this call, you should call <a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#ab814d5d8840650267d4746b3ccd1de13" title="For manual finalization of spawning an identity. This needs to be called manually on all conserned cl...">ManualFinalizeSpawn(NetworkIdentity)</a> to finalize the spawning. This needs to be called manually on all conserned clients.  <br /></td></tr>
 <tr class="separator:a5340886582f3249661b41dde044b3029"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a067aee8d58ff65246c3d6159caaa8c70"><td class="memItemLeft" align="right" valign="top"><a id="a067aee8d58ff65246c3d6159caaa8c70" name="a067aee8d58ff65246c3d6159caaa8c70"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualEarlySpawn</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, <a class="el" href="structPurrNet_1_1Packing_1_1BitData.html">BitData</a> customData)</td></tr>
+<tr class="memdesc:a067aee8d58ff65246c3d6159caaa8c70"><td class="mdescLeft">&#160;</td><td class="mdescRight">For manual spawning of identities with custom spawn data. Custom data is deserialized after identity setup and before early-spawn callbacks. After this call, you should call <a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#ab814d5d8840650267d4746b3ccd1de13" title="For manual finalization of spawning an identity. This needs to be called manually on all conserned cl...">ManualFinalizeSpawn(NetworkIdentity)</a> to finalize the spawning. This needs to be called manually on all conserned clients.  <br /></td></tr>
+<tr class="separator:a067aee8d58ff65246c3d6159caaa8c70"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a12726fef8c81dc378108f7cd74e1dada"><td class="memItemLeft" align="right" valign="top"><a id="a12726fef8c81dc378108f7cd74e1dada" name="a12726fef8c81dc378108f7cd74e1dada"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualDespawn</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
 <tr class="memdesc:a12726fef8c81dc378108f7cd74e1dada"><td class="mdescLeft">&#160;</td><td class="mdescRight">For manual despawning of identities.  <br /></td></tr>
@@ -177,12 +184,18 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualAddObserver</b>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ManualRemoveObserver</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a1b830c7831269515ba72eb25fd9613f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Manually remove an observer from the identity.  <br /></td></tr>
 <tr class="separator:a1b830c7831269515ba72eb25fd9613f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a">TryGetIdentity</a> (<a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
-<tr class="memdesc:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attempts to retrieve the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>. This operation checks the local hierarchy for the identity and, if running in a server-client scenario, delegates the lookup to another hierarchy when necessary.   <a href="classPurrNet_1_1Modules_1_1HierarchyV2.html#a97c5b0bfa1419d9278723876d1dc3e7a">More...</a><br /></td></tr>
+<tr class="memitem:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memItemLeft" align="right" valign="top"><a id="a97c5b0bfa1419d9278723876d1dc3e7a" name="a97c5b0bfa1419d9278723876d1dc3e7a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetIdentity</b> (<a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> id, out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
 <tr class="separator:a97c5b0bfa1419d9278723876d1dc3e7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a0d3df65634bcc6e9ebed043a2d6cb098"><td class="memItemLeft" align="right" valign="top"><a id="a0d3df65634bcc6e9ebed043a2d6cb098" name="a0d3df65634bcc6e9ebed043a2d6cb098"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>SupressAutoOwner</b> ()</td></tr>
+<tr class="separator:a0d3df65634bcc6e9ebed043a2d6cb098"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5916e492b50f6dfc64f6bccbab88e4ab"><td class="memItemLeft" align="right" valign="top"><a id="a5916e492b50f6dfc64f6bccbab88e4ab" name="a5916e492b50f6dfc64f6bccbab88e4ab"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>ResumeAutoOwner</b> ()</td></tr>
+<tr class="separator:a5916e492b50f6dfc64f6bccbab88e4ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4255c4c5b0f7eb879d923b2398bc67fa"><td class="memItemLeft" align="right" valign="top"><a id="a4255c4c5b0f7eb879d923b2398bc67fa" name="a4255c4c5b0f7eb879d923b2398bc67fa"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>GetComponentsInChildren</b> (GameObject go, List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt; list)</td></tr>
 <tr class="separator:a4255c4c5b0f7eb879d923b2398bc67fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -192,6 +205,9 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetLocalPosAnd
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
+<tr class="memitem:a0783729a0b49a2e30cadbc335a948f58"><td class="memItemLeft" align="right" valign="top"><a id="a0783729a0b49a2e30cadbc335a948f58" name="a0783729a0b49a2e30cadbc335a948f58"></a>
+ValidateSpawnAction&#160;</td><td class="memItemRight" valign="bottom"><b>onClientSpawnValidate</b></td></tr>
+<tr class="separator:a0783729a0b49a2e30cadbc335a948f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeb8e18a11c7924834a30a3b0ab39053f"><td class="memItemLeft" align="right" valign="top"><a id="aeb8e18a11c7924834a30a3b0ab39053f" name="aeb8e18a11c7924834a30a3b0ab39053f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isReadyToSpawn</b><code> [get]</code></td></tr>
 <tr class="memdesc:aeb8e18a11c7924834a30a3b0ab39053f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates whether the system is ready to spawn networked objects. This flag is typically set when the necessary conditions for spawning objects, such as proper initialization and synchronization, have been met.  <br /></td></tr>
@@ -199,10 +215,6 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isReadyToSpawn</b><co
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
-<tr class="memitem:a0783729a0b49a2e30cadbc335a948f58"><td class="memItemLeft" align="right" valign="top"><a id="a0783729a0b49a2e30cadbc335a948f58" name="a0783729a0b49a2e30cadbc335a948f58"></a>
-ValidateSpawnAction&#160;</td><td class="memItemRight" valign="bottom"><b>onClientSpawnValidate</b></td></tr>
-<tr class="memdesc:a0783729a0b49a2e30cadbc335a948f58"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invoked to validate the spawning of a client-side object before it is instantiated. This event allows implementing custom rules to determine whether the object spawn should proceed or be rejected.  <br /></td></tr>
-<tr class="separator:a0783729a0b49a2e30cadbc335a948f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad2e7ac7352bbce58511f1c562dd8d013"><td class="memItemLeft" align="right" valign="top"><a id="ad2e7ac7352bbce58511f1c562dd8d013" name="ad2e7ac7352bbce58511f1c562dd8d013"></a>
 IdentityAction&#160;</td><td class="memItemRight" valign="bottom"><b>onEarlyIdentityAdded</b></td></tr>
 <tr class="memdesc:ad2e7ac7352bbce58511f1c562dd8d013"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fired when a <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> is added to the hierarchy early in its lifecycle, before the standard identity initialization or observer assignment processes occur. This event is typically leveraged to perform custom logic or setup on new identities before they are fully managed by the hierarchy.  <br /></td></tr>
@@ -231,6 +243,10 @@ ObserverAction&#160;</td><td class="memItemRight" valign="bottom"><b>onObserverR
 SpawnedAction&#160;</td><td class="memItemRight" valign="bottom"><b>onSentSpawnPacket</b></td></tr>
 <tr class="memdesc:a5bda74504738830db639bbdd49719ad3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggered when a spawn packet is sent to a client. This event provides details about the player, the scene, and the spawned object's identifier, enabling the implementation of custom behavior upon the transmission of spawn data.  <br /></td></tr>
 <tr class="separator:a5bda74504738830db639bbdd49719ad3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7c840cebab93b79b364d74541cad229d"><td class="memItemLeft" align="right" valign="top"><a id="a7c840cebab93b79b364d74541cad229d" name="a7c840cebab93b79b364d74541cad229d"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1SceneID.html">SceneID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onPreFinishSpawn</b></td></tr>
+<tr class="memdesc:a7c840cebab93b79b364d74541cad229d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fired in PostNetworkMessages after observer-add state RPCs have been flushed but before <a class="el" href="structPurrNet_1_1Modules_1_1FinishSpawnPacket.html">FinishSpawnPacket</a> ships. <a class="el" href="namespacePurrNet_1_1Modules.html">Modules</a> with per-spawn data that piggybacks on observer adds (e.g. <a class="el" href="classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html">GlobalOwnershipModule</a>'s pending ownership changes) flush here so their packets arrive before the receiver fires OnSpawned.  <br /></td></tr>
+<tr class="separator:a7c840cebab93b79b364d74541cad229d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adf7f1c3b766c26685f89b806b13b4f5d"><td class="memItemLeft" align="right" valign="top"><a id="adf7f1c3b766c26685f89b806b13b4f5d" name="adf7f1c3b766c26685f89b806b13b4f5d"></a>
 static SpawnDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPreSpawn</b></td></tr>
 <tr class="memdesc:adf7f1c3b766c26685f89b806b13b4f5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before a gameobject is spawned. Both locally and for incoming remote spawns.  <br /></td></tr>
@@ -335,44 +351,6 @@ static SpawnDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPre
   </table>
   </dd>
 </dl>
-
-</div>
-</div>
-<a id="a97c5b0bfa1419d9278723876d1dc3e7a" name="a97c5b0bfa1419d9278723876d1dc3e7a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a97c5b0bfa1419d9278723876d1dc3e7a">&#9670;&#160;</a></span>TryGetIdentity()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool PurrNet.Modules.HierarchyV2.TryGetIdentity </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>&#160;</td>
-          <td class="paramname"><em>id</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">out <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td>
-          <td class="paramname"><em>identity</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Attempts to retrieve the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>. This operation checks the local hierarchy for the identity and, if running in a server-client scenario, delegates the lookup to another hierarchy when necessary.  </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">id</td><td>The unique identifier of the requested network identity.</td></tr>
-    <tr><td class="paramname">identity</td><td>When the method returns, contains the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> associated with the specified <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> if the lookup was successful; otherwise, <code>null</code>. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd><code>true</code> if the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> was successfully retrieved; otherwise, <code>false</code>. </dd></dl>
 
 </div>
 </div>

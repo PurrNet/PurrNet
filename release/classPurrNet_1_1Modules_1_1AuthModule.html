@@ -92,6 +92,8 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Modules_1_1AuthModule.
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
+<a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
 <a href="classPurrNet_1_1Modules_1_1AuthModule-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Modules.AuthModule Class Reference</div></div>
@@ -141,11 +143,27 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Enable</b> (bool asSe
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Disable</b> (bool asServer)</td></tr>
 <tr class="separator:ae614efb89b9166e27139455fb9856320"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:aed26922dbfc2f24cc7248c173ca44720"><td class="memItemLeft" align="right" valign="top"><a id="aed26922dbfc2f24cc7248c173ca44720" name="aed26922dbfc2f24cc7248c173ca44720"></a>
+const string&#160;</td><td class="memItemRight" valign="bottom"><b>CONNECTION_COOKIE_KEY</b> = &quot;client_connection_session&quot;</td></tr>
+<tr class="separator:aed26922dbfc2f24cc7248c173ca44720"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
+Properties</h2></td></tr>
+<tr class="memitem:aaab221f10eb693be1b16504f271e70db"><td class="memItemLeft" align="right" valign="top"><a id="aaab221f10eb693be1b16504f271e70db" name="aaab221f10eb693be1b16504f271e70db"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>clientConnectionCookie</b><code> [get]</code></td></tr>
+<tr class="separator:aaab221f10eb693be1b16504f271e70db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
 <tr class="memitem:a351f3f8019b00086acd9cf93edb43a5f"><td class="memItemLeft" align="right" valign="top"><a id="a351f3f8019b00086acd9cf93edb43a5f" name="a351f3f8019b00086acd9cf93edb43a5f"></a>
 Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onConnection</b></td></tr>
 <tr class="separator:a351f3f8019b00086acd9cf93edb43a5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab02501e97c9270c04a0cf1dd738311d7"><td class="memItemLeft" align="right" valign="top"><a id="ab02501e97c9270c04a0cf1dd738311d7" name="ab02501e97c9270c04a0cf1dd738311d7"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>, <a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a>, <a class="el" href="structPurrNet_1_1Transports_1_1ByteData.html">ByteData</a>?&gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onAuthenticationDenied</b></td></tr>
+<tr class="memdesc:ab02501e97c9270c04a0cf1dd738311d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server-side event raised whenever a client is rejected, including by built-in deniers (version mismatch, ack timeout, missing authenticator) and by the active AuthenticationLayer. Fires before the denial packet is shipped, so handlers can record the rejection regardless of whether the client acks. <code>reason</code> is <code>null</code> for built-in deniers (no payload) and non-null only when an AuthenticationBehaviour&lt;TRequest,TDenial&gt; attached a typed denial reason.  <br /></td></tr>
+<tr class="separator:ab02501e97c9270c04a0cf1dd738311d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="a7b0c59c842e16d29ded6758117c3dfa8" name="a7b0c59c842e16d29ded6758117c3dfa8"></a>

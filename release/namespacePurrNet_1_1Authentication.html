@@ -91,7 +91,8 @@ $(document).ready(function(){initNavTree('namespacePurrNet_1_1Authentication.htm
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a>  </div>
+<a href="#nested-classes">Classes</a> &#124;
+<a href="#enum-members">Enumerations</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Authentication Namespace Reference</div></div>
 </div><!--header-->
 <div class="contents">
@@ -99,6 +100,13 @@ $(document).ready(function(){initNavTree('namespacePurrNet_1_1Authentication.htm
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html">AuthenticationBehaviour</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacePurrNet_1_1Authentication.html">Authentication</a> behaviour with a typed denial payload. On the server, returning <code>success = false</code> from <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193" title="Once the client payload is received, this method is called to validate the payload....">ValidateClientPayload</a> ships the supplied <em>TDenial</em>  to the client (via <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html" title="Server -&gt; client packet describing why a connection is about to be closed. The client decodes reason ...">AuthenticationDenialPacket</a>) before the socket closes. On the client, <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a92cf06ebfc6358f240ab501ae619f736" title="Client-side event fired when the server has rejected the connection. The kind tells you which built-i...">onDeniedByServer</a> fires with the decoded reason so user UI can react.   <a href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialAck.html">AuthenticationDenialAck</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Client -&gt; server ack acknowledging an <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html" title="Server -&gt; client packet describing why a connection is about to be closed. The client decodes reason ...">AuthenticationDenialPacket</a> so the server can immediately close the socket without waiting for the ack timeout.   <a href="structPurrNet_1_1Authentication_1_1AuthenticationDenialAck.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html">AuthenticationDenialPacket</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server -&gt; client packet describing why a connection is about to be closed. The client decodes reason via the active <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html#a63b137e8589f7fcff6a4e276f2da3445" title="Called on the client by AuthModule when a denial packet arrives. The default implementation does noth...">AuthenticationLayer.OnDenialReceived</a> override (typed by AuthenticationBehaviour&lt;TRequest,TDenial&gt;) and acks with <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationDenialAck.html" title="Client -&gt; server ack acknowledging an AuthenticationDenialPacket so the server can immediately close ...">AuthenticationDenialAck</a>. The server closes the connection on ack OR after the authenticator's timeout, whichever fires first.   <a href="structPurrNet_1_1Authentication_1_1AuthenticationDenialPacket.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationLayer.html">AuthenticationLayer</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -107,9 +115,16 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationRequestData.html">AuthenticationRequestData</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html">AuthenticationResponse</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Result returned by <a class="el" href="classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193" title="Once the client payload is received, this method is called to validate the payload....">AuthenticationBehaviour&lt;TRequest,TDenial&gt;.ValidateClientPayload</a>. When <a class="el" href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a9f133b1ad762ff6c3dae75cd6065fbe5" title="Whether the authentication was successful. If true, the client will be authenticated....">success</a> is false, denialReason is serialized and shipped to the client before its connection is closed.   <a href="structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Authentication_1_1SimpleAuthenticator.html">SimpleAuthenticator</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
+Enumerations</h2></td></tr>
+<tr class="memitem:ac735abc40f508ca622a71c50ad427409"><td class="memItemLeft" align="right" valign="top"><a id="ac735abc40f508ca622a71c50ad427409" name="ac735abc40f508ca622a71c50ad427409"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacePurrNet_1_1Authentication.html#ac735abc40f508ca622a71c50ad427409">DenialKind</a> : byte </td></tr>
+<tr class="memdesc:ac735abc40f508ca622a71c50ad427409"><td class="mdescLeft">&#160;</td><td class="mdescRight">Categorises why the server rejected an inbound connection. Surfaced to the server via <a class="el" href="classPurrNet_1_1Modules_1_1AuthModule.html#ab02501e97c9270c04a0cf1dd738311d7" title="Server-side event raised whenever a client is rejected, including by built-in deniers (version mismat...">AuthModule.onAuthenticationDenied</a> and shipped to the client inside AuthenticationDenialPacket so user-supplied UI can react before the socket closes.  <br /></td></tr>
+<tr class="separator:ac735abc40f508ca622a71c50ad427409"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 </div><!-- doc-content -->

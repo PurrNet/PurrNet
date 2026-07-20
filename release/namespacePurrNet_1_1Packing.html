@@ -102,6 +102,9 @@ $(document).ready(function(){initNavTree('namespacePurrNet_1_1Packing.html','');
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><b>ArrayComparator</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><b>AsyncPackableHelper</b></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper for <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html" title="Implement on types that need async preparation around sync serialization. PrepareForPackAsync runs be...">IAsyncPackable</a> prepare calls. Used by codegen around sync pack/unpack. When <a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html" title="Implement on types that need async preparation around sync serialization. PrepareForPackAsync runs be...">IAsyncPackable</a> params are present, codegen uses the async overloads so prepares run on main thread without deadlock.  <br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Packing_1_1BigStructSample.html">BigStructSample</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sample struct with multiple fields for DeltaPacker Analysis visualization. Implements <a class="el" href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html">IPackedAuto</a> so Packer/DeltaPacker are codegen'd; use it to compare full pack vs delta (0 fields changed) vs delta (1 field changed) vs delta (all changed).   <a href="structPurrNet_1_1Packing_1_1BigStructSample.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -171,6 +174,9 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><b>HashsetComparator</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html">IAsyncPackable</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Implement on types that need async preparation around sync serialization. PrepareForPackAsync runs before packing (sender); PrepareAfterUnpackAsync runs after unpacking (receiver). Both return the prepared instance (for structs, return this after mutating).   <a href="interfacePurrNet_1_1Packing_1_1IAsyncPackable.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IDuplicate.html">IDuplicate</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IPacked.html">IPacked</a></td></tr>
@@ -178,6 +184,8 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html">IPackedAuto</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IPackedSimple.html">IPackedSimple</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IPurrEquatable.html">IPurrEquatable</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Packing_1_1IStandaloneSerializable.html">IStandaloneSerializable</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Marks a type as self-serializable, meaning its serializer should not cascade into base or derived class serializers. Only this type's serializer will be used.   <a href="interfacePurrNet_1_1Packing_1_1IStandaloneSerializable.html#details">More...</a><br /></td></tr>

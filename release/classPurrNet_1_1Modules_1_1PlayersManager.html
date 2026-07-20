@@ -114,20 +114,20 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a3ea5f44fc2d79c7bc1c7b9fdde13dc00"><td class="memItemLeft" align="right" valign="top"><a id="a3ea5f44fc2d79c7bc1c7b9fdde13dc00" name="a3ea5f44fc2d79c7bc1c7b9fdde13dc00"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMTU</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, Channel channel, bool asServer)</td></tr>
 <tr class="separator:a3ea5f44fc2d79c7bc1c7b9fdde13dc00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab8557b00481c411eef535d7f20f43e0f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#ab8557b00481c411eef535d7f20f43e0f">Send&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ab8557b00481c411eef535d7f20f43e0f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac15f7e70fc8acf362418c6fd9130ddfa"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#ac15f7e70fc8acf362418c6fd9130ddfa">Send&lt; T &gt;</a> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; collection, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ac15f7e70fc8acf362418c6fd9130ddfa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9b81a81517ebaeb14e3bd3090742b0e3"><td class="memItemLeft" align="right" valign="top"><a id="a9b81a81517ebaeb14e3bd3090742b0e3" name="a9b81a81517ebaeb14e3bd3090742b0e3"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SendList&lt; T &gt;</b> (IList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; collection, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a9b81a81517ebaeb14e3bd3090742b0e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac21e6178b289436ef79655b0ba5eccc2"><td class="memItemLeft" align="right" valign="top"><a id="ac21e6178b289436ef79655b0ba5eccc2" name="ac21e6178b289436ef79655b0ba5eccc2"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IEnumerable&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; collection, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ac21e6178b289436ef79655b0ba5eccc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a693f3a21a1415cde8989e5f2923b057b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a693f3a21a1415cde8989e5f2923b057b">SendToServer&lt; T &gt;</a> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a693f3a21a1415cde8989e5f2923b057b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a748614f23c41811fbf7290a30f63d6c0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a748614f23c41811fbf7290a30f63d6c0">SendToAll&lt; T &gt;</a> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a748614f23c41811fbf7290a30f63d6c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac10f061157f0e198ca7fb2f33c1a5b54"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#ac10f061157f0e198ca7fb2f33c1a5b54">Send&lt; T &gt;</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:ac10f061157f0e198ca7fb2f33c1a5b54"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa40998dd98438d5b5ef6b0cbb0332623"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#aa40998dd98438d5b5ef6b0cbb0332623">Send&lt; T &gt;</a> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; collection, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:aa40998dd98438d5b5ef6b0cbb0332623"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa278f4501aae6e52a6907401021ea37c"><td class="memItemLeft" align="right" valign="top"><a id="aa278f4501aae6e52a6907401021ea37c" name="aa278f4501aae6e52a6907401021ea37c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendList&lt; T &gt;</b> (IList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; collection, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:aa278f4501aae6e52a6907401021ea37c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adaa0564ad2eed2caa12921353c5d8ccf"><td class="memItemLeft" align="right" valign="top"><a id="adaa0564ad2eed2caa12921353c5d8ccf" name="adaa0564ad2eed2caa12921353c5d8ccf"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IEnumerable&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; collection, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:adaa0564ad2eed2caa12921353c5d8ccf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae43c9f20f3015ff80dba8eb3c79e71ea"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#ae43c9f20f3015ff80dba8eb3c79e71ea">SendToServer&lt; T &gt;</a> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:ae43c9f20f3015ff80dba8eb3c79e71ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad3737b8a4f3d10f697df05087fc5be59"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#ad3737b8a4f3d10f697df05087fc5be59">SendToAll&lt; T &gt;</a> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:ad3737b8a4f3d10f697df05087fc5be59"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a420a3f6f0629297a7a6d329c56bd0d87"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a420a3f6f0629297a7a6d329c56bd0d87">Unsubscribe&lt; T &gt;</a> (PlayerBroadcastDelegate&lt; T &gt; callback)</td></tr>
 <tr class="separator:a420a3f6f0629297a7a6d329c56bd0d87"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a707ef273f750a5f11c677624c01e3170"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a707ef273f750a5f11c677624c01e3170">Subscribe&lt; T &gt;</a> (PlayerBroadcastDelegate&lt; T &gt; callback)</td></tr>
@@ -190,6 +190,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetCookie</b> (<a 
 <tr class="memitem:a1a21a41cc2195226c2b0f4dd74f2954c"><td class="memItemLeft" align="right" valign="top"><a id="a1a21a41cc2195226c2b0f4dd74f2954c" name="a1a21a41cc2195226c2b0f4dd74f2954c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>OnConnected</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
 <tr class="separator:a1a21a41cc2195226c2b0f4dd74f2954c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3bf2efe6446fbab425c0543f4670483"><td class="memItemLeft" align="right" valign="top"><a id="ae3bf2efe6446fbab425c0543f4670483" name="ae3bf2efe6446fbab425c0543f4670483"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>OnConnectionState</b> (ConnectionState state, bool asServer)</td></tr>
+<tr class="separator:ae3bf2efe6446fbab425c0543f4670483"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a81b0a040f2033fc1eac60c8345c750a7"><td class="memItemLeft" align="right" valign="top"><a id="a81b0a040f2033fc1eac60c8345c750a7" name="a81b0a040f2033fc1eac60c8345c750a7"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDisconnected</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
 <tr class="separator:a81b0a040f2033fc1eac60c8345c750a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -202,18 +205,18 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Enable</b> (bool asSe
 <tr class="memitem:ae614efb89b9166e27139455fb9856320"><td class="memItemLeft" align="right" valign="top"><a id="ae614efb89b9166e27139455fb9856320" name="ae614efb89b9166e27139455fb9856320"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Disable</b> (bool asServer)</td></tr>
 <tr class="separator:ae614efb89b9166e27139455fb9856320"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae7629325861b3e9b8ac4e6a9047801bb"><td class="memItemLeft" align="right" valign="top"><a id="ae7629325861b3e9b8ac4e6a9047801bb" name="ae7629325861b3e9b8ac4e6a9047801bb"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ae7629325861b3e9b8ac4e6a9047801bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aebc2cf2d0bb6bb05c5ff547c330758cc"><td class="memItemLeft" align="right" valign="top"><a id="aebc2cf2d0bb6bb05c5ff547c330758cc" name="aebc2cf2d0bb6bb05c5ff547c330758cc"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:aebc2cf2d0bb6bb05c5ff547c330758cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a3a19ff2e05bb3e822c32d2d7f6fe17"><td class="memItemLeft" align="right" valign="top"><a id="a2a3a19ff2e05bb3e822c32d2d7f6fe17" name="a2a3a19ff2e05bb3e822c32d2d7f6fe17"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToServer&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a2a3a19ff2e05bb3e822c32d2d7f6fe17"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5cfa09f74e1debaf89df04b72f8bd69"><td class="memItemLeft" align="right" valign="top"><a id="ac5cfa09f74e1debaf89df04b72f8bd69" name="ac5cfa09f74e1debaf89df04b72f8bd69"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToAll&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ac5cfa09f74e1debaf89df04b72f8bd69"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d4a6d631dfc8ea47e221d86146d4f82"><td class="memItemLeft" align="right" valign="top"><a id="a7d4a6d631dfc8ea47e221d86146d4f82" name="a7d4a6d631dfc8ea47e221d86146d4f82"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:a7d4a6d631dfc8ea47e221d86146d4f82"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c60b522c2ecc8bbebfade76bbc869c5"><td class="memItemLeft" align="right" valign="top"><a id="a4c60b522c2ecc8bbebfade76bbc869c5" name="a4c60b522c2ecc8bbebfade76bbc869c5"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:a4c60b522c2ecc8bbebfade76bbc869c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c78c43edff5b2ff53594ddb953e9b32"><td class="memItemLeft" align="right" valign="top"><a id="a4c78c43edff5b2ff53594ddb953e9b32" name="a4c78c43edff5b2ff53594ddb953e9b32"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToServer&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:a4c78c43edff5b2ff53594ddb953e9b32"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa8e5b3af1431bb49ba00ccc547a07d99"><td class="memItemLeft" align="right" valign="top"><a id="aa8e5b3af1431bb49ba00ccc547a07d99" name="aa8e5b3af1431bb49ba00ccc547a07d99"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToAll&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:aa8e5b3af1431bb49ba00ccc547a07d99"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad048570b2f33e68b202ab44ece4c049b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1IPlayerBroadcaster.html#ad048570b2f33e68b202ab44ece4c049b">Unsubscribe&lt; T &gt;</a> (PlayerBroadcastDelegate&lt; T &gt; callback)</td></tr>
 <tr class="separator:ad048570b2f33e68b202ab44ece4c049b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab396c731783bf016a85ea45838a95d58"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1IPlayerBroadcaster.html#ab396c731783bf016a85ea45838a95d58">Subscribe&lt; T &gt;</a> (PlayerBroadcastDelegate&lt; T &gt; callback)</td></tr>
@@ -230,6 +233,9 @@ IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</
 <tr class="memitem:add1133d27ebe755ab2e05b17da5a3ddb"><td class="memItemLeft" align="right" valign="top"><a id="add1133d27ebe755ab2e05b17da5a3ddb" name="add1133d27ebe755ab2e05b17da5a3ddb"></a>
 <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a>?&#160;</td><td class="memItemRight" valign="bottom"><b>lastNid</b><code> [get]</code></td></tr>
 <tr class="separator:add1133d27ebe755ab2e05b17da5a3ddb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa8b9cbb3639d4106bbaa0135d9ade319"><td class="memItemLeft" align="right" valign="top"><a id="aa8b9cbb3639d4106bbaa0135d9ade319" name="aa8b9cbb3639d4106bbaa0135d9ade319"></a>
+<a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>&#160;</td><td class="memItemRight" valign="bottom"><b>mtuExceededBehaviour</b><code> [get]</code></td></tr>
+<tr class="separator:aa8b9cbb3639d4106bbaa0135d9ade319"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
@@ -379,8 +385,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
 
 </div>
 </div>
-<a id="ac15f7e70fc8acf362418c6fd9130ddfa" name="ac15f7e70fc8acf362418c6fd9130ddfa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac15f7e70fc8acf362418c6fd9130ddfa">&#9670;&#160;</a></span>Send&lt; T &gt;() <span class="overload">[1/2]</span></h2>
+<a id="aa40998dd98438d5b5ef6b0cbb0332623" name="aa40998dd98438d5b5ef6b0cbb0332623"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa40998dd98438d5b5ef6b0cbb0332623">&#9670;&#160;</a></span>Send&lt; T &gt;() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -401,7 +407,13 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">Channel&#160;</td>
-          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>&#160;</td>
+          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>?&#160;</td>
+          <td class="paramname"><em>mtuOverride</em> = <code>null</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -415,8 +427,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
 
 </div>
 </div>
-<a id="ab8557b00481c411eef535d7f20f43e0f" name="ab8557b00481c411eef535d7f20f43e0f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab8557b00481c411eef535d7f20f43e0f">&#9670;&#160;</a></span>Send&lt; T &gt;() <span class="overload">[2/2]</span></h2>
+<a id="ac10f061157f0e198ca7fb2f33c1a5b54" name="ac10f061157f0e198ca7fb2f33c1a5b54"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac10f061157f0e198ca7fb2f33c1a5b54">&#9670;&#160;</a></span>Send&lt; T &gt;() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -437,7 +449,13 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">Channel&#160;</td>
-          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>&#160;</td>
+          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>?&#160;</td>
+          <td class="paramname"><em>mtuOverride</em> = <code>null</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -451,8 +469,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
 
 </div>
 </div>
-<a id="a748614f23c41811fbf7290a30f63d6c0" name="a748614f23c41811fbf7290a30f63d6c0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a748614f23c41811fbf7290a30f63d6c0">&#9670;&#160;</a></span>SendToAll&lt; T &gt;()</h2>
+<a id="ad3737b8a4f3d10f697df05087fc5be59" name="ad3737b8a4f3d10f697df05087fc5be59"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad3737b8a4f3d10f697df05087fc5be59">&#9670;&#160;</a></span>SendToAll&lt; T &gt;()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -467,7 +485,13 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">Channel&#160;</td>
-          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>&#160;</td>
+          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>?&#160;</td>
+          <td class="paramname"><em>mtuOverride</em> = <code>null</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -481,8 +505,8 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
 
 </div>
 </div>
-<a id="a693f3a21a1415cde8989e5f2923b057b" name="a693f3a21a1415cde8989e5f2923b057b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a693f3a21a1415cde8989e5f2923b057b">&#9670;&#160;</a></span>SendToServer&lt; T &gt;()</h2>
+<a id="ae43c9f20f3015ff80dba8eb3c79e71ea" name="ae43c9f20f3015ff80dba8eb3c79e71ea"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae43c9f20f3015ff80dba8eb3c79e71ea">&#9670;&#160;</a></span>SendToServer&lt; T &gt;()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -497,7 +521,13 @@ Action&lt; <a class="el" href="structPurrNet_1_1NetworkID.html">NetworkID</a> &g
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">Channel&#160;</td>
-          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>&#160;</td>
+          <td class="paramname"><em>method</em> = <code>Channel.ReliableOrdered</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>?&#160;</td>
+          <td class="paramname"><em>mtuOverride</em> = <code>null</code>&#160;</td>
         </tr>
         <tr>
           <td></td>

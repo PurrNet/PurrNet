@@ -101,12 +101,17 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1Vector3WithParent.htm
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a92b0a3ee3b0ad6f18e2f007dff676591"><td class="memItemLeft" align="right" valign="top"><a id="a92b0a3ee3b0ad6f18e2f007dff676591" name="a92b0a3ee3b0ad6f18e2f007dff676591"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Vector3WithParent</b> (Transform parent, <a class="el" href="structPurrNet_1_1Vector3WithParent.html">Vector3WithParent</a> other)</td></tr>
-<tr class="separator:a92b0a3ee3b0ad6f18e2f007dff676591"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a52830a0eb6c07ad2bd6216a6caccf540"><td class="memItemLeft" align="right" valign="top"><a id="a52830a0eb6c07ad2bd6216a6caccf540" name="a52830a0eb6c07ad2bd6216a6caccf540"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Vector3WithParent</b> (Transform parent, bool isLocalPos, Vector3 position)</td></tr>
+<tr class="memdesc:a52830a0eb6c07ad2bd6216a6caccf540"><td class="mdescLeft">&#160;</td><td class="mdescRight">World or parent-local-frame sample. <br /></td></tr>
 <tr class="separator:a52830a0eb6c07ad2bd6216a6caccf540"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a77d5a95d83ab10fe65614c4b8e5d1818"><td class="memItemLeft" align="right" valign="top"><a id="a77d5a95d83ab10fe65614c4b8e5d1818" name="a77d5a95d83ab10fe65614c4b8e5d1818"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Vector3WithParent</b> (<a class="el" href="classPurrNet_1_1NetworkTransform.html">NetworkTransform</a> self, <a class="el" href="interfacePurrNet_1_1INetworkTransformPositionTransform.html">INetworkTransformPositionTransform</a> posTransform, double3 absolutePosition)</td></tr>
+<tr class="memdesc:a77d5a95d83ab10fe65614c4b8e5d1818"><td class="mdescLeft">&#160;</td><td class="mdescRight">Absolute peer-agnostic sample (origin-invariant). <br /></td></tr>
+<tr class="separator:a77d5a95d83ab10fe65614c4b8e5d1818"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b17a6d9198ce393977ec1df07757de6"><td class="memItemLeft" align="right" valign="top"><a id="a8b17a6d9198ce393977ec1df07757de6" name="a8b17a6d9198ce393977ec1df07757de6"></a>
+Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>ResolveWorld</b> ()</td></tr>
+<tr class="separator:a8b17a6d9198ce393977ec1df07757de6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -122,12 +127,24 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a453a26617ce2f06be12d90e6b564ad19"><td class="memItemLeft" align="right" valign="top"><a id="a453a26617ce2f06be12d90e6b564ad19" name="a453a26617ce2f06be12d90e6b564ad19"></a>
 readonly Transform&#160;</td><td class="memItemRight" valign="bottom"><b>parent</b></td></tr>
 <tr class="separator:a453a26617ce2f06be12d90e6b564ad19"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8cbe73e43adddf096a9688cbffc954fd"><td class="memItemLeft" align="right" valign="top"><a id="a8cbe73e43adddf096a9688cbffc954fd" name="a8cbe73e43adddf096a9688cbffc954fd"></a>
-readonly Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>position</b></td></tr>
-<tr class="separator:a8cbe73e43adddf096a9688cbffc954fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06c4c6628c9744bb8dd6068bf901a740"><td class="memItemLeft" align="right" valign="top"><a id="a06c4c6628c9744bb8dd6068bf901a740" name="a06c4c6628c9744bb8dd6068bf901a740"></a>
 readonly bool&#160;</td><td class="memItemRight" valign="bottom"><b>isLocalPos</b></td></tr>
 <tr class="separator:a06c4c6628c9744bb8dd6068bf901a740"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a192b633f7efb1d663d73a831d547ba59"><td class="memItemLeft" align="right" valign="top"><a id="a192b633f7efb1d663d73a831d547ba59" name="a192b633f7efb1d663d73a831d547ba59"></a>
+readonly bool&#160;</td><td class="memItemRight" valign="bottom"><b>isAbsolute</b></td></tr>
+<tr class="separator:a192b633f7efb1d663d73a831d547ba59"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac628315fb56377bff30bbae9add77a3e"><td class="memItemLeft" align="right" valign="top"><a id="ac628315fb56377bff30bbae9add77a3e" name="ac628315fb56377bff30bbae9add77a3e"></a>
+readonly <a class="el" href="interfacePurrNet_1_1INetworkTransformPositionTransform.html">INetworkTransformPositionTransform</a>&#160;</td><td class="memItemRight" valign="bottom"><b>posTransform</b></td></tr>
+<tr class="separator:ac628315fb56377bff30bbae9add77a3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3cac872270a6bdd70c2db5336efd6582"><td class="memItemLeft" align="right" valign="top"><a id="a3cac872270a6bdd70c2db5336efd6582" name="a3cac872270a6bdd70c2db5336efd6582"></a>
+readonly <a class="el" href="classPurrNet_1_1NetworkTransform.html">NetworkTransform</a>&#160;</td><td class="memItemRight" valign="bottom"><b>self</b></td></tr>
+<tr class="separator:a3cac872270a6bdd70c2db5336efd6582"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab7044db17cba9952a151a987888b1231"><td class="memItemLeft" align="right" valign="top"><a id="ab7044db17cba9952a151a987888b1231" name="ab7044db17cba9952a151a987888b1231"></a>
+readonly double3&#160;</td><td class="memItemRight" valign="bottom"><b>value</b></td></tr>
+<tr class="separator:ab7044db17cba9952a151a987888b1231"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8cbe73e43adddf096a9688cbffc954fd"><td class="memItemLeft" align="right" valign="top"><a id="a8cbe73e43adddf096a9688cbffc954fd" name="a8cbe73e43adddf096a9688cbffc954fd"></a>
+readonly Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>position</b></td></tr>
+<tr class="separator:a8cbe73e43adddf096a9688cbffc954fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkBehaviour/Vector3WithParent.cs</li>

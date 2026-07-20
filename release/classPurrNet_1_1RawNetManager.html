@@ -195,6 +195,9 @@ StartFlags&#160;</td><td class="memItemRight" valign="bottom"><b>startClientFlag
 <tr class="separator:a9328e1c9e9e07f9e9a2f2639b6ce6e9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a417ca5d7b03256bc39ad3e5ec2e7630e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#a417ca5d7b03256bc39ad3e5ec2e7630e">rawTransport</a><code> [get]</code></td></tr>
 <tr class="separator:a417ca5d7b03256bc39ad3e5ec2e7630e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa72ae7325b7df4f678a0b21496f8846b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#aa72ae7325b7df4f678a0b21496f8846b">mtuExceededBehaviour</a><code> [get, set]</code></td></tr>
+<tr class="memdesc:aa72ae7325b7df4f678a0b21496f8846b"><td class="mdescLeft">&#160;</td><td class="mdescRight">What to do when a packet exceeds the MTU on an unreliable channel.   <a href="classPurrNet_1_1RawNetManager.html#aa72ae7325b7df4f678a0b21496f8846b">More...</a><br /></td></tr>
+<tr class="separator:aa72ae7325b7df4f678a0b21496f8846b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a64b020c811747a3312d8fccfdd9c72db"><td class="memItemLeft" align="right" valign="top">ConnectionState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#a64b020c811747a3312d8fccfdd9c72db">serverState</a><code> [get]</code></td></tr>
 <tr class="memdesc:a64b020c811747a3312d8fccfdd9c72db"><td class="mdescLeft">&#160;</td><td class="mdescRight">The state of the server connection. This is based on the transport listener state.   <a href="classPurrNet_1_1RawNetManager.html#a64b020c811747a3312d8fccfdd9c72db">More...</a><br /></td></tr>
 <tr class="separator:a64b020c811747a3312d8fccfdd9c72db"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -240,6 +243,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isTranferingToNewServ
 <tr class="memitem:a8386f882b0391e54b530cb4bcec5b3e4 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memItemLeft" align="right" valign="top"><a id="a8386f882b0391e54b530cb4bcec5b3e4" name="a8386f882b0391e54b530cb4bcec5b3e4"></a>
 <a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html">ITransport</a>&#160;</td><td class="memItemRight" valign="bottom"><b>rawTransport</b><code> [get]</code></td></tr>
 <tr class="separator:a8386f882b0391e54b530cb4bcec5b3e4 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a28f69376c0a4f4ff8f98de7a5f1058bf inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#a28f69376c0a4f4ff8f98de7a5f1058bf">mtuExceededBehaviour</a><code> [get]</code></td></tr>
+<tr class="separator:a28f69376c0a4f4ff8f98de7a5f1058bf inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a011b9943902d0f09bc46243bf5415ff7 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memItemLeft" align="right" valign="top">ConnectionState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#a011b9943902d0f09bc46243bf5415ff7">serverState</a><code> [get]</code></td></tr>
 <tr class="separator:a011b9943902d0f09bc46243bf5415ff7 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad9465557bc0bd289b8e3602ac6c49cc0 inherit properties_interfacePurrNet_1_1INetworkManager"><td class="memItemLeft" align="right" valign="top">ConnectionState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#ad9465557bc0bd289b8e3602ac6c49cc0">clientState</a><code> [get]</code></td></tr>
@@ -700,6 +705,32 @@ OnTickDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPostTick<
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
+
+</div>
+</div>
+<a id="aa72ae7325b7df4f678a0b21496f8846b" name="aa72ae7325b7df4f678a0b21496f8846b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa72ae7325b7df4f678a0b21496f8846b">&#9670;&#160;</a></span>mtuExceededBehaviour</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a> PurrNet.RawNetManager.mtuExceededBehaviour</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">get</span><span class="mlabel">set</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>What to do when a packet exceeds the MTU on an unreliable channel.  </p>
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1INetworkManager.html">PurrNet.INetworkManager</a>.</p>
 
 </div>
 </div>

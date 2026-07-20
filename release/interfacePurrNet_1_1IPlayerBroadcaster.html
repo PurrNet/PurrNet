@@ -109,18 +109,18 @@ Inheritance diagram for PurrNet.IPlayerBroadcaster:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ae7629325861b3e9b8ac4e6a9047801bb"><td class="memItemLeft" align="right" valign="top"><a id="ae7629325861b3e9b8ac4e6a9047801bb" name="ae7629325861b3e9b8ac4e6a9047801bb"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ae7629325861b3e9b8ac4e6a9047801bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aebc2cf2d0bb6bb05c5ff547c330758cc"><td class="memItemLeft" align="right" valign="top"><a id="aebc2cf2d0bb6bb05c5ff547c330758cc" name="aebc2cf2d0bb6bb05c5ff547c330758cc"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:aebc2cf2d0bb6bb05c5ff547c330758cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a3a19ff2e05bb3e822c32d2d7f6fe17"><td class="memItemLeft" align="right" valign="top"><a id="a2a3a19ff2e05bb3e822c32d2d7f6fe17" name="a2a3a19ff2e05bb3e822c32d2d7f6fe17"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToServer&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:a2a3a19ff2e05bb3e822c32d2d7f6fe17"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5cfa09f74e1debaf89df04b72f8bd69"><td class="memItemLeft" align="right" valign="top"><a id="ac5cfa09f74e1debaf89df04b72f8bd69" name="ac5cfa09f74e1debaf89df04b72f8bd69"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToAll&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
-<tr class="separator:ac5cfa09f74e1debaf89df04b72f8bd69"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d4a6d631dfc8ea47e221d86146d4f82"><td class="memItemLeft" align="right" valign="top"><a id="a7d4a6d631dfc8ea47e221d86146d4f82" name="a7d4a6d631dfc8ea47e221d86146d4f82"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:a7d4a6d631dfc8ea47e221d86146d4f82"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c60b522c2ecc8bbebfade76bbc869c5"><td class="memItemLeft" align="right" valign="top"><a id="a4c60b522c2ecc8bbebfade76bbc869c5" name="a4c60b522c2ecc8bbebfade76bbc869c5"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Send&lt; T &gt;</b> (IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt; players, T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:a4c60b522c2ecc8bbebfade76bbc869c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c78c43edff5b2ff53594ddb953e9b32"><td class="memItemLeft" align="right" valign="top"><a id="a4c78c43edff5b2ff53594ddb953e9b32" name="a4c78c43edff5b2ff53594ddb953e9b32"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToServer&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:a4c78c43edff5b2ff53594ddb953e9b32"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa8e5b3af1431bb49ba00ccc547a07d99"><td class="memItemLeft" align="right" valign="top"><a id="aa8e5b3af1431bb49ba00ccc547a07d99" name="aa8e5b3af1431bb49ba00ccc547a07d99"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToAll&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
+<tr class="separator:aa8e5b3af1431bb49ba00ccc547a07d99"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad048570b2f33e68b202ab44ece4c049b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1IPlayerBroadcaster.html#ad048570b2f33e68b202ab44ece4c049b">Unsubscribe&lt; T &gt;</a> (PlayerBroadcastDelegate&lt; T &gt; callback)</td></tr>
 <tr class="separator:ad048570b2f33e68b202ab44ece4c049b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab396c731783bf016a85ea45838a95d58"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1IPlayerBroadcaster.html#ab396c731783bf016a85ea45838a95d58">Subscribe&lt; T &gt;</a> (PlayerBroadcastDelegate&lt; T &gt; callback)</td></tr>

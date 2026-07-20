@@ -116,9 +116,31 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a4a666c7b3925eaec290eeb8b2c2b0f19"><td class="memItemLeft" align="right" valign="top"><a id="a4a666c7b3925eaec290eeb8b2c2b0f19" name="a4a666c7b3925eaec290eeb8b2c2b0f19"></a>
 Object&#160;</td><td class="memItemRight" valign="bottom"><b>GetAsset</b> (int index)</td></tr>
 <tr class="separator:a4a666c7b3925eaec290eeb8b2c2b0f19"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac2093e96a3228674690a693e1dd618c6"><td class="memItemLeft" align="right" valign="top"><a id="ac2093e96a3228674690a693e1dd618c6" name="ac2093e96a3228674690a693e1dd618c6"></a>
+Object&#160;</td><td class="memItemRight" valign="bottom"><b>GetAssetByPersistentId</b> (string persistentId)</td></tr>
+<tr class="separator:ac2093e96a3228674690a693e1dd618c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace12eac8c765e5a441fbf0f2fb28adde"><td class="memItemLeft" align="right" valign="top"><a id="ace12eac8c765e5a441fbf0f2fb28adde" name="ace12eac8c765e5a441fbf0f2fb28adde"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>GetIndex</b> (Object obj)</td></tr>
 <tr class="separator:ace12eac8c765e5a441fbf0f2fb28adde"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82b2f98a7a5e2fb7ff5cc97f3278019d"><td class="memItemLeft" align="right" valign="top"><a id="a82b2f98a7a5e2fb7ff5cc97f3278019d" name="a82b2f98a7a5e2fb7ff5cc97f3278019d"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetIndex</b> (Object obj, out int id)</td></tr>
+<tr class="memdesc:a82b2f98a7a5e2fb7ff5cc97f3278019d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Same lookup as GetIndex but silent — no warning when the asset isn't registered. Use this to probe registration of assets that are allowed to be unregistered.  <br /></td></tr>
+<tr class="separator:a82b2f98a7a5e2fb7ff5cc97f3278019d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b4b384b5129bb1880e5bc4e661784c5"><td class="memItemLeft" align="right" valign="top"><a id="a9b4b384b5129bb1880e5bc4e661784c5" name="a9b4b384b5129bb1880e5bc4e661784c5"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPersistentId</b> (Object obj, out string persistentId)</td></tr>
+<tr class="separator:a9b4b384b5129bb1880e5bc4e661784c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c041c9dc80e7fef4c231e9e514c7457"><td class="memItemLeft" align="right" valign="top"><a id="a4c041c9dc80e7fef4c231e9e514c7457" name="a4c041c9dc80e7fef4c231e9e514c7457"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPersistentId</b> (int id, out string persistentId)</td></tr>
+<tr class="separator:a4c041c9dc80e7fef4c231e9e514c7457"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4f144fe105b31bc17df92619b7784f2b"><td class="memItemLeft" align="right" valign="top"><a id="a4f144fe105b31bc17df92619b7784f2b" name="a4f144fe105b31bc17df92619b7784f2b"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetAssetByPersistentId</b> (string persistentId, out Object obj)</td></tr>
+<tr class="separator:a4f144fe105b31bc17df92619b7784f2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5fd8d56f75519ded7af3d5ef1037afbf"><td class="memItemLeft" align="right" valign="top"><a id="a5fd8d56f75519ded7af3d5ef1037afbf" name="a5fd8d56f75519ded7af3d5ef1037afbf"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetIdByPersistentId</b> (string persistentId, out int id)</td></tr>
+<tr class="separator:a5fd8d56f75519ded7af3d5ef1037afbf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e1d177eaae5beb99d5bb09fb2d68b57"><td class="memItemLeft" align="right" valign="top"><a id="a2e1d177eaae5beb99d5bb09fb2d68b57" name="a2e1d177eaae5beb99d5bb09fb2d68b57"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetCanonical</b> (Object maybeDuplicate, out Object canonical)</td></tr>
+<tr class="separator:a2e1d177eaae5beb99d5bb09fb2d68b57"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6bfc8b2273bf36def96143e8c2892ef4"><td class="memItemLeft" align="right" valign="top"><a id="a6bfc8b2273bf36def96143e8c2892ef4" name="a6bfc8b2273bf36def96143e8c2892ef4"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Refresh</b> ()</td></tr>
 <tr class="separator:a6bfc8b2273bf36def96143e8c2892ef4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -146,6 +168,12 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>autoGenerate</b></td>
 <tr class="memitem:a31173773b48c03effb675320a67fe36f"><td class="memItemLeft" align="right" valign="top"><a id="a31173773b48c03effb675320a67fe36f" name="a31173773b48c03effb675320a67fe36f"></a>
 Object&#160;</td><td class="memItemRight" valign="bottom"><b>folder</b></td></tr>
 <tr class="separator:a31173773b48c03effb675320a67fe36f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0b8fc67e559f21e8dd326fc3d4c1a0d3"><td class="memItemLeft" align="right" valign="top"><a id="a0b8fc67e559f21e8dd326fc3d4c1a0d3" name="a0b8fc67e559f21e8dd326fc3d4c1a0d3"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>searchAllIfNoFolder</b> = true</td></tr>
+<tr class="separator:a0b8fc67e559f21e8dd326fc3d4c1a0d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25308fa00b65a485fbcf2e78408d6efe"><td class="memItemLeft" align="right" valign="top"><a id="a25308fa00b65a485fbcf2e78408d6efe" name="a25308fa00b65a485fbcf2e78408d6efe"></a>
+List&lt; <a class="el" href="classPurrNet_1_1NetworkAssets.html">NetworkAssets</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>linkedNetworkAssets</b> = new()</td></tr>
+<tr class="separator:a25308fa00b65a485fbcf2e78408d6efe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe9a07907d10d75f7a0fee8caa5c60bc"><td class="memItemLeft" align="right" valign="top"><a id="afe9a07907d10d75f7a0fee8caa5c60bc" name="afe9a07907d10d75f7a0fee8caa5c60bc"></a>
 List&lt; Object &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>assets</b> = new()</td></tr>
 <tr class="separator:afe9a07907d10d75f7a0fee8caa5c60bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -164,9 +192,9 @@ IReadOnlyList&lt; Object &gt;&#160;</td><td class="memItemRight" valign="bottom"
 <tr class="memitem:aef09f260ec6fd51cd8f2e66a5bcbb117"><td class="memItemLeft" align="right" valign="top"><a id="aef09f260ec6fd51cd8f2e66a5bcbb117" name="aef09f260ec6fd51cd8f2e66a5bcbb117"></a>
 IReadOnlyDictionary&lt; int, Object &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>IndexToAsset</b><code> [get]</code></td></tr>
 <tr class="separator:aef09f260ec6fd51cd8f2e66a5bcbb117"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1b9e7f510c4caa1f2c88df0eb2bd5db4"><td class="memItemLeft" align="right" valign="top"><a id="a1b9e7f510c4caa1f2c88df0eb2bd5db4" name="a1b9e7f510c4caa1f2c88df0eb2bd5db4"></a>
-IReadOnlyDictionary&lt; Object, int &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>AssetToIndex</b><code> [get]</code></td></tr>
-<tr class="separator:a1b9e7f510c4caa1f2c88df0eb2bd5db4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad66e87cf661a402f706ebc81571b7a23"><td class="memItemLeft" align="right" valign="top"><a id="ad66e87cf661a402f706ebc81571b7a23" name="ad66e87cf661a402f706ebc81571b7a23"></a>
+IReadOnlyDictionary&lt; string, Object &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>PersistentIdToAsset</b><code> [get]</code></td></tr>
+<tr class="separator:ad66e87cf661a402f706ebc81571b7a23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkAssets/NetworkAssets.cs</li>

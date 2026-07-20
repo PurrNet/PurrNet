@@ -8,6 +8,7 @@ var classPurrNet_1_1RawNetManager =
     [ "TryGetModule< T >", "classPurrNet_1_1RawNetManager.html#aa0858fe0dbb0de8c1f64d800febedb94", null ],
     [ "broadcastModule", "classPurrNet_1_1RawNetManager.html#af3b4d846154aad1a0a53bc54d9ced439", null ],
     [ "clientState", "classPurrNet_1_1RawNetManager.html#ac76ac19005125605f4e3f549088eb9ae", null ],
+    [ "mtuExceededBehaviour", "classPurrNet_1_1RawNetManager.html#aa72ae7325b7df4f678a0b21496f8846b", null ],
     [ "serverState", "classPurrNet_1_1RawNetManager.html#a64b020c811747a3312d8fccfdd9c72db", null ],
     [ "shouldAutoStartClient", "classPurrNet_1_1RawNetManager.html#a9328e1c9e9e07f9e9a2f2639b6ce6e9f", null ],
     [ "shouldAutoStartServer", "classPurrNet_1_1RawNetManager.html#a3009aa855cd43034246f26a88d1dd4bc", null ],

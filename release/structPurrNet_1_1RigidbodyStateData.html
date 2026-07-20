@@ -99,21 +99,38 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1RigidbodyStateData.ht
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a9fedfb514fba1b030ed02f7243832330"><td class="memItemLeft" align="right" valign="top"><a id="a9fedfb514fba1b030ed02f7243832330" name="a9fedfb514fba1b030ed02f7243832330"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>position</b></td></tr>
-<tr class="separator:a9fedfb514fba1b030ed02f7243832330"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ef5b4b44a19afe5a9d13b4290cec674"><td class="memItemLeft" align="right" valign="top"><a id="a9ef5b4b44a19afe5a9d13b4290cec674" name="a9ef5b4b44a19afe5a9d13b4290cec674"></a>
-Quaternion&#160;</td><td class="memItemRight" valign="bottom"><b>rotation</b></td></tr>
-<tr class="separator:a9ef5b4b44a19afe5a9d13b4290cec674"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a888c30d1221e20c36ed81fbc6035b584"><td class="memItemLeft" align="right" valign="top"><a id="a888c30d1221e20c36ed81fbc6035b584" name="a888c30d1221e20c36ed81fbc6035b584"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>linearVelocity</b></td></tr>
-<tr class="separator:a888c30d1221e20c36ed81fbc6035b584"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a965a4bc150e58af6504b60fbe0e06788"><td class="memItemLeft" align="right" valign="top"><a id="a965a4bc150e58af6504b60fbe0e06788" name="a965a4bc150e58af6504b60fbe0e06788"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>angularVelocity</b></td></tr>
-<tr class="separator:a965a4bc150e58af6504b60fbe0e06788"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a48a73340bc6d586ba0bca9917850c86f"><td class="memItemLeft" align="right" valign="top"><a id="a48a73340bc6d586ba0bca9917850c86f" name="a48a73340bc6d586ba0bca9917850c86f"></a>
-float?&#160;</td><td class="memItemRight" valign="bottom"><b>senderPing</b></td></tr>
-<tr class="separator:a48a73340bc6d586ba0bca9917850c86f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae0bfae34481270aa5bf465497626a1bc"><td class="memItemLeft" align="right" valign="top"><a id="ae0bfae34481270aa5bf465497626a1bc" name="ae0bfae34481270aa5bf465497626a1bc"></a>
+<a class="el" href="structPurrNet_1_1Packing_1_1CompressedVector3.html">CompressedVector3</a>&#160;</td><td class="memItemRight" valign="bottom"><b>position</b></td></tr>
+<tr class="memdesc:ae0bfae34481270aa5bf465497626a1bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Quantized position. Carries the value for the ParentLocal and World frames; default otherwise. <br /></td></tr>
+<tr class="separator:ae0bfae34481270aa5bf465497626a1bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaff529f7bfcf643f82af85880773312a"><td class="memItemLeft" align="right" valign="top"><a id="aaff529f7bfcf643f82af85880773312a" name="aaff529f7bfcf643f82af85880773312a"></a>
+double3&#160;</td><td class="memItemRight" valign="bottom"><b>absolutePosition</b></td></tr>
+<tr class="memdesc:aaff529f7bfcf643f82af85880773312a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Absolute peer-agnostic position. Carries the value for the Absolute frame; default otherwise. Delta-packed, so it costs nothing on the legacy path. <br /></td></tr>
+<tr class="separator:aaff529f7bfcf643f82af85880773312a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a663a74dabb08b151658e5a77ff27d625"><td class="memItemLeft" align="right" valign="top"><a id="a663a74dabb08b151658e5a77ff27d625" name="a663a74dabb08b151658e5a77ff27d625"></a>
+<a class="el" href="namespacePurrNet.html#aa716bfa44eaf7ea6eb67cdedcac071d4">RigidbodyPositionFrame</a>&#160;</td><td class="memItemRight" valign="bottom"><b>positionFrame</b></td></tr>
+<tr class="memdesc:a663a74dabb08b151658e5a77ff27d625"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frame the position fields were encoded in. Decode keys on this rather than on parent-reference resolution or receiver-side state. <br /></td></tr>
+<tr class="separator:a663a74dabb08b151658e5a77ff27d625"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5cc8bf680088a54be2c7b81ba1571324"><td class="memItemLeft" align="right" valign="top"><a id="a5cc8bf680088a54be2c7b81ba1571324" name="a5cc8bf680088a54be2c7b81ba1571324"></a>
+<a class="el" href="structPurrNet_1_1Packing_1_1PackedQuaternion.html">PackedQuaternion</a>&#160;</td><td class="memItemRight" valign="bottom"><b>rotation</b></td></tr>
+<tr class="separator:a5cc8bf680088a54be2c7b81ba1571324"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4beb87760bae48084cb0ffec36c22081"><td class="memItemLeft" align="right" valign="top"><a id="a4beb87760bae48084cb0ffec36c22081" name="a4beb87760bae48084cb0ffec36c22081"></a>
+<a class="el" href="structPurrNet_1_1Packing_1_1HalfVector3.html">HalfVector3</a>&#160;</td><td class="memItemRight" valign="bottom"><b>linearVelocity</b></td></tr>
+<tr class="separator:a4beb87760bae48084cb0ffec36c22081"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a62b25731e0c9e08f969430e3cac6e3ae"><td class="memItemLeft" align="right" valign="top"><a id="a62b25731e0c9e08f969430e3cac6e3ae" name="a62b25731e0c9e08f969430e3cac6e3ae"></a>
+<a class="el" href="structPurrNet_1_1Packing_1_1HalfVector3.html">HalfVector3</a>&#160;</td><td class="memItemRight" valign="bottom"><b>angularVelocity</b></td></tr>
+<tr class="separator:a62b25731e0c9e08f969430e3cac6e3ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8de8e81dc1674270d5cf50380b1dd7c"><td class="memItemLeft" align="right" valign="top"><a id="ab8de8e81dc1674270d5cf50380b1dd7c" name="ab8de8e81dc1674270d5cf50380b1dd7c"></a>
+<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td><td class="memItemRight" valign="bottom"><b>parent</b></td></tr>
+<tr class="separator:ab8de8e81dc1674270d5cf50380b1dd7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afc3c8db195065af4d0b22f193b2016a7"><td class="memItemLeft" align="right" valign="top"><a id="afc3c8db195065af4d0b22f193b2016a7" name="afc3c8db195065af4d0b22f193b2016a7"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isSoftParent</b></td></tr>
+<tr class="memdesc:afc3c8db195065af4d0b22f193b2016a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when parent is a soft-parent override the receiver should adopt as its own (vs the real Unity parent). Delta-packs away when unused. <br /></td></tr>
+<tr class="separator:afc3c8db195065af4d0b22f193b2016a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a21db6fd5520d3760efd3974db9f78d75"><td class="memItemLeft" align="right" valign="top"><a id="a21db6fd5520d3760efd3974db9f78d75" name="a21db6fd5520d3760efd3974db9f78d75"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>time</b></td></tr>
+<tr class="memdesc:a21db6fd5520d3760efd3974db9f78d75"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sender's unscaled clock at capture time. Receivers map it onto their own clock so snapshot spacing reflects the send cadence instead of arrival timing; relays forward it untouched. 0 means unstamped (legacy sender). <br /></td></tr>
+<tr class="separator:a21db6fd5520d3760efd3974db9f78d75"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbody.cs</li>
