@@ -1,3 +1,10 @@
+# [1.20.0-beta.270](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.269...v1.20.0-beta.270) (2026-07-20)
+
+
+### Bug Fixes
+
+* 6.3 compatibility ([c8ac86c](https://github.com/PurrNet/PurrNet/commit/c8ac86cf1a93065a95eec76c17cc9d9c41c33ba3))
+
 # [1.20.0-beta.269](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.268...v1.20.0-beta.269) (2026-07-20)
 
 
