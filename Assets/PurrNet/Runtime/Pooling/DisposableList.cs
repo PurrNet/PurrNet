@@ -19,7 +19,9 @@ namespace PurrNet.Pooling
         /// <summary>
         /// Direct access to the backing list. This hands out mutable access, so if the
         /// buffer is shared with a snapshot it is unshared first. Prefer the regular
-        /// list API for reads; it never forces an unshare.
+        /// list API for reads; it never forces an unshare. Do not cache the returned
+        /// reference across a Duplicate() or history save: writes through a cached
+        /// reference bypass copy-on-write and can corrupt shared snapshots.
         /// </summary>
         public List<T> list
         {
@@ -34,6 +36,11 @@ namespace PurrNet.Pooling
         }
 
         internal List<T> rawList => isDisposed ? null : _list;
+
+        internal int refCountForTests => _refs == null ? 0 : Volatile.Read(ref _refs.refs);
+
+        internal bool SharesHandleWith(in DisposableList<T> other)
+            => ReferenceEquals(_lease, other._lease) && _leaseVersion == other._leaseVersion;
 
         public DisposableList<T> Duplicate()
         {
@@ -84,6 +91,13 @@ namespace PurrNet.Pooling
                     ListPool<T>.Destroy(_list);
                 ListRefCounterPool.Return(_refs);
             }
+
+            // This handle takes the group's refcount unit with it, so any other struct
+            // alias of the same handle would be left pointing at a buffer it no longer
+            // holds a count for. Swapping the lease makes those aliases observably
+            // disposed instead of silently reading a buffer that can be pooled under them.
+            DisposableLeasePool.Return(_lease, _leaseVersion);
+            _lease = DisposableLeasePool.Rent(out _leaseVersion);
 
             _list = clone;
             _refs = ListRefCounterPool.Rent();

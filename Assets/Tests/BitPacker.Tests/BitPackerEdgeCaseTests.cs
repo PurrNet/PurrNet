@@ -4,6 +4,7 @@ using System.Reflection;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Packing;
+using PurrNet.Pooling;
 using PurrNet.Transports;
 
 /// <summary>
@@ -763,6 +764,66 @@ public class BitPackerEdgeCaseTests
         Assert.AreEqual(1, drops.Count);
         Assert.AreEqual(FragmentDropReason.BudgetExceeded, drops[0].reason);
         Assert.IsTrue(drops[0].hasFirstWord);
+    }
+
+    [Test]
+    public void MyersDeltaList_ChangedAfterUnchanged_DisposesSharedBaselineCopy()
+    {
+        var old = DisposableList<int>.Create();
+        old.Add(1);
+        old.Add(2);
+        old.Add(3);
+
+        var value = DisposableList<int>.Create();
+        value.Add(1);
+        value.Add(2);
+        value.Add(3);
+
+        _packer.ResetPositionAndMode(false);
+        MyersPackDisposableLists.WriteDisposableDeltaList(_packer, old, value);
+        _packer.ResetPositionAndMode(true);
+        MyersPackDisposableLists.ReadDisposableDeltaList(_packer, old, ref value);
+
+        Assert.AreSame(old.rawList, value.rawList);
+        Assert.AreEqual(2, old.refCountForTests);
+
+        var newValue = DisposableList<int>.Create();
+        newValue.Add(9);
+
+        _packer.ResetPositionAndMode(false);
+        MyersPackDisposableLists.WriteDisposableDeltaList(_packer, old, newValue);
+        _packer.ResetPositionAndMode(true);
+        MyersPackDisposableLists.ReadDisposableDeltaList(_packer, old, ref value);
+
+        Assert.AreEqual(1, old.refCountForTests);
+        Assert.AreEqual(1, value.Count);
+        Assert.AreEqual(9, value[0]);
+
+        old.Dispose();
+        value.Dispose();
+        newValue.Dispose();
+    }
+
+    [Test]
+    public void DisposableList_MutatingAliasUnderShare_InvalidatesOtherAliases()
+    {
+        var original = DisposableList<int>.Create();
+        original.Add(1);
+        original.Add(2);
+
+        var snapshot = original.Duplicate();
+        var alias = original;
+
+        original.Add(3);
+
+        Assert.IsTrue(alias.isDisposed);
+        Assert.Throws<ObjectDisposedException>(() => alias.Add(4));
+        Assert.AreEqual(3, original.Count);
+        Assert.AreEqual(2, snapshot.Count);
+        Assert.AreEqual(1, snapshot.refCountForTests);
+
+        original.Dispose();
+        snapshot.Dispose();
     }
 
     private static void Capture(ByteData data, List<byte[]> target)
