@@ -263,6 +263,34 @@ namespace PurrNet.Modules
             return !anyValid;
         }
 
+        public bool MayOverlap(double preciseTick, Vector2 origin, float inflation)
+        {
+            if (!_hasRadius)
+                return true;
+
+            float r = _radius + inflation;
+            uint tick = (uint)preciseTick;
+            uint chunkA = tick / RollbackBroadphase.ChunkTicks;
+            uint chunkB = (tick + 1) / RollbackBroadphase.ChunkTicks;
+            bool anyValid = false;
+
+            if (TryGetChunk(chunkA, out var min, out var max))
+            {
+                anyValid = true;
+                if (PointAabb(origin, min, max, r))
+                    return true;
+            }
+
+            if (chunkB != chunkA && TryGetChunk(chunkB, out min, out max))
+            {
+                anyValid = true;
+                if (PointAabb(origin, min, max, r))
+                    return true;
+            }
+
+            return !anyValid;
+        }
+
         static bool RayAabb(Ray2D ray, float maxDistance, Vector2 min, Vector2 max, float r)
         {
             var o = ray.origin;
@@ -272,6 +300,13 @@ namespace PurrNet.Modules
 
             return RollbackBroadphase.Slab(o.x, d.x, min.x - r, max.x + r, ref tMin, ref tMax) &&
                    RollbackBroadphase.Slab(o.y, d.y, min.y - r, max.y + r, ref tMin, ref tMax);
+        }
+
+        static bool PointAabb(Vector2 point, Vector2 min, Vector2 max, float r)
+        {
+            float dx = Mathf.Max(Mathf.Max(min.x - point.x, point.x - max.x), 0f);
+            float dy = Mathf.Max(Mathf.Max(min.y - point.y, point.y - max.y), 0f);
+            return dx * dx + dy * dy <= r * r;
         }
     }
 #endif
