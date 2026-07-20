@@ -17,7 +17,7 @@ namespace PurrNet.Editor
         private static void TakeSnapShotOfHierarchy(HashSet<GameObject> set)
         {
             set.Clear();
-            var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
             for (var i = 0; i < allObjects.Length; i++)
             {
                 set.Add(allObjects[i]);

@@ -40,8 +40,10 @@ namespace PurrNet.Editor
 
         private void OnGUI()
         {
-            wrapStyle = new GUIStyle(GUI.skin.label);
-            wrapStyle.wordWrap = true;
+            wrapStyle = new GUIStyle(GUI.skin.label)
+            {
+                wordWrap = true
+            };
             if (_addons.Count <= 0 && !_fetchedAddons)
             {
                 HandleGettingAddons();
@@ -62,9 +64,8 @@ namespace PurrNet.Editor
             if (anyError) return;
             if (anyPending) { HandleWaiting("Loading images..."); return; }
 
-            List<string> availableTabs = new List<string>();
+            var availableTabs = new List<string> { "All" };
 
-            availableTabs.Add("All");
             if (_exampleAddons.Count > 0) availableTabs.Add("Examples");
             if (_transportAddons.Count > 0) availableTabs.Add("Transports");
             if (_toolAddons.Count > 0) availableTabs.Add("Tools");
@@ -100,9 +101,12 @@ namespace PurrNet.Editor
         private void LoadDefaultIcon()
         {
             string scriptPath = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this));
-            string directory = System.IO.Path.GetDirectoryName(scriptPath);
-            string relativePath = System.IO.Path.Combine(directory, "Editor Default Resources", "Pebbles.png");
-            defaultIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(relativePath);
+            string directory = Path.GetDirectoryName(scriptPath);
+            if (directory != null)
+            {
+                string relativePath = Path.Combine(directory, "Editor Default Resources", "Pebbles.png");
+                defaultIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(relativePath);
+            }
         }
 
         private void HandleGettingAddons()
@@ -232,8 +236,13 @@ namespace PurrNet.Editor
 
             if (addon.asManifest)
             {
-                GUIStyle redButtonStyle = new GUIStyle(GUI.skin.button);
-                redButtonStyle.normal.textColor = Color.red;
+                var redButtonStyle = new GUIStyle(GUI.skin.button)
+                {
+                    normal =
+                    {
+                        textColor = Color.red
+                    }
+                };
                 if (GUILayout.Button("Remove", redButtonStyle))
                     RemoveFromManifest(addon);
             }
@@ -266,32 +275,38 @@ namespace PurrNet.Editor
             GUILayout.EndVertical();
         }
 
-        private void HandleError(string error)
+        private static void HandleError(string error)
         {
             EditorGUILayout.HelpBox("Failed to fetch addons: " + error, MessageType.Error);
         }
 
-        private bool ExistsInProject(Addon addon)
+        private static bool ExistsInProject(Addon addon)
         {
-            string manifestPath = "Packages/manifest.json";
+            const string manifestPath = "Packages/manifest.json";
             var manifest = JObject.Parse(File.ReadAllText(manifestPath));
-            var dependencies = manifest["dependencies"] as JObject;
-            foreach (var prop in dependencies.Properties())
-                if (prop.Value.Type == JTokenType.String && prop.Value.ToString() == addon.projectUrl)
-                    return true;
+            if (manifest["dependencies"] is JObject dependencies)
+            {
+                foreach (var prop in dependencies.Properties())
+                    if (prop.Value.Type == JTokenType.String && prop.Value.ToString() == addon.projectUrl)
+                        return true;
+            }
+
             return false;
         }
 
-        private void RemoveFromManifest(Addon addon)
+        private static void RemoveFromManifest(Addon addon)
         {
-            string manifestPath = "Packages/manifest.json";
+            const string manifestPath = "Packages/manifest.json";
             var manifest = JObject.Parse(File.ReadAllText(manifestPath));
             var dependencies = manifest["dependencies"] as JObject;
 
             var toRemove = new List<JProperty>();
-            foreach (var prop in dependencies.Properties())
-                if (prop.Value.Type == JTokenType.String && prop.Value.ToString() == addon.projectUrl)
-                    toRemove.Add(prop);
+            if (dependencies != null)
+            {
+                foreach (var prop in dependencies.Properties())
+                    if (prop.Value.Type == JTokenType.String && prop.Value.ToString() == addon.projectUrl)
+                        toRemove.Add(prop);
+            }
 
             if (toRemove.Count > 0)
             {
@@ -351,6 +366,7 @@ namespace PurrNet.Editor
             public string projectUrl;
             public string category;
             public string imageUrl;
+            [System.NonSerialized]
             public UnityWebRequest imageRequest;
             public Texture2D icon;
         }
