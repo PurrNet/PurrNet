@@ -1,3 +1,10 @@
+# [1.20.0-beta.269](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.268...v1.20.0-beta.269) (2026-07-20)
+
+
+### Bug Fixes
+
+* suppress TargetRpc first parameter not being used warning ([1354374](https://github.com/PurrNet/PurrNet/commit/1354374ff228e00ca4632ec7c6576c44059b3d6a))
+
 # [1.20.0-beta.268](https://github.com/PurrNet/PurrNet/compare/v1.20.0-beta.267...v1.20.0-beta.268) (2026-07-20)
 
 
