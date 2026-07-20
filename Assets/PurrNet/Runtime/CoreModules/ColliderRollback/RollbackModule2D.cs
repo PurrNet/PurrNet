@@ -107,17 +107,19 @@ namespace PurrNet.Modules
                     break;
 
                 var col = _colliders2D[i];
-                if (!col || !PassesFilters(col, contactFilter))
+                if (!col)
+                    continue;
+
+                if (!_bounds2D[i].MayHitRay(preciseTick, ray, maxDistance, 0f))
+                    continue;
+
+                if (!PassesFilters(col, contactFilter))
                     continue;
 
                 if (!Sample(_histories2D[i], preciseTick, out var state) || !state.enabled)
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldHit2D(ray, maxDistance, col, trs, state))
-                    continue;
-
                 var invRotation = Quaternion.Euler(0, 0, -state.rotation);
                 var localOrigin = invRotation * (Vector3)(ray.origin - state.position);
                 var localDir = invRotation * (Vector3)ray.direction;
@@ -135,21 +137,6 @@ namespace PurrNet.Modules
             }
 
             return hitCount;
-        }
-
-        static bool CouldHit2D(Ray2D ray, float maxDistance, Collider2D col, Transform trs, Collider2DState state)
-        {
-            var bounds = col.bounds;
-            float radius = ((Vector2)bounds.extents).magnitude +
-                           ((Vector2)bounds.center - (Vector2)trs.position).magnitude;
-            var toCenter = state.position - ray.origin;
-            float along = Vector2.Dot(toCenter, ray.direction);
-
-            if (along > maxDistance + radius)
-                return false;
-
-            float clamped = Mathf.Clamp(along, 0f, maxDistance);
-            return (toCenter - ray.direction * clamped).sqrMagnitude <= radius * radius;
         }
 
         static bool PassesFilters(Collider2D col, ContactFilter2D filter)

@@ -647,6 +647,7 @@ Transform:
   - {fileID: 491480055}
   - {fileID: 1869161004}
   - {fileID: 2027560122}
+  - {fileID: 2120000002}
   - {fileID: 108535982}
   - {fileID: 1438235316}
   - {fileID: 1999225764}
@@ -2936,6 +2937,7 @@ Transform:
   m_Children:
   - {fileID: 495412351}
   - {fileID: 7157361}
+  - {fileID: 2130000002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2090000000
@@ -3132,6 +3134,112 @@ MonoBehaviour:
   _reconnectRetrySeconds: 2
   _rejoinTimeoutSeconds: 30
   _barrierTimeoutSeconds: 90
+--- !u!1 &2120000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2120000002}
+  - component: {fileID: 2120000003}
+  - component: {fileID: 2120000004}
+  m_Layer: 0
+  m_Name: ColliderRollback
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2120000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 277924963}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2120000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4ed259fc8cb057618d2ebf67e61a6e0, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ColliderRollbackScenario
+  _phaseTimeoutSeconds: 30
+--- !u!114 &2120000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 432b593f4048bf98e2055dc91e04e993, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ColliderRollback2DScenario
+  _phaseTimeoutSeconds: 30
+--- !u!1 &2130000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2130000002}
+  - component: {fileID: 2130000003}
+  m_Layer: 0
+  m_Name: ColliderRollbackBench
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2130000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2071908760}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2130000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa261427a5e576aae43647b72764699a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::ColliderRollbackBenchmarkScenario
+  _pingsPerSecond: 10
+  _colliderCount: 256
+  _queriesPerFrame: 64
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

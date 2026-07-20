@@ -354,27 +354,6 @@ namespace PurrNet.Modules
             return state.enabled;
         }
 
-        static bool CouldHit(Ray ray, float maxDistance, float inflation, Collider col, Transform trs, Collider3DState state)
-        {
-            var bounds = col.bounds;
-            float radius = bounds.extents.magnitude + (bounds.center - trs.position).magnitude + inflation;
-            var toCenter = state.position - ray.origin;
-            float along = Vector3.Dot(toCenter, ray.direction);
-
-            if (along > maxDistance + radius)
-                return false;
-
-            float clamped = Mathf.Clamp(along, 0f, maxDistance);
-            return (toCenter - ray.direction * clamped).sqrMagnitude <= radius * radius;
-        }
-
-        static bool CouldOverlap(Vector3 origin, float inflation, Collider col, Transform trs, Collider3DState state)
-        {
-            var bounds = col.bounds;
-            float radius = bounds.extents.magnitude + (bounds.center - trs.position).magnitude + inflation;
-            return (state.position - origin).sqrMagnitude <= radius * radius;
-        }
-
         private int DoManualSphereOverlaps(Vector3 origin, float radius, Collider[] hits, int layerMask, int colliderCount, int hitCount, double preciseTick, QueryTriggerInteraction queryTriggers)
         {
             if (queryTriggers == QueryTriggerInteraction.UseGlobal)
@@ -392,14 +371,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayOverlap(preciseTick, origin, radius))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldOverlap(origin, radius, col, trs, state))
-                    continue;
-
                 TransformPos(origin, state, trs, out var transformedOrigin);
 
                 if (col.OverlapSphere(transformedOrigin, radius))
@@ -431,14 +409,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayOverlap(preciseTick, origin, inflation))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldOverlap(origin, inflation, col, trs, state))
-                    continue;
-
                 TransformPos(origin, state, trs, out var transformedOrigin);
                 var transformedOrientation = trs.rotation * Quaternion.Inverse(state.rotation) * orientation;
 
@@ -472,14 +449,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayOverlap(preciseTick, mid, inflation))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldOverlap(mid, inflation, col, trs, state))
-                    continue;
-
                 TransformPos(point1, state, trs, out var p1);
                 TransformPos(point2, state, trs, out var p2);
 
@@ -509,14 +485,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayHitRay(preciseTick, ray, maxDistance, radius))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldHit(ray, maxDistance, radius, col, trs, state))
-                    continue;
-
                 TransformRay(ray, state, trs, out var transformedRay);
 
                 if (col.SphereCast(transformedRay, radius, out var hit, maxDistance))
@@ -548,14 +523,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayHitRay(preciseTick, ray, maxDistance, inflation))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldHit(ray, maxDistance, inflation, col, trs, state))
-                    continue;
-
                 TransformRay(ray, state, trs, out var transformedRay);
                 var transformedOrientation = trs.rotation * Quaternion.Inverse(state.rotation) * orientation;
 
@@ -589,14 +563,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayHitRay(preciseTick, checkRay, maxDistance, inflation))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldHit(checkRay, maxDistance, inflation, col, trs, state))
-                    continue;
-
                 TransformCapsule(point1, point2, direction, state, trs, out var p1, out var p2, out var dir);
 
                 if (col.CapsuleCast(p1, p2, radius, dir, out var hit, maxDistance))
@@ -627,14 +600,13 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
+                if (!_bounds3D[i].MayHitRay(preciseTick, ray, maxDistance, 0f))
+                    continue;
+
                 if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-
-                if (!CouldHit(ray, maxDistance, 0f, col, trs, state))
-                    continue;
-
                 TransformRay(ray, state, trs, out var transformedRay);
 
                 if (col.Raycast(transformedRay, out var hit, maxDistance))

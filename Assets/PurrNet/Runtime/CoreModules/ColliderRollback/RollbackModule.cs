@@ -10,10 +10,13 @@ namespace PurrNet.Modules
         readonly TickManager _tickManager;
         readonly HashSet<Component> _trackedColliders = new();
 
+        ulong _lastWrittenTick = ulong.MaxValue;
+
 #if UNITY_PHYSICS_3D
         PhysicsScene _physicsScene;
         private readonly List<Collider> _colliders3D = new();
         private readonly List<SimpleHistory<Collider3DState>> _histories3D = new();
+        private readonly List<TrackedBounds3D> _bounds3D = new();
         readonly Dictionary<Collider, SimpleHistory<Collider3DState>> _collider3DStates = new();
 #endif
 
@@ -21,6 +24,7 @@ namespace PurrNet.Modules
         PhysicsScene2D _physicsScene2D;
         private readonly List<Collider2D> _colliders2D = new();
         private readonly List<SimpleHistory<Collider2DState>> _histories2D = new();
+        private readonly List<TrackedBounds2D> _bounds2D = new();
         readonly Dictionary<Collider2D, SimpleHistory<Collider2DState>> _collider2DStates = new();
 #endif
 
@@ -136,6 +140,12 @@ namespace PurrNet.Modules
         {
             var tick = _tickManager.localTick;
 
+            // on host the server and client factories share the same module instance
+            if (tick == _lastWrittenTick)
+                return;
+
+            _lastWrittenTick = tick;
+
 #if UNITY_PHYSICS_3D
             for (var i = 0; i < _colliders3D.Count; i++)
             {
@@ -146,11 +156,14 @@ namespace PurrNet.Modules
                     _collider3DStates.Remove(col);
                     _trackedColliders.Remove(col);
                     _colliders3D.RemoveAt(i);
-                    _histories3D.RemoveAt(i--);
+                    _histories3D.RemoveAt(i);
+                    _bounds3D.RemoveAt(i--);
                     continue;
                 }
 
-                _histories3D[i].Write(tick, new Collider3DState(col));
+                var state = new Collider3DState(col);
+                _histories3D[i].Write(tick, state);
+                _bounds3D[i].Record(tick, col, state);
             }
 #endif
 
@@ -164,11 +177,14 @@ namespace PurrNet.Modules
                     _collider2DStates.Remove(col);
                     _trackedColliders.Remove(col);
                     _colliders2D.RemoveAt(i);
-                    _histories2D.RemoveAt(i--);
+                    _histories2D.RemoveAt(i);
+                    _bounds2D.RemoveAt(i--);
                     continue;
                 }
 
-                _histories2D[i].Write(tick, new Collider2DState(col));
+                var state = new Collider2DState(col);
+                _histories2D[i].Write(tick, state);
+                _bounds2D[i].Record(tick, col, state);
             }
 #endif
         }
@@ -208,6 +224,7 @@ namespace PurrNet.Modules
             _collider3DStates.Add(collider, history);
             _colliders3D.Add(collider);
             _histories3D.Add(history);
+            _bounds3D.Add(new TrackedBounds3D(maxEntries));
         }
 
         public void Unregister(Collider collider)
@@ -225,6 +242,7 @@ namespace PurrNet.Modules
             {
                 _colliders3D.RemoveAt(index);
                 _histories3D.RemoveAt(index);
+                _bounds3D.RemoveAt(index);
             }
         }
 #endif
@@ -243,6 +261,7 @@ namespace PurrNet.Modules
             _collider2DStates.Add(collider, history);
             _colliders2D.Add(collider);
             _histories2D.Add(history);
+            _bounds2D.Add(new TrackedBounds2D(maxEntries));
         }
 
         public void Unregister(Collider2D collider)
@@ -260,6 +279,7 @@ namespace PurrNet.Modules
             {
                 _colliders2D.RemoveAt(index);
                 _histories2D.RemoveAt(index);
+                _bounds2D.RemoveAt(index);
             }
         }
 #endif
