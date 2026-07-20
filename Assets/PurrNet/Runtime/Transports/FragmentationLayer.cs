@@ -16,9 +16,50 @@ namespace PurrNet.Transports
     ///                 [2 bytes: fragmentStride] [1 byte: fragmentIndex]
     ///                 [1 byte: totalFragments] [payload]
     /// </summary>
+    public enum FragmentDropReason : byte
+    {
+        /// <summary>The message did not complete within the reassembly timeout.</summary>
+        Expired = 0,
+
+        /// <summary>The message was evicted to make room for a newer one under global memory pressure.</summary>
+        Evicted = 1,
+
+        /// <summary>The sender exceeded its reassembly budget; the message was rejected on arrival.</summary>
+        BudgetExceeded = 2,
+
+        /// <summary>A newer message on the same sequenced stream superseded this incomplete one.</summary>
+        SequencedStale = 3
+    }
+
+    public readonly struct FragmentDropInfo
+    {
+        public readonly int senderId;
+        public readonly FragmentDropReason reason;
+        public readonly int totalLength;
+
+        /// <summary>True when the first fragment was received and <see cref="firstWord"/> holds the message's leading 4 bytes.</summary>
+        public readonly bool hasFirstWord;
+        public readonly uint firstWord;
+
+        public FragmentDropInfo(int senderId, FragmentDropReason reason, int totalLength, bool hasFirstWord, uint firstWord)
+        {
+            this.senderId = senderId;
+            this.reason = reason;
+            this.totalLength = totalLength;
+            this.hasFirstWord = hasFirstWord;
+            this.firstWord = firstWord;
+        }
+    }
+
     public sealed class FragmentationLayer : IDisposable
     {
         public delegate void FragmentCallback<TState>(ByteData fragment, TState state);
+
+        /// <summary>
+        /// Raised when a fragmented message is discarded without completing. Not raised for
+        /// sender removal or <see cref="Reset"/>.
+        /// </summary>
+        public Action<FragmentDropInfo> onMessageDropped;
 
         /// <summary>Header overhead for unfragmented messages.</summary>
         public const int UNFRAGMENTED_OVERHEAD = 1;
@@ -48,6 +89,9 @@ namespace PurrNet.Transports
         int _pendingBytes;
         int _nextCleanupAt;
         bool _cleanupScheduled;
+        bool _buffersTouched;
+        bool _hasLastRejectedKey;
+        ReassemblyKey _lastRejectedKey;
 
         readonly Dictionary<ReassemblyKey, ReassemblyEntry> _pending = new(MAX_PENDING_MESSAGES);
         readonly Dictionary<int, SenderBudget> _senderBudgets = new(MAX_PENDING_MESSAGES);
@@ -158,6 +202,8 @@ namespace PurrNet.Transports
                         return true;
                 }
             }
+
+            public bool receivedFirstFragment => (_received0 & 1UL) != 0;
         }
 
         internal int pendingCount => _pending.Count;
@@ -235,6 +281,8 @@ namespace PurrNet.Transports
             if (reservedPrefix < 0)
                 throw new ArgumentOutOfRangeException(nameof(reservedPrefix));
 
+            _buffersTouched = true;
+
             int singlePacketOverhead = sequenced ? SEQUENCED_OVERHEAD : UNFRAGMENTED_OVERHEAD;
             if (data.length + reservedPrefix + singlePacketOverhead <= mtu)
             {
@@ -295,8 +343,9 @@ namespace PurrNet.Transports
 
         /// <summary>
         /// Processes a packet for a sender and logical stream. Sequenced streams discard older
-        /// incomplete messages as soon as any newer message is observed. Reassembled
-        /// data remains valid until the next completed reassembly, <see cref="Reset"/>, or disposal.
+        /// incomplete messages as soon as any newer message is observed. Reassembled data remains
+        /// valid until the next completed reassembly, the next idle buffer release in
+        /// <see cref="CleanupStaleIfDue"/>, <see cref="Reset"/>, or disposal.
         /// </summary>
         public bool Receive(int senderId, byte streamId, bool sequenced, ByteData data, out ByteData assembled)
         {
@@ -351,7 +400,10 @@ namespace PurrNet.Transports
             if (!hasEntry)
             {
                 if (!TryReserve(senderId, totalLength))
+                {
+                    ReportRejected(key, totalLength, fragmentIndex, payloadLength, data, header);
                     return false;
+                }
 
                 entry = new ReassemblyEntry
                 {
@@ -386,6 +438,7 @@ namespace PurrNet.Transports
 
             _completedBuffer.Dispose();
             _completedBuffer = entry.buffer;
+            _buffersTouched = true;
             entry.buffer = default;
             _pending.Remove(key);
             Release(senderId, totalLength);
@@ -394,10 +447,13 @@ namespace PurrNet.Transports
             return true;
         }
 
-        /// <summary>Runs stale cleanup at most once per interval.</summary>
+        /// <summary>
+        /// Runs stale cleanup at most once per interval and releases the internal send and
+        /// reassembly buffers once they have been idle for a full interval.
+        /// </summary>
         public void CleanupStaleIfDue(int maxAgeMs, int intervalMs)
         {
-            if (_pending.Count == 0)
+            if (_pending.Count == 0 && _sendBuffer.isDisposed && _completedBuffer.isDisposed)
                 return;
 
             int now = Environment.TickCount;
@@ -406,7 +462,21 @@ namespace PurrNet.Transports
 
             _nextCleanupAt = unchecked(now + Math.Max(1, intervalMs));
             _cleanupScheduled = true;
-            CleanupStale(maxAgeMs, now);
+
+            if (_pending.Count > 0)
+                CleanupStale(maxAgeMs, now);
+
+            if (_buffersTouched)
+            {
+                _buffersTouched = false;
+            }
+            else
+            {
+                _sendBuffer.Dispose();
+                _sendBuffer = default;
+                _completedBuffer.Dispose();
+                _completedBuffer = default;
+            }
         }
 
         /// <summary>Removes incomplete messages at least <paramref name="maxAgeMs"/> old.</summary>
@@ -424,7 +494,7 @@ namespace PurrNet.Transports
                     _removeBuffer.Add(pair.Key);
             }
 
-            RemoveBufferedEntries();
+            RemoveBufferedEntries(null);
 
             _streamRemoveBuffer.Clear();
             foreach (var pair in _latestSequencedMessages)
@@ -453,6 +523,9 @@ namespace PurrNet.Transports
             _pendingBytes = 0;
             _nextCleanupAt = 0;
             _cleanupScheduled = false;
+            _buffersTouched = false;
+            _hasLastRejectedKey = false;
+            _lastRejectedKey = default;
 
             _completedBuffer.Dispose();
             _completedBuffer = default;
@@ -518,24 +591,93 @@ namespace PurrNet.Transports
                     _removeBuffer.Add(pair.Key);
             }
 
-            RemoveBufferedEntries();
+            RemoveBufferedEntries(FragmentDropReason.SequencedStale);
         }
 
         bool TryReserve(int senderId, int byteCount)
         {
-            if (_pending.Count >= MAX_PENDING_MESSAGES || byteCount > MAX_PENDING_BYTES - _pendingBytes)
-                return false;
-
             _senderBudgets.TryGetValue(senderId, out var budget);
             if (budget.messageCount >= MAX_PENDING_MESSAGES_PER_SENDER ||
                 byteCount > MAX_PENDING_BYTES_PER_SENDER - budget.byteCount)
                 return false;
 
+            // Global pressure evicts the oldest pending message instead of rejecting the new
+            // one, so senders within their own budget can't be starved by everyone else.
+            while (_pending.Count >= MAX_PENDING_MESSAGES || byteCount > MAX_PENDING_BYTES - _pendingBytes)
+            {
+                if (!EvictOldest())
+                    return false;
+            }
+
+            _senderBudgets.TryGetValue(senderId, out budget);
             budget.messageCount++;
             budget.byteCount += byteCount;
             _senderBudgets[senderId] = budget;
             _pendingBytes += byteCount;
             return true;
+        }
+
+        bool EvictOldest()
+        {
+            if (_pending.Count == 0)
+                return false;
+
+            int now = Environment.TickCount;
+            ReassemblyKey oldestKey = default;
+            int oldestAge = int.MinValue;
+            bool found = false;
+
+            foreach (var pair in _pending)
+            {
+                int age = unchecked(now - pair.Value.createdAtTick);
+                if (!found || age > oldestAge)
+                {
+                    oldestKey = pair.Key;
+                    oldestAge = age;
+                    found = true;
+                }
+            }
+
+            if (!found || !_pending.TryGetValue(oldestKey, out var entry))
+                return false;
+
+            ReportDrop(oldestKey.senderId, FragmentDropReason.Evicted, in entry);
+            entry.buffer.Dispose();
+            _pending.Remove(oldestKey);
+            Release(oldestKey.senderId, entry.totalLength);
+            return true;
+        }
+
+        void ReportDrop(int senderId, FragmentDropReason reason, in ReassemblyEntry entry)
+        {
+            var callback = onMessageDropped;
+            if (callback == null)
+                return;
+
+            bool hasFirstWord = entry.receivedFirstFragment && entry.totalLength >= sizeof(uint) &&
+                                entry.fragmentStride >= sizeof(uint) && !entry.buffer.isDisposed;
+            uint firstWord = hasFirstWord ? ReadUInt32(entry.buffer.array, 0) : 0u;
+            callback(new FragmentDropInfo(senderId, reason, entry.totalLength, hasFirstWord, firstWord));
+        }
+
+        void ReportRejected(ReassemblyKey key, int totalLength, byte fragmentIndex, int payloadLength,
+            ByteData data, int header)
+        {
+            // Every fragment of a rejected message retries the reservation; report the message once.
+            if (_hasLastRejectedKey && _lastRejectedKey.Equals(key))
+                return;
+
+            _hasLastRejectedKey = true;
+            _lastRejectedKey = key;
+
+            var callback = onMessageDropped;
+            if (callback == null)
+                return;
+
+            bool hasFirstWord = fragmentIndex == 0 && payloadLength >= sizeof(uint);
+            uint firstWord = hasFirstWord ? ReadUInt32(data.data, header + FRAGMENT_OVERHEAD) : 0u;
+            callback(new FragmentDropInfo(key.senderId, FragmentDropReason.BudgetExceeded, totalLength,
+                hasFirstWord, firstWord));
         }
 
         void Release(int senderId, int byteCount)
@@ -562,16 +704,19 @@ namespace PurrNet.Transports
                     _removeBuffer.Add(pair.Key);
             }
 
-            RemoveBufferedEntries();
+            RemoveBufferedEntries(FragmentDropReason.Expired);
         }
 
-        void RemoveBufferedEntries()
+        void RemoveBufferedEntries(FragmentDropReason? reason)
         {
             for (int i = 0; i < _removeBuffer.Count; i++)
             {
                 var key = _removeBuffer[i];
                 if (!_pending.TryGetValue(key, out var entry))
                     continue;
+
+                if (reason.HasValue)
+                    ReportDrop(key.senderId, reason.Value, in entry);
 
                 entry.buffer.Dispose();
                 _pending.Remove(key);

@@ -659,6 +659,112 @@ public class BitPackerEdgeCaseTests
         Assert.AreEqual(0, calls);
     }
 
+    [Test]
+    public void FragmentationLayer_GlobalPressure_EvictsOldestInsteadOfRejecting()
+    {
+        using var receiver = new FragmentationLayer();
+        var drops = new List<FragmentDropInfo>();
+        receiver.onMessageDropped = info => drops.Add(info);
+
+        var payload = new byte[64];
+        for (int senderId = 0; senderId < 8; senderId++)
+        {
+            using var sender = new FragmentationLayer();
+            for (int message = 0; message < 16; message++)
+            {
+                var fragments = new List<byte[]>();
+                sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, fragments));
+                Assert.Greater(fragments.Count, 1);
+                Assert.IsFalse(receiver.Receive(senderId, 0, false,
+                    new ByteData(fragments[0], 0, fragments[0].Length), out _));
+            }
+        }
+
+        Assert.AreEqual(128, receiver.pendingCount);
+        Assert.AreEqual(0, drops.Count);
+
+        using var freshSender = new FragmentationLayer();
+        var freshFragments = new List<byte[]>();
+        freshSender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, freshFragments));
+
+        ByteData assembled = default;
+        for (int i = 0; i < freshFragments.Count; i++)
+        {
+            Assert.AreEqual(i == freshFragments.Count - 1, receiver.Receive(99, 0, false,
+                new ByteData(freshFragments[i], 0, freshFragments[i].Length), out assembled));
+        }
+
+        AssertByteDataEquals(new ByteData(payload, 0, payload.Length), assembled);
+        Assert.AreEqual(1, drops.Count);
+        Assert.AreEqual(FragmentDropReason.Evicted, drops[0].reason);
+        Assert.AreEqual(127, receiver.pendingCount);
+    }
+
+    [Test]
+    public void FragmentationLayer_Expiry_ReportsDropWithFirstWord()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var drops = new List<FragmentDropInfo>();
+        receiver.onMessageDropped = info => drops.Add(info);
+
+        var payload = new byte[64];
+        payload[0] = 0x78;
+        payload[1] = 0x56;
+        payload[2] = 0x34;
+        payload[3] = 0x12;
+        var fragments = new List<byte[]>();
+        sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, fragments));
+        Assert.Greater(fragments.Count, 1);
+
+        Assert.IsFalse(receiver.Receive(7, 0, false, new ByteData(fragments[0], 0, fragments[0].Length), out _));
+        receiver.CleanupStale(0);
+
+        Assert.AreEqual(0, receiver.pendingCount);
+        Assert.AreEqual(1, drops.Count);
+        Assert.AreEqual(FragmentDropReason.Expired, drops[0].reason);
+        Assert.AreEqual(7, drops[0].senderId);
+        Assert.AreEqual(payload.Length, drops[0].totalLength);
+        Assert.IsTrue(drops[0].hasFirstWord);
+        Assert.AreEqual(0x12345678u, drops[0].firstWord);
+    }
+
+    [Test]
+    public void FragmentationLayer_PerSenderBudget_RejectionReportedOncePerMessage()
+    {
+        using var sender = new FragmentationLayer();
+        using var receiver = new FragmentationLayer();
+        var drops = new List<FragmentDropInfo>();
+        receiver.onMessageDropped = info => drops.Add(info);
+
+        var payload = new byte[64];
+        for (int message = 0; message < 16; message++)
+        {
+            var fragments = new List<byte[]>();
+            sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, fragments));
+            Assert.IsFalse(receiver.Receive(3, 0, false,
+                new ByteData(fragments[0], 0, fragments[0].Length), out _));
+        }
+
+        Assert.AreEqual(16, receiver.pendingCount);
+        Assert.AreEqual(0, drops.Count);
+
+        var rejectedFragments = new List<byte[]>();
+        sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, rejectedFragments));
+        Assert.Greater(rejectedFragments.Count, 1);
+
+        for (int i = 0; i < rejectedFragments.Count; i++)
+        {
+            Assert.IsFalse(receiver.Receive(3, 0, false,
+                new ByteData(rejectedFragments[i], 0, rejectedFragments[i].Length), out _));
+        }
+
+        Assert.AreEqual(16, receiver.pendingCount);
+        Assert.AreEqual(1, drops.Count);
+        Assert.AreEqual(FragmentDropReason.BudgetExceeded, drops[0].reason);
+        Assert.IsTrue(drops[0].hasFirstWord);
+    }
+
     private static void Capture(ByteData data, List<byte[]> target)
     {
         var copy = new byte[data.length];
