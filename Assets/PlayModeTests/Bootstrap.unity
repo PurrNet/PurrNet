@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: 54853820}
   - component: {fileID: 54853819}
   - component: {fileID: 54853822}
+  - component: {fileID: 54853823}
   m_Layer: 0
   m_Name: IdentityRPC
   m_TagString: Untagged
@@ -350,6 +351,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
+--- !u!114 &54853823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54853817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc1ed29922c4be6983d77599d9c3d60, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::RpcMtuBehaviourScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _deliveryTimeoutSeconds: 20
+  _doneTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+  _dropGraceSeconds: 2
 --- !u!1 &108535981
 GameObject:
   m_ObjectHideFlags: 0
@@ -1812,6 +1832,8 @@ GameObject:
   - component: {fileID: 1680343663}
   - component: {fileID: 277924965}
   - component: {fileID: 1680343680}
+  - component: {fileID: 1680343681}
+  - component: {fileID: 1680343682}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -2272,6 +2294,46 @@ MonoBehaviour:
   _syncTimeoutSeconds: 30
   _despawnTimeoutSeconds: 30
   _barrierTimeoutSeconds: 60
+--- !u!114 &1680343681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34933779534a4addb91e8cf495bca082, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkBonesOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _syncTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+  _driveSeconds: 3
+  _serverFpsWhileReceiving: 10
+  _sendRatePerSecond: 30
+--- !u!114 &1680343682
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8aa281ce2104ad2af7f477d4fe7b77e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkBonesMismatchScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _errorTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+  _driveSeconds: 1.5
 --- !u!114 &1680343645
 MonoBehaviour:
   m_ObjectHideFlags: 0

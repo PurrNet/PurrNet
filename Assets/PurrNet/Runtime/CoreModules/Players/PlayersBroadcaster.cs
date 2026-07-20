@@ -126,11 +126,12 @@ namespace PurrNet
             }
         }
 
-        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered)
+        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             if (player == PlayerID.Server)
             {
-                SendToServer(data, method);
+                SendToServer(data, method, mtuOverride);
                 return;
             }
 
@@ -138,10 +139,11 @@ namespace PurrNet
                 return;
 
             if (_playersManager.TryGetConnection(player, out var conn))
-                _broadcastModule.Send(conn, data, method);
+                _broadcastModule.Send(conn, data, method, mtuOverride);
         }
 
-        public void Send<T>(IEnumerable<PlayerID> players, T data, Channel method = Channel.ReliableOrdered)
+        public void Send<T>(IEnumerable<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             _connections.Clear();
 
@@ -154,10 +156,11 @@ namespace PurrNet
                     _connections.Add(conn);
             }
 
-            _broadcastModule.Send(_connections, data, method);
+            _broadcastModule.Send(_connections, data, method, mtuOverride);
         }
 
-        public void Send<T>(IReadOnlyList<PlayerID> players, T data, Channel method = Channel.ReliableOrdered)
+        public void Send<T>(IReadOnlyList<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             _connections.Clear();
 
@@ -171,10 +174,11 @@ namespace PurrNet
                     _connections.Add(conn);
             }
 
-            _broadcastModule.Send(_connections, data, method);
+            _broadcastModule.Send(_connections, data, method, mtuOverride);
         }
 
-        public void Send<T>(IList<PlayerID> players, T data, Channel method = Channel.ReliableOrdered)
+        public void Send<T>(IList<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             _connections.Clear();
 
@@ -188,17 +192,19 @@ namespace PurrNet
                     _connections.Add(conn);
             }
 
-            _broadcastModule.Send(_connections, data, method);
+            _broadcastModule.Send(_connections, data, method, mtuOverride);
         }
 
-        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
+        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
-            _broadcastModule.SendToAll(data, method);
+            _broadcastModule.SendToAll(data, method, mtuOverride);
         }
 
-        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered)
+        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
-            _broadcastModule.SendToServer(data, method);
+            _broadcastModule.SendToServer(data, method, mtuOverride);
         }
     }
 }

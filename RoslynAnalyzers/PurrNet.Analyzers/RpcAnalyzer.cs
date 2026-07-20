@@ -21,6 +21,7 @@ namespace PurrNet.Analyzers
                 PurrNetDiagnostics.AwaitableTargetRpcMultipleTargets,
                 PurrNetDiagnostics.InvalidTargetRpcFirstParameter,
                 PurrNetDiagnostics.RpcInfoMustBeLast,
+                PurrNetDiagnostics.MtuOverrideOnSequencedChannel,
                 PurrNetDiagnostics.OwnerRequiresNetworkIdentity,
                 PurrNetDiagnostics.LocalModeNested,
                 PurrNetDiagnostics.LocalModeExitWithoutEnter,
@@ -93,6 +94,20 @@ namespace PurrNet.Analyzers
                     PurrNetDiagnostics.BufferLastWithDeltaPacked,
                     GetAttributeLocation(rpc, method),
                     isObserversRpc ? "ObserversRpc" : "TargetRpc"));
+            }
+
+            if (symbols.UnreliableSequencedValue is int sequencedValue &&
+                symbols.MtuNetworkManagerValue is int mtuDefaultValue &&
+                GetEnumConstructorArgument(rpc, "channel") == sequencedValue)
+            {
+                var mtuExceeded = GetEnumConstructorArgument(rpc, "mtuExceeded");
+                if (mtuExceeded.HasValue && mtuExceeded.Value != mtuDefaultValue)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        PurrNetDiagnostics.MtuOverrideOnSequencedChannel,
+                        GetAttributeLocation(rpc, method),
+                        method.Name));
+                }
             }
 
             var returnKind = GetReturnKind(method.ReturnType);
@@ -278,6 +293,27 @@ namespace PurrNet.Analyzers
             }
 
             return false;
+        }
+
+        private static int? GetEnumConstructorArgument(AttributeData attribute, string name)
+        {
+            var constructor = attribute.AttributeConstructor;
+            if (constructor == null)
+                return null;
+
+            for (int i = 0; i < constructor.Parameters.Length; i++)
+            {
+                if (constructor.Parameters[i].Name != name)
+                    continue;
+
+                object? value = i < attribute.ConstructorArguments.Length
+                    ? attribute.ConstructorArguments[i].Value
+                    : constructor.Parameters[i].ExplicitDefaultValue;
+
+                return value == null ? (int?)null : System.Convert.ToInt32(value);
+            }
+
+            return null;
         }
 
         private static Location? GetAttributeLocation(AttributeData attribute, ISymbol fallback)

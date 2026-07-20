@@ -31,8 +31,9 @@ public class PackerBenchmark
 
     sealed class NoopRPCBatchBackend : IRPCBatchBackend
     {
+        public MTUExceededBehaviour mtuExceededBehaviour => MTUExceededBehaviour.Fragment;
         public int GetMTU(PlayerID player, Channel channel, bool asServer) => int.MaxValue;
-        public void Send(PlayerID player, RPCBatchPacket data, Channel channel) { }
+        public void Send(PlayerID player, RPCBatchPacket data, Channel channel, MTUExceededBehaviour? mtuOverride = null) { }
         public void Subscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback) { }
         public void Unsubscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback) { }
     }
