@@ -11,6 +11,7 @@ namespace PurrNet.Profiler
         public readonly List<BroadcastSample> receivedBroadcasts = ListPool<BroadcastSample>.Instantiate();
         public readonly List<BroadcastSample> sentBroadcasts = ListPool<BroadcastSample>.Instantiate();
         public readonly List<int> forwardedBytes = ListPool<int>.Instantiate();
+        public readonly List<DroppedSample> droppedMessages = ListPool<DroppedSample>.Instantiate();
 
         public void Dispose()
         {
@@ -24,6 +25,7 @@ namespace PurrNet.Profiler
             ListPool<BroadcastSample>.Destroy(receivedBroadcasts);
             ListPool<BroadcastSample>.Destroy(sentBroadcasts);
             ListPool<int>.Destroy(forwardedBytes);
+            ListPool<DroppedSample>.Destroy(droppedMessages);
         }
     }
 }

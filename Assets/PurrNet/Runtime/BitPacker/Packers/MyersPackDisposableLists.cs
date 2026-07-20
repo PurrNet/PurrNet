@@ -61,8 +61,16 @@ namespace PurrNet.Packing
                 return;
             }
 
-            if (value.isDisposed || (!old.isDisposed && old.list == value.list))
+            if (value.isDisposed)
+            {
                 value = DisposableList<T>.Create();
+            }
+            else if (!old.isDisposed && old.rawList == value.rawList)
+            {
+                if (!value.SharesHandleWith(old))
+                    value.Dispose();
+                value = DisposableList<T>.Create();
+            }
 
             if (!old.isDisposed)
             {

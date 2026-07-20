@@ -58,6 +58,17 @@ namespace PurrNet.Modules
             _transport = manager.rawTransport;
             _networkManager = manager;
             _asServer = asServer;
+            _fragmentation.onMessageDropped = OnFragmentedMessageDropped;
+        }
+
+        static void OnFragmentedMessageDropped(FragmentDropInfo info)
+        {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+            Type type = null;
+            if (info.hasFirstWord && Hasher.TryGetType(info.firstWord, out var resolved))
+                type = resolved;
+            Statistics.DroppedMessage(type, info.reason, info.totalLength);
+#endif
         }
 
         public void Enable(bool asServer)
@@ -189,10 +200,15 @@ namespace PurrNet.Modules
             data[offset + 3] = (byte)(marker >> 24);
             data[offset + 4] = (byte)state.channel;
 
+            // Sequenced fragments must not ride the drop-anything-older transport channel: a
+            // reordered fragment would be discarded there and the message could never complete.
+            // The layer's own message ids already sequence the stream, so plain Unreliable is safe.
+            var wireChannel = state.channel == Channel.UnreliableSequenced ? Channel.Unreliable : state.channel;
+
             if (state.module._asServer)
-                state.module._transport.SendToClient(state.connection, fragment, state.channel);
+                state.module._transport.SendToClient(state.connection, fragment, wireChannel);
             else
-                state.module._transport.SendToServer(fragment, state.channel);
+                state.module._transport.SendToServer(fragment, wireChannel);
         }
 
         public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
