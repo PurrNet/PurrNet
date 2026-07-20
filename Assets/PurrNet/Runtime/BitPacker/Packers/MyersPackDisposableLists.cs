@@ -61,7 +61,7 @@ namespace PurrNet.Packing
                 return;
             }
 
-            if (value.isDisposed || (!old.isDisposed && old.list == value.list))
+            if (value.isDisposed || (!old.isDisposed && old.rawList == value.rawList))
                 value = DisposableList<T>.Create();
 
             if (!old.isDisposed)
