@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/PurrNet/PurrNet/compare/v1.20.0...v1.20.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* RegisterNetworkType roslyn error converted to warning ([e1ec91f](https://github.com/PurrNet/PurrNet/commit/e1ec91fe8259ab08f587bcd4fa1de1445ba39dbc))
+
 # [1.20.0](https://github.com/PurrNet/PurrNet/compare/v1.19.1...v1.20.0) (2026-07-20)
 
 
