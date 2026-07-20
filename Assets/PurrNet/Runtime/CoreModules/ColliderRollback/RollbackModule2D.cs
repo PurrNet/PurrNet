@@ -45,8 +45,7 @@ namespace PurrNet.Modules
                 return false;
             }
 
-            int hitCount =
-                _physicsScene2D.Raycast(ray.origin, ray.direction, maxDistance, contactFilter, _raycastHits2D);
+            int hitCount = Raycast(preciseTick, ray, _raycastHits2D, maxDistance, contactFilter);
 
             // return the closest hit
             if (hitCount > 0)
@@ -78,26 +77,25 @@ namespace PurrNet.Modules
             int hitCount = _physicsScene2D.Raycast(ray.origin, ray.direction, maxDistance, contactFilter,
                 _raycastHits2DCache);
 
-            // return the closest hit
-            if (hitCount > 0)
+            hit = default;
+            bool found = false;
+
+            // return the closest hit on the target collider
+            for (var i = 0; i < hitCount; i++)
             {
-                hit = _raycastHits2DCache[0];
-                for (var i = 1; i < hitCount; i++)
+                var result = _raycastHits2DCache[i];
+
+                if (result.collider != target)
+                    continue;
+
+                if (!found || result.distance < hit.distance)
                 {
-                    var result = _raycastHits2DCache[i];
-
-                    if (result.collider != target)
-                        continue;
-
-                    if (result.distance < hit.distance)
-                        hit = result;
+                    hit = result;
+                    found = true;
                 }
-
-                return hit.collider == target;
             }
 
-            hit = default;
-            return false;
+            return found;
         }
 
         private int DoManualRaycasts(Ray2D ray, RaycastHit2D[] hits, float maxDistance, int colliderCount,
@@ -112,34 +110,46 @@ namespace PurrNet.Modules
                 if (!col || !PassesFilters(col, contactFilter))
                     continue;
 
-                if (!TryGetColliderState(preciseTick, col, out var state))
+                if (!Sample(_histories2D[i], preciseTick, out var state) || !state.enabled)
                     continue;
 
                 var trs = col.transform;
 
-                // Get the transform matrix for the historical position
-                var rotation = Quaternion.Euler(0, 0, state.rotation);
-                var historicalWorldMatrix = Matrix4x4.TRS(state.position, rotation, state.scale);
-                var worldToHistorical = historicalWorldMatrix.inverse;
+                if (!CouldHit2D(ray, maxDistance, col, trs, state))
+                    continue;
 
-                // Transform world ray to historical local space
-                var rayHistoricalLocal = new Ray2D(
-                    worldToHistorical.MultiplyPoint3x4(ray.origin),
-                    worldToHistorical.MultiplyVector(ray.direction)
-                );
+                var invRotation = Quaternion.Euler(0, 0, -state.rotation);
+                var localOrigin = invRotation * (Vector3)(ray.origin - state.position);
+                var localDir = invRotation * (Vector3)ray.direction;
+                localOrigin = new Vector3(localOrigin.x / state.scale.x, localOrigin.y / state.scale.y, 0f);
+                localDir = new Vector3(localDir.x / state.scale.x, localDir.y / state.scale.y, 0f);
 
-                // Transform historical local ray to current world space for the actual raycast
                 var currentWorldMatrix = trs.localToWorldMatrix;
                 var rayCurrentWorld = new Ray2D(
-                    currentWorldMatrix.MultiplyPoint3x4(rayHistoricalLocal.origin),
-                    currentWorldMatrix.MultiplyVector(rayHistoricalLocal.direction)
+                    currentWorldMatrix.MultiplyPoint3x4(localOrigin),
+                    currentWorldMatrix.MultiplyVector(localDir)
                 );
 
-                if (RaycastOnly(col, rayCurrentWorld, out var hit, maxDistance))
+                if (RaycastOnly(col, rayCurrentWorld, out var hit, maxDistance, contactFilter))
                     hits[hitCount++] = hit;
             }
 
             return hitCount;
+        }
+
+        static bool CouldHit2D(Ray2D ray, float maxDistance, Collider2D col, Transform trs, Collider2DState state)
+        {
+            var bounds = col.bounds;
+            float radius = ((Vector2)bounds.extents).magnitude +
+                           ((Vector2)bounds.center - (Vector2)trs.position).magnitude;
+            var toCenter = state.position - ray.origin;
+            float along = Vector2.Dot(toCenter, ray.direction);
+
+            if (along > maxDistance + radius)
+                return false;
+
+            float clamped = Mathf.Clamp(along, 0f, maxDistance);
+            return (toCenter - ray.direction * clamped).sqrMagnitude <= radius * radius;
         }
 
         static bool PassesFilters(Collider2D col, ContactFilter2D filter)
