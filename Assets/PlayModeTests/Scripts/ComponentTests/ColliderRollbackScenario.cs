@@ -40,6 +40,7 @@ public class ColliderRollbackScenario : Scenario
     private readonly List<string> _failures = new();
 
     private uint _startTick;
+    private uint _preCreateTick;
     private bool _driving;
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
@@ -69,6 +70,8 @@ public class ColliderRollbackScenario : Scenario
 
         try
         {
+            _preCreateTick = _tick.localTick;
+
             moverGo = new GameObject("RollbackMover");
             moverGo.transform.position = LaneStart;
             _mover = moverGo.transform;
@@ -104,6 +107,7 @@ public class ColliderRollbackScenario : Scenario
             CheckPresentVsPast(module);
             CheckRotation(module);
             CheckUntracked(module, untrackedCollider);
+            CheckGapFallback(module);
 
             if (ctx.role == NetworkRole.Host)
                 CheckHostSharedModule(nm, module);
@@ -306,6 +310,17 @@ public class ColliderRollbackScenario : Scenario
         var ray = RayAt(UntrackedPos);
         if (!module.Raycast(tFirst, ray, out var hit, 10f) || hit.collider != untrackedCollider)
             _failures.Add("untracked collider was not hit at its present position for a past tick");
+    }
+
+    private void CheckGapFallback(RollbackModule module)
+    {
+        if (!module.TryGetColliderState((double)_preCreateTick - 4, _moverCollider, out var state))
+            _failures.Add("no fallback state just before the oldest snapshot");
+        else if ((state.position - LaneStart).magnitude > PosEpsilon)
+            _failures.Add($"fallback state pos {state.position:F4}, expected oldest {LaneStart:F4}");
+
+        if (module.TryGetColliderState((double)_preCreateTick - 30, _moverCollider, out _))
+            _failures.Add("fallback returned state far beyond the sample gap limit");
     }
 
     private void CheckHostSharedModule(NetworkManager nm, RollbackModule serverModule)

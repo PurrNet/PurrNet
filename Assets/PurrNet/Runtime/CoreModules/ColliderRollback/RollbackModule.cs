@@ -12,6 +12,8 @@ namespace PurrNet.Modules
 
         ulong _lastWrittenTick = ulong.MaxValue;
 
+        const double MaxSampleGapTicks = RollbackBroadphase.ChunkTicks;
+
 #if UNITY_PHYSICS_3D
         PhysicsScene _physicsScene;
         private readonly List<Collider> _colliders3D = new();
@@ -78,16 +80,55 @@ namespace PurrNet.Modules
                     stateA = stateB;
                     break;
                 case false:
-                {
-                    state = default;
-                    return false;
-                }
+                    return SampleClosest(history, preciseTick, out state);
                 case true:
                     break;
             }
 
             state = stateA;
             return true;
+        }
+
+        // Ticks skipped during hitch catch-up have no snapshot; reach for the nearest entries
+        // within MaxSampleGapTicks instead of silently making the collider unhittable.
+        static bool SampleClosest(SimpleHistory<Collider2DState> history, double preciseTick, out Collider2DState state)
+        {
+            state = default;
+
+            if (history.Count == 0)
+                return false;
+
+            history.Find((ulong)preciseTick, out var index);
+
+            bool hasBefore = index > 0;
+            bool hasAfter = index < history.Count;
+
+            ulong beforeTick = hasBefore ? history.GetEntryTick(index - 1) : 0;
+            ulong afterTick = hasAfter ? history.GetEntryTick(index) : 0;
+
+            double beforeGap = hasBefore ? preciseTick - beforeTick : double.MaxValue;
+            double afterGap = hasAfter ? afterTick - preciseTick : double.MaxValue;
+
+            if (beforeGap <= MaxSampleGapTicks && afterGap <= MaxSampleGapTicks)
+            {
+                float fraction = (float)((preciseTick - beforeTick) / (afterTick - beforeTick));
+                state = history[index - 1].Interpolate(history[index], fraction);
+                return true;
+            }
+
+            if (beforeGap <= MaxSampleGapTicks && beforeGap <= afterGap)
+            {
+                state = history[index - 1];
+                return true;
+            }
+
+            if (afterGap <= MaxSampleGapTicks)
+            {
+                state = history[index];
+                return true;
+            }
+
+            return false;
         }
 #endif
 
@@ -123,16 +164,55 @@ namespace PurrNet.Modules
                     stateA = stateB;
                     break;
                 case false:
-                {
-                    state = default;
-                    return false;
-                }
+                    return SampleClosest(history, preciseTick, out state);
                 case true:
                     break;
             }
 
             state = stateA;
             return true;
+        }
+
+        // Ticks skipped during hitch catch-up have no snapshot; reach for the nearest entries
+        // within MaxSampleGapTicks instead of silently making the collider unhittable.
+        static bool SampleClosest(SimpleHistory<Collider3DState> history, double preciseTick, out Collider3DState state)
+        {
+            state = default;
+
+            if (history.Count == 0)
+                return false;
+
+            history.Find((ulong)preciseTick, out var index);
+
+            bool hasBefore = index > 0;
+            bool hasAfter = index < history.Count;
+
+            ulong beforeTick = hasBefore ? history.GetEntryTick(index - 1) : 0;
+            ulong afterTick = hasAfter ? history.GetEntryTick(index) : 0;
+
+            double beforeGap = hasBefore ? preciseTick - beforeTick : double.MaxValue;
+            double afterGap = hasAfter ? afterTick - preciseTick : double.MaxValue;
+
+            if (beforeGap <= MaxSampleGapTicks && afterGap <= MaxSampleGapTicks)
+            {
+                float fraction = (float)((preciseTick - beforeTick) / (afterTick - beforeTick));
+                state = history[index - 1].Interpolate(history[index], fraction);
+                return true;
+            }
+
+            if (beforeGap <= MaxSampleGapTicks && beforeGap <= afterGap)
+            {
+                state = history[index - 1];
+                return true;
+            }
+
+            if (afterGap <= MaxSampleGapTicks)
+            {
+                state = history[index];
+                return true;
+            }
+
+            return false;
         }
 #endif
 
