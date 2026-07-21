@@ -77,7 +77,7 @@ namespace PurrNet.Pooling
             if (isDisposed)
                 throw new ObjectDisposedException(nameof(DisposableDictionary<TKey, TValue>));
             NotifyUsage();
-            return new Enumerator(_keys.list, dictionary, _keys.Count);
+            return new Enumerator(_keys.rawList, dictionary, _keys.Count);
         }
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()

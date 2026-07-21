@@ -8,7 +8,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void WriteDisposableList<T>(this BitPacker packer, DisposableList<T> value)
         {
-            if (value.isDisposed || value.list == null)
+            if (value.isDisposed || value.rawList == null)
             {
                 packer.WriteBit(false);
                 return;

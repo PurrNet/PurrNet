@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using PurrNet.Packing;
+using PurrNet.Transports;
 
 namespace PurrNet.Profiler
 {
@@ -52,8 +53,25 @@ namespace PurrNet.Profiler
             public override int GetHashCode() => HashCode.Combine(type, method, (int)rpcType);
         }
 
+        private readonly struct DroppedKey : IEquatable<DroppedKey>
+        {
+            public readonly Type type;
+            public readonly FragmentDropReason reason;
+
+            public DroppedKey(Type type, FragmentDropReason reason)
+            {
+                this.type = type;
+                this.reason = reason;
+            }
+
+            public bool Equals(DroppedKey other) => type == other.type && reason == other.reason;
+            public override bool Equals(object obj) => obj is DroppedKey other && Equals(other);
+            public override int GetHashCode() => HashCode.Combine(type, (int)reason);
+        }
+
         private static readonly Dictionary<RpcKey, Counter> _rpcAgg = new();
         private static readonly Dictionary<Type, Counter> _broadcastAgg = new();
+        private static readonly Dictionary<DroppedKey, Counter> _droppedAgg = new();
         private static long _forwardedCount;
         private static long _forwardedBytes;
 
@@ -90,6 +108,20 @@ namespace PurrNet.Profiler
                 AggregateBroadcast(type, data.Count, sent: true);
             if (!shouldSample) return;
             _currentSample.sentBroadcasts.Add(new BroadcastSample(type, data));
+        }
+
+        public static void DroppedMessage(Type type, FragmentDropReason reason, int bytes)
+        {
+            if (aggregating > 0)
+            {
+                var key = new DroppedKey(type, reason);
+                _droppedAgg.TryGetValue(key, out var c);
+                c.recvCount++;
+                c.recvBytes += bytes;
+                _droppedAgg[key] = c;
+            }
+            if (!shouldSample) return;
+            _currentSample.droppedMessages.Add(new DroppedSample(type, reason, bytes));
         }
 
         public static void ForwardedBytes(int bytesSent)
@@ -157,6 +189,7 @@ namespace PurrNet.Profiler
         {
             _rpcAgg.Clear();
             _broadcastAgg.Clear();
+            _droppedAgg.Clear();
             _forwardedCount = 0;
             _forwardedBytes = 0;
             aggregating++;
@@ -191,6 +224,18 @@ namespace PurrNet.Profiler
                     name = kv.Key != null ? kv.Key.Name : "?",
                     sentCount = kv.Value.sentCount,
                     sentBytes = kv.Value.sentBytes,
+                    recvCount = kv.Value.recvCount,
+                    recvBytes = kv.Value.recvBytes
+                });
+            }
+
+            foreach (var kv in _droppedAgg)
+            {
+                var typeName = kv.Key.type != null ? kv.Key.type.Name : "(unknown)";
+                list.Add(new BandwidthEntry
+                {
+                    kind = "Dropped",
+                    name = $"{typeName} [{kv.Key.reason}]",
                     recvCount = kv.Value.recvCount,
                     recvBytes = kv.Value.recvBytes
                 });

@@ -817,6 +817,50 @@ namespace PurrNet.Profiler.Editor
                     EditorGUILayout.EndVertical();
                 }
 
+                // Draw Dropped Messages
+                if (sample.droppedMessages.Count > 0)
+                {
+                    Color originalBgColor = GUI.backgroundColor;
+                    GUI.backgroundColor = new Color(0.9f, 0.3f, 0.3f, 0.2f);
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    GUI.backgroundColor = originalBgColor;
+
+                    var headerStyle = new GUIStyle(EditorStyles.foldout);
+                    Color headerColor = new Color(0.9f, 0.35f, 0.35f, 1f);
+                    headerStyle.normal.textColor = headerColor;
+                    headerStyle.onNormal.textColor = headerColor;
+                    headerStyle.focused.textColor = headerColor;
+                    headerStyle.onFocused.textColor = headerColor;
+                    headerStyle.active.textColor = headerColor;
+                    headerStyle.onActive.textColor = headerColor;
+                    headerStyle.fontStyle = FontStyle.Bold;
+                    bool sectionExpanded = EditorGUILayout.Foldout(GetFoldoutState("section_dropped_messages", true), "Dropped Messages", true, headerStyle);
+                    SetFoldoutState("section_dropped_messages", sectionExpanded);
+
+                    if (sectionExpanded)
+                    {
+                        EditorGUI.indentLevel++;
+                        var aggregatedDropped = sample.droppedMessages
+                            .GroupBy(dropped => (dropped.type, dropped.reason))
+                            .Select(group => new
+                            {
+                                Type = group.Key.type,
+                                Reason = group.Key.reason,
+                                Count = group.Count(),
+                                TotalBytes = group.Sum(dropped => (long)dropped.bytes)
+                            })
+                            .OrderByDescending(dropped => dropped.TotalBytes);
+
+                        foreach (var droppedGroup in aggregatedDropped)
+                        {
+                            string typeName = droppedGroup.Type != null ? droppedGroup.Type.GetFriendlyTypeName() : "(unknown)";
+                            EditorGUILayout.LabelField($"{typeName} [{droppedGroup.Reason}] ({FormatBytes(droppedGroup.TotalBytes)}) - {droppedGroup.Count} messages");
+                        }
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                }
+
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.EndScrollView();
             }
@@ -848,6 +892,8 @@ namespace PurrNet.Profiler.Editor
             EditorGUILayout.LabelField($"RPCs: {sample.receivedRpcs.Count} received, {sample.sentRpcs.Count} sent");
             EditorGUILayout.LabelField($"Broadcasts: {sample.receivedBroadcasts.Count} received, {sample.sentBroadcasts.Count} sent");
             EditorGUILayout.LabelField($"Forwarded: {FormatBytes(sample.forwardedBytes.Sum())} in {sample.forwardedBytes.Count} packets");
+            if (sample.droppedMessages.Count > 0)
+                EditorGUILayout.LabelField($"Dropped: {sample.droppedMessages.Count} messages");
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();

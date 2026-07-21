@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace AssetStoreTools.Previews.Generators.Custom.Screenshotters
 {
@@ -23,7 +24,9 @@ namespace AssetStoreTools.Previews.Generators.Custom.Screenshotters
         {
             if (_camera == null)
             {
-#if UNITY_2022_3_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
+                _camera = Object.FindAnyObjectByType<Camera>(FindObjectsInactive.Include);
+#elif UNITY_2022_3_OR_NEWER
                 _camera = GameObject.FindFirstObjectByType<Camera>(FindObjectsInactive.Include);
 #else
                 _camera = GameObject.FindObjectOfType<Camera>();
@@ -79,7 +82,9 @@ namespace AssetStoreTools.Previews.Generators.Custom.Screenshotters
 
         private void PositionLighting(GameObject target)
         {
-#if UNITY_2022_3_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
+            var light = Object.FindAnyObjectByType<Light>(FindObjectsInactive.Include);
+#elif UNITY_2022_3_OR_NEWER
             var light = GameObject.FindFirstObjectByType<Light>(FindObjectsInactive.Include);
 #else
             var light = GameObject.FindObjectOfType<Light>();

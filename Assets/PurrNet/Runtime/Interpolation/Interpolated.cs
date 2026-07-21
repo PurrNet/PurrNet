@@ -14,6 +14,7 @@ namespace PurrNet
         private T _currentStateRaw;
         private float _timer;
         private float _tickDelta;
+        private float _idleTime;
         protected bool _waitForMinBufferSize;
 
         public int bufferSize => _buffer.Count;
@@ -52,6 +53,8 @@ namespace PurrNet
 
         public void Add(T value)
         {
+            _idleTime = 0f;
+
             if (_buffer.Count >= maxBufferSize)
             {
                 // remove up to minBufferSize
@@ -76,8 +79,15 @@ namespace PurrNet
             {
                 if (_buffer.Count < minBufferSize)
                 {
-                    _timer = 0f;
-                    return _lerp(_lastValue, _lastValue, 1f);
+                    _idleTime += deltaTime;
+
+                    bool starved = _buffer.Count > 0 && _idleTime >= _tickDelta * 2f;
+
+                    if (!starved)
+                    {
+                        _timer = 0f;
+                        return _lerp(_lastValue, _lastValue, 1f);
+                    }
                 }
 
                 _waitForMinBufferSize = false;

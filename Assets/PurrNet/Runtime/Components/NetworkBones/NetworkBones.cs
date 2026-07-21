@@ -1,4 +1,5 @@
 using PurrNet.Contributors;
+using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Pooling;
@@ -27,6 +28,21 @@ namespace PurrNet
         private DisposableList<Transform> _bones = DisposableList<Transform>.Create(512);
         private BoneInfo[] _bonesInfo;
 
+        /// <summary>
+        /// Extra bones to sync on top of the ones gathered from SkinnedMeshRenderers.
+        /// Must be set before this identity is spawned.
+        /// </summary>
+        public Transform[] extraBones
+        {
+            get => _extraBones;
+            set => _extraBones = value;
+        }
+
+        /// <summary>
+        /// Number of bones gathered for syncing. Populated once spawned.
+        /// </summary>
+        public int boneCount => _bones.Count;
+
         private Interpolated<Vector3>[] _positions;
         private Interpolated<Quaternion>[] _rotations;
         private Interpolated<Vector3>[] _scales;
@@ -37,6 +53,7 @@ namespace PurrNet
         private float _sendDelta;
         private bool _cachedIsController;
         private bool _cachedConnectedOwner;
+        private bool _loggedBoneMismatch;
 
         protected override void OnDestroy()
         {
@@ -332,6 +349,22 @@ namespace PurrNet
             );
         }
 
+        private bool ValidateBoneRange(PackedUInt startingIdx, PackedUInt count)
+        {
+            if (startingIdx.value + count.value <= (uint)_bones.Count)
+                return true;
+
+            if (!_loggedBoneMismatch)
+            {
+                _loggedBoneMismatch = true;
+                PurrLogger.LogError(
+                    $"NetworkBones '{name}': bone set mismatch, peer synced bones {startingIdx.value}..{startingIdx.value + count.value} but only {_bones.Count} were gathered locally. " +
+                    "The rigs differ between peers (mesh import settings, stripped transforms or extraBones mismatch); ignoring their bone data.", this);
+            }
+
+            return false;
+        }
+
         delegate void Forward(PlayerID observer, PackedUInt startingIdx, PackedUInt count, BitPacker data);
         delegate bool Write(BitPacker packer, DeltaModule module, PlayerID player, BoneInfo info, ref PackedUInt cachedKey);
 
@@ -405,6 +438,9 @@ namespace PurrNet
             if (_bonesInfo == null)
                 return;
 
+            if (!ValidateBoneRange(startingIdx, count))
+                return;
+
             uint lastIndex = startingIdx + count;
             PackedUInt cache = default;
 
@@ -457,6 +493,9 @@ namespace PurrNet
             if (_bonesInfo == null)
                 return;
 
+            if (!ValidateBoneRange(startingIdx, count))
+                return;
+
             uint lastIndex = startingIdx + count;
             PackedUInt cache = default;
 
@@ -500,7 +539,6 @@ namespace PurrNet
             {
                 if (!_ownerAuth)
                     return;
-
                 ReadScales(info.sender, startingIdx, count, data, _serverDeltaModule);
             }
         }
@@ -508,6 +546,9 @@ namespace PurrNet
         private void ReadScales(PlayerID sender, PackedUInt startingIdx, PackedUInt count, BitPacker packer, DeltaModule module)
         {
             if (_bonesInfo == null)
+                return;
+
+            if (!ValidateBoneRange(startingIdx, count))
                 return;
 
             uint lastIndex = startingIdx + count;

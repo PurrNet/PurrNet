@@ -130,6 +130,49 @@ namespace PurrNet.Transports
         Fragment = 2
     }
 
+    /// <summary>
+    /// Per-RPC override for what happens when the RPC exceeds the MTU on an unreliable channel.
+    /// Ignored on <see cref="Channel.UnreliableSequenced"/>: sequencing is a channel-wide
+    /// property, so the NetworkManager setting governs that whole channel.
+    /// </summary>
+    public enum MTUBehaviour : byte
+    {
+        /// <summary>
+        /// Follow the behaviour configured on the NetworkManager.
+        /// </summary>
+        NetworkManager = 0,
+
+        /// <inheritdoc cref="MTUExceededBehaviour.UpgradeToReliable"/>
+        UpgradeToReliable = 1,
+
+        /// <inheritdoc cref="MTUExceededBehaviour.Drop"/>
+        Drop = 2,
+
+        /// <inheritdoc cref="MTUExceededBehaviour.Fragment"/>
+        Fragment = 3
+    }
+
+    public static class MTUBehaviourExtensions
+    {
+        public static MTUExceededBehaviour Resolve(this MTUBehaviour value, MTUExceededBehaviour fallback)
+        {
+            switch (value)
+            {
+                case MTUBehaviour.UpgradeToReliable: return MTUExceededBehaviour.UpgradeToReliable;
+                case MTUBehaviour.Drop: return MTUExceededBehaviour.Drop;
+                case MTUBehaviour.Fragment: return MTUExceededBehaviour.Fragment;
+                default: return fallback;
+            }
+        }
+
+        public static MTUExceededBehaviour? AsOverride(this MTUBehaviour value)
+        {
+            if (value == MTUBehaviour.NetworkManager)
+                return null;
+            return value.Resolve(default);
+        }
+    }
+
     public enum Channel : byte
     {
         /// <summary>

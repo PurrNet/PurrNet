@@ -9,6 +9,7 @@ using PurrNet.Profiler;
 
 namespace PurrNet
 {
+    [Serializable]
     public class NetworkModule
     {
         public NetworkIdentity parent { get; private set; }

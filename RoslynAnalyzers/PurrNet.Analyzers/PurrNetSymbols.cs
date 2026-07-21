@@ -18,6 +18,8 @@ namespace PurrNet.Analyzers
         public IMethodSymbol? ExitLocalExecution { get; }
         public INamedTypeSymbol? IEnumerableOfT { get; }
         public INamedTypeSymbol? IListOfT { get; }
+        public int? UnreliableSequencedValue { get; }
+        public int? MtuNetworkManagerValue { get; }
 
         public bool HasPurrNet =>
             ServerRpcAttribute != null ||
@@ -40,6 +42,11 @@ namespace PurrNet.Analyzers
             IEnumerableOfT = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1");
             IListOfT = compilation.GetTypeByMetadataName("System.Collections.Generic.IList`1");
 
+            UnreliableSequencedValue = GetEnumMemberValue(
+                compilation.GetTypeByMetadataName("PurrNet.Transports.Channel"), "UnreliableSequenced");
+            MtuNetworkManagerValue = GetEnumMemberValue(
+                compilation.GetTypeByMetadataName("PurrNet.Transports.MTUBehaviour"), "NetworkManager");
+
             var compilerFlags = compilation.GetTypeByMetadataName("PurrNet.PurrCompilerFlags");
             if (compilerFlags != null)
             {
@@ -57,6 +64,20 @@ namespace PurrNet.Analyzers
         }
 
         public static PurrNetSymbols Create(Compilation compilation) => new PurrNetSymbols(compilation);
+
+        private static int? GetEnumMemberValue(INamedTypeSymbol? enumType, string memberName)
+        {
+            if (enumType == null)
+                return null;
+
+            foreach (var member in enumType.GetMembers(memberName))
+            {
+                if (member is IFieldSymbol { HasConstantValue: true } field)
+                    return System.Convert.ToInt32(field.ConstantValue);
+            }
+
+            return null;
+        }
 
         public bool IsRpcAttribute(INamedTypeSymbol? attributeType) =>
             IsSame(attributeType, ServerRpcAttribute) ||

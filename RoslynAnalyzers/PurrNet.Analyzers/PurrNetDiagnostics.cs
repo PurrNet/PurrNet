@@ -73,7 +73,7 @@ namespace PurrNet.Analyzers
             "Local execution flag was not unset",
             "PurrCompilerFlags.EnterLocalExecution must be paired with ExitLocalExecution");
 
-        public static readonly DiagnosticDescriptor RegisterNetworkTypeForeignType = Error(
+        public static readonly DiagnosticDescriptor RegisterNetworkTypeForeignType = Warning(
             "PN0014",
             "RegisterNetworkType target is declared in another assembly",
             "[RegisterNetworkType] for '{0}' is ignored because '{0}' is declared in assembly '{1}'; apply the attribute to a type in that assembly",
@@ -104,10 +104,16 @@ namespace PurrNet.Analyzers
             "NetworkModule member is assigned after module initialization",
             "Assign NetworkModule member '{0}' in an initializer, constructor, Awake, or OnInitializeModules so it is registered correctly");
 
+        public static readonly DiagnosticDescriptor MtuOverrideOnSequencedChannel = Warning(
+            "PN0106",
+            "mtuExceeded override is ignored on UnreliableSequenced",
+            "mtuExceeded override on '{0}' is ignored on UnreliableSequenced; the NetworkManager setting governs the whole channel",
+            RpcCategory);
+
         private static DiagnosticDescriptor Error(string id, string title, string messageFormat, string category = RpcCategory) =>
             new DiagnosticDescriptor(id, title, messageFormat, category, DiagnosticSeverity.Error, true);
 
-        private static DiagnosticDescriptor Warning(string id, string title, string messageFormat) =>
-            new DiagnosticDescriptor(id, title, messageFormat, NetworkModuleCategory, DiagnosticSeverity.Warning, true);
+        private static DiagnosticDescriptor Warning(string id, string title, string messageFormat, string category = NetworkModuleCategory) =>
+            new DiagnosticDescriptor(id, title, messageFormat, category, DiagnosticSeverity.Warning, true);
     }
 }

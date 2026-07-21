@@ -45,7 +45,7 @@ namespace PurrNet.Examples
                 {
                     _alreadyInitialized = true;
 
-                    var nm = FindFirstObjectByType<NetworkManager>();
+                    var nm = FindAnyObjectByType<NetworkManager>();
                     if (!nm)
                     {
                         PurrLogger.LogError($"Failed to auto remove start flags from NetworkManager: No NetworkManager found in scene.", this);
@@ -58,20 +58,6 @@ namespace PurrNet.Examples
                 }
             }
 #endif
-        }
-
-        private void RunResetLogic()
-        {
-            var nm = FindFirstObjectByType<NetworkManager>();
-            if (!nm)
-            {
-                PurrLogger.LogError($"Failed to auto remove start flags from NetworkManager: No NetworkManager found in scene.", this);
-                return;
-            }
-
-            nm.startClientFlags = StartFlags.None;
-            nm.startServerFlags = StartFlags.None;
-            PurrLogger.Log($"Cleared start flags from NetworkManager", this);
         }
 
         private void OnServerConnectionStateChanged(ConnectionState state)

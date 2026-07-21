@@ -12,6 +12,7 @@ namespace NetworkRigidbodyTest
         [SerializeField] private float _airDrag = 0.5f;
         [SerializeField] private float _groundCheckDistance = 0.35f;
         [SerializeField] private bool _velocityChangeBased;
+        [SerializeField] private bool _routeThroughNetworkRigidbody = true;
         [SerializeField] private NetworkRigidbody _rb;
 
         private Rigidbody _rigidbody;
@@ -38,12 +39,12 @@ namespace NetworkRigidbodyTest
             if (_isGrounded != _wasGrounded)
             {
                 if(_velocityChangeBased)
-                    _rb.drag = _isGrounded ? _groundDrag : _airDrag;
+                    SetDrag(_isGrounded ? _groundDrag : _airDrag);
                 _wasGrounded = _isGrounded;
             }
 
             if (Input.GetKeyDown(KeyCode.Space) && _isGrounded)
-                _rb.AddForce(Vector3.up * (_rb.mass * _jumpForce), ForceMode.Impulse);
+                AddForce(Vector3.up * (GetMass() * _jumpForce), ForceMode.Impulse);
         }
 
         private void FixedUpdate()
@@ -55,15 +56,56 @@ namespace NetworkRigidbodyTest
                 if (input.magnitude < 0.1f)
                     return;
 
-                var currentHoriz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
+                var velocity = GetLinearVelocity();
+                var currentHoriz = new Vector3(velocity.x, 0f, velocity.z);
                 var velocityDelta = input * _moveSpeed - currentHoriz;
                 var maxDelta = _acceleration * Time.fixedDeltaTime;
-                _rb.AddForce(Vector3.ClampMagnitude(velocityDelta, maxDelta), ForceMode.VelocityChange);
+                AddForce(Vector3.ClampMagnitude(velocityDelta, maxDelta), ForceMode.VelocityChange);
             }
             else
             {
-                _rb.AddForce(input * (_moveSpeed * _rb.mass));
+                AddForce(input * (_moveSpeed * GetMass()));
             }
+        }
+
+        private float GetMass()
+        {
+            return _routeThroughNetworkRigidbody ? _rb.mass : _rigidbody.mass;
+        }
+
+        private Vector3 GetLinearVelocity()
+        {
+            if (_routeThroughNetworkRigidbody)
+                return _rb.linearVelocity;
+
+#if UNITY_6000_0_OR_NEWER
+            return _rigidbody.linearVelocity;
+#else
+            return _rigidbody.velocity;
+#endif
+        }
+
+        private void SetDrag(float value)
+        {
+            if (_routeThroughNetworkRigidbody)
+            {
+                _rb.drag = value;
+                return;
+            }
+
+#if UNITY_6000_0_OR_NEWER
+            _rigidbody.linearDamping = value;
+#else
+            _rigidbody.drag = value;
+#endif
+        }
+
+        private void AddForce(Vector3 force, ForceMode mode = ForceMode.Force)
+        {
+            if (_routeThroughNetworkRigidbody)
+                _rb.AddForce(force, mode);
+            else
+                _rigidbody.AddForce(force, mode);
         }
     }
 }

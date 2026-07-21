@@ -335,7 +335,8 @@ namespace PurrNet.Modules
             return false;
         }
 
-        bool TryGetState(double preciseTick, Collider col, QueryTriggerInteraction queryTriggers, int layerMask, out Collider3DState state)
+        bool TryGetState(double preciseTick, Collider col, SimpleHistory<Collider3DState> history,
+            QueryTriggerInteraction queryTriggers, int layerMask, out Collider3DState state)
         {
             state = default;
 
@@ -347,13 +348,10 @@ namespace PurrNet.Modules
             if (!isPartOfLayerMask)
                 return false;
 
-            if (!TryGetColliderState(preciseTick, col, out state))
+            if (!Sample(history, preciseTick, out state))
                 return false;
 
-            if (!state.enabled)
-                return false;
-
-            return true;
+            return state.enabled;
         }
 
         private int DoManualSphereOverlaps(Vector3 origin, float radius, Collider[] hits, int layerMask, int colliderCount, int hitCount, double preciseTick, QueryTriggerInteraction queryTriggers)
@@ -373,13 +371,16 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayOverlap(preciseTick, origin, radius))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-                TransformPos(origin, state, trs, out var transformedRay);
+                TransformPos(origin, state, trs, out var transformedOrigin);
 
-                if (col.OverlapSphere(transformedRay, radius))
+                if (col.OverlapSphere(transformedOrigin, radius))
                 {
                     hits[hitCount++] = col;
                 }
@@ -396,6 +397,8 @@ namespace PurrNet.Modules
                     ? QueryTriggerInteraction.Collide
                     : QueryTriggerInteraction.Ignore;
 
+            float inflation = halfExtents.magnitude;
+
             for (var i = 0; i < colliderCount; i++)
             {
                 if (hitCount >= hits.Length)
@@ -406,26 +409,17 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayOverlap(preciseTick, origin, inflation))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
+                TransformPos(origin, state, trs, out var transformedOrigin);
+                var transformedOrientation = trs.rotation * Quaternion.Inverse(state.rotation) * orientation;
 
-                // Get the transform matrix for the historical position
-                var historicalWorldMatrix = Matrix4x4.TRS(state.position, state.rotation, state.scale);
-                var worldToHistorical = historicalWorldMatrix.inverse;
-
-                // Transform world ray to historical local space
-                var rayHistoricalLocal = worldToHistorical.MultiplyPoint3x4(origin);
-                var rayHistoricalOrientation = worldToHistorical.MultiplyVector(orientation * Vector3.forward);
-
-                // Transform historical local ray to current world space for the actual raycast
-                var currentWorldMatrix = trs.localToWorldMatrix;
-                var transformedRay = currentWorldMatrix.MultiplyPoint3x4(rayHistoricalLocal);
-                var transformedOrientation = currentWorldMatrix.MultiplyVector(rayHistoricalOrientation);
-                var transformedOrientationQuat = Quaternion.LookRotation(transformedOrientation, Vector3.up);
-
-                if (col.OverlapBox(transformedRay, halfExtents, transformedOrientationQuat))
+                if (col.OverlapBox(transformedOrigin, halfExtents, transformedOrientation))
                 {
                     hits[hitCount++] = col;
                 }
@@ -442,6 +436,9 @@ namespace PurrNet.Modules
                     ? QueryTriggerInteraction.Collide
                     : QueryTriggerInteraction.Ignore;
 
+            var mid = (point1 + point2) * 0.5f;
+            float inflation = radius + (point2 - point1).magnitude * 0.5f;
+
             for (var i = 0; i < colliderCount; i++)
             {
                 if (hitCount >= hits.Length)
@@ -452,7 +449,10 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayOverlap(preciseTick, mid, inflation))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
@@ -485,23 +485,18 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayHitRay(preciseTick, ray, maxDistance, radius))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-                var matrix = TransformRay(ray, state, trs, out var transformedRay);
+                TransformRay(ray, state, trs, out var transformedRay);
 
                 if (col.SphereCast(transformedRay, radius, out var hit, maxDistance))
                 {
-                    // Transform hit from current world space to current local space
-                    var currentToLocal = trs.worldToLocalMatrix;
-                    hit.point = currentToLocal.MultiplyPoint3x4(hit.point);
-                    hit.normal = currentToLocal.MultiplyVector(hit.normal);
-
-                    // Transform hit from current local space to historical world space
-                    hit.point = matrix.MultiplyPoint3x4(hit.point);
-                    hit.normal = matrix.MultiplyVector(hit.normal);
-
+                    TransformHitBack(ref hit, state, trs);
                     hits[hitCount++] = hit;
                 }
             }
@@ -516,6 +511,8 @@ namespace PurrNet.Modules
                     ? QueryTriggerInteraction.Collide
                     : QueryTriggerInteraction.Ignore;
 
+            float inflation = halfExtents.magnitude;
+
             for (var i = 0; i < colliderCount; i++)
             {
                 if (hitCount >= hits.Length)
@@ -526,40 +523,19 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayHitRay(preciseTick, ray, maxDistance, inflation))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
+                TransformRay(ray, state, trs, out var transformedRay);
+                var transformedOrientation = trs.rotation * Quaternion.Inverse(state.rotation) * orientation;
 
-                // Get the transform matrix for the historical position
-                var historicalWorldMatrix = Matrix4x4.TRS(state.position, state.rotation, state.scale);
-                var worldToHistorical = historicalWorldMatrix.inverse;
-
-                // Transform world ray to historical local space
-                var rayHistoricalLocal = worldToHistorical.MultiplyPoint3x4(ray.origin);
-                var rayHistoricalDir = worldToHistorical.MultiplyVector(ray.direction);
-                var rayHistoricalOrientation = worldToHistorical.MultiplyVector(orientation * Vector3.forward);
-
-                // Transform historical local ray to current world space for the actual raycast
-                var currentWorldMatrix = trs.localToWorldMatrix;
-                var transformedOrigin = currentWorldMatrix.MultiplyPoint3x4(rayHistoricalLocal);
-                var transformedDirection = currentWorldMatrix.MultiplyVector(rayHistoricalDir);
-                var transformedOrientation = currentWorldMatrix.MultiplyVector(rayHistoricalOrientation);
-                var transformedOrientationQuat = Quaternion.LookRotation(transformedOrientation, Vector3.up);
-
-                var transformedRay = new Ray(transformedOrigin, transformedDirection);
-
-                if (col.BoxCast(transformedRay, halfExtents, transformedOrientationQuat, out var hit, maxDistance))
+                if (col.BoxCast(transformedRay, halfExtents, transformedOrientation, out var hit, maxDistance))
                 {
-                    // Transform hit from current world space to current local space
-                    var currentToLocal = trs.worldToLocalMatrix;
-                    hit.point = currentToLocal.MultiplyPoint3x4(hit.point);
-                    hit.normal = currentToLocal.MultiplyVector(hit.normal);
-
-                    // Transform hit from current local space to historical world space
-                    hit.point = historicalWorldMatrix.MultiplyPoint3x4(hit.point);
-                    hit.normal = historicalWorldMatrix.MultiplyVector(hit.normal);
-
+                    TransformHitBack(ref hit, state, trs);
                     hits[hitCount++] = hit;
                 }
             }
@@ -574,6 +550,9 @@ namespace PurrNet.Modules
                     ? QueryTriggerInteraction.Collide
                     : QueryTriggerInteraction.Ignore;
 
+            var checkRay = new Ray((point1 + point2) * 0.5f, direction);
+            float inflation = radius + (point2 - point1).magnitude * 0.5f;
+
             for (var i = 0; i < colliderCount; i++)
             {
                 if (hitCount >= hits.Length)
@@ -584,23 +563,18 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayHitRay(preciseTick, checkRay, maxDistance, inflation))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-                var matrix = TransformCapsule(point1, point2, direction, state, trs, out var p1, out var p2, out var transformedRay);
+                TransformCapsule(point1, point2, direction, state, trs, out var p1, out var p2, out var dir);
 
-                if (col.CapsuleCast(p1, p2, radius, transformedRay, out var hit, maxDistance))
+                if (col.CapsuleCast(p1, p2, radius, dir, out var hit, maxDistance))
                 {
-                    // Transform hit from current world space to current local space
-                    var currentToLocal = trs.worldToLocalMatrix;
-                    hit.point = currentToLocal.MultiplyPoint3x4(hit.point);
-                    hit.normal = currentToLocal.MultiplyVector(hit.normal);
-
-                    // Transform hit from current local space to historical world space
-                    hit.point = matrix.MultiplyPoint3x4(hit.point);
-                    hit.normal = matrix.MultiplyVector(hit.normal);
-
+                    TransformHitBack(ref hit, state, trs);
                     hits[hitCount++] = hit;
                 }
             }
@@ -626,23 +600,18 @@ namespace PurrNet.Modules
                 if (!col)
                     continue;
 
-                if (!TryGetState(preciseTick, col, queryTriggers, layerMask, out var state))
+                if (!_bounds3D[i].MayHitRay(preciseTick, ray, maxDistance, 0f))
+                    continue;
+
+                if (!TryGetState(preciseTick, col, _histories3D[i], queryTriggers, layerMask, out var state))
                     continue;
 
                 var trs = col.transform;
-                var matrix = TransformRay(ray, state, trs, out var transformedRay);
+                TransformRay(ray, state, trs, out var transformedRay);
 
                 if (col.Raycast(transformedRay, out var hit, maxDistance))
                 {
-                    // Transform hit from current world space to current local space
-                    var currentToLocal = trs.worldToLocalMatrix;
-                    hit.point = currentToLocal.MultiplyPoint3x4(hit.point);
-                    hit.normal = currentToLocal.MultiplyVector(hit.normal);
-
-                    // Transform hit from current local space to historical world space
-                    hit.point = matrix.MultiplyPoint3x4(hit.point);
-                    hit.normal = matrix.MultiplyVector(hit.normal);
-
+                    TransformHitBack(ref hit, state, trs);
                     hits[hitCount++] = hit;
                 }
             }
@@ -674,61 +643,55 @@ namespace PurrNet.Modules
             return hitCount;
         }
 
+        static Vector3 ToHistoricalLocalPoint(Collider3DState state, Quaternion invRotation, Vector3 point)
+        {
+            var p = invRotation * (point - state.position);
+            return new Vector3(p.x / state.scale.x, p.y / state.scale.y, p.z / state.scale.z);
+        }
+
+        static Vector3 ToHistoricalLocalVector(Collider3DState state, Quaternion invRotation, Vector3 vector)
+        {
+            var v = invRotation * vector;
+            return new Vector3(v.x / state.scale.x, v.y / state.scale.y, v.z / state.scale.z);
+        }
+
         private static void TransformPos(Vector3 origin, Collider3DState state, Transform trs, out Vector3 transformedOrigin)
         {
-            // Get the transform matrix for the historical position
-            var historicalWorldMatrix = Matrix4x4.TRS(state.position, state.rotation, state.scale);
-            var worldToHistorical = historicalWorldMatrix.inverse;
-
-            // Transform world ray to historical local space
-            var rayHistoricalLocal = worldToHistorical.MultiplyPoint3x4(origin);
-
-            // Transform historical local ray to current world space for the actual raycast
-            var currentWorldMatrix = trs.localToWorldMatrix;
-            transformedOrigin = currentWorldMatrix.MultiplyPoint3x4(rayHistoricalLocal);
+            var local = ToHistoricalLocalPoint(state, Quaternion.Inverse(state.rotation), origin);
+            transformedOrigin = trs.localToWorldMatrix.MultiplyPoint3x4(local);
         }
 
-        private static Matrix4x4 TransformCapsule(Vector3 point1, Vector3 point2, Vector3 direction, Collider3DState state, Transform trs, out Vector3 p1, out Vector3 p2, out Vector3 dir)
+        private static void TransformCapsule(Vector3 point1, Vector3 point2, Vector3 direction, Collider3DState state, Transform trs, out Vector3 p1, out Vector3 p2, out Vector3 dir)
         {
-            // Get the transform matrix for the historical position
-            var historicalWorldMatrix = Matrix4x4.TRS(state.position, state.rotation, state.scale);
-            var worldToHistorical = historicalWorldMatrix.inverse;
+            var invRotation = Quaternion.Inverse(state.rotation);
+            var localP1 = ToHistoricalLocalPoint(state, invRotation, point1);
+            var localP2 = ToHistoricalLocalPoint(state, invRotation, point2);
+            var localDir = ToHistoricalLocalVector(state, invRotation, direction);
 
-            // Transform world points to historical local space
-            p1 = worldToHistorical.MultiplyPoint3x4(point1);
-            p2 = worldToHistorical.MultiplyPoint3x4(point2);
-
-            // Transform direction to historical local space
-            dir = worldToHistorical.MultiplyVector(direction);
-
-            // Transform historical local points to current world space for the actual raycast
             var currentWorldMatrix = trs.localToWorldMatrix;
-            p1 = currentWorldMatrix.MultiplyPoint3x4(p1);
-            p2 = currentWorldMatrix.MultiplyPoint3x4(p2);
-            dir = currentWorldMatrix.MultiplyVector(dir);
-
-            return historicalWorldMatrix;
+            p1 = currentWorldMatrix.MultiplyPoint3x4(localP1);
+            p2 = currentWorldMatrix.MultiplyPoint3x4(localP2);
+            dir = currentWorldMatrix.MultiplyVector(localDir);
         }
 
-        private static Matrix4x4 TransformRay(Ray ray, Collider3DState state, Transform trs, out Ray rayCurrentWorld)
+        private static void TransformRay(Ray ray, Collider3DState state, Transform trs, out Ray rayCurrentWorld)
         {
-            // Get the transform matrix for the historical position
-            var historicalWorldMatrix = Matrix4x4.TRS(state.position, state.rotation, state.scale);
-            var worldToHistorical = historicalWorldMatrix.inverse;
+            var invRotation = Quaternion.Inverse(state.rotation);
+            var localOrigin = ToHistoricalLocalPoint(state, invRotation, ray.origin);
+            var localDir = ToHistoricalLocalVector(state, invRotation, ray.direction);
 
-            // Transform world ray to historical local space
-            var rayHistoricalLocal = new Ray(
-                worldToHistorical.MultiplyPoint3x4(ray.origin),
-                worldToHistorical.MultiplyVector(ray.direction)
-            );
-
-            // Transform historical local ray to current world space for the actual raycast
             var currentWorldMatrix = trs.localToWorldMatrix;
             rayCurrentWorld = new Ray(
-                currentWorldMatrix.MultiplyPoint3x4(rayHistoricalLocal.origin),
-                currentWorldMatrix.MultiplyVector(rayHistoricalLocal.direction)
+                currentWorldMatrix.MultiplyPoint3x4(localOrigin),
+                currentWorldMatrix.MultiplyVector(localDir)
             );
-            return historicalWorldMatrix;
+        }
+
+        private static void TransformHitBack(ref RaycastHit hit, Collider3DState state, Transform trs)
+        {
+            var toHistorical = Matrix4x4.TRS(state.position, state.rotation, state.scale) * trs.worldToLocalMatrix;
+            hit.point = toHistorical.MultiplyPoint3x4(hit.point);
+            hit.normal = toHistorical.MultiplyVector(hit.normal);
         }
     }
 }

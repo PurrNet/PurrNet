@@ -13,8 +13,7 @@ namespace PurrNet.Modules
         public Collider3DState(Collider collider)
         {
             var trs = collider.transform;
-            position = trs.position;
-            rotation = trs.rotation;
+            trs.GetPositionAndRotation(out position, out rotation);
             scale = trs.localScale;
             enabled = collider.enabled;
         }

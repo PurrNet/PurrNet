@@ -1,9 +1,11 @@
-﻿using PurrNet.Modules;
+﻿using JetBrains.Annotations;
+using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine.Scripting;
 
 namespace PurrNet
 {
+    [MeansImplicitUse]
     public class TargetRpcAttribute : PreserveAttribute
     {
         [UsedByIL]
@@ -14,7 +16,8 @@ namespace PurrNet
             bool requireServer = true,
             CompressionLevel compressionLevel = CompressionLevel.None,
             float asyncTimeoutInSec = 5f,
-            bool deltaPacked = false)
+            bool deltaPacked = false,
+            MTUBehaviour mtuExceeded = MTUBehaviour.NetworkManager)
         {
         }
     }

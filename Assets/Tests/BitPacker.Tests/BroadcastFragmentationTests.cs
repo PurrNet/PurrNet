@@ -236,6 +236,31 @@ public class BroadcastFragmentationTests
     }
 
     [Test]
+    public void UnreliableSequenced_FragmentsTravelOnPlainUnreliable()
+    {
+        var transport = new TestTransport { mtu = 64 };
+        var sender = new BroadcastModule(new TestManager(transport, MTUExceededBehaviour.Fragment), true);
+        var receiver = new BroadcastModule(
+            new TestManager(new TestTransport(), MTUExceededBehaviour.Fragment), false);
+        var connection = new Connection(11);
+        string expected = CreatePayload(400, 9);
+        var received = new List<string>();
+        receiver.Subscribe<string>((_, value, _) => received.Add(value));
+
+        sender.Send(connection, expected, Channel.UnreliableSequenced);
+
+        Assert.Greater(transport.sent.Count, 1);
+        for (int i = 0; i < transport.sent.Count; i++)
+            Assert.AreEqual(Channel.Unreliable, transport.sent[i].channel);
+
+        for (int i = transport.sent.Count - 1; i >= 0; i--)
+            Deliver(receiver, connection, transport.sent[i]);
+
+        Assert.AreEqual(1, received.Count);
+        Assert.AreEqual(expected, received[0]);
+    }
+
+    [Test]
     public void UnderMTUUnreliableMessage_UsesOriginalSinglePacketPath()
     {
         var transport = new TestTransport { mtu = 256 };

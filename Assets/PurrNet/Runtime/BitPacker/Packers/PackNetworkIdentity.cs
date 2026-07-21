@@ -71,7 +71,7 @@ namespace PurrNet
         {
             try
             {
-                if (inversedPath.list == null || inversedPath.Count == 0)
+                if (inversedPath.rawList == null || inversedPath.Count == 0)
                     return parent;
 
                 int len = inversedPath.Count;

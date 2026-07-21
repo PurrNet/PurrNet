@@ -110,6 +110,8 @@ namespace PurrNet.Modules
 
         public NetworkID? lastNid { get; private set; }
 
+        public MTUExceededBehaviour mtuExceededBehaviour => _networkManager.mtuExceededBehaviour;
+
         public int GetMTU(PlayerID player, Channel channel, bool asServer)
         {
             if (!asServer)
@@ -169,23 +171,29 @@ namespace PurrNet.Modules
             _playerBroadcaster = broadcaster;
         }
 
-        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(player, data, method);
+        public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(player, data, method, mtuOverride);
 
-        public void Send<T>(IReadOnlyList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void Send<T>(IReadOnlyList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void SendList<T>(IList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void SendList<T>(IList<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void Send<T>(IEnumerable<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.Send(collection, data, method);
+        public void Send<T>(IEnumerable<PlayerID> collection, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.Send(collection, data, method, mtuOverride);
 
-        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendToServer(data, method);
+        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.SendToServer(data, method, mtuOverride);
 
-        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
-            => _playerBroadcaster.SendToAll(data, method);
+        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+            => _playerBroadcaster.SendToAll(data, method, mtuOverride);
 
         public void Unsubscribe<T>(PlayerBroadcastDelegate<T> callback) where T : new()
             => _playerBroadcaster.Unsubscribe(callback);
@@ -411,8 +419,9 @@ namespace PurrNet.Modules
                 {
                     PurrLogger.LogWarning(
                         "Client reconnected with the cookie of a still-connected player; closing their previous connection.");
+                    UnregisterPlayer(playerId);
+                    SendUserLeftToAllClients(playerId);
                     _transport.CloseConnection(oldConn);
-                    ReplacePlayerConnection(playerId, oldConn, conn);
                 }
                 else if (_playerToConnection.ContainsKey(playerId))
                 {
@@ -524,15 +533,6 @@ namespace PurrNet.Modules
             _broadcastModule.Send(conn, new PlayerSnapshotEvent(batch));
         }
 
-        private void ReplacePlayerConnection(PlayerID playerId, Connection oldConn, Connection newConn)
-        {
-            _connectionToPlayerId.Remove(oldConn);
-            _playerToConnection[playerId] = newConn;
-
-            if (newConn.isValid)
-                _connectionToPlayerId[newConn] = playerId;
-        }
-
         private bool IsPlayerConnection(Connection conn, PlayerID playerId)
         {
             return _connectionToPlayerId.TryGetValue(conn, out var registeredPlayer) &&
@@ -552,8 +552,11 @@ namespace PurrNet.Modules
 
             if (conn.isValid)
             {
-                _connectionToPlayerId.Add(conn, player);
-                _playerToConnection.Add(player, conn);
+                if (_playerToConnection.TryGetValue(player, out var staleConn) && staleConn != conn)
+                    _connectionToPlayerId.Remove(staleConn);
+
+                _connectionToPlayerId[conn] = player;
+                _playerToConnection[player] = conn;
             }
 
             isReconnect = !_allSeenPlayers.Add(player);

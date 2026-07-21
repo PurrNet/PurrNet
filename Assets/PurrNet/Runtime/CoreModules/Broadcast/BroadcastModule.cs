@@ -58,6 +58,17 @@ namespace PurrNet.Modules
             _transport = manager.rawTransport;
             _networkManager = manager;
             _asServer = asServer;
+            _fragmentation.onMessageDropped = OnFragmentedMessageDropped;
+        }
+
+        static void OnFragmentedMessageDropped(FragmentDropInfo info)
+        {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+            Type type = null;
+            if (info.hasFirstWord && Hasher.TryGetType(info.firstWord, out var resolved))
+                type = resolved;
+            Statistics.DroppedMessage(type, info.reason, info.totalLength);
+#endif
         }
 
         public void Enable(bool asServer)
@@ -106,15 +117,19 @@ namespace PurrNet.Modules
             return channel is Channel.Unreliable or Channel.UnreliableSequenced;
         }
 
-        private bool HandleMTUExceeded<T>(Connection conn, ByteData byteData, ref Channel method)
+        private bool HandleMTUExceeded<T>(Connection conn, ByteData byteData, ref Channel method,
+            MTUExceededBehaviour? mtuOverride)
         {
             if (!IsUnreliable(method))
                 return true;
 
+            // sequencing is a channel-wide property; per-message overrides only apply to Unreliable
+            var behaviour = mtuOverride.HasValue && method != Channel.UnreliableSequenced
+                ? mtuOverride.Value
+                : _networkManager.mtuExceededBehaviour;
             var mtu = _transport.GetMTU(conn, method, _asServer);
             bool sequenceThroughFragmentation = method == Channel.UnreliableSequenced &&
-                                                _networkManager.mtuExceededBehaviour ==
-                                                MTUExceededBehaviour.Fragment;
+                                                behaviour == MTUExceededBehaviour.Fragment;
 
             if (sequenceThroughFragmentation)
             {
@@ -125,7 +140,7 @@ namespace PurrNet.Modules
             if (byteData.length <= mtu)
                 return true;
 
-            switch (_networkManager.mtuExceededBehaviour)
+            switch (behaviour)
             {
                 case MTUExceededBehaviour.UpgradeToReliable:
                     PurrLogger.LogWarning(
@@ -185,13 +200,19 @@ namespace PurrNet.Modules
             data[offset + 3] = (byte)(marker >> 24);
             data[offset + 4] = (byte)state.channel;
 
+            // Sequenced fragments must not ride the drop-anything-older transport channel: a
+            // reordered fragment would be discarded there and the message could never complete.
+            // The layer's own message ids already sequence the stream, so plain Unreliable is safe.
+            var wireChannel = state.channel == Channel.UnreliableSequenced ? Channel.Unreliable : state.channel;
+
             if (state.module._asServer)
-                state.module._transport.SendToClient(state.connection, fragment, state.channel);
+                state.module._transport.SendToClient(state.connection, fragment, wireChannel);
             else
-                state.module._transport.SendToServer(fragment, state.channel);
+                state.module._transport.SendToServer(fragment, wireChannel);
         }
 
-        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered)
+        public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             AssertIsServer("Cannot send data to all clients from client.");
 
@@ -209,13 +230,14 @@ namespace PurrNet.Modules
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
                 var connMethod = method;
-                if (!HandleMTUExceeded<T>(conn, byteData, ref connMethod))
+                if (!HandleMTUExceeded<T>(conn, byteData, ref connMethod, mtuOverride))
                     continue;
                 _transport.SendToClient(conn, byteData, connMethod);
             }
         }
 
-        public void Send<T>(Connection conn, T data, Channel method = Channel.ReliableOrdered)
+        public void Send<T>(Connection conn, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             AssertIsServer("Cannot send data to player from client.");
 
@@ -225,12 +247,13 @@ namespace PurrNet.Modules
             if (ShouldTrackType(type))
                 Statistics.SentBroadcast(type, byteData.segment);
 #endif
-            if (!HandleMTUExceeded<T>(conn, byteData, ref method))
+            if (!HandleMTUExceeded<T>(conn, byteData, ref method, mtuOverride))
                 return;
             _transport.SendToClient(conn, byteData, method);
         }
 
-        public void Send<T>(IReadOnlyList<Connection> conn, T data, Channel method = Channel.ReliableOrdered)
+        public void Send<T>(IReadOnlyList<Connection> conn, T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             AssertIsServer("Cannot send data to player from client.");
 
@@ -248,13 +271,14 @@ namespace PurrNet.Modules
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
                 var connMethod = method;
-                if (!HandleMTUExceeded<T>(connection, byteData, ref connMethod))
+                if (!HandleMTUExceeded<T>(connection, byteData, ref connMethod, mtuOverride))
                     continue;
                 _transport.SendToClient(connection, byteData, connMethod);
             }
         }
 
-        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered)
+        public void SendToServer<T>(T data, Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
         {
             if (_asServer)
                 return;
@@ -265,7 +289,7 @@ namespace PurrNet.Modules
             if (ShouldTrackType(type))
                 Statistics.SentBroadcast(type, byteData.segment);
 #endif
-            if (!HandleMTUExceeded<T>(default, byteData, ref method))
+            if (!HandleMTUExceeded<T>(default, byteData, ref method, mtuOverride))
                 return;
             _transport.SendToServer(byteData, method);
         }

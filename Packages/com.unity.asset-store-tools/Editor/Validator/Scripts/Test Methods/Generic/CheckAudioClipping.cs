@@ -25,7 +25,7 @@ namespace AssetStoreTools.Validator.TestMethods
             const int TOLERANCE = 2;
             // Min. amount of consecutive samples above threshold required for peak detection
             const int PEAK_STEPS = 1;
-            // Clipping threshold. More lenient here than Submission Guidelines (-0.3db) due to the problematic nature of
+            // Clipping threshold. More lenient here than Submission Guidelines (-0.3db) due to the problematic nature of 
             // correctly determining how sensitive the audio clipping flagging should be, as well as to account for any
             // distortion introduced when AudioClips are compresssed after importing to Unity.
             const float THRESHOLD = -0.05f;
@@ -38,7 +38,11 @@ namespace AssetStoreTools.Validator.TestMethods
             var losslessAudioClips = _assetUtility.GetObjectsFromAssets(_config.ValidationPaths, AssetType.NonLossyAudio).Select(x => x as AudioClip).ToList();
             foreach (var clip in losslessAudioClips)
             {
+#if UNITY_6000_3_OR_NEWER
                 var path = AssetDatabase.GetAssetPath(clip.GetEntityId());
+#else
+                var path = AssetDatabase.GetAssetPath(clip.GetInstanceID());
+#endif
 
                 if (IsClipping(clip, TOLERANCE, PEAK_STEPS, clippingThreshold))
                     clippingAudioClips.Add(clip, path);
@@ -47,8 +51,11 @@ namespace AssetStoreTools.Validator.TestMethods
             var lossyAudioClips = _assetUtility.GetObjectsFromAssets(_config.ValidationPaths, AssetType.LossyAudio).Select(x => x as AudioClip).ToList();
             foreach (var clip in lossyAudioClips)
             {
+#if UNITY_6000_3_OR_NEWER
                 var path = AssetDatabase.GetAssetPath(clip.GetEntityId());
-
+#else
+                var path = AssetDatabase.GetAssetPath(clip.GetInstanceID());
+#endif
                 if (IsClipping(clip, TOLERANCE, PEAK_STEPS, clippingThreshold))
                     clippingAudioClips.Add(clip, path);
             }
@@ -56,8 +63,7 @@ namespace AssetStoreTools.Validator.TestMethods
             if (clippingAudioClips.Count > 0)
             {
                 result.Status = TestResultStatus.VariableSeverityIssue;
-                result.AddMessage("The following AudioClips are clipping or are very close to 0db ceiling. Please ensure your exported audio files have at least 0.3db of headroom (should peak at no more than -0.3db):", null,
-                    clippingAudioClips.Select(x => x.Key).ToArray<Object>());
+                result.AddMessage("The following AudioClips are clipping or are very close to 0db ceiling. Please ensure your exported audio files have at least 0.3db of headroom (should peak at no more than -0.3db):", null, clippingAudioClips.Select(x => x.Key).ToArray());
             }
             else
             {
@@ -68,7 +74,7 @@ namespace AssetStoreTools.Validator.TestMethods
             return result;
         }
 
-        private static bool IsClipping(AudioClip clip, int tolerance, int peakTolerance, float clippingThreshold)
+        private bool IsClipping(AudioClip clip, int tolerance, int peakTolerance, float clippingThreshold)
         {
             if (DetectNumPeaksAboveThreshold(clip, peakTolerance, clippingThreshold) >= tolerance)
                 return true;
@@ -76,15 +82,15 @@ namespace AssetStoreTools.Validator.TestMethods
             return false;
         }
 
-        private static int DetectNumPeaksAboveThreshold(AudioClip clip, int peakTolerance, float clippingThreshold)
+        private int DetectNumPeaksAboveThreshold(AudioClip clip, int peakTolerance, float clippingThreshold)
         {
             float[] samples = new float[clip.samples * clip.channels];
-            clip.GetData(samples, 0);
+            var data = clip.GetData(samples, 0);
 
-            float[] samplesLeft = samples.Where((_, i) => i % 2 == 0).ToArray();
-            float[] samplesRight = samples.Where((_, i) => i % 2 == 1).ToArray();
+            float[] samplesLeft = samples.Where((s, i) => i % 2 == 0).ToArray();
+            float[] samplesRight = samples.Where((s, i) => i % 2 == 1).ToArray();
 
-            int peaks;
+            int peaks = 0;
 
             peaks = GetPeaksInChannel(samplesLeft, peakTolerance, clippingThreshold) +
                     GetPeaksInChannel(samplesRight, peakTolerance, clippingThreshold);
@@ -92,7 +98,7 @@ namespace AssetStoreTools.Validator.TestMethods
             return peaks;
         }
 
-        private static int GetPeaksInChannel(float[] samples, int peakTolerance, float clippingThreshold)
+        private int GetPeaksInChannel(float[] samples, int peakTolerance, float clippingThreshold)
         {
             int peaks = 0;
             bool evalPeak = false;

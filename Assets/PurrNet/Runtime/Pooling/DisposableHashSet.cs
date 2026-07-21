@@ -87,7 +87,7 @@ namespace PurrNet.Pooling
         public Enumerator GetEnumerator()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableHashSet<T>));
-            return new Enumerator(_items.list, _items.Count);
+            return new Enumerator(_items.rawList, _items.Count);
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
