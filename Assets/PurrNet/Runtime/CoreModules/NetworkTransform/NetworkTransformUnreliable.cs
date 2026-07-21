@@ -40,6 +40,26 @@ namespace PurrNet.Modules
         }
     }
 
+    internal struct NetworkTransformUnreliableConfirm : IPackedAuto
+    {
+        public SceneID scene;
+        public readonly ushort tick;
+        public readonly ByteData packet;
+
+        public NetworkTransformUnreliableConfirm(SceneID context, ushort tick, BitPacker packer)
+        {
+            scene = context;
+            this.tick = tick;
+            packet = packer.ToByteData();
+        }
+    }
+
+    internal struct NTConfirmEntry
+    {
+        public NetworkID nid;
+        public ushort baseTick;
+    }
+
     internal struct NetworkTransformUnreliableAckHeader : IPackedAuto
     {
         public ushort seq;
@@ -95,9 +115,12 @@ namespace PurrNet.Modules
     {
         public ushort tick;
         public ushort prevTick;
+        public ushort prevPrevTick;
         public NetworkTransformState state;
         public NetworkTransformState prevState;
+        public NetworkTransformState prevPrevState;
         public bool hasPrev;
+        public bool hasPrevPrev;
         public bool restConfirmed;
     }
 

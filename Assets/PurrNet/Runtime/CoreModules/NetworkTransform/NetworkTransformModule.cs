@@ -60,6 +60,7 @@ namespace PurrNet.Modules
             _broadcaster.Subscribe<NetworkTransformUnreliableDelta>(OnUnreliableDelta);
             _broadcaster.Subscribe<NetworkTransformUnreliableAck>(OnUnreliableAck);
             _broadcaster.Subscribe<NetworkTransformUnreliableNack>(OnUnreliableNack);
+            _broadcaster.Subscribe<NetworkTransformUnreliableConfirm>(OnUnreliableConfirm);
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
         }
 
@@ -68,6 +69,7 @@ namespace PurrNet.Modules
             _broadcaster.Unsubscribe<NetworkTransformUnreliableDelta>(OnUnreliableDelta);
             _broadcaster.Unsubscribe<NetworkTransformUnreliableAck>(OnUnreliableAck);
             _broadcaster.Unsubscribe<NetworkTransformUnreliableNack>(OnUnreliableNack);
+            _broadcaster.Unsubscribe<NetworkTransformUnreliableConfirm>(OnUnreliableConfirm);
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             ReleaseAllStreams();
         }
@@ -907,15 +909,21 @@ namespace PurrNet.Modules
                         return NTWriteResult.Hold;
                 }
 
-                stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite
+                if (!hasLastWrite || lastWrite.tick != currentTick)
                 {
-                    tick = currentTick,
-                    prevTick = lastWrite.tick,
-                    state = current,
-                    prevState = lastWrite.state,
-                    hasPrev = hasLastWrite,
-                    restConfirmed = hasLastWrite && current.Equals(lastWrite.state)
-                };
+                    stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite
+                    {
+                        tick = currentTick,
+                        prevTick = lastWrite.tick,
+                        prevPrevTick = lastWrite.prevTick,
+                        state = current,
+                        prevState = lastWrite.state,
+                        prevPrevState = lastWrite.prevState,
+                        hasPrev = hasLastWrite,
+                        hasPrevPrev = hasLastWrite && lastWrite.hasPrev,
+                        restConfirmed = hasLastWrite && current.Equals(lastWrite.state)
+                    };
+                }
             }
 
             int dist = hasAcked ? (int)(stream.nextOrder - baseline.order) : 0;
@@ -949,6 +957,13 @@ namespace PurrNet.Modules
                 tmp.WriteBits(1, 1);
                 Packer<byte>.Write(tmp, gen);
                 nt.WriteAbsoluteState(tmp);
+
+                if (nt.hasSyncStrategy)
+                    stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite
+                    {
+                        tick = currentTick,
+                        state = current
+                    };
             }
 
             return NTWriteResult.Written;
@@ -1000,6 +1015,7 @@ namespace PurrNet.Modules
 
             BitPacker packer = null;
             List<NTUnreliableEntry> pending = null;
+            List<NTConfirmEntry> confirms = null;
             int countPos = 0;
             int writtenCount = 0;
             int lastDist = 0;
@@ -1032,6 +1048,14 @@ namespace PurrNet.Modules
                 if (writeResult == NTWriteResult.Hold)
                 {
                     predictiveHoldCount++;
+
+                    if (nt.strategySettings.sendConfirmations &&
+                        stream.lastPredictiveWrite.TryGetValue(nt.id.Value, out var heldWrite))
+                    {
+                        confirms ??= ListPool<NTConfirmEntry>.Instantiate();
+                        confirms.Add(new NTConfirmEntry { nid = nt.id.Value, baseTick = heldWrite.tick });
+                    }
+
                     i++;
                     continue;
                 }
@@ -1092,7 +1116,89 @@ namespace PurrNet.Modules
             if (writtenCount > 0)
                 FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
 
+            if (confirms != null)
+            {
+                SendConfirmations(player, confirms);
+                ListPool<NTConfirmEntry>.Destroy(confirms);
+            }
+
             _prepareUnreliableMarker.End();
+        }
+
+        private void SendConfirmations(PlayerID player, List<NTConfirmEntry> confirms)
+        {
+            var packer = BitPackerPool.Get();
+
+            Packer<int>.Write(packer, confirms.Count);
+
+            NetworkID lastNid = default;
+            PackedInt lastDiff = default;
+
+            for (int i = 0; i < confirms.Count; i++)
+            {
+                var entry = confirms[i];
+                DeltaPacker<NetworkID>.Write(packer, lastNid, entry.nid);
+                lastNid = entry.nid;
+
+                PackedInt diff = (short)(_currentTick - entry.baseTick);
+                DeltaPacker<PackedInt>.Write(packer, lastDiff, diff);
+                lastDiff = diff;
+            }
+
+            var confirm = new NetworkTransformUnreliableConfirm(_scene, _currentTick, packer);
+            _broadcaster.Send(player, confirm, Channel.Unreliable);
+
+            packer.Dispose();
+        }
+
+        private void OnUnreliableConfirm(PlayerID player, NetworkTransformUnreliableConfirm data, bool asServer)
+        {
+            if (data.scene != _scene)
+                return;
+
+            try
+            {
+                using var packet = BitPackerPool.Get(data.packet);
+                packet.ResetPositionAndMode(true);
+
+                long packetEndLong = data.packet.length * 8L;
+                if (packetEndLong > int.MaxValue)
+                    return;
+                int packetEnd = (int)packetEndLong;
+
+                int count = default;
+                Packer<int>.Read(packet, ref count);
+
+                if (count < 0 || count > packetEnd - packet.positionInBits)
+                    return;
+
+                NetworkID lastNid = default;
+                PackedInt lastDiff = default;
+
+                for (int i = 0; i < count; i++)
+                {
+                    DeltaPacker<NetworkID>.Read(packet, lastNid, ref lastNid);
+                    PackedInt diff = default;
+                    DeltaPacker<PackedInt>.Read(packet, lastDiff, ref diff);
+                    lastDiff = diff;
+
+                    if (packet.positionInBits > packetEnd)
+                        return;
+
+                    if (diff.value < 1 || diff.value > ushort.MaxValue)
+                        continue;
+
+                    if (_factory.TryGetIdentity(_scene, lastNid, out var identity) &&
+                        identity is NetworkTransform nt &&
+                        (!asServer || nt.IsControlling(player, false)))
+                        nt.ApplyConfirmation(data.tick, (ushort)(data.tick - diff.value));
+                }
+            }
+            catch (System.Exception exception) when (exception is System.IndexOutOfRangeException or
+                                                      System.ArgumentOutOfRangeException or
+                                                      System.OverflowException)
+            {
+            }
         }
 
         private void SendStatesTo(PlayerID player, PlayerID localPlayer)

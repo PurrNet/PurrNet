@@ -3980,6 +3980,7 @@ GameObject:
   - component: {fileID: 425404531}
   - component: {fileID: 425404534}
   - component: {fileID: 425404535}
+  - component: {fileID: 425404536}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -4000,7 +4001,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.Transports.PurrTransport
   _masterServer: https://purrtransport.purrservers.com/
-  _roomName: 3db0f7f701584f14bb6c842dc7177eb7
+  _roomName: iouasdroiuas98r7sa9r7dsor
   _region: nj-us
   _host: purrtransport-nj-us.purrservers.com
   _timeoutInSeconds: 5
@@ -4094,6 +4095,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2656395e0d29ddf429122593ce1dab7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Internal.Examples::NetworkTransformFilterTest.NTStatsOverlay
+--- !u!114 &425404536
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 425404530}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc64ff707d914a64e95f2ac0bf554c09, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.Transports.UDPTransport
+  _automaticCloudSetups:
+    _adaptToEdgegap: 1
+  _serverPort: 5000
+  _maxConnections: 100
+  _address: 127.0.0.1
+  _timeoutInSeconds: 5
+  _pollEventsInUpdate: 0
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!1001 &425519893
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18377,7 +18404,7 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1927889420}
   m_Enabled: 1
-  serializedVersion: 12
+  serializedVersion: 13
   m_Type: 1
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1
@@ -18429,7 +18456,7 @@ Light:
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ForceVisible: 0
-  m_ShadowRadius: 0
+  m_ShapeRadius: 0
   m_ShadowAngle: 0
   m_LightUnit: 1
   m_LuxAtDistance: 1

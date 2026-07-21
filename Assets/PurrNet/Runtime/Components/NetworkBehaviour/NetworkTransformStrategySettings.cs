@@ -13,17 +13,28 @@ namespace PurrNet
         [Range(0.05f, 1f)]
         public float maxSendInterval = 0.2f;
 
-        [Tooltip("How far receivers project received motion toward real time. " +
-                 "0 renders only received data, adding delay but never showing a guess. " +
-                 "1 projects fully to real time, causing rubberbanding when motion changes.")]
+        [Tooltip("How far receivers project past verified motion toward real time. " +
+                 "With confirmations enabled, 0 renders at the confirmed frontier, roughly one " +
+                 "network latency behind real time. With confirmations disabled, 0 stays a full " +
+                 "send interval behind. 1 projects fully to real time, causing rubberbanding " +
+                 "when motion changes.")]
         [Range(0f, 1f)]
         public float extrapolation;
 
-        internal bool CanSkip(NetworkTransform nt, in NetworkTransformState prev, bool hasPrev,
-            in NetworkTransformState from, ushort fromTick, ushort currentTick, in NetworkTransformState current)
+        [Tooltip("While sends are being skipped, include a tiny per-tick confirmation so receivers " +
+                 "can render verified motion close to real time instead of waiting out the full " +
+                 "send interval. Disable to save the confirmation traffic and rely purely on the " +
+                 "extrapolation value above.")]
+        public bool sendConfirmations = true;
+
+        internal bool CanSkip(NetworkTransform nt, in NTLastPredictiveWrite lastWrite, ushort currentTick,
+            in NetworkTransformState current)
         {
+            var from = lastWrite.state;
+            ushort fromTick = lastWrite.tick;
+
             int gap = (short)(currentTick - fromTick);
-            if (gap <= 1)
+            if (gap < 1 || (gap == 1 && !sendConfirmations))
                 return true;
 
             if (current.frame != from.frame || !current.parentId.Equals(from.parentId))
@@ -41,8 +52,37 @@ namespace PurrNet
 
                 float t = step / (float)gap;
 
-                if (!hasPrev || !TryReconstruct(prev, from, current, t, out var expected))
+                if (!lastWrite.hasPrev || !TryReconstruct(lastWrite.prevState, from, current, t, out var expected))
                     expected = NetworkTransformVelocity.Lerp(from, current, t);
+
+                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
+                    return false;
+            }
+
+            if (!sendConfirmations)
+                return true;
+
+            int span = (short)(fromTick - lastWrite.prevTick);
+            bool canArc = lastWrite.hasPrevPrev && span >= 2;
+            var anchorVelocity = lastWrite.hasPrev && span >= 1 && span <= NTUnreliable.PREDICTIVE_MAX_BACKFILL
+                ? NetworkTransformVelocity.Derive(lastWrite.prevState, from, span)
+                : default;
+
+            for (int step = 1; step <= gap; step++)
+            {
+                NetworkTransformState actual;
+
+                if (step == gap)
+                    actual = current;
+                else if (!nt.TryGetCapturedAt((ushort)(fromTick + step), out actual))
+                    return false;
+
+                if (actual.frame != from.frame || !actual.parentId.Equals(from.parentId))
+                    return false;
+
+                if (!canArc || !TryReconstruct(lastWrite.prevPrevState, lastWrite.prevState, from,
+                        (span + step) / (float)span, out var expected))
+                    expected = NetworkTransformVelocity.Predict(from, anchorVelocity, step);
 
                 if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
                     return false;

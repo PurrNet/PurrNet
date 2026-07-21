@@ -142,8 +142,7 @@ namespace PurrNet
                 _skipCacheHasPrev == lastWrite.hasPrev && _skipCachePrev == lastWrite.prevTick)
                 return _skipCacheResult;
 
-            _skipCacheResult = _strategySettings.CanSkip(this, lastWrite.prevState, lastWrite.hasPrev,
-                lastWrite.state, lastWrite.tick, currentTick, current);
+            _skipCacheResult = _strategySettings.CanSkip(this, lastWrite, currentTick, current);
             _skipCacheFrom = lastWrite.tick;
             _skipCacheCurrent = currentTick;
             _skipCachePrev = lastWrite.prevTick;
@@ -1001,6 +1000,14 @@ namespace PurrNet
         private bool _hasLastAppliedState;
 
         private const int PREDICT_BLEND_TICKS = 4;
+        private const int CONFIRMED_RENDER_DELAY_TICKS = 2;
+        private const int CONFIRMED_CATCHUP_STEP = 2;
+
+        private ushort _confirmedSenderTick;
+        private bool _hasConfirmedTick;
+
+        private ushort _lastRenderedSenderTick;
+        private bool _hasLastRendered;
 
         private NetworkTransformState _anchorState;
         private NetworkTransformVelocity _anchorVelocity;
@@ -1108,13 +1115,57 @@ namespace PurrNet
             return NetworkTransformVelocity.Lerp(lowerState, upperState, t);
         }
 
+        private bool TryStrategyExtrapolation(int back, ushort targetTick, out NetworkTransformState result)
+        {
+            result = default;
+
+            if (_recvCount < back + 3)
+                return false;
+
+            int i0 = (_recvHead - back + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+            int i1 = (i0 - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+            int i2 = (i1 - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+
+            int span = (short)(_recvTicks[i0] - _recvTicks[i1]);
+            if (span < 2)
+                return false;
+
+            int rel = (short)(targetTick - _recvTicks[i0]);
+            if (rel <= 0)
+                return false;
+
+            float t = (span + rel) / (float)span;
+            return _strategySettings.TryReconstruct(_recvStates[i2], _recvStates[i1], _recvStates[i0], t,
+                out result);
+        }
+
         private void ClearPredictionAnchors()
         {
             _hasPredictionAnchor = false;
             _hasPrevAnchor = false;
             _recvCount = 0;
             _hasLastSample = false;
+            _hasConfirmedTick = false;
+            _hasLastRendered = false;
             _seamOffset = Vector3.zero;
+        }
+
+        internal void ApplyConfirmation(ushort senderTick, ushort baseTick)
+        {
+            if (_cachedIsController || !_hasStrategy || !_hasLastAppliedState || !_hasPredictionAnchor)
+                return;
+
+            if (baseTick != _lastAppliedSenderTick)
+                return;
+
+            if ((short)(senderTick - _lastAppliedSenderTick) <= 0)
+                return;
+
+            if (_hasConfirmedTick && (short)(senderTick - _confirmedSenderTick) <= 0)
+                return;
+
+            _confirmedSenderTick = senderTick;
+            _hasConfirmedTick = true;
         }
 
         private void SetPredictionAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
@@ -1151,16 +1202,50 @@ namespace PurrNet
 
             _lastPredictionTick = localTick;
 
-            int offset = Mathf.RoundToInt((1f - _extrapolationValue) * _predictiveSpacing);
             long maxAhead = _predictiveSpacing + 2;
+            long allowed = maxAhead;
+            int offset;
+
+            bool useConfirmations = _strategySettings.sendConfirmations;
+
+            if (useConfirmations)
+            {
+                offset = CONFIRMED_RENDER_DELAY_TICKS;
+
+                long frontierRel = 0;
+                if (_hasConfirmedTick)
+                {
+                    frontierRel = (short)(_confirmedSenderTick - _lastAppliedSenderTick);
+                    if (frontierRel < 0)
+                        frontierRel = 0;
+                }
+
+                allowed = frontierRel + Mathf.RoundToInt(_extrapolationValue * _predictiveSpacing);
+                if (allowed > maxAhead)
+                    allowed = maxAhead;
+            }
+            else
+            {
+                offset = Mathf.RoundToInt((1f - _extrapolationValue) * _predictiveSpacing);
+            }
 
             long age = (long)localTick - _anchorLocalTick;
             if (age < 0)
                 age = 0;
 
             long rel = age - offset;
-            if (rel > maxAhead)
-                rel = maxAhead;
+            if (rel > allowed)
+                rel = allowed;
+
+            if (useConfirmations && _hasLastRendered)
+            {
+                long lastRel = (short)(_lastRenderedSenderTick - _lastAppliedSenderTick);
+                if (lastRel >= -maxAhead && rel > lastRel + CONFIRMED_CATCHUP_STEP)
+                    rel = lastRel + CONFIRMED_CATCHUP_STEP;
+            }
+
+            _lastRenderedSenderTick = (ushort)(_lastAppliedSenderTick + rel);
+            _hasLastRendered = true;
 
             if (rel < 0)
             {
@@ -1168,7 +1253,11 @@ namespace PurrNet
                 return true;
             }
 
-            var predicted = NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
+            var renderTick = (ushort)(_lastAppliedSenderTick + rel);
+
+            var predicted = TryStrategyExtrapolation(0, renderTick, out var shaped)
+                ? shaped
+                : NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
 
             if (_hasPrevAnchor &&
                 (_prevAnchorState.frame != _anchorState.frame ||
@@ -1190,7 +1279,9 @@ namespace PurrNet
                     if (prevAge > maxAhead)
                         prevAge = maxAhead;
 
-                    var old = NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, (int)prevAge);
+                    var old = TryStrategyExtrapolation(1, renderTick, out var oldShaped)
+                        ? oldShaped
+                        : NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, (int)prevAge);
                     predicted = NetworkTransformVelocity.Lerp(old, predicted, (blend + 1f) / (PREDICT_BLEND_TICKS + 1f));
                 }
             }
