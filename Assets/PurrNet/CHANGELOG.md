@@ -1,3 +1,10 @@
+# [1.21.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.1...v1.21.0-beta.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* take over old connection if cookies match ([0e9b920](https://github.com/PurrNet/PurrNet/commit/0e9b920859f21157b8f6d62e4d62621506b219ae))
+
 # [1.21.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.20.2...v1.21.0-beta.1) (2026-07-20)
 
 
