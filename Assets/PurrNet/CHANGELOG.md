@@ -1,3 +1,10 @@
+# [1.21.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.2...v1.21.0-beta.3) (2026-07-21)
+
+
+### Bug Fixes
+
+* Network Rigidbody safety validation step for extreme values ([f895c2c](https://github.com/PurrNet/PurrNet/commit/f895c2c88bf0ca87480720c55fab50d37e679c63))
+
 # [1.21.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.1...v1.21.0-beta.2) (2026-07-21)
 
 
