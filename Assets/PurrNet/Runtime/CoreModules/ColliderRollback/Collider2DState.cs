@@ -14,8 +14,9 @@ namespace PurrNet.Modules
         public Collider2DState(Collider2D collider)
         {
             var trs = collider.transform;
-            position = trs.position;
-            rotation = trs.eulerAngles.z;
+            trs.GetPositionAndRotation(out Vector3 pos, out Quaternion rot);
+            position = pos;
+            rotation = rot.eulerAngles.z;
             scale = trs.localScale;
             enabled = collider.enabled;
         }
@@ -25,7 +26,7 @@ namespace PurrNet.Modules
             return new Collider2DState
             {
                 position = Vector2.Lerp(position, stateB.position, tickFraction),
-                rotation = Mathf.Lerp(rotation, stateB.rotation, tickFraction),
+                rotation = Mathf.LerpAngle(rotation, stateB.rotation, tickFraction),
                 scale = Vector2.Lerp(scale, stateB.scale, tickFraction),
                 enabled = tickFraction > 0.5f ? stateB.enabled : enabled
             };

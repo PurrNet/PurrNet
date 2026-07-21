@@ -1,4 +1,7 @@
+using System.Collections;
+using System.Reflection;
 using NUnit.Framework;
+using PurrNet.Modules;
 using PurrNet.Packing;
 
 public class DeltaPackedNumberTests
@@ -121,4 +124,48 @@ public class DeltaPackedNumberTests
                 $"Sequential change failed at step {i}");
         }
     }*/
+}
+
+public class ClientDeltaTrackerTests
+{
+    [Test]
+    public void CleanupRetainsARecentlyReferencedBaseline()
+    {
+        using var tracker = new ClientDeltaTracker<int>();
+
+        for (uint id = 1; id <= 64; id++)
+            tracker.Set(id, (int)id);
+
+        SetAllEntryTimes(tracker, float.NegativeInfinity);
+        tracker.ValidateId(10);
+
+        Assert.That(tracker.FindBestMatch(out uint baselineId), Is.EqualTo(9));
+        Assert.That(baselineId, Is.EqualTo(10));
+
+        uint firstRetainedId = tracker.CleanupUpTo(0.5f);
+
+        Assert.That(firstRetainedId, Is.EqualTo(10));
+        Assert.That(tracker.ContainsKey(9), Is.False);
+        Assert.That(tracker.ContainsKey(10), Is.True);
+        Assert.That(tracker.ContainsKey(64), Is.True);
+    }
+
+    private static void SetAllEntryTimes<T>(ClientDeltaTracker<T> tracker, float value)
+    {
+        var historyField = typeof(ClientDeltaTracker<T>).GetField("_history", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(historyField, Is.Not.Null);
+
+        var history = (IList)historyField!.GetValue(tracker);
+        Assert.That(history, Is.Not.Null.And.Count.GreaterThan(0));
+
+        var enterTimeField = history![0]!.GetType().GetField("enterTime", BindingFlags.Instance | BindingFlags.Public);
+        Assert.That(enterTimeField, Is.Not.Null);
+
+        for (int i = 0; i < history.Count; i++)
+        {
+            object entry = history[i];
+            enterTimeField!.SetValue(entry, value);
+            history[i] = entry;
+        }
+    }
 }

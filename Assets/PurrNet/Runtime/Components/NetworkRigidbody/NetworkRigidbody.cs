@@ -301,6 +301,10 @@ namespace PurrNet
                 isSoftParent = isSoft,
                 time = Time.unscaledTimeAsDouble
             };
+
+            if (!ValidateOutgoingSnapshot(in stateData, "initial observer state"))
+                return;
+
             SendInitialStateToObserver(player, stateData, GetCurrentSettings());
         }
 
@@ -332,6 +336,9 @@ namespace PurrNet
                 var handoff = IsController(_ownerAuth)
                     ? CaptureCurrentState()
                     : CaptureTargetState();
+
+                if (!ValidateOutgoingSnapshot(in handoff, "ownership handoff"))
+                    return;
 
                 if (newOwner.HasValue && newOwner != localPlayer)
                     SendHandoffState(newOwner.Value, handoff);
@@ -431,7 +438,7 @@ namespace PurrNet
             if (!isActiveAndEnabled)
                 return;
 
-            SendStateToServer(new RigidbodyStateData
+            var stateData = new RigidbodyStateData
             {
                 position = wirePos,
                 absolutePosition = wireAbs,
@@ -442,7 +449,10 @@ namespace PurrNet
                 parent = parentIdentity,
                 isSoftParent = isSoft,
                 time = Time.unscaledTimeAsDouble
-            });
+            };
+
+            if (ValidateOutgoingSnapshot(in stateData, "controller adoption"))
+                SendStateToServer(stateData);
         }
 
         private void EnsureSettingsInstance()
@@ -490,6 +500,12 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
+            if (!IsCurrentRigidbodyStateFinite())
+            {
+                ValidateLocalStateForSync("controller tick");
+                return;
+            }
+
             var parentIdentity = GetSyncParentIdentity();
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
             bool isSettled = IsSettledForSync();
@@ -504,6 +520,9 @@ namespace PurrNet
         private void SendCurrentState(bool reliable, bool zeroVelocities)
         {
             if (!_rigidbody)
+                return;
+
+            if (!ValidateLocalStateForSync("state send"))
                 return;
 
             var parentIdentity = GetSyncParentIdentity(out var isSoft);
@@ -533,10 +552,12 @@ namespace PurrNet
                 time = Time.unscaledTimeAsDouble
             };
 
-            if (reliable)
-                SendReliableState(stateData);
-            else
-                SendUnreliableState(stateData);
+            bool sent = reliable
+                ? SendReliableState(stateData)
+                : SendUnreliableState(stateData);
+
+            if (!sent)
+                return;
 
             _lastSyncedPosition = pos;
             _lastSyncedRotation = rot;
@@ -546,20 +567,28 @@ namespace PurrNet
             _lastSyncedWasSettled = IsSettledState(linVel, angVel);
         }
 
-        private void SendUnreliableState(RigidbodyStateData stateData)
+        private bool SendUnreliableState(RigidbodyStateData stateData)
         {
+            if (!ValidateOutgoingSnapshot(in stateData, "unreliable state"))
+                return false;
+
             if (isServer)
                 SyncState(stateData);
             else
                 SendStateToServer(stateData);
+            return true;
         }
 
-        private void SendReliableState(RigidbodyStateData stateData)
+        private bool SendReliableState(RigidbodyStateData stateData)
         {
+            if (!ValidateOutgoingSnapshot(in stateData, "reliable state"))
+                return false;
+
             if (isServer)
                 SyncReliableState(stateData);
             else
                 SendReliableStateToServer(stateData);
+            return true;
         }
 
         private void NonControllerTick()
@@ -595,8 +624,14 @@ namespace PurrNet
             Vector3 worldTargetLinVel = ToWorldLinearVelocity(_targetLinearVelocity, _targetParent, worldTargetPos);
             Vector3 worldTargetAngVel = ToWorldAngularVelocity(_targetAngularVelocity, _targetParent);
 
-            float positionError = GetPositionError(worldTargetPos);
-            float rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(worldTargetRot));
+            if (!TryGetCorrectionErrors(
+                    worldTargetPos,
+                    worldTargetRot,
+                    worldTargetLinVel,
+                    worldTargetAngVel,
+                    out float positionError,
+                    out float rotationError))
+                return;
 
             EnsureSettingsInstance();
 
@@ -815,6 +850,9 @@ namespace PurrNet
 
         private void PushSnapshot(RigidbodyStateData data)
         {
+            if (!ValidateIncomingSnapshot(in data, "snapshot"))
+                return;
+
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
 
             var now = Time.unscaledTimeAsDouble;
@@ -1995,6 +2033,9 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
+            if (!ValidateIncomingSnapshot(in data, "initial observer state"))
+                return;
+
             _rigidbody.mass = settings.mass;
             SetDrag(settings.drag);
             SetAngularDrag(settings.angularDrag);
@@ -2038,6 +2079,9 @@ namespace PurrNet
             if (!_rigidbody)
                 return;
 
+            if (!ValidateIncomingSnapshot(in data, "ownership handoff"))
+                return;
+
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
 
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
@@ -2072,6 +2116,9 @@ namespace PurrNet
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
         private void SendStateToServer(RigidbodyStateData data)
         {
+            if (!ValidateIncomingSnapshot(in data, "server receive"))
+                return;
+
             SyncState(data);
         }
 
@@ -2087,6 +2134,9 @@ namespace PurrNet
         [ServerRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
         private void SendReliableStateToServer(RigidbodyStateData data)
         {
+            if (!ValidateIncomingSnapshot(in data, "reliable server receive"))
+                return;
+
             SyncReliableState(data);
         }
 

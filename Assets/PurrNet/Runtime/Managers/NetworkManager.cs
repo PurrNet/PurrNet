@@ -1303,7 +1303,7 @@ namespace PurrNet
             var rpcModule = new RPCModule(this, playersManager, hierarchyV2, ownershipModule, scenesModule);
             var networkTransform =
                 new NetworkTransformFactory(scenesModule, scenePlayers, playersBroadcast, this, hierarchyV2);
-            var colliderRollback = new ColliderRollbackFactory(tickManager, scenesModule);
+            var colliderRollback = new ColliderRollbackFactory(this, tickManager, scenesModule);
             var networkLOD = new NetworkLODFactory(this, scenesModule, scenePlayers);
 
             if (asServer) _serverLODModule = networkLOD;
