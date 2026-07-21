@@ -1,3 +1,10 @@
+# [1.21.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.3...v1.21.0-beta.4) (2026-07-21)
+
+
+### Bug Fixes
+
+* delta module cleanup crew comes too soon ([4032a9e](https://github.com/PurrNet/PurrNet/commit/4032a9e073bd2614c260affdbee70280ee85f071))
+
 # [1.21.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.2...v1.21.0-beta.3) (2026-07-21)
 
 
