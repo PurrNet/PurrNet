@@ -419,8 +419,9 @@ namespace PurrNet.Modules
                 {
                     PurrLogger.LogWarning(
                         "Client reconnected with the cookie of a still-connected player; closing their previous connection.");
+                    UnregisterPlayer(playerId);
+                    SendUserLeftToAllClients(playerId);
                     _transport.CloseConnection(oldConn);
-                    ReplacePlayerConnection(playerId, oldConn, conn);
                 }
                 else if (_playerToConnection.ContainsKey(playerId))
                 {
@@ -532,15 +533,6 @@ namespace PurrNet.Modules
             _broadcastModule.Send(conn, new PlayerSnapshotEvent(batch));
         }
 
-        private void ReplacePlayerConnection(PlayerID playerId, Connection oldConn, Connection newConn)
-        {
-            _connectionToPlayerId.Remove(oldConn);
-            _playerToConnection[playerId] = newConn;
-
-            if (newConn.isValid)
-                _connectionToPlayerId[newConn] = playerId;
-        }
-
         private bool IsPlayerConnection(Connection conn, PlayerID playerId)
         {
             return _connectionToPlayerId.TryGetValue(conn, out var registeredPlayer) &&
@@ -560,8 +552,11 @@ namespace PurrNet.Modules
 
             if (conn.isValid)
             {
-                _connectionToPlayerId.Add(conn, player);
-                _playerToConnection.Add(player, conn);
+                if (_playerToConnection.TryGetValue(player, out var staleConn) && staleConn != conn)
+                    _connectionToPlayerId.Remove(staleConn);
+
+                _connectionToPlayerId[conn] = player;
+                _playerToConnection[player] = conn;
             }
 
             isReconnect = !_allSeenPlayers.Add(player);
