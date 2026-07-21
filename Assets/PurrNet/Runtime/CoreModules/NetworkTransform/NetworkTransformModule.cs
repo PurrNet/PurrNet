@@ -60,7 +60,6 @@ namespace PurrNet.Modules
             _broadcaster.Subscribe<NetworkTransformUnreliableDelta>(OnUnreliableDelta);
             _broadcaster.Subscribe<NetworkTransformUnreliableAck>(OnUnreliableAck);
             _broadcaster.Subscribe<NetworkTransformUnreliableNack>(OnUnreliableNack);
-            _broadcaster.Subscribe<NetworkTransformUnreliableConfirm>(OnUnreliableConfirm);
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
         }
 
@@ -69,7 +68,6 @@ namespace PurrNet.Modules
             _broadcaster.Unsubscribe<NetworkTransformUnreliableDelta>(OnUnreliableDelta);
             _broadcaster.Unsubscribe<NetworkTransformUnreliableAck>(OnUnreliableAck);
             _broadcaster.Unsubscribe<NetworkTransformUnreliableNack>(OnUnreliableNack);
-            _broadcaster.Unsubscribe<NetworkTransformUnreliableConfirm>(OnUnreliableConfirm);
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             ReleaseAllStreams();
         }
@@ -316,6 +314,8 @@ namespace PurrNet.Modules
 
             if (!MarkReceived(stream, data.seq, out var packetOrder))
                 return;
+
+            UpdateOffsetEstimate(stream, data.tick);
 
             bool committed = false;
             var decoded = ListPool<NTUnreliableEntry>.Instantiate();
@@ -899,14 +899,23 @@ namespace PurrNet.Modules
 
             if (nt.hasSyncStrategy)
             {
+                bool breakWrite = false;
+
                 if (hasLastWrite)
                 {
                     int sinceLastWrite = (short)(currentTick - lastWrite.tick);
                     bool resting = current.Equals(lastWrite.state);
                     bool restGate = !resting || lastWrite.restConfirmed;
-                    if (sinceLastWrite >= 1 && sinceLastWrite < nt.predictiveSendSpacing && restGate &&
-                        nt.CanSkipCached(lastWrite, currentTick, current))
-                        return NTWriteResult.Hold;
+
+                    if (sinceLastWrite >= 1 && restGate && lastWrite.redundancy == 0)
+                    {
+                        if (sinceLastWrite < nt.predictiveSendSpacing &&
+                            nt.CanSkipCached(lastWrite, currentTick, current))
+                            return NTWriteResult.Hold;
+
+                        breakWrite = sinceLastWrite < nt.predictiveSendSpacing &&
+                                     sinceLastWrite > NTUnreliable.BREAK_REDUNDANCY;
+                    }
                 }
 
                 if (!hasLastWrite || lastWrite.tick != currentTick)
@@ -921,7 +930,10 @@ namespace PurrNet.Modules
                         prevPrevState = lastWrite.prevState,
                         hasPrev = hasLastWrite,
                         hasPrevPrev = hasLastWrite && lastWrite.hasPrev,
-                        restConfirmed = hasLastWrite && current.Equals(lastWrite.state)
+                        restConfirmed = hasLastWrite && current.Equals(lastWrite.state),
+                        redundancy = breakWrite
+                            ? NTUnreliable.BREAK_REDUNDANCY
+                            : (byte)(hasLastWrite && lastWrite.redundancy > 0 ? lastWrite.redundancy - 1 : 0)
                     };
                 }
             }
@@ -1015,7 +1027,6 @@ namespace PurrNet.Modules
 
             BitPacker packer = null;
             List<NTUnreliableEntry> pending = null;
-            List<NTConfirmEntry> confirms = null;
             int countPos = 0;
             int writtenCount = 0;
             int lastDist = 0;
@@ -1048,14 +1059,6 @@ namespace PurrNet.Modules
                 if (writeResult == NTWriteResult.Hold)
                 {
                     predictiveHoldCount++;
-
-                    if (nt.strategySettings.sendConfirmations &&
-                        stream.lastPredictiveWrite.TryGetValue(nt.id.Value, out var heldWrite))
-                    {
-                        confirms ??= ListPool<NTConfirmEntry>.Instantiate();
-                        confirms.Add(new NTConfirmEntry { nid = nt.id.Value, baseTick = heldWrite.tick });
-                    }
-
                     i++;
                     continue;
                 }
@@ -1116,89 +1119,7 @@ namespace PurrNet.Modules
             if (writtenCount > 0)
                 FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
 
-            if (confirms != null)
-            {
-                SendConfirmations(player, confirms);
-                ListPool<NTConfirmEntry>.Destroy(confirms);
-            }
-
             _prepareUnreliableMarker.End();
-        }
-
-        private void SendConfirmations(PlayerID player, List<NTConfirmEntry> confirms)
-        {
-            var packer = BitPackerPool.Get();
-
-            Packer<int>.Write(packer, confirms.Count);
-
-            NetworkID lastNid = default;
-            PackedInt lastDiff = default;
-
-            for (int i = 0; i < confirms.Count; i++)
-            {
-                var entry = confirms[i];
-                DeltaPacker<NetworkID>.Write(packer, lastNid, entry.nid);
-                lastNid = entry.nid;
-
-                PackedInt diff = (short)(_currentTick - entry.baseTick);
-                DeltaPacker<PackedInt>.Write(packer, lastDiff, diff);
-                lastDiff = diff;
-            }
-
-            var confirm = new NetworkTransformUnreliableConfirm(_scene, _currentTick, packer);
-            _broadcaster.Send(player, confirm, Channel.Unreliable);
-
-            packer.Dispose();
-        }
-
-        private void OnUnreliableConfirm(PlayerID player, NetworkTransformUnreliableConfirm data, bool asServer)
-        {
-            if (data.scene != _scene)
-                return;
-
-            try
-            {
-                using var packet = BitPackerPool.Get(data.packet);
-                packet.ResetPositionAndMode(true);
-
-                long packetEndLong = data.packet.length * 8L;
-                if (packetEndLong > int.MaxValue)
-                    return;
-                int packetEnd = (int)packetEndLong;
-
-                int count = default;
-                Packer<int>.Read(packet, ref count);
-
-                if (count < 0 || count > packetEnd - packet.positionInBits)
-                    return;
-
-                NetworkID lastNid = default;
-                PackedInt lastDiff = default;
-
-                for (int i = 0; i < count; i++)
-                {
-                    DeltaPacker<NetworkID>.Read(packet, lastNid, ref lastNid);
-                    PackedInt diff = default;
-                    DeltaPacker<PackedInt>.Read(packet, lastDiff, ref diff);
-                    lastDiff = diff;
-
-                    if (packet.positionInBits > packetEnd)
-                        return;
-
-                    if (diff.value < 1 || diff.value > ushort.MaxValue)
-                        continue;
-
-                    if (_factory.TryGetIdentity(_scene, lastNid, out var identity) &&
-                        identity is NetworkTransform nt &&
-                        (!asServer || nt.IsControlling(player, false)))
-                        nt.ApplyConfirmation(data.tick, (ushort)(data.tick - diff.value));
-                }
-            }
-            catch (System.Exception exception) when (exception is System.IndexOutOfRangeException or
-                                                      System.ArgumentOutOfRangeException or
-                                                      System.OverflowException)
-            {
-            }
         }
 
         private void SendStatesTo(PlayerID player, PlayerID localPlayer)
@@ -1371,12 +1292,100 @@ namespace PurrNet.Modules
             }
         }
 
+        private int _vouchBucketTicks;
+
+        private void UpdateOffsetEstimate(NTUnreliableRecvStream stream, ushort senderTick)
+        {
+            uint localTick = _manager.tickModule.localTick;
+            ushort off = (ushort)((ushort)localTick - senderTick);
+
+            if (!stream.offsetInit)
+            {
+                stream.offsetInit = true;
+                stream.offsetRef = off;
+                stream.devMaxA = 0;
+                stream.devMaxB = short.MinValue;
+                stream.bucketStart = localTick;
+                return;
+            }
+
+            short dev = (short)(off - stream.offsetRef);
+            if (stream.devMaxA == short.MinValue || dev > stream.devMaxA)
+                stream.devMaxA = dev;
+        }
+
+        private void UpdateVouchedTick(NTUnreliableRecvStream stream, uint localTick)
+        {
+            if (!stream.offsetInit)
+            {
+                stream.vouchedValid = false;
+                return;
+            }
+
+            if (_vouchBucketTicks == 0)
+                _vouchBucketTicks = System.Math.Max(_manager.tickModule.tickRate, 16);
+
+            uint elapsed = localTick - stream.bucketStart;
+            if (elapsed >= (uint)(_vouchBucketTicks * 2))
+            {
+                stream.devMaxA = short.MinValue;
+                stream.devMaxB = short.MinValue;
+                stream.bucketStart = localTick;
+            }
+            else if (elapsed >= (uint)_vouchBucketTicks)
+            {
+                stream.devMaxB = stream.devMaxA;
+                stream.devMaxA = short.MinValue;
+                stream.bucketStart += (uint)_vouchBucketTicks;
+            }
+
+            int devMax = stream.devMaxA == short.MinValue ? int.MinValue : stream.devMaxA;
+            if (stream.devMaxB != short.MinValue && stream.devMaxB > devMax)
+                devMax = stream.devMaxB;
+
+            if (devMax == int.MinValue)
+            {
+                if (!stream.hasFrozenDev)
+                {
+                    stream.vouchedValid = false;
+                    return;
+                }
+
+                devMax = stream.frozenDevMax;
+            }
+            else
+            {
+                stream.frozenDevMax = (short)devMax;
+                stream.hasFrozenDev = true;
+            }
+
+            stream.vouchedTick = (ushort)((ushort)localTick -
+                                          (ushort)(stream.offsetRef + devMax + NTUnreliable.VOUCH_SLACK_TICKS));
+            stream.vouchedValid = true;
+        }
+
         private void PredictReceivedStates(uint localTick)
         {
+            foreach (var stream in _recvStreams.Values)
+                UpdateVouchedTick(stream, localTick);
+
             for (var i = 0; i < _networkTransforms.Count; i++)
             {
                 var nt = _networkTransforms[i];
-                if (!nt || !nt.TryTickPrediction(localTick, out var state))
+                if (!nt)
+                    continue;
+
+                ushort vouchedTick = 0;
+                bool hasVouched = false;
+                var sender = _asServer ? nt.owner.GetValueOrDefault() : PlayerID.Server;
+
+                if (_recvStreams.TryGetValue(sender, out var stream) && stream.vouchedValid)
+                {
+                    vouchedTick = stream.vouchedTick;
+                    hasVouched = true;
+                }
+
+                if (!nt.TryTickPrediction(localTick, vouchedTick, hasVouched, out var state))
                     continue;
 
                 NetworkIdentity frameParent = null;

@@ -59,13 +59,17 @@ namespace PurrNet
         [SerializeField]
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
-        [Tooltip("Optional strategy settings for reduced-rate syncing of steady motion. " +
-                 "When empty, the transform syncs every tick with standard delta compression.")]
+        [Tooltip("Skips sends while motion stays predictable by receivers, greatly reducing " +
+                 "bandwidth for steady motion (linear or curved) without adding render delay. " +
+                 "Unpredictable motion falls back to normal per-tick syncing automatically.")]
         [SerializeField, PurrLock]
-        private NetworkTransformStrategySettings _strategySettings;
+        private bool _predictiveSync = true;
 
+        private NetworkTransformSyncStrategy _customStrategy;
+        private NetworkTransformSyncStrategy _activeStrategy;
         private bool _hasStrategy;
-        private float _extrapolationValue;
+
+        private static readonly NetworkTransformDefaultStrategy _defaultStrategy = new NetworkTransformDefaultStrategy();
 
         /// <summary>
         /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
@@ -122,11 +126,23 @@ namespace PurrNet
         public bool ownerAuth => _ownerAuth;
 
         /// <summary>
-        /// Whether a sync strategy is assigned and reduced-rate syncing is active.
+        /// Whether predictive reduced-rate syncing is active.
         /// </summary>
         public bool hasSyncStrategy => _hasStrategy;
 
-        internal NetworkTransformStrategySettings strategySettings => _strategySettings;
+        /// <summary>
+        /// Whether predictive reduced-rate syncing is enabled. Uses the built-in default strategy
+        /// unless a custom strategy is injected via <see cref="SetSyncStrategy"/>.
+        /// </summary>
+        public bool predictiveSync
+        {
+            get => _predictiveSync;
+            set
+            {
+                _predictiveSync = value;
+                ApplyStrategySettings();
+            }
+        }
 
         private ushort _skipCacheFrom;
         private ushort _skipCacheCurrent;
@@ -142,7 +158,7 @@ namespace PurrNet
                 _skipCacheHasPrev == lastWrite.hasPrev && _skipCachePrev == lastWrite.prevTick)
                 return _skipCacheResult;
 
-            _skipCacheResult = _strategySettings.CanSkip(this, lastWrite, currentTick, current);
+            _skipCacheResult = _activeStrategy.CanSkip(this, lastWrite, currentTick, current);
             _skipCacheFrom = lastWrite.tick;
             _skipCacheCurrent = currentTick;
             _skipCachePrev = lastWrite.prevTick;
@@ -152,28 +168,29 @@ namespace PurrNet
         }
 
         /// <summary>
-        /// Assigns the sync strategy settings at runtime. Call before spawning for full effect;
-        /// when called on a spawned transform the new settings apply immediately.
+        /// Injects a custom sync strategy. Pass null to revert to the built-in default strategy.
+        /// Call before spawning for full effect; when called on a spawned transform the new
+        /// strategy applies immediately. Sharing one instance across transforms is safe as
+        /// long as any strategy state is input-keyed memoization, as in the built-in strategies.
         /// </summary>
-        public void SetStrategySettings(NetworkTransformStrategySettings settings)
+        public void SetSyncStrategy(NetworkTransformSyncStrategy strategy)
         {
-            _strategySettings = settings;
+            _customStrategy = strategy;
             ApplyStrategySettings();
         }
 
         private void ApplyStrategySettings()
         {
-            _hasStrategy = _strategySettings;
+            _activeStrategy = !_predictiveSync ? null : _customStrategy ?? _defaultStrategy;
+            _hasStrategy = _activeStrategy != null;
 
             if (!_hasStrategy)
                 return;
 
-            _extrapolationValue = _strategySettings.extrapolation;
-
             var nm = networkManager;
             if (nm && nm.tickModule != null)
                 _predictiveSpacing = Mathf.Clamp(
-                    Mathf.RoundToInt(nm.tickModule.tickRate * _strategySettings.maxSendInterval), 2,
+                    Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy.maxSendInterval), 2,
                     CAPTURE_HISTORY_SIZE - 2);
         }
 
@@ -1000,11 +1017,7 @@ namespace PurrNet
         private bool _hasLastAppliedState;
 
         private const int PREDICT_BLEND_TICKS = 4;
-        private const int CONFIRMED_RENDER_DELAY_TICKS = 2;
-        private const int CONFIRMED_CATCHUP_STEP = 2;
-
-        private ushort _confirmedSenderTick;
-        private bool _hasConfirmedTick;
+        private const int RENDER_CATCHUP_STEP = 2;
 
         private ushort _lastRenderedSenderTick;
         private bool _hasLastRendered;
@@ -1108,8 +1121,8 @@ namespace PurrNet
 
             float t = into / (float)span;
 
-            if (hasPrev && _strategySettings &&
-                _strategySettings.TryReconstruct(prevState, lowerState, upperState, t, out var shaped))
+            if (hasPrev && _activeStrategy != null &&
+                _activeStrategy.TryReconstructState(prevState, lowerState, upperState, t, out var shaped))
                 return shaped;
 
             return NetworkTransformVelocity.Lerp(lowerState, upperState, t);
@@ -1135,7 +1148,7 @@ namespace PurrNet
                 return false;
 
             float t = (span + rel) / (float)span;
-            return _strategySettings.TryReconstruct(_recvStates[i2], _recvStates[i1], _recvStates[i0], t,
+            return _activeStrategy.TryReconstructState(_recvStates[i2], _recvStates[i1], _recvStates[i0], t,
                 out result);
         }
 
@@ -1145,27 +1158,8 @@ namespace PurrNet
             _hasPrevAnchor = false;
             _recvCount = 0;
             _hasLastSample = false;
-            _hasConfirmedTick = false;
             _hasLastRendered = false;
             _seamOffset = Vector3.zero;
-        }
-
-        internal void ApplyConfirmation(ushort senderTick, ushort baseTick)
-        {
-            if (_cachedIsController || !_hasStrategy || !_hasLastAppliedState || !_hasPredictionAnchor)
-                return;
-
-            if (baseTick != _lastAppliedSenderTick)
-                return;
-
-            if ((short)(senderTick - _lastAppliedSenderTick) <= 0)
-                return;
-
-            if (_hasConfirmedTick && (short)(senderTick - _confirmedSenderTick) <= 0)
-                return;
-
-            _confirmedSenderTick = senderTick;
-            _hasConfirmedTick = true;
         }
 
         private void SetPredictionAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
@@ -1190,7 +1184,8 @@ namespace PurrNet
             _hasPredictionAnchor = true;
         }
 
-        internal bool TryTickPrediction(uint localTick, out NetworkTransformState state)
+        internal bool TryTickPrediction(uint localTick, ushort vouchedTick, bool hasVouched,
+            out NetworkTransformState state)
         {
             state = default;
 
@@ -1203,45 +1198,28 @@ namespace PurrNet
             _lastPredictionTick = localTick;
 
             long maxAhead = _predictiveSpacing + 2;
-            long allowed = maxAhead;
-            int offset;
+            long rel;
 
-            bool useConfirmations = _strategySettings.sendConfirmations;
-
-            if (useConfirmations)
+            if (hasVouched)
             {
-                offset = CONFIRMED_RENDER_DELAY_TICKS;
-
-                long frontierRel = 0;
-                if (_hasConfirmedTick)
-                {
-                    frontierRel = (short)(_confirmedSenderTick - _lastAppliedSenderTick);
-                    if (frontierRel < 0)
-                        frontierRel = 0;
-                }
-
-                allowed = frontierRel + Mathf.RoundToInt(_extrapolationValue * _predictiveSpacing);
-                if (allowed > maxAhead)
-                    allowed = maxAhead;
+                rel = (short)(vouchedTick - _lastAppliedSenderTick);
             }
             else
             {
-                offset = Mathf.RoundToInt((1f - _extrapolationValue) * _predictiveSpacing);
+                long age = (long)localTick - _anchorLocalTick;
+                if (age < 0)
+                    age = 0;
+                rel = age - _predictiveSpacing;
             }
 
-            long age = (long)localTick - _anchorLocalTick;
-            if (age < 0)
-                age = 0;
+            if (rel > maxAhead)
+                rel = maxAhead;
 
-            long rel = age - offset;
-            if (rel > allowed)
-                rel = allowed;
-
-            if (useConfirmations && _hasLastRendered)
+            if (_hasLastRendered)
             {
                 long lastRel = (short)(_lastRenderedSenderTick - _lastAppliedSenderTick);
-                if (lastRel >= -maxAhead && rel > lastRel + CONFIRMED_CATCHUP_STEP)
-                    rel = lastRel + CONFIRMED_CATCHUP_STEP;
+                if (lastRel >= -maxAhead && rel > lastRel + RENDER_CATCHUP_STEP)
+                    rel = lastRel + RENDER_CATCHUP_STEP;
             }
 
             _lastRenderedSenderTick = (ushort)(_lastAppliedSenderTick + rel);
@@ -1273,7 +1251,11 @@ namespace PurrNet
                 }
                 else
                 {
-                    long prevAge = (long)localTick - _prevAnchorLocalTick - offset;
+                    long effOffset = (long)localTick - _anchorLocalTick - rel;
+                    if (effOffset < 0)
+                        effOffset = 0;
+
+                    long prevAge = (long)localTick - _prevAnchorLocalTick - effOffset;
                     if (prevAge < 0)
                         prevAge = 0;
                     if (prevAge > maxAhead)

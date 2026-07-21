@@ -40,26 +40,6 @@ namespace PurrNet.Modules
         }
     }
 
-    internal struct NetworkTransformUnreliableConfirm : IPackedAuto
-    {
-        public SceneID scene;
-        public readonly ushort tick;
-        public readonly ByteData packet;
-
-        public NetworkTransformUnreliableConfirm(SceneID context, ushort tick, BitPacker packer)
-        {
-            scene = context;
-            this.tick = tick;
-            packet = packer.ToByteData();
-        }
-    }
-
-    internal struct NTConfirmEntry
-    {
-        public NetworkID nid;
-        public ushort baseTick;
-    }
-
     internal struct NetworkTransformUnreliableAckHeader : IPackedAuto
     {
         public ushort seq;
@@ -122,6 +102,7 @@ namespace PurrNet.Modules
         public bool hasPrev;
         public bool hasPrevPrev;
         public bool restConfirmed;
+        public byte redundancy;
     }
 
     internal struct NTUnreliableGeneration
@@ -168,6 +149,15 @@ namespace PurrNet.Modules
         public bool ackDirty;
         public byte ackDelayTicks;
         public byte packetsSinceAck;
+        public bool offsetInit;
+        public ushort offsetRef;
+        public short devMaxA = short.MinValue;
+        public short devMaxB = short.MinValue;
+        public uint bucketStart;
+        public short frozenDevMax;
+        public bool hasFrozenDev;
+        public ushort vouchedTick;
+        public bool vouchedValid;
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 
@@ -189,6 +179,9 @@ namespace PurrNet.Modules
         public const int PREDICTIVE_POS_TOLERANCE = 2;
         public const int PREDICTIVE_ROT_TOLERANCE = 4;
         public const int PREDICTIVE_SCALE_TOLERANCE = 2;
+
+        public const byte BREAK_REDUNDANCY = 2;
+        public const int VOUCH_SLACK_TICKS = 1;
 
         public static NetworkTransformState GetDeltaPrediction(in NetworkTransformState baseline,
             in NetworkTransformVelocity velocity, int distance)

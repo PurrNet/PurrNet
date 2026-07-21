@@ -306,7 +306,6 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 1
-  _strategySettings: {fileID: 11400000, guid: 9c4e6f8a0b2d4c6e8f0a2c4e6a8c0e42, type: 2}
 --- !u!114 &468800014021081407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -527,7 +526,6 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 1
-  _strategySettings: {fileID: 11400000, guid: 9c4e6f8a0b2d4c6e8f0a2c4e6a8c0e42, type: 2}
 --- !u!1001 &1278614181189473711
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -1,13 +1,19 @@
-using PurrNet.Modules;
 using PurrNet.Packing;
 using UnityEngine;
 
 namespace PurrNet
 {
-    [CreateAssetMenu(fileName = "NetworkTransformArcStrategy",
-        menuName = "PurrNet/Network Transform Arc Strategy")]
-    public class NetworkTransformArcStrategy : NetworkTransformStrategySettings
+    /// <summary>
+    /// Default predictive sync strategy. Straight motion is detected first and handled by
+    /// the linear fallback paths; anything else is reconstructed along locally fitted
+    /// circular arcs, covering motion with roughly constant curvature over one send
+    /// interval: orbits, turns, arches, projectile arcs and spline-like paths.
+    /// </summary>
+    public class NetworkTransformDefaultStrategy : NetworkTransformSyncStrategy
     {
+        private const float LINEAR_NOISE_FLOOR = 4f * CompressedFloat.PRECISION;
+        private const float LINEAR_REL_FRACTION = 1f / 64f;
+
         private Vector3 _fitPrev;
         private Vector3 _fitFrom;
         private Vector3 _fitTo;
@@ -15,22 +21,16 @@ namespace PurrNet
         private bool _fitValid;
         private bool _hasFit;
 
-        internal override bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
-            in NetworkTransformState to, float t, out NetworkTransformState result)
+        protected override bool TryReconstruct(in NetworkTransformSample prev, in NetworkTransformSample from,
+            in NetworkTransformSample to, float t, ref NetworkTransformSample result)
         {
-            result = default;
-
-            if (prev.frame != from.frame || from.frame != to.frame ||
-                !prev.parentId.Equals(from.parentId) || !from.parentId.Equals(to.parentId))
-                return false;
-
-            if (!TryGetPosition(prev, out var pPrev) || !TryGetPosition(from, out var pFrom) ||
-                !TryGetPosition(to, out var pTo))
-                return false;
+            var pPrev = prev.position;
+            var pFrom = from.position;
+            var pTo = to.position;
 
             if (!_hasFit || _fitPrev != pPrev || _fitFrom != pFrom || _fitTo != pTo)
             {
-                _fitValid = TryFitCircle(pPrev, pFrom, pTo, out _fitCenter);
+                _fitValid = !IsNearlyLinear(pPrev, pFrom, pTo) && TryFitCircle(pPrev, pFrom, pTo, out _fitCenter);
                 _fitPrev = pPrev;
                 _fitFrom = pFrom;
                 _fitTo = pTo;
@@ -40,22 +40,24 @@ namespace PurrNet
             if (!_fitValid)
                 return false;
 
-            result = NetworkTransformVelocity.Lerp(from, to, t);
-            result.data.position = (CompressedVector3)ArcPoint(_fitCenter, pFrom, pTo, t);
+            result.position = ArcPoint(_fitCenter, pFrom, pTo, t);
             return true;
         }
 
-        private static bool TryGetPosition(in NetworkTransformState state, out Vector3 position)
+        private static bool IsNearlyLinear(Vector3 a, Vector3 b, Vector3 c)
         {
-            if (state.data.position.HasValue)
-            {
-                var p = state.data.position.Value;
-                position = new Vector3(p.x.value, p.y.value, p.z.value);
-                return true;
-            }
+            var ab = b - a;
+            var ac = c - a;
+            float acSq = ac.sqrMagnitude;
 
-            position = default;
-            return false;
+            if (acSq < LINEAR_NOISE_FLOOR * LINEAR_NOISE_FLOOR)
+                return true;
+
+            float hSq = Vector3.Cross(ab, ac).sqrMagnitude / acSq;
+            float relThresh = acSq * (LINEAR_REL_FRACTION * LINEAR_REL_FRACTION);
+            float thresh = Mathf.Max(LINEAR_NOISE_FLOOR * LINEAR_NOISE_FLOOR, relThresh);
+
+            return hSq < thresh;
         }
 
         private static bool TryFitCircle(Vector3 a, Vector3 b, Vector3 c, out Vector3 center)

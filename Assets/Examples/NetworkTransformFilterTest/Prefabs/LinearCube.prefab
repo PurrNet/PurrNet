@@ -47,6 +47,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 414c4167e14470844858e9e4ddfcb8f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Internal.Examples::NetworkTransformFilterTest.LinearMotion
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -54,8 +56,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _timing: 1
   _timeScale: 1
   _direction: {x: 1, y: 0, z: 0}
@@ -131,6 +131,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 817fe5016bd0a2a49a95b6eb338bb132, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkTransform
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
   _isSetup: 0
   _prefabId: -2147483648
   _componentIndex: -2147483648
@@ -138,8 +140,6 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
   _syncPosition: 1
   _syncRotation: 1
   _syncScale: 1
@@ -151,4 +151,4 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _strategySettings: {fileID: 11400000, guid: 5b8e1d3f7a294c6e8f0b2d4a6c8e0f21, type: 2}
+  _predictiveSync: 1

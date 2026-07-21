@@ -1,23 +1,18 @@
-using UnityEngine;
-
 namespace PurrNet
 {
-    [CreateAssetMenu(fileName = "NetworkTransformCompositeStrategy",
-        menuName = "PurrNet/Network Transform Composite Strategy")]
-    public class NetworkTransformCompositeStrategy : NetworkTransformStrategySettings
+    /// <summary>
+    /// Combines multiple strategies: gaps are reconstructed by the first strategy able to.
+    /// The composite's own maxSendInterval applies; the children's are ignored.
+    /// </summary>
+    public class NetworkTransformCompositeStrategy : NetworkTransformSyncStrategy
     {
-        [Tooltip("Strategies evaluated in order. A send can be skipped when any strategy allows it, " +
-                 "and gaps are reconstructed by the first strategy able to. " +
-                 "The composite's own interval and extrapolation settings apply; the children's are ignored.")]
-        public NetworkTransformStrategySettings[] strategies;
+        public NetworkTransformSyncStrategy[] strategies;
 
         private static int _depth;
 
-        internal override bool TryReconstruct(in NetworkTransformState prev, in NetworkTransformState from,
-            in NetworkTransformState to, float t, out NetworkTransformState result)
+        protected override bool TryReconstruct(in NetworkTransformSample prev, in NetworkTransformSample from,
+            in NetworkTransformSample to, float t, ref NetworkTransformSample result)
         {
-            result = default;
-
             if (strategies == null || strategies.Length == 0)
                 return false;
 
@@ -28,12 +23,20 @@ namespace PurrNet
 
             try
             {
+                var prefill = result;
+
                 for (int i = 0; i < strategies.Length; i++)
                 {
                     var strategy = strategies[i];
-                    if (strategy && strategy != this &&
-                        strategy.TryReconstruct(prev, from, to, t, out result))
+                    if (strategy == null || strategy == this)
+                        continue;
+
+                    var attempt = prefill;
+                    if (strategy.TryReconstructSample(prev, from, to, t, ref attempt))
+                    {
+                        result = attempt;
                         return true;
+                    }
                 }
 
                 return false;
