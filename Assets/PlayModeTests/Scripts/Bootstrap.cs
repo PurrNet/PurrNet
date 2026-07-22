@@ -365,8 +365,12 @@ public class Bootstrap : Scenario
         }
         catch (TimeoutException)
         {
+            int transportConnections = _networkManager.transport is UDPTransport udp
+                ? udp.connections.Count
+                : -1;
             Debug.LogError(
                 $"[Bootstrap] connection timeout: players={_networkManager.playerCount}/{_expectedConnections}, " +
+                $"transportConnections={transportConnections}, " +
                 $"role={_role}, timeout={_connectionTimeout:F0}s");
             throw;
         }
