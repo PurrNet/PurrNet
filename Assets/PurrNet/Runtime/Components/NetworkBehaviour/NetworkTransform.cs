@@ -1028,6 +1028,8 @@ namespace PurrNet
         private Quaternion _corrRotOffset = Quaternion.identity;
         private Vector3 _corrScaleOffset;
         private float _corrWeight;
+        private NetworkTransformFrame _corrFrame;
+        private NetworkID _corrParentId;
         private bool _hasCorrOffset;
         private bool _corrPending;
 
@@ -1250,7 +1252,11 @@ namespace PurrNet
 
             var target = SampleAdaptiveAt(relFloor, tickA);
             if (frac > 0f)
-                target = NetworkTransformVelocity.Lerp(target, SampleAdaptiveAt(relFloor + 1, tickB), frac);
+            {
+                var next = SampleAdaptiveAt(relFloor + 1, tickB);
+                if (next.frame == target.frame && next.parentId.Equals(target.parentId))
+                    target = NetworkTransformVelocity.Lerp(target, next, frac);
+            }
 
             if (_hasPrevAnchor &&
                 (_prevAnchorState.frame != _anchorState.frame ||
@@ -1271,7 +1277,11 @@ namespace PurrNet
 
                 var old = SampleOldAnchorAt(tickA, (int)prevAge);
                 if (frac > 0f)
-                    old = NetworkTransformVelocity.Lerp(old, SampleOldAnchorAt(tickB, (int)prevAge + 1), frac);
+                {
+                    var oldNext = SampleOldAnchorAt(tickB, (int)prevAge + 1);
+                    if (oldNext.frame == old.frame && oldNext.parentId.Equals(old.parentId))
+                        old = NetworkTransformVelocity.Lerp(old, oldNext, frac);
+                }
 
                 if (old.frame == target.frame && old.parentId.Equals(target.parentId))
                     CaptureCorrectionOffset(old, target);
@@ -1279,6 +1289,9 @@ namespace PurrNet
 
             _corrPending = false;
             _hasPrevAnchor = false;
+
+            if (_hasCorrOffset && (target.frame != _corrFrame || !target.parentId.Equals(_corrParentId)))
+                _hasCorrOffset = false;
 
             if (_hasCorrOffset)
             {
@@ -1324,6 +1337,8 @@ namespace PurrNet
             _corrRotOffset = rotDelta;
             _corrScaleOffset = scaleDelta;
             _corrWeight = 1f;
+            _corrFrame = target.frame;
+            _corrParentId = target.parentId;
             _hasCorrOffset = true;
         }
 
