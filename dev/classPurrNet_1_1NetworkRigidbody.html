@@ -115,8 +115,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a071345e95ef0ea526a9d8308fbbe3215"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:a071345e95ef0ea526a9d8308fbbe3215"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="classPurrNet_1_1NetworkRigidbody.html#a071345e95ef0ea526a9d8308fbbe3215">More...</a><br /></td></tr>
 <tr class="separator:a071345e95ef0ea526a9d8308fbbe3215"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#aa2a5ca21fb585d4ae7d0524df9fdcc5f">SetSoftParent</a> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
-<tr class="memdesc:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Soft-parent this rigidbody to <em>identity</em> : its position, rotation and velocity sync in that identity's local frame, exactly as if parented there, but the Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a> while active. Pass null (or call <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487" title="Clears the soft-parent set via SetSoftParent, reverting to the space-derived frame.">ClearSoftParent</a>) to revert. Enable <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a422c39dcd8e35cd5fcfe07222174fbc5" title="When enabled, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody...">syncVelocityRelativeToParent</a> if velocity should subtract the parent Rigidbody's linear and angular motion instead of only changing axes.  <a href="classPurrNet_1_1NetworkRigidbody.html#aa2a5ca21fb585d4ae7d0524df9fdcc5f">More...</a><br /></td></tr>
+<tr class="memitem:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="memItemLeft" align="right" valign="top"><a id="aa2a5ca21fb585d4ae7d0524df9fdcc5f" name="aa2a5ca21fb585d4ae7d0524df9fdcc5f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetSoftParent</b> (<a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> identity)</td></tr>
+<tr class="memdesc:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Soft-parent this rigidbody to <em>identity</em> : its position, rotation and velocity sync in that identity's local frame, exactly as if parented there, but the Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a> while active. Pass null (or call <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487" title="Clears the soft-parent set via SetSoftParent, reverting to the space-derived frame.">ClearSoftParent</a>) to revert. Linear and angular velocity are always relative to the parent Rigidbody's motion while this parent-local frame is active, so they remain valid derivatives for interpolation and extrapolation. With no sync parent, position and velocity remain in world/absolute space.  <br /></td></tr>
 <tr class="separator:aa2a5ca21fb585d4ae7d0524df9fdcc5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9178f3aae34e5de1f92f2b75ff281487"><td class="memItemLeft" align="right" valign="top"><a id="a9178f3aae34e5de1f92f2b75ff281487" name="a9178f3aae34e5de1f92f2b75ff281487"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ClearSoftParent</b> ()</td></tr>
@@ -374,6 +375,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasRemoveOwnershipAut
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
+<tr class="memitem:a0dfa1e149a117f93c25385326bd76d80"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a0dfa1e149a117f93c25385326bd76d80">OnInitializeModules</a> ()</td></tr>
+<tr class="memdesc:a0dfa1e149a117f93c25385326bd76d80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before the NetworkModules are initialized. You can use this to update their values before they are networked.   <a href="classPurrNet_1_1NetworkRigidbody.html#a0dfa1e149a117f93c25385326bd76d80">More...</a><br /></td></tr>
+<tr class="separator:a0dfa1e149a117f93c25385326bd76d80"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ae307e7fa47852b3e20388377b38b2d"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a7ae307e7fa47852b3e20388377b38b2d">OnEarlySpawn</a> ()</td></tr>
 <tr class="memdesc:a7ae307e7fa47852b3e20388377b38b2d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned but before any other data is received. At this point you might be missing ownership data, module data, etc. This is only called once even if in host mode.   <a href="classPurrNet_1_1NetworkRigidbody.html#a7ae307e7fa47852b3e20388377b38b2d">More...</a><br /></td></tr>
 <tr class="separator:a7ae307e7fa47852b3e20388377b38b2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -389,6 +393,12 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a5bbe3031041db15dd08f6239d4a7f1ae"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a5bbe3031041db15dd08f6239d4a7f1ae">OnOwnerChanged</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? oldOwner, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>? newOwner, bool asServer)</td></tr>
 <tr class="memdesc:a5bbe3031041db15dd08f6239d4a7f1ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object changes.   <a href="classPurrNet_1_1NetworkRigidbody.html#a5bbe3031041db15dd08f6239d4a7f1ae">More...</a><br /></td></tr>
 <tr class="separator:a5bbe3031041db15dd08f6239d4a7f1ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a08521bcfd430cde1cb74572dba4def5b"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a08521bcfd430cde1cb74572dba4def5b">OnOwnerDisconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
+<tr class="memdesc:a08521bcfd430cde1cb74572dba4def5b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object disconnects. Server only.   <a href="classPurrNet_1_1NetworkRigidbody.html#a08521bcfd430cde1cb74572dba4def5b">More...</a><br /></td></tr>
+<tr class="separator:a08521bcfd430cde1cb74572dba4def5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acaf0ee50aa9129726820bee8097aff8f"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acaf0ee50aa9129726820bee8097aff8f">OnOwnerReconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
+<tr class="memdesc:acaf0ee50aa9129726820bee8097aff8f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object reconnects. Server only.   <a href="classPurrNet_1_1NetworkRigidbody.html#acaf0ee50aa9129726820bee8097aff8f">More...</a><br /></td></tr>
+<tr class="separator:acaf0ee50aa9129726820bee8097aff8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:a5d555248f0ca05193239704426014fe8 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a5d555248f0ca05193239704426014fe8" name="a5d555248f0ca05193239704426014fe8"></a>
 object&#160;</td><td class="memItemRight" valign="bottom"><b>CallGeneric</b> (string methodName, <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
@@ -421,9 +431,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 <tr class="memitem:a14086750126d4e89bea12bfa8cb9c742 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a14086750126d4e89bea12bfa8cb9c742">OnSpawned</a> (bool asServer)</td></tr>
 <tr class="memdesc:a14086750126d4e89bea12bfa8cb9c742 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned. This might be called twice times in host mode. Once for the server and once for the client.   <a href="classPurrNet_1_1NetworkIdentity.html#a14086750126d4e89bea12bfa8cb9c742">More...</a><br /></td></tr>
 <tr class="separator:a14086750126d4e89bea12bfa8cb9c742 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ad0c4e9821a3484f494602675cb71f361" name="ad0c4e9821a3484f494602675cb71f361"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeModules</b> ()</td></tr>
-<tr class="memdesc:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before the NetworkModules are initialized. You can use this to update their values before they are networked.  <br /></td></tr>
+<tr class="memitem:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ad0c4e9821a3484f494602675cb71f361">OnInitializeModules</a> ()</td></tr>
+<tr class="memdesc:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before the NetworkModules are initialized. You can use this to update their values before they are networked.   <a href="classPurrNet_1_1NetworkIdentity.html#ad0c4e9821a3484f494602675cb71f361">More...</a><br /></td></tr>
 <tr class="separator:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0d510b93ab6adf8ff82e59e7b2ce2ebd inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd">OnDespawned</a> (bool asServer)</td></tr>
 <tr class="memdesc:a0d510b93ab6adf8ff82e59e7b2ce2ebd inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is de-spawned. This might be called twice times in host mode. Once for the server and once for the client.   <a href="classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd">More...</a><br /></td></tr>
@@ -498,7 +507,7 @@ RigidbodyTransformSpace&#160;</td><td class="memItemRight" valign="bottom"><b>sp
 <tr class="separator:acae9cdee1795e32220bc3a5b9b04aee6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a422c39dcd8e35cd5fcfe07222174fbc5"><td class="memItemLeft" align="right" valign="top"><a id="a422c39dcd8e35cd5fcfe07222174fbc5" name="a422c39dcd8e35cd5fcfe07222174fbc5"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>syncVelocityRelativeToParent</b><code> [get, set]</code></td></tr>
-<tr class="memdesc:a422c39dcd8e35cd5fcfe07222174fbc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">When enabled, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody's motion. Position and rotation sync frames are unchanged.  <br /></td></tr>
+<tr class="memdesc:a422c39dcd8e35cd5fcfe07222174fbc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parent-frame velocity is now always relative to the parent motion. This compatibility property remains temporarily so existing integrations continue to compile.  <br /></td></tr>
 <tr class="separator:a422c39dcd8e35cd5fcfe07222174fbc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a236d3362bb881b3fa1b7db29c67498bc"><td class="memItemLeft" align="right" valign="top"><a id="a236d3362bb881b3fa1b7db29c67498bc" name="a236d3362bb881b3fa1b7db29c67498bc"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>useParentFramePositionError</b><code> [get, set]</code></td></tr>
@@ -828,6 +837,35 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal<
 
 </div>
 </div>
+<a id="a0dfa1e149a117f93c25385326bd76d80" name="a0dfa1e149a117f93c25385326bd76d80"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0dfa1e149a117f93c25385326bd76d80">&#9670;&#160;</a></span>OnInitializeModules()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkRigidbody.OnInitializeModules </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called before the NetworkModules are initialized. You can use this to update their values before they are networked.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ad0c4e9821a3484f494602675cb71f361">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
 <a id="ac9af82d6db296226dddea03eec9f8a74" name="ac9af82d6db296226dddea03eec9f8a74"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac9af82d6db296226dddea03eec9f8a74">&#9670;&#160;</a></span>OnObserverAdded()</h2>
 
@@ -918,6 +956,78 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal<
 
 </div>
 </div>
+<a id="a08521bcfd430cde1cb74572dba4def5b" name="a08521bcfd430cde1cb74572dba4def5b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a08521bcfd430cde1cb74572dba4def5b">&#9670;&#160;</a></span>OnOwnerDisconnected()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkRigidbody.OnOwnerDisconnected </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>ownerId</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when the owner of this object disconnects. Server only.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ownerId</td><td>The current owner id</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ada9d695cb5ec0673a6d0a01f215db7ff">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
+<a id="acaf0ee50aa9129726820bee8097aff8f" name="acaf0ee50aa9129726820bee8097aff8f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acaf0ee50aa9129726820bee8097aff8f">&#9670;&#160;</a></span>OnOwnerReconnected()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkRigidbody.OnOwnerReconnected </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>ownerId</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when the owner of this object reconnects. Server only.  </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ownerId</td><td>The current owner id</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#ad7f3dfedac2ee68b14f8281d6238e8ce">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
 <a id="a1f5307a5ffaa725eea3fe068a2875216" name="a1f5307a5ffaa725eea3fe068a2875216"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1f5307a5ffaa725eea3fe068a2875216">&#9670;&#160;</a></span>OnSpawned()</h2>
 
@@ -975,30 +1085,10 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>SpawnInternal<
 
 </div>
 </div>
-<a id="aa2a5ca21fb585d4ae7d0524df9fdcc5f" name="aa2a5ca21fb585d4ae7d0524df9fdcc5f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa2a5ca21fb585d4ae7d0524df9fdcc5f">&#9670;&#160;</a></span>SetSoftParent()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void PurrNet.NetworkRigidbody.SetSoftParent </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a>&#160;</td>
-          <td class="paramname"><em>identity</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Soft-parent this rigidbody to <em>identity</em> : its position, rotation and velocity sync in that identity's local frame, exactly as if parented there, but the Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6" title="Configured sync space. Local is relative to the current parent, World is absolute.">space</a> while active. Pass null (or call <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487" title="Clears the soft-parent set via SetSoftParent, reverting to the space-derived frame.">ClearSoftParent</a>) to revert. Enable <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a422c39dcd8e35cd5fcfe07222174fbc5" title="When enabled, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody...">syncVelocityRelativeToParent</a> if velocity should subtract the parent Rigidbody's linear and angular motion instead of only changing axes. </p>
-<p >Opt-in and backwards compatible: with no soft-parent set the wire format and behaviour are unchanged. Set it on the controller (the owner under client-auth, the server under server-auth); calls from a non-controller are ignored. The flag rides every state packet (<a class="el" href="structPurrNet_1_1RigidbodyStateData.html#afc3c8db195065af4d0b22f193b2016a7" title="True when parent is a soft-parent override the receiver should adopt as its own (vs the real Unity pa...">RigidbodyStateData.isSoftParent</a>), so receivers mirror it, it transfers across an ownership handoff, and late joiners pick it up from their initial state — the new controller keeps the same frame automatically.  </p>
-
-</div>
-</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbody.cs</li>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbody.Debug.cs</li>
+<li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbody.Ordering.cs</li>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbody.Validation.cs</li>
 </ul>
 </div><!-- contents -->

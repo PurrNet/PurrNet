@@ -131,6 +131,14 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isSoftParent</b></td>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>time</b></td></tr>
 <tr class="memdesc:a21db6fd5520d3760efd3974db9f78d75"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sender's unscaled clock at capture time. Receivers map it onto their own clock so snapshot spacing reflects the send cadence instead of arrival timing; relays forward it untouched. 0 means unstamped (legacy sender). <br /></td></tr>
 <tr class="separator:a21db6fd5520d3760efd3974db9f78d75"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a604e992913ecf6cdcb70936778d8bd7b"><td class="memItemLeft" align="right" valign="top"><a id="a604e992913ecf6cdcb70936778d8bd7b" name="a604e992913ecf6cdcb70936778d8bd7b"></a>
+uint&#160;</td><td class="memItemRight" valign="bottom"><b>sequence</b></td></tr>
+<tr class="memdesc:a604e992913ecf6cdcb70936778d8bd7b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Monotonic state order. Controllers assign source order and the server replaces it with canonical relay order. Zero is reserved for an authority anchor. <br /></td></tr>
+<tr class="separator:a604e992913ecf6cdcb70936778d8bd7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0b0fb2a41475fa8750eac38077c0f8e6"><td class="memItemLeft" align="right" valign="top"><a id="a0b0fb2a41475fa8750eac38077c0f8e6" name="a0b0fb2a41475fa8750eac38077c0f8e6"></a>
+uint&#160;</td><td class="memItemRight" valign="bottom"><b>authorityEpoch</b></td></tr>
+<tr class="memdesc:a0b0fb2a41475fa8750eac38077c0f8e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Canonical controller generation assigned by the server before relay. <br /></td></tr>
+<tr class="separator:a0b0fb2a41475fa8750eac38077c0f8e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbody.cs</li>
