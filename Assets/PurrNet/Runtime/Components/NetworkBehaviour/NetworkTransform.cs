@@ -1219,24 +1219,32 @@ namespace PurrNet
             if (_hasLastRendered)
             {
                 long lastRel = (short)(_lastRenderedSenderTick - _lastAppliedSenderTick);
-                if (lastRel >= -maxAhead && rel > lastRel + RENDER_CATCHUP_STEP)
-                    rel = lastRel + RENDER_CATCHUP_STEP;
+                if (lastRel >= -maxAhead && lastRel <= maxAhead)
+                {
+                    if (rel > lastRel + RENDER_CATCHUP_STEP)
+                        rel = lastRel + RENDER_CATCHUP_STEP;
+                    else if (rel < lastRel)
+                        rel = lastRel;
+                }
             }
 
             _lastRenderedSenderTick = (ushort)(_lastAppliedSenderTick + rel);
             _hasLastRendered = true;
 
-            if (rel < 0)
-            {
-                state = SampleReceivedHistory((ushort)(_lastAppliedSenderTick + rel));
-                return true;
-            }
-
             var renderTick = (ushort)(_lastAppliedSenderTick + rel);
 
-            var predicted = TryStrategyExtrapolation(0, renderTick, out var shaped)
-                ? shaped
-                : NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
+            NetworkTransformState target;
+
+            if (rel < 0)
+            {
+                target = SampleReceivedHistory(renderTick);
+            }
+            else
+            {
+                target = TryStrategyExtrapolation(0, renderTick, out var shaped)
+                    ? shaped
+                    : NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
+            }
 
             if (_hasPrevAnchor &&
                 (_prevAnchorState.frame != _anchorState.frame ||
@@ -1250,7 +1258,7 @@ namespace PurrNet
                 {
                     _hasPrevAnchor = false;
                 }
-                else
+                else if (target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
                 {
                     long effOffset = (long)localTick - _anchorLocalTick - rel;
                     if (effOffset < 0)
@@ -1265,11 +1273,11 @@ namespace PurrNet
                     var old = TryStrategyExtrapolation(1, renderTick, out var oldShaped)
                         ? oldShaped
                         : NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, (int)prevAge);
-                    predicted = NetworkTransformVelocity.Lerp(old, predicted, (blend + 1f) / (ADAPTIVE_BLEND_TICKS + 1f));
+                    target = NetworkTransformVelocity.Lerp(old, target, (blend + 1f) / (ADAPTIVE_BLEND_TICKS + 1f));
                 }
             }
 
-            state = predicted;
+            state = target;
             return true;
         }
 

@@ -7,12 +7,14 @@ namespace PurrNet
     /// Default adaptive sync strategy. Straight motion is detected first and handled by
     /// the linear fallback paths; anything else is reconstructed along locally fitted
     /// circular arcs, covering motion with roughly constant curvature over one send
-    /// interval: orbits, turns, arches, projectile arcs and spline-like paths.
+    /// interval: orbits, turns, arches, projectile arcs and spline-like paths. Rotation
+    /// is continued at constant angular rate whenever the segment meaningfully rotates.
     /// </summary>
     public class NetworkTransformDefaultStrategy : NetworkTransformSyncStrategy
     {
         private const float LINEAR_NOISE_FLOOR = 4f * CompressedFloat.PRECISION;
         private const float LINEAR_REL_FRACTION = 1f / 64f;
+        private const float ROTATION_SHAPE_MAX_DOT = 0.99999f;
 
         private Vector3 _fitPrev;
         private Vector3 _fitFrom;
@@ -24,6 +26,14 @@ namespace PurrNet
         protected override bool TryReconstruct(in NetworkTransformSample prev, in NetworkTransformSample from,
             in NetworkTransformSample to, float t, ref NetworkTransformSample result)
         {
+            bool shaped = false;
+
+            if (Mathf.Abs(Quaternion.Dot(from.rotation, to.rotation)) < ROTATION_SHAPE_MAX_DOT)
+            {
+                result.rotation = Quaternion.SlerpUnclamped(from.rotation, to.rotation, t);
+                shaped = true;
+            }
+
             var pPrev = prev.position;
             var pFrom = from.position;
             var pTo = to.position;
@@ -37,11 +47,13 @@ namespace PurrNet
                 _hasFit = true;
             }
 
-            if (!_fitValid)
-                return false;
+            if (_fitValid)
+            {
+                result.position = ArcPoint(_fitCenter, pFrom, pTo, t);
+                shaped = true;
+            }
 
-            result.position = ArcPoint(_fitCenter, pFrom, pTo, t);
-            return true;
+            return shaped;
         }
 
         private static bool IsNearlyLinear(Vector3 a, Vector3 b, Vector3 c)

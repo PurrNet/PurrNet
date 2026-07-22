@@ -151,4 +151,4 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
-  _predictiveSync: 1
+  _adaptiveSync: 1
