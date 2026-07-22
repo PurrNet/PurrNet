@@ -1034,12 +1034,14 @@ namespace PurrNet
         private NetworkTransformState _anchorState;
         private NetworkTransformVelocity _anchorVelocity;
         private uint _anchorLocalTick;
+        private ushort _anchorSenderTick;
         private int _anchorGap;
         private bool _hasAdaptiveAnchor;
 
         private NetworkTransformState _prevAnchorState;
         private NetworkTransformVelocity _prevAnchorVelocity;
         private uint _prevAnchorLocalTick;
+        private ushort _prevAnchorSenderTick;
         private int _prevAnchorGap;
         private bool _hasPrevAnchor;
 
@@ -1182,6 +1184,7 @@ namespace PurrNet
                 _prevAnchorState = _anchorState;
                 _prevAnchorVelocity = _anchorVelocity;
                 _prevAnchorLocalTick = _anchorLocalTick;
+                _prevAnchorSenderTick = _anchorSenderTick;
                 _prevAnchorGap = _anchorGap;
                 _hasPrevAnchor = true;
                 _corrPending = true;
@@ -1190,6 +1193,7 @@ namespace PurrNet
             _anchorState = state;
             _anchorVelocity = velocity;
             _anchorLocalTick = localTick;
+            _anchorSenderTick = _lastAppliedSenderTick;
             _anchorGap = gap;
             _hasAdaptiveAnchor = true;
         }
@@ -1259,15 +1263,11 @@ namespace PurrNet
             if (_corrPending && _hasPrevAnchor &&
                 target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
             {
-                long effOffset = (long)localTick - _anchorLocalTick - relFloor;
-                if (effOffset < 0)
-                    effOffset = 0;
-
-                long prevAge = (long)localTick - _prevAnchorLocalTick - effOffset;
+                long prevAge = (short)(tickA - _prevAnchorSenderTick);
                 if (prevAge < 0)
                     prevAge = 0;
-                if (prevAge > maxAhead)
-                    prevAge = maxAhead;
+                if (prevAge > maxAhead + _adaptiveSpacing)
+                    prevAge = maxAhead + _adaptiveSpacing;
 
                 var old = SampleOldAnchorAt(tickA, (int)prevAge);
                 if (frac > 0f)

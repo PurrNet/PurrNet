@@ -181,6 +181,7 @@ namespace PurrNet.Modules
         public const int ADAPTIVE_SCALE_TOLERANCE = 2;
 
         public const byte BREAK_REDUNDANCY = 2;
+        public const int REDUNDANCY_INTERVAL = 2;
         public const int VOUCH_SLACK_TICKS = 1;
 
         public static NetworkTransformState GetDeltaPrediction(in NetworkTransformState baseline,

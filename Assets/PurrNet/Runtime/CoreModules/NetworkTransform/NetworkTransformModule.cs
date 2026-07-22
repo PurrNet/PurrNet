@@ -907,13 +907,17 @@ namespace PurrNet.Modules
                     bool resting = current.Equals(lastWrite.state);
                     bool restGate = !resting || lastWrite.restConfirmed;
 
-                    if (sinceLastWrite >= 1 && restGate && lastWrite.redundancy == 0)
+                    if (sinceLastWrite >= 1 && restGate)
                     {
-                        if (sinceLastWrite < nt.adaptiveSendSpacing &&
-                            nt.CanSkipCached(lastWrite, currentTick, current))
+                        bool skippable = sinceLastWrite < nt.adaptiveSendSpacing &&
+                                         nt.CanSkipCached(lastWrite, currentTick, current);
+
+                        if (skippable && (lastWrite.redundancy == 0 ||
+                                          sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
                             return NTWriteResult.Hold;
 
-                        breakWrite = sinceLastWrite < nt.adaptiveSendSpacing &&
+                        breakWrite = !skippable && lastWrite.redundancy == 0 &&
+                                     sinceLastWrite < nt.adaptiveSendSpacing &&
                                      sinceLastWrite > NTUnreliable.BREAK_REDUNDANCY;
                     }
                 }
