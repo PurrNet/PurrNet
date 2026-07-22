@@ -1017,12 +1017,19 @@ namespace PurrNet
         private ushort _lastAppliedSenderTick;
         private bool _hasLastAppliedState;
 
-        private const int ADAPTIVE_BLEND_TICKS = 4;
+        private const float CORRECTION_DECAY = 0.65f;
         private const float RENDER_RATE_GAIN = 0.1f;
         private const float RENDER_RATE_MAX_ADJUST = 0.5f;
 
         private float _renderRel;
         private bool _hasRenderTimeline;
+
+        private Vector3 _corrPosOffset;
+        private Quaternion _corrRotOffset = Quaternion.identity;
+        private Vector3 _corrScaleOffset;
+        private float _corrWeight;
+        private bool _hasCorrOffset;
+        private bool _corrPending;
 
         private NetworkTransformState _anchorState;
         private NetworkTransformVelocity _anchorVelocity;
@@ -1034,7 +1041,6 @@ namespace PurrNet
         private NetworkTransformVelocity _prevAnchorVelocity;
         private uint _prevAnchorLocalTick;
         private int _prevAnchorGap;
-        private uint _blendStartTick;
         private bool _hasPrevAnchor;
 
         private uint _lastAdaptiveTick;
@@ -1161,6 +1167,8 @@ namespace PurrNet
             _recvCount = 0;
             _hasLastSample = false;
             _hasRenderTimeline = false;
+            _hasCorrOffset = false;
+            _corrPending = false;
             _seamOffset = Vector3.zero;
         }
 
@@ -1175,8 +1183,8 @@ namespace PurrNet
                 _prevAnchorVelocity = _anchorVelocity;
                 _prevAnchorLocalTick = _anchorLocalTick;
                 _prevAnchorGap = _anchorGap;
-                _blendStartTick = localTick;
                 _hasPrevAnchor = true;
+                _corrPending = true;
             }
 
             _anchorState = state;
@@ -1243,37 +1251,109 @@ namespace PurrNet
             if (_hasPrevAnchor &&
                 (_prevAnchorState.frame != _anchorState.frame ||
                  !_prevAnchorState.parentId.Equals(_anchorState.parentId)))
-                _hasPrevAnchor = false;
-
-            if (_hasPrevAnchor)
             {
-                long blend = (long)localTick - _blendStartTick;
-                if (blend >= ADAPTIVE_BLEND_TICKS)
-                {
-                    _hasPrevAnchor = false;
-                }
-                else if (target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
-                {
-                    long effOffset = (long)localTick - _anchorLocalTick - relFloor;
-                    if (effOffset < 0)
-                        effOffset = 0;
+                _hasPrevAnchor = false;
+                _corrPending = false;
+            }
 
-                    long prevAge = (long)localTick - _prevAnchorLocalTick - effOffset;
-                    if (prevAge < 0)
-                        prevAge = 0;
-                    if (prevAge > maxAhead)
-                        prevAge = maxAhead;
+            if (_corrPending && _hasPrevAnchor &&
+                target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
+            {
+                long effOffset = (long)localTick - _anchorLocalTick - relFloor;
+                if (effOffset < 0)
+                    effOffset = 0;
 
-                    var old = SampleOldAnchorAt(tickA, (int)prevAge);
-                    if (frac > 0f)
-                        old = NetworkTransformVelocity.Lerp(old, SampleOldAnchorAt(tickB, (int)prevAge + 1), frac);
+                long prevAge = (long)localTick - _prevAnchorLocalTick - effOffset;
+                if (prevAge < 0)
+                    prevAge = 0;
+                if (prevAge > maxAhead)
+                    prevAge = maxAhead;
 
-                    target = NetworkTransformVelocity.Lerp(old, target, (blend + 1f) / (ADAPTIVE_BLEND_TICKS + 1f));
-                }
+                var old = SampleOldAnchorAt(tickA, (int)prevAge);
+                if (frac > 0f)
+                    old = NetworkTransformVelocity.Lerp(old, SampleOldAnchorAt(tickB, (int)prevAge + 1), frac);
+
+                if (old.frame == target.frame && old.parentId.Equals(target.parentId))
+                    CaptureCorrectionOffset(old, target);
+            }
+
+            _corrPending = false;
+            _hasPrevAnchor = false;
+
+            if (_hasCorrOffset)
+            {
+                _corrWeight *= CORRECTION_DECAY;
+                if (_corrWeight < 0.02f)
+                    _hasCorrOffset = false;
+                else
+                    ApplyCorrectionOffset(ref target);
             }
 
             state = target;
             return true;
+        }
+
+        private void CaptureCorrectionOffset(in NetworkTransformState old, in NetworkTransformState target)
+        {
+            var posDelta = Vector3.zero;
+            if (old.data.position.HasValue && target.data.position.HasValue)
+            {
+                var op = old.data.position.Value;
+                var tp = target.data.position.Value;
+                posDelta = new Vector3(op.x.value - tp.x.value, op.y.value - tp.y.value, op.z.value - tp.z.value);
+            }
+
+            var oRot = old.data.rotation;
+            var tRot = target.data.rotation;
+            var rotDelta = new Quaternion(oRot.x, oRot.y, oRot.z, oRot.w).normalized *
+                           Quaternion.Inverse(new Quaternion(tRot.x, tRot.y, tRot.z, tRot.w).normalized);
+
+            var oScale = old.data.scale;
+            var tScale = target.data.scale;
+            var scaleDelta = new Vector3(oScale.x.value - tScale.x.value, oScale.y.value - tScale.y.value,
+                oScale.z.value - tScale.z.value);
+
+            if (_hasCorrOffset)
+            {
+                posDelta += _corrPosOffset * _corrWeight;
+                rotDelta = Quaternion.Slerp(Quaternion.identity, _corrRotOffset, _corrWeight) * rotDelta;
+                scaleDelta += _corrScaleOffset * _corrWeight;
+            }
+
+            _corrPosOffset = posDelta;
+            _corrRotOffset = rotDelta;
+            _corrScaleOffset = scaleDelta;
+            _corrWeight = 1f;
+            _hasCorrOffset = true;
+        }
+
+        private void ApplyCorrectionOffset(ref NetworkTransformState target)
+        {
+            if (target.data.position.HasValue && _corrPosOffset != Vector3.zero)
+            {
+                var p = target.data.position.Value;
+                var pos = new Vector3(p.x.value, p.y.value, p.z.value) + _corrPosOffset * _corrWeight;
+                target.data.position = (CompressedVector3)pos;
+            }
+
+            if (Mathf.Abs(_corrRotOffset.w) < 0.9999999f)
+            {
+                var r = target.data.rotation;
+                var rot = Quaternion.Slerp(Quaternion.identity, _corrRotOffset, _corrWeight) *
+                          new Quaternion(r.x, r.y, r.z, r.w);
+                r.x = new NormalizedFloat(rot.x);
+                r.y = new NormalizedFloat(rot.y);
+                r.z = new NormalizedFloat(rot.z);
+                r.w = new NormalizedFloat(rot.w);
+                target.data.rotation = r;
+            }
+
+            if (_corrScaleOffset != Vector3.zero)
+            {
+                var s = target.data.scale;
+                var scale = new Vector3(s.x.value, s.y.value, s.z.value) + _corrScaleOffset * _corrWeight;
+                target.data.scale = (CompressedVector3)scale;
+            }
         }
 
         private NetworkTransformState SampleAdaptiveAt(int rel, ushort tick)
