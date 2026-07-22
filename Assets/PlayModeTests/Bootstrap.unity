@@ -175,7 +175,7 @@ GameObject:
   - component: {fileID: 7157371}
   - component: {fileID: 7157372}
   m_Layer: 0
-  m_Name: StrategyBenchmark
+  m_Name: AdaptiveSync
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -207,11 +207,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4c8e2a6f0d3b4e8a9c1e5f7a9b3d5f74, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: PurrNet.PlayModeTests::StrategyBenchmarkScenario
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::AdaptiveSyncBenchmarkScenario
   _pingsPerSecond: 10
-  _objectCount: 50
-  _maxSendInterval: 0.2
-  _extrapolation: 0
+  _objectCount: 1000
 --- !u!1 &43754047
 GameObject:
   m_ObjectHideFlags: 0
