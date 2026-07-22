@@ -1,3 +1,12 @@
+## [1.21.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.1...v1.21.1-beta.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* Added network transform strategy scriptable ([2368995](https://github.com/PurrNet/PurrNet/commit/23689956943f9387bc4b7f1dfe943c48b09c6349))
+* Default predictive sync strategy ([c148083](https://github.com/PurrNet/PurrNet/commit/c148083d0d21c4eb6b491cafac501e6c6b1bea35))
+* Sender suppression added to Network Transform ([9a01631](https://github.com/PurrNet/PurrNet/commit/9a016318b761d829c19fb65df05f5baf15c04d67))
+
 ## [1.21.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.0...v1.21.1-beta.1) (2026-07-22)
 
 
