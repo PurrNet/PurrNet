@@ -121,7 +121,7 @@ namespace PurrNet
             return a.x != b.x || a.y != b.y || a.z != b.z || a.w != b.w;
         }
 
-        internal bool CanSkip(NetworkTransform nt, in NTLastAdaptiveWrite lastWrite, ushort currentTick,
+        internal bool CanSkip(NetworkTransform nt, NTLastAdaptiveWrite lastWrite, ushort currentTick,
             in NetworkTransformState current)
         {
             var from = lastWrite.state;

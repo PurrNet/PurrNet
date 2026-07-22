@@ -91,11 +91,12 @@ namespace PurrNet.Modules
         Hold
     }
 
-    internal struct NTLastAdaptiveWrite
+    internal class NTLastAdaptiveWrite
     {
         public ushort tick;
         public ushort prevTick;
         public ushort prevPrevTick;
+        public uint revision;
         public NetworkTransformState state;
         public NetworkTransformState prevState;
         public NetworkTransformState prevPrevState;

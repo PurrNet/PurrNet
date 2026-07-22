@@ -159,7 +159,7 @@ namespace PurrNet
         internal ushort extrapVerifyThrough;
         internal bool hasExtrapVerify;
 
-        internal bool CanSkipCached(in NTLastAdaptiveWrite lastWrite, ushort currentTick,
+        internal bool CanSkipCached(NTLastAdaptiveWrite lastWrite, ushort currentTick,
             in NetworkTransformState current)
         {
             if (_hasSkipCache && _skipCacheFrom == lastWrite.tick && _skipCacheCurrent == currentTick &&
@@ -974,7 +974,7 @@ namespace PurrNet
         private long _lastAppliedOrder;
         private bool _hasAppliedSeq;
 
-        internal NetworkTransformState capturedState => _capturedState;
+        internal ref readonly NetworkTransformState capturedState => ref _capturedState;
 
         internal uint capturedRevision => _capturedRevision;
 

@@ -887,8 +887,8 @@ namespace PurrNet.Modules
 
             bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == genEpoch;
 
-            var current = nt.capturedState;
-            NTLastAdaptiveWrite lastWrite = default;
+            ref readonly var current = ref nt.capturedState;
+            NTLastAdaptiveWrite lastWrite = null;
             bool hasLastWrite = nt.hasSyncStrategy && stream.lastAdaptiveWrite.TryGetValue(nid, out lastWrite);
 
             // Suppression must not depend on baseline age — a resting object's baseline never
@@ -904,7 +904,7 @@ namespace PurrNet.Modules
                 if (hasLastWrite)
                 {
                     int sinceLastWrite = (short)(currentTick - lastWrite.tick);
-                    bool resting = current.Equals(lastWrite.state);
+                    bool resting = lastWrite.revision == nt.capturedRevision;
                     bool restGate = !resting || lastWrite.restConfirmed;
 
                     if (sinceLastWrite >= 1 && restGate)
@@ -922,23 +922,35 @@ namespace PurrNet.Modules
                     }
                 }
 
-                if (!hasLastWrite || lastWrite.tick != currentTick)
+                if (!hasLastWrite)
                 {
-                    stream.lastAdaptiveWrite[nid] = new NTLastAdaptiveWrite
+                    lastWrite = new NTLastAdaptiveWrite
                     {
                         tick = currentTick,
-                        prevTick = lastWrite.tick,
-                        prevPrevTick = lastWrite.prevTick,
                         state = current,
-                        prevState = lastWrite.state,
-                        prevPrevState = lastWrite.prevState,
-                        hasPrev = hasLastWrite,
-                        hasPrevPrev = hasLastWrite && lastWrite.hasPrev,
-                        restConfirmed = hasLastWrite && current.Equals(lastWrite.state),
-                        redundancy = breakWrite
-                            ? NTUnreliable.BREAK_REDUNDANCY
-                            : (byte)(hasLastWrite && lastWrite.redundancy > 0 ? lastWrite.redundancy - 1 : 0)
+                        revision = nt.capturedRevision
                     };
+                    stream.lastAdaptiveWrite.Add(nid, lastWrite);
+                }
+                else if (lastWrite.tick != currentTick)
+                {
+                    bool sameAsPrev = lastWrite.revision == nt.capturedRevision;
+
+                    lastWrite.prevPrevTick = lastWrite.prevTick;
+                    lastWrite.prevPrevState = lastWrite.prevState;
+                    lastWrite.hasPrevPrev = lastWrite.hasPrev;
+
+                    lastWrite.prevTick = lastWrite.tick;
+                    lastWrite.prevState = lastWrite.state;
+                    lastWrite.hasPrev = true;
+
+                    lastWrite.tick = currentTick;
+                    lastWrite.state = current;
+                    lastWrite.revision = nt.capturedRevision;
+                    lastWrite.restConfirmed = sameAsPrev;
+                    lastWrite.redundancy = breakWrite
+                        ? NTUnreliable.BREAK_REDUNDANCY
+                        : (byte)(lastWrite.redundancy > 0 ? lastWrite.redundancy - 1 : 0);
                 }
             }
 
@@ -974,12 +986,16 @@ namespace PurrNet.Modules
                 Packer<byte>.Write(tmp, gen);
                 nt.WriteAbsoluteState(tmp);
 
-                if (nt.hasSyncStrategy)
-                    stream.lastAdaptiveWrite[nid] = new NTLastAdaptiveWrite
-                    {
-                        tick = currentTick,
-                        state = current
-                    };
+                if (nt.hasSyncStrategy && lastWrite != null)
+                {
+                    lastWrite.tick = currentTick;
+                    lastWrite.state = current;
+                    lastWrite.revision = nt.capturedRevision;
+                    lastWrite.hasPrev = false;
+                    lastWrite.hasPrevPrev = false;
+                    lastWrite.restConfirmed = false;
+                    lastWrite.redundancy = 0;
+                }
             }
 
             return NTWriteResult.Written;
