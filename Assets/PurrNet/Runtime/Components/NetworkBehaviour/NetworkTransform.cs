@@ -1018,10 +1018,11 @@ namespace PurrNet
         private bool _hasLastAppliedState;
 
         private const int ADAPTIVE_BLEND_TICKS = 4;
-        private const int RENDER_CATCHUP_STEP = 2;
+        private const float RENDER_RATE_GAIN = 0.1f;
+        private const float RENDER_RATE_MAX_ADJUST = 0.5f;
 
-        private ushort _lastRenderedSenderTick;
-        private bool _hasLastRendered;
+        private float _renderRel;
+        private bool _hasRenderTimeline;
 
         private NetworkTransformState _anchorState;
         private NetworkTransformVelocity _anchorVelocity;
@@ -1159,7 +1160,7 @@ namespace PurrNet
             _hasPrevAnchor = false;
             _recvCount = 0;
             _hasLastSample = false;
-            _hasLastRendered = false;
+            _hasRenderTimeline = false;
             _seamOffset = Vector3.zero;
         }
 
@@ -1199,52 +1200,45 @@ namespace PurrNet
             _lastAdaptiveTick = localTick;
 
             long maxAhead = _adaptiveSpacing + 2;
-            long rel;
+            float targetRel;
 
             if (hasVouched)
             {
-                rel = (short)(vouchedTick - _lastAppliedSenderTick);
+                targetRel = (short)(vouchedTick - _lastAppliedSenderTick);
             }
             else
             {
                 long age = (long)localTick - _anchorLocalTick;
                 if (age < 0)
                     age = 0;
-                rel = age - _adaptiveSpacing;
+                targetRel = age - _adaptiveSpacing;
             }
 
-            if (rel > maxAhead)
-                rel = maxAhead;
+            if (targetRel > maxAhead)
+                targetRel = maxAhead;
 
-            if (_hasLastRendered)
+            if (!_hasRenderTimeline || Mathf.Abs(targetRel - _renderRel) > maxAhead + _adaptiveSpacing)
             {
-                long lastRel = (short)(_lastRenderedSenderTick - _lastAppliedSenderTick);
-                if (lastRel >= -maxAhead && lastRel <= maxAhead)
-                {
-                    if (rel > lastRel + RENDER_CATCHUP_STEP)
-                        rel = lastRel + RENDER_CATCHUP_STEP;
-                    else if (rel < lastRel)
-                        rel = lastRel;
-                }
-            }
-
-            _lastRenderedSenderTick = (ushort)(_lastAppliedSenderTick + rel);
-            _hasLastRendered = true;
-
-            var renderTick = (ushort)(_lastAppliedSenderTick + rel);
-
-            NetworkTransformState target;
-
-            if (rel < 0)
-            {
-                target = SampleReceivedHistory(renderTick);
+                _renderRel = targetRel;
+                _hasRenderTimeline = true;
             }
             else
             {
-                target = TryStrategyExtrapolation(0, renderTick, out var shaped)
-                    ? shaped
-                    : NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, (int)rel);
+                float rate = 1f + Mathf.Clamp((targetRel - _renderRel) * RENDER_RATE_GAIN,
+                    -RENDER_RATE_MAX_ADJUST, RENDER_RATE_MAX_ADJUST);
+                _renderRel += rate;
+                if (_renderRel > maxAhead)
+                    _renderRel = maxAhead;
             }
+
+            int relFloor = Mathf.FloorToInt(_renderRel);
+            float frac = _renderRel - relFloor;
+            ushort tickA = (ushort)(_lastAppliedSenderTick + relFloor);
+            ushort tickB = (ushort)(tickA + 1);
+
+            var target = SampleAdaptiveAt(relFloor, tickA);
+            if (frac > 0f)
+                target = NetworkTransformVelocity.Lerp(target, SampleAdaptiveAt(relFloor + 1, tickB), frac);
 
             if (_hasPrevAnchor &&
                 (_prevAnchorState.frame != _anchorState.frame ||
@@ -1260,7 +1254,7 @@ namespace PurrNet
                 }
                 else if (target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
                 {
-                    long effOffset = (long)localTick - _anchorLocalTick - rel;
+                    long effOffset = (long)localTick - _anchorLocalTick - relFloor;
                     if (effOffset < 0)
                         effOffset = 0;
 
@@ -1270,15 +1264,33 @@ namespace PurrNet
                     if (prevAge > maxAhead)
                         prevAge = maxAhead;
 
-                    var old = TryStrategyExtrapolation(1, renderTick, out var oldShaped)
-                        ? oldShaped
-                        : NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, (int)prevAge);
+                    var old = SampleOldAnchorAt(tickA, (int)prevAge);
+                    if (frac > 0f)
+                        old = NetworkTransformVelocity.Lerp(old, SampleOldAnchorAt(tickB, (int)prevAge + 1), frac);
+
                     target = NetworkTransformVelocity.Lerp(old, target, (blend + 1f) / (ADAPTIVE_BLEND_TICKS + 1f));
                 }
             }
 
             state = target;
             return true;
+        }
+
+        private NetworkTransformState SampleAdaptiveAt(int rel, ushort tick)
+        {
+            if (rel < 0)
+                return SampleReceivedHistory(tick);
+
+            return TryStrategyExtrapolation(0, tick, out var shaped)
+                ? shaped
+                : NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, rel);
+        }
+
+        private NetworkTransformState SampleOldAnchorAt(ushort tick, int prevAge)
+        {
+            return TryStrategyExtrapolation(1, tick, out var shaped)
+                ? shaped
+                : NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, prevAge);
         }
 
         private const float SEAM_OFFSET_DECAY = 0.8f;
@@ -1809,6 +1821,9 @@ namespace PurrNet
                 gap = (short)(senderTick - _lastAppliedSenderTick);
 
             var previous = _lastAppliedState;
+
+            if (_hasRenderTimeline && _hasLastAppliedState)
+                _renderRel -= (short)(senderTick - _lastAppliedSenderTick);
 
             _lastAppliedOrder = packetOrder;
             _hasAppliedSeq = true;
