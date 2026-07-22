@@ -1,3 +1,10 @@
+## [1.21.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.0...v1.21.1-beta.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* network rigidbody inconsistencies with soft parenting ([eacac38](https://github.com/PurrNet/PurrNet/commit/eacac388e8ecf92f502bffc31e6c820e9a5de1ff))
+
 # [1.21.0](https://github.com/PurrNet/PurrNet/compare/v1.20.2...v1.21.0) (2026-07-21)
 
 
