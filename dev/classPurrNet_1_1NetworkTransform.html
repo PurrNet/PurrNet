@@ -111,6 +111,10 @@ Inheritance diagram for PurrNet.NetworkTransform:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a6e23dad683f3574435d7e20f3eb5b2ea"><td class="memItemLeft" align="right" valign="top"><a id="a6e23dad683f3574435d7e20f3eb5b2ea" name="a6e23dad683f3574435d7e20f3eb5b2ea"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetSyncStrategy</b> (<a class="el" href="classPurrNet_1_1NetworkTransformSyncStrategy.html">NetworkTransformSyncStrategy</a> strategy)</td></tr>
+<tr class="memdesc:a6e23dad683f3574435d7e20f3eb5b2ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Injects a custom sync strategy. Pass null to revert to the built-in default strategy. Call before spawning for full effect; when called on a spawned transform the new strategy applies immediately. Sharing one instance across transforms is safe as long as any strategy state is input-keyed memoization, as in the built-in strategies.  <br /></td></tr>
+<tr class="separator:a6e23dad683f3574435d7e20f3eb5b2ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a438e2d719fb889b451ba87819d35ca86"><td class="memItemLeft" align="right" valign="top"><a id="a438e2d719fb889b451ba87819d35ca86" name="a438e2d719fb889b451ba87819d35ca86"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetPositionTransform</b> (<a class="el" href="interfacePurrNet_1_1INetworkTransformPositionTransform.html">INetworkTransformPositionTransform</a> transform)</td></tr>
 <tr class="separator:a438e2d719fb889b451ba87819d35ca86"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -504,6 +508,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>ticksBehind</b><code> 
 <tr class="memitem:afb5995fe2c5c98ce74cdeb4a75b12ae5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#afb5995fe2c5c98ce74cdeb4a75b12ae5">ownerAuth</a><code> [get]</code></td></tr>
 <tr class="memdesc:afb5995fe2c5c98ce74cdeb4a75b12ae5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the client controls the transform if they are the owner.   <a href="classPurrNet_1_1NetworkTransform.html#afb5995fe2c5c98ce74cdeb4a75b12ae5">More...</a><br /></td></tr>
 <tr class="separator:afb5995fe2c5c98ce74cdeb4a75b12ae5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04cf05293af9b2b88c43d57f858b0fd2"><td class="memItemLeft" align="right" valign="top"><a id="a04cf05293af9b2b88c43d57f858b0fd2" name="a04cf05293af9b2b88c43d57f858b0fd2"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasSyncStrategy</b><code> [get]</code></td></tr>
+<tr class="memdesc:a04cf05293af9b2b88c43d57f858b0fd2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether adaptive reduced-rate syncing is active.  <br /></td></tr>
+<tr class="separator:a04cf05293af9b2b88c43d57f858b0fd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05cccb7d2459e3ec5db19b40d21a5576"><td class="memItemLeft" align="right" valign="top"><a id="a05cccb7d2459e3ec5db19b40d21a5576" name="a05cccb7d2459e3ec5db19b40d21a5576"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveSync</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a05cccb7d2459e3ec5db19b40d21a5576"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether adaptive reduced-rate syncing is enabled. Uses the built-in default strategy unless a custom strategy is injected via <a class="el" href="classPurrNet_1_1NetworkTransform.html#a6e23dad683f3574435d7e20f3eb5b2ea" title="Injects a custom sync strategy. Pass null to revert to the built-in default strategy....">SetSyncStrategy</a>.  <br /></td></tr>
+<tr class="separator:a05cccb7d2459e3ec5db19b40d21a5576"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a74fbd42902427639654fcf9cb696243c"><td class="memItemLeft" align="right" valign="top"><a id="a74fbd42902427639654fcf9cb696243c" name="a74fbd42902427639654fcf9cb696243c"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>latestReadPosition</b><code> [get]</code></td></tr>
 <tr class="separator:a74fbd42902427639654fcf9cb696243c"><td class="memSeparator" colspan="2">&#160;</td></tr>
