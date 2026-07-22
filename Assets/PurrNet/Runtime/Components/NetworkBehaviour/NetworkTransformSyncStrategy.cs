@@ -15,7 +15,7 @@ namespace PurrNet
     }
 
     /// <summary>
-    /// Base class for predictive sync strategies. Strategies are plain classes injected at
+    /// Base class for adaptive sync strategies. Strategies are plain classes injected at
     /// runtime via <see cref="NetworkTransform.SetSyncStrategy"/>; when none is injected,
     /// NetworkTransform uses a shared built-in default strategy with default settings.
     /// On its own this base class reconstructs skipped motion linearly; subclasses override
@@ -121,7 +121,7 @@ namespace PurrNet
             return a.x != b.x || a.y != b.y || a.z != b.z || a.w != b.w;
         }
 
-        internal bool CanSkip(NetworkTransform nt, in NTLastPredictiveWrite lastWrite, ushort currentTick,
+        internal bool CanSkip(NetworkTransform nt, in NTLastAdaptiveWrite lastWrite, ushort currentTick,
             in NetworkTransformState current)
         {
             var from = lastWrite.state;
@@ -156,7 +156,7 @@ namespace PurrNet
 
             int span = (short)(fromTick - lastWrite.prevTick);
             bool canArc = lastWrite.hasPrevPrev && span >= 2;
-            var anchorVelocity = lastWrite.hasPrev && span >= 1 && span <= NTUnreliable.PREDICTIVE_MAX_BACKFILL
+            var anchorVelocity = lastWrite.hasPrev && span >= 1 && span <= NTUnreliable.ADAPTIVE_MAX_BACKFILL
                 ? NetworkTransformVelocity.Derive(lastWrite.prevState, from, span)
                 : default;
 

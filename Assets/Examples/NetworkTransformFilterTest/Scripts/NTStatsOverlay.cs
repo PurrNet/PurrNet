@@ -18,10 +18,10 @@ namespace NetworkTransformFilterTest
                 return;
 
             _writtenPerSec = (NetworkTransformModule.entriesWrittenCount - _lastWritten) / elapsed;
-            _holdsPerSec = (NetworkTransformModule.predictiveHoldCount - _lastHolds) / elapsed;
+            _holdsPerSec = (NetworkTransformModule.adaptiveHoldCount - _lastHolds) / elapsed;
 
             _lastWritten = NetworkTransformModule.entriesWrittenCount;
-            _lastHolds = NetworkTransformModule.predictiveHoldCount;
+            _lastHolds = NetworkTransformModule.adaptiveHoldCount;
             _lastSampleTime = Time.unscaledTime;
         }
 

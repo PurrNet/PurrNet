@@ -4,7 +4,7 @@ using UnityEngine;
 namespace PurrNet
 {
     /// <summary>
-    /// Default predictive sync strategy. Straight motion is detected first and handled by
+    /// Default adaptive sync strategy. Straight motion is detected first and handled by
     /// the linear fallback paths; anything else is reconstructed along locally fitted
     /// circular arcs, covering motion with roughly constant curvature over one send
     /// interval: orbits, turns, arches, projectile arcs and spline-like paths.

@@ -9,7 +9,7 @@ namespace PurrNet.Modules
     public class NetworkTransformModule : INetworkModule, IPromoteToServerModule
     {
         public static long entriesWrittenCount;
-        public static long predictiveHoldCount;
+        public static long adaptiveHoldCount;
 
         static readonly ProfilerMarker _postFixedUpdateMarker = new ProfilerMarker("NetworkTransform.PostFixedUpdate");
         static readonly ProfilerMarker _gatherStateMarker = new ProfilerMarker("NetworkTransform.GatherState");
@@ -629,7 +629,7 @@ namespace PurrNet.Modules
             if (_sendStreams.TryGetValue(key, out var stream))
             {
                 stream.acked.Remove(data.id);
-                stream.lastPredictiveWrite.Remove(data.id);
+                stream.lastAdaptiveWrite.Remove(data.id);
                 stream.nackFloor[data.id] = stream.nextOrder;
 
                 if (stream.pendingInitialized && TryGetRegisteredTransform(data.id, out var nt))
@@ -888,8 +888,8 @@ namespace PurrNet.Modules
             bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == genEpoch;
 
             var current = nt.capturedState;
-            NTLastPredictiveWrite lastWrite = default;
-            bool hasLastWrite = nt.hasSyncStrategy && stream.lastPredictiveWrite.TryGetValue(nid, out lastWrite);
+            NTLastAdaptiveWrite lastWrite = default;
+            bool hasLastWrite = nt.hasSyncStrategy && stream.lastAdaptiveWrite.TryGetValue(nid, out lastWrite);
 
             // Suppression must not depend on baseline age — a resting object's baseline never
             // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
@@ -909,18 +909,18 @@ namespace PurrNet.Modules
 
                     if (sinceLastWrite >= 1 && restGate && lastWrite.redundancy == 0)
                     {
-                        if (sinceLastWrite < nt.predictiveSendSpacing &&
+                        if (sinceLastWrite < nt.adaptiveSendSpacing &&
                             nt.CanSkipCached(lastWrite, currentTick, current))
                             return NTWriteResult.Hold;
 
-                        breakWrite = sinceLastWrite < nt.predictiveSendSpacing &&
+                        breakWrite = sinceLastWrite < nt.adaptiveSendSpacing &&
                                      sinceLastWrite > NTUnreliable.BREAK_REDUNDANCY;
                     }
                 }
 
                 if (!hasLastWrite || lastWrite.tick != currentTick)
                 {
-                    stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite
+                    stream.lastAdaptiveWrite[nid] = new NTLastAdaptiveWrite
                     {
                         tick = currentTick,
                         prevTick = lastWrite.tick,
@@ -971,7 +971,7 @@ namespace PurrNet.Modules
                 nt.WriteAbsoluteState(tmp);
 
                 if (nt.hasSyncStrategy)
-                    stream.lastPredictiveWrite[nid] = new NTLastPredictiveWrite
+                    stream.lastAdaptiveWrite[nid] = new NTLastAdaptiveWrite
                     {
                         tick = currentTick,
                         state = current
@@ -1058,7 +1058,7 @@ namespace PurrNet.Modules
 
                 if (writeResult == NTWriteResult.Hold)
                 {
-                    predictiveHoldCount++;
+                    adaptiveHoldCount++;
                     i++;
                     continue;
                 }
@@ -1178,7 +1178,7 @@ namespace PurrNet.Modules
                 foreach (var stream in _sendStreams.Values)
                 {
                     stream.acked.Remove(nid);
-                    stream.lastPredictiveWrite.Remove(nid);
+                    stream.lastAdaptiveWrite.Remove(nid);
                     stream.nackFloor.Remove(nid);
                     stream.generationOverrides.Remove(nid);
                     RemovePending(stream, nid);
@@ -1228,7 +1228,7 @@ namespace PurrNet.Modules
                 return;
 
             stream.acked.Remove(nid);
-            stream.lastPredictiveWrite.Remove(nid);
+            stream.lastAdaptiveWrite.Remove(nid);
             stream.nackFloor.Remove(nid);
             stream.generationOverrides.Remove(nid);
             PurgeRing(stream.ring, nid);
@@ -1364,7 +1364,7 @@ namespace PurrNet.Modules
             stream.vouchedValid = true;
         }
 
-        private void PredictReceivedStates(uint localTick)
+        private void RenderAdaptiveStates(uint localTick)
         {
             foreach (var stream in _recvStreams.Values)
                 UpdateVouchedTick(stream, localTick);
@@ -1385,7 +1385,7 @@ namespace PurrNet.Modules
                     hasVouched = true;
                 }
 
-                if (!nt.TryTickPrediction(localTick, vouchedTick, hasVouched, out var state))
+                if (!nt.TryTickAdaptiveRender(localTick, vouchedTick, hasVouched, out var state))
                     continue;
 
                 NetworkIdentity frameParent = null;
@@ -1393,7 +1393,7 @@ namespace PurrNet.Modules
                     (!_factory.TryGetIdentity(_scene, state.parentId, out frameParent) || !frameParent))
                     continue;
 
-                nt.ApplyPredictedSample(state, frameParent);
+                nt.ApplyAdaptiveSample(state, frameParent);
             }
         }
 
@@ -1405,7 +1405,7 @@ namespace PurrNet.Modules
             uint localTick = _manager.tickModule.localTick;
             _currentTick = (ushort)localTick;
 
-            PredictReceivedStates(localTick);
+            RenderAdaptiveStates(localTick);
 
             int ntCount = _networkTransforms.Count;
             _changedTransforms.Clear();

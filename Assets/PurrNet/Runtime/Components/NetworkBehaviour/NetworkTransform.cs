@@ -59,11 +59,12 @@ namespace PurrNet
         [SerializeField]
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
-        [Tooltip("Skips sends while motion stays predictable by receivers, greatly reducing " +
+        [Tooltip("Skips sends while motion stays reconstructible by receivers, greatly reducing " +
                  "bandwidth for steady motion (linear or curved) without adding render delay. " +
-                 "Unpredictable motion falls back to normal per-tick syncing automatically.")]
+                 "Erratic motion falls back to normal per-tick syncing automatically.")]
+        [FormerlySerializedAs("_predictiveSync")]
         [SerializeField, PurrLock]
-        private bool _predictiveSync = true;
+        private bool _adaptiveSync = true;
 
         private NetworkTransformSyncStrategy _customStrategy;
         private NetworkTransformSyncStrategy _activeStrategy;
@@ -126,20 +127,20 @@ namespace PurrNet
         public bool ownerAuth => _ownerAuth;
 
         /// <summary>
-        /// Whether predictive reduced-rate syncing is active.
+        /// Whether adaptive reduced-rate syncing is active.
         /// </summary>
         public bool hasSyncStrategy => _hasStrategy;
 
         /// <summary>
-        /// Whether predictive reduced-rate syncing is enabled. Uses the built-in default strategy
+        /// Whether adaptive reduced-rate syncing is enabled. Uses the built-in default strategy
         /// unless a custom strategy is injected via <see cref="SetSyncStrategy"/>.
         /// </summary>
-        public bool predictiveSync
+        public bool adaptiveSync
         {
-            get => _predictiveSync;
+            get => _adaptiveSync;
             set
             {
-                _predictiveSync = value;
+                _adaptiveSync = value;
                 ApplyStrategySettings();
             }
         }
@@ -151,7 +152,7 @@ namespace PurrNet
         private bool _skipCacheResult;
         private bool _hasSkipCache;
 
-        internal bool CanSkipCached(in NTLastPredictiveWrite lastWrite, ushort currentTick,
+        internal bool CanSkipCached(in NTLastAdaptiveWrite lastWrite, ushort currentTick,
             in NetworkTransformState current)
         {
             if (_hasSkipCache && _skipCacheFrom == lastWrite.tick && _skipCacheCurrent == currentTick &&
@@ -181,7 +182,7 @@ namespace PurrNet
 
         private void ApplyStrategySettings()
         {
-            _activeStrategy = !_predictiveSync ? null : _customStrategy ?? _defaultStrategy;
+            _activeStrategy = !_adaptiveSync ? null : _customStrategy ?? _defaultStrategy;
             _hasStrategy = _activeStrategy != null;
 
             if (!_hasStrategy)
@@ -189,7 +190,7 @@ namespace PurrNet
 
             var nm = networkManager;
             if (nm && nm.tickModule != null)
-                _predictiveSpacing = Mathf.Clamp(
+                _adaptiveSpacing = Mathf.Clamp(
                     Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy.maxSendInterval), 2,
                     CAPTURE_HISTORY_SIZE - 2);
         }
@@ -475,9 +476,9 @@ namespace PurrNet
             ntModule.Unregister(this);
         }
 
-        private int _predictiveSpacing = 2;
+        private int _adaptiveSpacing = 2;
 
-        internal int predictiveSendSpacing => _predictiveSpacing;
+        internal int adaptiveSendSpacing => _adaptiveSpacing;
 
         protected override void OnSpawned()
         {
@@ -1009,14 +1010,14 @@ namespace PurrNet
             _hasAuthoritativeRecvGen = false;
             _hasAppliedSeq = false;
             _hasLastAppliedState = false;
-            ClearPredictionAnchors();
+            ClearAdaptiveAnchors();
         }
 
         private NetworkTransformState _lastAppliedState;
         private ushort _lastAppliedSenderTick;
         private bool _hasLastAppliedState;
 
-        private const int PREDICT_BLEND_TICKS = 4;
+        private const int ADAPTIVE_BLEND_TICKS = 4;
         private const int RENDER_CATCHUP_STEP = 2;
 
         private ushort _lastRenderedSenderTick;
@@ -1026,7 +1027,7 @@ namespace PurrNet
         private NetworkTransformVelocity _anchorVelocity;
         private uint _anchorLocalTick;
         private int _anchorGap;
-        private bool _hasPredictionAnchor;
+        private bool _hasAdaptiveAnchor;
 
         private NetworkTransformState _prevAnchorState;
         private NetworkTransformVelocity _prevAnchorVelocity;
@@ -1035,7 +1036,7 @@ namespace PurrNet
         private uint _blendStartTick;
         private bool _hasPrevAnchor;
 
-        private uint _lastPredictionTick;
+        private uint _lastAdaptiveTick;
 
         private const int RECV_HISTORY_SIZE = 32;
 
@@ -1152,9 +1153,9 @@ namespace PurrNet
                 out result);
         }
 
-        private void ClearPredictionAnchors()
+        private void ClearAdaptiveAnchors()
         {
-            _hasPredictionAnchor = false;
+            _hasAdaptiveAnchor = false;
             _hasPrevAnchor = false;
             _recvCount = 0;
             _hasLastSample = false;
@@ -1162,12 +1163,12 @@ namespace PurrNet
             _seamOffset = Vector3.zero;
         }
 
-        private void SetPredictionAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
+        private void SetAdaptiveAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
         {
             var nm = networkManager;
             uint localTick = nm && nm.tickModule != null ? nm.tickModule.localTick : 0u;
 
-            if (_hasPredictionAnchor)
+            if (_hasAdaptiveAnchor)
             {
                 _prevAnchorState = _anchorState;
                 _prevAnchorVelocity = _anchorVelocity;
@@ -1181,23 +1182,23 @@ namespace PurrNet
             _anchorVelocity = velocity;
             _anchorLocalTick = localTick;
             _anchorGap = gap;
-            _hasPredictionAnchor = true;
+            _hasAdaptiveAnchor = true;
         }
 
-        internal bool TryTickPrediction(uint localTick, ushort vouchedTick, bool hasVouched,
+        internal bool TryTickAdaptiveRender(uint localTick, ushort vouchedTick, bool hasVouched,
             out NetworkTransformState state)
         {
             state = default;
 
-            if (!_hasStrategy || _cachedIsController || !_hasPredictionAnchor)
+            if (!_hasStrategy || _cachedIsController || !_hasAdaptiveAnchor)
                 return false;
 
-            if (_lastPredictionTick == localTick)
+            if (_lastAdaptiveTick == localTick)
                 return false;
 
-            _lastPredictionTick = localTick;
+            _lastAdaptiveTick = localTick;
 
-            long maxAhead = _predictiveSpacing + 2;
+            long maxAhead = _adaptiveSpacing + 2;
             long rel;
 
             if (hasVouched)
@@ -1209,7 +1210,7 @@ namespace PurrNet
                 long age = (long)localTick - _anchorLocalTick;
                 if (age < 0)
                     age = 0;
-                rel = age - _predictiveSpacing;
+                rel = age - _adaptiveSpacing;
             }
 
             if (rel > maxAhead)
@@ -1245,7 +1246,7 @@ namespace PurrNet
             if (_hasPrevAnchor)
             {
                 long blend = (long)localTick - _blendStartTick;
-                if (blend >= PREDICT_BLEND_TICKS)
+                if (blend >= ADAPTIVE_BLEND_TICKS)
                 {
                     _hasPrevAnchor = false;
                 }
@@ -1264,7 +1265,7 @@ namespace PurrNet
                     var old = TryStrategyExtrapolation(1, renderTick, out var oldShaped)
                         ? oldShaped
                         : NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, (int)prevAge);
-                    predicted = NetworkTransformVelocity.Lerp(old, predicted, (blend + 1f) / (PREDICT_BLEND_TICKS + 1f));
+                    predicted = NetworkTransformVelocity.Lerp(old, predicted, (blend + 1f) / (ADAPTIVE_BLEND_TICKS + 1f));
                 }
             }
 
@@ -1280,7 +1281,7 @@ namespace PurrNet
         private Vector3 _seamOffset;
         private bool _hasLastSample;
 
-        internal void ApplyPredictedSample(in NetworkTransformState state, NetworkIdentity frameParent)
+        internal void ApplyAdaptiveSample(in NetworkTransformState state, NetworkIdentity frameParent)
         {
             var p = state.frame switch
             {
@@ -1511,7 +1512,7 @@ namespace PurrNet
         private void AdoptState(in NetworkTransformState state)
         {
             _hasLastAppliedState = false;
-            ClearPredictionAnchors();
+            ClearAdaptiveAnchors();
             _lastReadData = state.data;
             _currentData = state.data;
             _latestData = state.data;
@@ -1812,17 +1813,17 @@ namespace PurrNet
             {
                 if (isAbsolute)
                 {
-                    ClearPredictionAnchors();
-                    SetPredictionAnchor(state, default, 0);
+                    ClearAdaptiveAnchors();
+                    SetAdaptiveAnchor(state, default, 0);
                     TeleportBuffers(state, p);
                 }
                 else
                 {
-                    int velocityGap = gap >= 1 && gap <= NTUnreliable.PREDICTIVE_MAX_BACKFILL ? gap : 0;
+                    int velocityGap = gap >= 1 && gap <= NTUnreliable.ADAPTIVE_MAX_BACKFILL ? gap : 0;
                     var velocity = velocityGap >= 1
                         ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
                         : default;
-                    SetPredictionAnchor(state, velocity, velocityGap);
+                    SetAdaptiveAnchor(state, velocity, velocityGap);
                 }
 
                 PushReceivedSample(senderTick, state);

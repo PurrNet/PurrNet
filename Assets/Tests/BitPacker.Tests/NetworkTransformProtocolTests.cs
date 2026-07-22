@@ -241,13 +241,13 @@ public class NetworkTransformProtocolTests
 
         var withinPos = LinearState(Vector3.one);
         withinPos.data.position = new CompressedVector3(
-            new CompressedFloat(1000 + NTUnreliable.PREDICTIVE_POS_TOLERANCE),
+            new CompressedFloat(1000 + NTUnreliable.ADAPTIVE_POS_TOLERANCE),
             new CompressedFloat(1000), new CompressedFloat(1000));
         Assert.That(NTUnreliable.PredictionMatches(predicted, withinPos, default), Is.True);
 
         var beyondPos = LinearState(Vector3.one);
         beyondPos.data.position = new CompressedVector3(
-            new CompressedFloat(1000 + NTUnreliable.PREDICTIVE_POS_TOLERANCE + 1),
+            new CompressedFloat(1000 + NTUnreliable.ADAPTIVE_POS_TOLERANCE + 1),
             new CompressedFloat(1000), new CompressedFloat(1000));
         Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, default), Is.False);
 
