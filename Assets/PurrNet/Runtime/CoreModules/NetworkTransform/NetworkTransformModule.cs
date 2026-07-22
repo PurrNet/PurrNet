@@ -909,19 +909,15 @@ namespace PurrNet.Modules
 
                     if (sinceLastWrite >= 1 && restGate)
                     {
-                        int spacing = nt.adaptiveSendSpacing;
-                        bool phaseRefresh = sinceLastWrite >= 2 &&
-                                            currentTick % spacing == (nid.GetHashCode() & 0x7fffffff) % spacing;
-
-                        bool skippable = !phaseRefresh && sinceLastWrite < spacing &&
+                        bool skippable = sinceLastWrite < nt.adaptiveSendSpacing &&
                                          nt.CanSkipCached(lastWrite, currentTick, current);
 
                         if (skippable && (lastWrite.redundancy == 0 ||
                                           sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
                             return NTWriteResult.Hold;
 
-                        breakWrite = !skippable && !phaseRefresh && lastWrite.redundancy == 0 &&
-                                     sinceLastWrite < spacing &&
+                        breakWrite = !skippable && lastWrite.redundancy == 0 &&
+                                     sinceLastWrite < nt.adaptiveSendSpacing &&
                                      sinceLastWrite > NTUnreliable.BREAK_REDUNDANCY;
                     }
                 }

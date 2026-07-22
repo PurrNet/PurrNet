@@ -152,6 +152,13 @@ namespace PurrNet
         private bool _skipCacheResult;
         private bool _hasSkipCache;
 
+        internal ushort extrapVerifyBase;
+        internal ushort extrapVerifyPrev;
+        internal ushort extrapVerifyPrevPrev;
+        internal byte extrapVerifyFlags;
+        internal ushort extrapVerifyThrough;
+        internal bool hasExtrapVerify;
+
         internal bool CanSkipCached(in NTLastAdaptiveWrite lastWrite, ushort currentTick,
             in NetworkTransformState current)
         {

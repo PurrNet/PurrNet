@@ -136,8 +136,20 @@ namespace PurrNet
 
             var chordVelocity = NetworkTransformVelocity.Derive(from, current, gap);
 
-            for (int step = 1; step < gap; step++)
+            int interpSteps = gap - 1;
+            int probes = interpSteps <= NTUnreliable.INTERP_VERIFY_PROBES
+                ? interpSteps
+                : NTUnreliable.INTERP_VERIFY_PROBES;
+
+            for (int i = 1; i <= probes; i++)
             {
+                int step = interpSteps <= NTUnreliable.INTERP_VERIFY_PROBES
+                    ? i
+                    : gap * i / (probes + 1);
+
+                if (step < 1 || step >= gap)
+                    continue;
+
                 if (!nt.TryGetCapturedAt((ushort)(fromTick + step), out var actual))
                     return false;
 
@@ -160,7 +172,22 @@ namespace PurrNet
                 ? NetworkTransformVelocity.Derive(lastWrite.prevState, from, span)
                 : default;
 
-            for (int step = 1; step <= gap; step++)
+            byte chainFlags = (byte)((lastWrite.hasPrev ? 1 : 0) | (lastWrite.hasPrevPrev ? 2 : 0));
+
+            int startStep = 1;
+            if (nt.hasExtrapVerify && nt.extrapVerifyBase == fromTick &&
+                nt.extrapVerifyPrev == lastWrite.prevTick &&
+                nt.extrapVerifyPrevPrev == lastWrite.prevPrevTick &&
+                nt.extrapVerifyFlags == chainFlags)
+            {
+                int done = (short)(nt.extrapVerifyThrough - fromTick);
+                if (done >= 1 && done < gap)
+                    startStep = done + 1;
+                else if (done >= gap)
+                    startStep = gap;
+            }
+
+            for (int step = startStep; step <= gap; step++)
             {
                 NetworkTransformState actual;
 
@@ -179,6 +206,13 @@ namespace PurrNet
                 if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
                     return false;
             }
+
+            nt.extrapVerifyBase = fromTick;
+            nt.extrapVerifyPrev = lastWrite.prevTick;
+            nt.extrapVerifyPrevPrev = lastWrite.prevPrevTick;
+            nt.extrapVerifyFlags = chainFlags;
+            nt.extrapVerifyThrough = currentTick;
+            nt.hasExtrapVerify = true;
 
             return true;
         }
