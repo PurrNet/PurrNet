@@ -23,7 +23,7 @@ namespace PurrNet
     /// </summary>
     public class NetworkTransformSyncStrategy
     {
-        public const float DEFAULT_MAX_SEND_INTERVAL = 0.2f;
+        public const float DEFAULT_MAX_SEND_INTERVAL = 0.3f;
 
         /// <summary>
         /// Maximum time between sends while motion stays reconstructible by receivers.
