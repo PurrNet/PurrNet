@@ -9,17 +9,24 @@ namespace PurrNet
     /// which drives send-rate scheduling via <see cref="ShouldSendToPlayer"/>.
     /// Network LOD never changes observer membership or visibility.
     /// </summary>
-    public sealed class NetworkLOD : NetworkIdentity
+    public sealed class NetworkLOD : NetworkIdentity, ILODOwnedTarget, ILODDetailedTierTarget
     {
         [SerializeField] private NetworkLODProfile _profile;
 
-        private readonly Dictionary<PlayerID, byte> _tiers = new Dictionary<PlayerID, byte>();
         private readonly List<NetworkIdentity> _siblings = new List<NetworkIdentity>();
+        private Modules.NetworkLODModule _serverModule;
+        private Modules.NetworkLODModule _clientModule;
 
         public NetworkLODProfile profile
         {
             get => _profile;
-            set => _profile = value;
+            set
+            {
+                _profile = value;
+                _serverModule?.UpdateProfile(this, _profile);
+                if (!object.ReferenceEquals(_clientModule, _serverModule))
+                    _clientModule?.UpdateProfile(this, _profile);
+            }
         }
 
         /// <summary>
@@ -29,6 +36,10 @@ namespace PurrNet
 
         public uint staggerOffset { get; private set; }
 
+        public Vector3 position => transform.position;
+
+        public uint staggerSeed => staggerOffset;
+
         /// <summary>
         /// Current tier for the given player. 0 (full detail) for owners and players not yet evaluated.
         /// Server only; always 0 on clients.
@@ -37,7 +48,7 @@ namespace PurrNet
         {
             if (owner == player)
                 return 0;
-            return _tiers.GetValueOrDefault(player, (byte)0);
+            return (_serverModule ?? _clientModule)?.GetTier(this, player) ?? 0;
         }
 
         /// <summary>
@@ -65,12 +76,30 @@ namespace PurrNet
                 return true;
 
             var activeScheduler = scheduler ?? LODIntervalScheduler.instance;
-            return activeScheduler.ShouldSendThisTick(this, player, tier, nm.tickModule.localTick);
+            return activeScheduler.ShouldSendThisTick(this, _profile, player, tier, nm.tickModule.localTick);
         }
 
-        internal void ApplyTier(PlayerID player, byte previousTier, byte newTier)
+        public void ApplyTier(PlayerID player, byte tier)
         {
-            _tiers[player] = newTier;
+            var module = _serverModule ?? _clientModule;
+            if (module != null && module.SetTier(this, player, tier))
+                return;
+
+            ApplyTier(player, GetTier(player), tier);
+        }
+
+        bool ILODOwnedTarget.IsOwnedBy(PlayerID player)
+        {
+            return owner == player;
+        }
+
+        void ILODDetailedTierTarget.ApplyTier(PlayerID player, byte previousTier, byte newTier)
+        {
+            ApplyTier(player, previousTier, newTier);
+        }
+
+        private void ApplyTier(PlayerID player, byte previousTier, byte newTier)
+        {
 
             if (previousTier == newTier)
                 return;
@@ -85,11 +114,6 @@ namespace PurrNet
             }
         }
 
-        internal void RemovePlayer(PlayerID player)
-        {
-            _tiers.Remove(player);
-        }
-
         protected override void OnSpawned(bool asServer)
         {
             staggerOffset = id.HasValue ? (uint)(id.Value.GetHashCode() & 0x7fffffff) : 0u;
@@ -100,14 +124,17 @@ namespace PurrNet
 
             if (networkManager.TryGetModule<Modules.NetworkLODFactory>(asServer, out var factory) &&
                 factory.TryGetModule(sceneId, out var module))
-                module.Register(this);
+            {
+                if (asServer)
+                    _serverModule = module;
+                else
+                    _clientModule = module;
+                module.Register(this, _profile);
+            }
         }
 
         protected override void OnDespawned(bool asServer)
         {
-            if (asServer)
-                _tiers.Clear();
-
             for (var i = 0; i < _siblings.Count; i++)
             {
                 if (_siblings[i])
@@ -116,9 +143,18 @@ namespace PurrNet
 
             _siblings.Clear();
 
-            if (networkManager.TryGetModule<Modules.NetworkLODFactory>(asServer, out var factory) &&
-                factory.TryGetModule(sceneId, out var module))
+            var registeredModule = asServer ? _serverModule : _clientModule;
+
+            if (registeredModule != null)
+                registeredModule.Unregister(this);
+            else if (networkManager.TryGetModule<Modules.NetworkLODFactory>(asServer, out var factory) &&
+                     factory.TryGetModule(sceneId, out var module))
                 module.Unregister(this);
+
+            if (asServer)
+                _serverModule = null;
+            else
+                _clientModule = null;
         }
     }
 }

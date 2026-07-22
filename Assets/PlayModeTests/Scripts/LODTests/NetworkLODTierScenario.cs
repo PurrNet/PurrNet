@@ -201,6 +201,8 @@ public class NetworkLODTierScenario : Scenario
             sends = await CountSends(ctx, lod, victim.Value);
             if (sends != CadenceTicks / 2)
                 failures.Add($"tier 1 cadence: {sends}/{CadenceTicks} ticks sent, expected {CadenceTicks / 2}");
+
+            await RunPlainTargetPhases(ctx, lodFactory, instance.sceneId, victim.Value, failures);
         }
         finally
         {
@@ -219,6 +221,85 @@ public class NetworkLODTierScenario : Scenario
             : ScenarioResult.Fail(string.Join(" | ", failures));
     }
 
+    private async UniTask RunPlainTargetPhases(ScenarioContext ctx, NetworkLODFactory factory, SceneID scene,
+        PlayerID player, List<string> failures)
+    {
+        if (!factory.TryGetModule(scene, out var module))
+        {
+            failures.Add("plain target: scene LOD module not found");
+            return;
+        }
+
+        var profile = ScriptableObject.CreateInstance<NetworkLODProfile>();
+        profile.Configure(new[]
+        {
+            new NetworkLODTier { maxDistance = 10f, hysteresis = 2f, sendIntervalTicks = 1 },
+            new NetworkLODTier { maxDistance = 30f, hysteresis = 5f, sendIntervalTicks = 4 }
+        }, true);
+
+        var targetGo = new GameObject(nameof(PlainLODTarget));
+        var target = targetGo.AddComponent<PlainLODTarget>();
+        target.staggerSeed = 3;
+
+        try
+        {
+            target.transform.position = BasePos + new Vector3(55f, 0f, 0f);
+            if (!module.Register(target, profile))
+            {
+                failures.Add("plain target: direct registration failed");
+                return;
+            }
+
+            if (!await WaitTier(ctx, module, target, player, NetworkLODProfile.CulledTier, failures,
+                    "plain target distance cull"))
+                return;
+
+            target.transform.position = BasePos + new Vector3(33f, 0f, 0f);
+            if (!await WaitTier(ctx, module, target, player, 1, failures, "plain target reentry"))
+                return;
+
+            int changesAfterReentry = target.GetChangeCount(player);
+            target.transform.position = BasePos + new Vector3(38f, 0f, 0f);
+            await UniTask.Delay(TimeSpan.FromSeconds(_settleSeconds), cancellationToken: ctx.cancellationToken);
+
+            if (module.GetTier(target, player) != 1)
+                failures.Add($"plain target hysteresis: tier {module.GetTier(target, player)}, expected 1");
+            if (target.GetChangeCount(player) != changesAfterReentry)
+                failures.Add("plain target hysteresis emitted a tier change inside the hold band");
+
+            int sends = 0;
+            int firstSendTick = -1;
+            for (uint tick = 0; tick < 16; tick++)
+            {
+                if (!LODIntervalScheduler.instance.ShouldSendThisTick(target, profile, player, 1, tick))
+                    continue;
+
+                if (firstSendTick < 0)
+                    firstSendTick = (int)tick;
+                sends++;
+            }
+
+            if (sends != 4 || firstSendTick != 1)
+                failures.Add($"plain target stagger: sends={sends}, first={firstSendTick}, expected 4 and 1");
+
+            target.transform.position = BasePos + new Vector3(42f, 0f, 0f);
+            if (!await WaitTier(ctx, module, target, player, NetworkLODProfile.CulledTier, failures,
+                    "plain target hysteretic recull"))
+                return;
+
+            if (target.GetAppliedTier(player) != NetworkLODProfile.CulledTier)
+                failures.Add($"plain target callback tier {target.GetAppliedTier(player)}, expected culled");
+            if (target.GetChangeCount(player) != changesAfterReentry + 1)
+                failures.Add($"plain target callback count {target.GetChangeCount(player)}, expected {changesAfterReentry + 1}");
+        }
+        finally
+        {
+            module.Unregister(target);
+            Destroy(targetGo);
+            Destroy(profile);
+        }
+    }
+
     private async UniTask<bool> WaitTier(ScenarioContext ctx, NetworkLOD lod, PlayerID player, byte expected,
         List<string> failures, string phase)
     {
@@ -232,6 +313,23 @@ public class NetworkLODTierScenario : Scenario
         catch (TimeoutException)
         {
             failures.Add($"{phase}: tier stuck at {lod.GetTier(player)}, expected {expected}");
+            return false;
+        }
+    }
+
+    private async UniTask<bool> WaitTier(ScenarioContext ctx, NetworkLODModule module, ILODTarget target,
+        PlayerID player, byte expected, List<string> failures, string phase)
+    {
+        try
+        {
+            await UniTaskUtils.WaitWithTimeout(
+                () => module.GetTier(target, player) == expected,
+                _tierTimeoutSeconds, ctx.cancellationToken);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            failures.Add($"{phase}: tier stuck at {module.GetTier(target, player)}, expected {expected}");
             return false;
         }
     }
@@ -289,5 +387,31 @@ public class NetworkLODTierScenario : Scenario
         }
 
         return best;
+    }
+}
+
+public sealed class PlainLODTarget : MonoBehaviour, ILODTarget
+{
+    private readonly Dictionary<PlayerID, byte> _tiers = new Dictionary<PlayerID, byte>();
+    private readonly Dictionary<PlayerID, int> _changeCounts = new Dictionary<PlayerID, int>();
+
+    public Vector3 position => transform.position;
+
+    public uint staggerSeed { get; set; }
+
+    public void ApplyTier(PlayerID player, byte tier)
+    {
+        _tiers[player] = tier;
+        _changeCounts[player] = GetChangeCount(player) + 1;
+    }
+
+    public byte GetAppliedTier(PlayerID player)
+    {
+        return _tiers.GetValueOrDefault(player, (byte)0);
+    }
+
+    public int GetChangeCount(PlayerID player)
+    {
+        return _changeCounts.GetValueOrDefault(player, 0);
     }
 }

@@ -319,6 +319,12 @@ namespace PurrNet.Packing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteBitsWithoutConsumingIt(BitPacker packer, int bitOrigin, int bits)
+        {
+            CopyBitsWithoutConsuming(packer, bitOrigin, bits);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void WriteBitsWithoutConsumingItUnchecked(BitPacker packer, int bits)
         {
             if (bits == 0)

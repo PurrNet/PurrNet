@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet.Pooling;
 using UnityEngine;
@@ -6,7 +7,20 @@ namespace PurrNet.Modules
 {
     public class NetworkLODModule : INetworkModule, IPromoteToServerModule
     {
-        private readonly List<NetworkLOD> _lods = new List<NetworkLOD>();
+        private sealed class TargetRegistration
+        {
+            public readonly Dictionary<PlayerID, byte> tiers = new Dictionary<PlayerID, byte>();
+            public NetworkLODProfile profile;
+
+            public TargetRegistration(NetworkLODProfile profile)
+            {
+                this.profile = profile;
+            }
+        }
+
+        private readonly List<ILODTarget> _targets = new List<ILODTarget>();
+        private readonly Dictionary<ILODTarget, TargetRegistration> _registrations =
+            new Dictionary<ILODTarget, TargetRegistration>();
         private readonly NetworkManager _manager;
         private readonly NetworkLODFactory _factory;
         private readonly ScenesModule _scenes;
@@ -55,29 +69,99 @@ namespace PurrNet.Modules
             if (!asServer)
                 return;
 
-            for (var i = 0; i < _lods.Count; i++)
+            for (var i = 0; i < _targets.Count; i++)
             {
-                if (_lods[i])
-                    _lods[i].RemovePlayer(player);
+                if (_registrations.TryGetValue(_targets[i], out var registration))
+                    registration.tiers.Remove(player);
             }
 
             _factory.RemovePlayerAnchors(player);
         }
 
-        public void Register(NetworkLOD lod)
+        /// <summary>
+        /// Registers a reference-type LOD target with this scene's LOD sweep.
+        /// </summary>
+        public bool Register(ILODTarget target, NetworkLODProfile profile)
         {
-            if (!_lods.Contains(lod))
-                _lods.Add(lod);
+            ValidateTarget(target);
+
+            if (_registrations.TryGetValue(target, out var registration))
+            {
+                registration.profile = profile;
+                return false;
+            }
+
+            _targets.Add(target);
+            _registrations.Add(target, new TargetRegistration(profile));
+            return true;
         }
 
-        public void Unregister(NetworkLOD lod)
+        /// <summary>
+        /// Stops sweeping a previously registered LOD target and clears its tier state.
+        /// </summary>
+        public bool Unregister(ILODTarget target)
         {
-            _lods.Remove(lod);
+            if (ReferenceEquals(target, null) || !_registrations.Remove(target))
+                return false;
+
+            int index = _targets.IndexOf(target);
+            if (index >= 0)
+            {
+                _targets.RemoveAt(index);
+                if (index < _sweepCursor)
+                    _sweepCursor--;
+                if (_sweepCursor >= _targets.Count)
+                    _sweepCursor = 0;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Updates the profile used by a registered LOD target without resetting its resolved tiers.
+        /// </summary>
+        public bool UpdateProfile(ILODTarget target, NetworkLODProfile profile)
+        {
+            if (ReferenceEquals(target, null) || !_registrations.TryGetValue(target, out var registration))
+                return false;
+
+            registration.profile = profile;
+            return true;
+        }
+
+        /// <summary>
+        /// Gets the current resolved tier for a registered target and player.
+        /// </summary>
+        public byte GetTier(ILODTarget target, PlayerID player)
+        {
+            if (ReferenceEquals(target, null) || !_registrations.TryGetValue(target, out var registration))
+                return 0;
+
+            return registration.tiers.GetValueOrDefault(player, (byte)0);
+        }
+
+        internal bool SetTier(ILODTarget target, PlayerID player, byte tier)
+        {
+            if (!_registrations.TryGetValue(target, out var registration))
+                return false;
+
+            byte previousTier = registration.tiers.GetValueOrDefault(player, (byte)0);
+            if (previousTier == tier)
+                return true;
+
+            registration.tiers[player] = tier;
+
+            if (target is ILODDetailedTierTarget detailedTarget)
+                detailedTarget.ApplyTier(player, previousTier, tier);
+            else
+                target.ApplyTier(player, tier);
+
+            return true;
         }
 
         internal void Sweep()
         {
-            if (!_asServer || _lods.Count == 0)
+            if (!_asServer || _targets.Count == 0)
                 return;
 
             if (!_scenePlayers.TryGetPlayersInScene(_scene, out var players) || players.Count == 0)
@@ -94,17 +178,26 @@ namespace PurrNet.Modules
                 anchorPositions.Add(positions);
             }
 
-            int budget = Mathf.Min(_factory.sweepBudgetPerTick, _lods.Count);
+            int budget = Mathf.Min(_factory.sweepBudgetPerTick, _targets.Count);
 
             for (var i = 0; i < budget; i++)
             {
-                if (_sweepCursor >= _lods.Count)
+                if (_targets.Count == 0)
+                    break;
+
+                if (_sweepCursor >= _targets.Count)
                     _sweepCursor = 0;
 
-                var lod = _lods[_sweepCursor++];
+                var target = _targets[_sweepCursor++];
 
-                if (lod && lod.profile)
-                    Evaluate(lod, anchorPlayers, anchorPositions);
+                if (!IsAlive(target))
+                {
+                    Unregister(target);
+                    continue;
+                }
+
+                if (_registrations.TryGetValue(target, out var registration) && registration.profile)
+                    Evaluate(target, registration, anchorPlayers, anchorPositions);
             }
 
             for (var i = 0; i < anchorPositions.Count; i++)
@@ -114,16 +207,17 @@ namespace PurrNet.Modules
             ListPool<PlayerID>.Destroy(anchorPlayers);
         }
 
-        private static void Evaluate(NetworkLOD lod, List<PlayerID> players, List<List<Vector3>> positionsPerPlayer)
+        private void Evaluate(ILODTarget target, TargetRegistration registration, List<PlayerID> players,
+            List<List<Vector3>> positionsPerPlayer)
         {
-            var lodPos = lod.transform.position;
-            var profile = lod.profile;
+            var targetPosition = target.position;
+            var profile = registration.profile;
 
             for (var p = 0; p < players.Count; p++)
             {
                 var player = players[p];
 
-                if (lod.owner == player)
+                if (target is ILODOwnedTarget ownedTarget && ownedTarget.IsOwnedBy(player))
                     continue;
 
                 var positions = positionsPerPlayer[p];
@@ -133,17 +227,30 @@ namespace PurrNet.Modules
                 float sqrMin = float.MaxValue;
                 for (var i = 0; i < positions.Count; i++)
                 {
-                    float sqr = (positions[i] - lodPos).sqrMagnitude;
+                    float sqr = (positions[i] - targetPosition).sqrMagnitude;
                     if (sqr < sqrMin)
                         sqrMin = sqr;
                 }
 
-                byte current = lod.GetTier(player);
+                byte current = registration.tiers.GetValueOrDefault(player, (byte)0);
                 byte next = profile.ResolveTier(sqrMin, current);
 
                 if (next != current)
-                    lod.ApplyTier(player, current, next);
+                    SetTier(target, player, next);
             }
+        }
+
+        private static bool IsAlive(ILODTarget target)
+        {
+            return !ReferenceEquals(target, null) && (!(target is UnityEngine.Object unityObject) || unityObject);
+        }
+
+        private static void ValidateTarget(ILODTarget target)
+        {
+            if (ReferenceEquals(target, null))
+                throw new ArgumentNullException(nameof(target));
+            if (target.GetType().IsValueType)
+                throw new ArgumentException("LOD targets must be reference types.", nameof(target));
         }
 
         private void GatherAnchorPositions(PlayerID player, List<Vector3> positions)
