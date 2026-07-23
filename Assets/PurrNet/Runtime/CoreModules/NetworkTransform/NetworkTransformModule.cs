@@ -568,8 +568,12 @@ namespace PurrNet.Modules
                     ? generation.epoch
                     : nt.sendGenEpoch;
 
+                bool restSettled = !nt.hasSyncStrategy ||
+                                   !stream.lastAdaptiveWrite.TryGetValue(entry.nid, out var lastWrite) ||
+                                   (lastWrite.restConfirmed && lastWrite.redundancy == 0);
+
                 if (currentBaseline.genEpoch == expectedEpoch &&
-                    currentBaseline.revision == nt.capturedRevision)
+                    currentBaseline.revision == nt.capturedRevision && restSettled)
                 {
                     completed ??= ListPool<NetworkID>.Instantiate();
                     completed.Add(entry.nid);
@@ -894,7 +898,8 @@ namespace PurrNet.Modules
             // Suppression must not depend on baseline age — a resting object's baseline never
             // refreshes, and re-sending absolutes for it every 32 packets floods static scenes.
             if (hasAcked && baseline.revision == nt.capturedRevision &&
-                (!nt.hasSyncStrategy || !hasLastWrite || lastWrite.restConfirmed))
+                (!nt.hasSyncStrategy || !hasLastWrite ||
+                 (lastWrite.restConfirmed && lastWrite.redundancy == 0)))
                 return NTWriteResult.SkipAcked;
 
             if (nt.hasSyncStrategy)
@@ -910,14 +915,16 @@ namespace PurrNet.Modules
 
                     if (sinceLastWrite >= 1 && restGate)
                     {
-                        bool skippable = sinceLastWrite < nt.adaptiveSendSpacing &&
-                                         nt.CanSkipCached(lastWrite, currentTick, current);
+                        bool canSkip = sinceLastWrite < nt.adaptiveSendSpacing &&
+                                       nt.CanSkipCached(lastWrite, currentTick, current);
+                        bool keepaliveDue = ((uint)currentTick + (uint)nid.GetHashCode()) %
+                            (uint)nt.adaptiveSendSpacing == 0;
 
-                        if (skippable && (lastWrite.redundancy == 0 ||
-                                          sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
+                        if (canSkip && !keepaliveDue && (lastWrite.redundancy == 0 ||
+                                                         sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
                             return NTWriteResult.Hold;
 
-                        breakWrite = !skippable && lastWrite.redundancy == 0 &&
+                        breakWrite = !canSkip && lastWrite.redundancy == 0 &&
                                      sinceLastWrite < nt.adaptiveSendSpacing &&
                                      sinceLastWrite > breakRedundancy;
                     }
@@ -936,6 +943,7 @@ namespace PurrNet.Modules
                 else if (lastWrite.tick != currentTick)
                 {
                     bool sameAsPrev = lastWrite.revision == nt.capturedRevision;
+                    bool restBreak = sameAsPrev && !lastWrite.restConfirmed;
 
                     lastWrite.prevPrevTick = lastWrite.prevTick;
                     lastWrite.prevPrevState = lastWrite.prevState;
@@ -949,7 +957,7 @@ namespace PurrNet.Modules
                     lastWrite.state = current;
                     lastWrite.revision = nt.capturedRevision;
                     lastWrite.restConfirmed = sameAsPrev;
-                    lastWrite.redundancy = breakWrite
+                    lastWrite.redundancy = breakWrite || restBreak
                         ? breakRedundancy
                         : (byte)(lastWrite.redundancy > 0 ? lastWrite.redundancy - 1 : 0);
                 }
@@ -994,7 +1002,7 @@ namespace PurrNet.Modules
                     lastWrite.revision = nt.capturedRevision;
                     lastWrite.hasPrev = false;
                     lastWrite.hasPrevPrev = false;
-                    lastWrite.restConfirmed = false;
+                    lastWrite.restConfirmed = true;
                     lastWrite.redundancy = 0;
                 }
             }
