@@ -89,24 +89,24 @@ namespace PurrNet
             switch (level)
             {
                 case AdaptiveSyncLevel.Low:
-                    toleranceVelocityShift = 2;
-                    toleranceCapMultiplier = 64;
-                    interpVerifyProbes = 3;
+                    toleranceVelocityShift = 4;
+                    toleranceCapMultiplier = 8;
+                    interpVerifyProbes = 5;
                     maxSendInterval = 0.3f;
                     breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
                     break;
                 case AdaptiveSyncLevel.Balanced:
-                    toleranceVelocityShift = 1;
-                    toleranceCapMultiplier = 256;
+                    toleranceVelocityShift = 3;
+                    toleranceCapMultiplier = 32;
                     interpVerifyProbes = 3;
                     maxSendInterval = 0.3f;
                     breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
                     break;
                 case AdaptiveSyncLevel.High:
-                    toleranceVelocityShift = 1;
-                    toleranceCapMultiplier = 0;
-                    interpVerifyProbes = 2;
-                    maxSendInterval = 0.45f;
+                    toleranceVelocityShift = 2;
+                    toleranceCapMultiplier = 64;
+                    interpVerifyProbes = 3;
+                    maxSendInterval = 0.3f;
                     breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
                     break;
                 case AdaptiveSyncLevel.VeryHigh:
