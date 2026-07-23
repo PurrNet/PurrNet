@@ -31,7 +31,7 @@ namespace PurrNet.Packing
 
         public static implicit operator Quaternion(PackedQuaternion angle) => new Quaternion(
             angle.x.GetValue(), angle.y.GetValue(), angle.z.GetValue(), angle.w.GetValue()
-        );
+        ).normalized;
 
         public bool Equals(PackedQuaternion other)
         {
