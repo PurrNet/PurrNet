@@ -1071,6 +1071,10 @@ namespace PurrNet.Modules
                 var writeResult = TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out var newLastDist,
                     out var velocity, out var wireGen, out var wireGenEpoch);
 
+                if (nt.adaptiveDebugDumpEnabled)
+                    nt.DebugDumpLine($"send,tick={_currentTick},to={player},result={writeResult}," +
+                                     $"pos={NetworkTransform.DebugPos(nt.capturedState)}");
+
                 if (writeResult == NTWriteResult.SkipAcked)
                 {
                     stream.pending.RemoveAt(i);
