@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbfde3c6d0694606ac4db45704f95956, type: 3}
+  m_Name: SimpleProfile
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkLODProfile
+  _tiers:
+  - maxDistance: 30
+    hysteresis: 5
+    sendIntervalTicks: 1
+  - maxDistance: 75
+    hysteresis: 5
+    sendIntervalTicks: 2
+  - maxDistance: 150
+    hysteresis: 10
+    sendIntervalTicks: 4
+  _cullBeyondLastTier: 0

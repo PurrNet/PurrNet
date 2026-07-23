@@ -24,7 +24,7 @@ namespace PurrNet
             {
                 _profile = value;
                 _serverModule?.UpdateProfile(this, _profile);
-                if (!object.ReferenceEquals(_clientModule, _serverModule))
+                if (!ReferenceEquals(_clientModule, _serverModule))
                     _clientModule?.UpdateProfile(this, _profile);
             }
         }
