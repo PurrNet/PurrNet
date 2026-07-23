@@ -22,4 +22,4 @@ MonoBehaviour:
   - maxDistance: 150
     hysteresis: 10
     sendIntervalTicks: 4
-  _cullBeyondLastTier: 0
+  _cullBeyondLastTier: 1
