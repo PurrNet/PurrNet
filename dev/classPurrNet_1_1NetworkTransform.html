@@ -142,6 +142,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>GatherState</b> ()</t
 <tr class="memitem:a1066fcfc749172bf9b0026dc7643e5f8"><td class="memItemLeft" align="right" valign="top"><a id="a1066fcfc749172bf9b0026dc7643e5f8" name="a1066fcfc749172bf9b0026dc7643e5f8"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>DeltaSave</b> ()</td></tr>
 <tr class="separator:a1066fcfc749172bf9b0026dc7643e5f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d2e7c281775dcf8c2660f8e1123314e"><td class="memItemLeft" align="right" valign="top"><a id="a2d2e7c281775dcf8c2660f8e1123314e" name="a2d2e7c281775dcf8c2660f8e1123314e"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetAdaptiveDebugDump</b> (bool enabled)</td></tr>
+<tr class="memdesc:a2d2e7c281775dcf8c2660f8e1123314e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Diagnostic: writes a per-tick adaptive sync log for this transform to <code>&lt;temp&gt;/purrnet_nt_debug/</code> until disabled. Enable at runtime on the sender's own transform and on the observer's remote transform while reproducing an issue, then send the files to support. Also available from the component's context menu.  <br /></td></tr>
+<tr class="separator:a2d2e7c281775dcf8c2660f8e1123314e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a806e3692a520703602c7324d82bb0528"><td class="memItemLeft" align="right" valign="top"><a id="a806e3692a520703602c7324d82bb0528" name="a806e3692a520703602c7324d82bb0528"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsControlling</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool asServer)</td></tr>
 <tr class="separator:a806e3692a520703602c7324d82bb0528"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -386,6 +390,8 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a743a803391991f00af2fb1a1a22f3b84"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a743a803391991f00af2fb1a1a22f3b84">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a743a803391991f00af2fb1a1a22f3b84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#a743a803391991f00af2fb1a1a22f3b84">More...</a><br /></td></tr>
 <tr class="separator:a743a803391991f00af2fb1a1a22f3b84"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aefa4968f70ff6f7e60700f68ac4b9ab6"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#aefa4968f70ff6f7e60700f68ac4b9ab6">OnDestroy</a> ()</td></tr>
+<tr class="separator:aefa4968f70ff6f7e60700f68ac4b9ab6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e">OnOwnerDisconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
 <tr class="memdesc:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object disconnects. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e">More...</a><br /></td></tr>
 <tr class="separator:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -864,6 +870,33 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
 </dl>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
+<a id="aefa4968f70ff6f7e60700f68ac4b9ab6" name="aefa4968f70ff6f7e60700f68ac4b9ab6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aefa4968f70ff6f7e60700f68ac4b9ab6">&#9670;&#160;</a></span>OnDestroy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkTransform.OnDestroy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a>.</p>
 
 </div>
 </div>

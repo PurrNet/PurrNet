@@ -13,6 +13,7 @@ var classPurrNet_1_1NetworkTransform =
     [ "OnOwnerReconnected", "classPurrNet_1_1NetworkTransform.html#aa8e99a9f22f420b8e7efe0a187562c53", null ],
     [ "OnSpawned", "classPurrNet_1_1NetworkTransform.html#a4b3b472f61dfbab82d4c32b5e7e7c987", null ],
     [ "OnSpawned", "classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27", null ],
+    [ "SetAdaptiveDebugDump", "classPurrNet_1_1NetworkTransform.html#a2d2e7c281775dcf8c2660f8e1123314e", null ],
     [ "SetSyncStrategy", "classPurrNet_1_1NetworkTransform.html#a6e23dad683f3574435d7e20f3eb5b2ea", null ],
     [ "adaptiveSync", "classPurrNet_1_1NetworkTransform.html#a05cccb7d2459e3ec5db19b40d21a5576", null ],
     [ "adaptiveSyncLevel", "classPurrNet_1_1NetworkTransform.html#a07e664ab85adf985eea668b7567ca6cc", null ],
