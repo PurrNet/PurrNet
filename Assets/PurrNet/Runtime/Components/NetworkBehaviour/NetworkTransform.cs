@@ -272,14 +272,44 @@ namespace PurrNet
                 : _customStrategy ?? _defaultStrategies[Mathf.Clamp((int)_adaptiveSynchronization, 1, 4) - 1];
             _hasStrategy = _activeStrategy != null;
 
-            if (!_hasStrategy)
+            var nm = networkManager;
+            if (!nm || nm.tickModule == null)
                 return;
 
-            var nm = networkManager;
-            if (nm && nm.tickModule != null)
+            int minSize;
+            int maxSize;
+
+            if (_hasStrategy)
+            {
+                minSize = 1;
+                maxSize = 2;
                 _adaptiveSpacing = Mathf.Clamp(
                     Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy!.maxSendInterval), 2,
                     CAPTURE_HISTORY_SIZE - 2);
+            }
+            else
+            {
+                minSize = _minBufferSize;
+                maxSize = Mathf.CeilToInt(nm.tickModule.tickRate * 0.15f) * 2;
+            }
+
+            if (_position != null)
+            {
+                _position.minBufferSize = minSize;
+                _position.maxBufferSize = maxSize;
+            }
+
+            if (_rotation != null)
+            {
+                _rotation.minBufferSize = minSize;
+                _rotation.maxBufferSize = maxSize;
+            }
+
+            if (_scale != null)
+            {
+                _scale.minBufferSize = minSize;
+                _scale.maxBufferSize = maxSize;
+            }
         }
 
         Interpolated<Vector3WithParent> _position;
@@ -587,13 +617,6 @@ namespace PurrNet
 
         protected override void OnSpawned()
         {
-            int ticksPerSec = networkManager.tickModule.tickRate;
-            int ticksPerBuffer = Mathf.CeilToInt(ticksPerSec * 0.15f) * 2;
-
-            if (syncPosition) _position.maxBufferSize = ticksPerBuffer;
-            if (syncRotation) _rotation.maxBufferSize = ticksPerBuffer;
-            if (syncScale) _scale.maxBufferSize = ticksPerBuffer;
-
             ApplyStrategySettings();
         }
 
@@ -1296,7 +1319,7 @@ namespace PurrNet
         private const float RENDER_RATE_GAIN = 0.2f;
         private const float RENDER_RATE_MAX_SLOWDOWN = 0.5f;
         private const float RENDER_RATE_MAX_CATCHUP = 1f;
-        private const int ADAPTIVE_RENDER_BUFFER_TICKS = 2;
+        private const int ADAPTIVE_RENDER_BUFFER_TICKS = 1;
 
         private float _renderRel;
         private bool _hasRenderTimeline;

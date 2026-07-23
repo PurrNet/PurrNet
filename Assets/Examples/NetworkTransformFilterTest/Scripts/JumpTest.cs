@@ -23,7 +23,7 @@ public class JumpTest : NetworkIdentity
             return;
         
         _rigidbody.AddForce(Vector3.down * _gravity);
-        var input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        var input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         _rigidbody.linearVelocity = new Vector3(input.x * _moveSpeed, _rigidbody.linearVelocity.y, input.y * _moveSpeed);
     }
 
@@ -34,7 +34,7 @@ public class JumpTest : NetworkIdentity
 
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Mouse0))
             _rigidbody.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
-        var input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        var input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         _animator.SetFloat("Input", input.magnitude);
     }
 }
