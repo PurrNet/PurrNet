@@ -243,24 +243,24 @@ public class NetworkTransformProtocolTests
         withinPos.data.position = new CompressedVector3(
             new CompressedFloat(1000 + NTUnreliable.ADAPTIVE_POS_TOLERANCE),
             new CompressedFloat(1000), new CompressedFloat(1000));
-        Assert.That(NTUnreliable.PredictionMatches(predicted, withinPos, default), Is.True);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, withinPos, default, 2, 64), Is.True);
 
         var beyondPos = LinearState(Vector3.one);
         beyondPos.data.position = new CompressedVector3(
             new CompressedFloat(1000 + NTUnreliable.ADAPTIVE_POS_TOLERANCE + 1),
             new CompressedFloat(1000), new CompressedFloat(1000));
-        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, default), Is.False);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, default, 2, 64), Is.False);
 
         var fastVelocity = new NetworkTransformVelocity { posX = 100 << NetworkTransformVelocity.FRACTION_BITS };
-        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, fastVelocity), Is.True);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, fastVelocity, 2, 64), Is.True);
 
         var rotated = LinearState(Vector3.one);
         rotated.data.rotation = Quaternion.Euler(0f, 5f, 0f);
-        Assert.That(NTUnreliable.PredictionMatches(predicted, rotated, default), Is.False);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, rotated, default, 2, 64), Is.False);
 
         var scaled = LinearState(Vector3.one);
         scaled.data.scale = (CompressedVector3)(Vector3.one * 1.5f);
-        Assert.That(NTUnreliable.PredictionMatches(predicted, scaled, default), Is.False);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, scaled, default, 2, 64), Is.False);
     }
 
     [Test]
@@ -274,12 +274,12 @@ public class NetworkTransformProtocolTests
         var predicted = NetworkTransformVelocity.Predict(from, velocity, dist);
 
         Assert.That(predicted.data.position, Is.EqualTo(to.data.position));
-        Assert.That(NTUnreliable.PredictionMatches(predicted, to, velocity), Is.True);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, to, velocity, 2, 64), Is.True);
 
         var slowTo = LinearState(new Vector3(0.01f, 0f, 0f));
         var slowVelocity = NetworkTransformVelocity.Derive(from, slowTo, 3);
         var slowPredicted = NetworkTransformVelocity.Predict(from, slowVelocity, 3);
-        Assert.That(NTUnreliable.PredictionMatches(slowPredicted, slowTo, slowVelocity), Is.True);
+        Assert.That(NTUnreliable.PredictionMatches(slowPredicted, slowTo, slowVelocity, 2, 64), Is.True);
     }
 
     [Test]

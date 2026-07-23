@@ -55,18 +55,31 @@ namespace PurrNet
         [SerializeField]
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
-        [Tooltip("Skips sends while motion stays reconstructible by receivers, greatly reducing " +
-                 "bandwidth for steady motion (linear or curved) without adding render delay. " +
+        [Tooltip("Skips sends while motion stays reconstructible by receivers, reducing bandwidth " +
+                 "for steady motion (linear or curved) without adding render delay. Higher levels " +
+                 "skip more aggressively at the cost of reconstruction precision on observers. " +
                  "Erratic motion falls back to normal per-tick syncing automatically.")]
-        [FormerlySerializedAs("_predictiveSync")]
+        
         [SerializeField, PurrLock]
-        private bool _adaptiveSync = true;
+        private AdaptiveSyncLevel _adaptiveSync = AdaptiveSyncLevel.Balanced;
 
         private NetworkTransformSyncStrategy _customStrategy;
         private NetworkTransformSyncStrategy _activeStrategy;
         private bool _hasStrategy;
 
-        private static readonly NetworkTransformDefaultStrategy _defaultStrategy = new NetworkTransformDefaultStrategy();
+        private static readonly NetworkTransformDefaultStrategy[] _defaultStrategies = CreateDefaultStrategies();
+
+        private static NetworkTransformDefaultStrategy[] CreateDefaultStrategies()
+        {
+            var strategies = new NetworkTransformDefaultStrategy[4];
+            for (int i = 0; i < strategies.Length; i++)
+            {
+                strategies[i] = new NetworkTransformDefaultStrategy();
+                strategies[i].ApplyLevel((AdaptiveSyncLevel)(i + 1));
+            }
+
+            return strategies;
+        }
 
         /// <summary>
         /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
@@ -127,11 +140,27 @@ namespace PurrNet
         /// </summary>
         public bool hasSyncStrategy => _hasStrategy;
 
+        internal NetworkTransformSyncStrategy activeStrategy => _activeStrategy;
+
         /// <summary>
-        /// Whether adaptive reduced-rate syncing is enabled. Uses the built-in default strategy
-        /// unless a custom strategy is injected via <see cref="SetSyncStrategy"/>.
+        /// Whether adaptive reduced-rate syncing is enabled. Setting true selects
+        /// <see cref="AdaptiveSyncLevel.Balanced"/>; use <see cref="adaptiveSyncLevel"/> for
+        /// finer control.
         /// </summary>
         public bool adaptiveSync
+        {
+            get => _adaptiveSync != AdaptiveSyncLevel.Off;
+            set => adaptiveSyncLevel = value ? AdaptiveSyncLevel.Balanced : AdaptiveSyncLevel.Off;
+        }
+
+        /// <summary>
+        /// How aggressively adaptive sync skips sends. Uses the built-in default strategy tuned
+        /// for the level unless a custom strategy is injected via <see cref="SetSyncStrategy"/>;
+        /// injected strategies keep their own tuning (see
+        /// <see cref="NetworkTransformSyncStrategy.ApplyLevel"/>) and any level other than
+        /// <see cref="AdaptiveSyncLevel.Off"/> activates them unchanged.
+        /// </summary>
+        public AdaptiveSyncLevel adaptiveSyncLevel
         {
             get => _adaptiveSync;
             set
@@ -185,7 +214,9 @@ namespace PurrNet
 
         private void ApplyStrategySettings()
         {
-            _activeStrategy = !_adaptiveSync ? null : _customStrategy ?? _defaultStrategy;
+            _activeStrategy = _adaptiveSync == AdaptiveSyncLevel.Off
+                ? null
+                : _customStrategy ?? _defaultStrategies[Mathf.Clamp((int)_adaptiveSync, 1, 4) - 1];
             _hasStrategy = _activeStrategy != null;
 
             if (!_hasStrategy)
@@ -813,12 +844,6 @@ namespace PurrNet
         {
             if (_interpolationTiming == InterpolationTiming.Update)
                 UpdateNT();
-
-            if (_adaptiveDebugDump && _trs && !_cachedIsController)
-            {
-                var wp = _trs.position;
-                DebugDumpLine($"frame,time={Time.unscaledTime:F4},pos={wp.x:F4}|{wp.y:F4}|{wp.z:F4}");
-            }
         }
 
         private void LateUpdate()
@@ -1401,44 +1426,6 @@ namespace PurrNet
             _hasAdaptiveAnchor = true;
         }
 
-        [SerializeField] private bool _adaptiveDebugDump;
-        private System.IO.StreamWriter _debugWriter;
-
-        internal bool adaptiveDebugDumpEnabled => _adaptiveDebugDump;
-
-        internal static string DebugPos(in NetworkTransformState state)
-        {
-            var p = state.data.position;
-            return p.HasValue ? $"{p.Value.x.value:F4}|{p.Value.y.value:F4}|{p.Value.z.value:F4}" : "na";
-        }
-
-        internal void DebugDumpLine(string line)
-        {
-            if (!_adaptiveDebugDump)
-                return;
-
-            if (_debugWriter == null)
-            {
-                var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "purrnet_nt_debug");
-                System.IO.Directory.CreateDirectory(dir);
-                string role = isServer ? "server" : "client";
-                int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-                var path = System.IO.Path.Combine(dir, $"nt_{role}_{name}_{pid}.log");
-                _debugWriter = new System.IO.StreamWriter(path, false) { AutoFlush = true };
-                _debugWriter.WriteLine($"start,time={System.DateTime.Now:HH:mm:ss.fff},tickRate={(networkManager && networkManager.tickModule != null ? networkManager.tickModule.tickRate : 0)},spacing={_adaptiveSpacing}");
-                PurrNet.Logging.PurrLogger.Log($"[NT DEBUG] dumping to {path}");
-            }
-
-            _debugWriter.WriteLine(line);
-        }
-
-        public float adaptiveDebugRenderRel { get; private set; }
-        public float adaptiveDebugTargetRel { get; private set; }
-        public float adaptiveDebugTicksBehindData { get; private set; }
-        public float adaptiveDebugCorrWeight { get; private set; }
-        public bool adaptiveDebugHasVouch { get; private set; }
-        public bool adaptiveDebugExtrapolating { get; private set; }
-
         internal bool TryTickAdaptiveRender(uint localTick, ushort vouchedTick, bool hasVouched,
             out NetworkTransformState state)
         {
@@ -1488,15 +1475,6 @@ namespace PurrNet
             float frac = _renderRel - relFloor;
             ushort tickA = (ushort)(_lastAppliedSenderTick + relFloor);
             ushort tickB = (ushort)(tickA + 1);
-
-            adaptiveDebugRenderRel = _renderRel;
-            adaptiveDebugTargetRel = targetRel;
-            adaptiveDebugHasVouch = hasVouched;
-            adaptiveDebugExtrapolating = relFloor >= 0;
-            adaptiveDebugCorrWeight = _hasCorrOffset ? _corrWeight : 0f;
-            adaptiveDebugTicksBehindData = _recvCount > 0
-                ? (short)(_recvTicks[_recvHead] - tickA) - frac
-                : 0f;
 
             var target = SampleAdaptiveAt(relFloor, tickA);
             if (frac > 0f)
@@ -1550,20 +1528,6 @@ namespace PurrNet
                     _hasCorrOffset = false;
                 else
                     ApplyCorrectionOffset(ref target);
-            }
-
-            if (_adaptiveDebugDump)
-            {
-                var dp = target.data.position;
-                string vouchRel = hasVouched ? ((short)(vouchedTick - _lastAppliedSenderTick)).ToString() : "na";
-                string newestRel = _recvCount > 0
-                    ? ((short)(_recvTicks[_recvHead] - _lastAppliedSenderTick)).ToString()
-                    : "na";
-                DebugDumpLine(
-                    $"render,localTick={localTick},anchor={_lastAppliedSenderTick},rel={_renderRel:F2},target={targetRel:F2}," +
-                    $"vouchRel={vouchRel},newestRel={newestRel},recvCount={_recvCount},extrap={relFloor >= 0}," +
-                    $"corr={(_hasCorrOffset ? _corrWeight : 0f):F3},corrPosMag={_corrPosOffset.magnitude:F4}," +
-                    $"pos={(dp.HasValue ? $"{dp.Value.x.value:F4}|{dp.Value.y.value:F4}|{dp.Value.z.value:F4}" : "na")}");
             }
 
             state = target;
@@ -1662,9 +1626,6 @@ namespace PurrNet
 
         internal void ApplyAdaptiveSample(in NetworkTransformState state, NetworkIdentity frameParent)
         {
-            if (_adaptiveDebugDump)
-                DebugDumpLine($"sample,pos={DebugPos(state)},seam={_seamOffset.magnitude:F4}");
-
             var p = state.frame switch
             {
                 NetworkTransformFrame.LocalIdentity => frameParent.transform,
@@ -1812,6 +1773,9 @@ namespace PurrNet
                 return false;
 
             var chord = NetworkTransformVelocity.Derive(from, current, gap);
+            var strategy = _activeStrategy;
+            int shift = strategy?.toleranceVelocityShift ?? 2;
+            long cap = strategy?.toleranceCapMultiplier ?? 64;
 
             for (int step = 1; step < gap; step++)
             {
@@ -1822,7 +1786,8 @@ namespace PurrNet
                     return false;
 
                 var expected = NetworkTransformVelocity.Predict(from, chord, step);
-                if (!NTUnreliable.PredictionMatches(expected, actual, chord))
+                if (!NTUnreliable.PredictionMatches(expected, actual, chord, shift, cap,
+                        Mathf.Min(step, gap - step)))
                     return false;
             }
 
@@ -2201,10 +2166,6 @@ namespace PurrNet
                     ClearAdaptiveAnchors();
                     SetAdaptiveAnchor(state, default);
                     TeleportBuffers(state, p);
-
-                    if (_adaptiveDebugDump)
-                        DebugDumpLine($"apply,senderTick={senderTick},abs=True,order={packetOrder}," +
-                                      $"pos={DebugPos(state)}");
                 }
                 else
                 {
@@ -2213,10 +2174,6 @@ namespace PurrNet
                         ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
                         : default;
                     SetAdaptiveAnchor(state, velocity);
-
-                    if (_adaptiveDebugDump)
-                        DebugDumpLine($"apply,senderTick={senderTick},abs=False,order={packetOrder},gap={gap}," +
-                                      $"velY={velocity.posY},pos={DebugPos(state)}");
                 }
 
                 PushReceivedSample(senderTick, state);

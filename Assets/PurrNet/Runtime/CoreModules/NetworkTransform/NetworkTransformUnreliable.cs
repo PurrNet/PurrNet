@@ -184,7 +184,6 @@ namespace PurrNet.Modules
         public const byte BREAK_REDUNDANCY = 2;
         public const int REDUNDANCY_INTERVAL = 2;
         public const int VOUCH_SLACK_TICKS = 1;
-        public const int INTERP_VERIFY_PROBES = 5;
 
         public static NetworkTransformState GetDeltaPrediction(in NetworkTransformState baseline,
             in NetworkTransformVelocity velocity, int distance)
@@ -199,18 +198,28 @@ namespace PurrNet.Modules
             return !hasApplied || incoming > lastApplied;
         }
 
-        private static long ScaledTolerance(long baseTolerance, long velocityComponent)
+        private static long ScaledTolerance(long baseTolerance, long velocityComponent, int shift, long capMultiplier,
+            int driftSteps)
         {
-            long scaled = Math.Abs(velocityComponent) >> (NetworkTransformVelocity.FRACTION_BITS + 3);
-            long cap = baseTolerance * 16;
-            if (scaled > cap)
-                scaled = cap;
+            long scaled = (Math.Abs(velocityComponent) >> (NetworkTransformVelocity.FRACTION_BITS + shift)) *
+                          driftSteps;
+
+            if (capMultiplier > 0)
+            {
+                long cap = baseTolerance * capMultiplier;
+                if (scaled > cap)
+                    scaled = cap;
+            }
+
             return scaled > baseTolerance ? scaled : baseTolerance;
         }
 
         public static bool PredictionMatches(in NetworkTransformState predicted, in NetworkTransformState current,
-            in NetworkTransformVelocity velocity)
+            in NetworkTransformVelocity velocity, int toleranceShift, long toleranceCap, int driftSteps = 1)
         {
+            if (driftSteps < 1)
+                driftSteps = 1;
+
             var p = predicted.data;
             var c = current.data;
 
@@ -230,22 +239,22 @@ namespace PurrNet.Modules
                 {
                     var pp = p.position.Value;
                     var cp = c.position.Value;
-                    if (Math.Abs(pp.x.rounded - (long)cp.x.rounded) > ScaledTolerance(ADAPTIVE_POS_TOLERANCE, velocity.posX) ||
-                        Math.Abs(pp.y.rounded - (long)cp.y.rounded) > ScaledTolerance(ADAPTIVE_POS_TOLERANCE, velocity.posY) ||
-                        Math.Abs(pp.z.rounded - (long)cp.z.rounded) > ScaledTolerance(ADAPTIVE_POS_TOLERANCE, velocity.posZ))
+                    if (Math.Abs(pp.x.rounded - (long)cp.x.rounded) > ScaledTolerance(ADAPTIVE_POS_TOLERANCE, velocity.posX, toleranceShift, toleranceCap, driftSteps) ||
+                        Math.Abs(pp.y.rounded - (long)cp.y.rounded) > ScaledTolerance(ADAPTIVE_POS_TOLERANCE, velocity.posY, toleranceShift, toleranceCap, driftSteps) ||
+                        Math.Abs(pp.z.rounded - (long)cp.z.rounded) > ScaledTolerance(ADAPTIVE_POS_TOLERANCE, velocity.posZ, toleranceShift, toleranceCap, driftSteps))
                         return false;
                 }
             }
 
-            if (Math.Abs(p.rotation.x.value - (long)c.rotation.x.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotX) ||
-                Math.Abs(p.rotation.y.value - (long)c.rotation.y.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotY) ||
-                Math.Abs(p.rotation.z.value - (long)c.rotation.z.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotZ) ||
-                Math.Abs(p.rotation.w.value - (long)c.rotation.w.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotW))
+            if (Math.Abs(p.rotation.x.value - (long)c.rotation.x.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotX, toleranceShift, toleranceCap, driftSteps) ||
+                Math.Abs(p.rotation.y.value - (long)c.rotation.y.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotY, toleranceShift, toleranceCap, driftSteps) ||
+                Math.Abs(p.rotation.z.value - (long)c.rotation.z.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotZ, toleranceShift, toleranceCap, driftSteps) ||
+                Math.Abs(p.rotation.w.value - (long)c.rotation.w.value) > ScaledTolerance(ADAPTIVE_ROT_TOLERANCE, velocity.rotW, toleranceShift, toleranceCap, driftSteps))
                 return false;
 
-            if (Math.Abs(p.scale.x.rounded - (long)c.scale.x.rounded) > ScaledTolerance(ADAPTIVE_SCALE_TOLERANCE, velocity.scaleX) ||
-                Math.Abs(p.scale.y.rounded - (long)c.scale.y.rounded) > ScaledTolerance(ADAPTIVE_SCALE_TOLERANCE, velocity.scaleY) ||
-                Math.Abs(p.scale.z.rounded - (long)c.scale.z.rounded) > ScaledTolerance(ADAPTIVE_SCALE_TOLERANCE, velocity.scaleZ))
+            if (Math.Abs(p.scale.x.rounded - (long)c.scale.x.rounded) > ScaledTolerance(ADAPTIVE_SCALE_TOLERANCE, velocity.scaleX, toleranceShift, toleranceCap, driftSteps) ||
+                Math.Abs(p.scale.y.rounded - (long)c.scale.y.rounded) > ScaledTolerance(ADAPTIVE_SCALE_TOLERANCE, velocity.scaleY, toleranceShift, toleranceCap, driftSteps) ||
+                Math.Abs(p.scale.z.rounded - (long)c.scale.z.rounded) > ScaledTolerance(ADAPTIVE_SCALE_TOLERANCE, velocity.scaleZ, toleranceShift, toleranceCap, driftSteps))
                 return false;
 
             return true;

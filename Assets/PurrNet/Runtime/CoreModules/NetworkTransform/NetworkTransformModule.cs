@@ -900,6 +900,7 @@ namespace PurrNet.Modules
             if (nt.hasSyncStrategy)
             {
                 bool breakWrite = false;
+                byte breakRedundancy = nt.activeStrategy?.breakRedundancy ?? NTUnreliable.BREAK_REDUNDANCY;
 
                 if (hasLastWrite)
                 {
@@ -918,7 +919,7 @@ namespace PurrNet.Modules
 
                         breakWrite = !skippable && lastWrite.redundancy == 0 &&
                                      sinceLastWrite < nt.adaptiveSendSpacing &&
-                                     sinceLastWrite > NTUnreliable.BREAK_REDUNDANCY;
+                                     sinceLastWrite > breakRedundancy;
                     }
                 }
 
@@ -949,7 +950,7 @@ namespace PurrNet.Modules
                     lastWrite.revision = nt.capturedRevision;
                     lastWrite.restConfirmed = sameAsPrev;
                     lastWrite.redundancy = breakWrite
-                        ? NTUnreliable.BREAK_REDUNDANCY
+                        ? breakRedundancy
                         : (byte)(lastWrite.redundancy > 0 ? lastWrite.redundancy - 1 : 0);
                 }
             }
@@ -1069,10 +1070,6 @@ namespace PurrNet.Modules
 
                 var writeResult = TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out var newLastDist,
                     out var velocity, out var wireGen, out var wireGenEpoch);
-
-                if (nt.adaptiveDebugDumpEnabled)
-                    nt.DebugDumpLine($"send,tick={_currentTick},to={player},result={writeResult}," +
-                                     $"pos={NetworkTransform.DebugPos(nt.capturedState)}");
 
                 if (writeResult == NTWriteResult.SkipAcked)
                 {

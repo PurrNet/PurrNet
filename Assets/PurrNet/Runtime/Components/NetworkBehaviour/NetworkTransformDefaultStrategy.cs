@@ -15,6 +15,7 @@ namespace PurrNet
         private const float LINEAR_NOISE_FLOOR = 4f * CompressedFloat.PRECISION;
         private const float LINEAR_REL_FRACTION = 1f / 64f;
         private const float ROTATION_SHAPE_MAX_DOT = 0.99999f;
+        private const float ARC_EXTRAP_MAX_DEGREES = 120f;
 
         private Vector3 _fitPrev;
         private Vector3 _fitFrom;
@@ -102,12 +103,19 @@ namespace PurrNet
 
             axis.Normalize();
             float angle = Vector3.SignedAngle(va, vb, axis);
+            float absAngle = Mathf.Abs(angle);
 
-            if (t > 1f)
+            if (t > 1f && absAngle > 1e-5f)
             {
-                var tangent = Vector3.Cross(axis, vb) * (angle * Mathf.Deg2Rad) +
-                              vb.normalized * (vb.magnitude - va.magnitude);
-                return to + tangent * (t - 1f);
+                float tCap = 1f + ARC_EXTRAP_MAX_DEGREES / absAngle;
+                if (t > tCap)
+                {
+                    float radiusCap = Mathf.Lerp(va.magnitude, vb.magnitude, tCap);
+                    var dirCap = Quaternion.AngleAxis(angle * tCap, axis) * va.normalized;
+                    var capPoint = center + dirCap * radiusCap;
+                    var tangent = Vector3.Cross(axis, dirCap) * (angle * Mathf.Deg2Rad * radiusCap);
+                    return capPoint + tangent * (t - tCap);
+                }
             }
 
             var dir = Quaternion.AngleAxis(angle * t, axis) * va.normalized;

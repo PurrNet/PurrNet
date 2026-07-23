@@ -5,6 +5,20 @@ using UnityEngine;
 namespace PurrNet
 {
     /// <summary>
+    /// How aggressively adaptive sync skips sends. Higher levels tolerate larger deviations
+    /// between predicted and actual motion before breaking a skip streak, saving more
+    /// bandwidth at the cost of reconstruction precision on receivers.
+    /// </summary>
+    public enum AdaptiveSyncLevel : byte
+    {
+        Off = 0,
+        Low = 1,
+        Balanced = 2,
+        High = 3,
+        VeryHigh = 4
+    }
+
+    /// <summary>
     /// A transform state snapshot in world-space floats, as seen by sync strategies.
     /// </summary>
     public struct NetworkTransformSample
@@ -17,7 +31,8 @@ namespace PurrNet
     /// <summary>
     /// Base class for adaptive sync strategies. Strategies are plain classes injected at
     /// runtime via <see cref="NetworkTransform.SetSyncStrategy"/>; when none is injected,
-    /// NetworkTransform uses a shared built-in default strategy with default settings.
+    /// NetworkTransform uses a shared built-in default strategy tuned for the selected
+    /// <see cref="AdaptiveSyncLevel"/>.
     /// On its own this base class reconstructs skipped motion linearly; subclasses override
     /// <see cref="TryReconstruct"/> to shape it differently.
     /// </summary>
@@ -31,6 +46,78 @@ namespace PurrNet
         /// baselines can get. Does not affect render delay.
         /// </summary>
         public float maxSendInterval = DEFAULT_MAX_SEND_INTERVAL;
+
+        /// <summary>
+        /// Velocity-proportional part of the skip tolerance: per verified tick of horizon, the
+        /// per-axis tolerance grows by the per-tick displacement right-shifted by this many
+        /// extra bits (0 = a full tick of motion, 1 = half, 2 = a quarter). Slow model drift
+        /// is tolerated in proportion to how far ahead the prediction reaches, while sharp
+        /// deviations still break immediately. Lower is more optimistic.
+        /// </summary>
+        public int toleranceVelocityShift = 2;
+
+        /// <summary>
+        /// Upper bound on the velocity-scaled tolerance, as a multiple of the base tolerance
+        /// (2 position quanta = 2mm). Zero or negative disables the cap.
+        /// </summary>
+        public long toleranceCapMultiplier = 64;
+
+        /// <summary>
+        /// How many intermediate ticks are verified against captured motion before a skip
+        /// window may be interpolated by receivers. Spacing is at most 6 ticks at the default
+        /// send interval, so 5 probes verifies every skipped tick.
+        /// </summary>
+        public int interpVerifyProbes = 3;
+
+        /// <summary>
+        /// How many times a prediction-breaking send is repeated (once per
+        /// <see cref="NTUnreliable.REDUNDANCY_INTERVAL"/> ticks) to survive packet loss.
+        /// Lower values save bandwidth but lengthen the wrong-path window when a break
+        /// packet is lost.
+        /// </summary>
+        public byte breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
+
+        /// <summary>
+        /// Sets the tolerance, verification, and send-interval knobs to the preset for the
+        /// given level. <see cref="AdaptiveSyncLevel.Off"/> is ignored — disabling adaptive
+        /// sync is the caller's decision, not the strategy's. Longer send intervals raise the
+        /// suppression ceiling (a keepalive is forced once per interval) but widen the window
+        /// receivers reconstruct on their own.
+        /// </summary>
+        public void ApplyLevel(AdaptiveSyncLevel level)
+        {
+            switch (level)
+            {
+                case AdaptiveSyncLevel.Low:
+                    toleranceVelocityShift = 2;
+                    toleranceCapMultiplier = 64;
+                    interpVerifyProbes = 3;
+                    maxSendInterval = 0.3f;
+                    breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
+                    break;
+                case AdaptiveSyncLevel.Balanced:
+                    toleranceVelocityShift = 1;
+                    toleranceCapMultiplier = 256;
+                    interpVerifyProbes = 3;
+                    maxSendInterval = 0.3f;
+                    breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
+                    break;
+                case AdaptiveSyncLevel.High:
+                    toleranceVelocityShift = 1;
+                    toleranceCapMultiplier = 0;
+                    interpVerifyProbes = 2;
+                    maxSendInterval = 0.45f;
+                    breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
+                    break;
+                case AdaptiveSyncLevel.VeryHigh:
+                    toleranceVelocityShift = 0;
+                    toleranceCapMultiplier = 0;
+                    interpVerifyProbes = 1;
+                    maxSendInterval = 0.6f;
+                    breakRedundancy = 1;
+                    break;
+            }
+        }
 
         /// <summary>
         /// Reconstructs the state at normalized time t given three consecutive known states.
@@ -137,13 +224,13 @@ namespace PurrNet
             var chordVelocity = NetworkTransformVelocity.Derive(from, current, gap);
 
             int interpSteps = gap - 1;
-            int probes = interpSteps <= NTUnreliable.INTERP_VERIFY_PROBES
+            int probes = interpSteps <= interpVerifyProbes
                 ? interpSteps
-                : NTUnreliable.INTERP_VERIFY_PROBES;
+                : interpVerifyProbes;
 
             for (int i = 1; i <= probes; i++)
             {
-                int step = interpSteps <= NTUnreliable.INTERP_VERIFY_PROBES
+                int step = interpSteps <= interpVerifyProbes
                     ? i
                     : gap * i / (probes + 1);
 
@@ -162,7 +249,8 @@ namespace PurrNet
                     !TryReconstructState(lastWrite.prevState, from, current, t, out var expected))
                     expected = NetworkTransformVelocity.Lerp(from, current, t);
 
-                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
+                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity,
+                        toleranceVelocityShift, toleranceCapMultiplier, Mathf.Min(step, gap - step)))
                     return false;
             }
 
@@ -203,7 +291,8 @@ namespace PurrNet
                         (span + step) / (float)span, out var expected))
                     expected = NetworkTransformVelocity.Predict(from, anchorVelocity, step);
 
-                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity))
+                if (!NTUnreliable.PredictionMatches(expected, actual, chordVelocity,
+                        toleranceVelocityShift, toleranceCapMultiplier, step))
                     return false;
             }
 
