@@ -905,6 +905,8 @@ namespace PurrNet.Modules
             if (nt.hasSyncStrategy)
             {
                 bool breakWrite = false;
+                bool brokeEarly = false;
+                bool scheduledProbe = false;
                 byte breakRedundancy = nt.activeStrategy?.breakRedundancy ?? NTUnreliable.BREAK_REDUNDANCY;
 
                 if (hasLastWrite)
@@ -915,18 +917,26 @@ namespace PurrNet.Modules
 
                     if (sinceLastWrite >= 1 && restGate)
                     {
-                        bool canSkip = sinceLastWrite < nt.adaptiveSendSpacing &&
-                                       nt.CanSkipCached(lastWrite, currentTick, current);
-                        bool keepaliveDue = ((uint)currentTick + (uint)nid.GetHashCode()) %
-                            (uint)nt.adaptiveSendSpacing == 0;
+                        int spacing = nt.adaptiveSendSpacing;
+                        int refreshInterval = lastWrite.refreshInterval >= 2 && lastWrite.refreshInterval < spacing
+                            ? lastWrite.refreshInterval
+                            : spacing;
 
-                        if (canSkip && !keepaliveDue && (lastWrite.redundancy == 0 ||
-                                                         sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
+                        bool canSkip = sinceLastWrite < spacing &&
+                                       nt.CanSkipCached(lastWrite, currentTick, current);
+                        bool refreshDue = ((uint)currentTick + (uint)nid.GetHashCode()) %
+                            (uint)refreshInterval == 0;
+
+                        if (canSkip && !refreshDue && (lastWrite.redundancy == 0 ||
+                                                       sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
                             return NTWriteResult.Hold;
 
                         breakWrite = !canSkip && lastWrite.redundancy == 0 &&
-                                     sinceLastWrite < nt.adaptiveSendSpacing &&
+                                     sinceLastWrite < spacing &&
                                      sinceLastWrite > breakRedundancy;
+
+                        brokeEarly = !canSkip && sinceLastWrite < spacing;
+                        scheduledProbe = canSkip && refreshDue;
                     }
                 }
 
@@ -944,6 +954,17 @@ namespace PurrNet.Modules
                 {
                     bool sameAsPrev = lastWrite.revision == nt.capturedRevision;
                     bool restBreak = sameAsPrev && !lastWrite.restConfirmed;
+                    int spacing = nt.adaptiveSendSpacing;
+
+                    if (brokeEarly)
+                    {
+                        int observed = (short)(currentTick - lastWrite.tick) - 1;
+                        lastWrite.refreshInterval = (byte)(observed < 2 ? 2 : observed > spacing ? spacing : observed);
+                    }
+                    else if (scheduledProbe && lastWrite.refreshInterval >= 2 && lastWrite.refreshInterval < spacing)
+                    {
+                        lastWrite.refreshInterval++;
+                    }
 
                     lastWrite.prevPrevTick = lastWrite.prevTick;
                     lastWrite.prevPrevState = lastWrite.prevState;
@@ -1004,6 +1025,7 @@ namespace PurrNet.Modules
                     lastWrite.hasPrevPrev = false;
                     lastWrite.restConfirmed = true;
                     lastWrite.redundancy = 0;
+                    lastWrite.refreshInterval = 0;
                 }
             }
 

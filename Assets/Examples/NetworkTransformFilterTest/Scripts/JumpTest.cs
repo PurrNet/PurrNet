@@ -6,6 +6,7 @@ public class JumpTest : NetworkIdentity
 {
     [SerializeField] private float _jumpForce = 10;
     [SerializeField] private float _gravity = 9.81f;
+    [SerializeField] private float _moveSpeed = 5f;
     [SerializeField] private Rigidbody _rigidbody;
     
     protected override void OnSpawned()
@@ -21,6 +22,7 @@ public class JumpTest : NetworkIdentity
             return;
         
         _rigidbody.AddForce(Vector3.down * _gravity);
+        _rigidbody.linearVelocity = new Vector3(Input.GetAxis("Horizontal") * _moveSpeed, _rigidbody.linearVelocity.y, Input.GetAxis("Vertical") * _moveSpeed);
     }
 
     private void Update()

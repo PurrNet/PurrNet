@@ -100,6 +100,7 @@ namespace PurrNet.Modules
         public NetworkTransformState state;
         public NetworkTransformState prevState;
         public NetworkTransformState prevPrevState;
+        public byte refreshInterval;
         public bool hasPrev;
         public bool hasPrevPrev;
         public bool restConfirmed;
