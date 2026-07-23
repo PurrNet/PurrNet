@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -30,10 +31,6 @@ namespace PurrNet
         [Tooltip("Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.")]
         [SerializeField, PurrLock]
         private bool _syncParent = true;
-
-        [Tooltip("Forces any attached Rigidbody to sleep if not the controller, to ensure better syncing when RB is present.")]
-        [SerializeField, PurrLock]
-        private bool _forceSleepRb = true;
 
         [Header("How to Sync")]
         [Tooltip("What to interpolate when syncing the transform.")]
@@ -198,7 +195,7 @@ namespace PurrNet
             var nm = networkManager;
             if (nm && nm.tickModule != null)
                 _adaptiveSpacing = Mathf.Clamp(
-                    Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy.maxSendInterval), 2,
+                    Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy!.maxSendInterval), 2,
                     CAPTURE_HISTORY_SIZE - 2);
         }
 
@@ -225,10 +222,10 @@ namespace PurrNet
 #if UNITY_PHYSICS_3D
         private Rigidbody _rb;
         private bool _hasRigidbody;
-#endif
-#if UNITY_PHYSICS_2D
-        private Rigidbody2D _rb2d;
-        private bool _hasRigidbody2D;
+        private NetworkTransformContactManager.Registration _networkDominantRegistration;
+        private const float RIGIDBODY_VECTOR_EPSILON_SQR = 1e-8f;
+        private const float RIGIDBODY_ROTATION_EPSILON = 0.005f;
+        private const float MIN_PHYSICS_DELTA = 1e-6f;
 #endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
@@ -242,13 +239,6 @@ namespace PurrNet
 
         private bool _positionTransformExplicit;
         private bool _useAbsoluteFrame;
-
-#if UNITY_PHYSICS_3D
-        private Vector3 _pendingRbPosition;
-        private Quaternion _pendingRbRotation;
-        private bool _pendingRbHasPosition;
-        private bool _pendingRbHasRotation;
-#endif
 
         public INetworkTransformPositionTransform positionTransform { get; private set; }
 
@@ -277,15 +267,14 @@ namespace PurrNet
             _hasRigidbody = _rb;
             _controller = GetComponent<CharacterController>();
 #endif
-#if UNITY_PHYSICS_2D
-            _rb2d = GetComponent<Rigidbody2D>();
-            _hasRigidbody2D = _rb2d;
-#endif
         }
 
         private void OnEnable()
         {
             UnityLatestUpdate.onLatestUpdate += _onLateLateUpdate;
+#if UNITY_PHYSICS_3D
+            RefreshNetworkDominantRegistration();
+#endif
 
             if (!_trs)
                 return;
@@ -306,6 +295,9 @@ namespace PurrNet
 
         private void OnDisable()
         {
+#if UNITY_PHYSICS_3D
+            UnregisterNetworkDominant();
+#endif
             UnityLatestUpdate.onLatestUpdate -= _onLateLateUpdate;
         }
 
@@ -351,10 +343,6 @@ namespace PurrNet
 
             ResetUnreliableRecvState();
             BumpSendGen();
-#if UNITY_PHYSICS_3D
-            _pendingRbHasPosition = false;
-            _pendingRbHasRotation = false;
-#endif
             RefreshLatestFrame();
             _currentFrame = _latestFrame;
             _currentParentId = _latestParentId;
@@ -497,6 +485,17 @@ namespace PurrNet
             if (syncScale) _scale.maxBufferSize = ticksPerBuffer;
 
             ApplyStrategySettings();
+#if UNITY_PHYSICS_3D
+            RefreshNetworkDominantRegistration();
+#endif
+        }
+
+        protected override void OnDespawned()
+        {
+#if UNITY_PHYSICS_3D
+            UnregisterNetworkDominant();
+#endif
+            base.OnDespawned();
         }
 
         protected override void OnObserverAdded(PlayerID player)
@@ -590,7 +589,7 @@ namespace PurrNet
             AdoptState(state);
             _lastSentDelta = state.data;
             TeleportToState(state);
-            ApplyLerpedPosition();
+            ApplyLerpedPosition(true);
 
             int obCount = observers.Count;
             var localP = localPlayer;
@@ -640,7 +639,7 @@ namespace PurrNet
             AdoptState(state);
             _lastSentDelta = state.data;
             TeleportToState(state);
-            ApplyLerpedPosition();
+            ApplyLerpedPosition(true);
         }
 
         [TargetRpc]
@@ -659,66 +658,151 @@ namespace PurrNet
             if (applyPosition)
             {
                 TeleportToState(state);
-                ApplyLerpedPosition();
+                ApplyLerpedPosition(true);
             }
 
             return true;
         }
 
-#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+#if UNITY_PHYSICS_3D
         private void FixedUpdate()
         {
-            if (!isSpawned)
+            if (!isSpawned || _cachedIsController || !_hasRigidbody || !_rb)
                 return;
 
-            if (_cachedIsController)
-                return;
+            float interpolationDelta = Time.fixedUnscaledDeltaTime;
+            float physicsDelta = Mathf.Max(Time.fixedDeltaTime, MIN_PHYSICS_DELTA);
 
-#if UNITY_PHYSICS_3D
-            ApplyPendingRigidbodyPose();
-#endif
-
-            if (_forceSleepRb)
+            if (syncPosition)
             {
-#if UNITY_PHYSICS_3D
-                if (_hasRigidbody && _rb) _rb.Sleep();
-#endif
-#if UNITY_PHYSICS_2D
-                if (_hasRigidbody2D && _rb2d) _rb2d.Sleep();
-#endif
+                var worldPos = _position.Advance(interpolationDelta).position;
+                ApplyRigidbodyPosition(worldPos, physicsDelta);
+                position = worldPos;
+            }
+
+            if (syncRotation)
+            {
+                var worldRot = NormalizeQuaternion(_rotation.Advance(interpolationDelta).rotation);
+                ApplyRigidbodyRotation(worldRot, physicsDelta);
+                rotation = worldRot;
             }
         }
-#endif
 
-#if UNITY_PHYSICS_3D
-        private void ApplyPendingRigidbodyPose()
+        private void ApplyTeleportedRigidbodyPose()
         {
-            if (!_hasRigidbody || !_rb)
+            if (syncPosition)
+            {
+                var worldPos = _position.Advance(0f).position;
+                if ((_rb.position - worldPos).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                    _rb.position = worldPos;
+                position = worldPos;
+            }
+
+            if (syncRotation)
+            {
+                var worldRot = NormalizeQuaternion(_rotation.Advance(0f).rotation);
+                if (Quaternion.Angle(_rb.rotation, worldRot) > RIGIDBODY_ROTATION_EPSILON)
+                    _rb.rotation = worldRot;
+                rotation = worldRot;
+            }
+        }
+
+        private void ApplyRigidbodyPosition(Vector3 targetPosition, float physicsDelta)
+        {
+            if (_rb.isKinematic)
+            {
+                if ((_rb.position - targetPosition).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                    _rb.MovePosition(targetPosition);
                 return;
-
-            if (_pendingRbHasPosition)
-            {
-                _pendingRbHasPosition = false;
-                if ((_rb.position - _pendingRbPosition).sqrMagnitude > 0.00000001f)
-                {
-                    if (_forceSleepRb)
-                        _rb.position = _pendingRbPosition;
-                    else
-                        _rb.MovePosition(_pendingRbPosition);
-                }
             }
 
-            if (_pendingRbHasRotation)
+            var constraints = _rb.constraints;
+            var positionDelta = MaskPositionConstraints(targetPosition - _rb.position, constraints);
+            var desiredVelocity = Vector3.ClampMagnitude(
+                positionDelta / physicsDelta, _rb.maxLinearVelocity);
+            var velocityChange = MaskPositionConstraints(
+                desiredVelocity - NetworkRigidbodyPhysics.GetLinearVelocity(_rb), constraints);
+            velocityChange = Vector3.ClampMagnitude(velocityChange, _rb.maxLinearVelocity);
+
+            if (velocityChange.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                NetworkRigidbodyPhysics.AddForce(_rb, velocityChange, ForceMode.VelocityChange);
+        }
+
+        private void ApplyRigidbodyRotation(Quaternion targetRotation, float physicsDelta)
+        {
+            targetRotation = NormalizeQuaternion(targetRotation);
+
+            if (_rb.isKinematic)
             {
-                _pendingRbHasRotation = false;
-                if (Quaternion.Angle(_rb.rotation, _pendingRbRotation) > 0.005f)
-                {
-                    if (_forceSleepRb)
-                        _rb.rotation = _pendingRbRotation;
-                    else
-                        _rb.MoveRotation(_pendingRbRotation);
-                }
+                if (Quaternion.Angle(_rb.rotation, targetRotation) > RIGIDBODY_ROTATION_EPSILON)
+                    _rb.MoveRotation(targetRotation);
+                return;
             }
+
+            var rotationDelta = targetRotation * Quaternion.Inverse(_rb.rotation);
+            if (rotationDelta.w < 0f)
+            {
+                rotationDelta.x = -rotationDelta.x;
+                rotationDelta.y = -rotationDelta.y;
+                rotationDelta.z = -rotationDelta.z;
+                rotationDelta.w = -rotationDelta.w;
+            }
+
+            rotationDelta.ToAngleAxis(out float angle, out var axis);
+            var desiredAngularVelocity = Vector3.zero;
+
+            if (!float.IsNaN(axis.x) && axis.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+            {
+                if (angle > 180f)
+                    angle -= 360f;
+                desiredAngularVelocity = axis * (angle * Mathf.Deg2Rad / physicsDelta);
+            }
+
+            var constraints = _rb.constraints;
+            desiredAngularVelocity = MaskRotationConstraints(desiredAngularVelocity, constraints);
+            desiredAngularVelocity =
+                Vector3.ClampMagnitude(desiredAngularVelocity, _rb.maxAngularVelocity);
+            var angularVelocityChange = MaskRotationConstraints(
+                desiredAngularVelocity - _rb.angularVelocity, constraints);
+            angularVelocityChange = Vector3.ClampMagnitude(angularVelocityChange, _rb.maxAngularVelocity);
+
+            if (angularVelocityChange.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                NetworkRigidbodyPhysics.AddTorque(_rb, angularVelocityChange, ForceMode.VelocityChange);
+        }
+
+        [SuppressMessage("ReSharper", "BitwiseOperatorOnEnumWithoutFlags")]
+        private static Vector3 MaskPositionConstraints(Vector3 value, RigidbodyConstraints constraints)
+        {
+            if ((constraints & RigidbodyConstraints.FreezePositionX) != 0)
+                value.x = 0f;
+            if ((constraints & RigidbodyConstraints.FreezePositionY) != 0)
+                value.y = 0f;
+            if ((constraints & RigidbodyConstraints.FreezePositionZ) != 0)
+                value.z = 0f;
+            return value;
+        }
+
+        [SuppressMessage("ReSharper", "BitwiseOperatorOnEnumWithoutFlags")]
+        private Vector3 MaskRotationConstraints(Vector3 value, RigidbodyConstraints constraints)
+        {
+            var inertiaRotation = _rb.rotation * _rb.inertiaTensorRotation;
+            var localValue = Quaternion.Inverse(inertiaRotation) * value;
+            if ((constraints & RigidbodyConstraints.FreezeRotationX) != 0)
+                localValue.x = 0f;
+            if ((constraints & RigidbodyConstraints.FreezeRotationY) != 0)
+                localValue.y = 0f;
+            if ((constraints & RigidbodyConstraints.FreezeRotationZ) != 0)
+                localValue.z = 0f;
+            return inertiaRotation * localValue;
+        }
+
+        private static Quaternion NormalizeQuaternion(Quaternion q)
+        {
+            float dot = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+            if (dot < 0.0001f)
+                return Quaternion.identity;
+            float inv = 1f / Mathf.Sqrt(dot);
+            return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
         }
 #endif
 
@@ -748,16 +832,46 @@ namespace PurrNet
                 RefreshLatestFrame();
                 TeleportToData(_latestData);
             }
-            else
-            {
+
 #if UNITY_PHYSICS_3D
-                if (_rb) _rb.WakeUp();
+            RefreshNetworkDominantRegistration();
 #endif
-#if UNITY_PHYSICS_2D
-                if (_rb2d) _rb2d.WakeUp();
-#endif
-            }
         }
+
+#if UNITY_PHYSICS_3D
+        private void RefreshNetworkDominantRegistration()
+        {
+            var dominance = NetworkTransformContactDominance.None;
+            if (syncPosition)
+                dominance |= NetworkTransformContactDominance.Linear;
+            if (syncRotation)
+                dominance |= NetworkTransformContactDominance.Angular;
+
+            bool shouldRegister = isActiveAndEnabled && isSpawned && !_cachedIsController &&
+                                  _hasRigidbody && _rb &&
+                                  dominance != NetworkTransformContactDominance.None;
+
+            if (!shouldRegister)
+            {
+                UnregisterNetworkDominant();
+                return;
+            }
+
+            if (_networkDominantRegistration != null &&
+                _networkDominantRegistration.Matches(_rb, dominance))
+                return;
+
+            UnregisterNetworkDominant();
+            _networkDominantRegistration = NetworkTransformContactManager.Register(_rb, dominance);
+        }
+
+        private void UnregisterNetworkDominant()
+        {
+            _networkDominantRegistration?.Dispose();
+            _networkDominantRegistration = null;
+        }
+
+#endif
 
         private void UpdateNT()
         {
@@ -772,46 +886,32 @@ namespace PurrNet
             RefreshLatestFrame();
         }
 
-        private void ApplyLerpedPosition()
+        private void ApplyLerpedPosition(bool teleportRigidbody = false)
         {
 #if UNITY_PHYSICS_3D
-            bool disableController = _controller && _controller.enabled;
+            bool hasRigidbody = _hasRigidbody && _rb;
+            bool disableController = !hasRigidbody && _controller && _controller.enabled;
+
+            if (hasRigidbody && teleportRigidbody)
+                ApplyTeleportedRigidbodyPose();
 
             if (disableController && _characterControllerPatch)
                 _controller.enabled = false;
+#else
+            const bool hasRigidbody = false;
 #endif
 
-            if (syncPosition)
+            if (syncPosition && !hasRigidbody)
             {
                 var worldPos = _position.Advance(Time.unscaledDeltaTime).position;
-#if UNITY_PHYSICS_3D
-                if (_hasRigidbody && _rb)
-                {
-                    _pendingRbPosition = worldPos;
-                    _pendingRbHasPosition = true;
-                }
-                else
-#endif
-                {
-                    _trs.position = worldPos;
-                }
+                _trs.position = worldPos;
                 position = worldPos;
             }
 
-            if (syncRotation)
+            if (syncRotation && !hasRigidbody)
             {
                 var worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
-#if UNITY_PHYSICS_3D
-                if (_hasRigidbody && _rb)
-                {
-                    _pendingRbRotation = worldRot;
-                    _pendingRbHasRotation = true;
-                }
-                else
-#endif
-                {
-                    _trs.rotation = worldRot;
-                }
+                _trs.rotation = worldRot;
                 rotation = worldRot;
             }
 
@@ -820,7 +920,8 @@ namespace PurrNet
                 var worldScale = _scale.Advance(Time.unscaledDeltaTime).scale;
                 var parentTrs = _trs.parent;
                 var ls = parentTrs ? parentTrs.GetLocalScale(worldScale) : worldScale;
-                _trs.localScale = ls;
+                if (!_trs.localScale.Equals(ls))
+                    _trs.localScale = ls;
                 this.localScale = ls;
             }
 
@@ -1044,14 +1145,11 @@ namespace PurrNet
         private NetworkTransformVelocity _anchorVelocity;
         private uint _anchorLocalTick;
         private ushort _anchorSenderTick;
-        private int _anchorGap;
         private bool _hasAdaptiveAnchor;
 
         private NetworkTransformState _prevAnchorState;
         private NetworkTransformVelocity _prevAnchorVelocity;
-        private uint _prevAnchorLocalTick;
         private ushort _prevAnchorSenderTick;
-        private int _prevAnchorGap;
         private bool _hasPrevAnchor;
 
         private uint _lastAdaptiveTick;
@@ -1183,7 +1281,7 @@ namespace PurrNet
             _seamOffset = Vector3.zero;
         }
 
-        private void SetAdaptiveAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
+        private void SetAdaptiveAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity)
         {
             var nm = networkManager;
             uint localTick = nm && nm.tickModule != null ? nm.tickModule.localTick : 0u;
@@ -1192,9 +1290,7 @@ namespace PurrNet
             {
                 _prevAnchorState = _anchorState;
                 _prevAnchorVelocity = _anchorVelocity;
-                _prevAnchorLocalTick = _anchorLocalTick;
                 _prevAnchorSenderTick = _anchorSenderTick;
-                _prevAnchorGap = _anchorGap;
                 _hasPrevAnchor = true;
                 _corrPending = true;
             }
@@ -1203,7 +1299,6 @@ namespace PurrNet
             _anchorVelocity = velocity;
             _anchorLocalTick = localTick;
             _anchorSenderTick = _lastAppliedSenderTick;
-            _anchorGap = gap;
             _hasAdaptiveAnchor = true;
         }
 
@@ -1374,7 +1469,7 @@ namespace PurrNet
             {
                 var s = target.data.scale;
                 var scale = new Vector3(s.x.value, s.y.value, s.z.value) + _corrScaleOffset * _corrWeight;
-                target.data.scale = (CompressedVector3)scale;
+                target.data.scale = scale;
             }
         }
 
@@ -1939,7 +2034,7 @@ namespace PurrNet
                 if (isAbsolute)
                 {
                     ClearAdaptiveAnchors();
-                    SetAdaptiveAnchor(state, default, 0);
+                    SetAdaptiveAnchor(state, default);
                     TeleportBuffers(state, p);
                 }
                 else
@@ -1948,7 +2043,7 @@ namespace PurrNet
                     var velocity = velocityGap >= 1
                         ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
                         : default;
-                    SetAdaptiveAnchor(state, velocity, velocityGap);
+                    SetAdaptiveAnchor(state, velocity);
                 }
 
                 PushReceivedSample(senderTick, state);
