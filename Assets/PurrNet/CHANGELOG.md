@@ -1,3 +1,10 @@
+## [1.21.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.3...v1.21.1-beta.4) (2026-07-23)
+
+
+### Bug Fixes
+
+* introduce `FlushImmediately` to `NetworkAnimator` ([e51071a](https://github.com/PurrNet/PurrNet/commit/e51071a19db2ec948106eb63ab9752b8c6e43f65))
+
 ## [1.21.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.2...v1.21.1-beta.3) (2026-07-23)
 
 
