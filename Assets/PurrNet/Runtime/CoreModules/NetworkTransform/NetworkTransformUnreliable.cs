@@ -201,7 +201,10 @@ namespace PurrNet.Modules
 
         private static long ScaledTolerance(long baseTolerance, long velocityComponent)
         {
-            long scaled = Math.Abs(velocityComponent) >> (NetworkTransformVelocity.FRACTION_BITS + 1);
+            long scaled = Math.Abs(velocityComponent) >> (NetworkTransformVelocity.FRACTION_BITS + 3);
+            long cap = baseTolerance * 16;
+            if (scaled > cap)
+                scaled = cap;
             return scaled > baseTolerance ? scaled : baseTolerance;
         }
 

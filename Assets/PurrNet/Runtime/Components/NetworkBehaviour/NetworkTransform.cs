@@ -1202,8 +1202,9 @@ namespace PurrNet
         private bool _hasLastAppliedState;
 
         private const float CORRECTION_DECAY = 0.65f;
-        private const float RENDER_RATE_GAIN = 0.1f;
-        private const float RENDER_RATE_MAX_ADJUST = 0.5f;
+        private const float RENDER_RATE_GAIN = 0.2f;
+        private const float RENDER_RATE_MAX_SLOWDOWN = 0.5f;
+        private const float RENDER_RATE_MAX_CATCHUP = 1f;
 
         private float _renderRel;
         private bool _hasRenderTimeline;
@@ -1417,7 +1418,7 @@ namespace PurrNet
             else
             {
                 float rate = 1f + Mathf.Clamp((targetRel - _renderRel) * RENDER_RATE_GAIN,
-                    -RENDER_RATE_MAX_ADJUST, RENDER_RATE_MAX_ADJUST);
+                    -RENDER_RATE_MAX_SLOWDOWN, RENDER_RATE_MAX_CATCHUP);
                 _renderRel += rate;
                 if (_renderRel > maxAhead)
                     _renderRel = maxAhead;

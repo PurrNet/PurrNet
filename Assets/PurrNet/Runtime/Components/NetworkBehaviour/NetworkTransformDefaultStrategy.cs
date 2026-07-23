@@ -102,6 +102,14 @@ namespace PurrNet
 
             axis.Normalize();
             float angle = Vector3.SignedAngle(va, vb, axis);
+
+            if (t > 1f)
+            {
+                var tangent = Vector3.Cross(axis, vb) * (angle * Mathf.Deg2Rad) +
+                              vb.normalized * (vb.magnitude - va.magnitude);
+                return to + tangent * (t - 1f);
+            }
+
             var dir = Quaternion.AngleAxis(angle * t, axis) * va.normalized;
             float radius = Mathf.Lerp(va.magnitude, vb.magnitude, t);
             return center + dir * radius;
