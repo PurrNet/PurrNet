@@ -1,3 +1,10 @@
+## [1.21.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.8...v1.21.1-beta.9) (2026-07-23)
+
+
+### Bug Fixes
+
+* Less buffer size for adaptive NT ([3b2aa89](https://github.com/PurrNet/PurrNet/commit/3b2aa891116ff5965d889808cbf409512cb07380))
+
 ## [1.21.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.7...v1.21.1-beta.8) (2026-07-23)
 
 
