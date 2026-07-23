@@ -787,8 +787,6 @@ namespace PurrNet
             if (body.bodyType != RigidbodyType2D.Dynamic)
                 return;
 
-            // The observer owns synced motion, so dynamic motion on those channels is stale.
-            // Reset it without changing any Rigidbody2D configuration.
             if (applyPosition)
             {
                 body.totalForce = Vector2.zero;
@@ -858,35 +856,35 @@ namespace PurrNet
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private void CaptureNetworkPosePosition(Vector3 worldPosition)
         {
-            var parent = _syncPosition == SyncMode.Local ? _trs.parent : null;
-            _networkPosePositionParent = parent;
-            _networkPosePositionAnchor = parent
-                ? parent.InverseTransformPoint(worldPosition)
+            var nparent = _syncPosition == SyncMode.Local ? _trs.parent : null;
+            _networkPosePositionParent = nparent;
+            _networkPosePositionAnchor = nparent
+                ? nparent.InverseTransformPoint(worldPosition)
                 : worldPosition;
         }
 
         private Vector3 ResolveNetworkPosePosition()
         {
-            var parent = _networkPosePositionParent;
-            return _syncPosition == SyncMode.Local && parent && _trs.parent == parent
-                ? parent.TransformPoint(_networkPosePositionAnchor)
+            var nparent = _networkPosePositionParent;
+            return _syncPosition == SyncMode.Local && nparent && _trs.parent == nparent
+                ? nparent.TransformPoint(_networkPosePositionAnchor)
                 : position;
         }
 
         private void CaptureNetworkPoseRotation(Quaternion worldRotation)
         {
-            var parent = _syncRotation == SyncMode.Local ? _trs.parent : null;
-            _networkPoseRotationParent = parent;
-            _networkPoseRotationAnchor = parent
-                ? Quaternion.Inverse(parent.rotation) * worldRotation
+            var nparent = _syncRotation == SyncMode.Local ? _trs.parent : null;
+            _networkPoseRotationParent = nparent;
+            _networkPoseRotationAnchor = nparent
+                ? Quaternion.Inverse(nparent.rotation) * worldRotation
                 : worldRotation;
         }
 
         private Quaternion ResolveNetworkPoseRotation()
         {
-            var parent = _networkPoseRotationParent;
-            return _syncRotation == SyncMode.Local && parent && _trs.parent == parent
-                ? parent.rotation * _networkPoseRotationAnchor
+            var nparent = _networkPoseRotationParent;
+            return _syncRotation == SyncMode.Local && nparent && _trs.parent == nparent
+                ? nparent.rotation * _networkPoseRotationAnchor
                 : rotation;
         }
 #endif
