@@ -1,3 +1,10 @@
+## [1.21.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.4...v1.21.1-beta.5) (2026-07-23)
+
+
+### Bug Fixes
+
+* Much improved adaptive sync adaptation ([74347a1](https://github.com/PurrNet/PurrNet/commit/74347a1948215eecfc4639329b6a63d75c36f4ef))
+
 ## [1.21.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.3...v1.21.1-beta.4) (2026-07-23)
 
 
