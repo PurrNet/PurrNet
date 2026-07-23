@@ -8,6 +8,7 @@ public class JumpTest : NetworkIdentity
     [SerializeField] private float _gravity = 9.81f;
     [SerializeField] private float _moveSpeed = 5f;
     [SerializeField] private Rigidbody _rigidbody;
+    [SerializeField] private NetworkAnimator _animator;
     
     protected override void OnSpawned()
     {
@@ -22,7 +23,8 @@ public class JumpTest : NetworkIdentity
             return;
         
         _rigidbody.AddForce(Vector3.down * _gravity);
-        _rigidbody.linearVelocity = new Vector3(Input.GetAxis("Horizontal") * _moveSpeed, _rigidbody.linearVelocity.y, Input.GetAxis("Vertical") * _moveSpeed);
+        var input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        _rigidbody.linearVelocity = new Vector3(input.x * _moveSpeed, _rigidbody.linearVelocity.y, input.y * _moveSpeed);
     }
 
     private void Update()
@@ -32,5 +34,7 @@ public class JumpTest : NetworkIdentity
 
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Mouse0))
             _rigidbody.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
+        var input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        _animator.SetFloat("Input", input.magnitude);
     }
 }
