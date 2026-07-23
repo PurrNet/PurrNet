@@ -17,7 +17,8 @@ public class BenchmarkScenario : BenchmarkScenarioBase
 
     protected override void OnSetup(ScenarioContext ctx, NetworkManager manager)
     {
-        CreatePrefab(manager, nameof(BenchmarkScenario) + "_Obj");
+        var nt = CreatePrefab(manager, nameof(BenchmarkScenario) + "_Obj");
+        nt.adaptiveSync = false;
     }
 
     protected override UniTask Spawn(ScenarioContext ctx)

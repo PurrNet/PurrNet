@@ -59,6 +59,19 @@ namespace PurrNet
         [SerializeField]
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
+        [Tooltip("Skips sends while motion stays reconstructible by receivers, greatly reducing " +
+                 "bandwidth for steady motion (linear or curved) without adding render delay. " +
+                 "Erratic motion falls back to normal per-tick syncing automatically.")]
+        [FormerlySerializedAs("_predictiveSync")]
+        [SerializeField, PurrLock]
+        private bool _adaptiveSync = true;
+
+        private NetworkTransformSyncStrategy _customStrategy;
+        private NetworkTransformSyncStrategy _activeStrategy;
+        private bool _hasStrategy;
+
+        private static readonly NetworkTransformDefaultStrategy _defaultStrategy = new NetworkTransformDefaultStrategy();
+
         /// <summary>
         /// Whether to sync the parent of the transform. Only works if the parent is a NetworkIdentity.
         /// </summary>
@@ -112,6 +125,82 @@ namespace PurrNet
         /// Whether the client controls the transform if they are the owner.
         /// </summary>
         public bool ownerAuth => _ownerAuth;
+
+        /// <summary>
+        /// Whether adaptive reduced-rate syncing is active.
+        /// </summary>
+        public bool hasSyncStrategy => _hasStrategy;
+
+        /// <summary>
+        /// Whether adaptive reduced-rate syncing is enabled. Uses the built-in default strategy
+        /// unless a custom strategy is injected via <see cref="SetSyncStrategy"/>.
+        /// </summary>
+        public bool adaptiveSync
+        {
+            get => _adaptiveSync;
+            set
+            {
+                _adaptiveSync = value;
+                ApplyStrategySettings();
+            }
+        }
+
+        private ushort _skipCacheFrom;
+        private ushort _skipCacheCurrent;
+        private ushort _skipCachePrev;
+        private bool _skipCacheHasPrev;
+        private bool _skipCacheResult;
+        private bool _hasSkipCache;
+
+        internal ushort extrapVerifyBase;
+        internal ushort extrapVerifyPrev;
+        internal ushort extrapVerifyPrevPrev;
+        internal byte extrapVerifyFlags;
+        internal ushort extrapVerifyThrough;
+        internal bool hasExtrapVerify;
+
+        internal bool CanSkipCached(NTLastAdaptiveWrite lastWrite, ushort currentTick,
+            in NetworkTransformState current)
+        {
+            if (_hasSkipCache && _skipCacheFrom == lastWrite.tick && _skipCacheCurrent == currentTick &&
+                _skipCacheHasPrev == lastWrite.hasPrev && _skipCachePrev == lastWrite.prevTick)
+                return _skipCacheResult;
+
+            _skipCacheResult = _activeStrategy.CanSkip(this, lastWrite, currentTick, current);
+            _skipCacheFrom = lastWrite.tick;
+            _skipCacheCurrent = currentTick;
+            _skipCachePrev = lastWrite.prevTick;
+            _skipCacheHasPrev = lastWrite.hasPrev;
+            _hasSkipCache = true;
+            return _skipCacheResult;
+        }
+
+        /// <summary>
+        /// Injects a custom sync strategy. Pass null to revert to the built-in default strategy.
+        /// Call before spawning for full effect; when called on a spawned transform the new
+        /// strategy applies immediately. Sharing one instance across transforms is safe as
+        /// long as any strategy state is input-keyed memoization, as in the built-in strategies.
+        /// </summary>
+        public void SetSyncStrategy(NetworkTransformSyncStrategy strategy)
+        {
+            _customStrategy = strategy;
+            ApplyStrategySettings();
+        }
+
+        private void ApplyStrategySettings()
+        {
+            _activeStrategy = !_adaptiveSync ? null : _customStrategy ?? _defaultStrategy;
+            _hasStrategy = _activeStrategy != null;
+
+            if (!_hasStrategy)
+                return;
+
+            var nm = networkManager;
+            if (nm && nm.tickModule != null)
+                _adaptiveSpacing = Mathf.Clamp(
+                    Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy.maxSendInterval), 2,
+                    CAPTURE_HISTORY_SIZE - 2);
+        }
 
         Interpolated<Vector3WithParent> _position;
         Interpolated<QuaternionWithParent> _rotation;
@@ -394,6 +483,10 @@ namespace PurrNet
             ntModule.Unregister(this);
         }
 
+        private int _adaptiveSpacing = 2;
+
+        internal int adaptiveSendSpacing => _adaptiveSpacing;
+
         protected override void OnSpawned()
         {
             int ticksPerSec = networkManager.tickModule.tickRate;
@@ -402,6 +495,8 @@ namespace PurrNet
             if (syncPosition) _position.maxBufferSize = ticksPerBuffer;
             if (syncRotation) _rotation.maxBufferSize = ticksPerBuffer;
             if (syncScale) _scale.maxBufferSize = ticksPerBuffer;
+
+            ApplyStrategySettings();
         }
 
         protected override void OnObserverAdded(PlayerID player)
@@ -879,7 +974,7 @@ namespace PurrNet
         private long _lastAppliedOrder;
         private bool _hasAppliedSeq;
 
-        internal NetworkTransformState capturedState => _capturedState;
+        internal ref readonly NetworkTransformState capturedState => ref _capturedState;
 
         internal uint capturedRevision => _capturedRevision;
 
@@ -921,6 +1016,459 @@ namespace PurrNet
             _hasRecvGen = false;
             _hasAuthoritativeRecvGen = false;
             _hasAppliedSeq = false;
+            _hasLastAppliedState = false;
+            ClearAdaptiveAnchors();
+        }
+
+        private NetworkTransformState _lastAppliedState;
+        private ushort _lastAppliedSenderTick;
+        private bool _hasLastAppliedState;
+
+        private const float CORRECTION_DECAY = 0.65f;
+        private const float RENDER_RATE_GAIN = 0.1f;
+        private const float RENDER_RATE_MAX_ADJUST = 0.5f;
+
+        private float _renderRel;
+        private bool _hasRenderTimeline;
+
+        private Vector3 _corrPosOffset;
+        private Quaternion _corrRotOffset = Quaternion.identity;
+        private Vector3 _corrScaleOffset;
+        private float _corrWeight;
+        private NetworkTransformFrame _corrFrame;
+        private NetworkID _corrParentId;
+        private bool _hasCorrOffset;
+        private bool _corrPending;
+
+        private NetworkTransformState _anchorState;
+        private NetworkTransformVelocity _anchorVelocity;
+        private uint _anchorLocalTick;
+        private ushort _anchorSenderTick;
+        private int _anchorGap;
+        private bool _hasAdaptiveAnchor;
+
+        private NetworkTransformState _prevAnchorState;
+        private NetworkTransformVelocity _prevAnchorVelocity;
+        private uint _prevAnchorLocalTick;
+        private ushort _prevAnchorSenderTick;
+        private int _prevAnchorGap;
+        private bool _hasPrevAnchor;
+
+        private uint _lastAdaptiveTick;
+
+        private const int RECV_HISTORY_SIZE = 32;
+
+        private readonly NetworkTransformState[] _recvStates = new NetworkTransformState[RECV_HISTORY_SIZE];
+        private readonly ushort[] _recvTicks = new ushort[RECV_HISTORY_SIZE];
+        private int _recvCount;
+        private int _recvHead;
+
+        private void PushReceivedSample(ushort senderTick, in NetworkTransformState state)
+        {
+            _recvHead = (_recvHead + 1) % RECV_HISTORY_SIZE;
+            _recvStates[_recvHead] = state;
+            _recvTicks[_recvHead] = senderTick;
+            if (_recvCount < RECV_HISTORY_SIZE)
+                _recvCount++;
+        }
+
+        private NetworkTransformState SampleReceivedHistory(ushort targetTick)
+        {
+            NetworkTransformState upperState = default;
+            NetworkTransformState lowerState = default;
+            ushort upperTick = 0;
+            ushort lowerTick = 0;
+            bool hasUpper = false;
+            bool hasLower = false;
+
+            NetworkTransformState prevState = default;
+            ushort prevTick = 0;
+            bool hasPrev = false;
+
+            for (int i = 0; i < _recvCount; i++)
+            {
+                int idx = (_recvHead - i + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+                short diff = (short)(_recvTicks[idx] - targetTick);
+
+                if (diff <= 0)
+                {
+                    lowerState = _recvStates[idx];
+                    lowerTick = _recvTicks[idx];
+                    hasLower = true;
+
+                    if (i + 1 < _recvCount)
+                    {
+                        int prevIdx = (_recvHead - i - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+                        prevState = _recvStates[prevIdx];
+                        prevTick = _recvTicks[prevIdx];
+                        hasPrev = true;
+                    }
+
+                    break;
+                }
+
+                upperState = _recvStates[idx];
+                upperTick = _recvTicks[idx];
+                hasUpper = true;
+            }
+
+            if (!hasLower)
+                return hasUpper ? upperState : _anchorState;
+
+            if (!hasUpper || lowerTick == upperTick)
+                return lowerState;
+
+            short span = (short)(upperTick - lowerTick);
+            if (span <= 0)
+                return upperState;
+
+            short into = (short)(targetTick - lowerTick);
+
+            if (lowerState.frame != upperState.frame || !lowerState.parentId.Equals(upperState.parentId))
+            {
+                if (!hasPrev || prevState.frame != lowerState.frame ||
+                    !prevState.parentId.Equals(lowerState.parentId))
+                    return lowerState;
+
+                int prevGap = (short)(lowerTick - prevTick);
+                if (prevGap < 1)
+                    return lowerState;
+
+                var chord = NetworkTransformVelocity.Derive(prevState, lowerState, prevGap);
+                return NetworkTransformVelocity.Predict(lowerState, chord, into);
+            }
+
+            float t = into / (float)span;
+
+            if (hasPrev && _activeStrategy != null &&
+                _activeStrategy.TryReconstructState(prevState, lowerState, upperState, t, out var shaped))
+                return shaped;
+
+            return NetworkTransformVelocity.Lerp(lowerState, upperState, t);
+        }
+
+        private bool TryStrategyExtrapolation(int back, ushort targetTick, out NetworkTransformState result)
+        {
+            result = default;
+
+            if (_recvCount < back + 3)
+                return false;
+
+            int i0 = (_recvHead - back + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+            int i1 = (i0 - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+            int i2 = (i1 - 1 + RECV_HISTORY_SIZE) % RECV_HISTORY_SIZE;
+
+            int span = (short)(_recvTicks[i0] - _recvTicks[i1]);
+            if (span < 2)
+                return false;
+
+            int rel = (short)(targetTick - _recvTicks[i0]);
+            if (rel <= 0)
+                return false;
+
+            float t = (span + rel) / (float)span;
+            return _activeStrategy.TryReconstructState(_recvStates[i2], _recvStates[i1], _recvStates[i0], t,
+                out result);
+        }
+
+        private void ClearAdaptiveAnchors()
+        {
+            _hasAdaptiveAnchor = false;
+            _hasPrevAnchor = false;
+            _recvCount = 0;
+            _hasLastSample = false;
+            _hasRenderTimeline = false;
+            _hasCorrOffset = false;
+            _corrPending = false;
+            _seamOffset = Vector3.zero;
+        }
+
+        private void SetAdaptiveAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
+        {
+            var nm = networkManager;
+            uint localTick = nm && nm.tickModule != null ? nm.tickModule.localTick : 0u;
+
+            if (_hasAdaptiveAnchor)
+            {
+                _prevAnchorState = _anchorState;
+                _prevAnchorVelocity = _anchorVelocity;
+                _prevAnchorLocalTick = _anchorLocalTick;
+                _prevAnchorSenderTick = _anchorSenderTick;
+                _prevAnchorGap = _anchorGap;
+                _hasPrevAnchor = true;
+                _corrPending = true;
+            }
+
+            _anchorState = state;
+            _anchorVelocity = velocity;
+            _anchorLocalTick = localTick;
+            _anchorSenderTick = _lastAppliedSenderTick;
+            _anchorGap = gap;
+            _hasAdaptiveAnchor = true;
+        }
+
+        internal bool TryTickAdaptiveRender(uint localTick, ushort vouchedTick, bool hasVouched,
+            out NetworkTransformState state)
+        {
+            state = default;
+
+            if (!_hasStrategy || _cachedIsController || !_hasAdaptiveAnchor)
+                return false;
+
+            if (_lastAdaptiveTick == localTick)
+                return false;
+
+            _lastAdaptiveTick = localTick;
+
+            long maxAhead = _adaptiveSpacing + 2;
+            float targetRel;
+
+            if (hasVouched)
+            {
+                targetRel = (short)(vouchedTick - _lastAppliedSenderTick);
+            }
+            else
+            {
+                long age = (long)localTick - _anchorLocalTick;
+                if (age < 0)
+                    age = 0;
+                targetRel = age - _adaptiveSpacing;
+            }
+
+            if (targetRel > maxAhead)
+                targetRel = maxAhead;
+
+            if (!_hasRenderTimeline || Mathf.Abs(targetRel - _renderRel) > maxAhead + _adaptiveSpacing)
+            {
+                _renderRel = targetRel;
+                _hasRenderTimeline = true;
+            }
+            else
+            {
+                float rate = 1f + Mathf.Clamp((targetRel - _renderRel) * RENDER_RATE_GAIN,
+                    -RENDER_RATE_MAX_ADJUST, RENDER_RATE_MAX_ADJUST);
+                _renderRel += rate;
+                if (_renderRel > maxAhead)
+                    _renderRel = maxAhead;
+            }
+
+            int relFloor = Mathf.FloorToInt(_renderRel);
+            float frac = _renderRel - relFloor;
+            ushort tickA = (ushort)(_lastAppliedSenderTick + relFloor);
+            ushort tickB = (ushort)(tickA + 1);
+
+            var target = SampleAdaptiveAt(relFloor, tickA);
+            if (frac > 0f)
+            {
+                var next = SampleAdaptiveAt(relFloor + 1, tickB);
+                if (next.frame == target.frame && next.parentId.Equals(target.parentId))
+                    target = NetworkTransformVelocity.Lerp(target, next, frac);
+            }
+
+            if (_hasPrevAnchor &&
+                (_prevAnchorState.frame != _anchorState.frame ||
+                 !_prevAnchorState.parentId.Equals(_anchorState.parentId)))
+            {
+                _hasPrevAnchor = false;
+                _corrPending = false;
+            }
+
+            if (_corrPending && _hasPrevAnchor &&
+                target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
+            {
+                long prevAge = (short)(tickA - _prevAnchorSenderTick);
+                if (prevAge < 0)
+                    prevAge = 0;
+                if (prevAge > maxAhead + _adaptiveSpacing)
+                    prevAge = maxAhead + _adaptiveSpacing;
+
+                var old = SampleOldAnchorAt(tickA, (int)prevAge);
+                if (frac > 0f)
+                {
+                    var oldNext = SampleOldAnchorAt(tickB, (int)prevAge + 1);
+                    if (oldNext.frame == old.frame && oldNext.parentId.Equals(old.parentId))
+                        old = NetworkTransformVelocity.Lerp(old, oldNext, frac);
+                }
+
+                if (old.frame == target.frame && old.parentId.Equals(target.parentId))
+                    CaptureCorrectionOffset(old, target);
+            }
+
+            _corrPending = false;
+            _hasPrevAnchor = false;
+
+            if (_hasCorrOffset && (target.frame != _corrFrame || !target.parentId.Equals(_corrParentId)))
+                _hasCorrOffset = false;
+
+            if (_hasCorrOffset)
+            {
+                _corrWeight *= CORRECTION_DECAY;
+                if (_corrWeight < 0.02f)
+                    _hasCorrOffset = false;
+                else
+                    ApplyCorrectionOffset(ref target);
+            }
+
+            state = target;
+            return true;
+        }
+
+        private void CaptureCorrectionOffset(in NetworkTransformState old, in NetworkTransformState target)
+        {
+            var posDelta = Vector3.zero;
+            if (old.data.position.HasValue && target.data.position.HasValue)
+            {
+                var op = old.data.position.Value;
+                var tp = target.data.position.Value;
+                posDelta = new Vector3(op.x.value - tp.x.value, op.y.value - tp.y.value, op.z.value - tp.z.value);
+            }
+
+            var oRot = old.data.rotation;
+            var tRot = target.data.rotation;
+            var rotDelta = new Quaternion(oRot.x, oRot.y, oRot.z, oRot.w).normalized *
+                           Quaternion.Inverse(new Quaternion(tRot.x, tRot.y, tRot.z, tRot.w).normalized);
+
+            var oScale = old.data.scale;
+            var tScale = target.data.scale;
+            var scaleDelta = new Vector3(oScale.x.value - tScale.x.value, oScale.y.value - tScale.y.value,
+                oScale.z.value - tScale.z.value);
+
+            if (_hasCorrOffset)
+            {
+                posDelta += _corrPosOffset * _corrWeight;
+                rotDelta = Quaternion.Slerp(Quaternion.identity, _corrRotOffset, _corrWeight) * rotDelta;
+                scaleDelta += _corrScaleOffset * _corrWeight;
+            }
+
+            _corrPosOffset = posDelta;
+            _corrRotOffset = rotDelta;
+            _corrScaleOffset = scaleDelta;
+            _corrWeight = 1f;
+            _corrFrame = target.frame;
+            _corrParentId = target.parentId;
+            _hasCorrOffset = true;
+        }
+
+        private void ApplyCorrectionOffset(ref NetworkTransformState target)
+        {
+            if (target.data.position.HasValue && _corrPosOffset != Vector3.zero)
+            {
+                var p = target.data.position.Value;
+                var pos = new Vector3(p.x.value, p.y.value, p.z.value) + _corrPosOffset * _corrWeight;
+                target.data.position = (CompressedVector3)pos;
+            }
+
+            if (Mathf.Abs(_corrRotOffset.w) < 0.9999999f)
+            {
+                var r = target.data.rotation;
+                var rot = Quaternion.Slerp(Quaternion.identity, _corrRotOffset, _corrWeight) *
+                          new Quaternion(r.x, r.y, r.z, r.w);
+                r.x = new NormalizedFloat(rot.x);
+                r.y = new NormalizedFloat(rot.y);
+                r.z = new NormalizedFloat(rot.z);
+                r.w = new NormalizedFloat(rot.w);
+                target.data.rotation = r;
+            }
+
+            if (_corrScaleOffset != Vector3.zero)
+            {
+                var s = target.data.scale;
+                var scale = new Vector3(s.x.value, s.y.value, s.z.value) + _corrScaleOffset * _corrWeight;
+                target.data.scale = (CompressedVector3)scale;
+            }
+        }
+
+        private NetworkTransformState SampleAdaptiveAt(int rel, ushort tick)
+        {
+            if (rel < 0)
+                return SampleReceivedHistory(tick);
+
+            return TryStrategyExtrapolation(0, tick, out var shaped)
+                ? shaped
+                : NetworkTransformVelocity.Predict(_anchorState, _anchorVelocity, rel);
+        }
+
+        private NetworkTransformState SampleOldAnchorAt(ushort tick, int prevAge)
+        {
+            return TryStrategyExtrapolation(1, tick, out var shaped)
+                ? shaped
+                : NetworkTransformVelocity.Predict(_prevAnchorState, _prevAnchorVelocity, prevAge);
+        }
+
+        private const float SEAM_OFFSET_DECAY = 0.8f;
+
+        private NetworkTransformFrame _lastSampleFrame;
+        private NetworkID _lastSampleParentId;
+        private Vector3 _lastSampleWorldPos;
+        private Vector3 _seamOffset;
+        private bool _hasLastSample;
+
+        internal void ApplyAdaptiveSample(in NetworkTransformState state, NetworkIdentity frameParent)
+        {
+            var p = state.frame switch
+            {
+                NetworkTransformFrame.LocalIdentity => frameParent.transform,
+                NetworkTransformFrame.LocalStatic => _trs.parent,
+                _ => null
+            };
+
+            if (syncPosition && state.data.position.HasValue)
+            {
+                var quantized = state.data.position.Value;
+                var localPos = new Vector3(quantized.x.value, quantized.y.value, quantized.z.value);
+                bool isLocal = _syncPosition == SyncMode.Local && p;
+                var world = isLocal ? p.TransformPoint(localPos) : localPos;
+
+                if (_hasLastSample &&
+                    (state.frame != _lastSampleFrame || !state.parentId.Equals(_lastSampleParentId)))
+                    _seamOffset += _lastSampleWorldPos - world;
+
+                _lastSampleFrame = state.frame;
+                _lastSampleParentId = state.parentId;
+
+                if (_seamOffset.sqrMagnitude > 0.000001f)
+                {
+                    _seamOffset *= SEAM_OFFSET_DECAY;
+                    world += _seamOffset;
+
+                    var adjusted = state;
+                    adjusted.data.position = (CompressedVector3)(isLocal ? p.InverseTransformPoint(world) : world);
+                    _lastSampleWorldPos = world;
+                    _hasLastSample = true;
+                    AddStateToBuffers(adjusted, p);
+                    return;
+                }
+
+                _seamOffset = Vector3.zero;
+                _lastSampleWorldPos = world;
+                _hasLastSample = true;
+            }
+
+            AddStateToBuffers(state, p);
+        }
+
+        private void TeleportBuffers(in NetworkTransformState state, Transform p)
+        {
+            if (syncPosition)
+                _position.Teleport(MakePositionSample(p, state.data));
+
+            if (syncRotation)
+                _rotation.Teleport(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+
+            if (syncScale)
+                _scale.Teleport(new ScaleWithParent(p, state.data.scale));
+        }
+
+        private void AddStateToBuffers(in NetworkTransformState state, Transform p)
+        {
+            if (syncPosition)
+                _position.Add(MakePositionSample(p, state.data));
+
+            if (syncRotation)
+                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+
+            if (syncScale)
+                _scale.Add(new ScaleWithParent(p, state.data.scale));
         }
 
         internal void ResetUnreliableStream()
@@ -974,7 +1522,61 @@ namespace PurrNet
             }
         }
 
+        private const int CAPTURE_HISTORY_SIZE = 32;
+
+        private readonly NetworkTransformState[] _historyStates = new NetworkTransformState[CAPTURE_HISTORY_SIZE];
+        private readonly ushort[] _historyTicks = new ushort[CAPTURE_HISTORY_SIZE];
+        private readonly bool[] _historyUsed = new bool[CAPTURE_HISTORY_SIZE];
+
+        internal bool TryGetCapturedAt(ushort tick, out NetworkTransformState state)
+        {
+            int slot = tick % CAPTURE_HISTORY_SIZE;
+            if (_historyUsed[slot] && _historyTicks[slot] == tick)
+            {
+                state = _historyStates[slot];
+                return true;
+            }
+
+            state = default;
+            return false;
+        }
+
+        internal bool IsChordInterpolable(in NetworkTransformState from, ushort fromTick, ushort currentTick,
+            in NetworkTransformState current)
+        {
+            int gap = (short)(currentTick - fromTick);
+            if (gap <= 1)
+                return true;
+
+            if (current.frame != from.frame || !current.parentId.Equals(from.parentId))
+                return false;
+
+            var chord = NetworkTransformVelocity.Derive(from, current, gap);
+
+            for (int step = 1; step < gap; step++)
+            {
+                if (!TryGetCapturedAt((ushort)(fromTick + step), out var actual))
+                    return false;
+
+                if (actual.frame != from.frame || !actual.parentId.Equals(from.parentId))
+                    return false;
+
+                var expected = NetworkTransformVelocity.Predict(from, chord, step);
+                if (!NTUnreliable.PredictionMatches(expected, actual, chord))
+                    return false;
+            }
+
+            return true;
+        }
+
         internal void CaptureUnreliableState()
+        {
+            var nm = networkManager;
+            ushort tick = nm && nm.tickModule != null ? (ushort)nm.tickModule.localTick : (ushort)0;
+            CaptureUnreliableState(tick);
+        }
+
+        internal void CaptureUnreliableState(ushort tick)
         {
             var state = currentState;
 
@@ -1002,6 +1604,11 @@ namespace PurrNet
                 _capturedRevision++;
                 _hasCapturedState = true;
             }
+
+            int slot = tick % CAPTURE_HISTORY_SIZE;
+            _historyStates[slot] = _capturedState;
+            _historyTicks[slot] = tick;
+            _historyUsed[slot] = true;
         }
 
         private bool usesNetworkFrame => _syncPosition == SyncMode.Local ||
@@ -1026,6 +1633,8 @@ namespace PurrNet
 
         private void AdoptState(in NetworkTransformState state)
         {
+            _hasLastAppliedState = false;
+            ClearAdaptiveAnchors();
             _lastReadData = state.data;
             _currentData = state.data;
             _latestData = state.data;
@@ -1266,7 +1875,7 @@ namespace PurrNet
         }
 
         internal bool TryApplyUnreliableState(in NetworkTransformState state, byte gen, long packetOrder,
-            NetworkIdentity frameParent, bool isAbsolute)
+            ushort senderTick, NetworkIdentity frameParent, bool isAbsolute)
         {
             if (_cachedIsController)
                 return true;
@@ -1307,18 +1916,46 @@ namespace PurrNet
                 _ => null
             };
 
+            int gap = 0;
+
+            if (_hasStrategy && !isAbsolute && _hasLastAppliedState &&
+                state.frame == _lastAppliedState.frame && state.parentId.Equals(_lastAppliedState.parentId))
+                gap = (short)(senderTick - _lastAppliedSenderTick);
+
+            var previous = _lastAppliedState;
+
+            if (_hasRenderTimeline && _hasLastAppliedState)
+                _renderRel -= (short)(senderTick - _lastAppliedSenderTick);
+
             _lastAppliedOrder = packetOrder;
             _hasAppliedSeq = true;
             _lastReadData = state.data;
+            _lastAppliedState = state;
+            _lastAppliedSenderTick = senderTick;
+            _hasLastAppliedState = true;
 
-            if (syncPosition)
-                _position.Add(MakePositionSample(p, state.data));
+            if (_hasStrategy)
+            {
+                if (isAbsolute)
+                {
+                    ClearAdaptiveAnchors();
+                    SetAdaptiveAnchor(state, default, 0);
+                    TeleportBuffers(state, p);
+                }
+                else
+                {
+                    int velocityGap = gap >= 1 && gap <= NTUnreliable.ADAPTIVE_MAX_BACKFILL ? gap : 0;
+                    var velocity = velocityGap >= 1
+                        ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
+                        : default;
+                    SetAdaptiveAnchor(state, velocity, velocityGap);
+                }
 
-            if (syncRotation)
-                _rotation.Add(new QuaternionWithParent(p, _syncRotation == SyncMode.Local, state.data.rotation));
+                PushReceivedSample(senderTick, state);
+                return true;
+            }
 
-            if (syncScale)
-                _scale.Add(new ScaleWithParent(p, state.data.scale));
+            AddStateToBuffers(state, p);
 
             return true;
         }

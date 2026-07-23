@@ -61,6 +61,11 @@ namespace PurrNet
         /// own clock so snapshot spacing reflects the send cadence instead of arrival
         /// timing; relays forward it untouched. 0 means unstamped (legacy sender).</summary>
         public double time;
+        /// <summary>Monotonic state order. Controllers assign source order and the server replaces it
+        /// with canonical relay order. Zero is reserved for an authority anchor.</summary>
+        public uint sequence;
+        /// <summary>Canonical controller generation assigned by the server before relay.</summary>
+        public uint authorityEpoch;
     }
 
     public struct RigidbodyTeleportData
@@ -110,8 +115,11 @@ namespace PurrNet
         [Tooltip("Whether to sync parent changes (SetParent) through the hierarchy. Only works when the new parent has a NetworkIdentity.")]
         [SerializeField] private bool _syncParent = true;
 
-        [Tooltip("If true, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody's motion instead of only rotated into the parent frame.")]
-        [SerializeField] private bool _syncVelocityRelativeToParent;
+        // Serialized only so existing prefabs keep their old data without being rewritten.
+        // Parent-local velocity semantics are automatic and never branch on this value.
+#pragma warning disable 0414
+        [SerializeField, HideInInspector] private bool _syncVelocityRelativeToParent = true;
+#pragma warning restore 0414
 
         [Tooltip("If true, position error for correction and hard-snap decisions is measured in the parent or soft-parent frame when active.")]
         [SerializeField] private bool _useParentFramePositionError;
@@ -231,6 +239,12 @@ namespace PurrNet
             _cachedRigidbody = GetComponent<Rigidbody>();
         }
 
+        protected override void OnInitializeModules()
+        {
+            base.OnInitializeModules();
+            InitializeStateOrdering();
+        }
+
         protected override void OnEarlySpawn()
         {
             base.OnEarlySpawn();
@@ -302,7 +316,17 @@ namespace PurrNet
                 time = Time.unscaledTimeAsDouble
             };
 
-            if (!ValidateOutgoingSnapshot(in stateData, "initial observer state"))
+            bool validatedServerAnchor = false;
+            if (TryGetLatestServerState(out var latestState))
+                stateData = latestState;
+            else if (isServer)
+            {
+                if (!TryStampAndCacheServerAuthorityAnchor(ref stateData, "initial observer state"))
+                    return;
+                validatedServerAnchor = true;
+            }
+
+            if (!validatedServerAnchor && !ValidateOutgoingSnapshot(in stateData, "initial observer state"))
                 return;
 
             SendInitialStateToObserver(player, stateData, GetCurrentSettings());
@@ -317,6 +341,7 @@ namespace PurrNet
             _softParent = null;
             _parentPoseTransform = null;
             _parentPoseRigidbody = null;
+            ResetStateOrdering();
         }
 
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
@@ -333,19 +358,7 @@ namespace PurrNet
 
             if (asServer)
             {
-                var handoff = IsController(_ownerAuth)
-                    ? CaptureCurrentState()
-                    : CaptureTargetState();
-
-                if (!ValidateOutgoingSnapshot(in handoff, "ownership handoff"))
-                    return;
-
-                if (newOwner.HasValue && newOwner != localPlayer)
-                    SendHandoffState(newOwner.Value, handoff);
-
-                if (oldOwner.HasValue && newOwner != oldOwner && oldOwner != localPlayer)
-                    SendHandoffState(oldOwner.Value, handoff);
-
+                BroadcastServerAuthorityTransition(newOwner, oldOwner);
                 return;
             }
 
@@ -362,6 +375,18 @@ namespace PurrNet
                 _forceSyncWindowEndTime = double.NegativeInfinity;
                 _wasInForceSyncWindow = false;
             }
+        }
+
+        protected override void OnOwnerDisconnected(PlayerID ownerId)
+        {
+            base.OnOwnerDisconnected(ownerId);
+            BroadcastServerAuthorityTransition(null, null);
+        }
+
+        protected override void OnOwnerReconnected(PlayerID ownerId)
+        {
+            base.OnOwnerReconnected(ownerId);
+            BroadcastServerAuthorityTransition(ownerId, null);
         }
 
         private RigidbodyStateData CaptureTargetState()
@@ -448,7 +473,8 @@ namespace PurrNet
                 angularVelocity = angVel,
                 parent = parentIdentity,
                 isSoftParent = isSoft,
-                time = Time.unscaledTimeAsDouble
+                time = Time.unscaledTimeAsDouble,
+                sequence = NextStateSequence()
             };
 
             if (ValidateOutgoingSnapshot(in stateData, "controller adoption"))
@@ -549,7 +575,8 @@ namespace PurrNet
                 angularVelocity = angVel,
                 parent = parentIdentity,
                 isSoftParent = isSoft,
-                time = Time.unscaledTimeAsDouble
+                time = Time.unscaledTimeAsDouble,
+                sequence = NextStateSequence()
             };
 
             bool sent = reliable
@@ -573,7 +600,11 @@ namespace PurrNet
                 return false;
 
             if (isServer)
+            {
+                if (!TryPrepareStateForServerRelay(ref stateData))
+                    return false;
                 SyncState(stateData);
+            }
             else
                 SendStateToServer(stateData);
             return true;
@@ -585,7 +616,11 @@ namespace PurrNet
                 return false;
 
             if (isServer)
+            {
+                if (!TryPrepareStateForServerRelay(ref stateData))
+                    return false;
                 SyncReliableState(stateData);
+            }
             else
                 SendReliableStateToServer(stateData);
             return true;
@@ -848,9 +883,12 @@ namespace PurrNet
             return senderTime + _senderTimeOffset;
         }
 
-        private void PushSnapshot(RigidbodyStateData data)
+        private void PushSnapshot(RigidbodyStateData data, bool orderAlreadyAccepted = false)
         {
             if (!ValidateIncomingSnapshot(in data, "snapshot"))
+                return;
+
+            if (!orderAlreadyAccepted && !TryAcceptStateOrder(in data))
                 return;
 
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
@@ -1036,13 +1074,14 @@ namespace PurrNet
         public RigidbodyTransformSpace space => _space;
 
         /// <summary>
-        /// When enabled, velocities synced in a parent or soft-parent frame are relative to
-        /// the parent Rigidbody's motion. Position and rotation sync frames are unchanged.
+        /// Parent-frame velocity is now always relative to the parent motion. This compatibility
+        /// property remains temporarily so existing integrations continue to compile.
         /// </summary>
+        [Obsolete("Parent-relative velocity is automatic whenever NetworkRigidbody uses a parent-local position frame. This property no longer changes behaviour.")]
         public bool syncVelocityRelativeToParent
         {
-            get => _syncVelocityRelativeToParent;
-            set => _syncVelocityRelativeToParent = value;
+            get => true;
+            set { }
         }
 
         /// <summary>
@@ -1073,15 +1112,9 @@ namespace PurrNet
         /// velocity sync in that identity's local frame, exactly as if parented there, but the
         /// Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides
         /// <see cref="space"/> while active. Pass null (or call <see cref="ClearSoftParent"/>) to revert.
-        /// Enable <see cref="syncVelocityRelativeToParent"/> if velocity should subtract the
-        /// parent Rigidbody's linear and angular motion instead of only changing axes.
-        ///
-        /// Opt-in and backwards compatible: with no soft-parent set the wire format and behaviour are
-        /// unchanged. Set it on the controller (the owner under client-auth, the server under
-        /// server-auth); calls from a non-controller are ignored. The flag rides every state packet
-        /// (<see cref="RigidbodyStateData.isSoftParent"/>), so receivers mirror it, it transfers across
-        /// an ownership handoff, and late joiners pick it up from their initial state — the new
-        /// controller keeps the same frame automatically.
+        /// Linear and angular velocity are always relative to the parent Rigidbody's motion while
+        /// this parent-local frame is active, so they remain valid derivatives for interpolation and
+        /// extrapolation. With no sync parent, position and velocity remain in world/absolute space.
         /// </summary>
         public void SetSoftParent(NetworkIdentity identity)
         {
@@ -1209,33 +1242,15 @@ namespace PurrNet
         private Vector3 ParentInverseTransformPoint(Transform parent, Vector3 world)
         {
             GetParentPose(parent, out var position, out var rotation);
-            return InverseScale(Quaternion.Inverse(rotation) * (world - position), parent.lossyScale);
-        }
-
-        private Vector3 ParentTransformVector(Transform parent, Vector3 local)
-        {
-            GetParentPose(parent, out _, out var rotation);
-            return rotation * Vector3.Scale(parent.lossyScale, local);
-        }
-
-        private Vector3 ParentInverseTransformVector(Transform parent, Vector3 world)
-        {
-            GetParentPose(parent, out _, out var rotation);
-            return InverseScale(Quaternion.Inverse(rotation) * world, parent.lossyScale);
+            return NetworkRigidbodyFrameMath.InverseScale(
+                Quaternion.Inverse(rotation) * (world - position),
+                parent.lossyScale);
         }
 
         private Quaternion ParentRotation(Transform parent)
         {
             GetParentPose(parent, out _, out var rotation);
             return rotation;
-        }
-
-        private static Vector3 InverseScale(Vector3 v, Vector3 s)
-        {
-            return new Vector3(
-                s.x != 0f ? v.x / s.x : v.x,
-                s.y != 0f ? v.y / s.y : v.y,
-                s.z != 0f ? v.z / s.z : v.z);
         }
 
         /// <summary>
@@ -1365,10 +1380,12 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            if (_syncVelocityRelativeToParent)
-                v -= GetParentPointVelocity(parent, _rigidbody.position);
-
-            return ParentInverseTransformVector(parent, v);
+            GetParentPose(parent, out _, out var parentRotation);
+            return NetworkRigidbodyFrameMath.ToParentLinearVelocity(
+                v,
+                GetParentPointVelocity(parent, _rigidbody.position),
+                parentRotation,
+                parent.lossyScale);
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
@@ -1379,10 +1396,10 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            if (_syncVelocityRelativeToParent)
-                v -= GetParentAngularVelocity(parent);
-
-            return Quaternion.Inverse(ParentRotation(parent)) * v;
+            return NetworkRigidbodyFrameMath.ToParentAngularVelocity(
+                v,
+                GetParentAngularVelocity(parent),
+                ParentRotation(parent));
         }
 
         /// <summary>
@@ -1420,11 +1437,12 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            var worldVelocity = ParentTransformVector(parent, v);
-            if (_syncVelocityRelativeToParent)
-                worldVelocity += GetParentPointVelocity(parent, worldPoint);
-
-            return worldVelocity;
+            GetParentPose(parent, out _, out var parentRotation);
+            return NetworkRigidbodyFrameMath.ToWorldLinearVelocity(
+                v,
+                GetParentPointVelocity(parent, worldPoint),
+                parentRotation,
+                parent.lossyScale);
         }
 
         private Vector3 ToWorldAngularVelocity(Vector3 v, Transform parent)
@@ -1432,11 +1450,10 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            var worldVelocity = ParentRotation(parent) * v;
-            if (_syncVelocityRelativeToParent)
-                worldVelocity += GetParentAngularVelocity(parent);
-
-            return worldVelocity;
+            return NetworkRigidbodyFrameMath.ToWorldAngularVelocity(
+                v,
+                GetParentAngularVelocity(parent),
+                ParentRotation(parent));
         }
 
         private Vector3 GetParentPointVelocity(Transform parent, Vector3 worldPoint)
@@ -1446,7 +1463,11 @@ namespace PurrNet
 
             var linear = NetworkRigidbodyPhysics.GetLinearVelocity(parentRigidbody);
             var angular = parentRigidbody.angularVelocity;
-            return linear + Vector3.Cross(angular, worldPoint - parentRigidbody.worldCenterOfMass);
+            return NetworkRigidbodyFrameMath.GetPointVelocity(
+                linear,
+                angular,
+                parentRigidbody.worldCenterOfMass,
+                worldPoint);
         }
 
         private Vector3 GetParentAngularVelocity(Transform parent)
@@ -1460,7 +1481,7 @@ namespace PurrNet
         {
             parentRigidbody = null;
 
-            if (!_syncVelocityRelativeToParent || !parent)
+            if (!parent)
                 return false;
 
             parentRigidbody = ResolveParentRigidbody(parent);
@@ -2042,6 +2063,9 @@ namespace PurrNet
             _rigidbody.useGravity = settings.useGravity;
             _rigidbody.isKinematic = settings.isKinematic;
 
+            if (!TryAcceptStateOrder(in data))
+                return;
+
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
 
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
@@ -2067,7 +2091,7 @@ namespace PurrNet
             _lastSyncedWasSettled = IsSettledState(data.linearVelocity, data.angularVelocity);
 
             ClearBuffer();
-            PushSnapshot(data);
+            PushSnapshot(data, true);
         }
 
         [TargetRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
@@ -2080,6 +2104,9 @@ namespace PurrNet
                 return;
 
             if (!ValidateIncomingSnapshot(in data, "ownership handoff"))
+                return;
+
+            if (!TryAcceptStateOrder(in data))
                 return;
 
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
@@ -2101,7 +2128,7 @@ namespace PurrNet
             _lastSyncedWasSettled = IsSettledState(data.linearVelocity, data.angularVelocity);
 
             ClearBuffer();
-            PushSnapshot(data);
+            PushSnapshot(data, true);
         }
 
         [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true, runLocally: true)]
@@ -2114,9 +2141,15 @@ namespace PurrNet
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
-        private void SendStateToServer(RigidbodyStateData data)
+        private void SendStateToServer(RigidbodyStateData data, RPCInfo info = default)
         {
             if (!ValidateIncomingSnapshot(in data, "server receive"))
+                return;
+
+            if (!IsCurrentControllerSender(info))
+                return;
+
+            if (!TryPrepareStateForServerRelay(ref data))
                 return;
 
             SyncState(data);
@@ -2132,9 +2165,15 @@ namespace PurrNet
         }
 
         [ServerRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
-        private void SendReliableStateToServer(RigidbodyStateData data)
+        private void SendReliableStateToServer(RigidbodyStateData data, RPCInfo info = default)
         {
             if (!ValidateIncomingSnapshot(in data, "reliable server receive"))
+                return;
+
+            if (!IsCurrentControllerSender(info))
+                return;
+
+            if (!TryPrepareStateForServerRelay(ref data))
                 return;
 
             SyncReliableState(data);

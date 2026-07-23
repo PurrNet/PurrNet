@@ -1,3 +1,43 @@
+## [1.21.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.1...v1.21.1-beta.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* Added network transform strategy scriptable ([2368995](https://github.com/PurrNet/PurrNet/commit/23689956943f9387bc4b7f1dfe943c48b09c6349))
+* Default predictive sync strategy ([c148083](https://github.com/PurrNet/PurrNet/commit/c148083d0d21c4eb6b491cafac501e6c6b1bea35))
+* Sender suppression added to Network Transform ([9a01631](https://github.com/PurrNet/PurrNet/commit/9a016318b761d829c19fb65df05f5baf15c04d67))
+
+## [1.21.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.0...v1.21.1-beta.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* network rigidbody inconsistencies with soft parenting ([eacac38](https://github.com/PurrNet/PurrNet/commit/eacac388e8ecf92f502bffc31e6c820e9a5de1ff))
+
+# [1.21.0](https://github.com/PurrNet/PurrNet/compare/v1.20.2...v1.21.0) (2026-07-21)
+
+
+### Bug Fixes
+
+* collider rollback improvements and incorrect math ([62375c2](https://github.com/PurrNet/PurrNet/commit/62375c2af2246ac5f14a0a3632259868d8d6d3a6))
+* collider rollback spatial performance ([37808ac](https://github.com/PurrNet/PurrNet/commit/37808ac7d96dab23c495b5ec74eb8af37f7f3dfa))
+* delta module cleanup crew comes too soon ([4032a9e](https://github.com/PurrNet/PurrNet/commit/4032a9e073bd2614c260affdbee70280ee85f071))
+* Network Rigidbody safety validation step for extreme values ([f895c2c](https://github.com/PurrNet/PurrNet/commit/f895c2c88bf0ca87480720c55fab50d37e679c63))
+* take over old connection if cookies match ([0e9b920](https://github.com/PurrNet/PurrNet/commit/0e9b920859f21157b8f6d62e4d62621506b219ae))
+
+
+### Features
+
+* collider rollback performance + benchmarks + tests ([5b5410d](https://github.com/PurrNet/PurrNet/commit/5b5410d46565cda221fa23ab4454c9c8315d73ee))
+* TryGetClosest for collder rollback ([4709f2c](https://github.com/PurrNet/PurrNet/commit/4709f2ce15284b3685e75c9bba3ceb33bcce21b0))
+
+# [1.21.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.3...v1.21.0-beta.4) (2026-07-21)
+
+
+### Bug Fixes
+
+* delta module cleanup crew comes too soon ([4032a9e](https://github.com/PurrNet/PurrNet/commit/4032a9e073bd2614c260affdbee70280ee85f071))
+
 # [1.21.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.21.0-beta.2...v1.21.0-beta.3) (2026-07-21)
 
 

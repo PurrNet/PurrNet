@@ -13,14 +13,14 @@ namespace ParrelSync
             {
                 if (paths != null && paths.Length > 0 && !EditorQuit.IsQuiting)
                 {
-                    EditorUtility.DisplayDialog(
+                    /*EditorUtility.DisplayDialog(
                         ClonesManager.ProjectName + ": Asset modifications saving detected and blocked",
                         "Asset modifications saving are blocked in the clone instance. \n\n" +
                         "This is a clone of the original project. \n" +
                         "Making changes to asset files via the clone editor is not recommended. \n" +
                         "Please use the original editor window if you want to make changes to the project files.",
                         "ok"
-                    );
+                    );*/
                     foreach (var path in paths)
                     {
                         Debug.Log("Attempting to save " + path + " are blocked.");

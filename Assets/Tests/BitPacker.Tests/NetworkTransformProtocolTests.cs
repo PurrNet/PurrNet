@@ -174,6 +174,143 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void ChordCheckAcceptsLinearHistoryAndRejectsDeviation()
+    {
+        var go = new GameObject(nameof(ChordCheckAcceptsLinearHistoryAndRejectsDeviation));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+
+            for (ushort tick = 0; tick <= 4; tick++)
+            {
+                SetField(nt, "_currentData", new NetworkTransformData
+                {
+                    position = (CompressedVector3)new Vector3(tick * 0.1f, 0f, 0f),
+                    rotation = Quaternion.identity,
+                    scale = Vector3.one
+                });
+                nt.CaptureUnreliableState(tick);
+            }
+
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 0, 4,
+                LinearState(new Vector3(0.4f, 0f, 0f))), Is.True);
+
+            SetField(nt, "_currentData", new NetworkTransformData
+            {
+                position = (CompressedVector3)new Vector3(0.9f, 0f, 0f),
+                rotation = Quaternion.identity,
+                scale = Vector3.one
+            });
+            nt.CaptureUnreliableState(2);
+
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 0, 4,
+                LinearState(new Vector3(0.4f, 0f, 0f))), Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
+    public void ChordCheckRejectsMissingHistory()
+    {
+        var go = new GameObject(nameof(ChordCheckRejectsMissingHistory));
+
+        try
+        {
+            var nt = go.AddComponent<NetworkTransform>();
+
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 10, 14,
+                LinearState(new Vector3(0.4f, 0f, 0f))), Is.False);
+
+            Assert.That(nt.IsChordInterpolable(LinearState(Vector3.zero), 10, 11,
+                LinearState(new Vector3(0.1f, 0f, 0f))), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
+    public void PredictionMatchesRespectsPerComponentTolerances()
+    {
+        var predicted = LinearState(Vector3.one);
+
+        var withinPos = LinearState(Vector3.one);
+        withinPos.data.position = new CompressedVector3(
+            new CompressedFloat(1000 + NTUnreliable.ADAPTIVE_POS_TOLERANCE),
+            new CompressedFloat(1000), new CompressedFloat(1000));
+        Assert.That(NTUnreliable.PredictionMatches(predicted, withinPos, default), Is.True);
+
+        var beyondPos = LinearState(Vector3.one);
+        beyondPos.data.position = new CompressedVector3(
+            new CompressedFloat(1000 + NTUnreliable.ADAPTIVE_POS_TOLERANCE + 1),
+            new CompressedFloat(1000), new CompressedFloat(1000));
+        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, default), Is.False);
+
+        var fastVelocity = new NetworkTransformVelocity { posX = 100 << NetworkTransformVelocity.FRACTION_BITS };
+        Assert.That(NTUnreliable.PredictionMatches(predicted, beyondPos, fastVelocity), Is.True);
+
+        var rotated = LinearState(Vector3.one);
+        rotated.data.rotation = Quaternion.Euler(0f, 5f, 0f);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, rotated, default), Is.False);
+
+        var scaled = LinearState(Vector3.one);
+        scaled.data.scale = (CompressedVector3)(Vector3.one * 1.5f);
+        Assert.That(NTUnreliable.PredictionMatches(predicted, scaled, default), Is.False);
+    }
+
+    [Test]
+    public void TickBasedVelocityRoundTripsLinearMotion()
+    {
+        var from = LinearState(Vector3.zero);
+        var to = LinearState(new Vector3(1.2f, -0.6f, 0.3f));
+
+        const int dist = 6;
+        var velocity = NetworkTransformVelocity.Derive(from, to, dist);
+        var predicted = NetworkTransformVelocity.Predict(from, velocity, dist);
+
+        Assert.That(predicted.data.position, Is.EqualTo(to.data.position));
+        Assert.That(NTUnreliable.PredictionMatches(predicted, to, velocity), Is.True);
+
+        var slowTo = LinearState(new Vector3(0.01f, 0f, 0f));
+        var slowVelocity = NetworkTransformVelocity.Derive(from, slowTo, 3);
+        var slowPredicted = NetworkTransformVelocity.Predict(from, slowVelocity, 3);
+        Assert.That(NTUnreliable.PredictionMatches(slowPredicted, slowTo, slowVelocity), Is.True);
+    }
+
+    [Test]
+    public void StateLerpBlendsAllComponents()
+    {
+        var a = LinearState(Vector3.zero);
+        var b = LinearState(new Vector3(1f, 0f, 0f));
+        b.data.scale = (CompressedVector3)(Vector3.one * 3f);
+
+        var mid = NetworkTransformVelocity.Lerp(a, b, 0.5f);
+
+        Assert.That(mid.data.position!.Value.x.rounded, Is.EqualTo(500));
+        Assert.That(mid.data.scale.x.rounded, Is.EqualTo(2000));
+        Assert.That(mid.data.rotation, Is.EqualTo((PackedQuaternion)Quaternion.identity));
+    }
+
+    private static NetworkTransformState LinearState(Vector3 position)
+    {
+        return new NetworkTransformState
+        {
+            frame = NetworkTransformFrame.World,
+            data = new NetworkTransformData
+            {
+                position = (CompressedVector3)position,
+                rotation = Quaternion.identity,
+                scale = Vector3.one
+            }
+        };
+    }
+
+    [Test]
     public void EntryBoundsRejectCursorRewindAndOverflow()
     {
         Assert.That(NetworkTransformModule.IsValidEntryBounds(10, 1, 11), Is.True);
@@ -196,7 +333,7 @@ public class NetworkTransformProtocolTests
             Packer<int>.Write(packer, 1);
             DeltaPacker<PackedInt>.Write(packer, default, new PackedInt(-1));
             DeltaPacker<NetworkID>.Write(packer, default, new NetworkID(10));
-            var malformed = new NetworkTransformUnreliableDelta(default, 1, packer);
+            var malformed = new NetworkTransformUnreliableDelta(default, 1, 0, packer);
             handler.Invoke(module, new object[] { PlayerID.Server, malformed, false });
         }
 
@@ -206,7 +343,7 @@ public class NetworkTransformProtocolTests
         using (var packer = BitPackerPool.Get())
         {
             Packer<int>.Write(packer, 0);
-            var validEmpty = new NetworkTransformUnreliableDelta(default, 2, packer);
+            var validEmpty = new NetworkTransformUnreliableDelta(default, 2, 0, packer);
             handler.Invoke(module, new object[] { PlayerID.Server, validEmpty, false });
         }
 
@@ -228,7 +365,7 @@ public class NetworkTransformProtocolTests
         {
             // Claims one entry, but omits its length, NetworkID, header, and body.
             Packer<int>.Write(packer, 1);
-            var truncated = new NetworkTransformUnreliableDelta(default, 1, packer);
+            var truncated = new NetworkTransformUnreliableDelta(default, 1, 0, packer);
 
             Assert.DoesNotThrow(() =>
                 handler.Invoke(module, new object[] { PlayerID.Server, truncated, false }));
@@ -402,11 +539,11 @@ public class NetworkTransformProtocolTests
             DisableSynchronizedFields(nt);
 
             Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)20), Is.True);
-            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, null, true), Is.False);
+            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, 0, null, true), Is.False);
             Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(20));
 
             Assert.That((bool)InvokePrivate(nt, "ForceAdoptRecvGen", (byte)250), Is.True);
-            Assert.That(nt.TryApplyUnreliableState(default, 3, 2, null, true), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(default, 3, 2, 0, null, true), Is.True);
             Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(3));
         }
         finally
@@ -427,7 +564,7 @@ public class NetworkTransformProtocolTests
             SetField(nt, "_recvGen", (byte)20);
             SetField(nt, "_hasRecvGen", true);
 
-            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, null, true), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(default, 10, 1, 0, null, true), Is.True);
             Assert.That(GetField<byte>(nt, "_recvGen"), Is.EqualTo(10));
         }
         finally
