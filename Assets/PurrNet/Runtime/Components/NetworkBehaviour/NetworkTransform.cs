@@ -762,7 +762,7 @@ namespace PurrNet
                 _rb2d, syncPosition, targetPosition, syncRotation, targetRotation);
         }
 
-        internal static void ApplyObserverRigidbodyPose(
+        private static void ApplyObserverRigidbodyPose(
             Rigidbody2D body, bool applyPosition, Vector3 targetPosition,
             bool applyRotation, Quaternion targetRotation)
         {
