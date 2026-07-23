@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -225,7 +224,6 @@ namespace PurrNet
         private NetworkTransformContactManager.Registration _networkDominantRegistration;
         private const float RIGIDBODY_VECTOR_EPSILON_SQR = 1e-8f;
         private const float RIGIDBODY_ROTATION_EPSILON = 0.005f;
-        private const float MIN_PHYSICS_DELTA = 1e-6f;
 #endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
@@ -589,7 +587,7 @@ namespace PurrNet
             AdoptState(state);
             _lastSentDelta = state.data;
             TeleportToState(state);
-            ApplyLerpedPosition(true);
+            ApplyLerpedPosition();
 
             int obCount = observers.Count;
             var localP = localPlayer;
@@ -639,7 +637,7 @@ namespace PurrNet
             AdoptState(state);
             _lastSentDelta = state.data;
             TeleportToState(state);
-            ApplyLerpedPosition(true);
+            ApplyLerpedPosition();
         }
 
         [TargetRpc]
@@ -658,153 +656,11 @@ namespace PurrNet
             if (applyPosition)
             {
                 TeleportToState(state);
-                ApplyLerpedPosition(true);
+                ApplyLerpedPosition();
             }
 
             return true;
         }
-
-#if UNITY_PHYSICS_3D
-        private void FixedUpdate()
-        {
-            if (!isSpawned || _cachedIsController || !_hasRigidbody || !_rb)
-                return;
-
-            float interpolationDelta = Time.fixedUnscaledDeltaTime;
-            float physicsDelta = Mathf.Max(Time.fixedDeltaTime, MIN_PHYSICS_DELTA);
-
-            if (syncPosition)
-            {
-                var worldPos = _position.Advance(interpolationDelta).position;
-                ApplyRigidbodyPosition(worldPos, physicsDelta);
-                position = worldPos;
-            }
-
-            if (syncRotation)
-            {
-                var worldRot = NormalizeQuaternion(_rotation.Advance(interpolationDelta).rotation);
-                ApplyRigidbodyRotation(worldRot, physicsDelta);
-                rotation = worldRot;
-            }
-        }
-
-        private void ApplyTeleportedRigidbodyPose()
-        {
-            if (syncPosition)
-            {
-                var worldPos = _position.Advance(0f).position;
-                if ((_rb.position - worldPos).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                    _rb.position = worldPos;
-                position = worldPos;
-            }
-
-            if (syncRotation)
-            {
-                var worldRot = NormalizeQuaternion(_rotation.Advance(0f).rotation);
-                if (Quaternion.Angle(_rb.rotation, worldRot) > RIGIDBODY_ROTATION_EPSILON)
-                    _rb.rotation = worldRot;
-                rotation = worldRot;
-            }
-        }
-
-        private void ApplyRigidbodyPosition(Vector3 targetPosition, float physicsDelta)
-        {
-            if (_rb.isKinematic)
-            {
-                if ((_rb.position - targetPosition).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                    _rb.MovePosition(targetPosition);
-                return;
-            }
-
-            var constraints = _rb.constraints;
-            var positionDelta = MaskPositionConstraints(targetPosition - _rb.position, constraints);
-            var desiredVelocity = Vector3.ClampMagnitude(
-                positionDelta / physicsDelta, _rb.maxLinearVelocity);
-            var velocityChange = MaskPositionConstraints(
-                desiredVelocity - NetworkRigidbodyPhysics.GetLinearVelocity(_rb), constraints);
-            velocityChange = Vector3.ClampMagnitude(velocityChange, _rb.maxLinearVelocity);
-
-            if (velocityChange.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                NetworkRigidbodyPhysics.AddForce(_rb, velocityChange, ForceMode.VelocityChange);
-        }
-
-        private void ApplyRigidbodyRotation(Quaternion targetRotation, float physicsDelta)
-        {
-            targetRotation = NormalizeQuaternion(targetRotation);
-
-            if (_rb.isKinematic)
-            {
-                if (Quaternion.Angle(_rb.rotation, targetRotation) > RIGIDBODY_ROTATION_EPSILON)
-                    _rb.MoveRotation(targetRotation);
-                return;
-            }
-
-            var rotationDelta = targetRotation * Quaternion.Inverse(_rb.rotation);
-            if (rotationDelta.w < 0f)
-            {
-                rotationDelta.x = -rotationDelta.x;
-                rotationDelta.y = -rotationDelta.y;
-                rotationDelta.z = -rotationDelta.z;
-                rotationDelta.w = -rotationDelta.w;
-            }
-
-            rotationDelta.ToAngleAxis(out float angle, out var axis);
-            var desiredAngularVelocity = Vector3.zero;
-
-            if (!float.IsNaN(axis.x) && axis.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-            {
-                if (angle > 180f)
-                    angle -= 360f;
-                desiredAngularVelocity = axis * (angle * Mathf.Deg2Rad / physicsDelta);
-            }
-
-            var constraints = _rb.constraints;
-            desiredAngularVelocity = MaskRotationConstraints(desiredAngularVelocity, constraints);
-            desiredAngularVelocity =
-                Vector3.ClampMagnitude(desiredAngularVelocity, _rb.maxAngularVelocity);
-            var angularVelocityChange = MaskRotationConstraints(
-                desiredAngularVelocity - _rb.angularVelocity, constraints);
-            angularVelocityChange = Vector3.ClampMagnitude(angularVelocityChange, _rb.maxAngularVelocity);
-
-            if (angularVelocityChange.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                NetworkRigidbodyPhysics.AddTorque(_rb, angularVelocityChange, ForceMode.VelocityChange);
-        }
-
-        [SuppressMessage("ReSharper", "BitwiseOperatorOnEnumWithoutFlags")]
-        private static Vector3 MaskPositionConstraints(Vector3 value, RigidbodyConstraints constraints)
-        {
-            if ((constraints & RigidbodyConstraints.FreezePositionX) != 0)
-                value.x = 0f;
-            if ((constraints & RigidbodyConstraints.FreezePositionY) != 0)
-                value.y = 0f;
-            if ((constraints & RigidbodyConstraints.FreezePositionZ) != 0)
-                value.z = 0f;
-            return value;
-        }
-
-        [SuppressMessage("ReSharper", "BitwiseOperatorOnEnumWithoutFlags")]
-        private Vector3 MaskRotationConstraints(Vector3 value, RigidbodyConstraints constraints)
-        {
-            var inertiaRotation = _rb.rotation * _rb.inertiaTensorRotation;
-            var localValue = Quaternion.Inverse(inertiaRotation) * value;
-            if ((constraints & RigidbodyConstraints.FreezeRotationX) != 0)
-                localValue.x = 0f;
-            if ((constraints & RigidbodyConstraints.FreezeRotationY) != 0)
-                localValue.y = 0f;
-            if ((constraints & RigidbodyConstraints.FreezeRotationZ) != 0)
-                localValue.z = 0f;
-            return inertiaRotation * localValue;
-        }
-
-        private static Quaternion NormalizeQuaternion(Quaternion q)
-        {
-            float dot = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
-            if (dot < 0.0001f)
-                return Quaternion.identity;
-            float inv = 1f / Mathf.Sqrt(dot);
-            return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
-        }
-#endif
 
         private void Update()
         {
@@ -886,32 +742,51 @@ namespace PurrNet
             RefreshLatestFrame();
         }
 
-        private void ApplyLerpedPosition(bool teleportRigidbody = false)
+        private void ApplyLerpedPosition()
         {
 #if UNITY_PHYSICS_3D
             bool hasRigidbody = _hasRigidbody && _rb;
             bool disableController = !hasRigidbody && _controller && _controller.enabled;
 
-            if (hasRigidbody && teleportRigidbody)
-                ApplyTeleportedRigidbodyPose();
-
             if (disableController && _characterControllerPatch)
                 _controller.enabled = false;
-#else
-            const bool hasRigidbody = false;
 #endif
 
-            if (syncPosition && !hasRigidbody)
+            if (syncPosition)
             {
                 var worldPos = _position.Advance(Time.unscaledDeltaTime).position;
-                _trs.position = worldPos;
+#if UNITY_PHYSICS_3D
+                if (hasRigidbody)
+                {
+                    if ((_rb.position - worldPos).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                        _rb.position = worldPos;
+                    if ((_trs.position - worldPos).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                        _trs.position = worldPos;
+                }
+                else
+#endif
+                {
+                    _trs.position = worldPos;
+                }
                 position = worldPos;
             }
 
-            if (syncRotation && !hasRigidbody)
+            if (syncRotation)
             {
                 var worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
-                _trs.rotation = worldRot;
+#if UNITY_PHYSICS_3D
+                if (hasRigidbody)
+                {
+                    if (Quaternion.Angle(_rb.rotation, worldRot) > RIGIDBODY_ROTATION_EPSILON)
+                        _rb.rotation = worldRot;
+                    if (Quaternion.Angle(_trs.rotation, worldRot) > RIGIDBODY_ROTATION_EPSILON)
+                        _trs.rotation = worldRot;
+                }
+                else
+#endif
+                {
+                    _trs.rotation = worldRot;
+                }
                 rotation = worldRot;
             }
 
@@ -1069,8 +944,6 @@ namespace PurrNet
         private byte _sendGen;
         private byte _recvGen;
         private bool _hasRecvGen;
-        // A reliable snapshot is an authoritative epoch anchor. After one arrives, a negative
-        // signed byte delta is stale; normal byte wrap still presents as a positive delta.
         private bool _hasAuthoritativeRecvGen;
         private long _lastAppliedOrder;
         private bool _hasAppliedSeq;

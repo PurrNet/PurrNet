@@ -32,17 +32,15 @@ namespace PurrNet
         {
             internal readonly PhysicsObjectId bodyId;
             internal readonly NetworkTransformContactDominance dominance;
-            internal readonly PhysicsObjectId[] colliderIds;
             internal readonly int generation;
 
             private int _disposed;
 
             internal Registration(PhysicsObjectId bodyId, NetworkTransformContactDominance dominance,
-                PhysicsObjectId[] colliderIds, int generation)
+                int generation)
             {
                 this.bodyId = bodyId;
                 this.dominance = dominance;
-                this.colliderIds = colliderIds;
                 this.generation = generation;
             }
 
@@ -81,25 +79,9 @@ namespace PurrNet
             }
         }
 
-        private sealed class ColliderClaim
-        {
-            internal readonly Collider collider;
-            internal readonly bool restoreToFalse;
-            internal int references;
-
-            internal ColliderClaim(Collider collider)
-            {
-                this.collider = collider;
-                restoreToFalse = !collider.hasModifiableContacts;
-                references = 1;
-            }
-        }
-
         private static readonly object _gate = new object();
         private static readonly Dictionary<PhysicsObjectId, BodyClaim> _bodyClaims =
             new Dictionary<PhysicsObjectId, BodyClaim>();
-        private static readonly Dictionary<PhysicsObjectId, ColliderClaim> _colliderClaims =
-            new Dictionary<PhysicsObjectId, ColliderClaim>();
 
         private static Dictionary<PhysicsObjectId, NetworkTransformContactDominance> _dominanceSnapshot =
             new Dictionary<PhysicsObjectId, NetworkTransformContactDominance>();
@@ -126,11 +108,17 @@ namespace PurrNet
                 return null;
 
             var bodyId = GetObjectId(body);
-            var colliderIds = new PhysicsObjectId[ownedColliders.Count];
 
             lock (_gate)
             {
                 EnsureSubscribed();
+
+                for (int i = 0; i < ownedColliders.Count; i++)
+                {
+                    var collider = ownedColliders[i];
+                    if (!collider.hasModifiableContacts)
+                        collider.hasModifiableContacts = true;
+                }
 
                 if (!_bodyClaims.TryGetValue(bodyId, out var bodyClaim))
                 {
@@ -146,26 +134,7 @@ namespace PurrNet
 
                 PublishSnapshot();
 
-                for (int i = 0; i < ownedColliders.Count; i++)
-                {
-                    var collider = ownedColliders[i];
-                    var colliderId = GetObjectId(collider);
-                    colliderIds[i] = colliderId;
-
-                    if (_colliderClaims.TryGetValue(colliderId, out var colliderClaim))
-                    {
-                        colliderClaim.references++;
-                        continue;
-                    }
-
-                    colliderClaim = new ColliderClaim(collider);
-                    _colliderClaims.Add(colliderId, colliderClaim);
-
-                    if (colliderClaim.restoreToFalse)
-                        collider.hasModifiableContacts = true;
-                }
-
-                return new Registration(bodyId, dominance, colliderIds, _generation);
+                return new Registration(bodyId, dominance, _generation);
             }
         }
 
@@ -175,23 +144,6 @@ namespace PurrNet
             {
                 if (registration.generation != _generation)
                     return;
-
-                for (int i = 0; i < registration.colliderIds.Length; i++)
-                {
-                    var colliderId = registration.colliderIds[i];
-                    if (!_colliderClaims.TryGetValue(colliderId, out var colliderClaim))
-                        continue;
-
-                    colliderClaim.references--;
-                    if (colliderClaim.references > 0)
-                        continue;
-
-                    if (colliderClaim.restoreToFalse && colliderClaim.collider &&
-                        colliderClaim.collider.hasModifiableContacts)
-                        colliderClaim.collider.hasModifiableContacts = false;
-
-                    _colliderClaims.Remove(colliderId);
-                }
 
                 if (_bodyClaims.TryGetValue(registration.bodyId, out var bodyClaim))
                 {
@@ -265,24 +217,14 @@ namespace PurrNet
                     continue;
 
                 var massProperties = pair.massProperties;
-                if (ApplyDominance(ref massProperties, first, second))
-                {
-                    for (int contactIndex = 0; contactIndex < pair.contactCount; contactIndex++)
-                        pair.IgnoreContact(contactIndex);
-                    continue;
-                }
-
+                ApplyDominance(ref massProperties, first, second);
                 pair.massProperties = massProperties;
             }
         }
 
-        internal static bool ApplyDominance(ref ModifiableMassProperties massProperties,
+        internal static void ApplyDominance(ref ModifiableMassProperties massProperties,
             NetworkTransformContactDominance first, NetworkTransformContactDominance second)
         {
-            if (first == NetworkTransformContactDominance.Full &&
-                second == NetworkTransformContactDominance.Full)
-                return true;
-
             if ((first & NetworkTransformContactDominance.Linear) != 0)
                 massProperties.inverseMassScale = 0f;
             if ((first & NetworkTransformContactDominance.Angular) != 0)
@@ -291,8 +233,6 @@ namespace PurrNet
                 massProperties.otherInverseMassScale = 0f;
             if ((second & NetworkTransformContactDominance.Angular) != 0)
                 massProperties.otherInverseInertiaScale = 0f;
-
-            return false;
         }
 
         internal static NetworkTransformContactDominance GetDominance(PhysicsObjectId bodyId)
@@ -319,14 +259,6 @@ namespace PurrNet
                 Physics.ContactModifyEventCCD -= ModifyContacts;
                 _subscribed = false;
 
-                foreach (var pair in _colliderClaims)
-                {
-                    var claim = pair.Value;
-                    if (claim.restoreToFalse && claim.collider && claim.collider.hasModifiableContacts)
-                        claim.collider.hasModifiableContacts = false;
-                }
-
-                _colliderClaims.Clear();
                 _bodyClaims.Clear();
                 Volatile.Write(ref _dominanceSnapshot,
                     new Dictionary<PhysicsObjectId, NetworkTransformContactDominance>());

@@ -38,12 +38,11 @@ public class NetworkTransformContactManagerTests
         massProperties.otherInverseMassScale = 3f;
         massProperties.otherInverseInertiaScale = 4f;
 
-        bool ignore = NetworkTransformContactManager.ApplyDominance(
+        NetworkTransformContactManager.ApplyDominance(
             ref massProperties,
             NetworkTransformContactDominance.Linear,
             NetworkTransformContactDominance.Angular);
 
-        Assert.That(ignore, Is.False);
         Assert.That(massProperties.inverseMassScale, Is.Zero);
         Assert.That(massProperties.inverseInertiaScale, Is.EqualTo(2f));
         Assert.That(massProperties.otherInverseMassScale, Is.EqualTo(3f));
@@ -51,7 +50,7 @@ public class NetworkTransformContactManagerTests
     }
 
     [Test]
-    public void TwoFullyDominantBodiesIgnoreThePair()
+    public void TwoFullyDominantBodiesZeroBothSides()
     {
         var massProperties = default(ModifiableMassProperties);
         massProperties.inverseMassScale = 1f;
@@ -59,20 +58,19 @@ public class NetworkTransformContactManagerTests
         massProperties.otherInverseMassScale = 1f;
         massProperties.otherInverseInertiaScale = 1f;
 
-        bool ignore = NetworkTransformContactManager.ApplyDominance(
+        NetworkTransformContactManager.ApplyDominance(
             ref massProperties,
             NetworkTransformContactDominance.Full,
             NetworkTransformContactDominance.Full);
 
-        Assert.That(ignore, Is.True);
-        Assert.That(massProperties.inverseMassScale, Is.EqualTo(1f));
-        Assert.That(massProperties.inverseInertiaScale, Is.EqualTo(1f));
-        Assert.That(massProperties.otherInverseMassScale, Is.EqualTo(1f));
-        Assert.That(massProperties.otherInverseInertiaScale, Is.EqualTo(1f));
+        Assert.That(massProperties.inverseMassScale, Is.Zero);
+        Assert.That(massProperties.inverseInertiaScale, Is.Zero);
+        Assert.That(massProperties.otherInverseMassScale, Is.Zero);
+        Assert.That(massProperties.otherInverseInertiaScale, Is.Zero);
     }
 
     [Test]
-    public void RegistrationCombinesDominanceAndRestoresColliderFlag()
+    public void RegistrationCombinesDominanceAndLeavesColliderEnabled()
     {
         var bodyObject = CreateObject("NetworkDominantBody");
         var body = bodyObject.AddComponent<Rigidbody>();
@@ -93,7 +91,7 @@ public class NetworkTransformContactManagerTests
             Is.EqualTo(NetworkTransformContactDominance.Angular));
 
         angular.Dispose();
-        Assert.That(collider.hasModifiableContacts, Is.False);
+        Assert.That(collider.hasModifiableContacts, Is.True);
         Assert.That(NetworkTransformContactManager.GetDominance(angular.bodyId),
             Is.EqualTo(NetworkTransformContactDominance.None));
     }
@@ -122,8 +120,8 @@ public class NetworkTransformContactManagerTests
 
         registration.Dispose();
 
-        Assert.That(rootCollider.hasModifiableContacts, Is.False);
-        Assert.That(compoundCollider.hasModifiableContacts, Is.False);
+        Assert.That(rootCollider.hasModifiableContacts, Is.True);
+        Assert.That(compoundCollider.hasModifiableContacts, Is.True);
         Assert.That(nestedCollider.hasModifiableContacts, Is.False);
     }
 
@@ -139,6 +137,20 @@ public class NetworkTransformContactManagerTests
         registration.Dispose();
 
         Assert.That(collider.hasModifiableContacts, Is.True);
+    }
+
+    [Test]
+    public void RegistrationDoesNotRestoreColliderFlagAfterExternalWrite()
+    {
+        var bodyObject = CreateObject("ExternalContactModification");
+        var body = bodyObject.AddComponent<Rigidbody>();
+        var collider = bodyObject.AddComponent<BoxCollider>();
+
+        var registration = Register(body, NetworkTransformContactDominance.Full);
+        collider.hasModifiableContacts = false;
+        registration.Dispose();
+
+        Assert.That(collider.hasModifiableContacts, Is.False);
     }
 
     [UnityTest]
@@ -188,6 +200,152 @@ public class NetworkTransformContactManagerTests
             yield return unload;
     }
 
+    [UnityTest]
+    public IEnumerator TwoDominantBodiesRetainCallbacksWithoutResponding()
+    {
+        var scene = SceneManager.CreateScene(
+            $"NetworkDominantPair-{Guid.NewGuid():N}",
+            new CreateSceneParameters(LocalPhysicsMode.Physics3D));
+        var physicsScene = scene.GetPhysicsScene();
+
+        var movingObject = CreateObject("MovingDominantBody");
+        SceneManager.MoveGameObjectToScene(movingObject, scene);
+        movingObject.transform.position = new Vector3(-1.5f, 0f, 0f);
+        var movingBody = movingObject.AddComponent<Rigidbody>();
+        movingBody.useGravity = false;
+        movingObject.AddComponent<BoxCollider>();
+        var movingProbe = movingObject.AddComponent<NetworkTransformPhysicsEventProbe>();
+
+        var stationaryObject = CreateObject("StationaryDominantBody");
+        SceneManager.MoveGameObjectToScene(stationaryObject, scene);
+        stationaryObject.transform.position = Vector3.zero;
+        var stationaryBody = stationaryObject.AddComponent<Rigidbody>();
+        stationaryBody.useGravity = false;
+        stationaryObject.AddComponent<BoxCollider>();
+        var stationaryProbe = stationaryObject.AddComponent<NetworkTransformPhysicsEventProbe>();
+
+        var movingRegistration = Register(movingBody, NetworkTransformContactDominance.Full);
+        var stationaryRegistration = Register(stationaryBody, NetworkTransformContactDominance.Full);
+        NetworkRigidbodyPhysics.SetLinearVelocity(movingBody, Vector3.right * 4f);
+
+        for (int step = 0; step < 70; step++)
+            physicsScene.Simulate(0.02f);
+
+        Assert.That(
+            NetworkRigidbodyPhysics.GetLinearVelocity(movingBody).x,
+            Is.EqualTo(4f).Within(0.1f));
+        Assert.That(
+            NetworkRigidbodyPhysics.GetLinearVelocity(stationaryBody).sqrMagnitude,
+            Is.LessThan(0.01f));
+        Assert.That(movingProbe.collisionEnterCount, Is.EqualTo(1));
+        Assert.That(movingProbe.collisionStayCount, Is.GreaterThan(0));
+        Assert.That(movingProbe.collisionExitCount, Is.EqualTo(1));
+        Assert.That(stationaryProbe.collisionEnterCount, Is.EqualTo(1));
+        Assert.That(stationaryProbe.collisionStayCount, Is.GreaterThan(0));
+        Assert.That(stationaryProbe.collisionExitCount, Is.EqualTo(1));
+
+        movingRegistration.Dispose();
+        stationaryRegistration.Dispose();
+        var unload = SceneManager.UnloadSceneAsync(scene);
+        if (unload != null)
+            yield return unload;
+    }
+
+    [UnityTest]
+    public IEnumerator RepeatedPoseWritesKeepCollisionCallbacksContinuous()
+    {
+        var scene = SceneManager.CreateScene(
+            $"NetworkDominantPoseWrites-{Guid.NewGuid():N}",
+            new CreateSceneParameters(LocalPhysicsMode.Physics3D));
+        var physicsScene = scene.GetPhysicsScene();
+
+        var dominantObject = CreateObject("DominantPoseBody");
+        SceneManager.MoveGameObjectToScene(dominantObject, scene);
+        dominantObject.transform.position = new Vector3(-1.5f, 0f, 0f);
+        var dominantBody = dominantObject.AddComponent<Rigidbody>();
+        dominantBody.useGravity = false;
+        dominantObject.AddComponent<BoxCollider>();
+        var probe = dominantObject.AddComponent<NetworkTransformPhysicsEventProbe>();
+
+        var wall = CreateObject("StaticWall");
+        SceneManager.MoveGameObjectToScene(wall, scene);
+        wall.transform.position = Vector3.zero;
+        wall.AddComponent<BoxCollider>();
+
+        var registration = Register(dominantBody, NetworkTransformContactDominance.Full);
+
+        for (int step = 0; step < 20; step++)
+        {
+            var target = new Vector3(-0.9f + step * 0.01f, 0f, 0f);
+            dominantBody.position = target;
+            dominantObject.transform.position = target;
+            physicsScene.Simulate(0.02f);
+        }
+
+        Assert.That(probe.collisionEnterCount, Is.EqualTo(1));
+        Assert.That(probe.collisionStayCount, Is.GreaterThan(0));
+
+        dominantBody.position = new Vector3(2f, 0f, 0f);
+        dominantObject.transform.position = dominantBody.position;
+        physicsScene.Simulate(0.02f);
+        physicsScene.Simulate(0.02f);
+
+        Assert.That(probe.collisionExitCount, Is.EqualTo(1));
+
+        registration.Dispose();
+        var unload = SceneManager.UnloadSceneAsync(scene);
+        if (unload != null)
+            yield return unload;
+    }
+
+    [UnityTest]
+    public IEnumerator RepeatedPoseWritesKeepTriggerCallbacksContinuous()
+    {
+        var scene = SceneManager.CreateScene(
+            $"NetworkDominantTriggerPoseWrites-{Guid.NewGuid():N}",
+            new CreateSceneParameters(LocalPhysicsMode.Physics3D));
+        var physicsScene = scene.GetPhysicsScene();
+
+        var dominantObject = CreateObject("DominantTriggerBody");
+        SceneManager.MoveGameObjectToScene(dominantObject, scene);
+        dominantObject.transform.position = new Vector3(-1.5f, 0f, 0f);
+        var dominantBody = dominantObject.AddComponent<Rigidbody>();
+        dominantBody.useGravity = false;
+        dominantObject.AddComponent<BoxCollider>();
+        var probe = dominantObject.AddComponent<NetworkTransformPhysicsEventProbe>();
+
+        var triggerObject = CreateObject("StaticTrigger");
+        SceneManager.MoveGameObjectToScene(triggerObject, scene);
+        triggerObject.transform.position = Vector3.zero;
+        var trigger = triggerObject.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+
+        var registration = Register(dominantBody, NetworkTransformContactDominance.Full);
+
+        for (int step = 0; step < 20; step++)
+        {
+            var target = new Vector3(-0.9f + step * 0.01f, 0f, 0f);
+            dominantBody.position = target;
+            dominantObject.transform.position = target;
+            physicsScene.Simulate(0.02f);
+        }
+
+        Assert.That(probe.triggerEnterCount, Is.EqualTo(1));
+        Assert.That(probe.triggerStayCount, Is.GreaterThan(0));
+
+        dominantBody.position = new Vector3(2f, 0f, 0f);
+        dominantObject.transform.position = dominantBody.position;
+        physicsScene.Simulate(0.02f);
+        physicsScene.Simulate(0.02f);
+
+        Assert.That(probe.triggerExitCount, Is.EqualTo(1));
+
+        registration.Dispose();
+        var unload = SceneManager.UnloadSceneAsync(scene);
+        if (unload != null)
+            yield return unload;
+    }
+
     private NetworkTransformContactManager.Registration Register(
         Rigidbody body, NetworkTransformContactDominance dominance)
     {
@@ -202,6 +360,46 @@ public class NetworkTransformContactManagerTests
         var value = new GameObject(name);
         _objects.Add(value);
         return value;
+    }
+}
+
+public sealed class NetworkTransformPhysicsEventProbe : MonoBehaviour
+{
+    public int collisionEnterCount { get; private set; }
+    public int collisionStayCount { get; private set; }
+    public int collisionExitCount { get; private set; }
+    public int triggerEnterCount { get; private set; }
+    public int triggerStayCount { get; private set; }
+    public int triggerExitCount { get; private set; }
+
+    private void OnCollisionEnter(Collision _)
+    {
+        collisionEnterCount++;
+    }
+
+    private void OnCollisionStay(Collision _)
+    {
+        collisionStayCount++;
+    }
+
+    private void OnCollisionExit(Collision _)
+    {
+        collisionExitCount++;
+    }
+
+    private void OnTriggerEnter(Collider _)
+    {
+        triggerEnterCount++;
+    }
+
+    private void OnTriggerStay(Collider _)
+    {
+        triggerStayCount++;
+    }
+
+    private void OnTriggerExit(Collider _)
+    {
+        triggerExitCount++;
     }
 }
 #endif
