@@ -21,9 +21,14 @@ namespace PurrNet
         [SerializeField, Space(-5), Header("Sync Settings"), PurrLock]
         private bool _ownerAuth;
 
+        [SerializeField, PurrLock]
+        private bool _ownerOnly;
+
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
 
         public bool ownerAuth => _ownerAuth;
+
+        public bool ownerOnly => _ownerOnly;
 
         public float sendIntervalInSeconds
         {
@@ -92,7 +97,7 @@ namespace PurrNet
         {
             InvalidateIsController();
 
-            if (_ownerAuth && isServer)
+            if (isServer && (_ownerAuth || _ownerOnly))
                 SendLatestState(ownerId, _id, _value);
         }
 
@@ -110,6 +115,15 @@ namespace PurrNet
 
                 if (isOwner)
                     SetDirty();
+            }
+
+            if (asServer && _ownerOnly)
+            {
+                if (oldOwner.HasValue && oldOwner != newOwner)
+                    SendLatestState(oldOwner.Value, _id, _initialValue);
+
+                if (!_ownerAuth && newOwner.HasValue)
+                    SendLatestState(newOwner.Value, _id, _value);
             }
         }
 
@@ -160,6 +174,9 @@ namespace PurrNet
 
         public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
+            if (_ownerOnly && owner != player)
+                return;
+
             if (isSpawner && ownerAuth && owner == player)
                 return;
 
@@ -210,16 +227,22 @@ namespace PurrNet
 
         private void ForceSendUnreliable()
         {
-            if (isServer)
+            if (!isServer)
+                SendToServer(++_id, _value);
+            else if (!_ownerOnly)
                 SendToAll(++_id, _value);
-            else SendToServer(++_id, _value);
+            else if (owner.HasValue)
+                SendToOwner(owner.Value, ++_id, _value);
         }
 
         private void ForceSendReliable()
         {
-            if (isServer)
+            if (!isServer)
+                SendToServerReliably(++_id, _value);
+            else if (!_ownerOnly)
                 SendToAllReliably(++_id, _value);
-            else SendToServerReliably(++_id, _value);
+            else if (owner.HasValue)
+                SendToOwnerReliably(owner.Value, ++_id, _value);
         }
 
         public void FlushImmediately()
@@ -267,12 +290,13 @@ namespace PurrNet
         [SerializeField, HideInInspector]
         private T _initialValue;
 
-        public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
+        public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false, bool ownerOnly = false)
         {
             _initialValue = initialValue;
             _value = initialValue;
             _sendIntervalInSeconds = sendIntervalInSeconds;
             _ownerAuth = ownerAuth;
+            _ownerOnly = ownerOnly;
         }
 
         [TargetRpc, UsedImplicitly]
@@ -298,6 +322,24 @@ namespace PurrNet
             TriggerEvents(oldValue);
         }
 
+        [TargetRpc(Channel.Unreliable)]
+        private void SendToOwner(PlayerID player, PackedULong packetId, T newValue)
+        {
+            if (isServer)
+                return;
+
+            OnReceivedValue(packetId, newValue);
+        }
+
+        [TargetRpc(Channel.ReliableOrdered)]
+        private void SendToOwnerReliably(PlayerID player, PackedULong packetId, T newValue)
+        {
+            if (isServer)
+                return;
+
+            OnReceivedValue(packetId, newValue);
+        }
+
         [ServerRpc(Channel.Unreliable, requireOwnership: true)]
         private void SendToServer(PackedULong packetId, T newValue)
         {
@@ -305,7 +347,8 @@ namespace PurrNet
                 return;
 
             OnReceivedValue(packetId, newValue);
-            SendToOthers(packetId, newValue);
+            if (!_ownerOnly)
+                SendToOthers(packetId, newValue);
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
@@ -315,7 +358,8 @@ namespace PurrNet
                 return;
 
             OnReceivedValue(packetId, newValue);
-            SendToOthersReliably(packetId, newValue);
+            if (!_ownerOnly)
+                SendToOthersReliably(packetId, newValue);
         }
 
         [ObserversRpc(Channel.Unreliable, excludeOwner: true)]
