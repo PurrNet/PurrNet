@@ -5,17 +5,17 @@ using UnityEngine;
 namespace PurrNet
 {
     /// <summary>
-    /// How aggressively adaptive sync skips sends. Higher levels tolerate larger deviations
-    /// between predicted and actual motion before breaking a skip streak, saving more
-    /// bandwidth at the cost of reconstruction precision on receivers.
+    /// How aggressively adaptive sync skips sends. More aggressive levels tolerate larger
+    /// deviations between predicted and actual motion before breaking a skip streak, saving
+    /// more bandwidth at the cost of reconstruction precision on receivers.
     /// </summary>
     public enum AdaptiveSyncLevel : byte
     {
         Off = 0,
-        Low = 1,
+        Conservative = 1,
         Balanced = 2,
-        High = 3,
-        VeryHigh = 4
+        Aggressive = 3,
+        VeryAggressive = 4
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ namespace PurrNet
         {
             switch (level)
             {
-                case AdaptiveSyncLevel.Low:
+                case AdaptiveSyncLevel.Conservative:
                     toleranceVelocityShift = 4;
                     toleranceCapMultiplier = 8;
                     interpVerifyProbes = 5;
@@ -102,14 +102,14 @@ namespace PurrNet
                     maxSendInterval = 0.3f;
                     breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
                     break;
-                case AdaptiveSyncLevel.High:
+                case AdaptiveSyncLevel.Aggressive:
                     toleranceVelocityShift = 2;
                     toleranceCapMultiplier = 64;
                     interpVerifyProbes = 3;
                     maxSendInterval = 0.3f;
                     breakRedundancy = NTUnreliable.BREAK_REDUNDANCY;
                     break;
-                case AdaptiveSyncLevel.VeryHigh:
+                case AdaptiveSyncLevel.VeryAggressive:
                     toleranceVelocityShift = 0;
                     toleranceCapMultiplier = 0;
                     interpVerifyProbes = 1;

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -56,12 +57,12 @@ namespace PurrNet
         private InterpolationTiming _interpolationTiming = InterpolationTiming.Update;
 
         [Tooltip("Skips sends while motion stays reconstructible by receivers, reducing bandwidth " +
-                 "for steady motion (linear or curved) without adding render delay. Higher levels " +
-                 "skip more aggressively at the cost of reconstruction precision on observers. " +
-                 "Erratic motion falls back to normal per-tick syncing automatically.")]
-        
-        [SerializeField, PurrLock]
-        private AdaptiveSyncLevel _adaptiveSync = AdaptiveSyncLevel.Balanced;
+                 "for steady motion (linear or curved) without adding render delay. More aggressive " +
+                 "levels skip more at the cost of reconstruction precision on observers. Erratic " +
+                 "motion falls back to normal per-tick syncing automatically. Can be changed at " +
+                 "runtime; inspector changes during play replicate to all peers.")]
+        [SerializeField, InspectorName("Adaptive Sync")]
+        private AdaptiveSyncLevel _adaptiveSynchronization = AdaptiveSyncLevel.Balanced;
 
         private NetworkTransformSyncStrategy _customStrategy;
         private NetworkTransformSyncStrategy _activeStrategy;
@@ -149,7 +150,7 @@ namespace PurrNet
         /// </summary>
         public bool adaptiveSync
         {
-            get => _adaptiveSync != AdaptiveSyncLevel.Off;
+            get => _adaptiveSynchronization != AdaptiveSyncLevel.Off;
             set => adaptiveSyncLevel = value ? AdaptiveSyncLevel.Balanced : AdaptiveSyncLevel.Off;
         }
 
@@ -159,16 +160,66 @@ namespace PurrNet
         /// injected strategies keep their own tuning (see
         /// <see cref="NetworkTransformSyncStrategy.ApplyLevel"/>) and any level other than
         /// <see cref="AdaptiveSyncLevel.Off"/> activates them unchanged.
+        /// Setting this at runtime re-initializes the sync stream locally; it is NOT replicated
+        /// to other peers — set it everywhere yourself. Changing the value in the inspector
+        /// during play mode does replicate, so all peers stay consistent while tuning.
         /// </summary>
         public AdaptiveSyncLevel adaptiveSyncLevel
         {
-            get => _adaptiveSync;
-            set
-            {
-                _adaptiveSync = value;
-                ApplyStrategySettings();
-            }
+            get => _adaptiveSynchronization;
+            set => ApplyAdaptiveLevelInternal(value);
         }
+
+        private void ApplyAdaptiveLevelInternal(AdaptiveSyncLevel level)
+        {
+            if (_adaptiveSynchronization == level)
+                return;
+
+            _adaptiveSynchronization = level;
+#if UNITY_EDITOR
+            _inspectorAdaptiveSync = level;
+#endif
+            ApplyStrategySettings();
+
+            if (isSpawned)
+                ResetUnreliableStream();
+        }
+
+        [ServerRpc(requireOwnership: false)]
+        private void RequestAdaptiveLevelChange(AdaptiveSyncLevel level)
+        {
+            SyncAdaptiveLevelChange(level);
+        }
+
+        [ObserversRpc(runLocally: true, bufferLast: true)]
+        private void SyncAdaptiveLevelChange(AdaptiveSyncLevel level)
+        {
+            ApplyAdaptiveLevelInternal(level);
+        }
+
+#if UNITY_EDITOR
+        private AdaptiveSyncLevel _inspectorAdaptiveSync;
+
+        private void OnValidate()
+        {
+            if (!Application.isPlaying || !isSpawned)
+            {
+                _inspectorAdaptiveSync = _adaptiveSynchronization;
+                return;
+            }
+
+            if (_adaptiveSynchronization == _inspectorAdaptiveSync)
+                return;
+
+            var level = _adaptiveSynchronization;
+            _adaptiveSynchronization = _inspectorAdaptiveSync;
+
+            if (isServer)
+                SyncAdaptiveLevelChange(level);
+            else
+                RequestAdaptiveLevelChange(level);
+        }
+#endif
 
         private ushort _skipCacheFrom;
         private ushort _skipCacheCurrent;
@@ -214,9 +265,9 @@ namespace PurrNet
 
         private void ApplyStrategySettings()
         {
-            _activeStrategy = _adaptiveSync == AdaptiveSyncLevel.Off
+            _activeStrategy = _adaptiveSynchronization == AdaptiveSyncLevel.Off
                 ? null
-                : _customStrategy ?? _defaultStrategies[Mathf.Clamp((int)_adaptiveSync, 1, 4) - 1];
+                : _customStrategy ?? _defaultStrategies[Mathf.Clamp((int)_adaptiveSynchronization, 1, 4) - 1];
             _hasStrategy = _activeStrategy != null;
 
             if (!_hasStrategy)
