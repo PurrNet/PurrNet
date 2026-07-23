@@ -1,3 +1,14 @@
+## [1.21.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.2...v1.21.1-beta.3) (2026-07-23)
+
+
+### Bug Fixes
+
+* ensure rot is normalized ([d60c8ba](https://github.com/PurrNet/PurrNet/commit/d60c8ba32b256c2309e105aca44dfbd3f38a6732))
+* improve NT and rigibody behavior ([590069b](https://github.com/PurrNet/PurrNet/commit/590069b738ec4c0bcda276b735ceb32360d29d4e))
+* revert back to simpler velocity based method ([00cb6b0](https://github.com/PurrNet/PurrNet/commit/00cb6b0ceba907a8cc669dd1cbff6ddd92e38c56))
+* simplify NT logic and prefer SetPositionAndRotation when both pos and rot changed ([d96947d](https://github.com/PurrNet/PurrNet/commit/d96947d4f57d6b295ba8b5e2d288d83f1919ec8a))
+* try to emulate isKinematic without isKinematic ([1f0d3ad](https://github.com/PurrNet/PurrNet/commit/1f0d3ad49aef75ffc7fe6637005d4ed89b36741e))
+
 ## [1.21.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.1...v1.21.1-beta.2) (2026-07-22)
 
 
