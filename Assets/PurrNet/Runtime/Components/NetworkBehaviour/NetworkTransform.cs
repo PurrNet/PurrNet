@@ -31,10 +31,6 @@ namespace PurrNet
         [SerializeField, PurrLock]
         private bool _syncParent = true;
 
-        [Tooltip("Forces any attached Rigidbody to sleep if not the controller, to ensure better syncing when RB is present.")]
-        [SerializeField, PurrLock]
-        private bool _forceSleepRb = true;
-
         [Header("How to Sync")]
         [Tooltip("What to interpolate when syncing the transform.")]
         [SerializeField, PurrLock]
@@ -198,7 +194,7 @@ namespace PurrNet
             var nm = networkManager;
             if (nm && nm.tickModule != null)
                 _adaptiveSpacing = Mathf.Clamp(
-                    Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy.maxSendInterval), 2,
+                    Mathf.RoundToInt(nm.tickModule.tickRate * _activeStrategy!.maxSendInterval), 2,
                     CAPTURE_HISTORY_SIZE - 2);
         }
 
@@ -230,6 +226,16 @@ namespace PurrNet
         private Rigidbody2D _rb2d;
         private bool _hasRigidbody2D;
 #endif
+        private const float POSE_VECTOR_EPSILON_SQR = 1e-8f;
+#if UNITY_PHYSICS_2D
+        private const float RIGIDBODY_2D_ROTATION_EPSILON = 0.005f;
+#endif
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+        private Transform _networkPosePositionParent;
+        private Vector3 _networkPosePositionAnchor;
+        private Transform _networkPoseRotationParent;
+        private Quaternion _networkPoseRotationAnchor;
+#endif
 #if UNITY_PHYSICS_3D
         private CharacterController _controller;
 #endif
@@ -239,16 +245,12 @@ namespace PurrNet
         public Vector3 localScale { get; private set; }
 
         private Action _onLateLateUpdate;
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+        private Action _onLateFixedUpdate;
+#endif
 
         private bool _positionTransformExplicit;
         private bool _useAbsoluteFrame;
-
-#if UNITY_PHYSICS_3D
-        private Vector3 _pendingRbPosition;
-        private Quaternion _pendingRbRotation;
-        private bool _pendingRbHasPosition;
-        private bool _pendingRbHasRotation;
-#endif
 
         public INetworkTransformPositionTransform positionTransform { get; private set; }
 
@@ -271,6 +273,9 @@ namespace PurrNet
         private void Awake()
         {
             _onLateLateUpdate = LateLateUpdate;
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+            _onLateFixedUpdate = LateFixedUpdate;
+#endif
             _trs = transform;
 #if UNITY_PHYSICS_3D
             _rb = GetComponent<Rigidbody>();
@@ -280,12 +285,21 @@ namespace PurrNet
 #if UNITY_PHYSICS_2D
             _rb2d = GetComponent<Rigidbody2D>();
             _hasRigidbody2D = _rb2d;
+#if UNITY_PHYSICS_3D
+            if (_hasRigidbody)
+                _hasRigidbody2D = false;
 #endif
+#endif
+            CacheCurrentPose();
         }
 
         private void OnEnable()
         {
+            CacheCurrentPose();
             UnityLatestUpdate.onLatestUpdate += _onLateLateUpdate;
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+            UnityLatestUpdate.onFixedUpdate += _onLateFixedUpdate;
+#endif
 
             if (!_trs)
                 return;
@@ -307,11 +321,15 @@ namespace PurrNet
         private void OnDisable()
         {
             UnityLatestUpdate.onLatestUpdate -= _onLateLateUpdate;
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+            UnityLatestUpdate.onFixedUpdate -= _onLateFixedUpdate;
+#endif
         }
 
         protected override void OnEarlySpawn()
         {
             _trs = transform;
+            CacheCurrentPose();
             ReCacheIsController();
             ResolvePositionTransform();
 
@@ -351,10 +369,6 @@ namespace PurrNet
 
             ResetUnreliableRecvState();
             BumpSendGen();
-#if UNITY_PHYSICS_3D
-            _pendingRbHasPosition = false;
-            _pendingRbHasRotation = false;
-#endif
             RefreshLatestFrame();
             _currentFrame = _latestFrame;
             _currentParentId = _latestParentId;
@@ -666,58 +680,131 @@ namespace PurrNet
         }
 
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-        private void FixedUpdate()
+        private void LateFixedUpdate()
         {
-            if (!isSpawned)
-                return;
-
-            if (_cachedIsController)
+            if (!isSpawned || _cachedIsController)
                 return;
 
 #if UNITY_PHYSICS_3D
-            ApplyPendingRigidbodyPose();
-#endif
-
-            if (_forceSleepRb)
-            {
-#if UNITY_PHYSICS_3D
-                if (_hasRigidbody && _rb) _rb.Sleep();
+            StabilizeObserverRigidbody();
 #endif
 #if UNITY_PHYSICS_2D
-                if (_hasRigidbody2D && _rb2d) _rb2d.Sleep();
+            StabilizeObserverRigidbody2D();
 #endif
-            }
         }
 #endif
 
 #if UNITY_PHYSICS_3D
-        private void ApplyPendingRigidbodyPose()
+        private void StabilizeObserverRigidbody()
         {
-            if (!_hasRigidbody || !_rb)
+            if (_cachedIsController || !_hasRigidbody)
                 return;
 
-            if (_pendingRbHasPosition)
+            var targetPosition = syncPosition ? ResolveNetworkPosePosition() : position;
+            var targetRotation = syncRotation ? ResolveNetworkPoseRotation() : rotation;
+
+            ApplyObserverRigidbodyPose(
+                _rb, syncPosition, targetPosition, syncRotation, targetRotation);
+        }
+
+        internal static void ApplyObserverRigidbodyPose(
+            Rigidbody body, bool applyPosition, Vector3 targetPosition,
+            bool applyRotation, Quaternion targetRotation)
+        {
+            if (!body)
+                return;
+
+            if (applyPosition)
             {
-                _pendingRbHasPosition = false;
-                if ((_rb.position - _pendingRbPosition).sqrMagnitude > 0.00000001f)
-                {
-                    if (_forceSleepRb)
-                        _rb.position = _pendingRbPosition;
-                    else
-                        _rb.MovePosition(_pendingRbPosition);
-                }
+                if ((body.position - targetPosition).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
+                    body.position = targetPosition;
             }
 
-            if (_pendingRbHasRotation)
+            if (applyRotation)
             {
-                _pendingRbHasRotation = false;
-                if (Quaternion.Angle(_rb.rotation, _pendingRbRotation) > 0.005f)
-                {
-                    if (_forceSleepRb)
-                        _rb.rotation = _pendingRbRotation;
-                    else
-                        _rb.MoveRotation(_pendingRbRotation);
-                }
+                if (HasRotationChanged(body.rotation, targetRotation))
+                    body.rotation = targetRotation;
+            }
+
+            if (body.isKinematic)
+                return;
+
+            if (applyPosition)
+            {
+                NetworkRigidbodyPhysics.SetLinearVelocity(body, Vector3.zero);
+
+                var accumulatedForce = body.GetAccumulatedForce();
+                body.AddForce(-accumulatedForce, ForceMode.Force);
+                if (body.useGravity)
+                    body.AddForce(-Physics.gravity, ForceMode.Acceleration);
+            }
+
+            if (applyRotation)
+            {
+                NetworkRigidbodyPhysics.SetAngularVelocity(body, Vector3.zero);
+
+                var accumulatedTorque = body.GetAccumulatedTorque();
+                body.AddTorque(-accumulatedTorque, ForceMode.Force);
+            }
+        }
+#endif
+
+#if UNITY_PHYSICS_2D
+        private void StabilizeObserverRigidbody2D()
+        {
+            if (_cachedIsController || !_hasRigidbody2D || !_rb2d)
+                return;
+
+            var targetPosition = syncPosition ? ResolveNetworkPosePosition() : position;
+            var targetRotation = syncRotation ? ResolveNetworkPoseRotation() : rotation;
+
+            ApplyObserverRigidbodyPose(
+                _rb2d, syncPosition, targetPosition, syncRotation, targetRotation);
+        }
+
+        private static void ApplyObserverRigidbodyPose(
+            Rigidbody2D body, bool applyPosition, Vector3 targetPosition,
+            bool applyRotation, Quaternion targetRotation)
+        {
+            if (!body)
+                return;
+
+            if (applyPosition)
+            {
+                var worldPosition = new Vector2(targetPosition.x, targetPosition.y);
+                if ((body.position - worldPosition).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
+                    body.position = worldPosition;
+            }
+
+            if (applyRotation)
+            {
+                float worldRotation = targetRotation.eulerAngles.z;
+                if (Mathf.Abs(Mathf.DeltaAngle(body.rotation, worldRotation)) >
+                    RIGIDBODY_2D_ROTATION_EPSILON)
+                    body.rotation = worldRotation;
+            }
+
+            if (body.bodyType != RigidbodyType2D.Dynamic)
+                return;
+
+            if (applyPosition)
+            {
+                body.totalForce = Vector2.zero;
+#if UNITY_6000_0_OR_NEWER
+                body.linearVelocity = Vector2.zero;
+#else
+                body.velocity = Vector2.zero;
+#endif
+                if (!Mathf.Approximately(body.gravityScale, 0f))
+                    body.AddForce(
+                        -Physics2D.gravity * (body.gravityScale * body.mass),
+                        ForceMode2D.Force);
+            }
+
+            if (applyRotation)
+            {
+                body.angularVelocity = 0f;
+                body.totalTorque = 0f;
             }
         }
 #endif
@@ -747,17 +834,60 @@ namespace PurrNet
                 _latestData = GetCurrentTransformData();
                 RefreshLatestFrame();
                 TeleportToData(_latestData);
-            }
-            else
-            {
-#if UNITY_PHYSICS_3D
-                if (_rb) _rb.WakeUp();
-#endif
-#if UNITY_PHYSICS_2D
-                if (_rb2d) _rb2d.WakeUp();
-#endif
+                CacheCurrentPose();
             }
         }
+
+        private void CacheCurrentPose()
+        {
+            if (!_trs)
+                return;
+
+            position = _trs.position;
+            rotation = _trs.rotation;
+            localScale = _trs.localScale;
+
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+            CaptureNetworkPosePosition(position);
+            CaptureNetworkPoseRotation(rotation);
+#endif
+        }
+
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+        private void CaptureNetworkPosePosition(Vector3 worldPosition)
+        {
+            var nparent = _syncPosition == SyncMode.Local ? _trs.parent : null;
+            _networkPosePositionParent = nparent;
+            _networkPosePositionAnchor = nparent
+                ? nparent.InverseTransformPoint(worldPosition)
+                : worldPosition;
+        }
+
+        private Vector3 ResolveNetworkPosePosition()
+        {
+            var nparent = _networkPosePositionParent;
+            return _syncPosition == SyncMode.Local && nparent && _trs.parent == nparent
+                ? nparent.TransformPoint(_networkPosePositionAnchor)
+                : position;
+        }
+
+        private void CaptureNetworkPoseRotation(Quaternion worldRotation)
+        {
+            var nparent = _syncRotation == SyncMode.Local ? _trs.parent : null;
+            _networkPoseRotationParent = nparent;
+            _networkPoseRotationAnchor = nparent
+                ? Quaternion.Inverse(nparent.rotation) * worldRotation
+                : worldRotation;
+        }
+
+        private Quaternion ResolveNetworkPoseRotation()
+        {
+            var nparent = _networkPoseRotationParent;
+            return _syncRotation == SyncMode.Local && nparent && _trs.parent == nparent
+                ? nparent.rotation * _networkPoseRotationAnchor
+                : rotation;
+        }
+#endif
 
         private void UpdateNT()
         {
@@ -775,44 +905,87 @@ namespace PurrNet
         private void ApplyLerpedPosition()
         {
 #if UNITY_PHYSICS_3D
-            bool disableController = _controller && _controller.enabled;
+            bool hasRigidbody = _hasRigidbody && _rb;
+            bool disableController = !hasRigidbody && _controller && _controller.enabled;
 
             if (disableController && _characterControllerPatch)
                 _controller.enabled = false;
 #endif
+#if UNITY_PHYSICS_2D
+            bool hasRigidbody2D = _hasRigidbody2D && _rb2d;
+#endif
+
+            var worldPos = position;
+            var worldRot = rotation;
+            bool applyTransformPosition = false;
+            bool applyTransformRotation = false;
 
             if (syncPosition)
             {
-                var worldPos = _position.Advance(Time.unscaledDeltaTime).position;
+                worldPos = _position.Advance(Time.unscaledDeltaTime).position;
 #if UNITY_PHYSICS_3D
-                if (_hasRigidbody && _rb)
+                if (hasRigidbody)
                 {
-                    _pendingRbPosition = worldPos;
-                    _pendingRbHasPosition = true;
+                    if ((_rb.position - worldPos).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
+                        _rb.position = worldPos;
                 }
-                else
 #endif
+#if UNITY_PHYSICS_2D
+                if (hasRigidbody2D)
                 {
-                    _trs.position = worldPos;
+                    var worldPosition2D = new Vector2(worldPos.x, worldPos.y);
+                    if ((_rb2d.position - worldPosition2D).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
+                        _rb2d.position = worldPosition2D;
                 }
+#endif
+                applyTransformPosition =
+                    (_trs.position - worldPos).sqrMagnitude > POSE_VECTOR_EPSILON_SQR;
                 position = worldPos;
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+                CaptureNetworkPosePosition(worldPos);
+#endif
             }
 
             if (syncRotation)
             {
-                var worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
+                worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
 #if UNITY_PHYSICS_3D
-                if (_hasRigidbody && _rb)
+                if (hasRigidbody)
                 {
-                    _pendingRbRotation = worldRot;
-                    _pendingRbHasRotation = true;
+                    if (HasRotationChanged(_rb.rotation, worldRot))
+                        _rb.rotation = worldRot;
                 }
-                else
 #endif
+#if UNITY_PHYSICS_2D
+                if (hasRigidbody2D)
                 {
-                    _trs.rotation = worldRot;
+                    float worldRotation2D = worldRot.eulerAngles.z;
+                    if (Mathf.Abs(Mathf.DeltaAngle(_rb2d.rotation, worldRotation2D)) >
+                        RIGIDBODY_2D_ROTATION_EPSILON)
+                        _rb2d.rotation = worldRotation2D;
                 }
+#endif
+                applyTransformRotation = HasRotationChanged(_trs.rotation, worldRot);
                 rotation = worldRot;
+#if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
+                CaptureNetworkPoseRotation(worldRot);
+#endif
+            }
+
+            switch (applyTransformPosition)
+            {
+                case true when applyTransformRotation:
+                    _trs.SetPositionAndRotation(worldPos, worldRot);
+                    break;
+                case true:
+                    _trs.position = worldPos;
+                    break;
+                default:
+                {
+                    if (applyTransformRotation)
+                        _trs.rotation = worldRot;
+                    break;
+                }
             }
 
             if (syncScale)
@@ -820,7 +993,8 @@ namespace PurrNet
                 var worldScale = _scale.Advance(Time.unscaledDeltaTime).scale;
                 var parentTrs = _trs.parent;
                 var ls = parentTrs ? parentTrs.GetLocalScale(worldScale) : worldScale;
-                _trs.localScale = ls;
+                if (!_trs.localScale.Equals(ls))
+                    _trs.localScale = ls;
                 this.localScale = ls;
             }
 
@@ -828,6 +1002,11 @@ namespace PurrNet
             if (disableController && _characterControllerPatch)
                 _controller.enabled = true;
 #endif
+        }
+
+        private static bool HasRotationChanged(Quaternion current, Quaternion target)
+        {
+            return Quaternion.Angle(current, target) > 0f;
         }
 
         private NetworkTransformData GetCurrentTransformData()
@@ -968,8 +1147,6 @@ namespace PurrNet
         private byte _sendGen;
         private byte _recvGen;
         private bool _hasRecvGen;
-        // A reliable snapshot is an authoritative epoch anchor. After one arrives, a negative
-        // signed byte delta is stale; normal byte wrap still presents as a positive delta.
         private bool _hasAuthoritativeRecvGen;
         private long _lastAppliedOrder;
         private bool _hasAppliedSeq;
@@ -1044,14 +1221,11 @@ namespace PurrNet
         private NetworkTransformVelocity _anchorVelocity;
         private uint _anchorLocalTick;
         private ushort _anchorSenderTick;
-        private int _anchorGap;
         private bool _hasAdaptiveAnchor;
 
         private NetworkTransformState _prevAnchorState;
         private NetworkTransformVelocity _prevAnchorVelocity;
-        private uint _prevAnchorLocalTick;
         private ushort _prevAnchorSenderTick;
-        private int _prevAnchorGap;
         private bool _hasPrevAnchor;
 
         private uint _lastAdaptiveTick;
@@ -1183,7 +1357,7 @@ namespace PurrNet
             _seamOffset = Vector3.zero;
         }
 
-        private void SetAdaptiveAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity, int gap)
+        private void SetAdaptiveAnchor(in NetworkTransformState state, in NetworkTransformVelocity velocity)
         {
             var nm = networkManager;
             uint localTick = nm && nm.tickModule != null ? nm.tickModule.localTick : 0u;
@@ -1192,9 +1366,7 @@ namespace PurrNet
             {
                 _prevAnchorState = _anchorState;
                 _prevAnchorVelocity = _anchorVelocity;
-                _prevAnchorLocalTick = _anchorLocalTick;
                 _prevAnchorSenderTick = _anchorSenderTick;
-                _prevAnchorGap = _anchorGap;
                 _hasPrevAnchor = true;
                 _corrPending = true;
             }
@@ -1203,7 +1375,6 @@ namespace PurrNet
             _anchorVelocity = velocity;
             _anchorLocalTick = localTick;
             _anchorSenderTick = _lastAppliedSenderTick;
-            _anchorGap = gap;
             _hasAdaptiveAnchor = true;
         }
 
@@ -1374,7 +1545,7 @@ namespace PurrNet
             {
                 var s = target.data.scale;
                 var scale = new Vector3(s.x.value, s.y.value, s.z.value) + _corrScaleOffset * _corrWeight;
-                target.data.scale = (CompressedVector3)scale;
+                target.data.scale = scale;
             }
         }
 
@@ -1939,7 +2110,7 @@ namespace PurrNet
                 if (isAbsolute)
                 {
                     ClearAdaptiveAnchors();
-                    SetAdaptiveAnchor(state, default, 0);
+                    SetAdaptiveAnchor(state, default);
                     TeleportBuffers(state, p);
                 }
                 else
@@ -1948,7 +2119,7 @@ namespace PurrNet
                     var velocity = velocityGap >= 1
                         ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
                         : default;
-                    SetAdaptiveAnchor(state, velocity, velocityGap);
+                    SetAdaptiveAnchor(state, velocity);
                 }
 
                 PushReceivedSample(senderTick, state);

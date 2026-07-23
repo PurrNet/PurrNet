@@ -144,7 +144,6 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 1
   _syncParent: 1
-  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
