@@ -1,3 +1,10 @@
+## [1.21.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.7...v1.21.1-beta.8) (2026-07-23)
+
+
+### Bug Fixes
+
+* Improved rest state of adaptive sync ([3105841](https://github.com/PurrNet/PurrNet/commit/310584132605f52e27c288beeaf65fc976d3b627))
+
 ## [1.21.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.6...v1.21.1-beta.7) (2026-07-23)
 
 
