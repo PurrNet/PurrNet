@@ -184,7 +184,7 @@ namespace PurrNet.Modules
         public const byte BREAK_REDUNDANCY = 2;
         public const int REDUNDANCY_INTERVAL = 2;
         public const int VOUCH_SLACK_TICKS = 1;
-        public const int INTERP_VERIFY_PROBES = 3;
+        public const int INTERP_VERIFY_PROBES = 5;
 
         public static NetworkTransformState GetDeltaPrediction(in NetworkTransformState baseline,
             in NetworkTransformVelocity velocity, int distance)

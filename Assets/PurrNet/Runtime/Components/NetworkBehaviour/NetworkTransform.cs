@@ -813,6 +813,12 @@ namespace PurrNet
         {
             if (_interpolationTiming == InterpolationTiming.Update)
                 UpdateNT();
+
+            if (_adaptiveDebugDump && _trs && !_cachedIsController)
+            {
+                var wp = _trs.position;
+                DebugDumpLine($"frame,time={Time.unscaledTime:F4},pos={wp.x:F4}|{wp.y:F4}|{wp.z:F4}");
+            }
         }
 
         private void LateUpdate()
@@ -1205,6 +1211,7 @@ namespace PurrNet
         private const float RENDER_RATE_GAIN = 0.2f;
         private const float RENDER_RATE_MAX_SLOWDOWN = 0.5f;
         private const float RENDER_RATE_MAX_CATCHUP = 1f;
+        private const int ADAPTIVE_RENDER_BUFFER_TICKS = 2;
 
         private float _renderRel;
         private bool _hasRenderTimeline;
@@ -1299,6 +1306,21 @@ namespace PurrNet
 
             short into = (short)(targetTick - lowerTick);
 
+            if (span > _adaptiveSpacing)
+            {
+                if (!hasPrev || prevState.frame != lowerState.frame ||
+                    !prevState.parentId.Equals(lowerState.parentId))
+                    return lowerState;
+
+                int prevGap = (short)(lowerTick - prevTick);
+                if (prevGap < 1)
+                    return lowerState;
+
+                var restChord = NetworkTransformVelocity.Derive(prevState, lowerState, prevGap);
+                int steps = into < _adaptiveSpacing ? into : _adaptiveSpacing;
+                return NetworkTransformVelocity.Predict(lowerState, restChord, steps);
+            }
+
             if (lowerState.frame != upperState.frame || !lowerState.parentId.Equals(upperState.parentId))
             {
                 if (!hasPrev || prevState.frame != lowerState.frame ||
@@ -1379,6 +1401,44 @@ namespace PurrNet
             _hasAdaptiveAnchor = true;
         }
 
+        [SerializeField] private bool _adaptiveDebugDump;
+        private System.IO.StreamWriter _debugWriter;
+
+        internal bool adaptiveDebugDumpEnabled => _adaptiveDebugDump;
+
+        internal static string DebugPos(in NetworkTransformState state)
+        {
+            var p = state.data.position;
+            return p.HasValue ? $"{p.Value.x.value:F4}|{p.Value.y.value:F4}|{p.Value.z.value:F4}" : "na";
+        }
+
+        internal void DebugDumpLine(string line)
+        {
+            if (!_adaptiveDebugDump)
+                return;
+
+            if (_debugWriter == null)
+            {
+                var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "purrnet_nt_debug");
+                System.IO.Directory.CreateDirectory(dir);
+                string role = isServer ? "server" : "client";
+                int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+                var path = System.IO.Path.Combine(dir, $"nt_{role}_{name}_{pid}.log");
+                _debugWriter = new System.IO.StreamWriter(path, false) { AutoFlush = true };
+                _debugWriter.WriteLine($"start,time={System.DateTime.Now:HH:mm:ss.fff},tickRate={(networkManager && networkManager.tickModule != null ? networkManager.tickModule.tickRate : 0)},spacing={_adaptiveSpacing}");
+                PurrNet.Logging.PurrLogger.Log($"[NT DEBUG] dumping to {path}");
+            }
+
+            _debugWriter.WriteLine(line);
+        }
+
+        public float adaptiveDebugRenderRel { get; private set; }
+        public float adaptiveDebugTargetRel { get; private set; }
+        public float adaptiveDebugTicksBehindData { get; private set; }
+        public float adaptiveDebugCorrWeight { get; private set; }
+        public bool adaptiveDebugHasVouch { get; private set; }
+        public bool adaptiveDebugExtrapolating { get; private set; }
+
         internal bool TryTickAdaptiveRender(uint localTick, ushort vouchedTick, bool hasVouched,
             out NetworkTransformState state)
         {
@@ -1392,12 +1452,12 @@ namespace PurrNet
 
             _lastAdaptiveTick = localTick;
 
-            long maxAhead = _adaptiveSpacing + 2;
+            long maxAhead = _adaptiveSpacing;
             float targetRel;
 
             if (hasVouched)
             {
-                targetRel = (short)(vouchedTick - _lastAppliedSenderTick);
+                targetRel = (short)(vouchedTick - _lastAppliedSenderTick) - ADAPTIVE_RENDER_BUFFER_TICKS;
             }
             else
             {
@@ -1429,6 +1489,15 @@ namespace PurrNet
             ushort tickA = (ushort)(_lastAppliedSenderTick + relFloor);
             ushort tickB = (ushort)(tickA + 1);
 
+            adaptiveDebugRenderRel = _renderRel;
+            adaptiveDebugTargetRel = targetRel;
+            adaptiveDebugHasVouch = hasVouched;
+            adaptiveDebugExtrapolating = relFloor >= 0;
+            adaptiveDebugCorrWeight = _hasCorrOffset ? _corrWeight : 0f;
+            adaptiveDebugTicksBehindData = _recvCount > 0
+                ? (short)(_recvTicks[_recvHead] - tickA) - frac
+                : 0f;
+
             var target = SampleAdaptiveAt(relFloor, tickA);
             if (frac > 0f)
             {
@@ -1449,21 +1518,23 @@ namespace PurrNet
                 target.frame == _anchorState.frame && target.parentId.Equals(_anchorState.parentId))
             {
                 long prevAge = (short)(tickA - _prevAnchorSenderTick);
-                if (prevAge < 0)
-                    prevAge = 0;
-                if (prevAge > maxAhead + _adaptiveSpacing)
-                    prevAge = maxAhead + _adaptiveSpacing;
 
-                var old = SampleOldAnchorAt(tickA, (int)prevAge);
-                if (frac > 0f)
+                if (prevAge > 0)
                 {
-                    var oldNext = SampleOldAnchorAt(tickB, (int)prevAge + 1);
-                    if (oldNext.frame == old.frame && oldNext.parentId.Equals(old.parentId))
-                        old = NetworkTransformVelocity.Lerp(old, oldNext, frac);
-                }
+                    if (prevAge > maxAhead + _adaptiveSpacing)
+                        prevAge = maxAhead + _adaptiveSpacing;
 
-                if (old.frame == target.frame && old.parentId.Equals(target.parentId))
-                    CaptureCorrectionOffset(old, target);
+                    var old = SampleOldAnchorAt(tickA, (int)prevAge);
+                    if (frac > 0f)
+                    {
+                        var oldNext = SampleOldAnchorAt(tickB, (int)prevAge + 1);
+                        if (oldNext.frame == old.frame && oldNext.parentId.Equals(old.parentId))
+                            old = NetworkTransformVelocity.Lerp(old, oldNext, frac);
+                    }
+
+                    if (old.frame == target.frame && old.parentId.Equals(target.parentId))
+                        CaptureCorrectionOffset(old, target);
+                }
             }
 
             _corrPending = false;
@@ -1479,6 +1550,20 @@ namespace PurrNet
                     _hasCorrOffset = false;
                 else
                     ApplyCorrectionOffset(ref target);
+            }
+
+            if (_adaptiveDebugDump)
+            {
+                var dp = target.data.position;
+                string vouchRel = hasVouched ? ((short)(vouchedTick - _lastAppliedSenderTick)).ToString() : "na";
+                string newestRel = _recvCount > 0
+                    ? ((short)(_recvTicks[_recvHead] - _lastAppliedSenderTick)).ToString()
+                    : "na";
+                DebugDumpLine(
+                    $"render,localTick={localTick},anchor={_lastAppliedSenderTick},rel={_renderRel:F2},target={targetRel:F2}," +
+                    $"vouchRel={vouchRel},newestRel={newestRel},recvCount={_recvCount},extrap={relFloor >= 0}," +
+                    $"corr={(_hasCorrOffset ? _corrWeight : 0f):F3},corrPosMag={_corrPosOffset.magnitude:F4}," +
+                    $"pos={(dp.HasValue ? $"{dp.Value.x.value:F4}|{dp.Value.y.value:F4}|{dp.Value.z.value:F4}" : "na")}");
             }
 
             state = target;
@@ -1577,6 +1662,9 @@ namespace PurrNet
 
         internal void ApplyAdaptiveSample(in NetworkTransformState state, NetworkIdentity frameParent)
         {
+            if (_adaptiveDebugDump)
+                DebugDumpLine($"sample,pos={DebugPos(state)},seam={_seamOffset.magnitude:F4}");
+
             var p = state.frame switch
             {
                 NetworkTransformFrame.LocalIdentity => frameParent.transform,
@@ -2113,6 +2201,10 @@ namespace PurrNet
                     ClearAdaptiveAnchors();
                     SetAdaptiveAnchor(state, default);
                     TeleportBuffers(state, p);
+
+                    if (_adaptiveDebugDump)
+                        DebugDumpLine($"apply,senderTick={senderTick},abs=True,order={packetOrder}," +
+                                      $"pos={DebugPos(state)}");
                 }
                 else
                 {
@@ -2121,6 +2213,10 @@ namespace PurrNet
                         ? NetworkTransformVelocity.Derive(previous, state, velocityGap)
                         : default;
                     SetAdaptiveAnchor(state, velocity);
+
+                    if (_adaptiveDebugDump)
+                        DebugDumpLine($"apply,senderTick={senderTick},abs=False,order={packetOrder},gap={gap}," +
+                                      $"velY={velocity.posY},pos={DebugPos(state)}");
                 }
 
                 PushReceivedSample(senderTick, state);
