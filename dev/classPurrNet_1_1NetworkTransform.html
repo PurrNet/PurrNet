@@ -514,8 +514,12 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasSyncStrategy</b><c
 <tr class="separator:a04cf05293af9b2b88c43d57f858b0fd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a05cccb7d2459e3ec5db19b40d21a5576"><td class="memItemLeft" align="right" valign="top"><a id="a05cccb7d2459e3ec5db19b40d21a5576" name="a05cccb7d2459e3ec5db19b40d21a5576"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveSync</b><code> [get, set]</code></td></tr>
-<tr class="memdesc:a05cccb7d2459e3ec5db19b40d21a5576"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether adaptive reduced-rate syncing is enabled. Uses the built-in default strategy unless a custom strategy is injected via <a class="el" href="classPurrNet_1_1NetworkTransform.html#a6e23dad683f3574435d7e20f3eb5b2ea" title="Injects a custom sync strategy. Pass null to revert to the built-in default strategy....">SetSyncStrategy</a>.  <br /></td></tr>
+<tr class="memdesc:a05cccb7d2459e3ec5db19b40d21a5576"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether adaptive reduced-rate syncing is enabled. Setting true selects AdaptiveSyncLevel.Balanced; use <a class="el" href="classPurrNet_1_1NetworkTransform.html#a07e664ab85adf985eea668b7567ca6cc" title="How aggressively adaptive sync skips sends. Uses the built-in default strategy tuned for the level un...">adaptiveSyncLevel</a> for finer control.  <br /></td></tr>
 <tr class="separator:a05cccb7d2459e3ec5db19b40d21a5576"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a07e664ab85adf985eea668b7567ca6cc"><td class="memItemLeft" align="right" valign="top"><a id="a07e664ab85adf985eea668b7567ca6cc" name="a07e664ab85adf985eea668b7567ca6cc"></a>
+<a class="el" href="namespacePurrNet.html#a956417b194545f047bfb679ad25f2c20">AdaptiveSyncLevel</a>&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveSyncLevel</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a07e664ab85adf985eea668b7567ca6cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">How aggressively adaptive sync skips sends. Uses the built-in default strategy tuned for the level unless a custom strategy is injected via <a class="el" href="classPurrNet_1_1NetworkTransform.html#a6e23dad683f3574435d7e20f3eb5b2ea" title="Injects a custom sync strategy. Pass null to revert to the built-in default strategy....">SetSyncStrategy</a>; injected strategies keep their own tuning (see <a class="el" href="classPurrNet_1_1NetworkTransformSyncStrategy.html#a32850a35467db65b4779b1fd08914f40" title="Sets the tolerance, verification, and send-interval knobs to the preset for the given level....">NetworkTransformSyncStrategy.ApplyLevel</a>) and any level other than AdaptiveSyncLevel.Off activates them unchanged. Setting this at runtime re-initializes the sync stream locally; it is NOT replicated to other peers — set it everywhere yourself. Changing the value in the inspector during play mode does replicate, so all peers stay consistent while tuning.  <br /></td></tr>
+<tr class="separator:a07e664ab85adf985eea668b7567ca6cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a74fbd42902427639654fcf9cb696243c"><td class="memItemLeft" align="right" valign="top"><a id="a74fbd42902427639654fcf9cb696243c" name="a74fbd42902427639654fcf9cb696243c"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>latestReadPosition</b><code> [get]</code></td></tr>
 <tr class="separator:a74fbd42902427639654fcf9cb696243c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -537,24 +541,6 @@ Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>localScale</b><cod
 <tr class="memitem:aeffac023ec4a511661b67e7448c96367"><td class="memItemLeft" align="right" valign="top"><a id="aeffac023ec4a511661b67e7448c96367" name="aeffac023ec4a511661b67e7448c96367"></a>
 <a class="el" href="interfacePurrNet_1_1INetworkTransformPositionTransform.html">INetworkTransformPositionTransform</a>&#160;</td><td class="memItemRight" valign="bottom"><b>positionTransform</b><code> [get]</code></td></tr>
 <tr class="separator:aeffac023ec4a511661b67e7448c96367"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac7eab461bd23b2d34cbc7434f9d813e6"><td class="memItemLeft" align="right" valign="top"><a id="ac7eab461bd23b2d34cbc7434f9d813e6" name="ac7eab461bd23b2d34cbc7434f9d813e6"></a>
-float&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveDebugRenderRel</b><code> [get]</code></td></tr>
-<tr class="separator:ac7eab461bd23b2d34cbc7434f9d813e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa0acdf109b55f73b3512081edf5f3bca"><td class="memItemLeft" align="right" valign="top"><a id="aa0acdf109b55f73b3512081edf5f3bca" name="aa0acdf109b55f73b3512081edf5f3bca"></a>
-float&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveDebugTargetRel</b><code> [get]</code></td></tr>
-<tr class="separator:aa0acdf109b55f73b3512081edf5f3bca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad3ec349c419a22c414b0bd86c4e84b83"><td class="memItemLeft" align="right" valign="top"><a id="ad3ec349c419a22c414b0bd86c4e84b83" name="ad3ec349c419a22c414b0bd86c4e84b83"></a>
-float&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveDebugTicksBehindData</b><code> [get]</code></td></tr>
-<tr class="separator:ad3ec349c419a22c414b0bd86c4e84b83"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a402534d7d29a4d37123e7623ae00686b"><td class="memItemLeft" align="right" valign="top"><a id="a402534d7d29a4d37123e7623ae00686b" name="a402534d7d29a4d37123e7623ae00686b"></a>
-float&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveDebugCorrWeight</b><code> [get]</code></td></tr>
-<tr class="separator:a402534d7d29a4d37123e7623ae00686b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8e3e1a11afce5a1e9071e513a41b00a0"><td class="memItemLeft" align="right" valign="top"><a id="a8e3e1a11afce5a1e9071e513a41b00a0" name="a8e3e1a11afce5a1e9071e513a41b00a0"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveDebugHasVouch</b><code> [get]</code></td></tr>
-<tr class="separator:a8e3e1a11afce5a1e9071e513a41b00a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9272edfadd1123cae6cb3e717f37edab"><td class="memItemLeft" align="right" valign="top"><a id="a9272edfadd1123cae6cb3e717f37edab" name="a9272edfadd1123cae6cb3e717f37edab"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveDebugExtrapolating</b><code> [get]</code></td></tr>
-<tr class="separator:a9272edfadd1123cae6cb3e717f37edab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('properties_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:a1522cd87b4ab0a7206b51e1d7d282f19 inherit properties_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a1522cd87b4ab0a7206b51e1d7d282f19" name="a1522cd87b4ab0a7206b51e1d7d282f19"></a>
 <a class="el" href="classPurrNet_1_1Modules_1_1RollbackModule.html">RollbackModule</a>&#160;</td><td class="memItemRight" valign="bottom"><b>rollbackModule</b><code> [get]</code></td></tr>

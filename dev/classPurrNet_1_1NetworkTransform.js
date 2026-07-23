@@ -15,6 +15,7 @@ var classPurrNet_1_1NetworkTransform =
     [ "OnSpawned", "classPurrNet_1_1NetworkTransform.html#a733f4622da6b84d2348ca835818f8f27", null ],
     [ "SetSyncStrategy", "classPurrNet_1_1NetworkTransform.html#a6e23dad683f3574435d7e20f3eb5b2ea", null ],
     [ "adaptiveSync", "classPurrNet_1_1NetworkTransform.html#a05cccb7d2459e3ec5db19b40d21a5576", null ],
+    [ "adaptiveSyncLevel", "classPurrNet_1_1NetworkTransform.html#a07e664ab85adf985eea668b7567ca6cc", null ],
     [ "hasSyncStrategy", "classPurrNet_1_1NetworkTransform.html#a04cf05293af9b2b88c43d57f858b0fd2", null ],
     [ "interpolatePosition", "classPurrNet_1_1NetworkTransform.html#a6eb2d20269fcccdbc3b01a29c502df79", null ],
     [ "interpolateRotation", "classPurrNet_1_1NetworkTransform.html#ae47ea9711efb9cd7fdc3e2dfd84735e3", null ],
