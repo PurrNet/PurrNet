@@ -226,9 +226,11 @@ namespace PurrNet
         private Rigidbody2D _rb2d;
         private bool _hasRigidbody2D;
 #endif
+        private const float POSE_VECTOR_EPSILON_SQR = 1e-8f;
+#if UNITY_PHYSICS_2D
+        private const float RIGIDBODY_2D_ROTATION_EPSILON = 0.005f;
+#endif
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-        private const float RIGIDBODY_VECTOR_EPSILON_SQR = 1e-8f;
-        private const float RIGIDBODY_ROTATION_EPSILON = 0.005f;
         private Transform _networkPosePositionParent;
         private Vector3 _networkPosePositionAnchor;
         private Transform _networkPoseRotationParent;
@@ -714,13 +716,13 @@ namespace PurrNet
 
             if (applyPosition)
             {
-                if ((body.position - targetPosition).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                if ((body.position - targetPosition).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
                     body.position = targetPosition;
             }
 
             if (applyRotation)
             {
-                if (Quaternion.Angle(body.rotation, targetRotation) > RIGIDBODY_ROTATION_EPSILON)
+                if (HasRotationChanged(body.rotation, targetRotation))
                     body.rotation = targetRotation;
             }
 
@@ -732,9 +734,8 @@ namespace PurrNet
                 NetworkRigidbodyPhysics.SetLinearVelocity(body, Vector3.zero);
 
                 var accumulatedForce = body.GetAccumulatedForce();
-                if (accumulatedForce.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                    body.AddForce(-accumulatedForce, ForceMode.Force);
-                if (body.useGravity && Physics.gravity.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                body.AddForce(-accumulatedForce, ForceMode.Force);
+                if (body.useGravity)
                     body.AddForce(-Physics.gravity, ForceMode.Acceleration);
             }
 
@@ -743,8 +744,7 @@ namespace PurrNet
                 NetworkRigidbodyPhysics.SetAngularVelocity(body, Vector3.zero);
 
                 var accumulatedTorque = body.GetAccumulatedTorque();
-                if (accumulatedTorque.sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                    body.AddTorque(-accumulatedTorque, ForceMode.Force);
+                body.AddTorque(-accumulatedTorque, ForceMode.Force);
             }
         }
 #endif
@@ -772,7 +772,7 @@ namespace PurrNet
             if (applyPosition)
             {
                 var worldPosition = new Vector2(targetPosition.x, targetPosition.y);
-                if ((body.position - worldPosition).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                if ((body.position - worldPosition).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
                     body.position = worldPosition;
             }
 
@@ -780,7 +780,7 @@ namespace PurrNet
             {
                 float worldRotation = targetRotation.eulerAngles.z;
                 if (Mathf.Abs(Mathf.DeltaAngle(body.rotation, worldRotation)) >
-                    RIGIDBODY_ROTATION_EPSILON)
+                    RIGIDBODY_2D_ROTATION_EPSILON)
                     body.rotation = worldRotation;
             }
 
@@ -915,30 +915,31 @@ namespace PurrNet
             bool hasRigidbody2D = _hasRigidbody2D && _rb2d;
 #endif
 
+            var worldPos = position;
+            var worldRot = rotation;
+            bool applyTransformPosition = false;
+            bool applyTransformRotation = false;
+
             if (syncPosition)
             {
-                var worldPos = _position.Advance(Time.unscaledDeltaTime).position;
+                worldPos = _position.Advance(Time.unscaledDeltaTime).position;
 #if UNITY_PHYSICS_3D
                 if (hasRigidbody)
                 {
-                    if ((_rb.position - worldPos).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                    if ((_rb.position - worldPos).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
                         _rb.position = worldPos;
-                    if ((_trs.position - worldPos).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
-                        _trs.position = worldPos;
                 }
-                else
 #endif
-                {
-                    _trs.position = worldPos;
-                }
 #if UNITY_PHYSICS_2D
                 if (hasRigidbody2D)
                 {
                     var worldPosition2D = new Vector2(worldPos.x, worldPos.y);
-                    if ((_rb2d.position - worldPosition2D).sqrMagnitude > RIGIDBODY_VECTOR_EPSILON_SQR)
+                    if ((_rb2d.position - worldPosition2D).sqrMagnitude > POSE_VECTOR_EPSILON_SQR)
                         _rb2d.position = worldPosition2D;
                 }
 #endif
+                applyTransformPosition =
+                    (_trs.position - worldPos).sqrMagnitude > POSE_VECTOR_EPSILON_SQR;
                 position = worldPos;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
                 CaptureNetworkPosePosition(worldPos);
@@ -947,33 +948,44 @@ namespace PurrNet
 
             if (syncRotation)
             {
-                var worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
+                worldRot = _rotation.Advance(Time.unscaledDeltaTime).rotation;
 #if UNITY_PHYSICS_3D
                 if (hasRigidbody)
                 {
-                    if (Quaternion.Angle(_rb.rotation, worldRot) > RIGIDBODY_ROTATION_EPSILON)
+                    if (HasRotationChanged(_rb.rotation, worldRot))
                         _rb.rotation = worldRot;
-                    if (Quaternion.Angle(_trs.rotation, worldRot) > RIGIDBODY_ROTATION_EPSILON)
-                        _trs.rotation = worldRot;
                 }
-                else
 #endif
-                {
-                    _trs.rotation = worldRot;
-                }
 #if UNITY_PHYSICS_2D
                 if (hasRigidbody2D)
                 {
                     float worldRotation2D = worldRot.eulerAngles.z;
                     if (Mathf.Abs(Mathf.DeltaAngle(_rb2d.rotation, worldRotation2D)) >
-                        RIGIDBODY_ROTATION_EPSILON)
+                        RIGIDBODY_2D_ROTATION_EPSILON)
                         _rb2d.rotation = worldRotation2D;
                 }
 #endif
+                applyTransformRotation = HasRotationChanged(_trs.rotation, worldRot);
                 rotation = worldRot;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
                 CaptureNetworkPoseRotation(worldRot);
 #endif
+            }
+
+            switch (applyTransformPosition)
+            {
+                case true when applyTransformRotation:
+                    _trs.SetPositionAndRotation(worldPos, worldRot);
+                    break;
+                case true:
+                    _trs.position = worldPos;
+                    break;
+                default:
+                {
+                    if (applyTransformRotation)
+                        _trs.rotation = worldRot;
+                    break;
+                }
             }
 
             if (syncScale)
@@ -990,6 +1002,11 @@ namespace PurrNet
             if (disableController && _characterControllerPatch)
                 _controller.enabled = true;
 #endif
+        }
+
+        private static bool HasRotationChanged(Quaternion current, Quaternion target)
+        {
+            return Quaternion.Angle(current, target) > 0f;
         }
 
         private NetworkTransformData GetCurrentTransformData()
