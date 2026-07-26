@@ -474,6 +474,62 @@ public class BitPackerEdgeCaseTests
         Assert.AreEqual(0, receiver.pendingBytes);
     }
 
+	[Test]
+    public void ReadString_MalformedLengthIsRejectedBeforeAllocating()
+    {
+        var writer = BitPackerPool.Get();
+        writer.ResetPositionAndMode(false);
+        writer.WriteBit(true); // has value
+        writer.WriteBits(1_000_000, 31); // claimed length, no payload follows
+
+        _packer.MakeWrapper(new ByteData(writer.buffer, 0, writer.length));
+        _packer.ResetPositionAndMode(true);
+
+        Assert.Throws<System.Runtime.Serialization.SerializationException>(
+            () => _packer.ReadString(System.Text.Encoding.UTF8));
+
+        writer.Dispose();
+    }
+
+	[Test]
+    public void ReadArray_MalformedLengthIsRejectedBeforeAllocating()
+    {
+        var writer = BitPackerPool.Get();
+        writer.ResetPositionAndMode(false);
+        writer.WriteBit(true); // has value
+        writer.WriteBits(1_000_000, 31); // claimed length, no elements follow
+
+        _packer.MakeWrapper(new ByteData(writer.buffer, 0, writer.length));
+        _packer.ResetPositionAndMode(true);
+
+        int[] result = null;
+        Assert.Throws<System.Runtime.Serialization.SerializationException>(
+            () => _packer.ReadArray(ref result));
+
+        writer.Dispose();
+    }
+
+	[Test]
+    public void ByteData_MalformedLengthIsRejectedBeforeAllocating()
+    {
+        var writer = BitPackerPool.Get();
+        writer.ResetPositionAndMode(false);
+        writer.Write(new ByteData(new byte[64], 0, 64));
+
+		// Keep only the length header, drop the payload
+		var truncated = new byte[8];
+        Array.Copy(writer.buffer, truncated, truncated.Length);
+
+        _packer.MakeWrapper(new ByteData(truncated, 0, truncated.Length));
+        _packer.ResetPositionAndMode(true);
+
+        var result = default(ByteData);
+        Assert.Throws<System.Runtime.Serialization.SerializationException>(
+            () => _packer.Read(ref result));
+
+        writer.Dispose();
+    }
+
     [Test]
     public void FragmentationLayer_MaximumFragmentCountBoundaryRoundtrips()
     {
