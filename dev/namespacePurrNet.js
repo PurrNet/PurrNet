@@ -122,7 +122,7 @@ var namespacePurrNet =
     [ "ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
     [ "RegisterNetworkTypeAttribute", "classPurrNet_1_1RegisterNetworkTypeAttribute.html", null ],
     [ "ReliableDeltaStream", "classPurrNet_1_1ReliableDeltaStream.html", "classPurrNet_1_1ReliableDeltaStream" ],
-    [ "RigidbodyCorrectionContext", "structPurrNet_1_1RigidbodyCorrectionContext.html", null ],
+    [ "RigidbodyCorrectionContext", "structPurrNet_1_1RigidbodyCorrectionContext.html", "structPurrNet_1_1RigidbodyCorrectionContext" ],
     [ "RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
     [ "RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", "structPurrNet_1_1RigidbodyStateData" ],
     [ "RigidbodyTeleportData", "structPurrNet_1_1RigidbodyTeleportData.html", null ],
@@ -185,6 +185,7 @@ var namespacePurrNet =
     [ "VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ],
     [ "AdaptiveSyncLevel", "namespacePurrNet.html#a956417b194545f047bfb679ad25f2c20", null ],
     [ "RigidbodyPositionFrame", "namespacePurrNet.html#aa716bfa44eaf7ea6eb67cdedcac071d4", null ],
+    [ "RigidbodyRotationCorrection", "namespacePurrNet.html#a674e5552479e29e3da7ffee28f5c79b2", null ],
     [ "SyncDictionaryOperation", "namespacePurrNet.html#a7aa16184a63314ebb157015a347b6ae0", null ],
     [ "SyncHashSetOperation", "namespacePurrNet.html#a632ad9e97daa2680bc840e36e5ddda74", null ],
     [ "SyncListOperation", "namespacePurrNet.html#abb62eac57dfdbad47d7033db026fc518", null ]

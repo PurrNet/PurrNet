@@ -12,6 +12,7 @@ var searchData=
   ['unsubscribe_3c_20t_20_3e_9',['Unsubscribe&lt; T &gt;',['../classPurrNet_1_1NetworkManager.html#ae12b0fd698e20253e8c836fca086ee46',1,'PurrNet.NetworkManager.Unsubscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback, bool asServer)'],['../classPurrNet_1_1NetworkManager.html#a5c7af506a176c71d67b432cbed50cc44',1,'PurrNet.NetworkManager.Unsubscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback)']]],
   ['updatescenevisibility_10',['UpdateSceneVisibility',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a8e41cea5176b89f712ea020c40591512',1,'PurrNet::Modules::ScenesModule']]],
   ['usedbyilattribute_11',['UsedByILAttribute',['../classPurrNet_1_1Modules_1_1UsedByILAttribute.html',1,'PurrNet::Modules']]],
-  ['useparentframepositionerror_12',['useParentFramePositionError',['../classPurrNet_1_1NetworkRigidbody.html#a236d3362bb881b3fa1b7db29c67498bc',1,'PurrNet::NetworkRigidbody']]],
-  ['userprefabdata_13',['UserPrefabData',['../structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html',1,'PurrNet::NetworkPrefabs']]]
+  ['usekinematicrotation_12',['useKinematicRotation',['../structPurrNet_1_1RigidbodyCorrectionContext.html#ad6bfe1f662d406d2e281bec20fb68e15',1,'PurrNet::RigidbodyCorrectionContext']]],
+  ['useparentframepositionerror_13',['useParentFramePositionError',['../classPurrNet_1_1NetworkRigidbody.html#a236d3362bb881b3fa1b7db29c67498bc',1,'PurrNet::NetworkRigidbody']]],
+  ['userprefabdata_14',['UserPrefabData',['../structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html',1,'PurrNet::NetworkPrefabs']]]
 ];

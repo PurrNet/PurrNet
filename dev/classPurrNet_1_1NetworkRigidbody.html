@@ -505,6 +505,14 @@ new bool&#160;</td><td class="memItemRight" valign="bottom"><b>isController</b><
 RigidbodyTransformSpace&#160;</td><td class="memItemRight" valign="bottom"><b>space</b><code> [get]</code></td></tr>
 <tr class="memdesc:acae9cdee1795e32220bc3a5b9b04aee6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configured sync space. Local is relative to the current parent, World is absolute. <br /></td></tr>
 <tr class="separator:acae9cdee1795e32220bc3a5b9b04aee6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a507cb9ca59c38f8a2ae1bc574e40481c"><td class="memItemLeft" align="right" valign="top"><a id="a507cb9ca59c38f8a2ae1bc574e40481c" name="a507cb9ca59c38f8a2ae1bc574e40481c"></a>
+<a class="el" href="namespacePurrNet.html#a674e5552479e29e3da7ffee28f5c79b2">RigidbodyRotationCorrection</a>&#160;</td><td class="memItemRight" valign="bottom"><b>rotationCorrection</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a507cb9ca59c38f8a2ae1bc574e40481c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configured rotation correction mode. See <a class="el" href="namespacePurrNet.html#a674e5552479e29e3da7ffee28f5c79b2" title="How a receiver drives its rigidbody towards the synced rotation.">RigidbodyRotationCorrection</a>. <br /></td></tr>
+<tr class="separator:a507cb9ca59c38f8a2ae1bc574e40481c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a405966d5d32b32ea93d6f63e62d2df51"><td class="memItemLeft" align="right" valign="top"><a id="a405966d5d32b32ea93d6f63e62d2df51" name="a405966d5d32b32ea93d6f63e62d2df51"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isRotationKinematic</b><code> [get]</code></td></tr>
+<tr class="memdesc:a405966d5d32b32ea93d6f63e62d2df51"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when this receiver follows the synced rotation with MoveRotation rather than torque, after resolving <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a507cb9ca59c38f8a2ae1bc574e40481c" title="Configured rotation correction mode. See RigidbodyRotationCorrection.">rotationCorrection</a> against the rigidbody's constraints.  <br /></td></tr>
+<tr class="separator:a405966d5d32b32ea93d6f63e62d2df51"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a422c39dcd8e35cd5fcfe07222174fbc5"><td class="memItemLeft" align="right" valign="top"><a id="a422c39dcd8e35cd5fcfe07222174fbc5" name="a422c39dcd8e35cd5fcfe07222174fbc5"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>syncVelocityRelativeToParent</b><code> [get, set]</code></td></tr>
 <tr class="memdesc:a422c39dcd8e35cd5fcfe07222174fbc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parent-frame velocity is now always relative to the parent motion. This compatibility property remains temporarily so existing integrations continue to compile.  <br /></td></tr>

@@ -296,7 +296,7 @@ var annotated_dup =
       [ "ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
       [ "RegisterNetworkTypeAttribute", "classPurrNet_1_1RegisterNetworkTypeAttribute.html", null ],
       [ "ReliableDeltaStream", "classPurrNet_1_1ReliableDeltaStream.html", "classPurrNet_1_1ReliableDeltaStream" ],
-      [ "RigidbodyCorrectionContext", "structPurrNet_1_1RigidbodyCorrectionContext.html", null ],
+      [ "RigidbodyCorrectionContext", "structPurrNet_1_1RigidbodyCorrectionContext.html", "structPurrNet_1_1RigidbodyCorrectionContext" ],
       [ "RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
       [ "RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", "structPurrNet_1_1RigidbodyStateData" ],
       [ "RigidbodyTeleportData", "structPurrNet_1_1RigidbodyTeleportData.html", null ],
