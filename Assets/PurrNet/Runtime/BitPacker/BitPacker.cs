@@ -48,7 +48,7 @@ namespace PurrNet.Packing
 
 		public int remainingBytes => _isReading ? Math.Max(0, (isWrapper ? _wrapperEnd : _buffer.Length) - positionInBytes) : 0;
 
-		public long remainingBits => (long)remainingBytes * 8;
+		public long remainingBits => _isReading ? Math.Max(0L, (long)(isWrapper ? _wrapperEnd : _buffer.Length) * 8 - _positionInBits) : 0;
 
 		private int _wrapperEnd;
 
