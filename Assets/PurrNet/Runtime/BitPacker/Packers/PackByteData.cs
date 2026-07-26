@@ -25,6 +25,13 @@ namespace PurrNet.Packing
                 return;
             }
 
+			// Size is an unbounded uint, could otherwise request up to around 4GB
+			if (length.value > (uint)packer.remainingBytes)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid ByteData length during deserialization: {length.value}.");
+            }
+
             byte[] buffer = new byte[length];
             packer.ReadBytes(buffer);
             data = new ByteData(buffer, 0, (int)length.value);
