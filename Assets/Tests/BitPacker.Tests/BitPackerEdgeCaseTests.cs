@@ -530,7 +530,57 @@ public class BitPackerEdgeCaseTests
         writer.Dispose();
     }
 
-    [Test]
+	[Test]
+	public void ReadArray_LargeBoolArrayRoundtripsWithoutFalseRejection()
+	{
+		var expected = new bool[1000];
+		for (int i = 0; i < expected.Length; i++)
+			expected[i] = i % 3 == 0;
+
+		var writer = BitPackerPool.Get();
+		writer.ResetPositionAndMode(false);
+		writer.WriteList<bool>(expected);
+
+		// writer.buffer can be bigger than writer.length. Trim to the real size
+		var trimmed = new byte[writer.length];
+		Array.Copy(writer.buffer, trimmed, trimmed.Length);
+
+		_packer.MakeWrapper(new ByteData(trimmed, 0, trimmed.Length));
+		_packer.ResetPositionAndMode(true);
+
+		bool[] result = null;
+		Assert.DoesNotThrow(() => _packer.ReadArray(ref result));
+
+		Assert.AreEqual(expected.Length, result.Length);
+		for (int i = 0; i < expected.Length; i++)
+			Assert.AreEqual(expected[i], result[i], $"Element {i}");
+
+		writer.Dispose();
+	}
+
+	[Test]
+	public void ReadString_WrapperInsideBiggerBackingArrayRejectsLengthPastRealPacket()
+	{
+		var writer = BitPackerPool.Get();
+		writer.ResetPositionAndMode(false);
+		writer.WriteBit(true); // has value
+		writer.WriteBits(1_000_000, 31); // claimed length, no payload follows
+
+		// Small packet inside a much bigger backing array, like a pooled buffer
+		var wrapped = WithOffset(writer.buffer, 16);
+		var padded = new byte[wrapped.data.Length + 2_000_000];
+		Buffer.BlockCopy(wrapped.data, 0, padded, 0, wrapped.data.Length);
+
+		_packer.MakeWrapper(new ByteData(padded, wrapped.offset, wrapped.length));
+		_packer.ResetPositionAndMode(true);
+
+		Assert.Throws<System.Runtime.Serialization.SerializationException>(
+			() => _packer.ReadString(System.Text.Encoding.UTF8));
+
+		writer.Dispose();
+	}
+
+	[Test]
     public void FragmentationLayer_MaximumFragmentCountBoundaryRoundtrips()
     {
         const int mtu = 24;
