@@ -2268,9 +2268,13 @@ namespace PurrNet
         private void OnLostConnection(Connection conn, DisconnectReason reason, bool asServer)
         {
             if (asServer)
+            {
+                _serverBroadcast?.DrainDeferred();
                 _serverModules.OnLostConnection(conn, true);
+            }
             else
             {
+                _clientBroadcast?.DrainDeferred();
                 clientToServerConn = null;
                 _clientModules.OnLostConnection(conn, false);
             }

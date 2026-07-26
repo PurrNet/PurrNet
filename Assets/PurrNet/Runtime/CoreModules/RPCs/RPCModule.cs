@@ -31,6 +31,7 @@ namespace PurrNet.Modules
 
         private RPCBatch _unionBatch;
         private RPCBatch _immediateBatch;
+        private bool _immediateContentFlushed;
 
         public RPCModule(NetworkManager manager, PlayersManager playersManager, HierarchyFactory hierarchyModule,
             GlobalOwnershipModule ownerships, ScenesModule scenes)
@@ -81,6 +82,7 @@ namespace PurrNet.Modules
         {
             _unionBatch.Clear();
             _immediateBatch.Clear();
+            _immediateContentFlushed = false;
         }
 
         public void PostPromoteToServerModule() { }
@@ -89,6 +91,7 @@ namespace PurrNet.Modules
         {
             _unionBatch.Clear();
             _immediateBatch.Clear();
+            _immediateContentFlushed = false;
         }
 
         public void Enable(bool asServer)
@@ -132,6 +135,7 @@ namespace PurrNet.Modules
 
             _unionBatch.Dispose();
             _immediateBatch.Dispose();
+            _immediateContentFlushed = false;
         }
 
         private void OnObserverAdded(PlayerID player, SceneID scene, NetworkID id)
@@ -1204,7 +1208,12 @@ namespace PurrNet.Modules
         public void BatchNetworkMessages()
         {
             _unionBatch.Flush();
-            _immediateBatch.Flush();
+
+            if (_immediateBatch.hasPending)
+            {
+                _immediateContentFlushed = true;
+                _immediateBatch.Flush();
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1215,11 +1224,16 @@ namespace PurrNet.Modules
 
         public bool FlushImmediateRPCs()
         {
-            if (_immediateBatch == null || !_immediateBatch.hasPending)
-                return false;
+            bool flushed = _immediateContentFlushed;
+            _immediateContentFlushed = false;
 
-            _immediateBatch.Flush();
-            return true;
+            if (_immediateBatch != null && _immediateBatch.hasPending)
+            {
+                _immediateBatch.Flush();
+                flushed = true;
+            }
+
+            return flushed;
         }
     }
 }

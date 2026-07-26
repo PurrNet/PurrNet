@@ -38,6 +38,7 @@ namespace PurrNet.Modules
         private readonly HashSet<uint> _immediateTypeIds = new HashSet<uint>();
         private readonly List<DeferredMessage> _deferredMessages = new List<DeferredMessage>();
         private bool _deferNonImmediate;
+        private bool _draining;
 
         private bool _asServer;
 
@@ -93,8 +94,9 @@ namespace PurrNet.Modules
 
         public void Disable(bool asServer)
         {
-            _fragmentation.Reset();
+            DrainDeferred();
             DisposeDeferred();
+            _fragmentation.Reset();
             _deferNonImmediate = false;
         }
 
@@ -120,28 +122,37 @@ namespace PurrNet.Modules
 
         internal void DrainDeferred()
         {
-            if (_deferredMessages.Count == 0)
+            if (_draining || _deferredMessages.Count == 0)
                 return;
 
-            for (int i = 0; i < _deferredMessages.Count; i++)
+            _draining = true;
+
+            try
             {
-                var message = _deferredMessages[i];
+                for (int i = 0; i < _deferredMessages.Count; i++)
+                {
+                    var message = _deferredMessages[i];
 
-                try
-                {
-                    ProcessData(message.conn, message.data.ToByteData());
+                    try
+                    {
+                        ProcessData(message.conn, message.data.ToByteData());
+                    }
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogException(e);
+                    }
+                    finally
+                    {
+                        message.data.Dispose();
+                    }
                 }
-                catch (Exception e)
-                {
-                    PurrLogger.LogException(e);
-                }
-                finally
-                {
-                    message.data.Dispose();
-                }
+
+                _deferredMessages.Clear();
             }
-
-            _deferredMessages.Clear();
+            finally
+            {
+                _draining = false;
+            }
         }
 
         private void DisposeDeferred()
@@ -392,7 +403,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            if (_deferNonImmediate && !_immediateTypeIds.Contains(typeId))
+            if (_deferNonImmediate && !_draining && !_immediateTypeIds.Contains(typeId))
             {
                 var copy = BitPackerPool.Get();
                 copy.WriteBytes(data);
