@@ -1,3 +1,10 @@
+## [1.21.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.9...v1.21.1-beta.10) (2026-07-26)
+
+
+### Bug Fixes
+
+* Network Rigidbody improvements ([0a17af2](https://github.com/PurrNet/PurrNet/commit/0a17af207c7080fd6b13453efc9d1a368e40504e))
+
 ## [1.21.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.8...v1.21.1-beta.9) (2026-07-23)
 
 
