@@ -1,3 +1,10 @@
+## [1.21.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.10...v1.21.1-beta.11) (2026-07-26)
+
+
+### Bug Fixes
+
+* Sync NetworkRB settings if changed ([1e495cb](https://github.com/PurrNet/PurrNet/commit/1e495cb928a285dc96e5138be9a2ff3c29efa624))
+
 ## [1.21.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.9...v1.21.1-beta.10) (2026-07-26)
 
 
