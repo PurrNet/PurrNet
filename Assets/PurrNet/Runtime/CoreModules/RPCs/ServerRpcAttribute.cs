@@ -25,7 +25,8 @@ namespace PurrNet
             float asyncTimeoutInSec = 5f,
             StripCodeModeOverride stripCode = StripCodeModeOverride.Settings,
             bool deltaPacked = false,
-            MTUBehaviour mtuExceeded = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuExceeded = MTUBehaviour.NetworkManager,
+            bool immediate = false)
         {
         }
     }

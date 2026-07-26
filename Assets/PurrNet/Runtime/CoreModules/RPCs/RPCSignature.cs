@@ -42,6 +42,7 @@ namespace PurrNet
         public StripCodeModeOverride stripCodeMode;
         public bool deltaPacked;
         public MTUBehaviour mtuExceeded;
+        public bool immediate;
 
         public DisposableList<PlayerID> GetTargets()
         {
@@ -61,7 +62,7 @@ namespace PurrNet
         public static RPCSignature Make(RPCType type, Channel channel, bool runLocally, bool requireOwnership,
             bool bufferLast, bool requireServer, bool excludeOwner, string name, bool isStatic, float asyncTimoutInSec,
             CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked,
-            MTUBehaviour mtuExceeded)
+            MTUBehaviour mtuExceeded, bool immediate)
         {
             return new RPCSignature
             {
@@ -81,7 +82,8 @@ namespace PurrNet
                 asyncTimeoutInSec = asyncTimoutInSec,
                 compressionLevel = compressionLevel,
                 deltaPacked = deltaPacked,
-                mtuExceeded = mtuExceeded
+                mtuExceeded = mtuExceeded,
+                immediate = immediate
             };
         }
 
@@ -89,7 +91,7 @@ namespace PurrNet
         public static RPCSignature MakeWithTarget(RPCType type, Channel channel, bool runLocally, bool requireOwnership,
             bool bufferLast, bool requireServer, bool excludeOwner, string name, bool isStatic, float asyncTimoutInSec,
             CompressionLevel compressionLevel, bool excludeSender, bool deltaPacked,
-            MTUBehaviour mtuExceeded, PlayerID? playerID, IEnumerable<PlayerID> players, IList<PlayerID> playersList)
+            MTUBehaviour mtuExceeded, bool immediate, PlayerID? playerID, IEnumerable<PlayerID> players, IList<PlayerID> playersList)
         {
             return new RPCSignature
             {
@@ -109,7 +111,8 @@ namespace PurrNet
                 asyncTimeoutInSec = asyncTimoutInSec,
                 compressionLevel = compressionLevel,
                 deltaPacked = deltaPacked,
-                mtuExceeded = mtuExceeded
+                mtuExceeded = mtuExceeded,
+                immediate = immediate
             };
         }
     }

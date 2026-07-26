@@ -307,7 +307,7 @@ namespace PurrNet
                     Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
                         this);
 #endif
-                    serverChildRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                    serverChildRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     break;
                 case RPCType.ObserversRPC:
                 {
@@ -318,7 +318,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData, this);
 #endif
-                            rpcModule.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded);
+                            rpcModule.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
                         else
                         {
@@ -344,7 +344,7 @@ namespace PurrNet
                                 }
                             }
 #endif
-                            rpcModule.BatchToTargets(observers, packet, signature.channel, filter, signature.mtuExceeded);
+                            rpcModule.BatchToTargets(observers, packet, signature.channel, filter, signature.mtuExceeded, signature.immediate);
                         }
                     }
                     else
@@ -353,7 +353,7 @@ namespace PurrNet
                         Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                             packet.rpcData, this);
 #endif
-                        rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                        rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     }
 
                     break;
@@ -369,7 +369,7 @@ namespace PurrNet
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                                 packet.rpcData, this);
 #endif
-                            hostClientRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                            hostClientRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                             break;
                         }
 
@@ -386,7 +386,7 @@ namespace PurrNet
                                     packet.rpcData, this);
                         }
 #endif
-                        rpcModule.BatchToTargets(players, packet, signature.channel, signature.mtuExceeded);
+                        rpcModule.BatchToTargets(players, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     }
                     else
                     {
@@ -403,7 +403,7 @@ namespace PurrNet
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                                 packet.rpcData, this);
 #endif
-                            rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                            rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
                     }
 
@@ -438,7 +438,7 @@ namespace PurrNet
                     Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData,
                         this);
 #endif
-                    serverRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                    serverRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     break;
                 case RPCType.ObserversRPC:
                 {
@@ -449,7 +449,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData, this);
 #endif
-                            rpcModule.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded);
+                            rpcModule.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
                         else
                         {
@@ -475,7 +475,7 @@ namespace PurrNet
                                 }
                             }
 #endif
-                            rpcModule.BatchToTargets(observers, packet, signature.channel, filter, signature.mtuExceeded);
+                            rpcModule.BatchToTargets(observers, packet, signature.channel, filter, signature.mtuExceeded, signature.immediate);
                         }
                     }
                     else
@@ -483,7 +483,7 @@ namespace PurrNet
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
                         Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData, this);
 #endif
-                        rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                        rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     }
 
                     break;
@@ -499,7 +499,7 @@ namespace PurrNet
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                                 packet.rpcData, this);
 #endif
-                            hostClientRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                            hostClientRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                             break;
                         }
 
@@ -516,7 +516,7 @@ namespace PurrNet
                                     packet.rpcData, this);
                         }
 #endif
-                        rpcModule.BatchToTargets(players, packet, signature.channel, signature.mtuExceeded);
+                        rpcModule.BatchToTargets(players, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     }
                     else
                     {
@@ -533,7 +533,7 @@ namespace PurrNet
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName,
                                 packet.rpcData, this);
 #endif
-                            rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                            rpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
                     }
 

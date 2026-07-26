@@ -53,7 +53,6 @@ namespace PurrNet.Transports
         [Header("Shared Settings")]
         [Tooltip("The amount of time in seconds before socket is disconnected due to no data being received.")]
         [SerializeField, HideInInspector] private float _timeoutInSeconds = 5f;
-        [SerializeField, HideInInspector] private bool _pollEventsInUpdate;
 
         [Tooltip("Use NAT hole-punching to establish a direct P2P link when possible. " +
                  "If a punch succeeds the session runs over P2P; if that link is later " +
@@ -1541,7 +1540,6 @@ namespace PurrNet.Transports
 
         public void ReceiveMessages(float delta)
         {
-            if (!_pollEventsInUpdate)
             {
                 if (_isUsingUDP)
                 {
@@ -1561,7 +1559,6 @@ namespace PurrNet.Transports
 
         public void UnityUpdate(float delta)
         {
-            if (_pollEventsInUpdate)
             {
                 if (_isUsingUDP)
                 {

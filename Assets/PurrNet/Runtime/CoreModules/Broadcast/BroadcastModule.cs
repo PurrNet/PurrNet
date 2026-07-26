@@ -35,7 +35,23 @@ namespace PurrNet.Modules
         private readonly Dictionary<uint, List<IBroadcastCallback>> _actions =
             new Dictionary<uint, List<IBroadcastCallback>>();
 
+        private readonly HashSet<uint> _immediateTypeIds = new HashSet<uint>();
+        private readonly List<DeferredMessage> _deferredMessages = new List<DeferredMessage>();
+        private bool _deferNonImmediate;
+
         private bool _asServer;
+
+        readonly struct DeferredMessage
+        {
+            public readonly Connection conn;
+            public readonly BitPacker data;
+
+            public DeferredMessage(Connection conn, BitPacker data)
+            {
+                this.conn = conn;
+                this.data = data;
+            }
+        }
 
         readonly struct FragmentSendState
         {
@@ -78,6 +94,61 @@ namespace PurrNet.Modules
         public void Disable(bool asServer)
         {
             _fragmentation.Reset();
+            DisposeDeferred();
+            _deferNonImmediate = false;
+        }
+
+        /// <summary>
+        /// Marks a broadcast type as immediate: while the defer window is active,
+        /// messages of this type dispatch on arrival while everything else is queued
+        /// for the next fixed receive phase.
+        /// </summary>
+        public void RegisterImmediateType<T>()
+        {
+            _immediateTypeIds.Add(BroadcastType<T>.id);
+        }
+
+        public void UnregisterImmediateType<T>()
+        {
+            _immediateTypeIds.Remove(BroadcastType<T>.id);
+        }
+
+        internal void SetDeferNonImmediate(bool defer)
+        {
+            _deferNonImmediate = defer;
+        }
+
+        internal void DrainDeferred()
+        {
+            if (_deferredMessages.Count == 0)
+                return;
+
+            for (int i = 0; i < _deferredMessages.Count; i++)
+            {
+                var message = _deferredMessages[i];
+
+                try
+                {
+                    ProcessData(message.conn, message.data.ToByteData());
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogException(e);
+                }
+                finally
+                {
+                    message.data.Dispose();
+                }
+            }
+
+            _deferredMessages.Clear();
+        }
+
+        private void DisposeDeferred()
+        {
+            for (int i = 0; i < _deferredMessages.Count; i++)
+                _deferredMessages[i].data.Dispose();
+            _deferredMessages.Clear();
         }
 
         void AssertIsServer(string message)
@@ -109,7 +180,7 @@ namespace PurrNet.Modules
         static bool ShouldTrackType(Type type)
         {
             return type != typeof(RPCPacket) && type != typeof(ChildRPCPacket) && type != typeof(StaticRPCPacket)
-                   && type != typeof(RPCBatchPacket);
+                   && type != typeof(RPCBatchPacket) && type != typeof(ImmediateRPCBatchPacket);
         }
 
         private static bool IsUnreliable(Channel channel)
@@ -321,6 +392,14 @@ namespace PurrNet.Modules
                 return;
             }
 
+            if (_deferNonImmediate && !_immediateTypeIds.Contains(typeId))
+            {
+                var copy = BitPackerPool.Get();
+                copy.WriteBytes(data);
+                _deferredMessages.Add(new DeferredMessage(conn, copy));
+                return;
+            }
+
             using (var stream = BitPackerPool.Get(data))
             {
                 stream.SkipBits(sizeof(uint) * 8);
@@ -435,6 +514,7 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _fragmentation.Reset();
+            DisposeDeferred();
             _asServer = true;
         }
 
