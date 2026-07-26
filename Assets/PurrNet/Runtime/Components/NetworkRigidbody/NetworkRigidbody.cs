@@ -152,7 +152,7 @@ namespace PurrNet
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
         [SerializeField] private float _interpolationDelay = 0.05f;
 
-        [Tooltip("Raises the interpolation delay to two send intervals when the configured value is smaller than that. A delay below the send interval leaves no snapshot to interpolate towards, so the receiver extrapolates constantly.")]
+        [Tooltip("Raises the interpolation delay to one send interval when the configured value is smaller than that, since below that there is never a newer snapshot to interpolate towards. This is a floor against misconfiguration, not a recommendation: budget roughly two send intervals if you want headroom for jitter.")]
         [SerializeField] private bool _autoInterpolationDelay = true;
 
         [Tooltip("Pushes the target position forward using velocity and estimated acceleration. The offset is interpolationDelay * predictionFactor, making it identical on all machines regardless of network role. 0 = no prediction, 1 = compensate for interpolation delay, >1 = predict further ahead.")]
@@ -253,6 +253,9 @@ namespace PurrNet
 
         private Transform _parentPoseTransform;
         private Rigidbody _parentPoseRigidbody;
+
+        private RigidbodySettingsData _lastBroadcastSettings;
+        private bool _hasBroadcastSettings;
 
         private double _senderTimeOffset;
         private bool _hasSenderTimeOffset;
@@ -364,6 +367,7 @@ namespace PurrNet
             _softParent = null;
             _parentPoseTransform = null;
             _parentPoseRigidbody = null;
+            _hasBroadcastSettings = false;
             ResetStateOrdering();
         }
 
@@ -1283,8 +1287,8 @@ namespace PurrNet
 
         /// <summary>
         /// Interpolation delay actually used for sampling. With <c>_autoInterpolationDelay</c> the
-        /// configured value is raised to two send intervals, since a delay below one send interval
-        /// puts the render time past the newest snapshot on every frame.
+        /// configured value is floored at one send interval, since below that the render time is
+        /// past the newest snapshot on every frame and the receiver can only ever extrapolate.
         /// </summary>
         private float interpolationDelay
         {
@@ -1297,7 +1301,7 @@ namespace PurrNet
                 if (!manager || manager.tickRate <= 0)
                     return _interpolationDelay;
 
-                return Mathf.Max(_interpolationDelay, 2f / manager.tickRate);
+                return Mathf.Max(_interpolationDelay, 1f / manager.tickRate);
             }
         }
 
@@ -1736,6 +1740,38 @@ namespace PurrNet
                 && !_rigidbody.IsSleeping();
         }
 
+        /// <summary>
+        /// Broadcasts the rigidbody settings only when they differ from what was last put on the
+        /// wire. Compared against the last broadcast rather than the live rigidbody so a local
+        /// write from outside this component cannot suppress a needed broadcast, while code that
+        /// re-asserts the same value every frame no longer floods the reliable channel.
+        /// </summary>
+        private void SyncSettingsIfChanged()
+        {
+            if (!_rigidbody)
+                return;
+
+            if (!IsController(_ownerAuth) || !isActiveAndEnabled)
+                return;
+
+            var settings = GetCurrentSettings();
+            if (_hasBroadcastSettings && SettingsEqual(in _lastBroadcastSettings, in settings))
+                return;
+
+            _lastBroadcastSettings = settings;
+            _hasBroadcastSettings = true;
+            SyncSettings(settings);
+        }
+
+        private static bool SettingsEqual(in RigidbodySettingsData a, in RigidbodySettingsData b)
+        {
+            return a.mass.rawValue == b.mass.rawValue
+                && a.drag.rawValue == b.drag.rawValue
+                && a.angularDrag.rawValue == b.angularDrag.rawValue
+                && a.useGravity == b.useGravity
+                && a.isKinematic == b.isKinematic;
+        }
+
         private RigidbodySettingsData GetCurrentSettings()
         {
             if (!_rigidbody)
@@ -1846,11 +1882,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
-                if (_rigidbody.mass == value)
-                    return;
                 _rigidbody.mass = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1861,11 +1894,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
-                if (GetDrag() == value)
-                    return;
                 SetDrag(value);
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1882,11 +1912,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
-                if (GetAngularDrag() == value)
-                    return;
                 SetAngularDrag(value);
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1903,11 +1930,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
-                if (_rigidbody.useGravity == value)
-                    return;
                 _rigidbody.useGravity = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1918,11 +1942,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
-                if (_rigidbody.isKinematic == value)
-                    return;
                 _rigidbody.isKinematic = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
