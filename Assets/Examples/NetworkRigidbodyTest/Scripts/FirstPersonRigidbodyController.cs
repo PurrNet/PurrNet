@@ -45,8 +45,6 @@ namespace NetworkRigidbodyTest
         [SerializeField] private bool _lockCursor = true;
         [Tooltip("Sets Rigidbody.interpolation to Interpolate on every peer. Without it, observers see the body move at the physics step rate.")]
         [SerializeField] private bool _forceRigidbodyInterpolation = true;
-        [Tooltip("Keeps FreezeRotation on the owner only. Observers need free rotation for NetworkRigidbody torque correction to do anything.")]
-        [SerializeField] private bool _freezeRotationOnOwnerOnly = true;
 
         private NetworkRigidbody _networkRigidbody;
         private Rigidbody _rigidbody;
@@ -79,9 +77,6 @@ namespace NetworkRigidbodyTest
 
             if (_forceRigidbodyInterpolation && _rigidbody.interpolation == RigidbodyInterpolation.None)
                 _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
-
-            if (_freezeRotationOnOwnerOnly)
-                _rigidbody.freezeRotation = isOwner;
 
             enabled = isOwner;
 
