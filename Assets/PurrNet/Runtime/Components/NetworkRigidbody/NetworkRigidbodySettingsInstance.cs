@@ -11,15 +11,17 @@ namespace PurrNet
 
         public virtual bool ShouldSnapRotation(in RigidbodyCorrectionContext ctx)
         {
-            return ctx.hardSnapAngle >= 0
+            return !ctx.useKinematicRotation
+                && ctx.hardSnapAngle >= 0
                 && ctx.acceptableRotationError >= 0
                 && ctx.rotationError > ctx.hardSnapAngle;
         }
 
         public virtual bool ShouldCorrectRotation(in RigidbodyCorrectionContext ctx)
         {
-            return ctx.acceptableRotationError >= 0
-                && ctx.rotationError > ctx.acceptableRotationError;
+            return ctx.useKinematicRotation
+                || (ctx.acceptableRotationError >= 0
+                    && ctx.rotationError > ctx.acceptableRotationError);
         }
 
         public virtual void ApplyHardCorrection(in RigidbodyCorrectionContext ctx)
@@ -33,52 +35,24 @@ namespace PurrNet
 
         public virtual void ApplyPositionCorrection(in RigidbodyCorrectionContext ctx)
         {
-            var rb = ctx.rigidbody;
-            if (!CanApplyDynamicMotion(rb))
-                return;
-
-            float m = rb.mass;
-            float range = Mathf.Max(ctx.correctionRange, 0.01f);
-            float ratio = Mathf.Clamp01(ctx.positionError / range);
-            float w = ctx.positionStrength;
-
-            Vector3 posError = ctx.targetPosition - rb.position;
-            Vector3 velError = ctx.targetLinearVelocity - GetLinearVelocity(rb);
-
-            Vector3 positionalPull = posError * (w * w) * ratio;
-            Vector3 velocityDamping = velError * (2f * w);
-            Vector3 dragCompensation = GetLinearVelocity(rb) * ctx.drag;
-
-            AddForce(rb, (positionalPull + velocityDamping + dragCompensation) * m);
+            NetworkRigidbodyPhysics.ApplyPositionSpring(
+                ctx.rigidbody,
+                ctx.targetPosition,
+                ctx.targetLinearVelocity,
+                ctx.positionError,
+                ctx.positionStrength,
+                ctx.correctionRange,
+                ctx.drag);
         }
 
         public virtual void ApplyRotationCorrection(in RigidbodyCorrectionContext ctx)
         {
-            var rb = ctx.rigidbody;
-            if (!CanApplyDynamicMotion(rb))
-                return;
-
-            float m = rb.mass;
-            float w = ctx.rotationStrength;
-
-            Quaternion rotError = NormalizeQuaternion(ctx.targetRotation) * Quaternion.Inverse(rb.rotation);
-            rotError.ToAngleAxis(out float angle, out Vector3 axis);
-
-            if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
-                return;
-
-            if (angle > 180f) angle -= 360f;
-
-            Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-            Vector3 angVelError = ctx.targetAngularVelocity - rb.angularVelocity;
-            Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
-
-            float maxTorque = w * w * m;
-            float torqueMag = torque.magnitude;
-            if (torqueMag > maxTorque)
-                torque *= maxTorque / torqueMag;
-
-            AddTorque(rb, torque);
+            NetworkRigidbodyPhysics.ApplyRotationSpring(
+                ctx.rigidbody,
+                NormalizeQuaternion(ctx.targetRotation),
+                ctx.targetAngularVelocity,
+                ctx.rotationStrength,
+                ctx.useKinematicRotation);
         }
 
         public virtual void OnReset(in RigidbodyCorrectionContext ctx) { }
@@ -117,6 +91,35 @@ namespace PurrNet
         protected static void AddTorque(Rigidbody rb, Vector3 torque, ForceMode mode = ForceMode.Force)
         {
             NetworkRigidbodyPhysics.AddTorque(rb, torque, mode);
+        }
+
+        /// <summary>
+        /// Converts a desired world-space angular acceleration into the torque that produces it,
+        /// using the rigidbody's inertia tensor. Passing an angular acceleration straight to
+        /// <see cref="AddTorque"/> scales it by the inverse inertia and will oscillate.
+        /// </summary>
+        protected static Vector3 AngularAccelerationToTorque(Rigidbody rb, Vector3 angularAcceleration)
+        {
+            return NetworkRigidbodyPhysics.AngularAccelerationToTorque(rb, angularAcceleration);
+        }
+
+        /// <summary>
+        /// Clamps a critically-damped spring frequency to what the current fixed timestep can
+        /// integrate without oscillating. Values above the limit diverge instead of converging.
+        /// </summary>
+        protected static float StableSpringFrequency(float frequency)
+        {
+            return NetworkRigidbodyPhysics.StableSpringFrequency(frequency);
+        }
+
+        /// <summary>
+        /// Applies the built-in inertia-correct rotation spring. Follows the target rotation with
+        /// <see cref="Rigidbody.MoveRotation"/> instead when <paramref name="kinematic"/> is set or
+        /// the body has all rotation axes frozen, since torque cannot move a constrained axis.
+        /// </summary>
+        protected static void ApplyRotationSpring(Rigidbody rb, Quaternion targetRotation, Vector3 targetAngularVelocity, float rotationStrength, bool kinematic = false)
+        {
+            NetworkRigidbodyPhysics.ApplyRotationSpring(rb, targetRotation, targetAngularVelocity, rotationStrength, kinematic);
         }
 
         protected static bool CanApplyDynamicMotion(Rigidbody rb)
@@ -192,6 +195,89 @@ namespace PurrNet
                 return;
 
             rb.AddTorque(torque, mode);
+        }
+
+        internal static Vector3 AngularAccelerationToTorque(Rigidbody rb, Vector3 angularAcceleration)
+        {
+            var basis = rb.rotation * rb.inertiaTensorRotation;
+            var local = Quaternion.Inverse(basis) * angularAcceleration;
+            var tensor = rb.inertiaTensor;
+            return basis * new Vector3(local.x * tensor.x, local.y * tensor.y, local.z * tensor.z);
+        }
+
+        internal static float StableSpringFrequency(float frequency)
+        {
+            if (frequency <= 0f)
+                return 0f;
+
+            var delta = Time.fixedDeltaTime;
+            if (delta <= 0f)
+                return frequency;
+
+            return Mathf.Min(frequency, 0.5f / delta);
+        }
+
+        internal static void ApplyPositionSpring(
+            Rigidbody rb,
+            Vector3 targetPosition,
+            Vector3 targetLinearVelocity,
+            float positionError,
+            float positionStrength,
+            float correctionRange,
+            float drag)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+            var w = StableSpringFrequency(positionStrength);
+            var range = Mathf.Max(correctionRange, 0.01f);
+            var ratio = Mathf.Clamp01(positionError / range);
+            var velocity = GetLinearVelocity(rb);
+
+            var positionalPull = (targetPosition - rb.position) * (w * w * ratio);
+            var velocityDamping = (targetLinearVelocity - velocity) * (2f * w);
+            var dragCompensation = velocity * drag;
+
+            rb.AddForce((positionalPull + velocityDamping + dragCompensation) * rb.mass, ForceMode.Force);
+        }
+
+        internal static void ApplyRotationSpring(
+            Rigidbody rb,
+            Quaternion targetRotation,
+            Vector3 targetAngularVelocity,
+            float rotationStrength,
+            bool kinematic = false)
+        {
+            if (!CanApplyDynamicMotion(rb))
+                return;
+
+            if (kinematic || rb.freezeRotation)
+            {
+                rb.MoveRotation(targetRotation);
+                rb.angularVelocity = Vector3.zero;
+                return;
+            }
+
+            var rotationError = targetRotation * Quaternion.Inverse(rb.rotation);
+            rotationError.ToAngleAxis(out var angle, out var axis);
+
+            if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
+                return;
+
+            if (angle > 180f)
+                angle -= 360f;
+
+            var w = StableSpringFrequency(rotationStrength);
+            var angularError = axis * (angle * Mathf.Deg2Rad);
+            var angularVelocityError = targetAngularVelocity - rb.angularVelocity;
+            var acceleration = angularError * (w * w) + angularVelocityError * (2f * w);
+
+            var maxAcceleration = w * w * Mathf.PI;
+            var magnitude = acceleration.magnitude;
+            if (magnitude > maxAcceleration)
+                acceleration *= maxAcceleration / magnitude;
+
+            rb.AddTorque(AngularAccelerationToTorque(rb, acceleration), ForceMode.Force);
         }
     }
 }

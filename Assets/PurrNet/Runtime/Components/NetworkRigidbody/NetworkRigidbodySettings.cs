@@ -21,6 +21,12 @@ namespace PurrNet
         public float hardSnapDistance;
         public float hardSnapAngle;
         public float acceptableRotationError;
+        /// <summary>
+        /// Resolved rotation mode for this receiver. When true the target rotation should be
+        /// followed with MoveRotation instead of torque, because the controller authors the
+        /// rotation rather than simulating it.
+        /// </summary>
+        public bool useKinematicRotation;
     }
 
     public abstract class NetworkRigidbodySettings : ScriptableObject
@@ -39,7 +45,8 @@ namespace PurrNet
         [Obsolete("Override NetworkRigidbodySettingsInstance.ShouldSnapRotation on the instance returned from Create() instead.")]
         public virtual bool ShouldSnapRotation(in RigidbodyCorrectionContext ctx)
         {
-            return ctx.hardSnapAngle >= 0
+            return !ctx.useKinematicRotation
+                && ctx.hardSnapAngle >= 0
                 && ctx.acceptableRotationError >= 0
                 && ctx.rotationError > ctx.hardSnapAngle;
         }
@@ -47,8 +54,9 @@ namespace PurrNet
         [Obsolete("Override NetworkRigidbodySettingsInstance.ShouldCorrectRotation on the instance returned from Create() instead.")]
         public virtual bool ShouldCorrectRotation(in RigidbodyCorrectionContext ctx)
         {
-            return ctx.acceptableRotationError >= 0
-                && ctx.rotationError > ctx.acceptableRotationError;
+            return ctx.useKinematicRotation
+                || (ctx.acceptableRotationError >= 0
+                    && ctx.rotationError > ctx.acceptableRotationError);
         }
 
         [Obsolete("Override NetworkRigidbodySettingsInstance.ApplyHardCorrection on the instance returned from Create() instead.")]
@@ -64,53 +72,25 @@ namespace PurrNet
         [Obsolete("Override NetworkRigidbodySettingsInstance.ApplyPositionCorrection on the instance returned from Create() instead.")]
         public virtual void ApplyPositionCorrection(in RigidbodyCorrectionContext ctx)
         {
-            var rb = ctx.rigidbody;
-            if (!CanApplyDynamicMotion(rb))
-                return;
-
-            float m = rb.mass;
-            float range = Mathf.Max(ctx.correctionRange, 0.01f);
-            float ratio = Mathf.Clamp01(ctx.positionError / range);
-            float w = ctx.positionStrength;
-
-            Vector3 posError = ctx.targetPosition - rb.position;
-            Vector3 velError = ctx.targetLinearVelocity - GetLinearVelocity(rb);
-
-            Vector3 positionalPull = posError * (w * w) * ratio;
-            Vector3 velocityDamping = velError * (2f * w);
-            Vector3 dragCompensation = GetLinearVelocity(rb) * ctx.drag;
-
-            AddForce(rb, (positionalPull + velocityDamping + dragCompensation) * m);
+            NetworkRigidbodyPhysics.ApplyPositionSpring(
+                ctx.rigidbody,
+                ctx.targetPosition,
+                ctx.targetLinearVelocity,
+                ctx.positionError,
+                ctx.positionStrength,
+                ctx.correctionRange,
+                ctx.drag);
         }
 
         [Obsolete("Override NetworkRigidbodySettingsInstance.ApplyRotationCorrection on the instance returned from Create() instead.")]
         public virtual void ApplyRotationCorrection(in RigidbodyCorrectionContext ctx)
         {
-            var rb = ctx.rigidbody;
-            if (!CanApplyDynamicMotion(rb))
-                return;
-
-            float m = rb.mass;
-            float w = ctx.rotationStrength;
-
-            Quaternion rotError = NormalizeQuaternion(ctx.targetRotation) * Quaternion.Inverse(rb.rotation);
-            rotError.ToAngleAxis(out float angle, out Vector3 axis);
-
-            if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
-                return;
-
-            if (angle > 180f) angle -= 360f;
-
-            Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-            Vector3 angVelError = ctx.targetAngularVelocity - rb.angularVelocity;
-            Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
-
-            float maxTorque = w * w * m;
-            float torqueMag = torque.magnitude;
-            if (torqueMag > maxTorque)
-                torque *= maxTorque / torqueMag;
-
-            AddTorque(rb, torque);
+            NetworkRigidbodyPhysics.ApplyRotationSpring(
+                ctx.rigidbody,
+                NormalizeQuaternion(ctx.targetRotation),
+                ctx.targetAngularVelocity,
+                ctx.rotationStrength,
+                ctx.useKinematicRotation);
         }
 
         protected static Quaternion NormalizeQuaternion(Quaternion q)

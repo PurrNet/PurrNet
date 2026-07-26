@@ -101,7 +101,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 80
   m_CollisionDetection: 0
 --- !u!114 &778868993346167301
@@ -134,11 +134,13 @@ MonoBehaviour:
   _useParentFramePositionError: 0
   _settingsOverride: {fileID: 0}
   _interpolationDelay: 0.05
+  _autoInterpolationDelay: 1
   _predictionFactor: 0
   _maxExtrapolationDuration: 0.25
   _positionStrength: 5
   _correctionRange: 2
-  _rotationStrength: 3
+  _rotationCorrection: 1
+  _rotationStrength: 12
   _hardSnapDistance: 3
   _resetLinearVelocityOnSnap: 0
   _hardSnapAngle: 210

@@ -15,6 +15,23 @@ namespace PurrNet
     }
 
     /// <summary>
+    /// How a receiver drives its rigidbody towards the synced rotation.
+    /// </summary>
+    public enum RigidbodyRotationCorrection : byte
+    {
+        /// <summary>
+        /// Kinematic when the body has any rotation axis constrained, torque otherwise.
+        /// Constraining a rotation axis means the rotation is authored rather than simulated,
+        /// and torque cannot reproduce authored rotation without lag.
+        /// </summary>
+        Auto = 0,
+        /// <summary>Chase the target rotation with a torque spring. Rotation stays physically reactive but lags behind fast authored turns.</summary>
+        Torque = 1,
+        /// <summary>Follow the target rotation exactly with MoveRotation. No lag and no jitter, but remote bodies no longer spin from local collisions.</summary>
+        Kinematic = 2
+    }
+
+    /// <summary>
     /// Reference frame a wire position was encoded in. Travels with the state so
     /// the receiver decodes the correct field regardless of whether the parent
     /// identity reference has resolved yet, or whether a position transform is
@@ -135,6 +152,9 @@ namespace PurrNet
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
         [SerializeField] private float _interpolationDelay = 0.05f;
 
+        [Tooltip("Raises the interpolation delay to two send intervals when the configured value is smaller than that. A delay below the send interval leaves no snapshot to interpolate towards, so the receiver extrapolates constantly.")]
+        [SerializeField] private bool _autoInterpolationDelay = true;
+
         [Tooltip("Pushes the target position forward using velocity and estimated acceleration. The offset is interpolationDelay * predictionFactor, making it identical on all machines regardless of network role. 0 = no prediction, 1 = compensate for interpolation delay, >1 = predict further ahead.")]
         [SerializeField] private float _predictionFactor;
 
@@ -147,8 +167,11 @@ namespace PurrNet
         [Tooltip("The distance over which position correction ramps from zero to full strength. Larger values give softer correction, letting local collisions play out before being pulled back.")]
         [SerializeField] private float _correctionRange = 2f;
 
-        [Tooltip("How aggressively the rigidbody corrects rotation.")]
-        [SerializeField] private float _rotationStrength = 3f;
+        [Tooltip("How a receiver drives its rigidbody towards the synced rotation. Auto picks Kinematic for bodies with constrained rotation axes (characters) and Torque for freely rotating bodies (props).")]
+        [SerializeField] private RigidbodyRotationCorrection _rotationCorrection = RigidbodyRotationCorrection.Auto;
+
+        [Tooltip("How aggressively the rigidbody corrects rotation, as the natural frequency of a critically-damped spring in radians per second. Only used by the Torque rotation mode.")]
+        [SerializeField] private float _rotationStrength = 12f;
 
         [Tooltip("If the position error exceeds this distance, teleport instead of using forces.")]
         [SerializeField] private float _hardSnapDistance = 3f;
@@ -636,7 +659,7 @@ namespace PurrNet
 
             if (_predictionFactor > 0f)
             {
-                float compensation = _interpolationDelay * _predictionFactor;
+                float compensation = interpolationDelay * _predictionFactor;
                 _targetPosition += ToD3(_targetLinearVelocity * compensation);
                 _predictionOffset = compensation;
             }
@@ -719,7 +742,12 @@ namespace PurrNet
                     return;
                 }
 
-                bool hardSnapRotation = _hardSnapAngle >= 0 && _acceptableRotationError >= 0 && rotationError > _hardSnapAngle;
+                bool kinematicRotation = useKinematicRotationCorrection;
+
+                bool hardSnapRotation = !kinematicRotation
+                                      && _hardSnapAngle >= 0
+                                      && _acceptableRotationError >= 0
+                                      && rotationError > _hardSnapAngle;
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
@@ -727,14 +755,15 @@ namespace PurrNet
                     SetAngularVelocity(_resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel);
                 }
 
-                bool correctRotation = !hardSnapRotation
-                                     && _acceptableRotationError >= 0
-                                     && rotationError > _acceptableRotationError;
+                bool correctRotation = kinematicRotation
+                                     || (!hardSnapRotation
+                                         && _acceptableRotationError >= 0
+                                         && rotationError > _acceptableRotationError);
 
                 _lastCorrectionReason = hardSnapRotation
                     ? (positionError > 0.001f ? "Hard (Rotation) + Position" : "Hard (Rotation)")
                     : correctRotation
-                        ? "Position+Rotation"
+                        ? kinematicRotation ? "Position+Rotation (Kinematic)" : "Position+Rotation"
                         : positionError > 0.001f ? "Position" : "No";
 
                 ApplyCorrection(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, correctRotation);
@@ -746,44 +775,44 @@ namespace PurrNet
             if (!CanApplyDynamicMotion())
                 return;
 
-            float m = _rigidbody.mass;
-            float range = Mathf.Max(_correctionRange, 0.01f);
-            float ratio = Mathf.Clamp01(positionError / range);
-
-            {
-                float w = _positionStrength;
-                Vector3 posError = worldTargetPos - _rigidbody.position;
-                Vector3 velError = worldTargetLinVel - GetLinearVelocity();
-
-                Vector3 positionalPull = posError * (w * w * ratio);
-                Vector3 velocityDamping = velError * (2f * w);
-
-                Vector3 dragCompensation = GetLinearVelocity() * GetDrag();
-
-                ApplyForceToRigidbody((positionalPull + velocityDamping + dragCompensation) * m);
-            }
+            NetworkRigidbodyPhysics.ApplyPositionSpring(
+                _rigidbody,
+                worldTargetPos,
+                worldTargetLinVel,
+                positionError,
+                _positionStrength,
+                _correctionRange,
+                GetDrag());
 
             if (correctRotation)
             {
-                float w = _rotationStrength;
-                Quaternion rotError = NormalizeQuaternion(worldTargetRot) * Quaternion.Inverse(_rigidbody.rotation);
-                rotError.ToAngleAxis(out float angle, out Vector3 axis);
+                NetworkRigidbodyPhysics.ApplyRotationSpring(
+                    _rigidbody,
+                    NormalizeQuaternion(worldTargetRot),
+                    worldTargetAngVel,
+                    _rotationStrength,
+                    useKinematicRotationCorrection);
+            }
+        }
 
-                if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
-                    return;
-
-                if (angle > 180f) angle -= 360f;
-
-                Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-                Vector3 angVelError = worldTargetAngVel - _rigidbody.angularVelocity;
-                Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
-
-                float maxTorque = w * w * m;
-                float torqueMag = torque.magnitude;
-                if (torqueMag > maxTorque)
-                    torque *= maxTorque / torqueMag;
-
-                ApplyTorqueToRigidbody(torque);
+        /// <summary>
+        /// True when this receiver should follow the target rotation with MoveRotation instead of
+        /// torque. In Auto, any constrained rotation axis means the rotation is authored by the
+        /// controller rather than simulated, so torque can only ever lag behind it.
+        /// </summary>
+        private bool useKinematicRotationCorrection
+        {
+            get
+            {
+                switch (_rotationCorrection)
+                {
+                    case RigidbodyRotationCorrection.Kinematic:
+                        return true;
+                    case RigidbodyRotationCorrection.Torque:
+                        return false;
+                    default:
+                        return _rigidbody && (_rigidbody.constraints & RigidbodyConstraints.FreezeRotation) != 0;
+                }
             }
         }
 
@@ -829,7 +858,8 @@ namespace PurrNet
                 rotationStrength = _rotationStrength,
                 hardSnapDistance = _hardSnapDistance,
                 hardSnapAngle = _hardSnapAngle,
-                acceptableRotationError = _acceptableRotationError
+                acceptableRotationError = _acceptableRotationError,
+                useKinematicRotation = useKinematicRotationCorrection
             };
         }
 
@@ -898,7 +928,7 @@ namespace PurrNet
             if (_bufferCount > 0)
             {
                 int lastIndex = (_bufferHead - 1 + BUFFER_SIZE) % BUFFER_SIZE;
-                double maxGap = Math.Max(0.5, _interpolationDelay * 4.0);
+                double maxGap = Math.Max(0.5, interpolationDelay * 4.0);
                 if (now - _snapshotBuffer[lastIndex].time > maxGap)
                     ClearBuffer();
             }
@@ -953,7 +983,7 @@ namespace PurrNet
                 return;
             }
 
-            double renderTime = Time.unscaledTimeAsDouble - _interpolationDelay;
+            double renderTime = Time.unscaledTimeAsDouble - interpolationDelay;
 
             var oldest = GetSnapshot(0);
             var newest = GetSnapshot(_bufferCount - 1);
@@ -973,7 +1003,7 @@ namespace PurrNet
                 bool clamped = overshoot > maxExtrapolation;
 
                 _targetPosition = newest.position + ToD3(newest.linearVelocity * extrapolationTime);
-                _targetRotation = newest.rotation;
+                _targetRotation = IntegrateRotation(newest.rotation, GetExtrapolationAngularVelocity(newest), extrapolationTime);
                 _targetLinearVelocity = clamped ? Vector3.zero : newest.linearVelocity;
                 _targetAngularVelocity = clamped ? Vector3.zero : newest.angularVelocity;
                 _targetParent = newest.parent;
@@ -1007,6 +1037,70 @@ namespace PurrNet
             AdoptSnapshot(newest);
         }
 
+        /// <summary>
+        /// Angular velocity to extrapolate the newest snapshot with. Bodies rotated kinematically
+        /// (MoveRotation, direct rotation writes) report a zero angular velocity, so the rotation
+        /// derivative is recovered from the snapshot stream instead of stalling until the next packet.
+        /// </summary>
+        private Vector3 GetExtrapolationAngularVelocity(TimestampedSnapshot newest)
+        {
+            if (newest.angularVelocity.sqrMagnitude > 1e-6f)
+                return newest.angularVelocity;
+
+            if (_bufferCount < 2)
+                return Vector3.zero;
+
+            var previous = GetSnapshot(_bufferCount - 2);
+            if (previous.parent != newest.parent)
+                return Vector3.zero;
+
+            float span = (float)(newest.time - previous.time);
+            if (span < 0.0001f)
+                return Vector3.zero;
+
+            return GetRotationDerivative(previous.rotation, newest.rotation, span);
+        }
+
+        /// <summary>
+        /// Target angular velocity for the correction spring's feedforward term. Kinematically
+        /// rotated bodies report zero, which would leave the spring chasing a moving target on
+        /// the proportional term alone, so it falls back to the snapshot pair's rotation derivative.
+        /// </summary>
+        private static Vector3 ResolveInterpolatedAngularVelocity(TimestampedSnapshot a, TimestampedSnapshot b, float dt, float t)
+        {
+            var lerped = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+            if (lerped.sqrMagnitude > 1e-6f || dt < 0.0001f)
+                return lerped;
+
+            return GetRotationDerivative(a.rotation, b.rotation, dt);
+        }
+
+        private static Vector3 GetRotationDerivative(Quaternion from, Quaternion to, float dt)
+        {
+            var delta = to * Quaternion.Inverse(from);
+            delta.ToAngleAxis(out float angle, out Vector3 axis);
+
+            if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
+                return Vector3.zero;
+
+            if (angle > 180f)
+                angle -= 360f;
+
+            return axis * (angle * Mathf.Deg2Rad / dt);
+        }
+
+        private static Quaternion IntegrateRotation(Quaternion rotation, Vector3 angularVelocity, float time)
+        {
+            if (time <= 0f)
+                return rotation;
+
+            float magnitude = angularVelocity.magnitude;
+            if (magnitude < 1e-5f)
+                return rotation;
+
+            return Quaternion.AngleAxis(magnitude * time * Mathf.Rad2Deg, angularVelocity / magnitude) * rotation;
+        }
+
         private void AdoptSnapshot(TimestampedSnapshot snap)
         {
             _targetPosition = snap.position;
@@ -1035,7 +1129,7 @@ namespace PurrNet
 
                 _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
                 _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
-                _targetAngularVelocity = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+                _targetAngularVelocity = ResolveInterpolatedAngularVelocity(a, b, dt, t);
                 _targetParent = a.parent;
             }
             else
@@ -1072,6 +1166,19 @@ namespace PurrNet
 
         /// <summary>Configured sync space. Local is relative to the current parent, World is absolute.</summary>
         public RigidbodyTransformSpace space => _space;
+
+        /// <summary>Configured rotation correction mode. See <see cref="RigidbodyRotationCorrection"/>.</summary>
+        public RigidbodyRotationCorrection rotationCorrection
+        {
+            get => _rotationCorrection;
+            set => _rotationCorrection = value;
+        }
+
+        /// <summary>
+        /// True when this receiver follows the synced rotation with MoveRotation rather than torque,
+        /// after resolving <see cref="rotationCorrection"/> against the rigidbody's constraints.
+        /// </summary>
+        public bool isRotationKinematic => useKinematicRotationCorrection;
 
         /// <summary>
         /// Parent-frame velocity is now always relative to the parent motion. This compatibility
@@ -1173,6 +1280,26 @@ namespace PurrNet
         #endregion
 
         #region Helpers
+
+        /// <summary>
+        /// Interpolation delay actually used for sampling. With <c>_autoInterpolationDelay</c> the
+        /// configured value is raised to two send intervals, since a delay below one send interval
+        /// puts the render time past the newest snapshot on every frame.
+        /// </summary>
+        private float interpolationDelay
+        {
+            get
+            {
+                if (!_autoInterpolationDelay)
+                    return _interpolationDelay;
+
+                var manager = networkManager;
+                if (!manager || manager.tickRate <= 0)
+                    return _interpolationDelay;
+
+                return Mathf.Max(_interpolationDelay, 2f / manager.tickRate);
+            }
+        }
 
         private NetworkIdentity GetSyncParentIdentity() => GetSyncParentIdentity(out _);
 
@@ -1719,6 +1846,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
+                if (_rigidbody.mass == value)
+                    return;
                 _rigidbody.mass = value;
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -1731,6 +1860,8 @@ namespace PurrNet
             set
             {
                 if (!_rigidbody)
+                    return;
+                if (GetDrag() == value)
                     return;
                 SetDrag(value);
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
@@ -1751,6 +1882,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
+                if (GetAngularDrag() == value)
+                    return;
                 SetAngularDrag(value);
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -1770,6 +1903,8 @@ namespace PurrNet
             {
                 if (!_rigidbody)
                     return;
+                if (_rigidbody.useGravity == value)
+                    return;
                 _rigidbody.useGravity = value;
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
                     SyncSettings(GetCurrentSettings());
@@ -1782,6 +1917,8 @@ namespace PurrNet
             set
             {
                 if (!_rigidbody)
+                    return;
+                if (_rigidbody.isKinematic == value)
                     return;
                 _rigidbody.isKinematic = value;
                 if (IsController(_ownerAuth) && isActiveAndEnabled)
