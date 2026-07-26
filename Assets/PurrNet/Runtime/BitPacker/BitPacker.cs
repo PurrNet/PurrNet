@@ -46,9 +46,8 @@ namespace PurrNet.Packing
         public bool isWriting => !_isReading;
 
 
-		public int remainingBytes => _isReading ? Math.Max(0, (isWrapper ? _wrapperEnd : _buffer.Length) - positionInBytes) : 0;
-
-		public long remainingBits => _isReading ? Math.Max(0L, (long)(isWrapper ? _wrapperEnd : _buffer.Length) * 8 - _positionInBits) : 0;
+		public int remainingBytes => Math.Max(0, (isWrapper ? _wrapperEnd : _buffer.Length) - positionInBytes);
+		public long remainingBits => Math.Max(0L, (long)(isWrapper ? _wrapperEnd : _buffer.Length) * 8 - _positionInBits);
 
 		private int _wrapperEnd;
 
