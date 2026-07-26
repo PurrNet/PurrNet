@@ -551,8 +551,8 @@ namespace PurrNet.Packing
                 return;
             }
 
-			// Each element needs at least 1 byte to encode
-			if (length < 0 || length > packer.remainingBytes)
+			// Elements can be smaller than a byte so bound against bits
+			if (length < 0 || length > packer.remainingBits)
             {
                 throw new System.Runtime.Serialization.SerializationException(
                     $"Invalid array length during deserialization: {length}.");

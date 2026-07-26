@@ -45,11 +45,14 @@ namespace PurrNet.Packing
 
         public bool isWriting => !_isReading;
 
-		/// <summary>
-		/// Bytes remaining in the buffer from the current read position.
-		/// Used to validate lengths before allocating for them.
-		/// </summary>
-		public int remainingBytes => _isReading ? Math.Max(0, _buffer.Length - positionInBytes) : 0;
+
+		public int remainingBytes => _isReading ? Math.Max(0, (isWrapper ? _wrapperEnd : _buffer.Length) - positionInBytes) : 0;
+
+		public long remainingBits => (long)remainingBytes * 8;
+
+		private int _wrapperEnd;
+
+		private int _wrapperStartBit;
 
         [UsedImplicitly, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AdvanceBit()
@@ -151,6 +154,8 @@ namespace PurrNet.Packing
         {
             _buffer = data.data;
             _positionInBits = data.offset * 8;
+            _wrapperStartBit = _positionInBits;
+            _wrapperEnd = data.offset + data.length;
             isWrapper = true;
         }
 
@@ -168,7 +173,7 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPosition()
         {
-            _positionInBits = 0;
+            _positionInBits = isWrapper ? _wrapperStartBit : 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -198,7 +203,7 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPositionAndMode(bool readMode)
         {
-            _positionInBits = 0;
+            ResetPosition();
             _isReading = readMode;
         }
 
