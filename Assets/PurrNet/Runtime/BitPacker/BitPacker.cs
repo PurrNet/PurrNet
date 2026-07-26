@@ -45,6 +45,12 @@ namespace PurrNet.Packing
 
         public bool isWriting => !_isReading;
 
+		/// <summary>
+		/// Bytes remaining in the buffer from the current read position.
+		/// Used to validate lengths before allocating for them.
+		/// </summary>
+		public int remainingBytes => _isReading ? Math.Max(0, _buffer.Length - positionInBytes) : 0;
+
         [UsedImplicitly, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AdvanceBit()
         {
@@ -719,6 +725,13 @@ namespace PurrNet.Packing
 
             // Length
             int len = (int)ReadBits(31);
+
+			// len can't legitimately exceed what's left in the buffer
+			if (len < 0 || len > remainingBytes)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid string length during deserialization: {len}.");
+            }
 
             byte[] rented = null;
             Span<byte> temp = len <= 256
