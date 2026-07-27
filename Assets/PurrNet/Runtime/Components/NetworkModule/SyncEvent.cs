@@ -86,6 +86,12 @@ namespace PurrNet
         protected abstract void InvokeUnityEvent(T data);
         protected virtual void ClearUnityEvent() { }
 
+        public override void OnPoolReset()
+        {
+            ClearUnityEvent();
+            _lastData.Dispose();
+        }
+
         public void InvokePacket(SyncEventData data)
         {
             if (!ValidateInvoke())
@@ -378,6 +384,7 @@ namespace PurrNet
         }
 
         protected override void InvokeUnityEvent((T1, T2, T3, T4, T5) data) => unityEvent?.Invoke(data.Item1, data.Item2, data.Item3, data.Item4, data.Item5);
+        protected override void ClearUnityEvent() => unityEvent = null;
 
         public static SyncEvent<T1, T2, T3, T4, T5> operator +(SyncEvent<T1, T2, T3, T4, T5> e, Action<T1, T2, T3, T4, T5> listener)
         {
