@@ -46,12 +46,18 @@ namespace PurrNet.Packing
         public bool isWriting => !_isReading;
 
 
-		public int remainingBytes => Math.Max(0, (isWrapper ? _wrapperEnd : _buffer.Length) - positionInBytes);
-		public long remainingBits => Math.Max(0L, (long)(isWrapper ? _wrapperEnd : _buffer.Length) * 8 - _positionInBits);
+        public int remainingBytes => Math.Max(0, (isWrapper ? _wrapperEnd : (_isReading ? _writtenLength : _buffer.Length)) - positionInBytes);
+        public long remainingBits => Math.Max(0L, (long)(isWrapper ? _wrapperEnd : (_isReading ? _writtenLength : _buffer.Length)) * 8 - _positionInBits);
 
-		private int _wrapperEnd;
+        private int _wrapperEnd;
 
-		private int _wrapperStartBit;
+        private int _wrapperStartBit;
+
+        /// <summary>
+        /// Bytes written before switching to read mode. Bounds reads instead of the
+        /// pooled buffer's capacity, which can be much larger than the payload.
+        /// </summary>
+        private int _writtenLength;
 
         [UsedImplicitly, MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AdvanceBit()
@@ -202,6 +208,9 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPositionAndMode(bool readMode)
         {
+            if (readMode && !_isReading && !isWrapper)
+                _writtenLength = positionInBytes;
+
             ResetPosition();
             _isReading = readMode;
         }
@@ -228,8 +237,11 @@ namespace PurrNet.Packing
 
             if (_isReading)
             {
-                if (requiredBytes > _buffer.Length)
-                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
+				// A wrapper can be a slice of a larger pooled buffer
+				int limitBytes = isWrapper ? _wrapperEnd : _buffer.Length;
+
+                if (requiredBytes > limitBytes)
+                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {limitBytes << 3}");
                 return;
             }
 
