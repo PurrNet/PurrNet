@@ -56,9 +56,9 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkOwnershipDebug.html",
 "classPurrNet_1_1Pooling_1_1GenericPool.html",
 "classPurrNet_1_1SyncInput.html#a151f2cdd82eebb5bdbd58b3bf72211df",
-"interfacePurrNet_1_1INetworkTransform.html#a39cd6bbcf091951284317363b09ec235",
-"structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html",
-"structPurrNet_1_1Vector3WithParent.html#a77d5a95d83ab10fe65614c4b8e5d1818"
+"interfacePurrNet_1_1INetworkTransform.html#a20e7877f67cb56d604c55ef718a86db1",
+"structPurrNet_1_1NetworkModuleRPCHeader.html",
+"structPurrNet_1_1Vector3WithParent.html#a52830a0eb6c07ad2bd6216a6caccf540"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
