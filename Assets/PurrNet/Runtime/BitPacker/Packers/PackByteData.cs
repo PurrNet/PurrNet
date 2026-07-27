@@ -25,7 +25,7 @@ namespace PurrNet.Packing
                 return;
             }
 
-			// Size is an unbounded uint, could otherwise request up to around 4GB
+			// Untrusted length. Check it fits before allocating
 			if (length.value > (uint)packer.remainingBytes)
             {
                 throw new System.Runtime.Serialization.SerializationException(
@@ -55,6 +55,13 @@ namespace PurrNet.Packing
             Size length = default;
             Packer<Size>.Read(packer, ref length);
 
+			// Untrusted length. Check it fits before allocating
+			if (length.value > (uint)packer.remainingBytes)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid BitPacker length during deserialization: {length.value}.");
+            }
+
             if (data == null)
                 data = BitPackerPool.Get();
             else data.ResetPositionAndMode(false);
@@ -75,6 +82,13 @@ namespace PurrNet.Packing
         {
             Size length = default;
             Packer<Size>.Read(packer, ref length);
+
+			// Untrusted length. Check it fits before allocating
+			if (length.value > (uint)packer.remainingBytes)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid BitPackerWithLength length during deserialization: {length.value}.");
+            }
 
             var dataPacker = BitPackerPool.Get();
             var span = dataPacker.GetSpan(length);
