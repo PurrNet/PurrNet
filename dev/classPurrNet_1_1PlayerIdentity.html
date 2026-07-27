@@ -141,6 +141,9 @@ Protected Member Functions</h2></td></tr>
 <tr class="separator:ad444f89b34dfc57f6830a1f9688b1862"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a43b475702ccc01062cd9d3ec5c56d92f"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1PlayerIdentity.html#a43b475702ccc01062cd9d3ec5c56d92f">OnDestroy</a> ()</td></tr>
 <tr class="separator:a43b475702ccc01062cd9d3ec5c56d92f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acfb475aad8b49c9dadbdd83d5ea9af12"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1PlayerIdentity.html#acfb475aad8b49c9dadbdd83d5ea9af12">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:acfb475aad8b49c9dadbdd83d5ea9af12"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1PlayerIdentity.html#acfb475aad8b49c9dadbdd83d5ea9af12">More...</a><br /></td></tr>
+<tr class="separator:acfb475aad8b49c9dadbdd83d5ea9af12"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:a5d555248f0ca05193239704426014fe8 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="a5d555248f0ca05193239704426014fe8" name="a5d555248f0ca05193239704426014fe8"></a>
 object&#160;</td><td class="memItemRight" valign="bottom"><b>CallGeneric</b> (string methodName, <a class="el" href="structPurrNet_1_1GenericRPCHeader.html">GenericRPCHeader</a> rpcHeader)</td></tr>
@@ -206,9 +209,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 <tr class="memitem:ab2ecb22de5c175f5a774fb8e8dfa1ab7 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab2ecb22de5c175f5a774fb8e8dfa1ab7">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:ab2ecb22de5c175f5a774fb8e8dfa1ab7 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1NetworkIdentity.html#ab2ecb22de5c175f5a774fb8e8dfa1ab7">More...</a><br /></td></tr>
 <tr class="separator:ab2ecb22de5c175f5a774fb8e8dfa1ab7 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="aeccd5cdca217438c4222bb578c942d88" name="aeccd5cdca217438c4222bb578c942d88"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPoolReset</b> ()</td></tr>
-<tr class="memdesc:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.  <br /></td></tr>
+<tr class="memitem:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#aeccd5cdca217438c4222bb578c942d88">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkIdentity.html#aeccd5cdca217438c4222bb578c942d88">More...</a><br /></td></tr>
 <tr class="separator:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe9ac7ce0d242255b1a2e730a4851de4 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="afe9ac7ce0d242255b1a2e730a4851de4" name="afe9ac7ce0d242255b1a2e730a4851de4"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDestroy</b> ()</td></tr>
@@ -701,6 +703,35 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
 </dl>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#a4b6ad344119f0f67c0a69bb28a3cd9ec">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
+<a id="acfb475aad8b49c9dadbdd83d5ea9af12" name="acfb475aad8b49c9dadbdd83d5ea9af12"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acfb475aad8b49c9dadbdd83d5ea9af12">&#9670;&#160;</a></span>OnPoolReset()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1PlayerIdentity.html">PurrNet.PlayerIdentity</a>&lt; T &gt;.OnPoolReset </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#aeccd5cdca217438c4222bb578c942d88">PurrNet.NetworkIdentity</a>.</p>
 
 </div>
 </div>

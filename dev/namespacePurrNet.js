@@ -159,7 +159,7 @@ var namespacePurrNet =
     [ "SyncEvent", "classPurrNet_1_1SyncEvent.html", null ],
     [ "SyncEventBase", "classPurrNet_1_1SyncEventBase.html", "classPurrNet_1_1SyncEventBase" ],
     [ "SyncEventData", "structPurrNet_1_1SyncEventData.html", null ],
-    [ "SyncEventLogic", "classPurrNet_1_1SyncEventLogic.html", null ],
+    [ "SyncEventLogic", "classPurrNet_1_1SyncEventLogic.html", "classPurrNet_1_1SyncEventLogic" ],
     [ "SyncFile", "classPurrNet_1_1SyncFile.html", null ],
     [ "SyncHashSet", "classPurrNet_1_1SyncHashSet.html", "classPurrNet_1_1SyncHashSet" ],
     [ "SyncHashSetChange", "structPurrNet_1_1SyncHashSetChange.html", null ],
