@@ -1,4 +1,5 @@
 ﻿#if UNITY_ANIMATION
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,10 +12,13 @@ namespace PurrNet
         readonly Dictionary<int, bool> _boolValues = new Dictionary<int, bool>();
 
         private bool _wasController;
+        private bool _hasPendingAnimatorParameterState;
 
         private AnimatorControllerParameter[] _cachedParameters;
         private RuntimeAnimatorController _cachedController;
         private readonly Dictionary<int, int> _paramIndexByHash = new Dictionary<int, int>();
+
+        private bool canApplyAnimatorParameters => _animator && _animator.isActiveAndEnabled;
 
         private AnimatorControllerParameter[] GetCachedParameters()
         {
@@ -66,14 +70,14 @@ namespace PurrNet
 
         private void UpdateParamerCache()
         {
-            if (!_animator || !_animator.runtimeAnimatorController)
+            if (!canApplyAnimatorParameters || !_animator.runtimeAnimatorController)
                 return;
 
-            var parameters = GetCachedParameters();
+            var animParams = GetCachedParameters();
 
-            for (var i = 0; i < parameters.Length; i++)
+            for (var i = 0; i < animParams.Length; i++)
             {
-                var param = parameters[i];
+                var param = animParams[i];
 
                 if (_dontSyncHashes.Contains(param.nameHash))
                     continue;
@@ -95,14 +99,14 @@ namespace PurrNet
 
         private void CheckForParameterChanges()
         {
-            if (!_animator || !_animator.runtimeAnimatorController)
+            if (!canApplyAnimatorParameters || !_animator.runtimeAnimatorController)
                 return;
 
-            var parameters = GetCachedParameters();
+            var animParams = GetCachedParameters();
 
-            for (var i = 0; i < parameters.Length; i++)
+            for (var i = 0; i < animParams.Length; i++)
             {
-                var param = parameters[i];
+                var param = animParams[i];
 
                 if (_dontSyncHashes.Contains(param.nameHash))
                     continue;
@@ -172,6 +176,63 @@ namespace PurrNet
                     }
                 }
             }
+        }
+
+        private bool CacheParameterValue(NetAnimatorRPC action)
+        {
+            switch (action.type)
+            {
+                case NetAnimatorAction.SetBool:
+                    _boolValues[action._bool.nameHash] = action._bool.value;
+                    return true;
+                case NetAnimatorAction.SetFloat:
+                    _floatValues[action._float.nameHash] = action._float.value;
+                    return true;
+                case NetAnimatorAction.SetInteger:
+                    _intValues[action._integer.nameHash] = action._integer.value;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsParameterAction(NetAnimatorAction action)
+        {
+            return action is NetAnimatorAction.SetBool or NetAnimatorAction.SetFloat or
+                NetAnimatorAction.SetInteger or NetAnimatorAction.SetTrigger or NetAnimatorAction.ResetTrigger;
+        }
+
+        private void ApplyPendingAnimatorParameterState()
+        {
+            if (!_hasPendingAnimatorParameterState || !canApplyAnimatorParameters ||
+                !_animator.runtimeAnimatorController)
+                return;
+
+            var animParams = GetCachedParameters();
+            for (var i = 0; i < animParams.Length; i++)
+            {
+                var param = animParams[i];
+                switch (param.type)
+                {
+                    case AnimatorControllerParameterType.Bool:
+                        if (_boolValues.TryGetValue(param.nameHash, out var boolValue))
+                            _animator.SetBool(param.nameHash, boolValue);
+                        break;
+                    case AnimatorControllerParameterType.Float:
+                        if (_floatValues.TryGetValue(param.nameHash, out var floatValue))
+                            _animator.SetFloat(param.nameHash, floatValue);
+                        break;
+                    case AnimatorControllerParameterType.Int:
+                        if (_intValues.TryGetValue(param.nameHash, out var intValue))
+                            _animator.SetInteger(param.nameHash, intValue);
+                        break;
+                    case AnimatorControllerParameterType.Trigger:
+                    default:
+                        break;
+                }
+            }
+
+            _hasPendingAnimatorParameterState = false;
         }
     }
 }

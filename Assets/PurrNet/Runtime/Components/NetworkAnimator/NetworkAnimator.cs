@@ -572,30 +572,40 @@ namespace PurrNet
         public void SetFloat(string propName, float value, float dampTime, float deltaTime) =>
             SetFloat(Animator.StringToHash(propName), value, dampTime, deltaTime);
 
-        public float GetFloat(string propName) => _animator.GetFloat(propName);
+        public float GetFloat(string propName) => GetFloat(Animator.StringToHash(propName));
 
-        public float GetFloat(int nameHash) => _animator.GetFloat(nameHash);
+        public float GetFloat(int nameHash) =>
+            !canApplyAnimatorParameters && _floatValues.TryGetValue(nameHash, out var value)
+                ? value
+                : _animator.GetFloat(nameHash);
 
         public void SetBool(string propName, bool value) => SetBool(Animator.StringToHash(propName), value);
 
-        public bool GetBool(string propName) => _animator.GetBool(propName);
+        public bool GetBool(string propName) => GetBool(Animator.StringToHash(propName));
 
-        public bool GetBool(int nameHash) => _animator.GetBool(nameHash);
+        public bool GetBool(int nameHash) =>
+            !canApplyAnimatorParameters && _boolValues.TryGetValue(nameHash, out var value)
+                ? value
+                : _animator.GetBool(nameHash);
 
         [Obsolete("Use SetInteger instead")]
         public void SetInt(int nameHash, int value) => SetInteger(nameHash, value);
 
         public void SetInteger(string propName, int value) => SetInteger(Animator.StringToHash(propName), value);
 
-        public int GetInteger(string propName) => _animator.GetInteger(propName);
+        public int GetInteger(string propName) => GetInteger(Animator.StringToHash(propName));
 
-        public int GetInteger(int nameHash) => _animator.GetInteger(nameHash);
+        public int GetInteger(int nameHash) =>
+            !canApplyAnimatorParameters && _intValues.TryGetValue(nameHash, out var value)
+                ? value
+                : _animator.GetInteger(nameHash);
 
         public void ResetTrigger(int nameHash)
         {
             if (_dontSyncHashes.Contains(nameHash))
             {
-                _animator.ResetTrigger(nameHash);
+                if (canApplyAnimatorParameters)
+                    _animator.ResetTrigger(nameHash);
                 return;
             }
 
@@ -604,7 +614,8 @@ namespace PurrNet
 
             var resetTrigger = new ResetTrigger
                 { nameHash = nameHash, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
-            resetTrigger.Apply(_animator);
+            if (canApplyAnimatorParameters)
+                resetTrigger.Apply(_animator);
 
             IfSameReplace(new NetAnimatorRPC(resetTrigger),
                 (a, b) => a._resetTrigger.nameHash == b._resetTrigger.nameHash);
@@ -614,7 +625,8 @@ namespace PurrNet
         {
             if (_dontSyncHashes.Contains(nameHash))
             {
-                _animator.SetTrigger(nameHash);
+                if (canApplyAnimatorParameters)
+                    _animator.SetTrigger(nameHash);
                 return;
             }
 
@@ -623,7 +635,8 @@ namespace PurrNet
 
             var trigger = new SetTrigger
                 { nameHash = nameHash, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
-            trigger.Apply(_animator);
+            if (canApplyAnimatorParameters)
+                trigger.Apply(_animator);
 
             IfSameReplace(new NetAnimatorRPC(trigger),
                 (a, b) => a._trigger.nameHash == b._trigger.nameHash);
@@ -633,7 +646,8 @@ namespace PurrNet
         {
             if (_dontSyncHashes.Contains(nameHash))
             {
-                _animator.SetFloat(nameHash, value);
+                if (canApplyAnimatorParameters)
+                    _animator.SetFloat(nameHash, value);
                 return;
             }
 
@@ -642,7 +656,10 @@ namespace PurrNet
 
             var setFloat = new SetFloat
                 { nameHash = nameHash, value = value, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
-            setFloat.Apply(_animator);
+            if (canApplyAnimatorParameters)
+                setFloat.Apply(_animator);
+            else
+                _hasPendingAnimatorParameterState = true;
             _floatValues[nameHash] = value;
 
             IfSameReplace(new NetAnimatorRPC(setFloat),
@@ -652,20 +669,33 @@ namespace PurrNet
         /// <summary>
         /// Same as Animator.SetFloat with damping; the damping is evaluated locally and the resulting value is synced.
         /// </summary>
+        /// <remarks>
+        /// If the Animator is disabled, it cannot evaluate damping, so the target value is synced directly.
+        /// </remarks>
         public void SetFloat(int nameHash, float value, float dampTime, float deltaTime)
         {
             if (_dontSyncHashes.Contains(nameHash))
             {
-                _animator.SetFloat(nameHash, value, dampTime, deltaTime);
+                if (canApplyAnimatorParameters)
+                    _animator.SetFloat(nameHash, value, dampTime, deltaTime);
                 return;
             }
 
             if (!IsController(_ownerAuth))
                 return;
 
-            _animator.SetFloat(nameHash, value, dampTime, deltaTime);
+            float damped;
+            if (canApplyAnimatorParameters)
+            {
+                _animator.SetFloat(nameHash, value, dampTime, deltaTime);
+                damped = _animator.GetFloat(nameHash);
+            }
+            else
+            {
+                damped = value;
+                _hasPendingAnimatorParameterState = true;
+            }
 
-            var damped = _animator.GetFloat(nameHash);
             var setFloat = new SetFloat
                 { nameHash = nameHash, value = damped, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             _floatValues[nameHash] = damped;
@@ -678,7 +708,8 @@ namespace PurrNet
         {
             if (_dontSyncHashes.Contains(nameHash))
             {
-                _animator.SetBool(nameHash, value);
+                if (canApplyAnimatorParameters)
+                    _animator.SetBool(nameHash, value);
                 return;
             }
 
@@ -687,7 +718,10 @@ namespace PurrNet
 
             var setBool = new SetBool
                 { nameHash = nameHash, value = value, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
-            setBool.Apply(_animator);
+            if (canApplyAnimatorParameters)
+                setBool.Apply(_animator);
+            else
+                _hasPendingAnimatorParameterState = true;
             _boolValues[nameHash] = value;
 
             IfSameReplace(new NetAnimatorRPC(setBool),
@@ -698,7 +732,8 @@ namespace PurrNet
         {
             if (_dontSyncHashes.Contains(nameHash))
             {
-                _animator.SetInteger(nameHash, value);
+                if (canApplyAnimatorParameters)
+                    _animator.SetInteger(nameHash, value);
                 return;
             }
 
@@ -707,7 +742,10 @@ namespace PurrNet
 
             var setInteger = new SetInteger
                 { nameHash = nameHash, value = value, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
-            setInteger.Apply(_animator);
+            if (canApplyAnimatorParameters)
+                setInteger.Apply(_animator);
+            else
+                _hasPendingAnimatorParameterState = true;
             _intValues[nameHash] = value;
 
             IfSameReplace(new NetAnimatorRPC(setInteger),

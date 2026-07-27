@@ -18,13 +18,16 @@ namespace PurrNet
             if (isSpawner)
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, false);
+            using var data = NetAnimatorActionBatch.CreateReconcile(
+                _dontSyncHashes, _animator, false, _boolValues, _floatValues, _intValues);
             ReconcileState(player, data);
             _reconcilePlayers.Add(player);
         }
 
         public void OnTick(float delta)
         {
+            ApplyPendingAnimatorParameterState();
+
             if (!IsController(_ownerAuth))
             {
                 if (_dirty.Count > 0)
@@ -44,7 +47,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, isIk);
+            using var data = NetAnimatorActionBatch.CreateReconcile(
+                _dontSyncHashes, _animator, isIk, _boolValues, _floatValues, _intValues);
 
             if (isServer)
             {
@@ -68,7 +72,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, isIk);
+            using var data = NetAnimatorActionBatch.CreateReconcile(
+                _dontSyncHashes, _animator, isIk, _boolValues, _floatValues, _intValues);
 
             if (isServer)
             {
@@ -85,7 +90,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateTimeReconcile(_dontSyncHashes, _animator);
+            using var data = NetAnimatorActionBatch.CreateTimeReconcile(
+                _dontSyncHashes, _animator, _boolValues, _floatValues, _intValues);
 
             if (isServer)
             {
@@ -161,6 +167,8 @@ namespace PurrNet
         /// </summary>
         public void FlushImmediately()
         {
+            ApplyPendingAnimatorParameterState();
+
             if (_autoSyncParameters)
                 CheckForParameterChanges();
             SendDirtyActions();
@@ -269,6 +277,14 @@ namespace PurrNet
 
                 if (!ResolveParamRef(ref action))
                     continue;
+
+                bool hasCachedValue = CacheParameterValue(action);
+                if (!canApplyAnimatorParameters && IsParameterAction(action.type))
+                {
+                    if (hasCachedValue)
+                        _hasPendingAnimatorParameterState = true;
+                    continue;
+                }
 
                 bool isIk = action.type is
                     NetAnimatorAction.SetIKPosition or NetAnimatorAction.SetIKRotation or
