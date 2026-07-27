@@ -46,6 +46,14 @@ namespace PurrNet
             _allPlayers.Remove(this as T);
         }
 
+        protected override void OnPoolReset()
+        {
+            base.OnPoolReset();
+
+            _allPlayers.Remove(this as T);
+            _oldRegisteredOwner = null;
+        }
+
         public static bool TryGetLocal(out T player)
         {
             if (!NetworkManager.main)
