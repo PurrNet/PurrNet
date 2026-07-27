@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using PurrNet.Modules;
 using PurrNet.Pooling;
+using PurrNet.Transports;
 using UnityEngine;
 using Unity.Collections;
 
@@ -551,8 +553,9 @@ namespace PurrNet.Packing
                 return;
             }
 
-			// Elements can be smaller than a byte so bound against bits
-			if (length < 0 || length > packer.remainingBits)
+			// bound the allocation, not just the length
+            // T's serialized size can be smaller than sizeof(T)
+			if (length < 0 || length * (long)Unsafe.SizeOf<T>() > FragmentationLayer.MAX_MESSAGE_SIZE)
             {
                 throw new System.Runtime.Serialization.SerializationException(
                     $"Invalid array length during deserialization: {length}.");
