@@ -1,5 +1,4 @@
 ﻿#if UNITY_ANIMATION
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
