@@ -531,6 +531,9 @@ namespace PurrNet.Packing
             }
         }
 
+        // Seperate from MAX_MESSAGE_SIZE since bit backed types can exeed it here
+        private const int MAX_ARRAY_ALLOCATION_BYTES = FragmentationLayer.MAX_MESSAGE_SIZE * 4;
+
         [UsedByIL]
         public static void ReadArray<T>(this BitPacker packer, ref T[] value)
         {
@@ -553,9 +556,15 @@ namespace PurrNet.Packing
                 return;
             }
 
-			// bound the allocation, not just the length
-            // T's serialized size can be smaller than sizeof(T)
-			if (length < 0 || length * (long)Unsafe.SizeOf<T>() > FragmentationLayer.MAX_MESSAGE_SIZE)
+            // Can't fit more elements than bits remaining
+            if (length < 0 || length > packer.remainingBits)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid array length during deserialization: {length}.");
+            }
+
+            // Also cap the actual allocation. Bit packed types can pass the check above
+            if (length * (long)Unsafe.SizeOf<T>() > MAX_ARRAY_ALLOCATION_BYTES)
             {
                 throw new System.Runtime.Serialization.SerializationException(
                     $"Invalid array length during deserialization: {length}.");
