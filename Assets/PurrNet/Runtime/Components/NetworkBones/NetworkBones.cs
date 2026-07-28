@@ -128,7 +128,7 @@ namespace PurrNet
         {
             using var renderers = DisposableList<SkinnedMeshRenderer>.Create(32);
 
-            gameObject.GetComponentsInChildren<SkinnedMeshRenderer>(renderers.list);
+            gameObject.GetComponentsInChildren<SkinnedMeshRenderer>(true, renderers.list);
             _bones.Clear();
 
             for (var rIdx = 0; rIdx < renderers.list.Count; rIdx++)
@@ -419,7 +419,7 @@ namespace PurrNet
             RPCInfo info = default)
         {
             using (data)
-                ReadPositions(default, startingIdx, count, data, _clientDeltaModule);
+                ReadPositions(info.sender, startingIdx, count, data, _clientDeltaModule);
         }
 
         [ServerRpc(channel: Channel.Unreliable)]
