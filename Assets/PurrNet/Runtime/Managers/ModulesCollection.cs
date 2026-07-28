@@ -23,6 +23,7 @@ namespace PurrNet
         private readonly List<IUpdate> _updateListeners;
         private readonly List<ICleanup> _cleanupListeners;
         private readonly List<IFlushBatchedRPCs> _preBroadcastSentListeners;
+        private readonly List<IFlushImmediateRPCs> _immediateFlushListeners;
         private readonly List<IPromoteToServerModule> _IPromoteToServerModule;
         private readonly List<ITransferToNewServer> _ITransferToNewServer;
         private readonly List<IPostTransferToNewServer> _IPostTransferToNewServer;
@@ -45,6 +46,7 @@ namespace PurrNet
             _batchListeners = new List<IBatch>();
             _postBatchListeners = new List<IPostBatch>();
             _preBroadcastSentListeners = new List<IFlushBatchedRPCs>();
+            _immediateFlushListeners = new List<IFlushImmediateRPCs>();
             _IPromoteToServerModule = new List<IPromoteToServerModule>();
             _ITransferToNewServer = new List<ITransferToNewServer>();
             _IPostTransferToNewServer = new List<IPostTransferToNewServer>();
@@ -145,6 +147,9 @@ namespace PurrNet
                 if (_modules[i] is IFlushBatchedRPCs preBroadcastSent)
                     _preBroadcastSentListeners.Add(preBroadcastSent);
 
+                if (_modules[i] is IFlushImmediateRPCs immediateFlush)
+                    _immediateFlushListeners.Add(immediateFlush);
+
                 if (_modules[i] is IPromoteToServerModule promoteToServerModule)
                     _IPromoteToServerModule.Add(promoteToServerModule);
 
@@ -231,6 +236,16 @@ namespace PurrNet
                 _preBroadcastSentListeners[i].FlushBatchedRPCs();
         }
 
+        public bool FlushImmediateRPCs()
+        {
+            bool flushedAny = false;
+
+            for (int i = 0; i < _immediateFlushListeners.Count; i++)
+                flushedAny |= _immediateFlushListeners[i].FlushImmediateRPCs();
+
+            return flushedAny;
+        }
+
         public void PromoteToServer()
         {
             for (int i = 0; i < _IPromoteToServerModule.Count; i++)
@@ -294,6 +309,7 @@ namespace PurrNet
             _batchListeners.Clear();
             _postBatchListeners.Clear();
             _preBroadcastSentListeners.Clear();
+            _immediateFlushListeners.Clear();
             _IPromoteToServerModule.Clear();
             _ITransferToNewServer.Clear();
             _IPostTransferToNewServer.Clear();
@@ -322,6 +338,7 @@ namespace PurrNet
             _batchListeners.AddRange(other._batchListeners);
             _postBatchListeners.AddRange(other._postBatchListeners);
             _preBroadcastSentListeners.AddRange(other._preBroadcastSentListeners);
+            _immediateFlushListeners.AddRange(other._immediateFlushListeners);
             _IPromoteToServerModule.AddRange(other._IPromoteToServerModule);
             _ITransferToNewServer.AddRange(other._ITransferToNewServer);
             _IPostTransferToNewServer.AddRange(other._IPostTransferToNewServer);

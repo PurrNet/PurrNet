@@ -500,6 +500,11 @@ namespace PurrNet.Nakama
 #endif
         }
 
+        public void UnityUpdate(float delta)
+        {
+            ReceiveMessages(delta);
+        }
+
         public void SendMessages(float delta)
         {
             // Sends are dispatched immediately via the Nakama socket; nothing to flush per tick.

@@ -316,6 +316,9 @@ GameObject:
   - component: {fileID: 54853820}
   - component: {fileID: 54853819}
   - component: {fileID: 54853822}
+  - component: {fileID: 54853823}
+  - component: {fileID: 54853824}
+  - component: {fileID: 54853825}
   m_Layer: 0
   m_Name: IdentityRPC
   m_TagString: Untagged
@@ -396,6 +399,62 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::IdentityGenericRpcsScenario
   _doneTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
+--- !u!114 &54853823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54853817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc1ed29922c4be6983d77599d9c3d60, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::RpcMtuBehaviourScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _deliveryTimeoutSeconds: 20
+  _doneTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+  _dropGraceSeconds: 2
+--- !u!114 &54853824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54853817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 397622ef9c854e1d9a80617e667eb631, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::RpcImmediateScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _deliveryTimeoutSeconds: 20
+  _doneTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+--- !u!114 &54853825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54853817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d781839bc89242f7980f98e3dc41a0f6, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::RpcImmediateTimingScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _roundIntervalSeconds: 0.5
+  _deliveryTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
 --- !u!1 &108535981
 GameObject:
   m_ObjectHideFlags: 0
@@ -1441,7 +1500,6 @@ MonoBehaviour:
   _maxConnections: 100
   _address: 127.0.0.1
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
   _networkSimulation:
     includeInBuild: 0
     simulateLatency: 0

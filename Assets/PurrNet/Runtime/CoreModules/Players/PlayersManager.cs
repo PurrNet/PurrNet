@@ -201,6 +201,12 @@ namespace PurrNet.Modules
         public void Subscribe<T>(PlayerBroadcastDelegate<T> callback) where T : new()
             => _playerBroadcaster.Subscribe(callback);
 
+        internal void RegisterImmediateType<T>()
+            => _broadcastModule.RegisterImmediateType<T>();
+
+        internal void UnregisterImmediateType<T>()
+            => _broadcastModule.UnregisterImmediateType<T>();
+
         public PlayersManager(NetworkManager nm, AuthModule auth, BroadcastModule broadcaster)
         {
             _networkManager = nm;

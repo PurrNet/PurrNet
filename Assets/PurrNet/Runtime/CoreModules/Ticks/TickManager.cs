@@ -72,6 +72,52 @@ namespace PurrNet.Modules
         public event Action onPreTick, onTick, onPostTick;
         public event Action onReliablePreTick, onReliableTick, onReliablePostTick;
 
+        /// <summary>
+        /// Lower clamp for <see cref="tickPacingScale"/>.
+        /// </summary>
+        public const double minTickPacingScale = 0.98d;
+
+        /// <summary>
+        /// Upper clamp for <see cref="tickPacingScale"/>.
+        /// </summary>
+        public const double maxTickPacingScale = 1.02d;
+
+        private double _tickPacingScale = 1d;
+
+        /// <summary>
+        /// Wall-clock multiplier applied to the tick accumulation interval. Values below 1 fire
+        /// ticks slightly faster, values above 1 slightly slower. Clamped to
+        /// [<see cref="minTickPacingScale"/>, <see cref="maxTickPacingScale"/>]. The simulation
+        /// tick delta is unaffected; only the real time between ticks bends.
+        /// </summary>
+        public double tickPacingScale
+        {
+            get => _tickPacingScale;
+            set
+            {
+                if (double.IsNaN(value))
+                    return;
+
+                var clamped = Math.Clamp(value, minTickPacingScale, maxTickPacingScale);
+                if (clamped == _tickPacingScale)
+                    return;
+
+                // rebase the current fractional phase onto the new interval so the
+                // precise tick clocks stay monotonic across a scale change
+                var now = Time.unscaledTimeAsDouble;
+                var elapsed = now - _lastTickTime;
+                if (elapsed > 0)
+                    _lastTickTime = now - elapsed * (clamped / _tickPacingScale);
+
+                _tickPacingScale = clamped;
+            }
+        }
+
+        /// <summary>
+        /// Wall-clock time of the most recent tick boundary, in Time.unscaledTimeAsDouble seconds.
+        /// </summary>
+        public double lastTickTime => _lastTickTime;
+
         private readonly INetworkManager _networkManager;
         private bool _asServer;
 
@@ -129,7 +175,7 @@ namespace PurrNet.Modules
         public void Update()
         {
             HandleTick();
-            floatingPoint = (Time.unscaledTimeAsDouble - _lastTickTime) * tickRate;
+            floatingPoint = (Time.unscaledTimeAsDouble - _lastTickTime) / (tickDeltaDouble * _tickPacingScale);
 
             if (_networkManager.isServer || !_networkManager.isClient)
                 return;
@@ -149,10 +195,11 @@ namespace PurrNet.Modules
         private void HandleTick()
         {
             int ticksHandled = 0;
+            double interval = tickDeltaDouble * _tickPacingScale;
 
-            while (_lastTickTime + tickDeltaDouble <= Time.unscaledTimeAsDouble)
+            while (_lastTickTime + interval <= Time.unscaledTimeAsDouble)
             {
-                _lastTickTime += tickDeltaDouble;
+                _lastTickTime += interval;
                 _syncedTick++;
                 localTick++;
                 floatingPoint = 0;

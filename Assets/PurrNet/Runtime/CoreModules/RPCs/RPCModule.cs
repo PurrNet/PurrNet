@@ -13,7 +13,7 @@ using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
-    public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IPromoteToServerModule, ITransferToNewServer
+    public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IFlushImmediateRPCs, IPromoteToServerModule, ITransferToNewServer
     {
         public delegate void RPCPreProcessDelegate(RPCSignature signature, ref BitPacker packer);
 
@@ -30,6 +30,8 @@ namespace PurrNet.Modules
         readonly NetworkManager _manager;
 
         private RPCBatch _unionBatch;
+        private RPCBatch _immediateBatch;
+        private bool _immediateContentFlushed;
 
         public RPCModule(NetworkManager manager, PlayersManager playersManager, HierarchyFactory hierarchyModule,
             GlobalOwnershipModule ownerships, ScenesModule scenes)
@@ -79,6 +81,8 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _unionBatch.Clear();
+            _immediateBatch.Clear();
+            _immediateContentFlushed = false;
         }
 
         public void PostPromoteToServerModule() { }
@@ -86,6 +90,8 @@ namespace PurrNet.Modules
         public void TransferToNewServer()
         {
             _unionBatch.Clear();
+            _immediateBatch.Clear();
+            _immediateContentFlushed = false;
         }
 
         public void Enable(bool asServer)
@@ -101,6 +107,28 @@ namespace PurrNet.Modules
             _hierarchyModule.onIdentityRemoved += OnIdentityRemoved;
 
             _unionBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC);
+            _immediateBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC, subscribeToReceives: false,
+                sendAsImmediate: true);
+            _immediateBatch.onImmediateAutoFlush = MarkImmediateContentPending;
+
+            _playersManager.RegisterImmediateType<ImmediateRPCBatchPacket>();
+            _playersManager.Subscribe<ImmediateRPCBatchPacket>(OnImmediateBatchReceived);
+        }
+
+        private bool _receivingImmediateLane;
+
+        private void OnImmediateBatchReceived(PlayerID player, ImmediateRPCBatchPacket packet, bool asServer)
+        {
+            _receivingImmediateLane = true;
+
+            try
+            {
+                _immediateBatch.ProcessReceivedBatch(player, packet.count, packet.data, asServer);
+            }
+            finally
+            {
+                _receivingImmediateLane = false;
+            }
         }
 
         public void Disable(bool asServer)
@@ -108,6 +136,8 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<RPCPacket>(ReceiveRPC);
             _playersManager.Unsubscribe<StaticRPCPacket>(ReceiveStaticRPC);
             _playersManager.Unsubscribe<ChildRPCPacket>(ReceiveChildRPC);
+            _playersManager.Unsubscribe<ImmediateRPCBatchPacket>(OnImmediateBatchReceived);
+            _playersManager.UnregisterImmediateType<ImmediateRPCBatchPacket>();
 
             _playersManager.onPlayerJoined -= OnPlayerJoined;
             _scenes.onSceneUnloaded -= OnSceneUnloaded;
@@ -116,6 +146,8 @@ namespace PurrNet.Modules
             _hierarchyModule.onIdentityRemoved -= OnIdentityRemoved;
 
             _unionBatch.Dispose();
+            _immediateBatch.Dispose();
+            _immediateContentFlushed = false;
         }
 
         private void OnObserverAdded(PlayerID player, SceneID scene, NetworkID id)
@@ -273,7 +305,7 @@ namespace PurrNet.Modules
                     if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                         Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                    serverRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                    serverRpcModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     break;
                 }
                 case RPCType.ObserversRPC:
@@ -286,7 +318,7 @@ namespace PurrNet.Modules
                             if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                                 Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                            module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded);
+                            module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
                         else
                         {
@@ -313,7 +345,7 @@ namespace PurrNet.Modules
                             }
 #endif
 
-                            module.BatchToTargets(all, packet, signature.channel, filter, signature.mtuExceeded);
+                            module.BatchToTargets(all, packet, signature.channel, filter, signature.mtuExceeded, signature.immediate);
                         }
                     }
                     else
@@ -322,7 +354,7 @@ namespace PurrNet.Modules
                         if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
                             Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
 #endif
-                        module.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                        module.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     }
                     break;
                 }
@@ -338,12 +370,12 @@ namespace PurrNet.Modules
                             nm.TryGetModule<RPCModule>(false, out var hostClientModule))
                         {
                             packet.targetPlayerId = PlayerID.Server;
-                            hostClientModule.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                            hostClientModule.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                             break;
                         }
 
                         using var targets = signature.GetTargets();
-                        module.BatchToTargets(targets, packet, signature.channel, signature.mtuExceeded);
+                        module.BatchToTargets(targets, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                     }
                     else
                     {
@@ -351,7 +383,7 @@ namespace PurrNet.Modules
                         for (int i = 0; i < targets.Count; i++)
                         {
                             packet.targetPlayerId = targets[i];
-                            module.BatchToServer(packet, signature.channel, signature.mtuExceeded);
+                            module.BatchToServer(packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
                     }
                     break;
@@ -363,6 +395,13 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static bool ValidateReceivingStaticRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
+            if (info.receivedImmediate && !signature.immediate)
+            {
+                PurrLogger.LogError(
+                    $"Rejected static RPC '{signature.rpcName}': it arrived on the immediate lane but is not marked immediate.");
+                return false;
+            }
+
             var networkManager = NetworkManager.main;
 
             if (!networkManager)
@@ -428,7 +467,10 @@ namespace PurrNet.Modules
                         finalList.Add(observer);
                     }
 
-                    playersManager.Send(finalList, data, signature.channel, signature.mtuExceeded.AsOverride());
+                    if (signature.immediate && data is StaticRPCPacket immediateStatic)
+                        module.BatchToTargets(finalList, immediateStatic, signature.channel, signature.mtuExceeded, true);
+                    else
+                        playersManager.Send(finalList, data, signature.channel, signature.mtuExceeded.AsOverride());
                     finalList.Dispose();
 
                     if (data is StaticRPCPacket staticRpc)
@@ -452,7 +494,10 @@ namespace PurrNet.Modules
                     }
                     else if (!isTargetingServer)
                     {
-                        playersManager.Send(data.targetPlayerId, data, signature.channel, signature.mtuExceeded.AsOverride());
+                        if (signature.immediate && data is StaticRPCPacket immediateStatic)
+                            module.BatchToTarget(data.targetPlayerId, immediateStatic, signature.channel, signature.mtuExceeded, true);
+                        else
+                            playersManager.Send(data.targetPlayerId, data, signature.channel, signature.mtuExceeded.AsOverride());
                     }
 
                     if (data is StaticRPCPacket staticRpc)
@@ -471,7 +516,7 @@ namespace PurrNet.Modules
             if (!networkManager.TryGetModule<RpcRequestResponseModule>(true, out var rpcModule))
                 return;
 
-            rpcModule.SendRejection(info.sender, requestId, error, signature.channel);
+            rpcModule.SendRejection(info.sender, requestId, error, signature.channel, signature.immediate);
         }
 
         static readonly Dictionary<StaticGenericKey, MethodInfo> _staticGenericHandlers =
@@ -868,7 +913,8 @@ namespace PurrNet.Modules
             {
                 manager = _manager,
                 sender = data.header.senderId,
-                asServer = asServer
+                asServer = asServer,
+                receivedImmediate = _receivingImmediateLane
             };
 
             if (rpcHandlerPtr != null)
@@ -901,7 +947,8 @@ namespace PurrNet.Modules
             {
                 manager = _manager,
                 sender = packet.header.senderId,
-                asServer = asServer
+                asServer = asServer,
+                receivedImmediate = _receivingImmediateLane
             };
 
             if (_hierarchyModule.TryGetIdentity(packet.header.sceneId, packet.header.networkId, out var identity) && identity)
@@ -1004,7 +1051,8 @@ namespace PurrNet.Modules
             {
                 manager = _manager,
                 sender = packet.header.senderId,
-                asServer = asServer
+                asServer = asServer,
+                receivedImmediate = _receivingImmediateLane
             };
 
             if (_hierarchyModule.TryGetIdentity(packet.header.sceneId, packet.header.networkId, out var identity) && identity)
@@ -1095,99 +1143,134 @@ namespace PurrNet.Modules
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void BatchToServer(RPCPacket normalRpc, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+        private RPCBatch SelectBatch(Channel signatureChannel, bool immediate)
         {
-            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(normalRpc.header), normalRpc.data, signatureChannel, mtuBehaviour);
+            return immediate && signatureChannel == Channel.Unreliable ? _immediateBatch : _unionBatch;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BatchToServer(RPCPacket normalRpc, Channel signatureChannel,
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
+        {
+            SelectBatch(signatureChannel, immediate).Queue(PlayerID.Server, new UnionRPCHeader(normalRpc.header), normalRpc.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToServer(ChildRPCPacket childRpc, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(childRpc.header), childRpc.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(PlayerID.Server, new UnionRPCHeader(childRpc.header), childRpc.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToServer(StaticRPCPacket staticRpc, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(PlayerID.Server, new UnionRPCHeader(staticRpc.header), staticRpc.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(PlayerID.Server, new UnionRPCHeader(staticRpc.header), staticRpc.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(DisposableList<PlayerID> players, RPCPacket packet, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTarget(PlayerID player, RPCPacket packet, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTarget(PlayerID player, ChildRPCPacket packet, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(DisposableList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(DisposableList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTarget(PlayerID player, StaticRPCPacket packet, Channel signatureChannel,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(player, new UnionRPCHeader(packet.header), packet.data, signatureChannel, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(IReadOnlyList<PlayerID> players, StaticRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(IReadOnlyList<PlayerID> players, RPCPacket packet, Channel signatureChannel, ObserverFilter filter = default,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchToTargets(IReadOnlyList<PlayerID> players, ChildRPCPacket packet, Channel signatureChannel, ObserverFilter filter = default,
-            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager)
+            MTUBehaviour mtuBehaviour = MTUBehaviour.NetworkManager, bool immediate = false)
         {
-            _unionBatch.Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
+            SelectBatch(signatureChannel, immediate).Queue(players, new UnionRPCHeader(packet.header), packet.data, signatureChannel, filter, mtuBehaviour);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BatchNetworkMessages()
         {
             _unionBatch.Flush();
+
+            if (_immediateBatch.hasPending)
+            {
+                _immediateContentFlushed = true;
+                _immediateBatch.Flush();
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void FlushBatchedRPCs()
         {
             BatchNetworkMessages();
+        }
+
+        /// <summary>
+        /// Signals that immediate content was handed to the transport outside the
+        /// immediate batch, so the next <see cref="FlushImmediateRPCs"/> still forces a send.
+        /// </summary>
+        internal void MarkImmediateContentPending()
+        {
+            _immediateContentFlushed = true;
+        }
+
+        public bool FlushImmediateRPCs()
+        {
+            bool flushed = _immediateContentFlushed;
+            _immediateContentFlushed = false;
+
+            if (_immediateBatch != null && _immediateBatch.hasPending)
+            {
+                _immediateBatch.Flush();
+                flushed = true;
+            }
+
+            return flushed;
         }
     }
 }
