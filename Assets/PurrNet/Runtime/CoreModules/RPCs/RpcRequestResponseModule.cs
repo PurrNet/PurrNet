@@ -116,6 +116,12 @@ namespace PurrNet.Modules
         public RpcResponse response;
     }
 
+    /// <inheritdoc cref="ImmediateRpcResponse"/>
+    public struct ImmediateRpcRejection
+    {
+        public RpcRejection rejection;
+    }
+
     public class RpcRequestResponseModule : INetworkModule, IFixedUpdate
     {
         private readonly NetworkManager _manager;
@@ -138,6 +144,8 @@ namespace PurrNet.Modules
             _playersManager.Subscribe<RpcRejection>(OnRpcRejection);
             _playersManager.RegisterImmediateType<ImmediateRpcResponse>();
             _playersManager.Subscribe<ImmediateRpcResponse>(OnImmediateRpcResponse);
+            _playersManager.RegisterImmediateType<ImmediateRpcRejection>();
+            _playersManager.Subscribe<ImmediateRpcRejection>(OnImmediateRpcRejection);
             _playersManager.onPlayerLeft += OnPlayerLeft;
         }
 
@@ -147,6 +155,8 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<RpcRejection>(OnRpcRejection);
             _playersManager.Unsubscribe<ImmediateRpcResponse>(OnImmediateRpcResponse);
             _playersManager.UnregisterImmediateType<ImmediateRpcResponse>();
+            _playersManager.Unsubscribe<ImmediateRpcRejection>(OnImmediateRpcRejection);
+            _playersManager.UnregisterImmediateType<ImmediateRpcRejection>();
             _playersManager.onPlayerLeft -= OnPlayerLeft;
         }
 
@@ -226,6 +236,12 @@ namespace PurrNet.Modules
         }
 
         private void OnRpcRejection(PlayerID conn, RpcRejection data, bool asServer)
+            => HandleRpcRejection(conn, data, asServer, false);
+
+        private void OnImmediateRpcRejection(PlayerID conn, ImmediateRpcRejection data, bool asServer)
+            => HandleRpcRejection(conn, data.rejection, asServer, true);
+
+        private void HandleRpcRejection(PlayerID conn, RpcRejection data, bool asServer, bool immediate)
         {
             var localPlayer = _manager.localPlayer;
 
@@ -233,7 +249,11 @@ namespace PurrNet.Modules
             {
                 case true when data.forward.HasValue && data.forward != localPlayer:
                     data.sender = conn;
-                    _playersManager.Send(data.forward.Value, data, data.channel ?? Channel.ReliableOrdered);
+                    var relayChannel = data.channel ?? Channel.ReliableOrdered;
+                    if (immediate)
+                        SendImmediateRejection(data.forward.Value, data, relayChannel);
+                    else
+                        _playersManager.Send(data.forward.Value, data, relayChannel);
                     return;
                 case true:
                     data.sender = null;
@@ -263,7 +283,8 @@ namespace PurrNet.Modules
             }
         }
 
-        public void SendRejection(PlayerID originalSender, uint requestId, RpcError error, Channel channel)
+        public void SendRejection(PlayerID originalSender, uint requestId, RpcError error, Channel channel,
+            bool immediate = false)
         {
             var rejection = new RpcRejection
             {
@@ -280,12 +301,32 @@ namespace PurrNet.Modules
                     return;
                 }
 
-                _playersManager.Send(originalSender, rejection, channel);
+                if (immediate)
+                    SendImmediateRejection(originalSender, rejection, channel);
+                else
+                    _playersManager.Send(originalSender, rejection, channel);
                 return;
             }
 
             rejection.forward = originalSender;
-            _playersManager.SendToServer(rejection, channel);
+
+            if (immediate)
+                SendImmediateRejection(null, rejection, channel);
+            else
+                _playersManager.SendToServer(rejection, channel);
+        }
+
+        private void SendImmediateRejection(PlayerID? target, RpcRejection rejection, Channel channel)
+        {
+            var wrapped = new ImmediateRpcRejection { rejection = rejection };
+
+            if (target.HasValue)
+                _playersManager.Send(target.Value, wrapped, channel);
+            else
+                _playersManager.SendToServer(wrapped, channel);
+
+            if (_manager.TryGetModule<RPCModule>(_asServer, out var rpcModule))
+                rpcModule.MarkImmediateContentPending();
         }
 
         [UsedByIL]

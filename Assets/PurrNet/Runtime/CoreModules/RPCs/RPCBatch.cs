@@ -444,6 +444,9 @@ namespace PurrNet.Modules
                     batch.batchedData.ResetPositionAndMode(false);
                     GetCachedEntry(default, default, 0, header, content, contentLen, out entryData,
                         out entryBitLength);
+
+                    if (_sendAsImmediate)
+                        onImmediateAutoFlush?.Invoke();
                 }
             }
 
@@ -643,6 +646,9 @@ namespace PurrNet.Modules
                     SendBatch(ref batch);
                     batch.batchCount = 0;
                     batch.batchedData.ResetPositionAndMode(false);
+
+                    if (_sendAsImmediate)
+                        onImmediateAutoFlush?.Invoke();
 
                     // redo the last write
                     NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);

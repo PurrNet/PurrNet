@@ -467,7 +467,10 @@ namespace PurrNet.Modules
                         finalList.Add(observer);
                     }
 
-                    playersManager.Send(finalList, data, signature.channel, signature.mtuExceeded.AsOverride());
+                    if (signature.immediate && data is StaticRPCPacket immediateStatic)
+                        module.BatchToTargets(finalList, immediateStatic, signature.channel, signature.mtuExceeded, true);
+                    else
+                        playersManager.Send(finalList, data, signature.channel, signature.mtuExceeded.AsOverride());
                     finalList.Dispose();
 
                     if (data is StaticRPCPacket staticRpc)
@@ -491,7 +494,10 @@ namespace PurrNet.Modules
                     }
                     else if (!isTargetingServer)
                     {
-                        playersManager.Send(data.targetPlayerId, data, signature.channel, signature.mtuExceeded.AsOverride());
+                        if (signature.immediate && data is StaticRPCPacket immediateStatic)
+                            module.BatchToTarget(data.targetPlayerId, immediateStatic, signature.channel, signature.mtuExceeded, true);
+                        else
+                            playersManager.Send(data.targetPlayerId, data, signature.channel, signature.mtuExceeded.AsOverride());
                     }
 
                     if (data is StaticRPCPacket staticRpc)
@@ -510,7 +516,7 @@ namespace PurrNet.Modules
             if (!networkManager.TryGetModule<RpcRequestResponseModule>(true, out var rpcModule))
                 return;
 
-            rpcModule.SendRejection(info.sender, requestId, error, signature.channel);
+            rpcModule.SendRejection(info.sender, requestId, error, signature.channel, signature.immediate);
         }
 
         static readonly Dictionary<StaticGenericKey, MethodInfo> _staticGenericHandlers =
