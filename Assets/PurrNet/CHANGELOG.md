@@ -1,3 +1,17 @@
+# [1.22.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.1...v1.22.0-beta.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* if animator is disabled don't mess with it's state cause it causes unity warnings to spam ([eb51ca7](https://github.com/PurrNet/PurrNet/commit/eb51ca7e8fc7818609bc7b9d8f7d79457a3974b6))
+* improve tick timing accuracy to prevent big jumps ([3bbe66e](https://github.com/PurrNet/PurrNet/commit/3bbe66e043ee3d5fd03457265a7313334021266b))
+* network bones, include inactive skinnes mesh renderers to avoid ([da5978d](https://github.com/PurrNet/PurrNet/commit/da5978d8f7bba4be8ee87ad77e1a149c81259185))
+
+
+### Features
+
+* immediate RPCs ([e45d30d](https://github.com/PurrNet/PurrNet/commit/e45d30dd2a5bdea229755f9f2ff7a397415d47a2))
+
 ## [1.21.1](https://github.com/PurrNet/PurrNet/compare/v1.21.0...v1.21.1) (2026-07-28)
 
 
