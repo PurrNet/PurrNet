@@ -13,6 +13,10 @@ namespace PurrNet
         private bool _wasController;
         private bool _hasPendingAnimatorParameterState;
 
+        // triggers can't be represented in the value caches above, so buffer the
+        // actions themselves until the animator can apply them
+        readonly List<NetAnimatorRPC> _pendingTriggerActions = new List<NetAnimatorRPC>();
+
         private AnimatorControllerParameter[] _cachedParameters;
         private RuntimeAnimatorController _cachedController;
         private readonly Dictionary<int, int> _paramIndexByHash = new Dictionary<int, int>();
@@ -201,6 +205,27 @@ namespace PurrNet
                 NetAnimatorAction.SetInteger or NetAnimatorAction.SetTrigger or NetAnimatorAction.ResetTrigger;
         }
 
+        private static int GetTriggerNameHash(NetAnimatorRPC action)
+        {
+            return action.type == NetAnimatorAction.SetTrigger
+                ? action._trigger.nameHash
+                : action._resetTrigger.nameHash;
+        }
+
+        private void QueuePendingTrigger(NetAnimatorRPC action)
+        {
+            int nameHash = GetTriggerNameHash(action);
+
+            for (int i = _pendingTriggerActions.Count - 1; i >= 0; i--)
+            {
+                if (GetTriggerNameHash(_pendingTriggerActions[i]) == nameHash)
+                    _pendingTriggerActions.RemoveAt(i);
+            }
+
+            _pendingTriggerActions.Add(action);
+            _hasPendingAnimatorParameterState = true;
+        }
+
         private void ApplyPendingAnimatorParameterState()
         {
             if (!_hasPendingAnimatorParameterState || !canApplyAnimatorParameters ||
@@ -230,6 +255,10 @@ namespace PurrNet
                         break;
                 }
             }
+
+            for (var i = 0; i < _pendingTriggerActions.Count; i++)
+                _pendingTriggerActions[i].Apply(_animator);
+            _pendingTriggerActions.Clear();
 
             _hasPendingAnimatorParameterState = false;
         }

@@ -12,6 +12,12 @@ namespace PurrNet
         public PlayerID sender;
         public bool asServer;
 
+        /// <summary>
+        /// True when this RPC arrived wrapped in an immediate batch; used to reject
+        /// non-immediate RPCs that a peer tries to smuggle onto the immediate lane.
+        /// </summary>
+        public bool receivedImmediate;
+
         [UsedByIL] public RPCSignature compileTimeSignature;
     }
 

@@ -785,6 +785,7 @@ namespace PurrNet
 
             _serverModules = new ModulesCollection(this, true);
             _clientModules = new ModulesCollection(this, false);
+            UnityLatestUpdate.onLatestUpdate += FlushImmediateRPCsLate;
             _ready = true;
 
             if (_dontDestroyOnLoad)
@@ -1677,7 +1678,10 @@ namespace PurrNet
             _clientBroadcast?.SetDeferNonImmediate(defer);
         }
 
-        private void LateUpdate()
+        // Runs from UnityLatestUpdate (execution order 32000) so immediate RPCs queued
+        // by ordinary gameplay LateUpdate callbacks still flush this frame; this manager's
+        // own LateUpdate would run before them at -999.
+        private void FlushImmediateRPCsLate()
         {
             bool flushedAny = false;
 
@@ -1842,6 +1846,8 @@ namespace PurrNet
 
         private void OnDestroy()
         {
+            UnityLatestUpdate.onLatestUpdate -= FlushImmediateRPCsLate;
+
             if (_transport)
             {
                 StopClient();

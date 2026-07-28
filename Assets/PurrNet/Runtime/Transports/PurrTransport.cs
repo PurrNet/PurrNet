@@ -1540,40 +1540,24 @@ namespace PurrNet.Transports
 
         public void ReceiveMessages(float delta)
         {
+            if (_isUsingUDP)
             {
-                if (_isUsingUDP)
-                {
-                    if (_udpClient.IsRunning)
-                        _udpClient.PollEvents();
-                    if (_udpServer.IsRunning)
-                        _udpServer.PollEvents();
-                    PollNatPunch();
-                }
-                else
-                {
-                    _server?.ProcessMessageQueue();
-                    _client?.ProcessMessageQueue();
-                }
+                if (_udpClient.IsRunning)
+                    _udpClient.PollEvents();
+                if (_udpServer.IsRunning)
+                    _udpServer.PollEvents();
+                PollNatPunch();
+            }
+            else
+            {
+                _server?.ProcessMessageQueue();
+                _client?.ProcessMessageQueue();
             }
         }
 
         public void UnityUpdate(float delta)
         {
-            {
-                if (_isUsingUDP)
-                {
-                    if (_udpClient.IsRunning)
-                        _udpClient.PollEvents();
-                    if (_udpServer.IsRunning)
-                        _udpServer.PollEvents();
-                    PollNatPunch();
-                }
-                else
-                {
-                    _server?.ProcessMessageQueue();
-                    _client?.ProcessMessageQueue();
-                }
-            }
+            ReceiveMessages(delta);
         }
 
         public void SendMessages(float delta)

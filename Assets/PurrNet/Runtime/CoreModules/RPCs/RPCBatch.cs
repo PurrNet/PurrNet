@@ -112,6 +112,12 @@ namespace PurrNet.Modules
         private readonly bool _subscribed;
         private readonly bool _sendAsImmediate;
 
+        /// <summary>
+        /// Raised when immediate content reaches the transport outside a flush
+        /// (oversized solo entry), so the owner can still force a send this frame.
+        /// </summary>
+        internal Action onImmediateAutoFlush;
+
         public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback, bool subscribeToReceives = true,
             bool sendAsImmediate = false)
         {
@@ -477,6 +483,9 @@ namespace PurrNet.Modules
         {
             Send(batch.key.playerId, 1, new BitData(batch.batchedData), channel, MTUExceededBehaviour.Fragment);
             ResetBatchEncoderState(ref batch);
+
+            if (_sendAsImmediate)
+                onImmediateAutoFlush?.Invoke();
         }
 
         private static void ResetBatchEncoderState(ref PendingBatchedData batch)

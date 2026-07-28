@@ -641,6 +641,14 @@ namespace PurrNet
         {
             using (_validatingRRPCMarker.Auto())
             {
+                if (info.receivedImmediate && !signature.immediate)
+                {
+                    PurrLogger.LogError(
+                        $"Rejected RPC '{signature.rpcName}' on '{name}': it arrived on the immediate lane but is not marked immediate.",
+                        this);
+                    return false;
+                }
+
                 var rules = networkManager.networkRules;
                 bool shouldIgnoreOwnership = rules && rules.ShouldIgnoreRequireOwner();
 
@@ -735,19 +743,52 @@ namespace PurrNet
                             players.Add(observer);
                         }
 
-                        Send(players, data, signature.channel, signature.mtuExceeded.AsOverride());
+                        if (signature.immediate)
+                            BatchForwardToTargets(module, players, data, signature);
+                        else
+                            Send(players, data, signature.channel, signature.mtuExceeded.AsOverride());
                         AppendToBufferedRPCs(signature, data, module);
                         return !isClient;
                     }
                     case RPCType.TargetRPC:
                     {
                         bool shouldExecute =
-                            SendToTargetOrServer(rules, data.targetPlayerId, data, signature, info, requestId, isAwaitable, asServer);
+                            SendToTargetOrServer(rules, module, data.targetPlayerId, data, signature, info, requestId, isAwaitable, asServer);
                         AppendToBufferedRPCs(signature, data, module);
                         return shouldExecute;
                     }
                     default: throw new ArgumentOutOfRangeException(nameof(signature.type));
                 }
+            }
+        }
+
+        // Forwarded client RPCs must ride the immediate batch too, otherwise the
+        // second hop loses the per-frame send/receive lane.
+        private static void BatchForwardToTargets<T>(RPCModule module, DisposableList<PlayerID> players, T data,
+            RPCSignature signature) where T : struct, IRpc
+        {
+            switch (data)
+            {
+                case RPCPacket rpcPacket:
+                    module.BatchToTargets(players, rpcPacket, signature.channel, signature.mtuExceeded, true);
+                    break;
+                case ChildRPCPacket childRpcPacket:
+                    module.BatchToTargets(players, childRpcPacket, signature.channel, signature.mtuExceeded, true);
+                    break;
+            }
+        }
+
+        private static void BatchForwardToTarget<T>(RPCModule module, PlayerID player, T data,
+            RPCSignature signature) where T : struct, IRpc
+        {
+            switch (data)
+            {
+                case RPCPacket rpcPacket:
+                    module.BatchToTarget(player, rpcPacket, signature.channel, signature.mtuExceeded, true);
+                    break;
+                case ChildRPCPacket childRpcPacket:
+                    module.BatchToTarget(player, childRpcPacket, signature.channel, signature.mtuExceeded, true);
+                    break;
             }
         }
 
@@ -771,7 +812,7 @@ namespace PurrNet
                 networkManager.GetModule<PlayersManager>(true).Send(player, packet, method, mtuOverride);
         }
 
-        bool SendToTargetOrServer<T>(NetworkRules rules, PlayerID player, T data, RPCSignature signature, RPCInfo info, uint requestId, bool isAwaitable, bool asServer) where T : struct, IRpc
+        bool SendToTargetOrServer<T>(NetworkRules rules, RPCModule module, PlayerID player, T data, RPCSignature signature, RPCInfo info, uint requestId, bool isAwaitable, bool asServer) where T : struct, IRpc
         {
             if (player == PlayerID.Server)
             {
@@ -794,7 +835,10 @@ namespace PurrNet
                 return false;
             }
 
-            Send<T>(player, data, signature.channel, signature.mtuExceeded.AsOverride());
+            if (signature.immediate)
+                BatchForwardToTarget(module, player, data, signature);
+            else
+                Send<T>(player, data, signature.channel, signature.mtuExceeded.AsOverride());
             return false;
         }
 

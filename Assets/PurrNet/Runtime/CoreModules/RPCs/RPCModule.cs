@@ -109,14 +109,26 @@ namespace PurrNet.Modules
             _unionBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC);
             _immediateBatch = new RPCBatch(_playersManager, ReceivedUnionBatchedRPC, subscribeToReceives: false,
                 sendAsImmediate: true);
+            _immediateBatch.onImmediateAutoFlush = MarkImmediateContentPending;
 
             _playersManager.RegisterImmediateType<ImmediateRPCBatchPacket>();
             _playersManager.Subscribe<ImmediateRPCBatchPacket>(OnImmediateBatchReceived);
         }
 
+        private bool _receivingImmediateLane;
+
         private void OnImmediateBatchReceived(PlayerID player, ImmediateRPCBatchPacket packet, bool asServer)
         {
-            _immediateBatch.ProcessReceivedBatch(player, packet.count, packet.data, asServer);
+            _receivingImmediateLane = true;
+
+            try
+            {
+                _immediateBatch.ProcessReceivedBatch(player, packet.count, packet.data, asServer);
+            }
+            finally
+            {
+                _receivingImmediateLane = false;
+            }
         }
 
         public void Disable(bool asServer)
@@ -383,6 +395,13 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static bool ValidateReceivingStaticRPC<T>(RPCInfo info, RPCSignature signature, T data, bool asServer, uint requestId, bool isAwaitable) where T : struct, IRpc
         {
+            if (info.receivedImmediate && !signature.immediate)
+            {
+                PurrLogger.LogError(
+                    $"Rejected static RPC '{signature.rpcName}': it arrived on the immediate lane but is not marked immediate.");
+                return false;
+            }
+
             var networkManager = NetworkManager.main;
 
             if (!networkManager)
@@ -888,7 +907,8 @@ namespace PurrNet.Modules
             {
                 manager = _manager,
                 sender = data.header.senderId,
-                asServer = asServer
+                asServer = asServer,
+                receivedImmediate = _receivingImmediateLane
             };
 
             if (rpcHandlerPtr != null)
@@ -921,7 +941,8 @@ namespace PurrNet.Modules
             {
                 manager = _manager,
                 sender = packet.header.senderId,
-                asServer = asServer
+                asServer = asServer,
+                receivedImmediate = _receivingImmediateLane
             };
 
             if (_hierarchyModule.TryGetIdentity(packet.header.sceneId, packet.header.networkId, out var identity) && identity)
@@ -1024,7 +1045,8 @@ namespace PurrNet.Modules
             {
                 manager = _manager,
                 sender = packet.header.senderId,
-                asServer = asServer
+                asServer = asServer,
+                receivedImmediate = _receivingImmediateLane
             };
 
             if (_hierarchyModule.TryGetIdentity(packet.header.sceneId, packet.header.networkId, out var identity) && identity)
@@ -1220,6 +1242,15 @@ namespace PurrNet.Modules
         public void FlushBatchedRPCs()
         {
             BatchNetworkMessages();
+        }
+
+        /// <summary>
+        /// Signals that immediate content was handed to the transport outside the
+        /// immediate batch, so the next <see cref="FlushImmediateRPCs"/> still forces a send.
+        /// </summary>
+        internal void MarkImmediateContentPending()
+        {
+            _immediateContentFlushed = true;
         }
 
         public bool FlushImmediateRPCs()

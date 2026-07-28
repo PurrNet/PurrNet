@@ -377,8 +377,8 @@ namespace PurrNet
             _serverModules.TriggerOnUpdate();
             _clientModules.TriggerOnUpdate();
 
-            if (_transportLayer != null)
-                _transportLayer.UnityUpdate(Time.deltaTime);
+            // No Update-phase transport poll here: RawNetManager has no receive deferral
+            // layer, so polling per frame would dispatch transport events outside the tick.
         }
 
         public void RegisterModules(ModulesCollection modules, bool asServer)

@@ -59,6 +59,11 @@ namespace PurrNet
             _avatarRoot = null;
             _cachedParameters = null;
             _cachedController = null;
+            _boolValues.Clear();
+            _floatValues.Clear();
+            _intValues.Clear();
+            _pendingTriggerActions.Clear();
+            _hasPendingAnimatorParameterState = false;
             _dontSyncHashes.Clear();
             for (var i = 0; i < _dontSyncParameters.Count; i++)
                 _dontSyncHashes.Add(Animator.StringToHash(_dontSyncParameters[i]));
@@ -72,6 +77,8 @@ namespace PurrNet
                         _dontSyncHashes.Add(parameter.nameHash);
                 }
             }
+
+            UpdateParamerCache();
         }
 
         public List<string> dontSyncParameters => _dontSyncParameters;

@@ -554,6 +554,11 @@ namespace PurrNet.UTP
             _client?.ReceiveMessages();
         }
 
+        public void UnityUpdate(float delta)
+        {
+            ReceiveMessages(delta);
+        }
+
         /// <summary>
         /// Processes outgoing network messages for both server and client.
         /// Should be called regularly (typically each frame) to flush pending sends.
