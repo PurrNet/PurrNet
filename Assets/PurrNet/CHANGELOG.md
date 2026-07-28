@@ -1,3 +1,10 @@
+## [1.21.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.11...v1.21.1-beta.12) (2026-07-28)
+
+
+### Bug Fixes
+
+* Unity 2023 scene fix ([5cd961c](https://github.com/PurrNet/PurrNet/commit/5cd961cf00b7b61489aa6f942849ac5f24cd4235))
+
 ## [1.21.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.10...v1.21.1-beta.11) (2026-07-26)
 
 
