@@ -93,6 +93,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Modules_1_1RPCBatch.ht
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
+<a href="#properties">Properties</a> &#124;
 <a href="classPurrNet_1_1Modules_1_1RPCBatch-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Modules.RPCBatch Class Reference</div></div>
 </div><!--header-->
@@ -109,9 +110,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:affe48edb912abf881476e10f250e93be"><td class="memItemLeft" align="right" valign="top"><a id="affe48edb912abf881476e10f250e93be" name="affe48edb912abf881476e10f250e93be"></a>
 delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>RPCReceivedDelegate</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> sender, <a class="el" href="structPurrNet_1_1UnionRPCHeader.html">UnionRPCHeader</a> header, <a class="el" href="structPurrNet_1_1Packing_1_1BitData.html">BitData</a> content, bool asServer)</td></tr>
 <tr class="separator:affe48edb912abf881476e10f250e93be"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9879ae1952605be7af3cb7309f633230"><td class="memItemLeft" align="right" valign="top"><a id="a9879ae1952605be7af3cb7309f633230" name="a9879ae1952605be7af3cb7309f633230"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>RPCBatch</b> (<a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> playersManager, RPCReceivedDelegate callback)</td></tr>
-<tr class="separator:a9879ae1952605be7af3cb7309f633230"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a9706ae370583c10ca48fd86b8a0aaa"><td class="memItemLeft" align="right" valign="top"><a id="a3a9706ae370583c10ca48fd86b8a0aaa" name="a3a9706ae370583c10ca48fd86b8a0aaa"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>RPCBatch</b> (<a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html">PlayersManager</a> playersManager, RPCReceivedDelegate callback, bool subscribeToReceives=true, bool sendAsImmediate=false)</td></tr>
+<tr class="separator:a3a9706ae370583c10ca48fd86b8a0aaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ab80972766993addef1d7fef9aef51d"><td class="memItemLeft" align="right" valign="top"><a id="a0ab80972766993addef1d7fef9aef51d" name="a0ab80972766993addef1d7fef9aef51d"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Dispose</b> ()</td></tr>
 <tr class="separator:a0ab80972766993addef1d7fef9aef51d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -139,6 +140,12 @@ Static Public Attributes</h2></td></tr>
 <tr class="memitem:a4036d3cbe1bb436688b76feeadaf31e1"><td class="memItemLeft" align="right" valign="top"><a id="a4036d3cbe1bb436688b76feeadaf31e1" name="a4036d3cbe1bb436688b76feeadaf31e1"></a>
 const int&#160;</td><td class="memItemRight" valign="bottom"><b>MAX_HEADER_SIZE</b> = RPCBatchPacket.HEADER + UnionRPCHeader.MAX_SIZE</td></tr>
 <tr class="separator:a4036d3cbe1bb436688b76feeadaf31e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
+Properties</h2></td></tr>
+<tr class="memitem:a360c8939b9286a79bedf954dcd1d24b3"><td class="memItemLeft" align="right" valign="top"><a id="a360c8939b9286a79bedf954dcd1d24b3" name="a360c8939b9286a79bedf954dcd1d24b3"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasPending</b><code> [get]</code></td></tr>
+<tr class="separator:a360c8939b9286a79bedf954dcd1d24b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/CoreModules/RPCs/RPCBatch.cs</li>

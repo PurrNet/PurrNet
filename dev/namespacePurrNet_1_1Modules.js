@@ -2,7 +2,7 @@ var namespacePurrNet_1_1Modules =
 [
     [ "AckDeltaMessage", "structPurrNet_1_1Modules_1_1AckDeltaMessage.html", null ],
     [ "AuthModule", "classPurrNet_1_1Modules_1_1AuthModule.html", "classPurrNet_1_1Modules_1_1AuthModule" ],
-    [ "BroadcastModule", "classPurrNet_1_1Modules_1_1BroadcastModule.html", null ],
+    [ "BroadcastModule", "classPurrNet_1_1Modules_1_1BroadcastModule.html", "classPurrNet_1_1Modules_1_1BroadcastModule" ],
     [ "ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
     [ "ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],
     [ "ColliderRollbackFactory", "classPurrNet_1_1Modules_1_1ColliderRollbackFactory.html", null ],
@@ -24,6 +24,8 @@ var namespacePurrNet_1_1Modules =
     [ "HierarchyPool", "classPurrNet_1_1Modules_1_1HierarchyPool.html", "classPurrNet_1_1Modules_1_1HierarchyPool" ],
     [ "HierarchyV2", "classPurrNet_1_1Modules_1_1HierarchyV2.html", "classPurrNet_1_1Modules_1_1HierarchyV2" ],
     [ "IBroadcastCallback", "interfacePurrNet_1_1Modules_1_1IBroadcastCallback.html", null ],
+    [ "ImmediateRpcRejection", "structPurrNet_1_1Modules_1_1ImmediateRpcRejection.html", null ],
+    [ "ImmediateRpcResponse", "structPurrNet_1_1Modules_1_1ImmediateRpcResponse.html", null ],
     [ "INetworkModule", "interfacePurrNet_1_1Modules_1_1INetworkModule.html", null ],
     [ "IStableHashable", "interfacePurrNet_1_1Modules_1_1IStableHashable.html", null ],
     [ "LocalTransform", "structPurrNet_1_1Modules_1_1LocalTransform.html", null ],

@@ -214,6 +214,8 @@ var hierarchy =
       [ "PurrNet.LODIntervalScheduler", "classPurrNet_1_1LODIntervalScheduler.html", null ]
     ] ],
     [ "PurrNet.IMath< T >", "interfacePurrNet_1_1IMath.html", null ],
+    [ "PurrNet.Modules.ImmediateRpcRejection", "structPurrNet_1_1Modules_1_1ImmediateRpcRejection.html", null ],
+    [ "PurrNet.Modules.ImmediateRpcResponse", "structPurrNet_1_1Modules_1_1ImmediateRpcResponse.html", null ],
     [ "INetLogger", null, [
       [ "PurrNet.Transports.UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", null ]
     ] ],
