@@ -68,6 +68,8 @@ namespace PurrNet.Packing
 
             var dest = data.GetSpan(length);
             packer.ReadBytes(dest);
+
+            data.AdvanceBytes(length);
             data.ResetPositionAndMode(true);
         }
 
@@ -93,7 +95,9 @@ namespace PurrNet.Packing
             var dataPacker = BitPackerPool.Get();
             var span = dataPacker.GetSpan(length);
             packer.ReadBytes(span);
-            dataPacker.ResetPosition();
+
+            dataPacker.AdvanceBytes(length);
+            dataPacker.ResetPositionAndMode(true);
 
             data = new BitPackerWithLength(length, dataPacker);
         }
