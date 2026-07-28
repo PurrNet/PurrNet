@@ -785,7 +785,7 @@ namespace PurrNet
 
             _serverModules = new ModulesCollection(this, true);
             _clientModules = new ModulesCollection(this, false);
-            UnityLatestUpdate.onLatestUpdate += FlushImmediateRPCsLate;
+            UnityLatestUpdate.onPostLatestUpdate += FlushImmediateRPCsLate;
             _ready = true;
 
             if (_dontDestroyOnLoad)
@@ -1678,9 +1678,10 @@ namespace PurrNet
             _clientBroadcast?.SetDeferNonImmediate(defer);
         }
 
-        // Runs from UnityLatestUpdate (execution order 32000) so immediate RPCs queued
-        // by ordinary gameplay LateUpdate callbacks still flush this frame; this manager's
-        // own LateUpdate would run before them at -999.
+        // Runs from UnityLatestUpdate's post phase (execution order 32000, after every
+        // onLatestUpdate subscriber) so immediate RPCs queued by gameplay LateUpdate or
+        // latest-update callbacks still flush this frame; this manager's own LateUpdate
+        // would run before them at -999.
         private void FlushImmediateRPCsLate()
         {
             bool flushedAny = false;
@@ -1846,7 +1847,7 @@ namespace PurrNet
 
         private void OnDestroy()
         {
-            UnityLatestUpdate.onLatestUpdate -= FlushImmediateRPCsLate;
+            UnityLatestUpdate.onPostLatestUpdate -= FlushImmediateRPCsLate;
 
             if (_transport)
             {
@@ -1854,10 +1855,16 @@ namespace PurrNet
                 StopServer();
 
                 if (clientState != ConnectionState.Disconnected)
+                {
+                    // drain while the PlayersBroadcaster bridge is still attached;
+                    // module Disable order would detach it before the broadcaster's own drain
+                    _clientBroadcast?.DrainDeferred();
                     _clientModules.UnregisterModules();
+                }
 
                 if (serverState != ConnectionState.Disconnected)
                 {
+                    _serverBroadcast?.DrainDeferred();
                     _isServerTicking = false;
                     _serverModules.UnregisterModules();
                 }

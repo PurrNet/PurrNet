@@ -122,14 +122,14 @@ namespace PurrNet.Modules
         public RpcRejection rejection;
     }
 
-    public class RpcRequestResponseModule : INetworkModule, IFixedUpdate
+    public class RpcRequestResponseModule : INetworkModule, IFixedUpdate, IPromoteToServerModule
     {
         private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
         private readonly List<RpcRequest> _requests = new List<RpcRequest>();
 
         private uint _nextId;
-        private readonly bool _asServer;
+        private bool _asServer;
 
         public RpcRequestResponseModule(NetworkManager manager, PlayersManager playersManager, bool asServer)
         {
@@ -137,6 +137,13 @@ namespace PurrNet.Modules
             _playersManager = playersManager;
             _manager = manager;
         }
+
+        public void PromoteToServerModule()
+        {
+            _asServer = true;
+        }
+
+        public void PostPromoteToServerModule() { }
 
         public void Enable(bool asServer)
         {
