@@ -145,6 +145,18 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>AddForce</b> (
 <tr class="memitem:afc3938374e4c2f2b1e32cd5256f2ee5e"><td class="memItemLeft" align="right" valign="top"><a id="afc3938374e4c2f2b1e32cd5256f2ee5e" name="afc3938374e4c2f2b1e32cd5256f2ee5e"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>AddTorque</b> (Rigidbody rb, Vector3 torque, ForceMode mode=ForceMode.Force)</td></tr>
 <tr class="separator:afc3938374e4c2f2b1e32cd5256f2ee5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af8b43b8b8111bad4e8d0940165c8c3f5"><td class="memItemLeft" align="right" valign="top"><a id="af8b43b8b8111bad4e8d0940165c8c3f5" name="af8b43b8b8111bad4e8d0940165c8c3f5"></a>
+static Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>AngularAccelerationToTorque</b> (Rigidbody rb, Vector3 angularAcceleration)</td></tr>
+<tr class="memdesc:af8b43b8b8111bad4e8d0940165c8c3f5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a desired world-space angular acceleration into the torque that produces it, using the rigidbody's inertia tensor. Passing an angular acceleration straight to AddTorque scales it by the inverse inertia and will oscillate.  <br /></td></tr>
+<tr class="separator:af8b43b8b8111bad4e8d0940165c8c3f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac0634309e24097837a6c78843e5ec758"><td class="memItemLeft" align="right" valign="top"><a id="ac0634309e24097837a6c78843e5ec758" name="ac0634309e24097837a6c78843e5ec758"></a>
+static float&#160;</td><td class="memItemRight" valign="bottom"><b>StableSpringFrequency</b> (float frequency)</td></tr>
+<tr class="memdesc:ac0634309e24097837a6c78843e5ec758"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clamps a critically-damped spring frequency to what the current fixed timestep can integrate without oscillating. Values above the limit diverge instead of converging.  <br /></td></tr>
+<tr class="separator:ac0634309e24097837a6c78843e5ec758"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cbeb9ef7762b5fe54f74808c1603ba7"><td class="memItemLeft" align="right" valign="top"><a id="a4cbeb9ef7762b5fe54f74808c1603ba7" name="a4cbeb9ef7762b5fe54f74808c1603ba7"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>ApplyRotationSpring</b> (Rigidbody rb, Quaternion targetRotation, Vector3 targetAngularVelocity, float rotationStrength, bool kinematic=false)</td></tr>
+<tr class="memdesc:a4cbeb9ef7762b5fe54f74808c1603ba7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the built-in inertia-correct rotation spring. Follows the target rotation with Rigidbody.MoveRotation instead when <em>kinematic</em>  is set or the body has all rotation axes frozen, since torque cannot move a constrained axis.  <br /></td></tr>
+<tr class="separator:a4cbeb9ef7762b5fe54f74808c1603ba7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9ecf64b410b1ec5f6787512200b1f8ed"><td class="memItemLeft" align="right" valign="top"><a id="a9ecf64b410b1ec5f6787512200b1f8ed" name="a9ecf64b410b1ec5f6787512200b1f8ed"></a>
 static bool&#160;</td><td class="memItemRight" valign="bottom"><b>CanApplyDynamicMotion</b> (Rigidbody rb)</td></tr>
 <tr class="separator:a9ecf64b410b1ec5f6787512200b1f8ed"><td class="memSeparator" colspan="2">&#160;</td></tr>

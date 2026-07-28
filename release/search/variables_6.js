@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['maxvalue_0',['MaxValue',['../structPurrNet_1_1Packing_1_1Half.html#ae0f5009343358148020ca3315085b6ed',1,'PurrNet::Packing::Half']]],
-  ['minvalue_1',['MinValue',['../structPurrNet_1_1Packing_1_1Half.html#a0cae7cbd2226affe20f88edc588defa1',1,'PurrNet::Packing::Half']]]
+  ['interpverifyprobes_0',['interpVerifyProbes',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#a51a2a08f4bd50a38d59591c76a721749',1,'PurrNet::NetworkTransformSyncStrategy']]],
+  ['issoftparent_1',['isSoftParent',['../structPurrNet_1_1RigidbodyStateData.html#afc3c8db195065af4d0b22f193b2016a7',1,'PurrNet::RigidbodyStateData']]]
 ];

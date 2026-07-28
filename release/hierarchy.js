@@ -373,6 +373,7 @@ var hierarchy =
       [ "PurrNet.NetworkSceneRules", "structPurrNet_1_1NetworkSceneRules.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
       [ "PurrNet.SyncDictionary< TKey, TValue >", "classPurrNet_1_1SyncDictionary.html", null ],
+      [ "PurrNet.SyncInput< T >", "classPurrNet_1_1SyncInput.html", null ],
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ],
       [ "PurrNet.SyncVar< T >", "classPurrNet_1_1SyncVar.html", null ]
     ] ],
@@ -473,6 +474,11 @@ var hierarchy =
     [ "PurrNet.NetworkRigidbodySettingsInstance", "classPurrNet_1_1NetworkRigidbodySettingsInstance.html", null ],
     [ "PurrNet.Transports.NetworkSimulation", "structPurrNet_1_1Transports_1_1NetworkSimulation.html", null ],
     [ "PurrNet.NetworkTransformRules", "structPurrNet_1_1NetworkTransformRules.html", null ],
+    [ "PurrNet.NetworkTransformSample", "structPurrNet_1_1NetworkTransformSample.html", null ],
+    [ "PurrNet.NetworkTransformSyncStrategy", "classPurrNet_1_1NetworkTransformSyncStrategy.html", [
+      [ "PurrNet.NetworkTransformCompositeStrategy", "classPurrNet_1_1NetworkTransformCompositeStrategy.html", null ],
+      [ "PurrNet.NetworkTransformDefaultStrategy", "classPurrNet_1_1NetworkTransformDefaultStrategy.html", null ]
+    ] ],
     [ "PurrNet.Modules.ObserverFilter", "structPurrNet_1_1Modules_1_1ObserverFilter.html", null ],
     [ "PurrNet.OwnershipComponentToggle", "structPurrNet_1_1OwnershipComponentToggle.html", null ],
     [ "PurrNet.OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],

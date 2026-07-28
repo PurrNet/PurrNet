@@ -12,9 +12,10 @@ var searchData=
   ['blacklist_9',['blacklist',['../classPurrNet_1_1NetworkIdentity.html#a1fbc33d0cc20898ca64304db209f4106',1,'PurrNet::NetworkIdentity']]],
   ['bonecount_10',['boneCount',['../classPurrNet_1_1NetworkBones.html#a05fd9874715d9c2031faa73bea0de15e',1,'PurrNet::NetworkBones']]],
   ['boneinfo_11',['BoneInfo',['../structPurrNet_1_1BoneInfo.html',1,'PurrNet']]],
-  ['broadcastmodule_12',['broadcastModule',['../classPurrNet_1_1NetworkManager.html#a8d129afa999c0098236701eef111185c',1,'PurrNet.NetworkManager.broadcastModule()'],['../classPurrNet_1_1RawNetManager.html#af3b4d846154aad1a0a53bc54d9ced439',1,'PurrNet.RawNetManager.broadcastModule()']]],
-  ['broadcastmodule_13',['BroadcastModule',['../classPurrNet_1_1Modules_1_1BroadcastModule.html',1,'PurrNet::Modules']]],
-  ['broadcastsample_14',['BroadcastSample',['../structPurrNet_1_1Profiler_1_1BroadcastSample.html',1,'PurrNet::Profiler']]],
-  ['bypassloggingexception_15',['BypassLoggingException',['../classPurrNet_1_1BypassLoggingException.html',1,'PurrNet']]],
-  ['bytedata_16',['ByteData',['../structPurrNet_1_1Transports_1_1ByteData.html',1,'PurrNet::Transports']]]
+  ['breakredundancy_12',['breakRedundancy',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#ae5143c9389d8cae25fd2e36068b2fcbf',1,'PurrNet::NetworkTransformSyncStrategy']]],
+  ['broadcastmodule_13',['broadcastModule',['../classPurrNet_1_1NetworkManager.html#a8d129afa999c0098236701eef111185c',1,'PurrNet.NetworkManager.broadcastModule()'],['../classPurrNet_1_1RawNetManager.html#af3b4d846154aad1a0a53bc54d9ced439',1,'PurrNet.RawNetManager.broadcastModule()']]],
+  ['broadcastmodule_14',['BroadcastModule',['../classPurrNet_1_1Modules_1_1BroadcastModule.html',1,'PurrNet::Modules']]],
+  ['broadcastsample_15',['BroadcastSample',['../structPurrNet_1_1Profiler_1_1BroadcastSample.html',1,'PurrNet::Profiler']]],
+  ['bypassloggingexception_16',['BypassLoggingException',['../classPurrNet_1_1BypassLoggingException.html',1,'PurrNet']]],
+  ['bytedata_17',['ByteData',['../structPurrNet_1_1Transports_1_1ByteData.html',1,'PurrNet::Transports']]]
 ];

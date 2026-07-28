@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['hasfirstword_0',['hasFirstWord',['../structPurrNet_1_1Transports_1_1FragmentDropInfo.html#a0d627459013e64d8c000e212507d40a4',1,'PurrNet::Transports::FragmentDropInfo']]]
+  ['fragment_5foverhead_0',['FRAGMENT_OVERHEAD',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae0251cf4a93d36d118e7261a8dabbe4f',1,'PurrNet::Transports::FragmentationLayer']]]
 ];

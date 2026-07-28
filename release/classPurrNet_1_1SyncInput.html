@@ -108,8 +108,8 @@ Inheritance diagram for PurrNet.SyncInput&lt; T &gt;:</div>
  <div class="center">
   <img src="classPurrNet_1_1SyncInput.png" usemap="#PurrNet.SyncInput_3C_20T_20_3E_map" alt=""/>
   <map id="PurrNet.SyncInput_3C_20T_20_3E_map" name="PurrNet.SyncInput_3C_20T_20_3E_map">
-<area href="classPurrNet_1_1NetworkModule.html" alt="PurrNet.NetworkModule" shape="rect" coords="0,0,148,24"/>
-<area href="interfacePurrNet_1_1ITick.html" alt="PurrNet.ITick" shape="rect" coords="158,0,306,24"/>
+<area href="classPurrNet_1_1NetworkModule.html" alt="PurrNet.NetworkModule" shape="rect" coords="0,0,184,24"/>
+<area href="interfacePurrNet_1_1ITick.html" alt="PurrNet.ITick" shape="rect" coords="194,0,378,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -121,6 +121,15 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a580b76e5ef2b0cad40b29befa0bf4b97"><td class="memItemLeft" align="right" valign="top"><a id="a580b76e5ef2b0cad40b29befa0bf4b97" name="a580b76e5ef2b0cad40b29befa0bf4b97"></a>
 delegate void&#160;</td><td class="memItemRight" valign="bottom"><b>OnChangedDelegate</b> (T newInput)</td></tr>
 <tr class="separator:a580b76e5ef2b0cad40b29befa0bf4b97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae80eeba1588f43614086ab2c571aa530"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncInput.html#ae80eeba1588f43614086ab2c571aa530">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:ae80eeba1588f43614086ab2c571aa530"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1SyncInput.html#ae80eeba1588f43614086ab2c571aa530">More...</a><br /></td></tr>
+<tr class="separator:ae80eeba1588f43614086ab2c571aa530"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af316ce0318bb33c10362ed829b5e8498"><td class="memItemLeft" align="right" valign="top"><a id="af316ce0318bb33c10362ed829b5e8498" name="af316ce0318bb33c10362ed829b5e8498"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>OnBeforeSerialize</b> ()</td></tr>
+<tr class="separator:af316ce0318bb33c10362ed829b5e8498"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac901307ba6774a11545baa95af4177b8"><td class="memItemLeft" align="right" valign="top"><a id="ac901307ba6774a11545baa95af4177b8" name="ac901307ba6774a11545baa95af4177b8"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>OnAfterDeserialize</b> ()</td></tr>
+<tr class="separator:ac901307ba6774a11545baa95af4177b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a773b065633c6b4466f00d0d123cdb517"><td class="memItemLeft" align="right" valign="top"><a id="a773b065633c6b4466f00d0d123cdb517" name="a773b065633c6b4466f00d0d123cdb517"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetDirty</b> ()</td></tr>
 <tr class="separator:a773b065633c6b4466f00d0d123cdb517"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -342,6 +351,35 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 </dl>
 </div>
 </div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="ae80eeba1588f43614086ab2c571aa530" name="ae80eeba1588f43614086ab2c571aa530"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae80eeba1588f43614086ab2c571aa530">&#9670;&#160;</a></span>OnPoolReset()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncInput.html">PurrNet.SyncInput</a>&lt; T &gt;.OnPoolReset </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Called when this object is put back into the pool. Use this to reset any values for the next spawn.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a244b86c9d0cf97f1ff2eccca7dfb8834">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
 <a id="a9912f4cdda5e14e884785c8e961a0ccb" name="a9912f4cdda5e14e884785c8e961a0ccb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9912f4cdda5e14e884785c8e961a0ccb">&#9670;&#160;</a></span>OnTick()</h2>
 

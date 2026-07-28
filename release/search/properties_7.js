@@ -15,8 +15,9 @@ var searchData=
   ['isplannedhost_12',['isPlannedHost',['../classPurrNet_1_1NetworkManager.html#a515f3580fb3a521b95bfebb16668a5ef',1,'PurrNet::NetworkManager']]],
   ['isplaying_13',['isPlaying',['../classPurrNet_1_1NetworkAudioSource.html#a1c7d9c8d11879d37f06d7331b0c90f7d',1,'PurrNet::NetworkAudioSource']]],
   ['isreadytospawn_14',['isReadyToSpawn',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#aeb8e18a11c7924834a30a3b0ab39053f',1,'PurrNet::Modules::HierarchyV2']]],
-  ['isserver_15',['isServer',['../classPurrNet_1_1NetworkManager.html#a7a4aefbd024941678ce982439eb38c72',1,'PurrNet::NetworkManager']]],
-  ['isserveronly_16',['isServerOnly',['../classPurrNet_1_1NetworkManager.html#a8240f6a207d30393ff882cbbdde135ad',1,'PurrNet::NetworkManager']]],
-  ['isspawned_17',['isSpawned',['../classPurrNet_1_1NetworkIdentity.html#a1ee60a1c08b4452a59a233dee72059e1',1,'PurrNet::NetworkIdentity']]],
-  ['issupported_18',['isSupported',['../classPurrNet_1_1Transports_1_1GenericTransport.html#a4dc62a7fe67db86b7941ae87fa931160',1,'PurrNet::Transports::GenericTransport']]]
+  ['isrotationkinematic_15',['isRotationKinematic',['../classPurrNet_1_1NetworkRigidbody.html#a405966d5d32b32ea93d6f63e62d2df51',1,'PurrNet::NetworkRigidbody']]],
+  ['isserver_16',['isServer',['../classPurrNet_1_1NetworkManager.html#a7a4aefbd024941678ce982439eb38c72',1,'PurrNet::NetworkManager']]],
+  ['isserveronly_17',['isServerOnly',['../classPurrNet_1_1NetworkManager.html#a8240f6a207d30393ff882cbbdde135ad',1,'PurrNet::NetworkManager']]],
+  ['isspawned_18',['isSpawned',['../classPurrNet_1_1NetworkIdentity.html#a1ee60a1c08b4452a59a233dee72059e1',1,'PurrNet::NetworkIdentity']]],
+  ['issupported_19',['isSupported',['../classPurrNet_1_1Transports_1_1GenericTransport.html#a4dc62a7fe67db86b7941ae87fa931160',1,'PurrNet::Transports::GenericTransport']]]
 ];

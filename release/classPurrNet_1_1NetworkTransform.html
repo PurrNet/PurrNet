@@ -111,6 +111,10 @@ Inheritance diagram for PurrNet.NetworkTransform:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a6e23dad683f3574435d7e20f3eb5b2ea"><td class="memItemLeft" align="right" valign="top"><a id="a6e23dad683f3574435d7e20f3eb5b2ea" name="a6e23dad683f3574435d7e20f3eb5b2ea"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetSyncStrategy</b> (<a class="el" href="classPurrNet_1_1NetworkTransformSyncStrategy.html">NetworkTransformSyncStrategy</a> strategy)</td></tr>
+<tr class="memdesc:a6e23dad683f3574435d7e20f3eb5b2ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Injects a custom sync strategy. Pass null to revert to the built-in default strategy. Call before spawning for full effect; when called on a spawned transform the new strategy applies immediately. Sharing one instance across transforms is safe as long as any strategy state is input-keyed memoization, as in the built-in strategies.  <br /></td></tr>
+<tr class="separator:a6e23dad683f3574435d7e20f3eb5b2ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a438e2d719fb889b451ba87819d35ca86"><td class="memItemLeft" align="right" valign="top"><a id="a438e2d719fb889b451ba87819d35ca86" name="a438e2d719fb889b451ba87819d35ca86"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SetPositionTransform</b> (<a class="el" href="interfacePurrNet_1_1INetworkTransformPositionTransform.html">INetworkTransformPositionTransform</a> transform)</td></tr>
 <tr class="separator:a438e2d719fb889b451ba87819d35ca86"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -138,6 +142,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>GatherState</b> ()</t
 <tr class="memitem:a1066fcfc749172bf9b0026dc7643e5f8"><td class="memItemLeft" align="right" valign="top"><a id="a1066fcfc749172bf9b0026dc7643e5f8" name="a1066fcfc749172bf9b0026dc7643e5f8"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>DeltaSave</b> ()</td></tr>
 <tr class="separator:a1066fcfc749172bf9b0026dc7643e5f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d2e7c281775dcf8c2660f8e1123314e"><td class="memItemLeft" align="right" valign="top"><a id="a2d2e7c281775dcf8c2660f8e1123314e" name="a2d2e7c281775dcf8c2660f8e1123314e"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetAdaptiveDebugDump</b> (bool enabled)</td></tr>
+<tr class="memdesc:a2d2e7c281775dcf8c2660f8e1123314e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Diagnostic: writes a per-tick adaptive sync log for this transform to <code>&lt;temp&gt;/purrnet_nt_debug/</code> until disabled. Enable at runtime on the sender's own transform and on the observer's remote transform while reproducing an issue, then send the files to support. Also available from the component's context menu.  <br /></td></tr>
+<tr class="separator:a2d2e7c281775dcf8c2660f8e1123314e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a806e3692a520703602c7324d82bb0528"><td class="memItemLeft" align="right" valign="top"><a id="a806e3692a520703602c7324d82bb0528" name="a806e3692a520703602c7324d82bb0528"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsControlling</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool asServer)</td></tr>
 <tr class="separator:a806e3692a520703602c7324d82bb0528"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -382,6 +390,8 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a743a803391991f00af2fb1a1a22f3b84"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a743a803391991f00af2fb1a1a22f3b84">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:a743a803391991f00af2fb1a1a22f3b84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#a743a803391991f00af2fb1a1a22f3b84">More...</a><br /></td></tr>
 <tr class="separator:a743a803391991f00af2fb1a1a22f3b84"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aefa4968f70ff6f7e60700f68ac4b9ab6"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#aefa4968f70ff6f7e60700f68ac4b9ab6">OnDestroy</a> ()</td></tr>
+<tr class="separator:aefa4968f70ff6f7e60700f68ac4b9ab6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e">OnOwnerDisconnected</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> ownerId)</td></tr>
 <tr class="memdesc:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when the owner of this object disconnects. Server only.   <a href="classPurrNet_1_1NetworkTransform.html#a493ff9e0bc2ff53e9fe0b160ab9d049e">More...</a><br /></td></tr>
 <tr class="separator:a493ff9e0bc2ff53e9fe0b160ab9d049e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -417,9 +427,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnEarlySpawn<
 <tr class="memitem:a14086750126d4e89bea12bfa8cb9c742 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a14086750126d4e89bea12bfa8cb9c742">OnSpawned</a> (bool asServer)</td></tr>
 <tr class="memdesc:a14086750126d4e89bea12bfa8cb9c742 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is spawned. This might be called twice times in host mode. Once for the server and once for the client.   <a href="classPurrNet_1_1NetworkIdentity.html#a14086750126d4e89bea12bfa8cb9c742">More...</a><br /></td></tr>
 <tr class="separator:a14086750126d4e89bea12bfa8cb9c742 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="ad0c4e9821a3484f494602675cb71f361" name="ad0c4e9821a3484f494602675cb71f361"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeModules</b> ()</td></tr>
-<tr class="memdesc:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before the NetworkModules are initialized. You can use this to update their values before they are networked.  <br /></td></tr>
+<tr class="memitem:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ad0c4e9821a3484f494602675cb71f361">OnInitializeModules</a> ()</td></tr>
+<tr class="memdesc:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called before the NetworkModules are initialized. You can use this to update their values before they are networked.   <a href="classPurrNet_1_1NetworkIdentity.html#ad0c4e9821a3484f494602675cb71f361">More...</a><br /></td></tr>
 <tr class="separator:ad0c4e9821a3484f494602675cb71f361 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0d510b93ab6adf8ff82e59e7b2ce2ebd inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd">OnDespawned</a> (bool asServer)</td></tr>
 <tr class="memdesc:a0d510b93ab6adf8ff82e59e7b2ce2ebd inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is de-spawned. This might be called twice times in host mode. Once for the server and once for the client.   <a href="classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd">More...</a><br /></td></tr>
@@ -451,9 +460,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeM
 <tr class="memitem:ab2ecb22de5c175f5a774fb8e8dfa1ab7 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#ab2ecb22de5c175f5a774fb8e8dfa1ab7">OnObserverRemoved</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
 <tr class="memdesc:ab2ecb22de5c175f5a774fb8e8dfa1ab7 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is removed. Server only.   <a href="classPurrNet_1_1NetworkIdentity.html#ab2ecb22de5c175f5a774fb8e8dfa1ab7">More...</a><br /></td></tr>
 <tr class="separator:ab2ecb22de5c175f5a774fb8e8dfa1ab7 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="aeccd5cdca217438c4222bb578c942d88" name="aeccd5cdca217438c4222bb578c942d88"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPoolReset</b> ()</td></tr>
-<tr class="memdesc:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.  <br /></td></tr>
+<tr class="memitem:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkIdentity.html#aeccd5cdca217438c4222bb578c942d88">OnPoolReset</a> ()</td></tr>
+<tr class="memdesc:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when this object is put back into the pool. Use this to reset any values for the next spawn.   <a href="classPurrNet_1_1NetworkIdentity.html#aeccd5cdca217438c4222bb578c942d88">More...</a><br /></td></tr>
 <tr class="separator:aeccd5cdca217438c4222bb578c942d88 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe9ac7ce0d242255b1a2e730a4851de4 inherit pro_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="afe9ac7ce0d242255b1a2e730a4851de4" name="afe9ac7ce0d242255b1a2e730a4851de4"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnDestroy</b> ()</td></tr>
@@ -505,6 +513,18 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>ticksBehind</b><code> 
 <tr class="memitem:afb5995fe2c5c98ce74cdeb4a75b12ae5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#afb5995fe2c5c98ce74cdeb4a75b12ae5">ownerAuth</a><code> [get]</code></td></tr>
 <tr class="memdesc:afb5995fe2c5c98ce74cdeb4a75b12ae5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the client controls the transform if they are the owner.   <a href="classPurrNet_1_1NetworkTransform.html#afb5995fe2c5c98ce74cdeb4a75b12ae5">More...</a><br /></td></tr>
 <tr class="separator:afb5995fe2c5c98ce74cdeb4a75b12ae5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04cf05293af9b2b88c43d57f858b0fd2"><td class="memItemLeft" align="right" valign="top"><a id="a04cf05293af9b2b88c43d57f858b0fd2" name="a04cf05293af9b2b88c43d57f858b0fd2"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasSyncStrategy</b><code> [get]</code></td></tr>
+<tr class="memdesc:a04cf05293af9b2b88c43d57f858b0fd2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether adaptive reduced-rate syncing is active.  <br /></td></tr>
+<tr class="separator:a04cf05293af9b2b88c43d57f858b0fd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05cccb7d2459e3ec5db19b40d21a5576"><td class="memItemLeft" align="right" valign="top"><a id="a05cccb7d2459e3ec5db19b40d21a5576" name="a05cccb7d2459e3ec5db19b40d21a5576"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveSync</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a05cccb7d2459e3ec5db19b40d21a5576"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether adaptive reduced-rate syncing is enabled. Setting true selects AdaptiveSyncLevel.Balanced; use <a class="el" href="classPurrNet_1_1NetworkTransform.html#a07e664ab85adf985eea668b7567ca6cc" title="How aggressively adaptive sync skips sends. Uses the built-in default strategy tuned for the level un...">adaptiveSyncLevel</a> for finer control.  <br /></td></tr>
+<tr class="separator:a05cccb7d2459e3ec5db19b40d21a5576"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a07e664ab85adf985eea668b7567ca6cc"><td class="memItemLeft" align="right" valign="top"><a id="a07e664ab85adf985eea668b7567ca6cc" name="a07e664ab85adf985eea668b7567ca6cc"></a>
+<a class="el" href="namespacePurrNet.html#a956417b194545f047bfb679ad25f2c20">AdaptiveSyncLevel</a>&#160;</td><td class="memItemRight" valign="bottom"><b>adaptiveSyncLevel</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a07e664ab85adf985eea668b7567ca6cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">How aggressively adaptive sync skips sends. Uses the built-in default strategy tuned for the level unless a custom strategy is injected via <a class="el" href="classPurrNet_1_1NetworkTransform.html#a6e23dad683f3574435d7e20f3eb5b2ea" title="Injects a custom sync strategy. Pass null to revert to the built-in default strategy....">SetSyncStrategy</a>; injected strategies keep their own tuning (see <a class="el" href="classPurrNet_1_1NetworkTransformSyncStrategy.html#a32850a35467db65b4779b1fd08914f40" title="Sets the tolerance, verification, and send-interval knobs to the preset for the given level....">NetworkTransformSyncStrategy.ApplyLevel</a>) and any level other than AdaptiveSyncLevel.Off activates them unchanged. Setting this at runtime re-initializes the sync stream locally; it is NOT replicated to other peers — set it everywhere yourself. Changing the value in the inspector during play mode does replicate, so all peers stay consistent while tuning.  <br /></td></tr>
+<tr class="separator:a07e664ab85adf985eea668b7567ca6cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a74fbd42902427639654fcf9cb696243c"><td class="memItemLeft" align="right" valign="top"><a id="a74fbd42902427639654fcf9cb696243c" name="a74fbd42902427639654fcf9cb696243c"></a>
 Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>latestReadPosition</b><code> [get]</code></td></tr>
 <tr class="separator:a74fbd42902427639654fcf9cb696243c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -849,6 +869,33 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
 </dl>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html#a0d510b93ab6adf8ff82e59e7b2ce2ebd">PurrNet.NetworkIdentity</a>.</p>
+
+</div>
+</div>
+<a id="aefa4968f70ff6f7e60700f68ac4b9ab6" name="aefa4968f70ff6f7e60700f68ac4b9ab6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aefa4968f70ff6f7e60700f68ac4b9ab6">&#9670;&#160;</a></span>OnDestroy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">override void PurrNet.NetworkTransform.OnDestroy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a>.</p>
 
 </div>
 </div>
