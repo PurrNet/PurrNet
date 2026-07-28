@@ -32,9 +32,7 @@ namespace PurrNet
                 return;
             }
 
-            if (_autoSyncParameters)
-                CheckForParameterChanges();
-            SendDirtyActions();
+            FlushImmediately();
         }
 
         /// <summary>
@@ -155,6 +153,17 @@ namespace PurrNet
             }
 
             return removed;
+        }
+
+        /// <summary>
+        /// Send pending actions.
+        /// (if auto sync enabled it gathers changed params first)
+        /// </summary>
+        public void FlushImmediately()
+        {
+            if (_autoSyncParameters)
+                CheckForParameterChanges();
+            SendDirtyActions();
         }
 
         private void SendDirtyActions()

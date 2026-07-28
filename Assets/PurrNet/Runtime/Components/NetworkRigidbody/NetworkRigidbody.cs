@@ -15,6 +15,23 @@ namespace PurrNet
     }
 
     /// <summary>
+    /// How a receiver drives its rigidbody towards the synced rotation.
+    /// </summary>
+    public enum RigidbodyRotationCorrection : byte
+    {
+        /// <summary>
+        /// Kinematic when the body has any rotation axis constrained, torque otherwise.
+        /// Constraining a rotation axis means the rotation is authored rather than simulated,
+        /// and torque cannot reproduce authored rotation without lag.
+        /// </summary>
+        Auto = 0,
+        /// <summary>Chase the target rotation with a torque spring. Rotation stays physically reactive but lags behind fast authored turns.</summary>
+        Torque = 1,
+        /// <summary>Follow the target rotation exactly with MoveRotation. No lag and no jitter, but remote bodies no longer spin from local collisions.</summary>
+        Kinematic = 2
+    }
+
+    /// <summary>
     /// Reference frame a wire position was encoded in. Travels with the state so
     /// the receiver decodes the correct field regardless of whether the parent
     /// identity reference has resolved yet, or whether a position transform is
@@ -61,6 +78,11 @@ namespace PurrNet
         /// own clock so snapshot spacing reflects the send cadence instead of arrival
         /// timing; relays forward it untouched. 0 means unstamped (legacy sender).</summary>
         public double time;
+        /// <summary>Monotonic state order. Controllers assign source order and the server replaces it
+        /// with canonical relay order. Zero is reserved for an authority anchor.</summary>
+        public uint sequence;
+        /// <summary>Canonical controller generation assigned by the server before relay.</summary>
+        public uint authorityEpoch;
     }
 
     public struct RigidbodyTeleportData
@@ -110,8 +132,11 @@ namespace PurrNet
         [Tooltip("Whether to sync parent changes (SetParent) through the hierarchy. Only works when the new parent has a NetworkIdentity.")]
         [SerializeField] private bool _syncParent = true;
 
-        [Tooltip("If true, velocities synced in a parent or soft-parent frame are relative to the parent Rigidbody's motion instead of only rotated into the parent frame.")]
-        [SerializeField] private bool _syncVelocityRelativeToParent;
+        // Serialized only so existing prefabs keep their old data without being rewritten.
+        // Parent-local velocity semantics are automatic and never branch on this value.
+#pragma warning disable 0414
+        [SerializeField, HideInInspector] private bool _syncVelocityRelativeToParent = true;
+#pragma warning restore 0414
 
         [Tooltip("If true, position error for correction and hard-snap decisions is measured in the parent or soft-parent frame when active.")]
         [SerializeField] private bool _useParentFramePositionError;
@@ -127,6 +152,9 @@ namespace PurrNet
         [Tooltip("How far behind real-time (in seconds) the interpolation target sits. Higher values absorb more jitter but add latency.")]
         [SerializeField] private float _interpolationDelay = 0.05f;
 
+        [Tooltip("Raises the interpolation delay to one send interval when the configured value is smaller than that, since below that there is never a newer snapshot to interpolate towards. This is a floor against misconfiguration, not a recommendation: budget roughly two send intervals if you want headroom for jitter.")]
+        [SerializeField] private bool _autoInterpolationDelay = true;
+
         [Tooltip("Pushes the target position forward using velocity and estimated acceleration. The offset is interpolationDelay * predictionFactor, making it identical on all machines regardless of network role. 0 = no prediction, 1 = compensate for interpolation delay, >1 = predict further ahead.")]
         [SerializeField] private float _predictionFactor;
 
@@ -139,8 +167,11 @@ namespace PurrNet
         [Tooltip("The distance over which position correction ramps from zero to full strength. Larger values give softer correction, letting local collisions play out before being pulled back.")]
         [SerializeField] private float _correctionRange = 2f;
 
-        [Tooltip("How aggressively the rigidbody corrects rotation.")]
-        [SerializeField] private float _rotationStrength = 3f;
+        [Tooltip("How a receiver drives its rigidbody towards the synced rotation. Auto picks Kinematic for bodies with constrained rotation axes (characters) and Torque for freely rotating bodies (props).")]
+        [SerializeField] private RigidbodyRotationCorrection _rotationCorrection = RigidbodyRotationCorrection.Auto;
+
+        [Tooltip("How aggressively the rigidbody corrects rotation, as the natural frequency of a critically-damped spring in radians per second. Only used by the Torque rotation mode.")]
+        [SerializeField] private float _rotationStrength = 12f;
 
         [Tooltip("If the position error exceeds this distance, teleport instead of using forces.")]
         [SerializeField] private float _hardSnapDistance = 3f;
@@ -223,12 +254,21 @@ namespace PurrNet
         private Transform _parentPoseTransform;
         private Rigidbody _parentPoseRigidbody;
 
+        private RigidbodySettingsData _lastBroadcastSettings;
+        private bool _hasBroadcastSettings;
+
         private double _senderTimeOffset;
         private bool _hasSenderTimeOffset;
 
         private void Awake()
         {
             _cachedRigidbody = GetComponent<Rigidbody>();
+        }
+
+        protected override void OnInitializeModules()
+        {
+            base.OnInitializeModules();
+            InitializeStateOrdering();
         }
 
         protected override void OnEarlySpawn()
@@ -302,7 +342,17 @@ namespace PurrNet
                 time = Time.unscaledTimeAsDouble
             };
 
-            if (!ValidateOutgoingSnapshot(in stateData, "initial observer state"))
+            bool validatedServerAnchor = false;
+            if (TryGetLatestServerState(out var latestState))
+                stateData = latestState;
+            else if (isServer)
+            {
+                if (!TryStampAndCacheServerAuthorityAnchor(ref stateData, "initial observer state"))
+                    return;
+                validatedServerAnchor = true;
+            }
+
+            if (!validatedServerAnchor && !ValidateOutgoingSnapshot(in stateData, "initial observer state"))
                 return;
 
             SendInitialStateToObserver(player, stateData, GetCurrentSettings());
@@ -317,6 +367,8 @@ namespace PurrNet
             _softParent = null;
             _parentPoseTransform = null;
             _parentPoseRigidbody = null;
+            _hasBroadcastSettings = false;
+            ResetStateOrdering();
         }
 
         protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
@@ -333,19 +385,7 @@ namespace PurrNet
 
             if (asServer)
             {
-                var handoff = IsController(_ownerAuth)
-                    ? CaptureCurrentState()
-                    : CaptureTargetState();
-
-                if (!ValidateOutgoingSnapshot(in handoff, "ownership handoff"))
-                    return;
-
-                if (newOwner.HasValue && newOwner != localPlayer)
-                    SendHandoffState(newOwner.Value, handoff);
-
-                if (oldOwner.HasValue && newOwner != oldOwner && oldOwner != localPlayer)
-                    SendHandoffState(oldOwner.Value, handoff);
-
+                BroadcastServerAuthorityTransition(newOwner, oldOwner);
                 return;
             }
 
@@ -362,6 +402,18 @@ namespace PurrNet
                 _forceSyncWindowEndTime = double.NegativeInfinity;
                 _wasInForceSyncWindow = false;
             }
+        }
+
+        protected override void OnOwnerDisconnected(PlayerID ownerId)
+        {
+            base.OnOwnerDisconnected(ownerId);
+            BroadcastServerAuthorityTransition(null, null);
+        }
+
+        protected override void OnOwnerReconnected(PlayerID ownerId)
+        {
+            base.OnOwnerReconnected(ownerId);
+            BroadcastServerAuthorityTransition(ownerId, null);
         }
 
         private RigidbodyStateData CaptureTargetState()
@@ -448,7 +500,8 @@ namespace PurrNet
                 angularVelocity = angVel,
                 parent = parentIdentity,
                 isSoftParent = isSoft,
-                time = Time.unscaledTimeAsDouble
+                time = Time.unscaledTimeAsDouble,
+                sequence = NextStateSequence()
             };
 
             if (ValidateOutgoingSnapshot(in stateData, "controller adoption"))
@@ -549,7 +602,8 @@ namespace PurrNet
                 angularVelocity = angVel,
                 parent = parentIdentity,
                 isSoftParent = isSoft,
-                time = Time.unscaledTimeAsDouble
+                time = Time.unscaledTimeAsDouble,
+                sequence = NextStateSequence()
             };
 
             bool sent = reliable
@@ -573,7 +627,11 @@ namespace PurrNet
                 return false;
 
             if (isServer)
+            {
+                if (!TryPrepareStateForServerRelay(ref stateData))
+                    return false;
                 SyncState(stateData);
+            }
             else
                 SendStateToServer(stateData);
             return true;
@@ -585,7 +643,11 @@ namespace PurrNet
                 return false;
 
             if (isServer)
+            {
+                if (!TryPrepareStateForServerRelay(ref stateData))
+                    return false;
                 SyncReliableState(stateData);
+            }
             else
                 SendReliableStateToServer(stateData);
             return true;
@@ -601,7 +663,7 @@ namespace PurrNet
 
             if (_predictionFactor > 0f)
             {
-                float compensation = _interpolationDelay * _predictionFactor;
+                float compensation = interpolationDelay * _predictionFactor;
                 _targetPosition += ToD3(_targetLinearVelocity * compensation);
                 _predictionOffset = compensation;
             }
@@ -684,7 +746,12 @@ namespace PurrNet
                     return;
                 }
 
-                bool hardSnapRotation = _hardSnapAngle >= 0 && _acceptableRotationError >= 0 && rotationError > _hardSnapAngle;
+                bool kinematicRotation = useKinematicRotationCorrection;
+
+                bool hardSnapRotation = !kinematicRotation
+                                      && _hardSnapAngle >= 0
+                                      && _acceptableRotationError >= 0
+                                      && rotationError > _hardSnapAngle;
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
@@ -692,14 +759,15 @@ namespace PurrNet
                     SetAngularVelocity(_resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel);
                 }
 
-                bool correctRotation = !hardSnapRotation
-                                     && _acceptableRotationError >= 0
-                                     && rotationError > _acceptableRotationError;
+                bool correctRotation = kinematicRotation
+                                     || (!hardSnapRotation
+                                         && _acceptableRotationError >= 0
+                                         && rotationError > _acceptableRotationError);
 
                 _lastCorrectionReason = hardSnapRotation
                     ? (positionError > 0.001f ? "Hard (Rotation) + Position" : "Hard (Rotation)")
                     : correctRotation
-                        ? "Position+Rotation"
+                        ? kinematicRotation ? "Position+Rotation (Kinematic)" : "Position+Rotation"
                         : positionError > 0.001f ? "Position" : "No";
 
                 ApplyCorrection(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, correctRotation);
@@ -711,44 +779,44 @@ namespace PurrNet
             if (!CanApplyDynamicMotion())
                 return;
 
-            float m = _rigidbody.mass;
-            float range = Mathf.Max(_correctionRange, 0.01f);
-            float ratio = Mathf.Clamp01(positionError / range);
-
-            {
-                float w = _positionStrength;
-                Vector3 posError = worldTargetPos - _rigidbody.position;
-                Vector3 velError = worldTargetLinVel - GetLinearVelocity();
-
-                Vector3 positionalPull = posError * (w * w * ratio);
-                Vector3 velocityDamping = velError * (2f * w);
-
-                Vector3 dragCompensation = GetLinearVelocity() * GetDrag();
-
-                ApplyForceToRigidbody((positionalPull + velocityDamping + dragCompensation) * m);
-            }
+            NetworkRigidbodyPhysics.ApplyPositionSpring(
+                _rigidbody,
+                worldTargetPos,
+                worldTargetLinVel,
+                positionError,
+                _positionStrength,
+                _correctionRange,
+                GetDrag());
 
             if (correctRotation)
             {
-                float w = _rotationStrength;
-                Quaternion rotError = NormalizeQuaternion(worldTargetRot) * Quaternion.Inverse(_rigidbody.rotation);
-                rotError.ToAngleAxis(out float angle, out Vector3 axis);
+                NetworkRigidbodyPhysics.ApplyRotationSpring(
+                    _rigidbody,
+                    NormalizeQuaternion(worldTargetRot),
+                    worldTargetAngVel,
+                    _rotationStrength,
+                    useKinematicRotationCorrection);
+            }
+        }
 
-                if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
-                    return;
-
-                if (angle > 180f) angle -= 360f;
-
-                Vector3 angError = axis * (angle * Mathf.Deg2Rad);
-                Vector3 angVelError = worldTargetAngVel - _rigidbody.angularVelocity;
-                Vector3 torque = (angError * (w * w) + angVelError * (2f * w)) * m;
-
-                float maxTorque = w * w * m;
-                float torqueMag = torque.magnitude;
-                if (torqueMag > maxTorque)
-                    torque *= maxTorque / torqueMag;
-
-                ApplyTorqueToRigidbody(torque);
+        /// <summary>
+        /// True when this receiver should follow the target rotation with MoveRotation instead of
+        /// torque. In Auto, any constrained rotation axis means the rotation is authored by the
+        /// controller rather than simulated, so torque can only ever lag behind it.
+        /// </summary>
+        private bool useKinematicRotationCorrection
+        {
+            get
+            {
+                switch (_rotationCorrection)
+                {
+                    case RigidbodyRotationCorrection.Kinematic:
+                        return true;
+                    case RigidbodyRotationCorrection.Torque:
+                        return false;
+                    default:
+                        return _rigidbody && (_rigidbody.constraints & RigidbodyConstraints.FreezeRotation) != 0;
+                }
             }
         }
 
@@ -794,7 +862,8 @@ namespace PurrNet
                 rotationStrength = _rotationStrength,
                 hardSnapDistance = _hardSnapDistance,
                 hardSnapAngle = _hardSnapAngle,
-                acceptableRotationError = _acceptableRotationError
+                acceptableRotationError = _acceptableRotationError,
+                useKinematicRotation = useKinematicRotationCorrection
             };
         }
 
@@ -848,9 +917,12 @@ namespace PurrNet
             return senderTime + _senderTimeOffset;
         }
 
-        private void PushSnapshot(RigidbodyStateData data)
+        private void PushSnapshot(RigidbodyStateData data, bool orderAlreadyAccepted = false)
         {
             if (!ValidateIncomingSnapshot(in data, "snapshot"))
+                return;
+
+            if (!orderAlreadyAccepted && !TryAcceptStateOrder(in data))
                 return;
 
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
@@ -860,7 +932,7 @@ namespace PurrNet
             if (_bufferCount > 0)
             {
                 int lastIndex = (_bufferHead - 1 + BUFFER_SIZE) % BUFFER_SIZE;
-                double maxGap = Math.Max(0.5, _interpolationDelay * 4.0);
+                double maxGap = Math.Max(0.5, interpolationDelay * 4.0);
                 if (now - _snapshotBuffer[lastIndex].time > maxGap)
                     ClearBuffer();
             }
@@ -915,7 +987,7 @@ namespace PurrNet
                 return;
             }
 
-            double renderTime = Time.unscaledTimeAsDouble - _interpolationDelay;
+            double renderTime = Time.unscaledTimeAsDouble - interpolationDelay;
 
             var oldest = GetSnapshot(0);
             var newest = GetSnapshot(_bufferCount - 1);
@@ -935,7 +1007,7 @@ namespace PurrNet
                 bool clamped = overshoot > maxExtrapolation;
 
                 _targetPosition = newest.position + ToD3(newest.linearVelocity * extrapolationTime);
-                _targetRotation = newest.rotation;
+                _targetRotation = IntegrateRotation(newest.rotation, GetExtrapolationAngularVelocity(newest), extrapolationTime);
                 _targetLinearVelocity = clamped ? Vector3.zero : newest.linearVelocity;
                 _targetAngularVelocity = clamped ? Vector3.zero : newest.angularVelocity;
                 _targetParent = newest.parent;
@@ -969,6 +1041,70 @@ namespace PurrNet
             AdoptSnapshot(newest);
         }
 
+        /// <summary>
+        /// Angular velocity to extrapolate the newest snapshot with. Bodies rotated kinematically
+        /// (MoveRotation, direct rotation writes) report a zero angular velocity, so the rotation
+        /// derivative is recovered from the snapshot stream instead of stalling until the next packet.
+        /// </summary>
+        private Vector3 GetExtrapolationAngularVelocity(TimestampedSnapshot newest)
+        {
+            if (newest.angularVelocity.sqrMagnitude > 1e-6f)
+                return newest.angularVelocity;
+
+            if (_bufferCount < 2)
+                return Vector3.zero;
+
+            var previous = GetSnapshot(_bufferCount - 2);
+            if (previous.parent != newest.parent)
+                return Vector3.zero;
+
+            float span = (float)(newest.time - previous.time);
+            if (span < 0.0001f)
+                return Vector3.zero;
+
+            return GetRotationDerivative(previous.rotation, newest.rotation, span);
+        }
+
+        /// <summary>
+        /// Target angular velocity for the correction spring's feedforward term. Kinematically
+        /// rotated bodies report zero, which would leave the spring chasing a moving target on
+        /// the proportional term alone, so it falls back to the snapshot pair's rotation derivative.
+        /// </summary>
+        private static Vector3 ResolveInterpolatedAngularVelocity(TimestampedSnapshot a, TimestampedSnapshot b, float dt, float t)
+        {
+            var lerped = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+            if (lerped.sqrMagnitude > 1e-6f || dt < 0.0001f)
+                return lerped;
+
+            return GetRotationDerivative(a.rotation, b.rotation, dt);
+        }
+
+        private static Vector3 GetRotationDerivative(Quaternion from, Quaternion to, float dt)
+        {
+            var delta = to * Quaternion.Inverse(from);
+            delta.ToAngleAxis(out float angle, out Vector3 axis);
+
+            if (float.IsNaN(axis.x) || axis.sqrMagnitude < 0.001f)
+                return Vector3.zero;
+
+            if (angle > 180f)
+                angle -= 360f;
+
+            return axis * (angle * Mathf.Deg2Rad / dt);
+        }
+
+        private static Quaternion IntegrateRotation(Quaternion rotation, Vector3 angularVelocity, float time)
+        {
+            if (time <= 0f)
+                return rotation;
+
+            float magnitude = angularVelocity.magnitude;
+            if (magnitude < 1e-5f)
+                return rotation;
+
+            return Quaternion.AngleAxis(magnitude * time * Mathf.Rad2Deg, angularVelocity / magnitude) * rotation;
+        }
+
         private void AdoptSnapshot(TimestampedSnapshot snap)
         {
             _targetPosition = snap.position;
@@ -997,7 +1133,7 @@ namespace PurrNet
 
                 _targetLinearVelocity = Vector3.Lerp(a.linearVelocity, b.linearVelocity, t);
                 _targetRotation = Quaternion.Slerp(a.rotation, b.rotation, t);
-                _targetAngularVelocity = Vector3.Lerp(a.angularVelocity, b.angularVelocity, t);
+                _targetAngularVelocity = ResolveInterpolatedAngularVelocity(a, b, dt, t);
                 _targetParent = a.parent;
             }
             else
@@ -1035,14 +1171,28 @@ namespace PurrNet
         /// <summary>Configured sync space. Local is relative to the current parent, World is absolute.</summary>
         public RigidbodyTransformSpace space => _space;
 
+        /// <summary>Configured rotation correction mode. See <see cref="RigidbodyRotationCorrection"/>.</summary>
+        public RigidbodyRotationCorrection rotationCorrection
+        {
+            get => _rotationCorrection;
+            set => _rotationCorrection = value;
+        }
+
         /// <summary>
-        /// When enabled, velocities synced in a parent or soft-parent frame are relative to
-        /// the parent Rigidbody's motion. Position and rotation sync frames are unchanged.
+        /// True when this receiver follows the synced rotation with MoveRotation rather than torque,
+        /// after resolving <see cref="rotationCorrection"/> against the rigidbody's constraints.
         /// </summary>
+        public bool isRotationKinematic => useKinematicRotationCorrection;
+
+        /// <summary>
+        /// Parent-frame velocity is now always relative to the parent motion. This compatibility
+        /// property remains temporarily so existing integrations continue to compile.
+        /// </summary>
+        [Obsolete("Parent-relative velocity is automatic whenever NetworkRigidbody uses a parent-local position frame. This property no longer changes behaviour.")]
         public bool syncVelocityRelativeToParent
         {
-            get => _syncVelocityRelativeToParent;
-            set => _syncVelocityRelativeToParent = value;
+            get => true;
+            set { }
         }
 
         /// <summary>
@@ -1073,15 +1223,9 @@ namespace PurrNet
         /// velocity sync in that identity's local frame, exactly as if parented there, but the
         /// Unity transform is left untouched — no real reparenting, no hierarchy sync. Overrides
         /// <see cref="space"/> while active. Pass null (or call <see cref="ClearSoftParent"/>) to revert.
-        /// Enable <see cref="syncVelocityRelativeToParent"/> if velocity should subtract the
-        /// parent Rigidbody's linear and angular motion instead of only changing axes.
-        ///
-        /// Opt-in and backwards compatible: with no soft-parent set the wire format and behaviour are
-        /// unchanged. Set it on the controller (the owner under client-auth, the server under
-        /// server-auth); calls from a non-controller are ignored. The flag rides every state packet
-        /// (<see cref="RigidbodyStateData.isSoftParent"/>), so receivers mirror it, it transfers across
-        /// an ownership handoff, and late joiners pick it up from their initial state — the new
-        /// controller keeps the same frame automatically.
+        /// Linear and angular velocity are always relative to the parent Rigidbody's motion while
+        /// this parent-local frame is active, so they remain valid derivatives for interpolation and
+        /// extrapolation. With no sync parent, position and velocity remain in world/absolute space.
         /// </summary>
         public void SetSoftParent(NetworkIdentity identity)
         {
@@ -1140,6 +1284,26 @@ namespace PurrNet
         #endregion
 
         #region Helpers
+
+        /// <summary>
+        /// Interpolation delay actually used for sampling. With <c>_autoInterpolationDelay</c> the
+        /// configured value is floored at one send interval, since below that the render time is
+        /// past the newest snapshot on every frame and the receiver can only ever extrapolate.
+        /// </summary>
+        private float interpolationDelay
+        {
+            get
+            {
+                if (!_autoInterpolationDelay)
+                    return _interpolationDelay;
+
+                var manager = networkManager;
+                if (!manager || manager.tickRate <= 0)
+                    return _interpolationDelay;
+
+                return Mathf.Max(_interpolationDelay, 1f / manager.tickRate);
+            }
+        }
 
         private NetworkIdentity GetSyncParentIdentity() => GetSyncParentIdentity(out _);
 
@@ -1209,33 +1373,15 @@ namespace PurrNet
         private Vector3 ParentInverseTransformPoint(Transform parent, Vector3 world)
         {
             GetParentPose(parent, out var position, out var rotation);
-            return InverseScale(Quaternion.Inverse(rotation) * (world - position), parent.lossyScale);
-        }
-
-        private Vector3 ParentTransformVector(Transform parent, Vector3 local)
-        {
-            GetParentPose(parent, out _, out var rotation);
-            return rotation * Vector3.Scale(parent.lossyScale, local);
-        }
-
-        private Vector3 ParentInverseTransformVector(Transform parent, Vector3 world)
-        {
-            GetParentPose(parent, out _, out var rotation);
-            return InverseScale(Quaternion.Inverse(rotation) * world, parent.lossyScale);
+            return NetworkRigidbodyFrameMath.InverseScale(
+                Quaternion.Inverse(rotation) * (world - position),
+                parent.lossyScale);
         }
 
         private Quaternion ParentRotation(Transform parent)
         {
             GetParentPose(parent, out _, out var rotation);
             return rotation;
-        }
-
-        private static Vector3 InverseScale(Vector3 v, Vector3 s)
-        {
-            return new Vector3(
-                s.x != 0f ? v.x / s.x : v.x,
-                s.y != 0f ? v.y / s.y : v.y,
-                s.z != 0f ? v.z / s.z : v.z);
         }
 
         /// <summary>
@@ -1365,10 +1511,12 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            if (_syncVelocityRelativeToParent)
-                v -= GetParentPointVelocity(parent, _rigidbody.position);
-
-            return ParentInverseTransformVector(parent, v);
+            GetParentPose(parent, out _, out var parentRotation);
+            return NetworkRigidbodyFrameMath.ToParentLinearVelocity(
+                v,
+                GetParentPointVelocity(parent, _rigidbody.position),
+                parentRotation,
+                parent.lossyScale);
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
@@ -1379,10 +1527,10 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            if (_syncVelocityRelativeToParent)
-                v -= GetParentAngularVelocity(parent);
-
-            return Quaternion.Inverse(ParentRotation(parent)) * v;
+            return NetworkRigidbodyFrameMath.ToParentAngularVelocity(
+                v,
+                GetParentAngularVelocity(parent),
+                ParentRotation(parent));
         }
 
         /// <summary>
@@ -1420,11 +1568,12 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            var worldVelocity = ParentTransformVector(parent, v);
-            if (_syncVelocityRelativeToParent)
-                worldVelocity += GetParentPointVelocity(parent, worldPoint);
-
-            return worldVelocity;
+            GetParentPose(parent, out _, out var parentRotation);
+            return NetworkRigidbodyFrameMath.ToWorldLinearVelocity(
+                v,
+                GetParentPointVelocity(parent, worldPoint),
+                parentRotation,
+                parent.lossyScale);
         }
 
         private Vector3 ToWorldAngularVelocity(Vector3 v, Transform parent)
@@ -1432,11 +1581,10 @@ namespace PurrNet
             if (!parent)
                 return v;
 
-            var worldVelocity = ParentRotation(parent) * v;
-            if (_syncVelocityRelativeToParent)
-                worldVelocity += GetParentAngularVelocity(parent);
-
-            return worldVelocity;
+            return NetworkRigidbodyFrameMath.ToWorldAngularVelocity(
+                v,
+                GetParentAngularVelocity(parent),
+                ParentRotation(parent));
         }
 
         private Vector3 GetParentPointVelocity(Transform parent, Vector3 worldPoint)
@@ -1446,7 +1594,11 @@ namespace PurrNet
 
             var linear = NetworkRigidbodyPhysics.GetLinearVelocity(parentRigidbody);
             var angular = parentRigidbody.angularVelocity;
-            return linear + Vector3.Cross(angular, worldPoint - parentRigidbody.worldCenterOfMass);
+            return NetworkRigidbodyFrameMath.GetPointVelocity(
+                linear,
+                angular,
+                parentRigidbody.worldCenterOfMass,
+                worldPoint);
         }
 
         private Vector3 GetParentAngularVelocity(Transform parent)
@@ -1460,7 +1612,7 @@ namespace PurrNet
         {
             parentRigidbody = null;
 
-            if (!_syncVelocityRelativeToParent || !parent)
+            if (!parent)
                 return false;
 
             parentRigidbody = ResolveParentRigidbody(parent);
@@ -1588,6 +1740,38 @@ namespace PurrNet
                 && !_rigidbody.IsSleeping();
         }
 
+        /// <summary>
+        /// Broadcasts the rigidbody settings only when they differ from what was last put on the
+        /// wire. Compared against the last broadcast rather than the live rigidbody so a local
+        /// write from outside this component cannot suppress a needed broadcast, while code that
+        /// re-asserts the same value every frame no longer floods the reliable channel.
+        /// </summary>
+        private void SyncSettingsIfChanged()
+        {
+            if (!_rigidbody)
+                return;
+
+            if (!IsController(_ownerAuth) || !isActiveAndEnabled)
+                return;
+
+            var settings = GetCurrentSettings();
+            if (_hasBroadcastSettings && SettingsEqual(in _lastBroadcastSettings, in settings))
+                return;
+
+            _lastBroadcastSettings = settings;
+            _hasBroadcastSettings = true;
+            SyncSettings(settings);
+        }
+
+        private static bool SettingsEqual(in RigidbodySettingsData a, in RigidbodySettingsData b)
+        {
+            return a.mass.rawValue == b.mass.rawValue
+                && a.drag.rawValue == b.drag.rawValue
+                && a.angularDrag.rawValue == b.angularDrag.rawValue
+                && a.useGravity == b.useGravity
+                && a.isKinematic == b.isKinematic;
+        }
+
         private RigidbodySettingsData GetCurrentSettings()
         {
             if (!_rigidbody)
@@ -1699,8 +1883,7 @@ namespace PurrNet
                 if (!_rigidbody)
                     return;
                 _rigidbody.mass = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1712,8 +1895,7 @@ namespace PurrNet
                 if (!_rigidbody)
                     return;
                 SetDrag(value);
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1731,8 +1913,7 @@ namespace PurrNet
                 if (!_rigidbody)
                     return;
                 SetAngularDrag(value);
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1750,8 +1931,7 @@ namespace PurrNet
                 if (!_rigidbody)
                     return;
                 _rigidbody.useGravity = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -1763,8 +1943,7 @@ namespace PurrNet
                 if (!_rigidbody)
                     return;
                 _rigidbody.isKinematic = value;
-                if (IsController(_ownerAuth) && isActiveAndEnabled)
-                    SyncSettings(GetCurrentSettings());
+                SyncSettingsIfChanged();
             }
         }
 
@@ -2042,6 +2221,9 @@ namespace PurrNet
             _rigidbody.useGravity = settings.useGravity;
             _rigidbody.isKinematic = settings.isKinematic;
 
+            if (!TryAcceptStateOrder(in data))
+                return;
+
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
 
             var parentTrs = ResolveParentTransform(data.parent, data.positionFrame, data.isSoftParent);
@@ -2067,7 +2249,7 @@ namespace PurrNet
             _lastSyncedWasSettled = IsSettledState(data.linearVelocity, data.angularVelocity);
 
             ClearBuffer();
-            PushSnapshot(data);
+            PushSnapshot(data, true);
         }
 
         [TargetRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
@@ -2080,6 +2262,9 @@ namespace PurrNet
                 return;
 
             if (!ValidateIncomingSnapshot(in data, "ownership handoff"))
+                return;
+
+            if (!TryAcceptStateOrder(in data))
                 return;
 
             ApplyReceivedSoftParent(data.parent, data.isSoftParent);
@@ -2101,7 +2286,7 @@ namespace PurrNet
             _lastSyncedWasSettled = IsSettledState(data.linearVelocity, data.angularVelocity);
 
             ClearBuffer();
-            PushSnapshot(data);
+            PushSnapshot(data, true);
         }
 
         [ObserversRpc(channel: Channel.Unreliable, deltaPacked: true, runLocally: true)]
@@ -2114,9 +2299,15 @@ namespace PurrNet
         }
 
         [ServerRpc(channel: Channel.Unreliable, deltaPacked: true)]
-        private void SendStateToServer(RigidbodyStateData data)
+        private void SendStateToServer(RigidbodyStateData data, RPCInfo info = default)
         {
             if (!ValidateIncomingSnapshot(in data, "server receive"))
+                return;
+
+            if (!IsCurrentControllerSender(info))
+                return;
+
+            if (!TryPrepareStateForServerRelay(ref data))
                 return;
 
             SyncState(data);
@@ -2132,9 +2323,15 @@ namespace PurrNet
         }
 
         [ServerRpc(channel: Channel.ReliableOrdered, deltaPacked: true)]
-        private void SendReliableStateToServer(RigidbodyStateData data)
+        private void SendReliableStateToServer(RigidbodyStateData data, RPCInfo info = default)
         {
             if (!ValidateIncomingSnapshot(in data, "reliable server receive"))
+                return;
+
+            if (!IsCurrentControllerSender(info))
+                return;
+
+            if (!TryPrepareStateForServerRelay(ref data))
                 return;
 
             SyncReliableState(data);

@@ -1664,7 +1664,6 @@ MonoBehaviour:
   _syncRotation: 2
   _syncScale: 1
   _syncParent: 1
-  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -2340,7 +2339,6 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 1
   _syncParent: 1
-  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -2454,6 +2452,37 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: -5430065717346110456, guid: b47f702682bd69f44b0bb40b1944276e, type: 3}
+--- !u!1 &1183577488
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1183577489}
+  m_Layer: 0
+  m_Name: Test
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1183577489
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1183577488}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.80049, y: -2.98189, z: 6.1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1185781566
 GameObject:
   m_ObjectHideFlags: 0
@@ -2549,7 +2578,7 @@ MonoBehaviour:
   _startClientFlags: 3
   _cookieScope: 1
   _dontDestroyOnLoad: 1
-  _transport: {fileID: 1216416902}
+  _transport: {fileID: 1216416912}
   _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
   _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
@@ -2681,8 +2710,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.Transports.PurrTransport
   _masterServer: https://purrtransport.purrservers.com/
   _roomName: 4bb50bc5e6834b37b2f215c6f9517013
-  _region: france
-  _host: purrtransport-france.purrservers.com
+  _region: nj-us
+  _host: purrtransport-nj-us.purrservers.com
   _timeoutInSeconds: 5
   _pollEventsInUpdate: 0
   _useNat: 1
@@ -2988,7 +3017,6 @@ MonoBehaviour:
   _syncRotation: 1
   _syncScale: 1
   _syncParent: 1
-  _forceSleepRb: 1
   _interpolateSettings: 7
   _minBufferSize: 1
   _maxBufferSize: 2
@@ -4595,3 +4623,4 @@ SceneRoots:
   - {fileID: 1523968763}
   - {fileID: 198233782}
   - {fileID: 1871993795}
+  - {fileID: 1183577489}

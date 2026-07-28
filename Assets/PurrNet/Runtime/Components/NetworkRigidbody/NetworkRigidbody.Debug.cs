@@ -133,7 +133,7 @@ namespace PurrNet
                           $"Buffer: {_bufferCount}/{BUFFER_SIZE}\n" +
                           $"Sample: {_bufferSampleMode}\n" +
                           $"Span: {bufferSpan:F3}s\n" +
-                          $"Delay: {_interpolationDelay:F3}s\n" +
+                          $"Delay: {interpolationDelay:F3}s\n" +
                           $"Predict: {_predictionFactor:F2}\n" +
                           $"PredOffset: {_predictionOffset:F3}m";
 

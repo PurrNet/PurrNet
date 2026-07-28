@@ -194,7 +194,7 @@ namespace PurrNet
                 InstantiateType.PositionRotationScene => UnityProxy.InstantiateDirectly(original, position, rotation,
                     scene),
                 InstantiateType.SceneParent => UnityProxy.InstantiateDirectly(original, parent),
-#if UNITY_2023_1_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                 InstantiateType.Scene => UnityProxy.InstantiateDirectly(original, scene),
 #endif
 #if UNITY_6000_0_OR_NEWER
