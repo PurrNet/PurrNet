@@ -613,6 +613,8 @@ namespace PurrNet
             {
                 if (canApplyAnimatorParameters)
                     _animator.ResetTrigger(nameHash);
+                else
+                    QueuePendingTrigger(new NetAnimatorRPC(new ResetTrigger { nameHash = nameHash }));
                 return;
             }
 
@@ -623,6 +625,8 @@ namespace PurrNet
                 { nameHash = nameHash, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             if (canApplyAnimatorParameters)
                 resetTrigger.Apply(_animator);
+            else
+                QueuePendingTrigger(new NetAnimatorRPC(resetTrigger));
 
             IfSameReplace(new NetAnimatorRPC(resetTrigger),
                 (a, b) => a._resetTrigger.nameHash == b._resetTrigger.nameHash);
@@ -634,6 +638,8 @@ namespace PurrNet
             {
                 if (canApplyAnimatorParameters)
                     _animator.SetTrigger(nameHash);
+                else
+                    QueuePendingTrigger(new NetAnimatorRPC(new SetTrigger { nameHash = nameHash }));
                 return;
             }
 
@@ -644,6 +650,8 @@ namespace PurrNet
                 { nameHash = nameHash, paramIndexPlusOne = GetParamIndexPlusOne(nameHash) };
             if (canApplyAnimatorParameters)
                 trigger.Apply(_animator);
+            else
+                QueuePendingTrigger(new NetAnimatorRPC(trigger));
 
             IfSameReplace(new NetAnimatorRPC(trigger),
                 (a, b) => a._trigger.nameHash == b._trigger.nameHash);
@@ -654,7 +662,14 @@ namespace PurrNet
             if (_dontSyncHashes.Contains(nameHash))
             {
                 if (canApplyAnimatorParameters)
+                {
                     _animator.SetFloat(nameHash, value);
+                }
+                else
+                {
+                    _floatValues[nameHash] = value;
+                    _hasPendingAnimatorParameterState = true;
+                }
                 return;
             }
 
@@ -684,7 +699,14 @@ namespace PurrNet
             if (_dontSyncHashes.Contains(nameHash))
             {
                 if (canApplyAnimatorParameters)
+                {
                     _animator.SetFloat(nameHash, value, dampTime, deltaTime);
+                }
+                else
+                {
+                    _floatValues[nameHash] = value;
+                    _hasPendingAnimatorParameterState = true;
+                }
                 return;
             }
 
@@ -716,7 +738,14 @@ namespace PurrNet
             if (_dontSyncHashes.Contains(nameHash))
             {
                 if (canApplyAnimatorParameters)
+                {
                     _animator.SetBool(nameHash, value);
+                }
+                else
+                {
+                    _boolValues[nameHash] = value;
+                    _hasPendingAnimatorParameterState = true;
+                }
                 return;
             }
 
@@ -740,7 +769,14 @@ namespace PurrNet
             if (_dontSyncHashes.Contains(nameHash))
             {
                 if (canApplyAnimatorParameters)
+                {
                     _animator.SetInteger(nameHash, value);
+                }
+                else
+                {
+                    _intValues[nameHash] = value;
+                    _hasPendingAnimatorParameterState = true;
+                }
                 return;
             }
 

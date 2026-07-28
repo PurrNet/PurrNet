@@ -97,7 +97,19 @@ namespace PurrNet.Modules
             {
                 if (double.IsNaN(value))
                     return;
-                _tickPacingScale = Math.Clamp(value, minTickPacingScale, maxTickPacingScale);
+
+                var clamped = Math.Clamp(value, minTickPacingScale, maxTickPacingScale);
+                if (clamped == _tickPacingScale)
+                    return;
+
+                // rebase the current fractional phase onto the new interval so the
+                // precise tick clocks stay monotonic across a scale change
+                var now = Time.unscaledTimeAsDouble;
+                var elapsed = now - _lastTickTime;
+                if (elapsed > 0)
+                    _lastTickTime = now - elapsed * (clamped / _tickPacingScale);
+
+                _tickPacingScale = clamped;
             }
         }
 

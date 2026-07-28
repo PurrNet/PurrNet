@@ -2275,7 +2275,7 @@ namespace PurrNet
         {
             if (asServer)
             {
-                _serverBroadcast?.DrainDeferred();
+                _serverBroadcast?.DrainDeferred(conn);
                 _serverModules.OnLostConnection(conn, true);
             }
             else

@@ -155,6 +155,48 @@ namespace PurrNet.Modules
             }
         }
 
+        /// <summary>
+        /// Drains only the given connection's deferred packets (preserving their order),
+        /// leaving other connections' traffic queued for the tick receive phase.
+        /// </summary>
+        internal void DrainDeferred(Connection conn)
+        {
+            if (_draining || _deferredMessages.Count == 0)
+                return;
+
+            _draining = true;
+
+            try
+            {
+                for (int i = 0; i < _deferredMessages.Count; i++)
+                {
+                    var message = _deferredMessages[i];
+
+                    if (message.conn != conn)
+                        continue;
+
+                    _deferredMessages.RemoveAt(i--);
+
+                    try
+                    {
+                        ProcessData(message.conn, message.data.ToByteData());
+                    }
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogException(e);
+                    }
+                    finally
+                    {
+                        message.data.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                _draining = false;
+            }
+        }
+
         private void DisposeDeferred()
         {
             for (int i = 0; i < _deferredMessages.Count; i++)
