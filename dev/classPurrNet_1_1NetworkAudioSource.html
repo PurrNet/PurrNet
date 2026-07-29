@@ -116,11 +116,11 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a3c5bff74a6d55f10fa72fd4b2de692a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c3277533d4aa9d44146600339d40a20"><td class="memItemLeft" align="right" valign="top"><a id="a9c3277533d4aa9d44146600339d40a20" name="a9c3277533d4aa9d44146600339d40a20"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Play</b> ()</td></tr>
-<tr class="memdesc:a9c3277533d4aa9d44146600339d40a20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Plays the audio source  <br /></td></tr>
+<tr class="memdesc:a9c3277533d4aa9d44146600339d40a20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Plays the audio source and sends a reliable ordered playback command. Remote observers start from zero unless <a class="el" href="classPurrNet_1_1NetworkAudioSource.html#a6a054983053fdb2247b1e52aeeaeb7db" title="Playback position in seconds">time</a> was explicitly set first. Network transit time is not added to the playback position.  <br /></td></tr>
 <tr class="separator:a9c3277533d4aa9d44146600339d40a20"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5b7be83b909cf15d9eacbc7f14360f03"><td class="memItemLeft" align="right" valign="top"><a id="a5b7be83b909cf15d9eacbc7f14360f03" name="a5b7be83b909cf15d9eacbc7f14360f03"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Play</b> (AudioClip audioClip)</td></tr>
-<tr class="memdesc:a5b7be83b909cf15d9eacbc7f14360f03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the clip and plays the audio source  <br /></td></tr>
+<tr class="memdesc:a5b7be83b909cf15d9eacbc7f14360f03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the clip and plays it from the beginning using a reliable ordered playback command. Network transit time is not added to the playback position.  <br /></td></tr>
 <tr class="separator:a5b7be83b909cf15d9eacbc7f14360f03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad8044a04f5aeba4b2d4a25fe0cfe9d5b"><td class="memItemLeft" align="right" valign="top"><a id="ad8044a04f5aeba4b2d4a25fe0cfe9d5b" name="ad8044a04f5aeba4b2d4a25fe0cfe9d5b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Stop</b> ()</td></tr>
@@ -135,7 +135,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>UnPause</b> ()</td></
 <tr class="memdesc:a423c0f742d9729beaaaa6fb37138f58e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resumes the audio source from a paused state  <br /></td></tr>
 <tr class="separator:a423c0f742d9729beaaaa6fb37138f58e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82ff0e84ff747332704d3f692336cfc9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkAudioSource.html#a82ff0e84ff747332704d3f692336cfc9">PlayOneShot</a> (AudioClip audioClip, float volumeScale=1f)</td></tr>
-<tr class="memdesc:a82ff0e84ff747332704d3f692336cfc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Plays an AudioClip as a one-shot sound effect. Does not affect the current clip or play state. The clip must be registered in <a class="el" href="classPurrNet_1_1NetworkAssets.html">NetworkAssets</a>.   <a href="classPurrNet_1_1NetworkAudioSource.html#a82ff0e84ff747332704d3f692336cfc9">More...</a><br /></td></tr>
+<tr class="memdesc:a82ff0e84ff747332704d3f692336cfc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Plays an AudioClip as a one-shot sound effect. Does not affect the current clip or play state. The clip must be registered in <a class="el" href="classPurrNet_1_1NetworkAssets.html">NetworkAssets</a>. Remote observers play the full clip on receipt; network transit time is not added to the playback position.   <a href="classPurrNet_1_1NetworkAudioSource.html#a82ff0e84ff747332704d3f692336cfc9">More...</a><br /></td></tr>
 <tr class="separator:a82ff0e84ff747332704d3f692336cfc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1NetworkIdentity"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1NetworkIdentity')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1NetworkIdentity.html">PurrNet.NetworkIdentity</a></td></tr>
 <tr class="memitem:aa9ca1d8499152c7c2a641b0b8783adf6 inherit pub_methods_classPurrNet_1_1NetworkIdentity"><td class="memItemLeft" align="right" valign="top"><a id="aa9ca1d8499152c7c2a641b0b8783adf6" name="aa9ca1d8499152c7c2a641b0b8783adf6"></a>
@@ -736,7 +736,7 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
       </table>
 </div><div class="memdoc">
 
-<p>Plays an AudioClip as a one-shot sound effect. Does not affect the current clip or play state. The clip must be registered in <a class="el" href="classPurrNet_1_1NetworkAssets.html">NetworkAssets</a>.  </p>
+<p>Plays an AudioClip as a one-shot sound effect. Does not affect the current clip or play state. The clip must be registered in <a class="el" href="classPurrNet_1_1NetworkAssets.html">NetworkAssets</a>. Remote observers play the full clip on receipt; network transit time is not added to the playback position.  </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">audioClip</td><td>The clip to play</td></tr>

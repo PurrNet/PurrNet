@@ -189,6 +189,7 @@ var annotated_dup =
       ] ],
       [ "AlwaysVisibleRule", "classPurrNet_1_1AlwaysVisibleRule.html", "classPurrNet_1_1AlwaysVisibleRule" ],
       [ "AppliedForce", "structPurrNet_1_1AppliedForce.html", null ],
+      [ "AudioPlaybackCommand", "structPurrNet_1_1AudioPlaybackCommand.html", null ],
       [ "AudioSourceDelta", "structPurrNet_1_1AudioSourceDelta.html", null ],
       [ "AudioSourceState", "structPurrNet_1_1AudioSourceState.html", null ],
       [ "BandwidthProfilerToFile", "classPurrNet_1_1BandwidthProfilerToFile.html", null ],
