@@ -19,6 +19,7 @@ public class NetworkAudioSourcePlaybackScenario : Scenario
     private const uint ExpectedCommandCount = 3;
 
     private NetworkAudioSourcePlaybackRoot _prefab;
+    private AudioClip _shortClip;
 
     void CreatePrefab()
     {
@@ -32,7 +33,8 @@ public class NetworkAudioSourcePlaybackScenario : Scenario
         var source = audioGo.AddComponent<AudioSource>();
         source.playOnAwake = false;
         source.volume = 0f;
-        source.clip = AudioClip.Create("ShortNetworkAudioClip", 80, 1, 8000, false);
+        _shortClip = AudioClip.Create("ShortNetworkAudioClip", 80, 1, 8000, false);
+        source.clip = _shortClip;
 
         var networkAudio = audioGo.AddComponent<NetworkAudioSource>();
         var sourceField = typeof(NetworkAudioSource).GetField(
@@ -60,9 +62,25 @@ public class NetworkAudioSourcePlaybackScenario : Scenario
         NetworkAudioSourcePlaybackRoot.ResetAll();
     }
 
+    void RegisterClip(NetworkManager manager)
+    {
+        var networkAssets = manager.networkAssets;
+        if (!networkAssets)
+        {
+            networkAssets = ScriptableObject.CreateInstance<NetworkAssets>();
+            manager.networkAssets = networkAssets;
+        }
+
+        // Each peer creates its own matching runtime clip during setup. Adding it to the
+        // existing collection preserves assets registered by other scenarios and gives
+        // the clip the same network index on every peer.
+        networkAssets.AddAsset(_shortClip, false);
+    }
+
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
         CreatePrefab();
+        RegisterClip(manager);
         manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
     }
 
@@ -88,6 +106,13 @@ public class NetworkAudioSourcePlaybackScenario : Scenario
         }
 
         await ScenarioBarrier.Wait(ctx, BarrierBase + 1, _barrierTimeoutSeconds);
+
+        var registeredClip = NetworkAudioSourcePlaybackRoot.LocalInstance.networkAudio.clip;
+        if (!ctx.networkManager.networkAssets
+            || !ctx.networkManager.networkAssets.TryGetIndex(registeredClip, out _))
+        {
+            return ScenarioResult.Fail("short audio clip is not registered in NetworkAssets");
+        }
 
         if (ctx.isServer)
         {
