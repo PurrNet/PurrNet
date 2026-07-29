@@ -1,3 +1,10 @@
+# [1.22.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.2...v1.22.0-beta.3) (2026-07-29)
+
+
+### Bug Fixes
+
+* NetworkAnimator reconcile logic ([68a9d95](https://github.com/PurrNet/PurrNet/commit/68a9d957fc1fb5a67705340e3ab10da1be10c604))
+
 # [1.22.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.1...v1.22.0-beta.2) (2026-07-29)
 
 
