@@ -100,6 +100,37 @@ namespace PurrNet.Codegen
             public MethodDefinition method;
         }
 
+        // CoreCLR enforces member-access verification that Mono/IL2CPP did not. Creating a
+        // WriteFunc<T>/ReadFunc<T> delegate inside the generated serializer class requires that T
+        // (and every enclosing type in its declaring chain) be accessible from that class. Private/
+        // internal nested serialized types therefore throw MethodAccessException at 'newobj'. The
+        // serializer is always generated into the same module as T, so promoting it is self-contained.
+        public static void EnsureCoreClrAccessible(TypeReference typeRef, ModuleDefinition module)
+        {
+            switch (typeRef)
+            {
+                case null: return;
+                case GenericInstanceType git:
+                    EnsureCoreClrAccessible(git.ElementType, module);
+                    foreach (var arg in git.GenericArguments)
+                        EnsureCoreClrAccessible(arg, module);
+                    return;
+                case ByReferenceType byRef: EnsureCoreClrAccessible(byRef.ElementType, module); return;
+                case ArrayType arr:         EnsureCoreClrAccessible(arr.ElementType, module);   return;
+                case PointerType ptr:       EnsureCoreClrAccessible(ptr.ElementType, module);   return;
+            }
+
+            var resolved = typeRef.Resolve();
+            // A public nested type inside a private parent is still inaccessible, so walk the chain.
+            // Top-level types are left untouched (internal top-level is already same-assembly accessible).
+            while (resolved != null && resolved.IsNested && resolved.Module == module)
+            {
+                if (!resolved.IsNestedPublic)
+                    resolved.IsNestedPublic = true;
+                resolved = resolved.DeclaringType?.Resolve();
+            }
+        }
+
         public static void HandleType(TypeReference actualType, ModuleDefinition module, TypeDefinition type,
             HashSet<TypeReference> toIgnoreForDelta, HashSet<TypeReference> toIgnoreForSerialization)
         {
@@ -228,6 +259,7 @@ namespace PurrNet.Codegen
             for (int i = 0; i < writeTypes.Count; i++)
             {
                 var writeType = writeTypes[i];
+                EnsureCoreClrAccessible(writeType.type, module);
                 var writeMethod = writeType.method.Import(module);
                 var resolved = writeMethod.Resolve();
                 resolved.IsPublic = true;
@@ -320,6 +352,8 @@ namespace PurrNet.Codegen
                 {
                     typeArgument = byRefType.ElementType; // Use the base type (e.g., int from ref int)
                 }
+
+                EnsureCoreClrAccessible(typeArgument, module);
 
                 var packerType = module.GetTypeDefinition(typeof(Packer<>)).Import(module);
                 var deltaPackerType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);

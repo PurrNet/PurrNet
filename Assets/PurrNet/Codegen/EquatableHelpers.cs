@@ -27,6 +27,12 @@ namespace PurrNet.Codegen
 
         public static bool HasEquatableInterface(TypeReference def)
         {
+            // Arrays/pointers/byrefs resolve to their ELEMENT type in Cecil (Filter[].Resolve() == Filter),
+            // a false positive. A composite type never implements IPurrEquatable<itself>, and injecting
+            // Override<Filter[]>() violates 'where D : IPurrEquatable<D>' (CoreCLR VerificationException).
+            if (def is ArrayType || def is PointerType || def is ByReferenceType)
+                return false;
+
             var resolved = def.Resolve();
             return resolved != null && HasEquatableInterface(resolved);
         }
