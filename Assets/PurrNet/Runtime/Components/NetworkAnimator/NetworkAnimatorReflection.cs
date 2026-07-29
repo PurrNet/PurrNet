@@ -54,11 +54,16 @@ namespace PurrNet
             _wasController = IsController(_ownerAuth);
         }
 
-        protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
+        protected override void OnOwnerChanged(
+            PlayerID? oldOwner,
+            PlayerID? newOwner,
+            bool isSpawner,
+            bool asServer)
         {
             bool isControlling = IsController(_ownerAuth);
 
-            bool shouldReconcile = (hasConnectedOwner && isOwner && !asServer) || (asServer && isControlling);
+            bool shouldReconcile = !isSpawner &&
+                ((hasConnectedOwner && isOwner && !asServer) || (asServer && isControlling));
 
             if (shouldReconcile)
                 Reconcile();
