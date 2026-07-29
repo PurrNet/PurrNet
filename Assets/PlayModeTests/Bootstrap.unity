@@ -1915,6 +1915,7 @@ GameObject:
   - component: {fileID: 1680343662}
   - component: {fileID: 1680343663}
   - component: {fileID: 1680343664}
+  - component: {fileID: 1680343665}
   - component: {fileID: 277924965}
   m_Layer: 0
   m_Name: Lifetimes
@@ -2327,6 +2328,22 @@ MonoBehaviour:
   _playersTimeoutSeconds: 30
   _spawnTimeoutSeconds: 15
   _settleSeconds: 1
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+--- !u!114 &1680343665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c9f3b5e8d2a41c7a6e0f1b9d4c82357, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::NetworkAudioSourcePlaybackScenario
+  _spawnTimeoutSeconds: 15
+  _commandTimeoutSeconds: 30
   _despawnTimeoutSeconds: 30
   _barrierTimeoutSeconds: 60
 --- !u!114 &1680343647
