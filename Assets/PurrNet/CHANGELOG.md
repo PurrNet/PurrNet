@@ -1,3 +1,10 @@
+# [1.22.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.1...v1.22.0-beta.2) (2026-07-29)
+
+
+### Features
+
+* DesyncPolicy for determinism and packet loss improvements ([a5e7c62](https://github.com/PurrNet/PurrNet/commit/a5e7c620c985964c600876044d5518244481ab5c))
+
 # [1.22.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.1...v1.22.0-beta.1) (2026-07-28)
 
 
