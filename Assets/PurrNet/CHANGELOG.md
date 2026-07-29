@@ -1,3 +1,10 @@
+# [1.22.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.3...v1.22.0-beta.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* NetworkAudioSource skipping small clips or starting delayed ([655fc20](https://github.com/PurrNet/PurrNet/commit/655fc20fe7365b483dc2ea8288a24ef7219aea8f))
+
 # [1.22.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.2...v1.22.0-beta.3) (2026-07-29)
 
 
