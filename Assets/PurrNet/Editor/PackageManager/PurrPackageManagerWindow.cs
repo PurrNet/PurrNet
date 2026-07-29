@@ -70,6 +70,7 @@ namespace PurrNet.Editor
         [NonSerialized] private GUIStyle _smallLabelStyle;
         [NonSerialized] private GUIStyle _listItemStyle;
         [NonSerialized] private GUIStyle _listItemDetailStyle;
+        [NonSerialized] private GUIStyle _earlyAccessListStyle;
         [NonSerialized] private GUIStyle _categoryStyle;
         [NonSerialized] private GUIStyle _detailTitleStyle;
         [NonSerialized] private GUIStyle _releaseNotesStyle;
@@ -238,6 +239,13 @@ namespace PurrNet.Editor
                 margin = new RectOffset(0, 0, 0, 0),
                 alignment = TextAnchor.MiddleRight,
                 normal = { textColor = new Color(0.6f, 0.6f, 0.6f, 1f) }
+            };
+
+            _earlyAccessListStyle = new GUIStyle(_listItemDetailStyle)
+            {
+                fontSize = 8,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = _updateColor }
             };
 
             _categoryStyle = new GUIStyle(EditorStyles.foldout)
@@ -738,9 +746,12 @@ namespace PurrNet.Editor
             }
 
             // Build right-side info text
+            bool showEarlyAccess = package.IsEarlyAccess && package.HasAccess;
             string info;
             if (!package.HasAccess)
                 info = "No access";
+            else if (showEarlyAccess)
+                info = "EARLY ACCESS";
             else if (package.IsExternal && isGitInstall)
                 info = hasGitUpdate ? "update" : "installed";
             else if (hasUpdate)
@@ -753,7 +764,8 @@ namespace PurrNet.Editor
                 info = "";
 
             // Measure right-side text width
-            float infoWidth = string.IsNullOrEmpty(info) ? 0 : _listItemDetailStyle.CalcSize(new GUIContent(info)).x + 4;
+            var infoStyle = showEarlyAccess ? _earlyAccessListStyle : _listItemDetailStyle;
+            float infoWidth = string.IsNullOrEmpty(info) ? 0 : infoStyle.CalcSize(new GUIContent(info)).x + 4;
 
             // Status dot
             bool showDot = hasUpdate || hasGitUpdate || isInstalled;
@@ -790,7 +802,7 @@ namespace PurrNet.Editor
                 }
                 else
                 {
-                    _listItemDetailStyle.Draw(infoRect, info, false, false, false, false);
+                    infoStyle.Draw(infoRect, info, false, false, false, false);
                 }
             }
 
