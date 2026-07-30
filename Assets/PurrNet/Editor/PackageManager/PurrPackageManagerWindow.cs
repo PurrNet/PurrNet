@@ -44,6 +44,7 @@ namespace PurrNet.Editor
         // Cached sorted list rebuilt each frame from _packages
         private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
         private readonly List<(string name, int startIndex, int count)> _categories = new();
+        private readonly Dictionary<string, int> _categoryUpdateCounts = new();
 
         private static readonly Color _headerBg = new Color(0.17f, 0.17f, 0.17f, 1f);
         private static readonly Color _accentColor = new Color(0.4f, 0.7f, 1f, 1f);
@@ -72,6 +73,7 @@ namespace PurrNet.Editor
         [NonSerialized] private GUIStyle _listItemDetailStyle;
         [NonSerialized] private GUIStyle _earlyAccessListStyle;
         [NonSerialized] private GUIStyle _categoryStyle;
+        [NonSerialized] private GUIStyle _categoryUpdateStyle;
         [NonSerialized] private GUIStyle _detailTitleStyle;
         [NonSerialized] private GUIStyle _releaseNotesStyle;
         private Texture2D _logo;
@@ -200,7 +202,8 @@ namespace PurrNet.Editor
 
         private void InitStyles()
         {
-            if (_detailTitleStyle != null && _listItemDetailStyle != null && _releaseNotesStyle != null)
+            if (_detailTitleStyle != null && _listItemDetailStyle != null &&
+                _releaseNotesStyle != null && _categoryUpdateStyle != null)
                 return;
 
             _descStyle = new GUIStyle(EditorStyles.label)
@@ -255,6 +258,16 @@ namespace PurrNet.Editor
                 padding = new RectOffset(14, 4, 3, 3),
                 margin = new RectOffset(0, 0, 0, 0),
                 normal = { textColor = new Color(0.48f, 0.48f, 0.48f, 1f) }
+            };
+
+            _categoryUpdateStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = 8,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleRight,
+                padding = new RectOffset(2, 2, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+                normal = { textColor = _updateColor }
             };
 
             _detailTitleStyle = new GUIStyle(EditorStyles.boldLabel)
@@ -354,7 +367,7 @@ namespace PurrNet.Editor
             }
 
             RebuildSortedPackages();
-            _updatableCount = CountUpdatablePackages();
+            _updatableCount = RebuildCategoryUpdateCounts();
 
             // Clamp selection (preserve special entries like Studios)
             if (_selectedIndex != StudiosEntryIndex && _selectedIndex >= _sortedPackages.Count)
@@ -666,6 +679,10 @@ namespace PurrNet.Editor
                     SetCategoryExpanded(categoryName, nextExpanded);
                     isExpanded = nextExpanded;
                 }
+
+                if (_categoryUpdateCounts.TryGetValue(categoryName ?? string.Empty, out int categoryUpdateCount))
+                    DrawCategoryUpdateIndicator(catRect, categoryUpdateCount);
+
                 y += CategoryHeaderHeight;
 
                 if (!isExpanded)
@@ -690,6 +707,29 @@ namespace PurrNet.Editor
             }
 
             GUI.EndScrollView();
+        }
+
+        private void DrawCategoryUpdateIndicator(Rect categoryRect, int updateCount)
+        {
+            bool useCompactLabel = categoryRect.width < 150f;
+            string label = useCompactLabel
+                ? $"↑ {updateCount}"
+                : updateCount == 1 ? "1 UPDATE" : $"{updateCount} UPDATES";
+            string packageLabel = updateCount == 1 ? "package has" : "packages have";
+            var content = new GUIContent(label,
+                $"{updateCount} {packageLabel} an update available in this category.");
+
+            float width = Mathf.Ceil(_categoryUpdateStyle.CalcSize(content).x);
+            var labelRect = new Rect(
+                categoryRect.xMax - width - 5f,
+                categoryRect.y + 3f,
+                width,
+                CategoryHeaderHeight - 6f);
+
+            // Cover any long category title beneath the right-aligned indicator.
+            EditorGUI.DrawRect(new Rect(labelRect.x - 2f, categoryRect.y, width + 7f, categoryRect.height),
+                _categoryBg);
+            GUI.Label(labelRect, content, _categoryUpdateStyle);
         }
 
         private static bool IsCategoryExpanded(string categoryName)
@@ -1792,34 +1832,45 @@ namespace PurrNet.Editor
             return text;
         }
 
-        private int CountUpdatablePackages()
+        private int RebuildCategoryUpdateCounts()
         {
-            int count = 0;
+            _categoryUpdateCounts.Clear();
+            int totalCount = 0;
 
-            foreach (var (pkg, release, dev) in _sortedPackages)
+            foreach (var (categoryName, startIndex, count) in _categories)
             {
-                if (!pkg.HasAccess || pkg.Frozen) continue;
-
-                bool isInstalled = PurrPackageManagerInstaller.IsInstalled(pkg);
-                if (!isInstalled) continue;
-
-                bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
-                var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
-
-                if (pkg.IsExternal && isGitInstall)
+                int categoryCount = 0;
+                for (int i = startIndex; i < startIndex + count; i++)
                 {
-                    var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
-                    if (HasGitUpdate(pkg, hash))
-                        count++;
+                    var (pkg, release, dev) = _sortedPackages[i];
+                    if (HasAvailableUpdate(pkg, release, dev))
+                        categoryCount++;
                 }
-                else
-                {
-                    if (GetVersionUpdateTarget(pkg, installedVersion, release, dev) != null)
-                        count++;
-                }
+
+                if (categoryCount == 0)
+                    continue;
+
+                _categoryUpdateCounts[categoryName ?? string.Empty] = categoryCount;
+                totalCount += categoryCount;
             }
 
-            return count;
+            return totalCount;
+        }
+
+        private static bool HasAvailableUpdate(PackageInfo pkg, VersionInfo release, VersionInfo dev)
+        {
+            if (!pkg.HasAccess || pkg.Frozen || !PurrPackageManagerInstaller.IsInstalled(pkg))
+                return false;
+
+            bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
+            if (pkg.IsExternal && isGitInstall)
+            {
+                var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
+                return HasGitUpdate(pkg, hash);
+            }
+
+            var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
+            return GetVersionUpdateTarget(pkg, installedVersion, release, dev) != null;
         }
 
         private List<(PackageInfo pkg, VersionInfo version, string gitUrl)> CollectUpdatablePackages()
