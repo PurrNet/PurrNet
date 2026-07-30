@@ -18,11 +18,11 @@ namespace PurrNet
         [Header("What to Sync")]
         [Tooltip("Whether to sync the position of the transform. And if so, in what space.")]
         [SerializeField, PurrLock]
-        private SyncMode _syncPosition = SyncMode.World;
+        private SyncMode _syncPosition = SyncMode.Local;
 
         [Tooltip("Whether to sync the rotation of the transform. And if so, in what space.")]
         [SerializeField, PurrLock]
-        private SyncMode _syncRotation = SyncMode.World;
+        private SyncMode _syncRotation = SyncMode.Local;
 
         [Tooltip("Whether to sync the scale of the transform.")]
         [SerializeField, PurrLock]
