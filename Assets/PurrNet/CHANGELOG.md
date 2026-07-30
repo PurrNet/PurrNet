@@ -1,3 +1,10 @@
+# [1.22.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.9...v1.22.0-beta.10) (2026-07-30)
+
+
+### Bug Fixes
+
+* Optimize allocation of Network Transform ([a977820](https://github.com/PurrNet/PurrNet/commit/a9778207d6f3f538ad9a30570d72490b41b4ceee))
+
 # [1.22.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.8...v1.22.0-beta.9) (2026-07-30)
 
 
