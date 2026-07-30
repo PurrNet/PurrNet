@@ -1,3 +1,10 @@
+# [1.22.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.8...v1.22.0-beta.9) (2026-07-30)
+
+
+### Bug Fixes
+
+* Network transform default to local ([b90d2e7](https://github.com/PurrNet/PurrNet/commit/b90d2e789c7a6f26d2a617ce77db0e4e8d7018ee))
+
 # [1.22.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.7...v1.22.0-beta.8) (2026-07-30)
 
 
