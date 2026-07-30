@@ -1,3 +1,10 @@
+# [1.22.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.4...v1.22.0-beta.5) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow purrnet package manager to import tools as simple unitypackages ([ac84ca7](https://github.com/PurrNet/PurrNet/commit/ac84ca7b0d8391f7ca03cde0c524fb2032183c86))
+
 # [1.22.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.3...v1.22.0-beta.4) (2026-07-29)
 
 
