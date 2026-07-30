@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
 namespace PurrNet.Editor
@@ -16,6 +17,7 @@ namespace PurrNet.Editor
         private int _selectedIndex = -1;
         private Vector2 _listScrollPosition;
         private Vector2 _detailScrollPosition;
+        private string _searchQuery = string.Empty;
 
         private float _splitWidth = 240f;
         private bool _isDraggingSplitter;
@@ -76,6 +78,7 @@ namespace PurrNet.Editor
         [NonSerialized] private GUIStyle _categoryUpdateStyle;
         [NonSerialized] private GUIStyle _detailTitleStyle;
         [NonSerialized] private GUIStyle _releaseNotesStyle;
+        [NonSerialized] private SearchField _searchField;
         private Texture2D _logo;
 
         private const int StudiosEntryIndex = int.MaxValue;
@@ -84,6 +87,7 @@ namespace PurrNet.Editor
         private const float ListItemHeight = 28f;
         private const float CategoryHeaderHeight = 20f;
         private const float CategoryGap = 8f;
+        private const float SearchAreaHeight = 26f;
         private const float SplitterWidth = 6f;
         private const string CategoryFoldoutPreferencePrefix = "PurrNet.PackageManager.CategoryExpanded.";
         private const string PackageWebsiteBaseUrl = "https://purrnet.dev/packages/";
@@ -202,6 +206,8 @@ namespace PurrNet.Editor
 
         private void InitStyles()
         {
+            _searchField ??= new SearchField();
+
             if (_detailTitleStyle != null && _listItemDetailStyle != null &&
                 _releaseNotesStyle != null && _categoryUpdateStyle != null)
                 return;
@@ -368,14 +374,7 @@ namespace PurrNet.Editor
 
             RebuildSortedPackages();
             _updatableCount = RebuildCategoryUpdateCounts();
-
-            // Clamp selection (preserve special entries like Studios)
-            if (_selectedIndex != StudiosEntryIndex && _selectedIndex >= _sortedPackages.Count)
-                _selectedIndex = _sortedPackages.Count - 1;
-
-            // Auto-select first if nothing selected
-            if (_selectedIndex < 0 && _sortedPackages.Count > 0)
-                _selectedIndex = 0;
+            ReconcileSelectionWithSearch();
 
             _splitWidth = Mathf.Clamp(_splitWidth, SplitMargin, position.width - SplitMargin);
 
@@ -641,27 +640,77 @@ namespace PurrNet.Editor
         {
             EditorGUI.DrawRect(areaRect, _listBg);
 
+            var searchBackgroundRect = new Rect(
+                areaRect.x,
+                areaRect.y,
+                areaRect.width,
+                SearchAreaHeight);
+            EditorGUI.DrawRect(searchBackgroundRect, _categoryBg);
+
+            var searchRect = new Rect(
+                searchBackgroundRect.x + 5f,
+                searchBackgroundRect.y + 4f,
+                Mathf.Max(0f, searchBackgroundRect.width - 10f),
+                18f);
+            string nextSearchQuery = _searchField.OnGUI(searchRect, _searchQuery ?? string.Empty);
+            if (!string.Equals(nextSearchQuery, _searchQuery, StringComparison.Ordinal))
+            {
+                _searchQuery = nextSearchQuery;
+                _listScrollPosition = Vector2.zero;
+                Repaint();
+            }
+
+            var listAreaRect = new Rect(
+                areaRect.x,
+                areaRect.y + SearchAreaHeight,
+                areaRect.width,
+                Mathf.Max(0f, areaRect.height - SearchAreaHeight));
+            bool isSearching = HasSearchQuery();
+
             // Calculate total content height
             float totalHeight = 0;
+            int visibleCategoryCount = 0;
             for (int c = 0; c < _categories.Count; c++)
             {
-                if (c > 0) totalHeight += CategoryGap;
+                var category = _categories[c];
+                int visiblePackageCount = CountSearchMatches(category.startIndex, category.count);
+                bool showStudios = ShouldShowStudiosEntry(category.name);
+                if (visiblePackageCount == 0 && !showStudios)
+                    continue;
+
+                if (visibleCategoryCount > 0) totalHeight += CategoryGap;
+                visibleCategoryCount++;
                 totalHeight += CategoryHeaderHeight;
-                if (IsCategoryExpanded(_categories[c].name))
+                if (isSearching || IsCategoryExpanded(category.name))
                 {
-                    int extra = string.Equals(_categories[c].name, "Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-                    totalHeight += (_categories[c].count + extra) * ListItemHeight;
+                    totalHeight += (visiblePackageCount + (showStudios ? 1 : 0)) * ListItemHeight;
                 }
             }
 
-            bool needsScroll = totalHeight > areaRect.height;
-            var viewRect = new Rect(0, 0, areaRect.width - (needsScroll ? 13f : 0f), totalHeight);
-            _listScrollPosition = GUI.BeginScrollView(areaRect, _listScrollPosition, viewRect);
+            if (visibleCategoryCount == 0)
+            {
+                var emptyRect = new Rect(
+                    listAreaRect.x + 10f,
+                    listAreaRect.y + 12f,
+                    Mathf.Max(0f, listAreaRect.width - 20f),
+                    18f);
+                GUI.Label(emptyRect, "No matching packages.", _smallLabelStyle);
+                return;
+            }
+
+            bool needsScroll = totalHeight > listAreaRect.height;
+            var viewRect = new Rect(0, 0, listAreaRect.width - (needsScroll ? 13f : 0f), totalHeight);
+            _listScrollPosition = GUI.BeginScrollView(listAreaRect, _listScrollPosition, viewRect);
 
             float y = 0;
             bool firstCategory = true;
             foreach (var (categoryName, startIndex, count) in _categories)
             {
+                int visiblePackageCount = CountSearchMatches(startIndex, count);
+                bool showStudios = ShouldShowStudiosEntry(categoryName);
+                if (visiblePackageCount == 0 && !showStudios)
+                    continue;
+
                 // Gap between categories
                 if (!firstCategory)
                     y += CategoryGap;
@@ -672,12 +721,34 @@ namespace PurrNet.Editor
                 var catRect = new Rect(0, y, viewRect.width, CategoryHeaderHeight);
 
                 EditorGUI.DrawRect(catRect, _categoryBg);
-                bool isExpanded = IsCategoryExpanded(categoryName);
-                bool nextExpanded = GUI.Toggle(catRect, isExpanded, catLabel.ToUpperInvariant(), _categoryStyle);
-                if (nextExpanded != isExpanded)
+                bool isExpanded;
+                if (isSearching)
                 {
-                    SetCategoryExpanded(categoryName, nextExpanded);
-                    isExpanded = nextExpanded;
+                    isExpanded = true;
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        _categoryStyle.Draw(
+                            catRect,
+                            new GUIContent(catLabel.ToUpperInvariant()),
+                            catRect.Contains(Event.current.mousePosition),
+                            false,
+                            true,
+                            false);
+                    }
+                }
+                else
+                {
+                    isExpanded = IsCategoryExpanded(categoryName);
+                    bool nextExpanded = GUI.Toggle(
+                        catRect,
+                        isExpanded,
+                        catLabel.ToUpperInvariant(),
+                        _categoryStyle);
+                    if (nextExpanded != isExpanded)
+                    {
+                        SetCategoryExpanded(categoryName, nextExpanded);
+                        isExpanded = nextExpanded;
+                    }
                 }
 
                 if (_categoryUpdateCounts.TryGetValue(categoryName ?? string.Empty, out int categoryUpdateCount))
@@ -691,6 +762,9 @@ namespace PurrNet.Editor
                 // Package items in this category
                 for (int i = startIndex; i < startIndex + count; i++)
                 {
+                    if (!PackageMatchesSearch(_sortedPackages[i].pkg))
+                        continue;
+
                     var itemRect = new Rect(0, y, viewRect.width, ListItemHeight);
                     var entry = _sortedPackages[i];
                     DrawListItem(entry.pkg, entry.release, entry.dev, i, itemRect);
@@ -698,7 +772,7 @@ namespace PurrNet.Editor
                 }
 
                 // "PurrNet for Studios" entry at the end of the Core category
-                if (string.Equals(categoryName, "Core", StringComparison.OrdinalIgnoreCase))
+                if (showStudios)
                 {
                     var studioRect = new Rect(0, y, viewRect.width, ListItemHeight);
                     DrawStudiosListItem(studioRect);
@@ -707,6 +781,124 @@ namespace PurrNet.Editor
             }
 
             GUI.EndScrollView();
+        }
+
+        private void ReconcileSelectionWithSearch()
+        {
+            int nextIndex = _selectedIndex;
+
+            if (nextIndex != StudiosEntryIndex &&
+                (nextIndex < 0 || nextIndex >= _sortedPackages.Count))
+            {
+                nextIndex = -1;
+            }
+
+            if (HasSearchQuery())
+            {
+                bool selectionMatches = nextIndex == StudiosEntryIndex
+                    ? MatchesStudiosSearch()
+                    : nextIndex >= 0 && PackageMatchesSearch(_sortedPackages[nextIndex].pkg);
+                if (!selectionMatches)
+                    nextIndex = FindFirstSearchResult();
+            }
+            else if (nextIndex < 0 && _sortedPackages.Count > 0)
+            {
+                nextIndex = 0;
+            }
+
+            if (nextIndex == _selectedIndex)
+                return;
+
+            _selectedIndex = nextIndex;
+            _releasePopupIndex = -1;
+            _devPopupIndex = -1;
+            _releasePopupTouched = false;
+            _devPopupTouched = false;
+        }
+
+        private int FindFirstSearchResult()
+        {
+            for (int i = 0; i < _sortedPackages.Count; i++)
+            {
+                if (PackageMatchesSearch(_sortedPackages[i].pkg))
+                    return i;
+            }
+
+            return MatchesStudiosSearch() ? StudiosEntryIndex : -1;
+        }
+
+        private int CountSearchMatches(int startIndex, int count)
+        {
+            int matches = 0;
+            for (int i = startIndex; i < startIndex + count; i++)
+            {
+                if (PackageMatchesSearch(_sortedPackages[i].pkg))
+                    matches++;
+            }
+
+            return matches;
+        }
+
+        private bool ShouldShowStudiosEntry(string categoryName)
+        {
+            return string.Equals(categoryName, "Core", StringComparison.OrdinalIgnoreCase) &&
+                   MatchesStudiosSearch();
+        }
+
+        private bool HasSearchQuery()
+        {
+            return !string.IsNullOrWhiteSpace(_searchQuery);
+        }
+
+        private bool PackageMatchesSearch(PackageInfo package)
+        {
+            if (!HasSearchQuery())
+                return true;
+
+            string[] tokens = Regex.Split(_searchQuery.Trim(), @"\s+");
+            foreach (string token in tokens)
+            {
+                if (ContainsSearchToken(package.DisplayName, token) ||
+                    ContainsSearchToken(package.Id, token) ||
+                    ContainsSearchToken(package.Slug, token) ||
+                    ContainsSearchToken(package.UpmPackageName, token) ||
+                    ContainsSearchToken(package.Category, token) ||
+                    ContainsSearchToken(package.Description, token) ||
+                    ContainsSearchToken(package.GithubOwner, token) ||
+                    ContainsSearchToken(package.GithubRepo, token) ||
+                    ContainsSearchToken(package.RequiredTier, token) ||
+                    package.IsEarlyAccess && ContainsSearchToken("early access", token) ||
+                    package.IsUserEditable && ContainsSearchToken("user editable", token))
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool MatchesStudiosSearch()
+        {
+            if (!HasSearchQuery())
+                return true;
+
+            string[] tokens = Regex.Split(_searchQuery.Trim(), @"\s+");
+            const string studiosSearchText = "PurrNet for Studios studio premium team source access";
+            foreach (string token in tokens)
+            {
+                if (!ContainsSearchToken(studiosSearchText, token))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool ContainsSearchToken(string value, string token)
+        {
+            return !string.IsNullOrEmpty(value) &&
+                   value.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void DrawCategoryUpdateIndicator(Rect categoryRect, int updateCount)
