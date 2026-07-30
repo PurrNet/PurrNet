@@ -59,7 +59,12 @@ namespace LiteNetLib
         private float _resendDelay = 27.0f;
         private float _pingSendTimer;
         private float _rttResetTimer;
-        private readonly Stopwatch _pingTimer = new Stopwatch();
+        //send timestamps of the last few pings, keyed by sequence, so a pong that arrives
+        //after the next ping went out still yields a valid RTT sample (links with RTT above
+        //the ping interval would otherwise never update the estimator)
+        private const int PingHistorySize = 4;
+        private readonly ushort[] _pingSendSequences = new ushort[PingHistorySize];
+        private readonly long[] _pingSendTimestamps = new long[PingHistorySize];
         private float _timeSinceLastPacket;
         private long _remoteDelta;
 
@@ -1124,10 +1129,14 @@ namespace LiteNetLib
 
                 //If we get pong, calculate ping time and rtt
                 case PacketProperty.Pong:
-                    if (packet.Sequence == _pingPacket.Sequence)
+                {
+                    int pingSlot = packet.Sequence % PingHistorySize;
+                    if (_pingSendSequences[pingSlot] == packet.Sequence &&
+                        _pingSendTimestamps[pingSlot] != 0)
                     {
-                        _pingTimer.Stop();
-                        int elapsedMs = (int)_pingTimer.ElapsedMilliseconds;
+                        long sentAt = _pingSendTimestamps[pingSlot];
+                        _pingSendTimestamps[pingSlot] = 0;
+                        int elapsedMs = (int)((Stopwatch.GetTimestamp() - sentAt) * 1000 / Stopwatch.Frequency);
                         _remoteDelta = BitConverter.ToInt64(packet.RawData, 3) + (elapsedMs * TimeSpan.TicksPerMillisecond ) / 2 - DateTime.UtcNow.Ticks;
                         UpdateRoundTripTime(elapsedMs);
                         NetManager.ConnectionLatencyUpdated(this, elapsedMs / 2);
@@ -1135,6 +1144,7 @@ namespace LiteNetLib
                     }
                     NetManager.PoolRecycle(packet);
                     break;
+                }
 
                 case PacketProperty.Ack:
                 case PacketProperty.Channeled:
@@ -1279,10 +1289,11 @@ namespace LiteNetLib
                 _pingSendTimer = 0;
                 //send ping
                 _pingPacket.Sequence++;
-                //ping timeout
-                if (_pingTimer.IsRunning)
-                    UpdateRoundTripTime((int)_pingTimer.ElapsedMilliseconds);
-                _pingTimer.Restart();
+                //a missed pong is a timeout, not an RTT observation; feeding the full ping
+                //interval into the estimator inflates the resend delay under packet loss
+                int pingSlot = _pingPacket.Sequence % PingHistorySize;
+                _pingSendSequences[pingSlot] = _pingPacket.Sequence;
+                _pingSendTimestamps[pingSlot] = Stopwatch.GetTimestamp();
                 NetManager.SendRaw(_pingPacket, this);
             }
 

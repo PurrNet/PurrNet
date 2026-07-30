@@ -18,6 +18,12 @@ namespace PurrNet
 
         public static event Action onLatestUpdate;
 
+        /// <summary>
+        /// Runs after every <see cref="onLatestUpdate"/> subscriber; for work that must
+        /// observe everything the latest-update callbacks produced this frame.
+        /// </summary>
+        public static event Action onPostLatestUpdate;
+
         private static readonly List<PriorityAction> _executeASAP = new();
 
         struct PriorityAction
@@ -136,6 +142,7 @@ namespace PurrNet
             onUpdate = null;
             onFixedUpdate = null;
             onLatestUpdate = null;
+            onPostLatestUpdate = null;
             lock (_executeASAP)
                 _executeASAP.Clear();
 
@@ -195,6 +202,7 @@ namespace PurrNet
         {
             TriggerPendingAsaps();
             onLatestUpdate?.Invoke();
+            onPostLatestUpdate?.Invoke();
         }
     }
 }

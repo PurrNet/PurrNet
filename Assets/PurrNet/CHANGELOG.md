@@ -1,3 +1,90 @@
+# [1.22.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.7...v1.22.0-beta.8) (2026-07-30)
+
+
+### Bug Fixes
+
+* include Nakama transport warning ([4b54eee](https://github.com/PurrNet/PurrNet/commit/4b54eeef0257dbc9fcd9c210b03793d91f1149bd))
+
+# [1.22.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.6...v1.22.0-beta.7) (2026-07-30)
+
+
+### Bug Fixes
+
+* add search bar to the editor packages window ([410b995](https://github.com/PurrNet/PurrNet/commit/410b995c4440d3da98e664c62c797f82cb715c10))
+
+# [1.22.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.5...v1.22.0-beta.6) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow to see pending updates on the category ([82cb076](https://github.com/PurrNet/PurrNet/commit/82cb07689a2cf866d2b8a1e219ed15c8433b4a2c))
+
+# [1.22.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.4...v1.22.0-beta.5) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow purrnet package manager to import tools as simple unitypackages ([ac84ca7](https://github.com/PurrNet/PurrNet/commit/ac84ca7b0d8391f7ca03cde0c524fb2032183c86))
+
+# [1.22.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.3...v1.22.0-beta.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* NetworkAudioSource skipping small clips or starting delayed ([655fc20](https://github.com/PurrNet/PurrNet/commit/655fc20fe7365b483dc2ea8288a24ef7219aea8f))
+
+# [1.22.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.2...v1.22.0-beta.3) (2026-07-29)
+
+
+### Bug Fixes
+
+* NetworkAnimator reconcile logic ([68a9d95](https://github.com/PurrNet/PurrNet/commit/68a9d957fc1fb5a67705340e3ab10da1be10c604))
+
+# [1.22.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.1...v1.22.0-beta.2) (2026-07-29)
+
+
+### Features
+
+* DesyncPolicy for determinism and packet loss improvements ([a5e7c62](https://github.com/PurrNet/PurrNet/commit/a5e7c620c985964c600876044d5518244481ab5c))
+
+# [1.22.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.1...v1.22.0-beta.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* if animator is disabled don't mess with it's state cause it causes unity warnings to spam ([eb51ca7](https://github.com/PurrNet/PurrNet/commit/eb51ca7e8fc7818609bc7b9d8f7d79457a3974b6))
+* improve tick timing accuracy to prevent big jumps ([3bbe66e](https://github.com/PurrNet/PurrNet/commit/3bbe66e043ee3d5fd03457265a7313334021266b))
+* network bones, include inactive skinnes mesh renderers to avoid ([da5978d](https://github.com/PurrNet/PurrNet/commit/da5978d8f7bba4be8ee87ad77e1a149c81259185))
+
+
+### Features
+
+* immediate RPCs ([e45d30d](https://github.com/PurrNet/PurrNet/commit/e45d30dd2a5bdea229755f9f2ff7a397415d47a2))
+
+## [1.21.1](https://github.com/PurrNet/PurrNet/compare/v1.21.0...v1.21.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* Adaptive sync settings ([6d4429f](https://github.com/PurrNet/PurrNet/commit/6d4429f2518d905de981954dcfb1ffd784613955))
+* add NT adaptive dump ([9973d9b](https://github.com/PurrNet/PurrNet/commit/9973d9bea77a0f3c27d7378d92a36ef9d4ad16fa))
+* Added network transform strategy scriptable ([2368995](https://github.com/PurrNet/PurrNet/commit/23689956943f9387bc4b7f1dfe943c48b09c6349))
+* Default predictive sync strategy ([c148083](https://github.com/PurrNet/PurrNet/commit/c148083d0d21c4eb6b491cafac501e6c6b1bea35))
+* ensure rot is normalized ([d60c8ba](https://github.com/PurrNet/PurrNet/commit/d60c8ba32b256c2309e105aca44dfbd3f38a6732))
+* improve NT and rigibody behavior ([590069b](https://github.com/PurrNet/PurrNet/commit/590069b738ec4c0bcda276b735ceb32360d29d4e))
+* Improved rest state of adaptive sync ([3105841](https://github.com/PurrNet/PurrNet/commit/310584132605f52e27c288beeaf65fc976d3b627))
+* introduce `FlushImmediately` to `NetworkAnimator` ([e51071a](https://github.com/PurrNet/PurrNet/commit/e51071a19db2ec948106eb63ab9752b8c6e43f65))
+* Less buffer size for adaptive NT ([3b2aa89](https://github.com/PurrNet/PurrNet/commit/3b2aa891116ff5965d889808cbf409512cb07380))
+* Much improved adaptive sync adaptation ([74347a1](https://github.com/PurrNet/PurrNet/commit/74347a1948215eecfc4639329b6a63d75c36f4ef))
+* Network Rigidbody improvements ([0a17af2](https://github.com/PurrNet/PurrNet/commit/0a17af207c7080fd6b13453efc9d1a368e40504e))
+* network rigidbody inconsistencies with soft parenting ([eacac38](https://github.com/PurrNet/PurrNet/commit/eacac388e8ecf92f502bffc31e6c820e9a5de1ff))
+* revert back to simpler velocity based method ([00cb6b0](https://github.com/PurrNet/PurrNet/commit/00cb6b0ceba907a8cc669dd1cbff6ddd92e38c56))
+* Sender suppression added to Network Transform ([9a01631](https://github.com/PurrNet/PurrNet/commit/9a016318b761d829c19fb65df05f5baf15c04d67))
+* simplify NT logic and prefer SetPositionAndRotation when both pos and rot changed ([d96947d](https://github.com/PurrNet/PurrNet/commit/d96947d4f57d6b295ba8b5e2d288d83f1919ec8a))
+* Sync NetworkRB settings if changed ([1e495cb](https://github.com/PurrNet/PurrNet/commit/1e495cb928a285dc96e5138be9a2ff3c29efa624))
+* try to emulate isKinematic without isKinematic ([1f0d3ad](https://github.com/PurrNet/PurrNet/commit/1f0d3ad49aef75ffc7fe6637005d4ed89b36741e))
+* Unity 2023 scene fix ([5cd961c](https://github.com/PurrNet/PurrNet/commit/5cd961cf00b7b61489aa6f942849ac5f24cd4235))
+
 ## [1.21.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.21.1-beta.11...v1.21.1-beta.12) (2026-07-28)
 
 

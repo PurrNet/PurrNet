@@ -557,7 +557,6 @@ MonoBehaviour:
   _maxConnections: 100
   _address: 127.0.0.1
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
 --- !u!114 &1216416905
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -620,7 +619,6 @@ MonoBehaviour:
   _address: 127.0.0.1
   _query: 
   _path: 
-  _pollEventsInUpdate: 0
   _enableSSL: 0
   _certPath: fesfes
   _certPassword: fesfes
@@ -642,7 +640,6 @@ MonoBehaviour:
   _region: france
   _host: purrtransport-france.purrservers.com
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
 --- !u!114 &1216416913
 MonoBehaviour:
   m_ObjectHideFlags: 0

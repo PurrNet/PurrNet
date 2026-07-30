@@ -13,7 +13,6 @@ namespace PurrNet.Editor
         private SerializedProperty _region;
         private SerializedProperty _host;
         private SerializedProperty _timeoutInSeconds;
-        private SerializedProperty _pollEventsInUpdate;
         private SerializedProperty _useNat;
         private SerializedProperty _natResolveTimeout;
         private SerializedProperty _networkSimulation;
@@ -29,7 +28,6 @@ namespace PurrNet.Editor
             _region = serializedObject.FindProperty("_region");
             _host = serializedObject.FindProperty("_host");
             _timeoutInSeconds = serializedObject.FindProperty("_timeoutInSeconds");
-            _pollEventsInUpdate = serializedObject.FindProperty("_pollEventsInUpdate");
             _useNat = serializedObject.FindProperty("_useNat");
             _natResolveTimeout = serializedObject.FindProperty("_natResolveTimeout");
             _networkSimulation = serializedObject.FindProperty("_networkSimulation");
@@ -185,7 +183,6 @@ namespace PurrNet.Editor
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.PropertyField(_timeoutInSeconds);
-            EditorGUILayout.PropertyField(_pollEventsInUpdate);
             EditorGUILayout.PropertyField(_useNat, new GUIContent("Use NAT",
                 "Attempt a direct P2P link via NAT hole-punching. Fully transparent to the " +
                 "game: traffic falls back to the relay automatically when P2P is unavailable."));

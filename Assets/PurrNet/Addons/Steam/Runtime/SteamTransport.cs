@@ -278,6 +278,11 @@ namespace PurrNet.Steam
             _client?.ReceiveMessages();
         }
 
+        public void UnityUpdate(float delta)
+        {
+            ReceiveMessages(delta);
+        }
+
         public void SendMessages(float delta)
         {
             _server?.SendMessages();

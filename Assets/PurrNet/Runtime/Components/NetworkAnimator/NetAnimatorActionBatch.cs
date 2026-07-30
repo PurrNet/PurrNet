@@ -16,17 +16,28 @@ namespace PurrNet
             actions.Dispose();
         }
 
-        public static NetAnimatorActionBatch CreateTimeReconcile(HashSet<int> ignoreHashes, Animator animator)
+        public static NetAnimatorActionBatch CreateTimeReconcile(
+            HashSet<int> ignoreHashes,
+            Animator animator,
+            IReadOnlyDictionary<int, bool> boolValues,
+            IReadOnlyDictionary<int, float> floatValues,
+            IReadOnlyDictionary<int, int> intValues)
         {
             var actions = DisposableList<NetAnimatorRPC>.Create();
-            SyncParameters(ignoreHashes, animator, actions);
+            SyncParameters(ignoreHashes, animator, actions, boolValues, floatValues, intValues);
             return new NetAnimatorActionBatch
             {
                 actions = actions
             };
         }
 
-        public static NetAnimatorActionBatch CreateReconcile(HashSet<int> ignoreHashes, Animator animator, bool ik)
+        public static NetAnimatorActionBatch CreateReconcile(
+            HashSet<int> ignoreHashes,
+            Animator animator,
+            bool ik,
+            IReadOnlyDictionary<int, bool> boolValues,
+            IReadOnlyDictionary<int, float> floatValues,
+            IReadOnlyDictionary<int, int> intValues)
         {
             var actions = DisposableList<NetAnimatorRPC>.Create();
 
@@ -45,8 +56,9 @@ namespace PurrNet
             else
             {
                 SyncAssetReferences(animator, actions);
-                SyncParameters(ignoreHashes, animator, actions);
-                SyncAnimationState(animator, actions);
+                SyncParameters(ignoreHashes, animator, actions, boolValues, floatValues, intValues);
+                if (animator.isActiveAndEnabled)
+                    SyncAnimationState(animator, actions);
 
                 actions.Add(new NetAnimatorRPC(new SetApplyRootMotion
                 {
@@ -187,12 +199,19 @@ namespace PurrNet
             }
         }
 
-        private static void SyncParameters(HashSet<int> ignoreHashes, Animator animator, DisposableList<NetAnimatorRPC> actions)
+        private static void SyncParameters(
+            HashSet<int> ignoreHashes,
+            Animator animator,
+            DisposableList<NetAnimatorRPC> actions,
+            IReadOnlyDictionary<int, bool> boolValues,
+            IReadOnlyDictionary<int, float> floatValues,
+            IReadOnlyDictionary<int, int> intValues)
         {
             if (!animator.runtimeAnimatorController)
                 return;
 
             var parameters = animator.parameters;
+            bool useCachedValues = !animator.isActiveAndEnabled;
 
             for (var i = 0; i < parameters.Length; i++)
             {
@@ -207,7 +226,9 @@ namespace PurrNet
                     {
                         var setBool = new SetBool
                         {
-                            value = animator.GetBool(param.nameHash),
+                            value = useCachedValues && boolValues.TryGetValue(param.nameHash, out var value)
+                                ? value
+                                : animator.GetBool(param.nameHash),
                             nameHash = param.nameHash,
                             paramIndexPlusOne = i + 1
                         };
@@ -219,7 +240,9 @@ namespace PurrNet
                     {
                         var setFloat = new SetFloat
                         {
-                            value = animator.GetFloat(param.nameHash),
+                            value = useCachedValues && floatValues.TryGetValue(param.nameHash, out var value)
+                                ? value
+                                : animator.GetFloat(param.nameHash),
                             nameHash = param.nameHash,
                             paramIndexPlusOne = i + 1
                         };
@@ -231,7 +254,9 @@ namespace PurrNet
                     {
                         var setInteger = new SetInteger
                         {
-                            value = animator.GetInteger(param.nameHash),
+                            value = useCachedValues && intValues.TryGetValue(param.nameHash, out var value)
+                                ? value
+                                : animator.GetInteger(param.nameHash),
                             nameHash = param.nameHash,
                             paramIndexPlusOne = i + 1
                         };

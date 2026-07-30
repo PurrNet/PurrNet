@@ -57,6 +57,9 @@ namespace PurrNet.Editor
         [JsonProperty("is_early_access")]
         public bool IsEarlyAccess { get; private set; }
 
+        [JsonProperty("is_user_editable")]
+        public bool IsUserEditable { get; private set; }
+
         [JsonProperty("dependency_ids")]
         public string[] DependencyIds { get; private set; }
 

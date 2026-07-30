@@ -19,6 +19,7 @@ namespace PurrNet.Analyzers
         public INamedTypeSymbol? IEnumerableOfT { get; }
         public INamedTypeSymbol? IListOfT { get; }
         public int? UnreliableSequencedValue { get; }
+        public int? UnreliableValue { get; }
         public int? MtuNetworkManagerValue { get; }
 
         public bool HasPurrNet =>
@@ -44,6 +45,8 @@ namespace PurrNet.Analyzers
 
             UnreliableSequencedValue = GetEnumMemberValue(
                 compilation.GetTypeByMetadataName("PurrNet.Transports.Channel"), "UnreliableSequenced");
+            UnreliableValue = GetEnumMemberValue(
+                compilation.GetTypeByMetadataName("PurrNet.Transports.Channel"), "Unreliable");
             MtuNetworkManagerValue = GetEnumMemberValue(
                 compilation.GetTypeByMetadataName("PurrNet.Transports.MTUBehaviour"), "NetworkManager");
 

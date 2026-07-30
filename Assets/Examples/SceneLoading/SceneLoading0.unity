@@ -1198,7 +1198,6 @@ MonoBehaviour:
   _maxConnections: 100
   _address: 127.0.0.1
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
 --- !u!1 &1401039315
 GameObject:
   m_ObjectHideFlags: 0

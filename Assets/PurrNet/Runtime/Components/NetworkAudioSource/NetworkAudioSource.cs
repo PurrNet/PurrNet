@@ -31,9 +31,25 @@ namespace PurrNet
 
         AudioDirtyFlags _dirtyFlags;
 
+        internal uint playbackCommandsSent { get; private set; }
+        internal uint playbackCommandsApplied { get; private set; }
+
         private void Reset()
         {
             _audioSource = GetComponent<AudioSource>();
+        }
+
+        float GetPlaybackTime()
+        {
+            // Unity logs a warning when AudioSource.time is read without an AudioClip resource.
+            // Empty sources are valid here because clips are commonly assigned dynamically.
+            return _audioSource && _audioSource.clip ? _audioSource.time : 0f;
+        }
+
+        void SetPlaybackTime(float value)
+        {
+            if (_audioSource && _audioSource.clip)
+                _audioSource.time = value;
         }
 
         AudioSourceState CaptureState()
@@ -49,7 +65,7 @@ namespace PurrNet
                 minDistance = _audioSource.minDistance,
                 maxDistance = _audioSource.maxDistance,
                 playState = GetPlayState(),
-                time = _audioSource.time
+                time = GetPlaybackTime()
             };
         }
 
@@ -58,7 +74,7 @@ namespace PurrNet
             if (_audioSource.isPlaying)
                 return AudioPlayState.Playing;
 
-            if (_audioSource.time > 0f && !_audioSource.isPlaying)
+            if (GetPlaybackTime() > 0f && !_audioSource.isPlaying)
                 return AudioPlayState.Paused;
 
             return AudioPlayState.Stopped;
@@ -93,7 +109,7 @@ namespace PurrNet
                 {
                     case AudioPlayState.Playing:
                         if ((flags & AudioDirtyFlags.Time) != 0)
-                            _audioSource.time = delta.state.time;
+                            SetPlaybackTime(delta.state.time);
                         _audioSource.Play();
                         break;
                     case AudioPlayState.Paused:
@@ -106,9 +122,9 @@ namespace PurrNet
             }
             else if ((flags & AudioDirtyFlags.Time) != 0 && _audioSource.isPlaying)
             {
-                float drift = Mathf.Abs(_audioSource.time - delta.state.time);
+                float drift = Mathf.Abs(GetPlaybackTime() - delta.state.time);
                 if (drift > 0.1f)
-                    _audioSource.time = delta.state.time;
+                    SetPlaybackTime(delta.state.time);
             }
 
         }
@@ -129,10 +145,12 @@ namespace PurrNet
             switch (state.playState)
             {
                 case AudioPlayState.Playing:
-                    _audioSource.time = state.time;
+                    SetPlaybackTime(state.time);
                     _audioSource.Play();
                     break;
                 case AudioPlayState.Paused:
+                    SetPlaybackTime(state.time);
+                    _audioSource.Play();
                     _audioSource.Pause();
                     break;
                 case AudioPlayState.Stopped:
@@ -161,6 +179,11 @@ namespace PurrNet
 
         public void OnTick(float delta)
         {
+            FlushDirtyState(false);
+        }
+
+        void FlushDirtyState(bool forceReliable)
+        {
             if (_dirtyFlags == AudioDirtyFlags.None) return;
 
             if (!IsController(_ownerAuth))
@@ -171,7 +194,7 @@ namespace PurrNet
 
             var state = CaptureState();
             var packet = new AudioSourceDelta { flags = _dirtyFlags, state = state };
-            bool needsReliable = (_dirtyFlags & AudioDirtyFlags.ReliableMask) != 0;
+            bool needsReliable = forceReliable || (_dirtyFlags & AudioDirtyFlags.ReliableMask) != 0;
 
             if (isServer)
             {
@@ -189,6 +212,52 @@ namespace PurrNet
             }
 
             _dirtyFlags = AudioDirtyFlags.None;
+        }
+
+        void SendPlaybackCommand(AudioPlaybackCommandType type, float playbackTime)
+        {
+            // Configuration changes made immediately before a playback action must arrive first.
+            // Using the reliable lane here also keeps them ordered with the playback command.
+            FlushDirtyState(true);
+
+            var command = new AudioPlaybackCommand
+            {
+                type = type,
+                time = playbackTime
+            };
+
+            playbackCommandsSent++;
+
+            if (isServer)
+                ApplyPlaybackCommandOnObservers(command);
+            else
+                ForwardPlaybackCommandToServer(command);
+        }
+
+        void ApplyPlaybackCommand(AudioPlaybackCommand command)
+        {
+            if (!_audioSource) return;
+
+            playbackCommandsApplied++;
+
+            switch (command.type)
+            {
+                case AudioPlaybackCommandType.Play:
+                    SetPlaybackTime(command.time);
+                    _audioSource.Play();
+                    break;
+                case AudioPlaybackCommandType.Stop:
+                    _audioSource.Stop();
+                    break;
+                case AudioPlaybackCommandType.Pause:
+                    SetPlaybackTime(command.time);
+                    _audioSource.Pause();
+                    break;
+                case AudioPlaybackCommandType.UnPause:
+                    SetPlaybackTime(command.time);
+                    _audioSource.UnPause();
+                    break;
+            }
         }
 
         /// <summary>
@@ -313,34 +382,42 @@ namespace PurrNet
         /// </summary>
         public float time
         {
-            get => _audioSource ? _audioSource.time : 0f;
+            get => GetPlaybackTime();
             set
             {
                 if (!IsController(_ownerAuth)) return;
-                _audioSource.time = value;
+                SetPlaybackTime(value);
                 _dirtyFlags |= AudioDirtyFlags.Time;
             }
         }
 
         /// <summary>
-        /// Plays the audio source
+        /// Plays the audio source and sends a reliable ordered playback command.
+        /// Remote observers start from zero unless <see cref="time"/> was explicitly set first.
+        /// Network transit time is not added to the playback position.
         /// </summary>
         public void Play()
         {
             if (!IsController(_ownerAuth)) return;
+
+            // Play is a new playback event. Start from zero unless the networked time property
+            // was explicitly assigned immediately before this call.
+            float startTime = (_dirtyFlags & AudioDirtyFlags.Time) != 0 ? GetPlaybackTime() : 0f;
             _audioSource.Play();
-            _dirtyFlags |= AudioDirtyFlags.PlayState | AudioDirtyFlags.Time;
+            SendPlaybackCommand(AudioPlaybackCommandType.Play, startTime);
         }
 
         /// <summary>
-        /// Sets the clip and plays the audio source
+        /// Sets the clip and plays it from the beginning using a reliable ordered playback command.
+        /// Network transit time is not added to the playback position.
         /// </summary>
         public void Play(AudioClip audioClip)
         {
             if (!IsController(_ownerAuth)) return;
             _audioSource.clip = audioClip;
+            _dirtyFlags |= AudioDirtyFlags.Clip;
             _audioSource.Play();
-            _dirtyFlags |= AudioDirtyFlags.Clip | AudioDirtyFlags.PlayState | AudioDirtyFlags.Time;
+            SendPlaybackCommand(AudioPlaybackCommandType.Play, 0f);
         }
 
         /// <summary>
@@ -350,7 +427,7 @@ namespace PurrNet
         {
             if (!IsController(_ownerAuth)) return;
             _audioSource.Stop();
-            _dirtyFlags |= AudioDirtyFlags.PlayState;
+            SendPlaybackCommand(AudioPlaybackCommandType.Stop, 0f);
         }
 
         /// <summary>
@@ -360,7 +437,7 @@ namespace PurrNet
         {
             if (!IsController(_ownerAuth)) return;
             _audioSource.Pause();
-            _dirtyFlags |= AudioDirtyFlags.PlayState;
+            SendPlaybackCommand(AudioPlaybackCommandType.Pause, GetPlaybackTime());
         }
 
         /// <summary>
@@ -370,12 +447,13 @@ namespace PurrNet
         {
             if (!IsController(_ownerAuth)) return;
             _audioSource.UnPause();
-            _dirtyFlags |= AudioDirtyFlags.PlayState | AudioDirtyFlags.Time;
+            SendPlaybackCommand(AudioPlaybackCommandType.UnPause, GetPlaybackTime());
         }
 
         /// <summary>
         /// Plays an AudioClip as a one-shot sound effect. Does not affect the current clip or play state.
-        /// The clip must be registered in NetworkAssets.
+        /// The clip must be registered in NetworkAssets. Remote observers play the full clip on receipt;
+        /// network transit time is not added to the playback position.
         /// </summary>
         /// <param name="audioClip">The clip to play</param>
         /// <param name="volumeScale">Volume scale for this one-shot (default 1.0)</param>
@@ -383,6 +461,7 @@ namespace PurrNet
         {
             if (!IsController(_ownerAuth)) return;
 
+            FlushDirtyState(true);
             _audioSource.PlayOneShot(audioClip, volumeScale);
 
             if (isServer)
@@ -439,7 +518,22 @@ namespace PurrNet
             ReconcileState(target, state);
         }
 
-        [ObserversRpc(excludeSender: true)]
+        [ObserversRpc(excludeSender: true, channel: Channel.ReliableOrdered)]
+        private void ApplyPlaybackCommandOnObservers(AudioPlaybackCommand command)
+        {
+            if (IsController(_ownerAuth)) return;
+            ApplyPlaybackCommand(command);
+        }
+
+        [ServerRpc(channel: Channel.ReliableOrdered)]
+        private void ForwardPlaybackCommandToServer(AudioPlaybackCommand command)
+        {
+            if (!_ownerAuth) return;
+            ApplyPlaybackCommand(command);
+            ApplyPlaybackCommandOnObservers(command);
+        }
+
+        [ObserversRpc(excludeSender: true, channel: Channel.ReliableOrdered)]
         private void OneShotOnObservers(AudioClip audioClip, float volumeScale)
         {
             if (IsController(_ownerAuth)) return;
@@ -447,7 +541,7 @@ namespace PurrNet
                 _audioSource.PlayOneShot(audioClip, volumeScale);
         }
 
-        [ServerRpc]
+        [ServerRpc(channel: Channel.ReliableOrdered)]
         private void ForwardOneShotToServer(AudioClip audioClip, float volumeScale)
         {
             if (!_ownerAuth) return;
@@ -497,6 +591,36 @@ namespace PurrNet
         public float maxDistance;
         public AudioPlayState playState;
         public float time;
+    }
+
+    enum AudioPlaybackCommandType : byte
+    {
+        Play,
+        Stop,
+        Pause,
+        UnPause
+    }
+
+    struct AudioPlaybackCommand : IPacked
+    {
+        public AudioPlaybackCommandType type;
+        public float time;
+
+        public void Write(BitPacker packer)
+        {
+            Packer<AudioPlaybackCommandType>.Write(packer, type);
+            if (type != AudioPlaybackCommandType.Stop)
+                Packer<float>.Write(packer, time);
+        }
+
+        public void Read(BitPacker packer)
+        {
+            Packer<AudioPlaybackCommandType>.Read(packer, ref type);
+            if (type != AudioPlaybackCommandType.Stop)
+                Packer<float>.Read(packer, ref time);
+            else
+                time = 0f;
+        }
     }
 
     struct AudioSourceDelta : IPacked

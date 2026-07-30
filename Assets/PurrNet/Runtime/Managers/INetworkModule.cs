@@ -66,6 +66,11 @@ namespace PurrNet.Modules
         void FlushBatchedRPCs();
     }
 
+    internal interface IFlushImmediateRPCs
+    {
+        bool FlushImmediateRPCs();
+    }
+
     internal interface IPostBatch
     {
         void PostBatchNetworkMessages();

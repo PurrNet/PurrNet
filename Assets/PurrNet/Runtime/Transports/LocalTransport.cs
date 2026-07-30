@@ -187,6 +187,11 @@ namespace PurrNet.Transports
 
         public void SendMessages(float delta) { }
 
+        public void UnityUpdate(float delta)
+        {
+            ReceiveMessages(delta);
+        }
+
         ConnectionState _prevClientState = ConnectionState.Disconnected;
         ConnectionState _prevServerState = ConnectionState.Disconnected;
 

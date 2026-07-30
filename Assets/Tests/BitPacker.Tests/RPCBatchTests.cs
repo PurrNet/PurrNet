@@ -21,6 +21,7 @@ public class RPCBatchTests
     sealed class TestRPCBatchBackend : IRPCBatchBackend, IDisposable
     {
         readonly List<CapturedBatch> _sent = new List<CapturedBatch>();
+        readonly List<CapturedBatch> _sentImmediate = new List<CapturedBatch>();
         PlayerBroadcastDelegate<RPCBatchPacket> _callback;
 
         public int mtu = int.MaxValue;
@@ -28,6 +29,7 @@ public class RPCBatchTests
         public PlayerID deliveringTarget { get; private set; }
         public Channel deliveringChannel { get; private set; }
         public IReadOnlyList<CapturedBatch> sent => _sent;
+        public IReadOnlyList<CapturedBatch> sentImmediate => _sentImmediate;
 
         public int GetMTU(PlayerID player, Channel channel, bool asServer) => mtu;
 
@@ -43,6 +45,41 @@ public class RPCBatchTests
                 mtuOverride = mtuOverride,
                 data = copy
             });
+        }
+
+        public void Send(PlayerID player, ImmediateRPCBatchPacket packet, Channel channel, MTUExceededBehaviour? mtuOverride = null)
+        {
+            var copy = BitPackerPool.Get();
+            copy.WriteBitDataWithoutConsumingIt(packet.data);
+            _sentImmediate.Add(new CapturedBatch
+            {
+                target = player,
+                channel = channel,
+                count = packet.count,
+                mtuOverride = mtuOverride,
+                data = copy
+            });
+        }
+
+        public void DeliverAllImmediate(RPCBatch batch)
+        {
+            for (int i = 0; i < _sentImmediate.Count; i++)
+            {
+                var captured = _sentImmediate[i];
+                deliveringTarget = captured.target;
+                deliveringChannel = captured.channel;
+
+                try
+                {
+                    batch.ProcessReceivedBatch(new PlayerID(999, false), captured.count,
+                        new BitData(captured.data), true);
+                }
+                finally
+                {
+                    captured.data.Dispose();
+                    captured.data = null;
+                }
+            }
         }
 
         public void Subscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback)
@@ -102,6 +139,12 @@ public class RPCBatchTests
             {
                 _sent[i].data?.Dispose();
                 _sent[i].data = null;
+            }
+
+            for (int i = 0; i < _sentImmediate.Count; i++)
+            {
+                _sentImmediate[i].data?.Dispose();
+                _sentImmediate[i].data = null;
             }
         }
     }
@@ -540,6 +583,49 @@ public class RPCBatchTests
     }
 
     [Test]
+    public void HasPendingIsFalseUntilQueueAndClearsOnFlush()
+    {
+        var target = new PlayerID(60, false);
+        using var backend = new TestRPCBatchBackend();
+        using var batch = new RPCBatch(backend, (_, _, _, _) => { });
+        using var payload = BitPackerPool.Get();
+
+        Assert.That(batch.hasPending, Is.False);
+
+        WritePayload(payload, 0, 8);
+        batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable);
+        Assert.That(batch.hasPending, Is.True);
+
+        batch.Flush();
+        Assert.That(batch.hasPending, Is.False);
+        Assert.That(backend.Count(target, Channel.Unreliable), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void HasPendingStaysFalseWhenMtuDropEmptiesTheBatch()
+    {
+        var target = new PlayerID(61, false);
+        using var backend = new TestRPCBatchBackend { mtu = 64 };
+        using var batch = new RPCBatch(backend, (_, _, _, _) => { });
+        using var payload = BitPackerPool.Get();
+
+        UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
+        try
+        {
+            WritePayload(payload, 0, 100);
+            batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
+                MTUBehaviour.Drop);
+        }
+        finally
+        {
+            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false;
+        }
+
+        Assert.That(batch.hasPending, Is.False);
+        Assert.That(backend.sent, Is.Empty);
+    }
+
+    [Test]
     public void FlushChannelSendsOnlyRequestedChannelAndKeepsOtherBatchesQueued()
     {
         var targets = new[]
@@ -701,5 +787,63 @@ public class RPCBatchTests
             Assert.That(received.TryGetValue(key, out var actual), Is.True, $"No RPCs received by {targets[i]}.");
             Assert.That(actual, Is.EqualTo(expected[key]), $"Reliable-ordered stream diverged for {targets[i]}.");
         }
+    }
+
+    [Test]
+    public void ImmediateBatchSendsAsImmediatePacketAndRoundTrips()
+    {
+        var target = new PlayerID(70, false);
+        var received = new Dictionary<BatchKey, List<int>>();
+        using var backend = new TestRPCBatchBackend();
+        using var batch = new RPCBatch(backend,
+            (_, header, content, _) => RecordReceived(backend, received, header, content), sendAsImmediate: true);
+        using var payload = BitPackerPool.Get();
+
+        for (int sequence = 0; sequence < 3; sequence++)
+        {
+            WritePayload(payload, sequence, 8);
+            batch.Queue(target, MakeHeader(Channel.Unreliable, sequence), new BitData(payload), Channel.Unreliable);
+        }
+
+        batch.Flush();
+
+        Assert.That(backend.sent, Is.Empty);
+        Assert.That(backend.sentImmediate, Has.Count.EqualTo(1));
+        Assert.That(backend.sentImmediate[0].target, Is.EqualTo(target));
+        Assert.That(backend.sentImmediate[0].channel, Is.EqualTo(Channel.Unreliable));
+        Assert.That(backend.sentImmediate[0].count.value, Is.EqualTo(3));
+
+        backend.DeliverAllImmediate(batch);
+        Assert.That(received[new BatchKey { playerId = target, channel = Channel.Unreliable }],
+            Is.EqualTo(new[] { 0, 1, 2 }));
+    }
+
+    [Test]
+    public void ImmediateOversizedSoloEntryStaysOnImmediatePacket()
+    {
+        var target = new PlayerID(71, false);
+        var received = new Dictionary<BatchKey, List<int>>();
+        using var backend = new TestRPCBatchBackend { mtu = 64 };
+        using var batch = new RPCBatch(backend,
+            (_, header, content, _) => RecordReceived(backend, received, header, content), sendAsImmediate: true);
+        using var payload = BitPackerPool.Get();
+
+        WritePayload(payload, 0, 8);
+        batch.Queue(target, MakeHeader(Channel.Unreliable, 0), new BitData(payload), Channel.Unreliable,
+            MTUBehaviour.Fragment);
+        WritePayload(payload, 1, 100);
+        batch.Queue(target, MakeHeader(Channel.Unreliable, 1), new BitData(payload), Channel.Unreliable,
+            MTUBehaviour.Fragment);
+
+        batch.Flush();
+
+        Assert.That(backend.sent, Is.Empty);
+        Assert.That(backend.sentImmediate, Has.Count.EqualTo(2));
+        Assert.That(backend.sentImmediate[1].count.value, Is.EqualTo(1));
+        Assert.That(backend.sentImmediate[1].mtuOverride, Is.EqualTo(MTUExceededBehaviour.Fragment));
+
+        backend.DeliverAllImmediate(batch);
+        Assert.That(received[new BatchKey { playerId = target, channel = Channel.Unreliable }],
+            Is.EqualTo(new[] { 0, 1 }));
     }
 }

@@ -22,6 +22,7 @@ namespace PurrNet.Analyzers
                 PurrNetDiagnostics.InvalidTargetRpcFirstParameter,
                 PurrNetDiagnostics.RpcInfoMustBeLast,
                 PurrNetDiagnostics.MtuOverrideOnSequencedChannel,
+                PurrNetDiagnostics.ImmediateOnNonUnreliableChannel,
                 PurrNetDiagnostics.OwnerRequiresNetworkIdentity,
                 PurrNetDiagnostics.LocalModeNested,
                 PurrNetDiagnostics.LocalModeExitWithoutEnter,
@@ -108,6 +109,16 @@ namespace PurrNet.Analyzers
                         GetAttributeLocation(rpc, method),
                         method.Name));
                 }
+            }
+
+            if (symbols.UnreliableValue is int unreliableValue &&
+                GetBoolConstructorArgument(rpc, "immediate") &&
+                GetEnumConstructorArgument(rpc, "channel") != unreliableValue)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    PurrNetDiagnostics.ImmediateOnNonUnreliableChannel,
+                    GetAttributeLocation(rpc, method),
+                    method.Name));
             }
 
             var returnKind = GetReturnKind(method.ReturnType);

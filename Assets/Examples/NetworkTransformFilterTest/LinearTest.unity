@@ -3432,7 +3432,6 @@ MonoBehaviour:
   _region: nj-us
   _host: purrtransport-nj-us.purrservers.com
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
   _useNat: 0
   _natResolveTimeout: 8
   _networkSimulation:

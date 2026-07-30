@@ -11,6 +11,11 @@ namespace PurrNet.Nakama.Editor
         public override void OnInspectorGUI()
         {
             var generic = (GenericTransport)target;
+
+            EditorGUILayout.HelpBox(
+                "Nakama Transport is intended for slower-paced games and is not ideal for fast-paced, real-time gameplay.",
+                MessageType.Warning);
+
             if (!generic.isSupported)
             {
                 GUI.enabled = false;
