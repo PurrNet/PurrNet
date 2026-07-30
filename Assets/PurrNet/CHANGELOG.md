@@ -1,3 +1,10 @@
+# [1.22.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.5...v1.22.0-beta.6) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow to see pending updates on the category ([82cb076](https://github.com/PurrNet/PurrNet/commit/82cb07689a2cf866d2b8a1e219ed15c8433b4a2c))
+
 # [1.22.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.4...v1.22.0-beta.5) (2026-07-30)
 
 
