@@ -1,3 +1,10 @@
+# [1.22.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.7...v1.22.0-beta.8) (2026-07-30)
+
+
+### Bug Fixes
+
+* include Nakama transport warning ([4b54eee](https://github.com/PurrNet/PurrNet/commit/4b54eeef0257dbc9fcd9c210b03793d91f1149bd))
+
 # [1.22.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.6...v1.22.0-beta.7) (2026-07-30)
 
 
