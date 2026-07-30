@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace PurrNet.Editor.Tests
@@ -56,6 +57,22 @@ namespace PurrNet.Editor.Tests
                 Is.EqualTo("package.unitypackage"));
             Assert.That(PurrPackageManagerIO.GetSafeFileName(@"..\downloads\package.unitypackage", "fallback.unitypackage"),
                 Is.EqualTo("package.unitypackage"));
+        }
+
+        [Test]
+        public void PackageInfo_UserEditableDefaultsToFalse()
+        {
+            var package = JsonConvert.DeserializeObject<PackageInfo>("{}");
+
+            Assert.That(package.IsUserEditable, Is.False);
+        }
+
+        [Test]
+        public void PackageInfo_UserEditableDeserializesFromCatalog()
+        {
+            var package = JsonConvert.DeserializeObject<PackageInfo>("{\"is_user_editable\":true}");
+
+            Assert.That(package.IsUserEditable, Is.True);
         }
 
         [Test]

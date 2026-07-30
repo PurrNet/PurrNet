@@ -1007,6 +1007,9 @@ namespace PurrNet.Editor
             if (package.IsEarlyAccess)
                 DrawBadge("EARLY ACCESS", _updateColor);
 
+            if (package.IsUserEditable)
+                DrawBadge("USER EDITABLE", _accentColor);
+
             if (package.IsExternal && isGitInstall)
             {
                 if (hasGitUpdate)
@@ -1061,6 +1064,10 @@ namespace PurrNet.Editor
             if (!string.IsNullOrEmpty(tierName))
                 GUILayout.Label($"Tier: {tierName}", _smallLabelStyle);
 
+            if (package.IsUserEditable)
+                GUILayout.Label("Uses Unity's interactive importer to install selected files under Assets",
+                    _smallLabelStyle);
+
             if (!string.IsNullOrEmpty(package.Slug))
             {
                 string packageUrl = PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug);
@@ -1091,6 +1098,8 @@ namespace PurrNet.Editor
             EditorGUILayout.EndVertical();
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
+
+            DrawDependencies(package);
 
             // Frozen notice (non-external only)
             if (!package.IsExternal && package.Frozen)
@@ -1282,6 +1291,78 @@ namespace PurrNet.Editor
             EditorGUILayout.EndScrollView();
         }
 
+        private void DrawDependencies(PackageInfo package)
+        {
+            if (package.DependencyIds == null || package.DependencyIds.Length == 0)
+                return;
+
+            EditorGUILayout.Space(8);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+
+            GUILayout.Label($"Dependencies ({package.DependencyIds.Length})", EditorStyles.boldLabel);
+
+            foreach (var dependencyId in package.DependencyIds)
+            {
+                var dependency = FindPackageById(dependencyId);
+                string dependencyName = dependency?.DisplayName ?? dependencyId;
+                string status;
+                Color statusColor;
+
+                if (dependency == null)
+                {
+                    status = "Unavailable";
+                    statusColor = _frozenColor;
+                }
+                else if (PurrPackageManagerInstaller.IsInstalled(dependency))
+                {
+                    status = "Installed";
+                    statusColor = _installedColor;
+                }
+                else if (!dependency.HasAccess)
+                {
+                    status = "No access";
+                    statusColor = _noAccessColor;
+                }
+                else
+                {
+                    status = "Will install";
+                    statusColor = _updateColor;
+                }
+
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label($"\u2022  {dependencyName}", _smallLabelStyle);
+                GUILayout.FlexibleSpace();
+
+                var statusStyle = new GUIStyle(_listItemDetailStyle)
+                {
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = statusColor }
+                };
+                GUILayout.Label(status, statusStyle, GUILayout.ExpandWidth(false));
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private PackageInfo FindPackageById(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId) || _packages?.Packages == null)
+                return null;
+
+            foreach (var package in _packages.Packages)
+            {
+                if (string.Equals(package.Id, packageId, StringComparison.OrdinalIgnoreCase))
+                    return package;
+            }
+
+            return null;
+        }
+
         private void DrawVersionDropdown(string channelLabel, List<VersionInfo> versions,
             ref int popupIndex, ref bool popupTouched, bool isInstalled, string installedVersion,
             PackageInfo package, Color color)
@@ -1326,7 +1407,13 @@ namespace PurrNet.Editor
             bool isSelectedInstalled = isInstalled && installedVersion == selected.Version;
             var operationKey = GetPackageOperationKey(package, selected);
             bool isActive = IsPackageOperationActive(operationKey);
-            var buttonLabel = isSelectedInstalled ? "Installed" : isActive ? BusyLabel("Installing") : "Install";
+            string importLabel = package.IsUserEditable ? "Import" : "Install";
+            string importingLabel = package.IsUserEditable ? "Importing" : "Installing";
+            var buttonLabel = isSelectedInstalled
+                ? "Installed"
+                : isActive
+                    ? BusyLabel(importingLabel)
+                    : importLabel;
 
             GUI.enabled = !isSelectedInstalled && !isActive && CanStartPackageOperation();
             GUI.color = color;
@@ -1364,8 +1451,10 @@ namespace PurrNet.Editor
                 string activeLabel;
                 if (!isInstalled)
                 {
-                    label = $"Install {channelLabel} v{version.Version}";
-                    activeLabel = "Installing";
+                    label = package.IsUserEditable
+                        ? $"Import {channelLabel} v{version.Version}"
+                        : $"Install {channelLabel} v{version.Version}";
+                    activeLabel = package.IsUserEditable ? "Importing" : "Installing";
                 }
                 else if (IsInstalledOnChannel(package, version.Channel, installedVersion))
                 {
