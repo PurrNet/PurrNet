@@ -1,3 +1,10 @@
+# [1.22.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.6...v1.22.0-beta.7) (2026-07-30)
+
+
+### Bug Fixes
+
+* add search bar to the editor packages window ([410b995](https://github.com/PurrNet/PurrNet/commit/410b995c4440d3da98e664c62c797f82cb715c10))
+
 # [1.22.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.5...v1.22.0-beta.6) (2026-07-30)
 
 
