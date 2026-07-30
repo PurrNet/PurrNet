@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.ComponentModel;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -598,6 +599,7 @@ namespace PurrNet
         protected override void OnDespawned(bool asServer)
         {
             _wasOnSpawnedCalled = false;
+            ReleaseUnreliableHistory();
 
             if (!networkManager.TryGetModule<NetworkTransformFactory>(asServer, out var factory))
             {
@@ -1348,13 +1350,19 @@ namespace PurrNet
 
         private const int RECV_HISTORY_SIZE = 32;
 
-        private readonly NetworkTransformState[] _recvStates = new NetworkTransformState[RECV_HISTORY_SIZE];
-        private readonly ushort[] _recvTicks = new ushort[RECV_HISTORY_SIZE];
+        private NetworkTransformState[] _recvStates;
+        private ushort[] _recvTicks;
         private int _recvCount;
         private int _recvHead;
 
         private void PushReceivedSample(ushort senderTick, in NetworkTransformState state)
         {
+            if (_recvStates == null)
+            {
+                _recvStates = ArrayPool<NetworkTransformState>.Shared.Rent(RECV_HISTORY_SIZE);
+                _recvTicks = ArrayPool<ushort>.Shared.Rent(RECV_HISTORY_SIZE);
+            }
+
             _recvHead = (_recvHead + 1) % RECV_HISTORY_SIZE;
             _recvStates[_recvHead] = state;
             _recvTicks[_recvHead] = senderTick;
@@ -1920,14 +1928,14 @@ namespace PurrNet
 
         private const int CAPTURE_HISTORY_SIZE = 32;
 
-        private readonly NetworkTransformState[] _historyStates = new NetworkTransformState[CAPTURE_HISTORY_SIZE];
-        private readonly ushort[] _historyTicks = new ushort[CAPTURE_HISTORY_SIZE];
-        private readonly bool[] _historyUsed = new bool[CAPTURE_HISTORY_SIZE];
+        private NetworkTransformState[] _historyStates;
+        private ushort[] _historyTicks;
+        private bool[] _historyUsed;
 
         internal bool TryGetCapturedAt(ushort tick, out NetworkTransformState state)
         {
             int slot = tick % CAPTURE_HISTORY_SIZE;
-            if (_historyUsed[slot] && _historyTicks[slot] == tick)
+            if (_historyUsed != null && _historyUsed[slot] && _historyTicks[slot] == tick)
             {
                 state = _historyStates[slot];
                 return true;
@@ -1973,10 +1981,15 @@ namespace PurrNet
         {
             var nm = networkManager;
             ushort tick = nm && nm.tickModule != null ? (ushort)nm.tickModule.localTick : (ushort)0;
-            CaptureUnreliableState(tick);
+            CaptureUnreliableState(tick, false);
         }
 
         internal void CaptureUnreliableState(ushort tick)
+        {
+            CaptureUnreliableState(tick, true);
+        }
+
+        private void CaptureUnreliableState(ushort tick, bool recordHistory)
         {
             var state = currentState;
 
@@ -2005,10 +2018,45 @@ namespace PurrNet
                 _hasCapturedState = true;
             }
 
+            if (!recordHistory)
+                return;
+
+            if (_historyStates == null)
+            {
+                _historyStates = ArrayPool<NetworkTransformState>.Shared.Rent(CAPTURE_HISTORY_SIZE);
+                _historyTicks = ArrayPool<ushort>.Shared.Rent(CAPTURE_HISTORY_SIZE);
+                _historyUsed = ArrayPool<bool>.Shared.Rent(CAPTURE_HISTORY_SIZE);
+                Array.Clear(_historyUsed, 0, _historyUsed.Length);
+            }
+
             int slot = tick % CAPTURE_HISTORY_SIZE;
             _historyStates[slot] = _capturedState;
             _historyTicks[slot] = tick;
             _historyUsed[slot] = true;
+        }
+
+        private void ReleaseUnreliableHistory()
+        {
+            if (_recvStates != null)
+            {
+                ArrayPool<NetworkTransformState>.Shared.Return(_recvStates);
+                ArrayPool<ushort>.Shared.Return(_recvTicks);
+                _recvStates = null;
+                _recvTicks = null;
+            }
+
+            _recvCount = 0;
+            _recvHead = 0;
+
+            if (_historyStates != null)
+            {
+                ArrayPool<NetworkTransformState>.Shared.Return(_historyStates);
+                ArrayPool<ushort>.Shared.Return(_historyTicks);
+                ArrayPool<bool>.Shared.Return(_historyUsed);
+                _historyStates = null;
+                _historyTicks = null;
+                _historyUsed = null;
+            }
         }
 
         private bool usesNetworkFrame => _syncPosition == SyncMode.Local ||
