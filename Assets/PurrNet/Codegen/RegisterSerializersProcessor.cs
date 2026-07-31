@@ -15,6 +15,9 @@ namespace PurrNet.Codegen
         {
             type = null;
 
+            if (method.ReturnType.MetadataType != MetadataType.Boolean)
+                return false;
+
             if (method.Parameters.Count != 3)
                 return false;
 
@@ -38,6 +41,9 @@ namespace PurrNet.Codegen
         {
             type = null;
 
+            if (method.ReturnType.MetadataType != MetadataType.Void)
+                return false;
+
             if (method.Parameters.Count != 3)
                 return false;
 
@@ -59,6 +65,9 @@ namespace PurrNet.Codegen
         {
             type = null;
 
+            if (method.ReturnType.MetadataType != MetadataType.Void)
+                return false;
+
             if (method.Parameters.Count != 2)
                 return false;
 
@@ -75,6 +84,9 @@ namespace PurrNet.Codegen
         public static bool IsReadMethod(MethodDefinition method, out TypeReference type)
         {
             type = null;
+
+            if (method.ReturnType.MetadataType != MetadataType.Void)
+                return false;
 
             if (method.Parameters.Count != 2)
                 return false;

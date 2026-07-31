@@ -1,0 +1,27 @@
+{
+    "name": "PurrNet.Codegen.Editor.Tests",
+    "rootNamespace": "PurrNet.Codegen.Tests",
+    "references": [
+        "GUID:e909c8f97969c754fad1d4efc08cd558",
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Mono.Cecil.dll",
+        "nunit.framework.dll"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
