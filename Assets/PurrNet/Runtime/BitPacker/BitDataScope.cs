@@ -23,7 +23,7 @@ namespace PurrNet.Packing
 
         public void Dispose()
         {
-            packer.SetBitPosition(lastBitPosition);
+            packer?.SetBitPosition(lastBitPosition);
         }
     }
 }

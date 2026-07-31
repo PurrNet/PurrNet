@@ -233,7 +233,7 @@ namespace PurrNet
 
         internal bool TryAddObserver(PlayerID player)
         {
-            if (_observers.Contains(player))
+            if (_observers.Contains(player) || _pendingObservers.Contains(player))
                 return false;
             _observers.Add(player);
             return true;
@@ -241,7 +241,31 @@ namespace PurrNet
 
         internal bool TryRemoveObserver(PlayerID player)
         {
-            return _observers.Remove(player);
+            return _observers.Remove(player) || _pendingObservers.Remove(player);
+        }
+
+        internal bool TryMoveObserverToPending(PlayerID player)
+        {
+            if (!_observers.Remove(player))
+                return false;
+
+            _pendingObservers.Add(player);
+            return true;
+        }
+
+        internal bool TryPromotePendingObserver(PlayerID player)
+        {
+            if (!_pendingObservers.Remove(player))
+                return false;
+
+            if (!_observers.Contains(player))
+                _observers.Add(player);
+            return true;
+        }
+
+        internal bool TryRemovePendingObserver(PlayerID player)
+        {
+            return _pendingObservers.Remove(player);
         }
     }
 }

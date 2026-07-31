@@ -365,10 +365,16 @@ namespace PurrNet
         public PlayerID localPlayerForced => localPlayer ?? default;
 
         private readonly List<PlayerID> _observers = new List<PlayerID>(4);
+        private readonly List<PlayerID> _pendingObservers = new List<PlayerID>(2);
 
         public IReadOnlyList<PlayerID> observers => _observers;
 
+        internal IReadOnlyList<PlayerID> pendingObservers => _pendingObservers;
+
         public bool IsObserver(PlayerID player) => _observers.Contains(player);
+
+        internal bool IsObserverOrPending(PlayerID player) =>
+            _observers.Contains(player) || _pendingObservers.Contains(player);
 
         [UsedByIL]
         public virtual void OnReceivedRpc(int id, RPCPacket packet, RPCInfo info, bool asServer) { }
@@ -1700,6 +1706,7 @@ namespace PurrNet
         internal void ClearObservers()
         {
             _observers.Clear();
+            _pendingObservers.Clear();
         }
 
         public void SetID(NetworkID networkID)

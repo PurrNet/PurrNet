@@ -39,7 +39,7 @@ namespace PurrNet.Modules
             if (!transform)
                 return;
 
-            bool isParentVisible = !parent || parent.IsObserver(player);
+            bool isParentVisible = !parent || parent.IsObserverOrPending(player);
 
             RefreshVisibilityForGameObject(player, transform, _defaultRuleSet, isParentVisible, false);
         }
@@ -125,6 +125,7 @@ namespace PurrNet.Modules
                 var identity = identities[i];
                 var observers = identity.observers;
                 players.UnionWith(observers);
+                players.UnionWith(identity.pendingObservers);
                 identity.ClearObservers();
             }
 

@@ -28,15 +28,17 @@ namespace PurrNet.Modules
         private readonly Transform _parent;
 
         [UsedImplicitly] private readonly IPrefabProvider _prefabs;
+        private readonly bool _forceWarmupPieces;
 
         private static readonly Dictionary<GameObject, GameObjectPrototype> _prefabPrototypes = new();
 
         readonly HashSet<GameObject> _alreadyWarmedUp = new HashSet<GameObject>();
 
-        public HierarchyPool(Transform parent, IPrefabProvider prefabs = null)
+        public HierarchyPool(Transform parent, IPrefabProvider prefabs = null, bool forceWarmupPieces = false)
         {
             _parent = parent;
             _prefabs = prefabs;
+            _forceWarmupPieces = forceWarmupPieces;
         }
 
         /// <summary>
@@ -61,7 +63,7 @@ namespace PurrNet.Modules
         private void Warmup(PrefabData prefabData)
         {
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab, _parent);
-            NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled);
+            NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled || _forceWarmupPieces);
 
             if (!_prefabPrototypes.ContainsKey(prefabData.prefab))
             {

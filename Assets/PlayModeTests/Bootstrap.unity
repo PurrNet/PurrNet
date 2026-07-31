@@ -1917,6 +1917,7 @@ GameObject:
   - component: {fileID: 1680343664}
   - component: {fileID: 1680343665}
   - component: {fileID: 277924965}
+  - component: {fileID: 1680343666}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -2346,6 +2347,31 @@ MonoBehaviour:
   _commandTimeoutSeconds: 30
   _despawnTimeoutSeconds: 30
   _barrierTimeoutSeconds: 60
+--- !u!114 &1680343666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 224be9f9ef314e8296202160365b7f21, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::AsyncInstantiateScenario
+  _clientSpawnRules: {fileID: 11400000, guid: 1f9b0e8a7d654a109c8b2e3f4a5c6d7e, type: 2}
+  _stressCycles: 3
+  _stressInstancesPerCycle: 24
+  _rapidDespawnInstances: 32
+  _clientInstances: 4
+  _nonNetworkInstances: 12
+  _cancellationInstances: 256
+  _awakeMutation: 0
+  _operationTimeoutSeconds: 30
+  _spawnTimeoutSeconds: 30
+  _stateAndRpcTimeoutSeconds: 30
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 90
 --- !u!114 &1680343647
 MonoBehaviour:
   m_ObjectHideFlags: 0
