@@ -115,6 +115,14 @@ namespace PurrNet.Packing
             Size length = default;
             Packer<Size>.Read(packer, ref length);
             int lengthInt = (int)length.value;
+
+			// Untrusted length, check it fits
+			if (lengthInt < 0 || lengthInt > packer.remainingBits)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid BitData length during deserialization: {length.value}.");
+            }
+
             int origin = packer.AdvanceBits(lengthInt);
             data = new BitData(packer, origin, lengthInt);
             packer.EnsurePadding();

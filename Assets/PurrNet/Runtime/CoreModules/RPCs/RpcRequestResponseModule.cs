@@ -188,7 +188,8 @@ namespace PurrNet.Modules
                     {
                         using var stream = RPCModule.AllocStream(false);
                         stream.WriteBytes(data.data);
-                        stream.ResetPosition();
+						// Untrusted bytes. Enter read mode before reading so length checks aren't bypassed
+						stream.ResetPositionAndMode(true);
 
                         request.completer.Respond(stream);
                     }

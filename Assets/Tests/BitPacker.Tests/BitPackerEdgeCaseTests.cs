@@ -559,6 +559,31 @@ public class BitPackerEdgeCaseTests
 	}
 
 	[Test]
+	public void WriteBytes_ThenSwitchToReadMode_RejectsMalformedLengthPrefix()
+	{
+		_packer.ResetPositionAndMode(false);
+		_packer.WriteBit(true); // has value
+		_packer.WriteBits(1_000_000, 31); // claimed length, no payload follows
+		_packer.ResetPositionAndMode(true);
+
+		Assert.Throws<System.Runtime.Serialization.SerializationException>(
+			() => _packer.ReadString(System.Text.Encoding.UTF8));
+	}
+
+	[Test]
+	public void BareResetPosition_LeavesWriteModeAndReadThrows()
+	{
+		_packer.ResetPositionAndMode(false);
+		_packer.WriteBit(true);
+		_packer.WriteBits(1_000_000, 31);
+		_packer.ResetPosition();
+
+		Assert.IsFalse(_packer.isReading);
+		Assert.Throws<InvalidOperationException>(
+			() => _packer.ReadString(System.Text.Encoding.UTF8));
+	}
+
+	[Test]
 	public void ReadString_WrapperInsideBiggerBackingArrayRejectsLengthPastRealPacket()
 	{
 		var writer = BitPackerPool.Get();

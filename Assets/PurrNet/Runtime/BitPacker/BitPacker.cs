@@ -46,8 +46,25 @@ namespace PurrNet.Packing
         public bool isWriting => !_isReading;
 
 
-        public int remainingBytes => Math.Max(0, (isWrapper ? _wrapperEnd : (_isReading ? _writtenLength : _buffer.Length)) - positionInBytes);
-        public long remainingBits => Math.Max(0L, (long)(isWrapper ? _wrapperEnd : (_isReading ? _writtenLength : _buffer.Length)) * 8 - _positionInBits);
+        public int remainingBytes
+        {
+            get
+            {
+                if (isWrapper) return Math.Max(0, _wrapperEnd - positionInBytes);
+                if (!_isReading) throw new InvalidOperationException("remainingBytes is only valid in read mode.");
+                return Math.Max(0, _writtenLength - positionInBytes);
+            }
+        }
+
+        public long remainingBits
+        {
+            get
+            {
+                if (isWrapper) return Math.Max(0L, (long)_wrapperEnd * 8 - _positionInBits);
+                if (!_isReading) throw new InvalidOperationException("remainingBits is only valid in read mode.");
+                return Math.Max(0L, (long)_writtenLength * 8 - _positionInBits);
+            }
+        }
 
         private int _wrapperEnd;
 

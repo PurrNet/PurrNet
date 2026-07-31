@@ -29,7 +29,7 @@ namespace PurrNet
 
         public void ResetPosition()
         {
-            _dataPacker?.ResetPosition();
+            _dataPacker?.ResetPositionAndMode(true);
         }
 
         public void Dispose()
