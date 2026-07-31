@@ -11,7 +11,24 @@ namespace PurrNet.Packing
 {
     public static class PackCollections
     {
-		private const int MAX_COLLECTION_ALLOCATION_BYTES = FragmentationLayer.MAX_MESSAGE_SIZE * 4;
+        private const int MAX_COLLECTION_ALLOCATION_BYTES = FragmentationLayer.MAX_MESSAGE_SIZE * 4;
+
+        private static void ValidateCollectionLength(long length, BitPacker packer, long elementSize, string typeName)
+        {
+            // Can't fit more elements than bits remaining
+            if (length < 0 || length > packer.remainingBits)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid {typeName} length during deserialization: {length}.");
+            }
+
+            // Also cap the actual allocation. Bit packed types can pass the check above
+            if (length * elementSize > MAX_COLLECTION_ALLOCATION_BYTES)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid {typeName} length during deserialization: {length}.");
+            }
+        }
 
         [UsedByIL]
         public static void RegisterHashSet<T>()
@@ -206,19 +223,7 @@ namespace PurrNet.Packing
 
             uint rawLength = Packer<Size>.Read(packer);
 
-            // Can't fit more elements than bits remaining
-            if (rawLength > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid array length during deserialization: {rawLength}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (rawLength * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid array length during deserialization: {rawLength}.");
-            }
+            ValidateCollectionLength(rawLength, packer, Unsafe.SizeOf<T>(), "array");
 
             int length = (int)rawLength;
             value = DisposableArray<T>.Create(length);
@@ -264,19 +269,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
-            // Can't fit more elements than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid hash set length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid hash set length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<T>(), "hash set");
 
             value = DisposableHashSet<T>.Create((int)length);
 
@@ -320,19 +313,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
-            // Can't fit more elements than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid queue length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid queue length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<T>(), "queue");
 
             if (value == null)
                 value = new Queue<T>((int)length);
@@ -378,19 +359,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
-            // Can't fit more elements than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid stack length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid stack length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<T>(), "stack");
 
             if (value == null)
                 value = new Stack<T>((int)length);
@@ -439,19 +408,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
-            // Can't fit more entries than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid dictionary length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)(Unsafe.SizeOf<K>() + Unsafe.SizeOf<V>()) > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid dictionary length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<K>() + Unsafe.SizeOf<V>(), "dictionary");
 
             if (value == null)
                 value = new Dictionary<K, V>((int)length);
@@ -541,19 +498,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
-            // Can't fit more elements than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid hash set length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid hash set length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<T>(), "hash set");
 
             if (value == null)
                 value = new HashSet<T>((int)length);
@@ -608,19 +553,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
-            // Can't fit more elements than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid list length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid list length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<T>(), "list");
 
             if (value == null)
                 value = new List<T>((int)length);
@@ -656,19 +589,7 @@ namespace PurrNet.Packing
                 return;
             }
 
-            // Can't fit more elements than bits remaining
-            if (length < 0 || length > packer.remainingBits)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid array length during deserialization: {length}.");
-            }
-
-            // Also cap the actual allocation. Bit packed types can pass the check above
-            if (length * (long)Unsafe.SizeOf<T>() > MAX_COLLECTION_ALLOCATION_BYTES)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid array length during deserialization: {length}.");
-            }
+            ValidateCollectionLength(length, packer, Unsafe.SizeOf<T>(), "array");
 
             if (value == null)
                 value = new T[length];

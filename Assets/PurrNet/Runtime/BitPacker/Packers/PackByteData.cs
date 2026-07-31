@@ -6,6 +6,16 @@ namespace PurrNet.Packing
 {
     public static class PackByteData
     {
+        private static void ValidateByteLength(BitPacker packer, uint length, string typeName)
+        {
+            // Untrusted length. Check it fits before allocating
+            if (length > (uint)packer.remainingBytes)
+            {
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Invalid {typeName} length during deserialization: {length}.");
+            }
+        }
+
         [UsedByIL]
         public static void Write(this BitPacker packer, ByteData data)
         {
@@ -25,12 +35,7 @@ namespace PurrNet.Packing
                 return;
             }
 
-			// Untrusted length. Check it fits before allocating
-			if (length.value > (uint)packer.remainingBytes)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid ByteData length during deserialization: {length.value}.");
-            }
+            ValidateByteLength(packer, length.value, "ByteData");
 
             byte[] buffer = new byte[length];
             packer.ReadBytes(buffer);
@@ -55,12 +60,7 @@ namespace PurrNet.Packing
             Size length = default;
             Packer<Size>.Read(packer, ref length);
 
-			// Untrusted length. Check it fits before allocating
-			if (length.value > (uint)packer.remainingBytes)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid BitPacker length during deserialization: {length.value}.");
-            }
+            ValidateByteLength(packer, length.value, "BitPacker");
 
             if (data == null)
                 data = BitPackerPool.Get();
@@ -85,12 +85,7 @@ namespace PurrNet.Packing
             Size length = default;
             Packer<Size>.Read(packer, ref length);
 
-			// Untrusted length. Check it fits before allocating
-			if (length.value > (uint)packer.remainingBytes)
-            {
-                throw new System.Runtime.Serialization.SerializationException(
-                    $"Invalid BitPackerWithLength length during deserialization: {length.value}.");
-            }
+            ValidateByteLength(packer, length.value, "BitPackerWithLength");
 
             var dataPacker = BitPackerPool.Get();
             var span = dataPacker.GetSpan(length);
@@ -116,8 +111,8 @@ namespace PurrNet.Packing
             Packer<Size>.Read(packer, ref length);
             int lengthInt = (int)length.value;
 
-			// Untrusted length, check it fits
-			if (lengthInt < 0 || lengthInt > packer.remainingBits)
+            // Untrusted length, check it fits
+            if (lengthInt < 0 || lengthInt > packer.remainingBits)
             {
                 throw new System.Runtime.Serialization.SerializationException(
                     $"Invalid BitData length during deserialization: {length.value}.");

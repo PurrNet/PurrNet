@@ -254,8 +254,8 @@ namespace PurrNet.Packing
 
             if (_isReading)
             {
-				// A wrapper can be a slice of a larger pooled buffer
-				int limitBytes = isWrapper ? _wrapperEnd : _buffer.Length;
+                // A wrapper can be a slice of a larger pooled buffer
+                int limitBytes = isWrapper ? _wrapperEnd : _buffer.Length;
 
                 if (requiredBytes > limitBytes)
                     throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {limitBytes << 3}");
@@ -759,8 +759,8 @@ namespace PurrNet.Packing
             // Length
             int len = (int)ReadBits(31);
 
-			// len can't legitimately exceed what's left in the buffer
-			if (len < 0 || len > remainingBytes)
+            // len can't legitimately exceed what's left in the buffer
+            if (len < 0 || len > remainingBytes)
             {
                 throw new System.Runtime.Serialization.SerializationException(
                     $"Invalid string length during deserialization: {len}.");
