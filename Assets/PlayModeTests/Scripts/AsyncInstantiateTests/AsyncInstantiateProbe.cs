@@ -32,6 +32,9 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
     private static bool _despawnBeforeAsyncReady;
     private static int _lateReadyDespawnRequestsSent;
     private static int _lateReadyDespawnRequestsHandled;
+    private static bool _hideBeforeAsyncReady;
+    private static int _hideBeforeReadyRequestsSent;
+    private static int _hideBeforeReadyRequestsHandled;
 
     public static int aliveCount => _instances.Count;
     public static int serverRpcTokenCount => _serverRpcTokens.Count;
@@ -42,6 +45,8 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
     public static int despawnedObjectCount => _despawnedObjects.Count;
     public static int lateReadyDespawnRequestsSent => _lateReadyDespawnRequestsSent;
     public static int lateReadyDespawnRequestsHandled => _lateReadyDespawnRequestsHandled;
+    public static int hideBeforeReadyRequestsSent => _hideBeforeReadyRequestsSent;
+    public static int hideBeforeReadyRequestsHandled => _hideBeforeReadyRequestsHandled;
 
     public static bool stateMissingAtSpawn { get; private set; }
     public static bool sawPooledAsyncInstance { get; private set; }
@@ -72,11 +77,19 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
         _despawnBeforeAsyncReady = false;
         _lateReadyDespawnRequestsSent = 0;
         _lateReadyDespawnRequestsHandled = 0;
+        _hideBeforeAsyncReady = false;
+        _hideBeforeReadyRequestsSent = 0;
+        _hideBeforeReadyRequestsHandled = 0;
     }
 
     public static void SetDespawnBeforeAsyncReady(bool enabled)
     {
         _despawnBeforeAsyncReady = enabled;
+    }
+
+    public static void SetHideBeforeAsyncReady(bool enabled)
+    {
+        _hideBeforeAsyncReady = enabled;
     }
 
     public static AsyncInstantiateProbe[] SnapshotInstances()
@@ -105,6 +118,20 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
         foreach (var instance in _instances)
         {
             if (!instance || !instance.owner.HasValue || instance.owner.Value.id.value != expectedOwner)
+                return false;
+        }
+
+        return true;
+    }
+
+    public static bool AllInstancesInScene(string expectedScene)
+    {
+        if (_instances.Count == 0)
+            return false;
+
+        foreach (var instance in _instances)
+        {
+            if (!instance || instance.gameObject.scene.name != expectedScene)
                 return false;
         }
 
@@ -194,11 +221,20 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
 
     protected override void OnSpawnReceived()
     {
-        if (!_despawnBeforeAsyncReady || isServer || !id.HasValue)
+        if (isServer || !id.HasValue)
             return;
 
-        _lateReadyDespawnRequestsSent++;
-        RequestDespawnBeforeAsyncReady(sceneId, id.Value);
+        if (_despawnBeforeAsyncReady)
+        {
+            _lateReadyDespawnRequestsSent++;
+            RequestDespawnBeforeAsyncReady(sceneId, id.Value);
+        }
+        else if (_hideBeforeAsyncReady)
+        {
+            _hideBeforeReadyRequestsSent++;
+            RequestHideBeforeAsyncReady(sceneId, id.Value);
+        }
+        else return;
 
         // ServerRpcs are batched, while AsyncSpawnReadyPacket is sent directly immediately after
         // this callback. Flush the request so both enter the ReliableOrdered transport in the
@@ -287,6 +323,23 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
             return;
 
         identity.Despawn();
+    }
+
+    [ServerRpc(requireOwnership: false, channel: Channel.ReliableOrdered)]
+    private static void RequestHideBeforeAsyncReady(
+        SceneID scene,
+        NetworkID identityId,
+        RPCInfo info = default)
+    {
+        var manager = NetworkManager.main;
+        if (!manager || !manager.TryGetModule<HierarchyFactory>(true, out var factory) ||
+            !factory.TryGetHierarchy(scene, out var hierarchy) ||
+            !factory.TryGetIdentity(scene, identityId, out var identity) || !identity || !identity.isSpawned)
+            return;
+
+        identity.BlacklistPlayer(info.sender);
+        hierarchy.ManualRemoveObserver(identity, info.sender);
+        _hideBeforeReadyRequestsHandled++;
     }
 
     [ObserversRpc(runLocally: true)]

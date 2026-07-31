@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 #if PURRNET_HAS_INSTANTIATE_ASYNC
 
@@ -27,10 +29,6 @@ public sealed class AsyncInstantiateScenario : Scenario
     [SerializeField] private int _nonNetworkInstances = 12;
     [SerializeField] private int _cancellationInstances = 256;
 
-    [Header("Awake shape mismatch")]
-    [SerializeField] private AsyncInstantiateAwakeMutation _awakeMutation =
-        AsyncInstantiateAwakeMutation.AddNetworkIdentity;
-
     [Header("Timeouts")]
     [SerializeField] private float _operationTimeoutSeconds = 30f;
     [SerializeField] private float _spawnTimeoutSeconds = 30f;
@@ -41,6 +39,8 @@ public sealed class AsyncInstantiateScenario : Scenario
     private const int BarrierBase = 7900;
     private const int ServerTokenBase = 100000;
     private const int ClientTokenBase = 200000;
+    private const string ParameterSceneName = "SceneTransferTarget";
+    private const string ParameterScenePath = "Assets/PlayModeTests/SceneTransferTarget.unity";
 
     private static readonly string[] PendingStateFieldNames =
     {
@@ -61,7 +61,10 @@ public sealed class AsyncInstantiateScenario : Scenario
     private AsyncInstantiateProbe _clientPrefab;
     private AsyncInstantiateCancellationIdentity _cancellationPrefab;
     private AsyncInstantiateAwakeShapeIdentity _shapePrefab;
+    private AsyncInstantiateProbe _receiverFailurePrefab;
+    private AsyncInstantiateProbe _deferredSyncPrefab;
     private GameObject _nonNetworkTemplate;
+    private AsyncInstantiateDeferredPrefabProvider _deferredProvider;
 
     private bool _shapeDiagnosticSeen;
     private bool _runClientAuthoritative;
@@ -84,6 +87,11 @@ public sealed class AsyncInstantiateScenario : Scenario
     private static ulong _spawnerId;
     private static bool _hasLateReadyObserver;
     private static ulong _lateReadyObserverId;
+    private static bool _testObserverSelectionReceived;
+    private static bool _hasTestObserver;
+    private static ulong _testObserverId;
+    private static AsyncInstantiateDeferredPrefabProvider _localDeferredProvider;
+    private static bool _deferredReleaseReceived;
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
@@ -99,6 +107,8 @@ public sealed class AsyncInstantiateScenario : Scenario
         _prepared = true;
 
         CreateRuntimeTemplates();
+        _deferredProvider = new AsyncInstantiateDeferredPrefabProvider(_deferredSyncPrefab.gameObject);
+        _localDeferredProvider = _deferredProvider;
 
         AsyncInstantiateProbe.ResetAll();
         AsyncInstantiateCancellationIdentity.ResetAll();
@@ -130,6 +140,14 @@ public sealed class AsyncInstantiateScenario : Scenario
         manager.prefabProvider.AddRuntimePrefab(_clientPrefab.name, _clientPrefab.gameObject, true, 2);
         manager.prefabProvider.AddRuntimePrefab(_cancellationPrefab.name, _cancellationPrefab.gameObject, false);
         manager.prefabProvider.AddRuntimePrefab(_shapePrefab.name, _shapePrefab.gameObject, false);
+        manager.prefabProvider.AddRuntimePrefab(
+            _receiverFailurePrefab.name,
+            _receiverFailurePrefab.gameObject,
+            false);
+        manager.prefabProvider.AddRuntimePrefab(
+            _deferredSyncPrefab.name,
+            _deferredSyncPrefab.gameObject,
+            false);
 
         _cancellationOutcomeReceived = false;
         _rapidDespawnOutcomeReceived = false;
@@ -137,12 +155,22 @@ public sealed class AsyncInstantiateScenario : Scenario
         _spawnerReceived = false;
         _hasLateReadyObserver = false;
         _lateReadyObserverId = 0;
+        _testObserverSelectionReceived = false;
+        _hasTestObserver = false;
+        _testObserverId = 0;
+        _deferredReleaseReceived = false;
     }
 
     private void CreateRuntimeTemplates()
     {
         _serverPrefab = CreateProbePrefab("AsyncInstantiateServerPooledPrefab");
         _clientPrefab = CreateProbePrefab("AsyncInstantiateClientPooledPrefab");
+        _receiverFailurePrefab = CreateProbePrefab("AsyncInstantiateReceiverFailurePrefab");
+        var receiverFailureChild = _receiverFailurePrefab.transform.Find("NestedNetworkIdentity");
+        if (receiverFailureChild)
+            receiverFailureChild.name = "ExpectedNetworkChild";
+        _receiverFailurePrefab.gameObject.AddComponent<AsyncInstantiateAwakeShapeMutator>();
+        _deferredSyncPrefab = CreateProbePrefab("AsyncInstantiateDeferredSyncPrefab");
 
         var cancellationGo = new GameObject("AsyncInstantiateCancellationPrefab");
         _cancellationPrefab = cancellationGo.AddComponent<AsyncInstantiateCancellationIdentity>();
@@ -197,17 +225,25 @@ public sealed class AsyncInstantiateScenario : Scenario
         await RunPhase(ctx, BarrierBase - 1, "proxy overload surface", TestProxyOverloadSurface, failures);
         await RunPhase(ctx, BarrierBase + 0, "non-network passthrough", TestNonNetworkPassthrough, failures);
         await RunPhase(ctx, BarrierBase + 1, "pending observer storage", TestPendingObserverStorage, failures);
+        await RunPhase(ctx, BarrierBase + 2, "default despawn echo storage",
+            TestDefaultDespawnEchoStorage, failures);
         await RunServerStress(ctx, failures);
         await RunPhase(ctx, BarrierBase + 30, "despawn during remote async work", TestRapidDespawn, failures);
         await RunPhase(ctx, BarrierBase + 40, "cancellation", TestCancellation, failures);
+        await SelectTestObserver(ctx, failures);
+        await RunReceiverFailureIsolation(ctx, failures);
+        await RunVisibilityCancellationRetry(ctx, failures);
+        await RunDeferredSynchronousDespawn(ctx, failures);
         await RunClientAuthoritative(ctx, failures);
-        await RunPhase(ctx, BarrierBase + 70, "Awake shape mismatch", TestAwakeShapeMismatch, failures);
+        await RunPhase(ctx, BarrierBase + 95, "InstantiateParameters scene", TestInstantiateParametersScene,
+            failures);
+        await RunPhase(ctx, BarrierBase + 79, "Awake shape mismatch", TestAwakeShapeMismatch, failures);
 
         return failures.Count == 0
             ? ScenarioResult.Ok(
                 $"server={_stressCycles}x{_stressInstancesPerCycle}, " +
                 $"client={(_runClientAuthoritative ? _clientInstances.ToString() : "skipped")}, " +
-                $"rapidDespawn={_rapidDespawnInstances}, cancel={_cancellationInstances}, shape={_awakeMutation}")
+                $"rapidDespawn={_rapidDespawnInstances}, cancel={_cancellationInstances}, shape=all")
             : ScenarioResult.Fail(string.Join(" | ", failures));
     }
 
@@ -409,6 +445,41 @@ public sealed class AsyncInstantiateScenario : Scenario
         {
             UnityProxy.DestroyDirectly(testObject);
         }
+    }
+
+    private UniTask<string> TestDefaultDespawnEchoStorage(ScenarioContext ctx)
+    {
+        var field = typeof(HierarchyV2).GetField(
+            "_pendingLocalDespawnEchoes",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (field == null)
+            return UniTask.FromResult<string>("test field _pendingLocalDespawnEchoes is missing");
+
+        if (ctx.isServer && !IsDespawnEchoStorageDisposed(ctx, field, true, out var serverDetail))
+            return UniTask.FromResult<string>($"server {serverDetail}");
+        if (ctx.isClient && !IsDespawnEchoStorageDisposed(ctx, field, false, out var clientDetail))
+            return UniTask.FromResult<string>($"client {clientDetail}");
+
+        return UniTask.FromResult<string>(null);
+    }
+
+    private bool IsDespawnEchoStorageDisposed(
+        ScenarioContext ctx,
+        FieldInfo field,
+        bool asServer,
+        out string detail)
+    {
+        if (!ctx.networkManager.TryGetModule<HierarchyFactory>(asServer, out var factory) ||
+            !factory.TryGetHierarchy(gameObject.scene, out var hierarchy))
+        {
+            detail = "hierarchy unavailable";
+            return false;
+        }
+
+        var value = field.GetValue(hierarchy);
+        var isDisposed = value?.GetType().GetProperty("isDisposed")?.GetValue(value);
+        detail = isDisposed is true ? null : "storage allocated before any client despawn";
+        return isDisposed is true;
     }
 
     private async UniTask RunServerStress(ScenarioContext ctx, List<string> failures)
@@ -711,6 +782,365 @@ public sealed class AsyncInstantiateScenario : Scenario
             return $"local peer leaked {AsyncInstantiateCancellationIdentity.liveCloneCount} cancelled clones";
 
         return _cancellationSucceeded ? null : _cancellationDetail;
+    }
+
+    private async UniTask SelectTestObserver(ScenarioContext ctx, List<string> failures)
+    {
+        _testObserverSelectionReceived = false;
+        _hasTestObserver = false;
+        _testObserverId = 0;
+
+        await SafeBarrier(ctx, BarrierBase + 80, "async regression observer selection", failures);
+
+        if (ctx.isServer)
+        {
+            var observer = PickClientSpawner(ctx, null, true);
+            BroadcastTestObserver(
+                observer.HasValue,
+                observer.HasValue ? observer.Value.id.value : 0);
+        }
+
+        if (!await WaitUntil(() => _testObserverSelectionReceived, _operationTimeoutSeconds, ctx))
+            failures.Add("async regression observer selection was not received");
+    }
+
+    private async UniTask RunReceiverFailureIsolation(ScenarioContext ctx, List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+        AsyncInstantiateAwakeShapeMutator.ResetAll();
+
+        if (!_hasTestObserver)
+        {
+            await SafeBarrier(ctx, BarrierBase + 81, "receiver failure isolation skipped", failures);
+            return;
+        }
+
+        bool failingPeer = IsLocalTestObserver(ctx);
+        AsyncInstantiateProbe serverResult = null;
+        AsyncInstantiateAwakeShapeMutator.mutation = AsyncInstantiateAwakeMutation.ReparentNetworkIdentity;
+        AsyncInstantiateAwakeShapeMutator.mutationEnabled = failingPeer;
+        _receiverFailurePrefab.gameObject.SetActive(true);
+
+        try
+        {
+            await SafeBarrier(ctx, BarrierBase + 81, "receiver failure isolation armed", failures);
+
+            if (ctx.isServer)
+            {
+                try
+                {
+                    var operation = UnityEngine.Object.InstantiateAsync(_receiverFailurePrefab);
+                    if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                        failures.Add("receiver failure isolation: source operation timed out");
+                    else if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                        failures.Add("receiver failure isolation: source operation returned no usable result");
+                    else
+                    {
+                        serverResult = operation.Result[0];
+                        serverResult.SetStateAndBroadcast(ServerTokenBase + 9000);
+                    }
+                }
+                catch (Exception e)
+                {
+                    failures.Add($"receiver failure isolation: {e.GetType().Name}: {e.Message}");
+                    Debug.LogException(e);
+                }
+            }
+
+            int expectedAlive = failingPeer ? 0 : 1;
+            if (!await WaitUntil(
+                    () => AsyncInstantiateProbe.aliveCount == expectedAlive,
+                    _spawnTimeoutSeconds,
+                    ctx))
+            {
+                failures.Add(
+                    $"receiver failure isolation: local alive count was " +
+                    $"{AsyncInstantiateProbe.aliveCount}/{expectedAlive}");
+            }
+
+            if (failingPeer)
+            {
+                if (AsyncInstantiateAwakeShapeMutator.mutatedCloneCount != 1)
+                {
+                    failures.Add(
+                        "receiver failure isolation: designated receiver mutated " +
+                        $"{AsyncInstantiateAwakeShapeMutator.mutatedCloneCount}/1 clones");
+                }
+            }
+            else
+            {
+                if (AsyncInstantiateAwakeShapeMutator.mutatedCloneCount != 0)
+                    failures.Add("receiver failure isolation: a non-designated peer mutated its clone");
+                if (!await WaitUntil(
+                        () => AsyncInstantiateProbe.observerRpcTokenCount == 1 &&
+                              AsyncInstantiateProbe.AllExpectedStatesApplied(1),
+                        _stateAndRpcTimeoutSeconds,
+                        ctx))
+                {
+                    failures.Add("receiver failure isolation: a successful peer missed bootstrap state/RPC");
+                }
+            }
+
+            if (ctx.isServer)
+            {
+                if (!await WaitUntil(
+                        () => GetHierarchyCollectionCount(ctx, true, "_failedAsyncObserverRoots") == 1,
+                        _stateAndRpcTimeoutSeconds,
+                        ctx))
+                {
+                    failures.Add("receiver failure isolation: server did not retain exactly one failed observer");
+                }
+
+                int expectedObserverPairs = Math.Max(0, ctx.expectedConnections - 1);
+                if (!await WaitUntil(
+                        () => AsyncInstantiateProbe.ObserverPairCount() >= expectedObserverPairs,
+                        _stateAndRpcTimeoutSeconds,
+                        ctx))
+                {
+                    failures.Add(
+                        "receiver failure isolation: successful observer confirmations were incomplete " +
+                        $"({AsyncInstantiateProbe.ObserverPairCount()}/{expectedObserverPairs})");
+                }
+            }
+
+            await SafeBarrier(ctx, BarrierBase + 82, "receiver failure isolated", failures);
+        }
+        finally
+        {
+            AsyncInstantiateAwakeShapeMutator.mutationEnabled = false;
+            _receiverFailurePrefab.gameObject.SetActive(false);
+            AsyncInstantiateAwakeShapeMutator.CleanupDetachedObjects();
+        }
+
+        if (ctx.isServer && serverResult)
+            serverResult.Despawn();
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"receiver failure isolation: {AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "receiver failure isolation", failures);
+        await SafeBarrier(ctx, BarrierBase + 83, "receiver failure cleanup", failures);
+    }
+
+    private async UniTask RunVisibilityCancellationRetry(ScenarioContext ctx, List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+
+        if (!_hasTestObserver)
+        {
+            await SafeBarrier(ctx, BarrierBase + 84, "visibility cancellation skipped", failures);
+            return;
+        }
+
+        bool hiddenPeer = IsLocalTestObserver(ctx);
+        AsyncInstantiateProbe.SetHideBeforeAsyncReady(hiddenPeer);
+        AsyncInstantiateProbe serverResult = null;
+
+        await SafeBarrier(ctx, BarrierBase + 84, "visibility cancellation armed", failures);
+
+        if (ctx.isServer)
+        {
+            try
+            {
+                var operation = UnityEngine.Object.InstantiateAsync(_serverPrefab);
+                if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                    failures.Add("visibility cancellation: source operation timed out");
+                else if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                    failures.Add("visibility cancellation: source operation returned no usable result");
+                else
+                {
+                    serverResult = operation.Result[0];
+                    serverResult.SetStateAndBroadcast(ServerTokenBase + 9100);
+                }
+            }
+            catch (Exception e)
+            {
+                failures.Add($"visibility cancellation: {e.GetType().Name}: {e.Message}");
+                Debug.LogException(e);
+            }
+        }
+
+        if (hiddenPeer && !await WaitUntil(
+                () => AsyncInstantiateProbe.hideBeforeReadyRequestsSent == 1 &&
+                      AsyncInstantiateProbe.aliveCount == 0,
+                _stateAndRpcTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("visibility cancellation: designated observer was not removed before Ready");
+        }
+
+        if (ctx.isServer && !await WaitUntil(
+                () => AsyncInstantiateProbe.hideBeforeReadyRequestsHandled == 1 &&
+                      serverResult && !serverResult.IsObserver(FindPlayer(ctx, _testObserverId)),
+                _stateAndRpcTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("visibility cancellation: server did not cancel the pending observer");
+        }
+
+        if (!hiddenPeer && !await WaitUntil(
+                () => AsyncInstantiateProbe.aliveCount == 1,
+                _spawnTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("visibility cancellation: an unaffected peer lost the identity");
+        }
+
+        await SafeBarrier(ctx, BarrierBase + 85, "visibility cancellation delivered", failures);
+        AsyncInstantiateProbe.SetHideBeforeAsyncReady(false);
+        await SafeBarrier(ctx, BarrierBase + 86, "visibility retry armed", failures);
+
+        if (ctx.isServer && serverResult)
+        {
+            var observer = FindPlayer(ctx, _testObserverId);
+            if (!serverResult.RemoveBlacklistPlayer(observer))
+            {
+                failures.Add("visibility retry: designated observer was not blacklisted");
+            }
+            else if (!ctx.networkManager.TryGetModule<HierarchyFactory>(true, out var factory) ||
+                     !factory.TryGetHierarchy(serverResult.sceneId, out var hierarchy))
+            {
+                failures.Add("visibility retry: server hierarchy was unavailable");
+            }
+            else hierarchy.EvaluateVisibility(observer, serverResult.transform);
+        }
+
+        if (!await WaitUntil(
+                () => AsyncInstantiateProbe.aliveCount == 1 &&
+                      AsyncInstantiateProbe.observerRpcTokenCount == 1 &&
+                      AsyncInstantiateProbe.AllExpectedStatesApplied(1),
+                _stateAndRpcTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("visibility retry: the observer did not receive a clean replacement spawn");
+        }
+
+        if (ctx.isServer && serverResult && !serverResult.IsObserver(FindPlayer(ctx, _testObserverId)))
+            failures.Add("visibility retry: server did not restore the observer");
+
+        await SafeBarrier(ctx, BarrierBase + 87, "visibility retry completed", failures);
+
+        if (ctx.isServer && serverResult)
+            serverResult.Despawn();
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"visibility retry: {AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "visibility retry", failures);
+    }
+
+    private async UniTask RunDeferredSynchronousDespawn(ScenarioContext ctx, List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+        _deferredReleaseReceived = false;
+
+        if (!_hasTestObserver)
+        {
+            await SafeBarrier(ctx, BarrierBase + 88, "deferred synchronous spawn skipped", failures);
+            return;
+        }
+
+        var originalProvider = ctx.networkManager.prefabProvider;
+        _deferredProvider.Attach(originalProvider);
+        SetPrefabProviderForTest(ctx.networkManager, _deferredProvider);
+        try
+        {
+            bool delayedPeer = IsLocalTestObserver(ctx);
+            if (delayedPeer)
+                _deferredProvider.Arm();
+
+            await SafeBarrier(ctx, BarrierBase + 88, "deferred synchronous spawn armed", failures);
+
+            if (ctx.isServer)
+            {
+                try
+                {
+                    var result = UnityEngine.Object.Instantiate(_deferredSyncPrefab);
+                    if (!result || !result.isSpawned)
+                        failures.Add("deferred synchronous spawn: source identity did not spawn synchronously");
+                    else result.Despawn();
+                }
+                catch (Exception e)
+                {
+                    failures.Add($"deferred synchronous spawn: {e.GetType().Name}: {e.Message}");
+                    Debug.LogException(e);
+                }
+            }
+
+            if (delayedPeer && !await WaitUntil(
+                    () => _deferredProvider.loadStarted,
+                    _stateAndRpcTimeoutSeconds,
+                    ctx))
+            {
+                failures.Add("deferred synchronous spawn: delayed provider was never requested");
+            }
+
+            await SafeBarrier(ctx, BarrierBase + 89, "deferred synchronous despawn buffered", failures);
+
+            if (ctx.isServer)
+            {
+                BroadcastDeferredProviderRelease();
+                ctx.networkManager.FlushBatchedRPCs();
+            }
+
+            if (!await WaitUntil(() => _deferredReleaseReceived, _operationTimeoutSeconds, ctx))
+                failures.Add("deferred synchronous spawn: release command was not received");
+
+            if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            {
+                failures.Add(
+                    $"deferred synchronous spawn: {AsyncInstantiateProbe.aliveCount} identities survived " +
+                    "the buffered Despawn");
+            }
+
+            await AssertNoPendingSpawnState(ctx, "deferred synchronous spawn", failures);
+            await SafeBarrier(ctx, BarrierBase + 90, "deferred synchronous spawn cleanup", failures);
+        }
+        finally
+        {
+            _deferredProvider.Reset();
+            SetPrefabProviderForTest(ctx.networkManager, originalProvider);
+        }
+    }
+
+    private static void SetPrefabProviderForTest(NetworkManager manager, IPrefabProvider provider)
+    {
+        var property = typeof(NetworkManager).GetProperty(
+            nameof(NetworkManager.prefabProvider),
+            BindingFlags.Instance | BindingFlags.Public);
+        var setter = property?.GetSetMethod(true);
+        if (setter == null)
+            throw new MissingMethodException(nameof(NetworkManager), $"set_{nameof(NetworkManager.prefabProvider)}");
+        setter.Invoke(manager, new object[] { provider });
+    }
+
+    private bool IsLocalTestObserver(ScenarioContext ctx)
+    {
+        return ctx.role == NetworkRole.Client &&
+               ctx.networkManager.isLocalPlayerReady &&
+               ctx.networkManager.localPlayer.id.value == _testObserverId;
+    }
+
+    private static PlayerID FindPlayer(ScenarioContext ctx, ulong id)
+    {
+        var players = ctx.networkManager.players;
+        for (var i = 0; i < players.Count; i++)
+        {
+            if (players[i].id.value == id)
+                return players[i];
+        }
+        return default;
+    }
+
+    private int GetHierarchyCollectionCount(ScenarioContext ctx, bool asServer, string fieldName)
+    {
+        if (!ctx.networkManager.TryGetModule<HierarchyFactory>(asServer, out var factory) ||
+            !factory.TryGetHierarchy(gameObject.scene, out var hierarchy))
+            return -1;
+
+        var field = typeof(HierarchyV2).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        var value = field?.GetValue(hierarchy);
+        return value?.GetType().GetProperty("Count")?.GetValue(value) is int count ? count : -1;
     }
 
     private async UniTask RunClientLateFinish(
@@ -1068,12 +1498,137 @@ public sealed class AsyncInstantiateScenario : Scenario
         await SafeBarrier(ctx, BarrierBase + 52, "client spawn despawn", failures);
     }
 
+    private async UniTask<string> TestInstantiateParametersScene(ScenarioContext ctx)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+        int buildIndex = SceneUtility.GetBuildIndexByScenePath(ParameterScenePath);
+        if (buildIndex < 0)
+            return $"target scene is missing from build settings: {ParameterScenePath}";
+
+        AsyncOperation loadOperation = null;
+        if (ctx.isServer)
+        {
+            loadOperation = ctx.networkManager.sceneModule.LoadSceneAsync(
+                ParameterSceneName,
+                new PurrSceneSettings
+                {
+                    mode = LoadSceneMode.Additive,
+                    physicsMode = LocalPhysicsMode.None,
+                    isPublic = true
+                });
+            if (loadOperation == null)
+                return "network scene load returned null";
+        }
+
+        if (!await WaitUntil(
+                () => TryGetParameterScene(ctx, buildIndex, out _),
+                _operationTimeoutSeconds,
+                ctx))
+            return "target scene did not load and register on this peer";
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 92, _barrierTimeoutSeconds);
+
+        AsyncInstantiateProbe serverResult = null;
+        if (ctx.isServer)
+        {
+            if (!TryGetParameterScene(ctx, buildIndex, out var targetScene))
+                return "server target scene disappeared before InstantiateAsync";
+
+            var parameters = new InstantiateParameters { scene = targetScene };
+            var operation = UnityEngine.Object.InstantiateAsync(_serverPrefab, parameters);
+            if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                return "native operation timed out";
+            if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                return "native operation returned no usable result";
+
+            serverResult = operation.Result[0];
+            if (serverResult.gameObject.scene != targetScene)
+                return $"source result landed in {serverResult.gameObject.scene.name}, expected {ParameterSceneName}";
+            serverResult.SetStateAndBroadcast(ServerTokenBase + 9200);
+        }
+
+        if (!await WaitUntil(
+                () => AsyncInstantiateProbe.aliveCount == 1 &&
+                      AsyncInstantiateProbe.AllInstancesInScene(ParameterSceneName) &&
+                      AsyncInstantiateProbe.observerRpcTokenCount == 1 &&
+                      AsyncInstantiateProbe.AllExpectedStatesApplied(1),
+                _stateAndRpcTimeoutSeconds,
+                ctx))
+        {
+            return
+                $"scene-targeted spawn incomplete (alive={AsyncInstantiateProbe.aliveCount}, " +
+                $"rpc={AsyncInstantiateProbe.observerRpcTokenCount}, " +
+                $"inScene={AsyncInstantiateProbe.AllInstancesInScene(ParameterSceneName)})";
+        }
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 93, _barrierTimeoutSeconds);
+
+        if (ctx.isServer && serverResult)
+            serverResult.Despawn();
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            return $"{AsyncInstantiateProbe.aliveCount} scene-targeted identities remained alive";
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 94, _barrierTimeoutSeconds);
+
+        if (ctx.isServer && TryGetParameterScene(ctx, buildIndex, out var sceneToUnload))
+            _ = ctx.networkManager.sceneModule.UnloadSceneAsync(sceneToUnload);
+
+        if (!await WaitUntil(
+                () => !TryGetParameterScene(ctx, buildIndex, out _),
+                _operationTimeoutSeconds,
+                ctx))
+            return "target scene did not unload on this peer";
+
+        return null;
+    }
+
+    private bool TryGetParameterScene(ScenarioContext ctx, int buildIndex, out Scene scene)
+    {
+        for (var i = 0; i < SceneManager.sceneCount; i++)
+        {
+            var candidate = SceneManager.GetSceneAt(i);
+            if (!candidate.isLoaded || candidate.buildIndex != buildIndex ||
+                !ctx.networkManager.sceneModule.TryGetSceneID(candidate, out _))
+                continue;
+
+            scene = candidate;
+            return true;
+        }
+
+        scene = default;
+        return false;
+    }
+
     private async UniTask<string> TestAwakeShapeMismatch(ScenarioContext ctx)
+    {
+        var failures = new List<string>();
+        var mutations = new[]
+        {
+            AsyncInstantiateAwakeMutation.AddNetworkIdentity,
+            AsyncInstantiateAwakeMutation.ReparentNetworkIdentity,
+            AsyncInstantiateAwakeMutation.RemoveNetworkIdentity
+        };
+
+        for (var i = 0; i < mutations.Length; i++)
+        {
+            var failure = await TestAwakeShapeMismatch(ctx, mutations[i], i);
+            if (!string.IsNullOrEmpty(failure))
+                failures.Add($"{mutations[i]}: {failure}");
+        }
+
+        return failures.Count == 0 ? null : string.Join(", ", failures);
+    }
+
+    private async UniTask<string> TestAwakeShapeMismatch(
+        ScenarioContext ctx,
+        AsyncInstantiateAwakeMutation mutation,
+        int iteration)
     {
         _shapeOutcomeReceived = false;
         AsyncInstantiateAwakeShapeIdentity.ResetAll();
+        AsyncInstantiateAwakeShapeMutator.ResetAll();
 
-        await ScenarioBarrier.Wait(ctx, BarrierBase + 69, _barrierTimeoutSeconds);
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 70 + iteration * 2, _barrierTimeoutSeconds);
 
         if (ctx.isServer)
         {
@@ -1086,7 +1641,7 @@ public sealed class AsyncInstantiateScenario : Scenario
 
             try
             {
-                AsyncInstantiateAwakeShapeMutator.mutation = _awakeMutation;
+                AsyncInstantiateAwakeShapeMutator.mutation = mutation;
                 AsyncInstantiateAwakeShapeMutator.mutationEnabled = true;
 
                 // The template is only active for this call. The mutator ignores the template
@@ -1144,7 +1699,9 @@ public sealed class AsyncInstantiateScenario : Scenario
                         details.Add("a detached Awake-mutated identity was network-spawned");
                     }
 
-                    if (!await WaitUntil(() => _shapeDiagnosticSeen, 5f, ctx))
+                    // Diagnostics are deliberately reported once per prefab. The first mutation
+                    // verifies the user-facing error; the remaining mutations verify rejection.
+                    if (iteration == 0 && !await WaitUntil(() => _shapeDiagnosticSeen, 5f, ctx))
                     {
                         success = false;
                         details.Add("no diagnostic named InstantiateAsync and the prefab");
@@ -1183,6 +1740,7 @@ public sealed class AsyncInstantiateScenario : Scenario
         if (AsyncInstantiateAwakeShapeIdentity.spawnedCount != 0)
             return $"local peer spawned {AsyncInstantiateAwakeShapeIdentity.spawnedCount} shape-mismatched identities";
 
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 71 + iteration * 2, _barrierTimeoutSeconds);
         return _shapeSucceeded ? null : _shapeDetail;
     }
 
@@ -1416,6 +1974,115 @@ public sealed class AsyncInstantiateScenario : Scenario
         _hasLateReadyObserver = hasLateReadyObserver;
         _lateReadyObserverId = lateReadyObserverId;
         _spawnerReceived = true;
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private static void BroadcastTestObserver(bool hasObserver, ulong observerId)
+    {
+        _hasTestObserver = hasObserver;
+        _testObserverId = observerId;
+        _testObserverSelectionReceived = true;
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private static void BroadcastDeferredProviderRelease()
+    {
+        _localDeferredProvider?.Release();
+        _deferredReleaseReceived = true;
+    }
+}
+
+internal sealed class AsyncInstantiateDeferredPrefabProvider : IAsyncPrefabProvider
+{
+    private readonly GameObject _prefab;
+    private IPrefabProvider _inner;
+    private int _prefabId;
+    private TaskCompletionSource<PrefabData> _gate;
+    private bool _armed;
+
+    public bool loadStarted { get; private set; }
+
+    public AsyncInstantiateDeferredPrefabProvider(GameObject prefab)
+    {
+        _prefab = prefab;
+    }
+
+    public IEnumerable<PrefabData> allPrefabs => _inner.allPrefabs;
+
+    public bool NeedsLoad(int prefabId)
+    {
+        if (prefabId == _prefabId && _armed)
+            return true;
+        return _inner is IAsyncPrefabProvider asyncProvider && asyncProvider.NeedsLoad(prefabId);
+    }
+
+    public async Task<PrefabData> LoadPrefabAsync(int prefabId)
+    {
+        if (prefabId != _prefabId || !_armed)
+        {
+            if (_inner is IAsyncPrefabProvider asyncProvider)
+                return await asyncProvider.LoadPrefabAsync(prefabId);
+            return _inner.TryGetPrefabData(prefabId, out var existing) ? existing : default;
+        }
+
+        loadStarted = true;
+        return _gate == null ? GetTargetData() : await _gate.Task;
+    }
+
+    public bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
+    {
+        if (!_inner.TryGetPrefabData(prefabId, out prefabData))
+            return false;
+
+        if (prefabId == _prefabId && _armed)
+            prefabData.prefab = null;
+        return true;
+    }
+
+    public bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData)
+        => _inner.TryGetPrefabData(prefab, out prefabData);
+
+    public void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
+        => _inner.AddRuntimePrefab(uniqueName, prefab, pooled, warmup);
+
+    public void Refresh()
+        => _inner.Refresh();
+
+    public void Attach(IPrefabProvider inner)
+    {
+        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        if (!_inner.TryGetPrefabData(_prefab, out var data))
+            throw new InvalidOperationException("The deferred test prefab is not registered.");
+        _prefabId = data.prefabId;
+        Reset();
+    }
+
+    public void Arm()
+    {
+        _armed = true;
+        loadStarted = false;
+        _gate = new TaskCompletionSource<PrefabData>();
+    }
+
+    public void Release()
+    {
+        _armed = false;
+        if (_inner != null)
+            _gate?.TrySetResult(GetTargetData());
+    }
+
+    public void Reset()
+    {
+        Release();
+        _gate = null;
+        loadStarted = false;
+    }
+
+    private PrefabData GetTargetData()
+    {
+        if (_inner.TryGetPrefabData(_prefabId, out var data))
+            return data;
+        throw new InvalidOperationException("The deferred test prefab registration disappeared.");
     }
 }
 

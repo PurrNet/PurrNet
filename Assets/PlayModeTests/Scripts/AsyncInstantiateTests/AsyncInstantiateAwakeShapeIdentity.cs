@@ -126,7 +126,9 @@ public sealed class AsyncInstantiateAwakeShapeMutator : MonoBehaviour
             {
                 var child = transform.Find("ExpectedNetworkChild");
                 if (child)
-                    UnityProxy.DestroyDirectly(child.gameObject);
+                    // The shape must already be different when the async completion callback
+                    // validates it. Destroy is deferred by Unity until the end of the frame.
+                    UnityProxy.DestroyImmediateDirectly(child.gameObject);
                 break;
             }
         }
