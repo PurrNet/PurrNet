@@ -176,6 +176,7 @@ public sealed class AsyncInstantiateScenario : Scenario
 
         await RunPhase(ctx, BarrierBase - 1, "proxy overload surface", TestProxyOverloadSurface, failures);
         await RunPhase(ctx, BarrierBase + 0, "non-network passthrough", TestNonNetworkPassthrough, failures);
+        await RunPhase(ctx, BarrierBase + 1, "pending observer storage", TestPendingObserverStorage, failures);
         await RunServerStress(ctx, failures);
         await RunPhase(ctx, BarrierBase + 30, "despawn during remote async work", TestRapidDespawn, failures);
         await RunPhase(ctx, BarrierBase + 40, "cancellation", TestCancellation, failures);
@@ -340,6 +341,56 @@ public sealed class AsyncInstantiateScenario : Scenario
         return failures.Count == 0 ? null : string.Join(", ", failures);
     }
 
+    private static UniTask<string> TestPendingObserverStorage(ScenarioContext ctx)
+    {
+        var testObject = new GameObject("AsyncInstantiatePendingObserverStorageTest");
+        var identity = testObject.AddComponent<NetworkIdentity>();
+        var player = new PlayerID(987654, false);
+
+        try
+        {
+            if (identity.pendingObserverStorageAllocated)
+                return UniTask.FromResult<string>("storage was allocated before first async observer");
+
+            if (!identity.TryAddObserver(player) || identity.pendingObserverStorageAllocated)
+                return UniTask.FromResult<string>("ordinary observer add allocated pending storage");
+
+            if (!identity.TryMoveObserverToPending(player) ||
+                !identity.pendingObserverStorageAllocated ||
+                !identity.hasPendingObservers ||
+                !identity.IsObserverOrPending(player))
+                return UniTask.FromResult<string>("moving an observer to pending did not allocate valid storage");
+
+            if (!identity.TryPromotePendingObserver(player) ||
+                identity.pendingObserverStorageAllocated ||
+                !identity.IsObserver(player))
+                return UniTask.FromResult<string>("promotion did not release pending storage");
+
+            if (!identity.TryMoveObserverToPending(player) ||
+                !identity.TryRemovePendingObserver(player) ||
+                identity.pendingObserverStorageAllocated)
+                return UniTask.FromResult<string>("explicit pending removal did not release storage");
+
+            if (!identity.TryAddObserver(player) ||
+                !identity.TryMoveObserverToPending(player) ||
+                !identity.TryRemoveObserver(player) ||
+                identity.pendingObserverStorageAllocated)
+                return UniTask.FromResult<string>("generic observer removal did not release pending storage");
+
+            if (!identity.TryAddObserver(player) || !identity.TryMoveObserverToPending(player))
+                return UniTask.FromResult<string>("failed to prepare clear-observers lifecycle check");
+            identity.ClearObservers();
+            if (identity.pendingObserverStorageAllocated || identity.IsObserverOrPending(player))
+                return UniTask.FromResult<string>("ClearObservers did not release pending storage");
+
+            return UniTask.FromResult<string>(null);
+        }
+        finally
+        {
+            UnityProxy.DestroyDirectly(testObject);
+        }
+    }
+
     private async UniTask RunServerStress(ScenarioContext ctx, List<string> failures)
     {
         for (int cycle = 0; cycle < _stressCycles; cycle++)
@@ -452,6 +503,9 @@ public sealed class AsyncInstantiateScenario : Scenario
             }
 
             await SafeBarrier(ctx, BarrierBase + 10 + cycle * 2, $"server cycle {cycle} ready", failures);
+
+            if (!AsyncInstantiateProbe.AllPendingObserverStorageReleased())
+                failures.Add($"server cycle {cycle}: pending observer storage was retained after confirmation");
 
             if (ctx.isServer)
             {
@@ -798,6 +852,9 @@ public sealed class AsyncInstantiateScenario : Scenario
         }
 
         await SafeBarrier(ctx, BarrierBase + 51, "client spawn ready", failures);
+
+        if (!AsyncInstantiateProbe.AllPendingObserverStorageReleased())
+            failures.Add("client spawn: pending observer storage was retained after confirmation");
 
         if (ctx.isServer)
         {

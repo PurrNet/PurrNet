@@ -365,16 +365,39 @@ namespace PurrNet
         public PlayerID localPlayerForced => localPlayer ?? default;
 
         private readonly List<PlayerID> _observers = new List<PlayerID>(4);
-        private readonly List<PlayerID> _pendingObservers = new List<PlayerID>(2);
+        private List<PlayerID> _pendingObservers;
 
         public IReadOnlyList<PlayerID> observers => _observers;
 
-        internal IReadOnlyList<PlayerID> pendingObservers => _pendingObservers;
+        internal IReadOnlyList<PlayerID> pendingObservers =>
+            _pendingObservers != null ? _pendingObservers : Array.Empty<PlayerID>();
+
+        internal bool hasPendingObservers => _pendingObservers is { Count: > 0 };
+
+        internal bool pendingObserverStorageAllocated => _pendingObservers != null;
 
         public bool IsObserver(PlayerID player) => _observers.Contains(player);
 
         internal bool IsObserverOrPending(PlayerID player) =>
-            _observers.Contains(player) || _pendingObservers.Contains(player);
+            _observers.Contains(player) || _pendingObservers?.Contains(player) == true;
+
+        private void ReleasePendingObserversIfEmpty()
+        {
+            if (_pendingObservers is not { Count: 0 })
+                return;
+
+            ReleasePendingObservers();
+        }
+
+        private void ReleasePendingObservers()
+        {
+            if (_pendingObservers == null)
+                return;
+
+            var pendingObservers = _pendingObservers;
+            _pendingObservers = null;
+            ListPool<PlayerID>.Destroy(pendingObservers);
+        }
 
         [UsedByIL]
         public virtual void OnReceivedRpc(int id, RPCPacket packet, RPCInfo info, bool asServer) { }
@@ -1189,19 +1212,26 @@ namespace PurrNet
 
         protected virtual void OnDestroy()
         {
-            if (ApplicationContext.isQuitting)
-                return;
+            try
+            {
+                if (ApplicationContext.isQuitting)
+                    return;
 
-            if (parent)
-                parent.RemoveDirectChild(this);
+                if (parent)
+                    parent.RemoveDirectChild(this);
 
-            TriggerDespawnEvent(false);
-            TriggerDespawnEvent(true);
+                TriggerDespawnEvent(false);
+                TriggerDespawnEvent(true);
 
-            _serverHierarchy?.CleanupDestroyedIdentity(this);
-            _clientHierarchy?.CleanupDestroyedIdentity(this);
+                _serverHierarchy?.CleanupDestroyedIdentity(this);
+                _clientHierarchy?.CleanupDestroyedIdentity(this);
 
-            _ticker = null;
+                _ticker = null;
+            }
+            finally
+            {
+                ReleasePendingObservers();
+            }
         }
 
         private int _spawnedCount;
@@ -1706,7 +1736,7 @@ namespace PurrNet
         internal void ClearObservers()
         {
             _observers.Clear();
-            _pendingObservers.Clear();
+            ReleasePendingObservers();
         }
 
         public void SetID(NetworkID networkID)

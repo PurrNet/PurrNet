@@ -96,6 +96,24 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
         return true;
     }
 
+    public static bool AllPendingObserverStorageReleased()
+    {
+        foreach (var instance in _instances)
+        {
+            if (!instance)
+                continue;
+
+            var identities = instance.GetComponentsInChildren<NetworkIdentity>(true);
+            for (var i = 0; i < identities.Length; i++)
+            {
+                if (identities[i].pendingObserverStorageAllocated)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
     public static bool AllExpectedStatesApplied(int expectedCount)
     {
         if (_expectedState.Count != expectedCount)

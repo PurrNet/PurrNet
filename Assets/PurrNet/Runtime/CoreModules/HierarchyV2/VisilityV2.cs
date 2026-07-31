@@ -125,7 +125,8 @@ namespace PurrNet.Modules
                 var identity = identities[i];
                 var observers = identity.observers;
                 players.UnionWith(observers);
-                players.UnionWith(identity.pendingObservers);
+                if (identity.hasPendingObservers)
+                    players.UnionWith(identity.pendingObservers);
                 identity.ClearObservers();
             }
 
