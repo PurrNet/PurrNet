@@ -370,6 +370,7 @@ namespace PurrNet.Modules
         {
             _enabled = false;
             ClearAsyncSpawnState();
+            _pendingLocalDespawnEchoes.Dispose();
             PurrNetGameObjectUtils.onGameObjectCreated -= OnGameObjectCreated;
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
             UnityProxy.onAsyncInstantiateCompleted -= OnAsyncInstantiateCompleted;
@@ -406,6 +407,7 @@ namespace PurrNet.Modules
         public void TransferToNewServer()
         {
             ClearAsyncSpawnState();
+            _pendingLocalDespawnEchoes.Dispose();
             isReadyToSpawn = false;
             _nextId = default;
             _isPlayerReady = false;
@@ -461,6 +463,8 @@ namespace PurrNet.Modules
 
         public bool Cleanup()
         {
+            _pendingLocalDespawnEchoes.Dispose();
+
             var rules = _manager.networkRules;
             if (rules && !rules.ShouldCleanupSpawnedObjectsOnDisconnect())
                 return true;
@@ -738,6 +742,7 @@ namespace PurrNet.Modules
         private readonly HashSet<SpawnID> _asyncPendingSpawns = new();
         private readonly List<(SpawnID packetIdx, PlayerID player, bool asServer)> _pendingFinishSpawns = new();
         private readonly List<(PlayerID player, DespawnPacket packet, bool asServer)> _pendingDespawns = new();
+        private DisposableList<NetworkID> _pendingLocalDespawnEchoes;
         private readonly HashSet<SpawnID> _cancelledPendingSpawns = new();
         private readonly Dictionary<SpawnID, PendingAsyncObserverSpawn> _pendingAsyncObservers = new();
         private readonly Dictionary<SpawnID, PendingAsyncObserverSpawn> _readyAsyncObservers = new();
@@ -884,6 +889,8 @@ namespace PurrNet.Modules
                     switch (count)
                     {
                         case > 0 when !list[0] || !list[0].isSpawned:
+                            if (_relayAsyncSpawns.Count > 0)
+                                _relayAsyncSpawns.Remove(data.packetIdx);
                             return;
                         case > 0 when list[0] && _asServer:
                         {
@@ -1069,7 +1076,7 @@ namespace PurrNet.Modules
                     _pendingDespawns.RemoveAt(i);
                     try
                     {
-                        RemovePendingSpawnForIdentity(nid);
+                        CancelPendingAsyncSpawnRoot(nid);
                         Despawn(nid.gameObject, true, true);
                     }
                     catch (Exception e)
@@ -1878,7 +1885,7 @@ namespace PurrNet.Modules
 
             if (!TryGetIdentity(data.parentId, out var identity))
             {
-                if (!_asServer)
+                if (!_asServer && !ConsumePendingLocalDespawnEcho(data.parentId))
                     _pendingDespawns.Add((player, data, asServer));
                 return;
             }
@@ -1890,29 +1897,43 @@ namespace PurrNet.Modules
                 return;
             }
 
-            RemovePendingSpawnForIdentity(identity);
+            CancelPendingAsyncSpawnRoot(identity);
             Despawn(identity.gameObject, true, true);
         }
 
-        private void RemovePendingSpawnForIdentity(NetworkIdentity identity)
+        private bool ConsumePendingLocalDespawnEcho(NetworkID identityId)
         {
+            if (_asServer || _pendingLocalDespawnEchoes.isDisposed ||
+                !_pendingLocalDespawnEchoes.Remove(identityId))
+                return false;
+
+            if (_pendingLocalDespawnEchoes.Count == 0)
+                _pendingLocalDespawnEchoes.Dispose();
+            return true;
+        }
+
+        private void CancelPendingAsyncSpawnRoot(NetworkIdentity identity)
+        {
+            if (_asyncPendingSpawns.Count == 0 || !identity)
+                return;
+
+            // A nested despawn is part of the staged transaction: FinishSpawn must still
+            // complete its surviving identities. Only cancelling the async root removes
+            // the whole transaction because the server may intentionally omit its Finish.
             SpawnID found = default;
             DisposableList<NetworkIdentity> list = default;
             bool hasFound = false;
 
-            foreach (var pair in _pendingSpawns)
+            foreach (var packetIdx in _asyncPendingSpawns)
             {
-                for (var i = 0; i < pair.Value.Count; i++)
-                {
-                    if (pair.Value[i] != identity)
-                        continue;
-                    found = pair.Key;
-                    list = pair.Value;
-                    hasFound = true;
-                    break;
-                }
-                if (hasFound)
-                    break;
+                if (!_pendingSpawns.TryGetValue(packetIdx, out var pending) ||
+                    pending.Count == 0 || pending[0] != identity)
+                    continue;
+
+                found = packetIdx;
+                list = pending;
+                hasFound = true;
+                break;
             }
 
             if (!hasFound)
@@ -1921,11 +1942,7 @@ namespace PurrNet.Modules
             _pendingSpawns.Remove(found);
             if (!list.isDisposed)
                 list.Dispose();
-            bool wasAsync = _asyncPendingSpawns.Count > 0 && _asyncPendingSpawns.Remove(found);
-            if (!wasAsync)
-                _cancelledPendingSpawns.Add(found);
-            if (_relayAsyncSpawns.Count > 0)
-                _relayAsyncSpawns.Remove(found);
+            _asyncPendingSpawns.Remove(found);
 
             for (var i = _pendingFinishSpawns.Count - 1; i >= 0; i--)
             {
@@ -2233,6 +2250,10 @@ namespace PurrNet.Modules
                 return;
             }
 
+            // Make the ready transaction visible before invoking user callbacks. A callback may
+            // remove visibility or despawn the root; that cancellation must suppress FinishSpawn.
+            _readyAsyncObservers[data.packetIdx] = pending;
+
             _asyncObserverPromotionDepth++;
             try
             {
@@ -2276,9 +2297,10 @@ namespace PurrNet.Modules
                         onSentSpawnPacket?.Invoke(player, _sceneId, identity.id.Value);
                 }
 
-                // Finish must be sent only after observer-state packets produced above have flushed.
-                _readyAsyncObservers[data.packetIdx] = pending;
-                _toCompleteNextFrame.Add(data.packetIdx);
+                // Finish must be sent only after observer-state packets produced above have flushed,
+                // and only if no callback cancelled the transaction while it was being promoted.
+                if (_readyAsyncObservers.ContainsKey(data.packetIdx))
+                    _toCompleteNextFrame.Add(data.packetIdx);
             }
             finally
             {
@@ -2822,6 +2844,14 @@ namespace PurrNet.Modules
                 return;
             }
 
+            NetworkID? localDespawnId = null;
+            if (!_asServer && !bypassBroadcast)
+            {
+                localDespawnId = children[0].GetNetworkID(false) ?? children[0].id;
+                if (localDespawnId.HasValue)
+                    TrackPendingLocalDespawnEcho(localDespawnId.Value);
+            }
+
             bool isHost = IsServerHost();
 
             // Try to despawn the object properly if despawn was on the same tick (by first calling OnSpawned)
@@ -2852,7 +2882,8 @@ namespace PurrNet.Modules
                 }
 
                 _manager.FlushBatchedRPCs();
-                SendDespawnPacket(default, children[0], false);
+                if (localDespawnId.HasValue)
+                    SendDespawnPacket(default, localDespawnId.Value, false);
             }
             else
             {
@@ -2878,6 +2909,14 @@ namespace PurrNet.Modules
             HierarchyPool.PutBackInPool(pair, gameObject);
 
             ListPool<NetworkIdentity>.Destroy(children);
+        }
+
+        private void TrackPendingLocalDespawnEcho(NetworkID identityId)
+        {
+            if (_pendingLocalDespawnEchoes.isDisposed)
+                _pendingLocalDespawnEchoes = DisposableList<NetworkID>.Create(1);
+            if (!_pendingLocalDespawnEchoes.Contains(identityId))
+                _pendingLocalDespawnEchoes.Add(identityId);
         }
 
         private void SetupIdsLocally(NetworkIdentity root, ref NetworkID baseNid)

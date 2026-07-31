@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Modules;
 using UnityEngine;
 
 #if PURRNET_HAS_INSTANTIATE_ASYNC
@@ -41,6 +42,21 @@ public sealed class AsyncInstantiateScenario : Scenario
     private const int ServerTokenBase = 100000;
     private const int ClientTokenBase = 200000;
 
+    private static readonly string[] PendingStateFieldNames =
+    {
+        "_pendingSpawns",
+        "_asyncPendingSpawns",
+        "_pendingFinishSpawns",
+        "_pendingLocalDespawnEchoes",
+        "_cancelledPendingSpawns",
+        "_pendingAsyncObservers",
+        "_readyAsyncObservers",
+        "_relayAsyncSpawns",
+        "_pendingAsyncInstantiations",
+        "_reservedAsyncNetworkIds",
+        "_toCompleteNextFrame"
+    };
+
     private AsyncInstantiateProbe _serverPrefab;
     private AsyncInstantiateProbe _clientPrefab;
     private AsyncInstantiateCancellationIdentity _cancellationPrefab;
@@ -66,6 +82,8 @@ public sealed class AsyncInstantiateScenario : Scenario
     private static bool _spawnerReceived;
     private static bool _hasSpawner;
     private static ulong _spawnerId;
+    private static bool _hasLateReadyObserver;
+    private static ulong _lateReadyObserverId;
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
@@ -117,6 +135,8 @@ public sealed class AsyncInstantiateScenario : Scenario
         _rapidDespawnOutcomeReceived = false;
         _shapeOutcomeReceived = false;
         _spawnerReceived = false;
+        _hasLateReadyObserver = false;
+        _lateReadyObserverId = 0;
     }
 
     private void CreateRuntimeTemplates()
@@ -693,6 +713,155 @@ public sealed class AsyncInstantiateScenario : Scenario
         return _cancellationSucceeded ? null : _cancellationDetail;
     }
 
+    private async UniTask RunClientLateFinish(
+        ScenarioContext ctx,
+        bool localSpawner,
+        List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+
+        await SafeBarrier(ctx, BarrierBase + 53, "client late Finish armed", failures);
+
+        AsyncInstantiateProbe localResult = null;
+        if (localSpawner)
+        {
+            HierarchyFactory clientFactory = null;
+            Action<SceneID> despawnBeforeFinish = null;
+            AsyncInstantiateOperation<AsyncInstantiateProbe> operation = null;
+            bool despawnTriggered = false;
+
+            try
+            {
+                if (!ctx.networkManager.TryGetModule<HierarchyFactory>(false, out clientFactory))
+                {
+                    failures.Add("client late Finish: client HierarchyFactory was unavailable");
+                }
+                else
+                {
+                    // PostNetworkMessages invokes this hook immediately before it sends queued
+                    // FinishSpawnPackets. Despawn therefore enters the same ReliableOrdered stream
+                    // first, without delaying, intercepting, or reordering either packet.
+                    despawnBeforeFinish = sceneId =>
+                    {
+                        if (despawnTriggered || operation == null || !operation.isDone)
+                            return;
+
+                        var results = operation.Result;
+                        if (results == null || results.Length != 1 || !results[0] || sceneId != results[0].sceneId)
+                            return;
+
+                        localResult = results[0];
+                        despawnTriggered = true;
+                        localResult.Despawn();
+                    };
+                    clientFactory.onPreFinishSpawn += despawnBeforeFinish;
+
+                    operation = UnityEngine.Object.InstantiateAsync(_clientPrefab);
+                    if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                        failures.Add("client late Finish: native operation timed out");
+                    else if (!await WaitUntil(() => despawnTriggered, _operationTimeoutSeconds, ctx))
+                        failures.Add("client late Finish: pre-Finish despawn hook did not run");
+                    else if (!await WaitUntil(() => !localResult, _despawnTimeoutSeconds, ctx))
+                        failures.Add("client late Finish: source result was retained after despawn");
+                }
+            }
+            catch (Exception e)
+            {
+                failures.Add($"client late Finish: {e.GetType().Name}: {e.Message}");
+                Debug.LogException(e);
+            }
+            finally
+            {
+                if (clientFactory != null && despawnBeforeFinish != null)
+                    clientFactory.onPreFinishSpawn -= despawnBeforeFinish;
+            }
+        }
+
+        // The source reaches this barrier only after queuing Despawn and the subsequent Finish.
+        // Its barrier report is another ReliableOrdered fence, so the server has consumed both
+        // packets before it releases the phase.
+        await SafeBarrier(ctx, BarrierBase + 54, "client late Finish delivered", failures);
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"client late Finish: {AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "client late Finish", failures);
+    }
+
+    private async UniTask RunClientLateReady(
+        ScenarioContext ctx,
+        bool localSpawner,
+        List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+
+        if (!_hasLateReadyObserver)
+        {
+            // A one-client local smoke run has no non-spawner that can produce observer Ready.
+            await SafeBarrier(ctx, BarrierBase + 55, "client late Ready skipped", failures);
+            return;
+        }
+
+        bool requestOnThisPeer = ctx.role == NetworkRole.Client &&
+                                 ctx.networkManager.isLocalPlayerReady &&
+                                 ctx.networkManager.localPlayer.id.value == _lateReadyObserverId;
+        AsyncInstantiateProbe.SetDespawnBeforeAsyncReady(requestOnThisPeer);
+
+        await SafeBarrier(ctx, BarrierBase + 55, "client late Ready armed", failures);
+
+        AsyncInstantiateProbe localResult = null;
+        if (localSpawner)
+        {
+            try
+            {
+                localResult = await InstantiateOneClientProbe(
+                    ctx,
+                    "client late Ready",
+                    failures);
+            }
+            catch (Exception e)
+            {
+                failures.Add($"client late Ready: {e.GetType().Name}: {e.Message}");
+                Debug.LogException(e);
+            }
+        }
+
+        if (requestOnThisPeer && !await WaitUntil(
+                () => AsyncInstantiateProbe.lateReadyDespawnRequestsSent > 0,
+                _stateAndRpcTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("client late Ready: non-spawner did not request despawn from OnSpawnReceived");
+        }
+
+        if (ctx.isServer && !await WaitUntil(
+                () => AsyncInstantiateProbe.lateReadyDespawnRequestsHandled > 0,
+                _stateAndRpcTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("client late Ready: server did not handle the pre-Ready despawn request");
+        }
+
+        if (localSpawner && localResult && !await WaitUntil(
+                () => !localResult,
+                _despawnTimeoutSeconds,
+                ctx))
+        {
+            failures.Add("client late Ready: source result was retained after observer-requested despawn");
+        }
+
+        // On each non-spawner, the request is flushed before OnSpawnReceived returns and before
+        // AsyncSpawnReadyPacket is sent. Its later barrier report fences both packets on the same
+        // ReliableOrdered stream. The server enters only after it has actually handled deletion.
+        await SafeBarrier(ctx, BarrierBase + 56, "client late Ready delivered", failures);
+        AsyncInstantiateProbe.SetDespawnBeforeAsyncReady(false);
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"client late Ready: {AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "client late Ready", failures);
+    }
+
     private async UniTask RunClientAuthoritative(ScenarioContext ctx, List<string> failures)
     {
         if (!_runClientAuthoritative)
@@ -708,7 +877,14 @@ public sealed class AsyncInstantiateScenario : Scenario
         if (ctx.isServer)
         {
             var spawner = PickClientSpawner(ctx);
-            BroadcastSpawner(spawner.HasValue, spawner.HasValue ? spawner.Value.id.value : 0);
+            var lateReadyObserver = spawner.HasValue
+                ? PickClientSpawner(ctx, spawner.Value, true)
+                : (PlayerID?)null;
+            BroadcastSpawner(
+                spawner.HasValue,
+                spawner.HasValue ? spawner.Value.id.value : 0,
+                lateReadyObserver.HasValue,
+                lateReadyObserver.HasValue ? lateReadyObserver.Value.id.value : 0);
         }
 
         if (!await WaitUntil(() => _spawnerReceived, _operationTimeoutSeconds, ctx))
@@ -729,6 +905,10 @@ public sealed class AsyncInstantiateScenario : Scenario
         AsyncInstantiateProbe[] localResults = null;
         bool localSpawner = ctx.networkManager.isLocalPlayerReady &&
                             ctx.networkManager.localPlayer.id.value == _spawnerId;
+
+        await RunClientLateFinish(ctx, localSpawner, failures);
+        await RunClientLateReady(ctx, localSpawner, failures);
+        AsyncInstantiateProbe.ResetCycle();
 
         if (localSpawner)
         {
@@ -1048,6 +1228,93 @@ public sealed class AsyncInstantiateScenario : Scenario
         return true;
     }
 
+    private async UniTask<AsyncInstantiateProbe> InstantiateOneClientProbe(
+        ScenarioContext ctx,
+        string phase,
+        List<string> failures)
+    {
+        var operation = UnityEngine.Object.InstantiateAsync(_clientPrefab);
+        if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+        {
+            failures.Add($"{phase}: native operation timed out");
+            return null;
+        }
+
+        var results = operation.Result;
+        if (results == null || results.Length != 1 || !results[0])
+        {
+            failures.Add($"{phase}: operation returned {results?.Length ?? -1}/1 usable results");
+            return null;
+        }
+
+        if (!results[0].isSpawned)
+            failures.Add($"{phase}: local result was not early-spawned");
+        return results[0];
+    }
+
+    private async UniTask AssertNoPendingSpawnState(
+        ScenarioContext ctx,
+        string phase,
+        List<string> failures)
+    {
+        string detail = null;
+        if (!await WaitUntil(() => HasNoPendingSpawnState(ctx, out detail), _despawnTimeoutSeconds, ctx))
+            failures.Add($"{phase}: hierarchy pending state was retained ({detail})");
+    }
+
+    private bool HasNoPendingSpawnState(ScenarioContext ctx, out string detail)
+    {
+        if (ctx.isServer && !HasNoPendingSpawnState(ctx, true, "server", out detail))
+            return false;
+        // A host's client hierarchy deliberately ignores replicated spawn packets; it is not a
+        // participant in either transaction. Inspect the server hierarchy there, and inspect the
+        // client hierarchy only in actual client processes.
+        if (ctx.role == NetworkRole.Client && !HasNoPendingSpawnState(ctx, false, "client", out detail))
+            return false;
+        detail = null;
+        return true;
+    }
+
+    private bool HasNoPendingSpawnState(
+        ScenarioContext ctx,
+        bool asServer,
+        string side,
+        out string detail)
+    {
+        if (!ctx.networkManager.TryGetModule<HierarchyFactory>(asServer, out var factory) ||
+            !factory.TryGetHierarchy(gameObject.scene, out var hierarchy))
+        {
+            detail = $"{side} hierarchy unavailable";
+            return false;
+        }
+
+        for (var i = 0; i < PendingStateFieldNames.Length; i++)
+        {
+            var name = PendingStateFieldNames[i];
+            var field = typeof(HierarchyV2).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            var value = field?.GetValue(hierarchy);
+            if (name == "_pendingLocalDespawnEchoes")
+            {
+                var isDisposed = value?.GetType().GetProperty("isDisposed")?.GetValue(value);
+                if (isDisposed is true)
+                    continue;
+
+                detail = field == null ? $"test field {name} missing" : $"{side}.{name} was not disposed";
+                return false;
+            }
+
+            var count = value?.GetType().GetProperty("Count")?.GetValue(value);
+            if (count is int pending && pending == 0)
+                continue;
+
+            detail = field == null ? $"test field {name} missing" : $"{side}.{name}={count ?? "null"}";
+            return false;
+        }
+
+        detail = null;
+        return true;
+    }
+
     private static async UniTask<bool> WaitUntil(
         Func<bool> predicate,
         float timeoutSeconds,
@@ -1080,7 +1347,10 @@ public sealed class AsyncInstantiateScenario : Scenario
         }
     }
 
-    private static PlayerID? PickClientSpawner(ScenarioContext ctx)
+    private static PlayerID? PickClientSpawner(
+        ScenarioContext ctx,
+        PlayerID? excluded = null,
+        bool requireRemote = false)
     {
         var manager = ctx.networkManager;
         PlayerID? hostLocal = manager.isLocalPlayerReady && ctx.role == NetworkRole.Host
@@ -1094,7 +1364,7 @@ public sealed class AsyncInstantiateScenario : Scenario
         for (int i = 0; i < players.Count; i++)
         {
             var player = players[i];
-            if (player.isServer)
+            if (player.isServer || excluded.HasValue && player == excluded.Value)
                 continue;
 
             if (!fallback.HasValue || player.id.value < fallback.Value.id.value)
@@ -1107,7 +1377,7 @@ public sealed class AsyncInstantiateScenario : Scenario
                 remote = player;
         }
 
-        return remote ?? fallback;
+        return remote ?? (requireRemote ? null : fallback);
     }
 
     [ObserversRpc(runLocally: true)]
@@ -1135,10 +1405,16 @@ public sealed class AsyncInstantiateScenario : Scenario
     }
 
     [ObserversRpc(runLocally: true)]
-    private static void BroadcastSpawner(bool hasSpawner, ulong spawnerId)
+    private static void BroadcastSpawner(
+        bool hasSpawner,
+        ulong spawnerId,
+        bool hasLateReadyObserver,
+        ulong lateReadyObserverId)
     {
         _hasSpawner = hasSpawner;
         _spawnerId = spawnerId;
+        _hasLateReadyObserver = hasLateReadyObserver;
+        _lateReadyObserverId = lateReadyObserverId;
         _spawnerReceived = true;
     }
 }

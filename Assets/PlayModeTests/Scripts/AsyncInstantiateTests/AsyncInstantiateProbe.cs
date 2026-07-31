@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using PurrNet;
+using PurrNet.Modules;
 using UnityEngine;
+using Channel = PurrNet.Transports.Channel;
 
 /// <summary>
 /// Shared probe used by the server- and client-authoritative InstantiateAsync phases.
@@ -27,6 +29,9 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
     private static readonly Dictionary<NetworkID, HashSet<ulong>> _observerAdds = new();
     private static readonly List<GameObject> _despawnedObjects = new();
     private static readonly HashSet<int> _poolResetInstanceIds = new();
+    private static bool _despawnBeforeAsyncReady;
+    private static int _lateReadyDespawnRequestsSent;
+    private static int _lateReadyDespawnRequestsHandled;
 
     public static int aliveCount => _instances.Count;
     public static int serverRpcTokenCount => _serverRpcTokens.Count;
@@ -35,6 +40,8 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
     public static int forwardedRpcTokenCount => _forwardedRpcTokens.Count;
     public static int clientEchoTokenCount => _clientEchoTokens.Count;
     public static int despawnedObjectCount => _despawnedObjects.Count;
+    public static int lateReadyDespawnRequestsSent => _lateReadyDespawnRequestsSent;
+    public static int lateReadyDespawnRequestsHandled => _lateReadyDespawnRequestsHandled;
 
     public static bool stateMissingAtSpawn { get; private set; }
     public static bool sawPooledAsyncInstance { get; private set; }
@@ -62,6 +69,14 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
         stateMissingAtSpawn = false;
         sawPooledAsyncInstance = false;
         reusedPooledInstance = false;
+        _despawnBeforeAsyncReady = false;
+        _lateReadyDespawnRequestsSent = 0;
+        _lateReadyDespawnRequestsHandled = 0;
+    }
+
+    public static void SetDespawnBeforeAsyncReady(bool enabled)
+    {
+        _despawnBeforeAsyncReady = enabled;
     }
 
     public static AsyncInstantiateProbe[] SnapshotInstances()
@@ -177,6 +192,20 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
         gameObject.SetActive(true);
     }
 
+    protected override void OnSpawnReceived()
+    {
+        if (!_despawnBeforeAsyncReady || isServer || !id.HasValue)
+            return;
+
+        _lateReadyDespawnRequestsSent++;
+        RequestDespawnBeforeAsyncReady(sceneId, id.Value);
+
+        // ServerRpcs are batched, while AsyncSpawnReadyPacket is sent directly immediately after
+        // this callback. Flush the request so both enter the ReliableOrdered transport in the
+        // intended request-then-ready order without altering production packet scheduling.
+        networkManager.FlushBatchedRPCs();
+    }
+
     protected override void OnSpawned(bool asServer)
     {
         _stateSeenOnSpawn = _state.value;
@@ -246,6 +275,18 @@ public sealed class AsyncInstantiateProbe : NetworkIdentity
                 continue;
             ReceiveTargetSpawnTraffic(player, token);
         }
+    }
+
+    [ServerRpc(requireOwnership: false, channel: Channel.ReliableOrdered)]
+    private static void RequestDespawnBeforeAsyncReady(SceneID scene, NetworkID identityId)
+    {
+        _lateReadyDespawnRequestsHandled++;
+        var manager = NetworkManager.main;
+        if (!manager || !manager.TryGetModule<HierarchyFactory>(true, out var factory) ||
+            !factory.TryGetIdentity(scene, identityId, out var identity) || !identity || !identity.isSpawned)
+            return;
+
+        identity.Despawn();
     }
 
     [ObserversRpc(runLocally: true)]
