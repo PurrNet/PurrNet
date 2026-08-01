@@ -1,3 +1,10 @@
+# [1.22.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.10...v1.22.0-beta.11) (2026-08-01)
+
+
+### Bug Fixes
+
+* undo value behavior of disposable collections ([ac744fa](https://github.com/PurrNet/PurrNet/commit/ac744fae020357d342b719d288dec2c84aa694a4))
+
 # [1.22.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.9...v1.22.0-beta.10) (2026-07-30)
 
 
