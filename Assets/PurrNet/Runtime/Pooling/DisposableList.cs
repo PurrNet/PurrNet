@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using PurrNet.Modules;
 using PurrNet.Packing;
 
@@ -14,14 +13,9 @@ namespace PurrNet.Pooling
         private DisposableLease _lease;
         private int _leaseVersion;
         private List<T> _list;
-        private ListRefCounter _refs;
 
         /// <summary>
-        /// Direct access to the backing list. This hands out mutable access, so if the
-        /// buffer is shared with a snapshot it is unshared first. Prefer the regular
-        /// list API for reads; it never forces an unshare. Do not cache the returned
-        /// reference across a Duplicate() or history save: writes through a cached
-        /// reference bypass copy-on-write and can corrupt shared snapshots.
+        /// Direct access to the backing list.
         /// </summary>
         public List<T> list
         {
@@ -29,7 +23,6 @@ namespace PurrNet.Pooling
             {
                 if (isDisposed)
                     return null;
-                EnsureUnique();
                 return _list;
             }
             private set => _list = value;
@@ -37,71 +30,30 @@ namespace PurrNet.Pooling
 
         internal List<T> rawList => isDisposed ? null : _list;
 
-        internal int refCountForTests => _refs == null ? 0 : Volatile.Read(ref _refs.refs);
-
-        internal bool SharesHandleWith(in DisposableList<T> other)
-            => ReferenceEquals(_lease, other._lease) && _leaseVersion == other._leaseVersion;
-
+        /// <summary>
+        /// Creates an independently owned copy. A regular struct assignment aliases the
+        /// same pooled collection and must not be disposed independently.
+        /// </summary>
         public DisposableList<T> Duplicate()
         {
             if (isDisposed)
                 return default;
 
+            int count = _list.Count;
+            int targetCapacity = count + Math.Max(count >> 2, 8);
+            var copy = Create(targetCapacity);
+
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
-                int c = _list.Count;
-                int targetCapacity = c + Math.Max(c >> 2, 8);
-                var res = Create(targetCapacity);
-                for (var i = 0; i < c; ++i)
-                    res.Add(PurrCopy<T>.Copy(_list[i]));
-                return res;
+                for (var i = 0; i < count; ++i)
+                    copy.Add(PurrCopy<T>.Copy(_list[i]));
             }
-
-            if (_refs == null)
-                return Create(this);
-
-            var val = new DisposableList<T>();
-            val._list = _list;
-            val._refs = _refs;
-            Interlocked.Increment(ref _refs.refs);
-            val._isAllocated = true;
-            val._shouldDispose = _shouldDispose;
-            val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
-            return val;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsureUnique()
-        {
-            if (_refs == null || Volatile.Read(ref _refs.refs) <= 1)
-                return;
-
-            var clone = ListPool<T>.Instantiate();
-            int count = _list.Count;
-
-            if (clone.Capacity < count)
-                clone.Capacity = count;
-
-            for (var i = 0; i < count; ++i)
-                clone.Add(_list[i]);
-
-            if (Interlocked.Decrement(ref _refs.refs) == 0)
+            else
             {
-                if (_shouldDispose)
-                    ListPool<T>.Destroy(_list);
-                ListRefCounterPool.Return(_refs);
+                copy._list.AddRange(_list);
             }
 
-            // This handle takes the group's refcount unit with it, so any other struct
-            // alias of the same handle would be left pointing at a buffer it no longer
-            // holds a count for. Swapping the lease makes those aliases observably
-            // disposed instead of silently reading a buffer that can be pooled under them.
-            DisposableLeasePool.Return(_lease, _leaseVersion);
-            _lease = DisposableLeasePool.Rent(out _leaseVersion);
-
-            _list = clone;
-            _refs = ListRefCounterPool.Rent();
-            _shouldDispose = true;
+            return copy;
         }
 
         public bool Equals(DisposableList<T> other)
@@ -136,7 +88,6 @@ namespace PurrNet.Pooling
             _list = newList;
             _isAllocated = true;
             _shouldDispose = true;
-            _refs = ListRefCounterPool.Rent();
             _lease = DisposableLeasePool.Rent(out _leaseVersion);
         }
 
@@ -151,7 +102,6 @@ namespace PurrNet.Pooling
             val._list = newList;
             val._isAllocated = true;
             val._shouldDispose = true;
-            val._refs = ListRefCounterPool.Rent();
             val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
@@ -173,7 +123,6 @@ namespace PurrNet.Pooling
 
             val._isAllocated = true;
             val._shouldDispose = true;
-            val._refs = ListRefCounterPool.Rent();
             val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
@@ -195,7 +144,6 @@ namespace PurrNet.Pooling
 
             val._isAllocated = true;
             val._shouldDispose = true;
-            val._refs = ListRefCounterPool.Rent();
             val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
@@ -207,7 +155,6 @@ namespace PurrNet.Pooling
             val._list.AddRange(copyFrom);
             val._isAllocated = true;
             val._shouldDispose = true;
-            val._refs = ListRefCounterPool.Rent();
             val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
@@ -218,7 +165,6 @@ namespace PurrNet.Pooling
             val._list = ListPool<T>.Instantiate();
             val._isAllocated = true;
             val._shouldDispose = true;
-            val._refs = ListRefCounterPool.Rent();
             val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
             return val;
         }
@@ -226,7 +172,6 @@ namespace PurrNet.Pooling
         public void AddRange(IList<T> collection)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             int c = collection.Count;
             for (var i = 0; i < c; i++)
                 _list.Add(collection[i]);
@@ -236,7 +181,6 @@ namespace PurrNet.Pooling
         public void AddRange(IEnumerable<T> collection)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             foreach (var item in collection)
                 _list.Add(item);
             NotifyUsage();
@@ -254,19 +198,11 @@ namespace PurrNet.Pooling
         {
             if (isDisposed) return;
 
-            if (_list != null && _refs != null)
-            {
-                if (Interlocked.Decrement(ref _refs.refs) == 0)
-                {
-                    if (_shouldDispose)
-                        ListPool<T>.Destroy(_list);
-                    ListRefCounterPool.Return(_refs);
-                }
-            }
+            if (_list != null && _shouldDispose)
+                ListPool<T>.Destroy(_list);
 
             _isAllocated = false;
             _list = null;
-            _refs = null;
             DisposableLeasePool.Return(_lease, _leaseVersion);
             _lease = null;
             _leaseVersion = 0;
@@ -296,7 +232,6 @@ namespace PurrNet.Pooling
         public void Add(T item)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             _list.Add(item);
             NotifyUsage();
         }
@@ -304,7 +239,6 @@ namespace PurrNet.Pooling
         public void Clear()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             _list.Clear();
             NotifyUsage();
         }
@@ -326,7 +260,6 @@ namespace PurrNet.Pooling
         public bool Remove(T item)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             NotifyUsage();
             return _list.Remove(item);
         }
@@ -373,7 +306,6 @@ namespace PurrNet.Pooling
         public void Insert(int index, T item)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             NotifyUsage();
             _list.Insert(index, item);
         }
@@ -381,7 +313,6 @@ namespace PurrNet.Pooling
         public void RemoveAt(int index)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             NotifyUsage();
             _list.RemoveAt(index);
         }
@@ -399,7 +330,6 @@ namespace PurrNet.Pooling
             set
             {
                 if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-                EnsureUnique();
                 NotifyUsage();
 
                 if (index >= _list.Count || index < 0)
@@ -411,7 +341,6 @@ namespace PurrNet.Pooling
         public void Reverse()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             NotifyUsage();
             _list.Reverse();
         }
@@ -419,7 +348,6 @@ namespace PurrNet.Pooling
         public void RemoveRange(int opIndex, int opLength)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             NotifyUsage();
 
             if (opIndex + opLength > _list.Count)
@@ -433,7 +361,6 @@ namespace PurrNet.Pooling
         public void InsertRange(int index, IEnumerable<T> values)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
-            EnsureUnique();
             NotifyUsage();
             _list.InsertRange(index, values);
         }

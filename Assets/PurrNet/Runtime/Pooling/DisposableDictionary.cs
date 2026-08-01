@@ -322,6 +322,10 @@ namespace PurrNet.Pooling
             return dictionary.GetValueOrDefault(key);
         }
 
+        /// <summary>
+        /// Creates an independently owned copy. A regular struct assignment aliases the
+        /// same pooled collection and must not be disposed independently.
+        /// </summary>
         public DisposableDictionary<TKey, TValue> Duplicate()
         {
             if (isDisposed)
