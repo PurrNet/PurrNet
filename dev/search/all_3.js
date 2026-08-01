@@ -35,5 +35,5 @@ var searchData=
   ['dontdeltacompressattribute_32',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
   ['dontpackattribute_33',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]],
   ['droppedsample_34',['DroppedSample',['../structPurrNet_1_1Profiler_1_1DroppedSample.html',1,'PurrNet::Profiler']]],
-  ['duplicate_35',['Duplicate',['../classPurrNet_1_1NetworkIdentity.html#a93bedb9131c12bd6088700a306261df0',1,'PurrNet::NetworkIdentity']]]
+  ['duplicate_35',['Duplicate',['../classPurrNet_1_1NetworkIdentity.html#a93bedb9131c12bd6088700a306261df0',1,'PurrNet.NetworkIdentity.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableArray.html#af50880b004472814beddb8344d8891f9',1,'PurrNet.Pooling.DisposableArray.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableDictionary.html#afdf3312df9ab7e8ea875e8d379b19b2d',1,'PurrNet.Pooling.DisposableDictionary.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableHashSet.html#ac9fe49989ed19f1260490d70b23ab9e6',1,'PurrNet.Pooling.DisposableHashSet.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableList.html#a68573e68b5c248c20d7b0558882f5ec8',1,'PurrNet.Pooling.DisposableList.Duplicate()']]]
 ];
