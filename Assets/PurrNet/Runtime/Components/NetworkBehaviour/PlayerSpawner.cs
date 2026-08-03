@@ -151,31 +151,38 @@ namespace PurrNet
                     return;
             }
 
-            GameObject newPlayer;
+            GameObject newPlayer = null;
 
             CleanupSpawnPoints();
 
             if (_spawnPointProvider != null)
             {
                 var point = _spawnPointProvider.NextSpawnPoint(player, scene);
-                newPlayer = UnityProxy.Instantiate(_playerPrefab, point.position, point.rotation, unityScene);
+                SpawnPlayer(ref newPlayer, point.position, point.rotation, unityScene);
             }
             else if (spawnPoints.Count > 0)
             {
                 var spawnPoint = spawnPoints[_currentSpawnPoint];
                 _currentSpawnPoint = (_currentSpawnPoint + 1) % spawnPoints.Count;
-                newPlayer = UnityProxy.Instantiate(_playerPrefab, spawnPoint.position, spawnPoint.rotation, unityScene);
+                SpawnPlayer(ref newPlayer, spawnPoint.position, spawnPoint.rotation, unityScene);
             }
             else
             {
                 _playerPrefab.transform.GetPositionAndRotation(out var position, out var rotation);
-                newPlayer = UnityProxy.Instantiate(_playerPrefab, position, rotation, unityScene);
+                SpawnPlayer(ref newPlayer, position, rotation, unityScene);
             }
 
             _prefabInstantiatedProvider?.OnPrefabInstantiated(newPlayer, player, scene);
 
             if (newPlayer.TryGetComponent(out NetworkIdentity identity))
                 identity.GiveOwnership(player);
+        }
+
+        private void SpawnPlayer(ref GameObject newPlayer, Vector3 position, Quaternion rotation, UnityEngine.SceneManagement.Scene unityScene)
+        {
+            newPlayer = UnityProxy.Instantiate(_playerPrefab, position, rotation, unityScene);
+            if(newPlayer.TryGetComponent(out NetworkIdentity nid) && !nid.ShouldAutoSpawnOnInstantiate(NetworkManager.main, false))
+                NetworkManager.main.Spawn(newPlayer);
         }
     }
 }
