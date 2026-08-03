@@ -1,3 +1,10 @@
+# [1.22.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.11...v1.22.0-beta.12) (2026-08-03)
+
+
+### Bug Fixes
+
+* Make sync input utilize Immediate data ([08ec4b0](https://github.com/PurrNet/PurrNet/commit/08ec4b0315b66daec987550547133f90cdb57fdd))
+
 # [1.22.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.10...v1.22.0-beta.11) (2026-08-01)
 
 
