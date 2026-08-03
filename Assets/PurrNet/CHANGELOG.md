@@ -1,3 +1,10 @@
+# [1.22.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.12...v1.22.0-beta.13) (2026-08-03)
+
+
+### Bug Fixes
+
+* Sync dictionary and list initial packet match check ([8300ef7](https://github.com/PurrNet/PurrNet/commit/8300ef708b608f6817d518386ae331a6860227ac))
+
 # [1.22.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.11...v1.22.0-beta.12) (2026-08-03)
 
 
