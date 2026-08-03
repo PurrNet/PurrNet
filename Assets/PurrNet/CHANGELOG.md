@@ -1,3 +1,10 @@
+# [1.22.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.14...v1.22.0-beta.15) (2026-08-03)
+
+
+### Bug Fixes
+
+* Generate on assets saves properly ([1701013](https://github.com/PurrNet/PurrNet/commit/1701013631660caa3a1d829dd01c16b7a6415510))
+
 # [1.22.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.13...v1.22.0-beta.14) (2026-08-03)
 
 
