@@ -13,10 +13,18 @@ Docs (source): https://github.com/PurrNet/PurrDocs
 
 ## Install
 
-You can install PurrNet through Unity's Package Manager by adding a package through this URL:
+You can install PurrNet through Unity's Package Manager by adding a package through this URL. Dev will generally be more up-to-date but could be more prone to introduce breaking changes:
+
+Release: 
 
 ```bash
 https://github.com/PurrNet/PurrNet.git?path=/Assets/PurrNet#release
+```
+
+Dev: 
+
+```bash
+https://github.com/PurrNet/PurrNet.git?path=/Assets/PurrNet#dev
 ```
 
 Or through OpenUM [![openupm](https://img.shields.io/npm/v/dev.purrnet.purrnet?label=PurrNet&registry_uri=https://package.openupm.com)](https://openupm.com/packages/dev.purrnet.purrnet/)
