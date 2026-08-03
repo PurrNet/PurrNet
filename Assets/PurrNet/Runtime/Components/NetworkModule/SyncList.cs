@@ -189,15 +189,27 @@ namespace PurrNet
 
         public override void OnSpawn()
         {
-            if (!IsController(_ownerAuth)) return;
-
-            if (isServer)
-                SendInitialStateToAll(_list);
-            else SendInitialStateToServer(_list);
         }
 
-        public override void OnObserverAdded(PlayerID player)
+        public override void OnSpawnSent()
         {
+            if (isServer || !IsController(_ownerAuth))
+                return;
+
+            if (!_isDirty)
+                return;
+
+            SendInitialStateToServer(_list);
+            _pendingChanges.Clear();
+            _isDirty = false;
+            _wasLastDirty = false;
+        }
+
+        public override void OnObserverAdded(PlayerID player, bool isSpawner)
+        {
+            if (isSpawner && ownerAuth && owner == player)
+                return;
+
             SendInitialToTarget(player, _list);
         }
 
