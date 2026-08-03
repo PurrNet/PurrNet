@@ -155,18 +155,10 @@ namespace PurrNet
         {
             _initialSerializedDict.CopyTo(_dict);
         }
-
-        public override void OnSpawn()
-        {
-            base.OnSpawn();
-        }
-
+        
         public override void OnSpawnSent()
         {
             if (isServer || !IsController(_ownerAuth))
-                return;
-
-            if (!_isDirty)
                 return;
 
             SendInitialStateToServer(_dict);

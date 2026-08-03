@@ -187,16 +187,9 @@ namespace PurrNet
             _list.AddRange(_initialList);
         }
 
-        public override void OnSpawn()
-        {
-        }
-
         public override void OnSpawnSent()
         {
             if (isServer || !IsController(_ownerAuth))
-                return;
-
-            if (!_isDirty)
                 return;
 
             SendInitialStateToServer(_list);
