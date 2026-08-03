@@ -113,11 +113,6 @@ namespace PurrNet.Codegen
             if (!PostProcessor.IsTypeInOwnModule(type, assembly.MainModule))
                 return;
 
-            // The generated serializer class is a separate top-level type, so every generic call it
-            // emits over 'type' (PackCollections.Register*, RegisterIdentity, RegisterNetworkModule,
-            // PurrCopy/PurrEquality.Override) needs 'type' to be accessible from it. CoreCLR verifies
-            // this; Mono/IL2CPP did not. The IsTypeInOwnModule guard above means we only ever promote
-            // types in the module we are already rewriting.
             RegisterSerializersProcessor.EnsureCoreClrAccessible(type, assembly.MainModule);
 
             var resolvedType = type.Resolve();

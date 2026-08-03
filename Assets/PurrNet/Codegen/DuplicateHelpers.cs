@@ -27,9 +27,6 @@ namespace PurrNet.Codegen
 
         public static bool HasDuplicateInterface(TypeReference def)
         {
-            // Arrays/pointers/byrefs resolve to their ELEMENT type in Cecil (Filter[].Resolve() == Filter),
-            // a false positive. A composite type never implements IDuplicate<itself>, and injecting
-            // Override<Filter[]>() violates 'where D : IDuplicate<D>' (CoreCLR VerificationException).
             if (def is ArrayType || def is PointerType || def is ByReferenceType)
                 return false;
 

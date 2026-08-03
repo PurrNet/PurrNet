@@ -100,11 +100,6 @@ namespace PurrNet.Codegen
             public MethodDefinition method;
         }
 
-        // CoreCLR enforces member-access verification that Mono/IL2CPP did not. Creating a
-        // WriteFunc<T>/ReadFunc<T> delegate inside the generated serializer class requires that T
-        // (and every enclosing type in its declaring chain) be accessible from that class. Private/
-        // internal nested serialized types therefore throw MethodAccessException at 'newobj'. The
-        // serializer is always generated into the same module as T, so promoting it is self-contained.
         public static void EnsureCoreClrAccessible(TypeReference typeRef, ModuleDefinition module)
         {
             switch (typeRef)
@@ -121,8 +116,7 @@ namespace PurrNet.Codegen
             }
 
             var resolved = typeRef.Resolve();
-            // A public nested type inside a private parent is still inaccessible, so walk the chain.
-            // Top-level types are left untouched (internal top-level is already same-assembly accessible).
+
             while (resolved != null && resolved.IsNested && resolved.Module == module)
             {
                 if (!resolved.IsNestedPublic)
