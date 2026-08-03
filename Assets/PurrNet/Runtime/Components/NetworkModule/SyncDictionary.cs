@@ -3,6 +3,7 @@ using PurrNet.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet.Packing;
 using PurrNet.Transports;
 
 namespace PurrNet
@@ -159,6 +160,9 @@ namespace PurrNet
         public override void OnSpawnSent()
         {
             if (isServer || !IsController(_ownerAuth))
+                return;
+
+            if (!_isDirty && _initialSerializedDict.Matches(_dict))
                 return;
 
             SendInitialStateToServer(_dict);
@@ -624,6 +628,31 @@ namespace PurrNet
             var dict = new Dictionary<TKey, TValue>(keys.Count);
             CopyTo(dict);
             return dict;
+        }
+
+        public bool Matches(Dictionary<TKey, TValue> dict)
+        {
+            if (!isKeySerializable || !isValueSerializable)
+                return false;
+
+            int count = Mathf.Min(keys.Count, values.Count);
+
+            if (dict.Count != count)
+                return false;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (keys[i] == null)
+                    return false;
+
+                if (!dict.TryGetValue(keys[i], out var value))
+                    return false;
+
+                if (!PurrEquality<TValue>.Equals(value, values[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         public void CopyTo(Dictionary<TKey, TValue> dict)

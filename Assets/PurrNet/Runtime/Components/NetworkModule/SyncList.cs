@@ -187,9 +187,26 @@ namespace PurrNet
             _list.AddRange(_initialList);
         }
 
+        private bool MatchesInitialList()
+        {
+            if (_list.Count != _initialList.Count)
+                return false;
+
+            for (int i = 0; i < _list.Count; i++)
+            {
+                if (!PurrEquality<T>.Equals(_list[i], _initialList[i]))
+                    return false;
+            }
+
+            return true;
+        }
+
         public override void OnSpawnSent()
         {
             if (isServer || !IsController(_ownerAuth))
+                return;
+
+            if (!_isDirty && MatchesInitialList())
                 return;
 
             SendInitialStateToServer(_list);
