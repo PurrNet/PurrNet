@@ -68,9 +68,7 @@ namespace PurrNet
                 return null;
             }
 
-            if (parent)
-                return UnityProxy.Instantiate(localData.prefab, position, rotation, parent);
-            return UnityProxy.Instantiate(localData.prefab, position, rotation);
+            return InstantiateAndSpawnAddressable(localData.prefab, position, rotation, parent);
         }
 
         public async Task<GameObject> SpawnAddressableAsync(
@@ -109,15 +107,32 @@ namespace PurrNet
                     return null;
                 }
 
-                if (parent)
-                    return UnityProxy.Instantiate(prefabData.prefab, position, rotation, parent);
-                return UnityProxy.Instantiate(prefabData.prefab, position, rotation);
+                return InstantiateAndSpawnAddressable(prefabData.prefab, position, rotation, parent);
             }
             catch (Exception e)
             {
                 PurrLogger.LogError($"SpawnAddressableAsync failed for GUID '{assetGuid}': {e.Message}\n{e.StackTrace}");
                 return null;
             }
+        }
+
+        private GameObject InstantiateAndSpawnAddressable(
+            GameObject prefab,
+            Vector3 position,
+            Quaternion rotation,
+            Transform parent)
+        {
+            var instance = parent
+                ? UnityProxy.Instantiate(prefab, position, rotation, parent)
+                : UnityProxy.Instantiate(prefab, position, rotation);
+
+            if (!instance)
+                return null;
+
+            if (instance.TryGetComponent(out NetworkIdentity identity) && !identity.IsSpawned(isServer))
+                Spawn(instance);
+
+            return instance;
         }
 
         /// <summary>
