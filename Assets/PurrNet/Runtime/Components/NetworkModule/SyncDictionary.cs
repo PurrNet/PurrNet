@@ -3,6 +3,7 @@ using PurrNet.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet.Packing;
 using PurrNet.Transports;
 
 namespace PurrNet
@@ -155,20 +156,26 @@ namespace PurrNet
         {
             _initialSerializedDict.CopyTo(_dict);
         }
-
-        public override void OnSpawn()
+        
+        public override void OnSpawnSent()
         {
-            base.OnSpawn();
+            if (isServer || !IsController(_ownerAuth))
+                return;
 
-            if (!IsController(_ownerAuth)) return;
+            if (!_isDirty && _initialSerializedDict.Matches(_dict))
+                return;
 
-            if (isServer)
-                SendInitialStateToAll(_dict);
-            else SendInitialStateToServer(_dict);
+            SendInitialStateToServer(_dict);
+            _pendingChanges.Clear();
+            _isDirty = false;
+            _wasLastDirty = false;
         }
 
-        public override void OnObserverAdded(PlayerID player)
+        public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
+            if (isSpawner && ownerAuth && owner == player)
+                return;
+
             HandleInitialStateTarget(player, _dict);
         }
 
@@ -621,6 +628,31 @@ namespace PurrNet
             var dict = new Dictionary<TKey, TValue>(keys.Count);
             CopyTo(dict);
             return dict;
+        }
+
+        public bool Matches(Dictionary<TKey, TValue> dict)
+        {
+            if (!isKeySerializable || !isValueSerializable)
+                return false;
+
+            int count = Mathf.Min(keys.Count, values.Count);
+
+            if (dict.Count != count)
+                return false;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (keys[i] == null)
+                    return false;
+
+                if (!dict.TryGetValue(keys[i], out var value))
+                    return false;
+
+                if (!PurrEquality<TValue>.Equals(value, values[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         public void CopyTo(Dictionary<TKey, TValue> dict)

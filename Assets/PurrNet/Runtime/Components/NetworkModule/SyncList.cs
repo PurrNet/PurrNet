@@ -187,17 +187,39 @@ namespace PurrNet
             _list.AddRange(_initialList);
         }
 
-        public override void OnSpawn()
+        private bool MatchesInitialList()
         {
-            if (!IsController(_ownerAuth)) return;
+            if (_list.Count != _initialList.Count)
+                return false;
 
-            if (isServer)
-                SendInitialStateToAll(_list);
-            else SendInitialStateToServer(_list);
+            for (int i = 0; i < _list.Count; i++)
+            {
+                if (!PurrEquality<T>.Equals(_list[i], _initialList[i]))
+                    return false;
+            }
+
+            return true;
         }
 
-        public override void OnObserverAdded(PlayerID player)
+        public override void OnSpawnSent()
         {
+            if (isServer || !IsController(_ownerAuth))
+                return;
+
+            if (!_isDirty && MatchesInitialList())
+                return;
+
+            SendInitialStateToServer(_list);
+            _pendingChanges.Clear();
+            _isDirty = false;
+            _wasLastDirty = false;
+        }
+
+        public override void OnObserverAdded(PlayerID player, bool isSpawner)
+        {
+            if (isSpawner && ownerAuth && owner == player)
+                return;
+
             SendInitialToTarget(player, _list);
         }
 
