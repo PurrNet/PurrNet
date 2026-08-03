@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28e93bf2b6064364aa5fd430134916ac, type: 3}
   m_Name: TopDownShooter_Rules
   m_EditorClassIdentifier: 
+  _rulesVersion: 1
   _hostMigrationRules:
     migrateAsHost: 1
     sharePlayerCookiesWithPeers: 1
@@ -22,6 +23,9 @@ MonoBehaviour:
     propagateOwnershipByDefault: 1
     despawnIfOwnerDisconnects: 0
     cleanupSpawnedObjects: 1
+    includeInstantiatedSceneObjects: 0
+    autoSpawnOnInstantiate: 0
+    autoSpawnOnInstantiateAsync: 0
   _defaultRpcRules:
     ignoreRequireServerAttribute: 1
     ignoreRequireOwnerAttribute: 1
@@ -44,3 +48,8 @@ MonoBehaviour:
     changeParentAuth: -1
   _defaultMiscRules:
     syncedTickUpdateInterval: 1
+    versionMismatchBehaviour: 0
+  _addressableRules:
+    syncLoadState: 1
+    waitForLoadBeforeObserver: 1
+    releaseWhenLastDespawned: 1

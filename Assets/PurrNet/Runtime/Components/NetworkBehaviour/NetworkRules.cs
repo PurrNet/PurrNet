@@ -78,6 +78,14 @@ namespace PurrNet
 
         [Tooltip("Include runtime-instantiated scene objects when collecting scene identities")]
         public bool includeInstantiatedSceneObjects;
+
+        [Tooltip("Automatically spawn network prefabs created through Instantiate. " +
+                 "Disable to spawn them yourself with Spawn()")]
+        public bool autoSpawnOnInstantiate;
+
+        [Tooltip("Automatically spawn network prefabs created through InstantiateAsync. " +
+                 "Disable to spawn them yourself with Spawn()")]
+        public bool autoSpawnOnInstantiateAsync;
     }
 
     [Serializable]
@@ -179,8 +187,13 @@ namespace PurrNet
 #endif
 
     [CreateAssetMenu(fileName = "NetworkRules", menuName = "PurrNet/Network Rules", order = -201)]
-    public class NetworkRules : ScriptableObject
+    public class NetworkRules : ScriptableObject, ISerializationCallbackReceiver
     {
+        private const int CURRENT_RULES_VERSION = 1;
+
+        [SerializeField, HideInInspector]
+        private int _rulesVersion = CURRENT_RULES_VERSION;
+
         [SerializeField]
         private HostMigrationRules _hostMigrationRules = new HostMigrationRules
         {
@@ -196,7 +209,9 @@ namespace PurrNet
             propagateOwnershipByDefault = true,
             despawnIfOwnerDisconnects = true,
             cleanupSpawnedObjects = true,
-            includeInstantiatedSceneObjects = false
+            includeInstantiatedSceneObjects = false,
+            autoSpawnOnInstantiate = true,
+            autoSpawnOnInstantiateAsync = true
         };
 
         [SerializeField]
@@ -261,6 +276,19 @@ namespace PurrNet
         public bool AddressablesWaitForLoadBeforeObserver => _addressableRules.waitForLoadBeforeObserver;
         public bool AddressablesReleaseWhenLastDespawned => _addressableRules.releaseWhenLastDespawned;
 #endif
+
+        public void OnBeforeSerialize() { }
+
+        public void OnAfterDeserialize()
+        {
+            if (_rulesVersion < 1)
+            {
+                _defaultSpawnRules.autoSpawnOnInstantiate = true;
+                _defaultSpawnRules.autoSpawnOnInstantiateAsync = true;
+            }
+
+            _rulesVersion = CURRENT_RULES_VERSION;
+        }
 
         public bool HasDespawnAuthority(NetworkIdentity identity, PlayerID player, bool asServer)
         {
@@ -403,6 +431,16 @@ namespace PurrNet
         public bool ShouldIncludeInstantiatedSceneObjects()
         {
             return _defaultSpawnRules.includeInstantiatedSceneObjects;
+        }
+
+        public bool ShouldAutoSpawnOnInstantiate()
+        {
+            return _defaultSpawnRules.autoSpawnOnInstantiate;
+        }
+
+        public bool ShouldAutoSpawnOnInstantiateAsync()
+        {
+            return _defaultSpawnRules.autoSpawnOnInstantiateAsync;
         }
     }
 }

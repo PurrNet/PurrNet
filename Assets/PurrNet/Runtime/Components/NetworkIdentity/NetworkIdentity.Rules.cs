@@ -171,6 +171,16 @@ namespace PurrNet
             return rules && rules.ShouldClientGiveOwnershipOnSpawn();
         }
 
+        public bool ShouldAutoSpawnOnInstantiate(NetworkManager manager, bool isAsync)
+        {
+            var rules = GetNetworkRules(manager);
+
+            if (!rules)
+                return true;
+
+            return isAsync ? rules.ShouldAutoSpawnOnInstantiateAsync() : rules.ShouldAutoSpawnOnInstantiate();
+        }
+
         public bool ShouldPlayRPCsWhenDisabled()
         {
             var rules = networkRules;

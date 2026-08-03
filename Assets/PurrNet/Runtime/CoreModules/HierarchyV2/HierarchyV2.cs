@@ -2614,7 +2614,18 @@ namespace PurrNet.Modules
 
             NetworkManager.SetupPrefabInfo(obj, data.prefabId, data.pooled);
 
+            if (!ShouldAutoSpawn(obj, false))
+                return;
+
             InternalSpawn(obj);
+        }
+
+        private bool ShouldAutoSpawn(GameObject obj, bool isAsync)
+        {
+            if (!obj.TryGetComponent<NetworkIdentity>(out var identity))
+                return true;
+
+            return identity.ShouldAutoSpawnOnInstantiate(_manager, isAsync);
         }
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
@@ -2639,6 +2650,9 @@ namespace PurrNet.Modules
             // registered prefab is normally poolable.
             _hasConfiguredPoolBypass = true;
             NetworkManager.SetupPrefabInfo(obj, data.prefabId, false);
+
+            if (!ShouldAutoSpawn(obj, true))
+                return;
 
             if (!HasMatchingAsyncNetworkShape(data.prefab, obj, out var mismatch))
             {
