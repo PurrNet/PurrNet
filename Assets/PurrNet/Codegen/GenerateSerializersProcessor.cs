@@ -113,6 +113,8 @@ namespace PurrNet.Codegen
             if (!PostProcessor.IsTypeInOwnModule(type, assembly.MainModule))
                 return;
 
+            RegisterSerializersProcessor.EnsureCoreClrAccessible(type, assembly.MainModule);
+
             var resolvedType = type.Resolve();
             if (resolvedType == null)
                 return;

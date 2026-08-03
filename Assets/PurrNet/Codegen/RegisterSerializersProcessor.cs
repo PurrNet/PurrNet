@@ -100,6 +100,31 @@ namespace PurrNet.Codegen
             public MethodDefinition method;
         }
 
+        public static void EnsureCoreClrAccessible(TypeReference typeRef, ModuleDefinition module)
+        {
+            switch (typeRef)
+            {
+                case null: return;
+                case GenericInstanceType git:
+                    EnsureCoreClrAccessible(git.ElementType, module);
+                    foreach (var arg in git.GenericArguments)
+                        EnsureCoreClrAccessible(arg, module);
+                    return;
+                case ByReferenceType byRef: EnsureCoreClrAccessible(byRef.ElementType, module); return;
+                case ArrayType arr:         EnsureCoreClrAccessible(arr.ElementType, module);   return;
+                case PointerType ptr:       EnsureCoreClrAccessible(ptr.ElementType, module);   return;
+            }
+
+            var resolved = typeRef.Resolve();
+
+            while (resolved != null && resolved.IsNested && resolved.Module == module)
+            {
+                if (!resolved.IsNestedPublic)
+                    resolved.IsNestedPublic = true;
+                resolved = resolved.DeclaringType?.Resolve();
+            }
+        }
+
         public static void HandleType(TypeReference actualType, ModuleDefinition module, TypeDefinition type,
             HashSet<TypeReference> toIgnoreForDelta, HashSet<TypeReference> toIgnoreForSerialization)
         {
@@ -228,6 +253,7 @@ namespace PurrNet.Codegen
             for (int i = 0; i < writeTypes.Count; i++)
             {
                 var writeType = writeTypes[i];
+                EnsureCoreClrAccessible(writeType.type, module);
                 var writeMethod = writeType.method.Import(module);
                 var resolved = writeMethod.Resolve();
                 resolved.IsPublic = true;
@@ -320,6 +346,8 @@ namespace PurrNet.Codegen
                 {
                     typeArgument = byRefType.ElementType; // Use the base type (e.g., int from ref int)
                 }
+
+                EnsureCoreClrAccessible(typeArgument, module);
 
                 var packerType = module.GetTypeDefinition(typeof(Packer<>)).Import(module);
                 var deltaPackerType = module.GetTypeDefinition(typeof(DeltaPacker<>)).Import(module);
