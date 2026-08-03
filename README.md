@@ -6,8 +6,10 @@ PurrNet is our attempt at the purrfect networking solution... It's a 100% free U
 You can use it to release, and we ask nothing in return! Read the Unique to PurrNet section to see what we offer above other solutions!
 
 Website: https://purrnet.dev/
+
 Docs: https://purrnet.dev/docs  
-Docs (source): https://github.com/BlenMiner/PurrNet-Docs
+
+Docs (source): https://github.com/PurrNet/PurrDocs
 
 ## Install
 
