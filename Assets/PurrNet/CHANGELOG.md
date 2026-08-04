@@ -1,3 +1,10 @@
+# [1.22.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.15...v1.22.0-beta.16) (2026-08-04)
+
+
+### Bug Fixes
+
+* Name clash of network prefabs ([b30c2fe](https://github.com/PurrNet/PurrNet/commit/b30c2feb21da3a4792ef2a8298b422b5a4e4a059))
+
 # [1.22.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.14...v1.22.0-beta.15) (2026-08-03)
 
 
