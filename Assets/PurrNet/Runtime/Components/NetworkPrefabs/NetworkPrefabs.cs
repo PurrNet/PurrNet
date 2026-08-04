@@ -56,36 +56,7 @@ namespace PurrNet
                 }
             }
 
-            // Fallback: match by name for addressable bundle-loaded prefabs
-            // where the reference is a different instance than the registered one
-            var prefabName = prefab ? prefab.name : null;
-            if (prefabName != null)
-            {
-                PrefabData? candidate = null;
-                bool ambiguous = false;
-
-                foreach (var data in this.allPrefabs)
-                {
-                    if (data.prefab && data.prefab.name == prefabName)
-                    {
-                        if (candidate.HasValue)
-                        {
-                            ambiguous = true;
-                            break;
-                        }
-                        candidate = data;
-                    }
-                }
-
-                if (candidate.HasValue && !ambiguous)
-                {
-                    prefabData = candidate.Value;
-                    return true;
-                }
-            }
-
-            prefabData = default;
-            return false;
+            return TryMatchByName(this.allPrefabs, prefab, out prefabData);
         }
 
         public bool TryGetPersistentId(int prefabId, out string persistentId)

@@ -103,36 +103,7 @@ namespace PurrNet
                 }
             }
 
-            // Fallback: match by name for addressable bundle-loaded prefabs
-            // where the reference is a different instance than the registered one
-            var prefabName = prefab ? prefab.name : null;
-            if (prefabName != null)
-            {
-                PrefabData? candidate = null;
-                bool ambiguous = false;
-
-                foreach (var data in _prefabLookup.Values)
-                {
-                    if (data.prefab && data.prefab.name == prefabName)
-                    {
-                        if (candidate.HasValue)
-                        {
-                            ambiguous = true;
-                            break;
-                        }
-                        candidate = data;
-                    }
-                }
-
-                if (candidate.HasValue && !ambiguous)
-                {
-                    prefabData = candidate.Value;
-                    return true;
-                }
-            }
-
-            prefabData = default;
-            return false;
+            return TryMatchByName(_prefabLookup.Values, prefab, out prefabData);
         }
 
         public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)
