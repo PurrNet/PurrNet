@@ -97,6 +97,34 @@ public class NetworkPrefabsLookupTests
     }
 
     [Test]
+    public void UnregisteredNetworkedPrefabSharingNameIsNotResolved()
+    {
+        var provider = CreateProvider();
+        var registered = CreateNetworkedPrefab(SHARED_NAME);
+        provider.AddRuntimePrefab("registered", registered);
+
+        var unrelated = CreateNetworkedPrefab(SHARED_NAME);
+
+        Assert.That(provider.TryGetPrefabData(unrelated, out var data), Is.False,
+            $"An unregistered networked prefab resolved to `{data.prefab}` purely because of a name collision.");
+    }
+
+    [Test]
+    public void BundleCopyResolvesEvenWhenAnotherPrefabSharesTheName()
+    {
+        var provider = CreateProvider();
+        var registeredA = CreateNetworkedPrefab(SHARED_NAME);
+        var registeredB = CreateNetworkedPrefab(SHARED_NAME);
+        provider.AddRuntimePrefab("registered-a", registeredA);
+        provider.AddRuntimePrefab("registered-b", registeredB);
+
+        var bundleCopyOfA = CreateNetworkedPrefab(SHARED_NAME);
+
+        Assert.That(provider.TryGetPrefabData(bundleCopyOfA, out var data), Is.True);
+        Assert.That(data.prefab, Is.EqualTo(registeredA));
+    }
+
+    [Test]
     public void AmbiguousNameIsNotResolved()
     {
         var provider = CreateProvider();
