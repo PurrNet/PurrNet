@@ -28,7 +28,14 @@ public class NetworkAssetsScenario : Scenario
 
     void CreateAssets(NetworkManager manager)
     {
-        var na = ScriptableObject.CreateInstance<NetworkAssets>();
+        var na = manager.networkAssets;
+
+        if (!na)
+        {
+            na = ScriptableObject.CreateInstance<NetworkAssets>();
+            manager.networkAssets = na;
+        }
+
         var linked = ScriptableObject.CreateInstance<NetworkAssets>();
 
         _so = ScriptableObject.CreateInstance<NetworkAssetTestSO>();
@@ -45,8 +52,6 @@ public class NetworkAssetsScenario : Scenario
         linked.AddAsset(_tex);
         na.linkedNetworkAssets.Add(linked);
         na.Refresh();
-
-        manager.networkAssets = na;
 
         NetworkAssetCarrier.SerializeAsset = _so;
     }
