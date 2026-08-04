@@ -1,3 +1,10 @@
+# [1.22.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.16...v1.22.0-beta.17) (2026-08-04)
+
+
+### Bug Fixes
+
+* Inspector inconsistency for Odin support ([babe1f8](https://github.com/PurrNet/PurrNet/commit/babe1f8609b2022063482d6be5a1c7568c3925f9))
+
 # [1.22.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.15...v1.22.0-beta.16) (2026-08-04)
 
 
