@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using PurrNet.Pooling;
 using UnityEngine;
 
 namespace PurrNet
@@ -57,6 +58,51 @@ namespace PurrNet
 
     public abstract class PrefabProviderScriptable : ScriptableObject, IPrefabProvider
     {
+        protected static bool TryMatchByName(IEnumerable<PrefabData> candidates, GameObject prefab,
+            out PrefabData prefabData)
+        {
+            prefabData = default;
+
+            if (!prefab)
+                return false;
+
+            var prefabName = prefab.name;
+            int identityCount = -1;
+            bool found = false;
+
+            foreach (var data in candidates)
+            {
+                if (!data.prefab || data.prefab.name != prefabName)
+                    continue;
+
+                if (identityCount < 0)
+                    identityCount = CountIdentities(prefab);
+
+                if (CountIdentities(data.prefab) != identityCount)
+                    continue;
+
+                if (found)
+                    return false;
+
+                prefabData = data;
+                found = true;
+            }
+
+            if (!found)
+                prefabData = default;
+
+            return found;
+        }
+
+        static int CountIdentities(GameObject prefab)
+        {
+            var identities = ListPool<NetworkIdentity>.Instantiate();
+            prefab.GetComponentsInChildren(true, identities);
+            int count = identities.Count;
+            ListPool<NetworkIdentity>.Destroy(identities);
+            return count;
+        }
+
         public abstract IEnumerable<PrefabData> allPrefabs { get; }
 
         public abstract bool TryGetPrefabData(int prefabId, out PrefabData prefabData);

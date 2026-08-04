@@ -1,3 +1,60 @@
+# [1.22.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.17...v1.22.0-beta.18) (2026-08-04)
+
+
+### Bug Fixes
+
+* Prefab lookup ([b37ccc2](https://github.com/PurrNet/PurrNet/commit/b37ccc265d810b7a269a5771e5fcdfd404b6872f))
+
+# [1.22.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.16...v1.22.0-beta.17) (2026-08-04)
+
+
+### Bug Fixes
+
+* Inspector inconsistency for Odin support ([babe1f8](https://github.com/PurrNet/PurrNet/commit/babe1f8609b2022063482d6be5a1c7568c3925f9))
+
+# [1.22.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.15...v1.22.0-beta.16) (2026-08-04)
+
+
+### Bug Fixes
+
+* Name clash of network prefabs ([b30c2fe](https://github.com/PurrNet/PurrNet/commit/b30c2feb21da3a4792ef2a8298b422b5a4e4a059))
+
+# [1.22.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.14...v1.22.0-beta.15) (2026-08-03)
+
+
+### Bug Fixes
+
+* Generate on assets saves properly ([1701013](https://github.com/PurrNet/PurrNet/commit/1701013631660caa3a1d829dd01c16b7a6415510))
+
+# [1.22.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.13...v1.22.0-beta.14) (2026-08-03)
+
+
+### Bug Fixes
+
+* Codegen CoreCLR cleanup ([a04ab68](https://github.com/PurrNet/PurrNet/commit/a04ab6878901a0f04c53e65fe3e161856b449913))
+* **codegen:** make serializer registration CoreCLR-safe ([857d158](https://github.com/PurrNet/PurrNet/commit/857d15824820b9e9e5cb3ab21a2d45e0d2ebd7d4))
+
+# [1.22.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.12...v1.22.0-beta.13) (2026-08-03)
+
+
+### Bug Fixes
+
+* Sync dictionary and list initial packet match check ([8300ef7](https://github.com/PurrNet/PurrNet/commit/8300ef708b608f6817d518386ae331a6860227ac))
+
+# [1.22.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.11...v1.22.0-beta.12) (2026-08-03)
+
+
+### Bug Fixes
+
+* Make sync input utilize Immediate data ([08ec4b0](https://github.com/PurrNet/PurrNet/commit/08ec4b0315b66daec987550547133f90cdb57fdd))
+
+# [1.22.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.10...v1.22.0-beta.11) (2026-08-01)
+
+
+### Bug Fixes
+
+* undo value behavior of disposable collections ([ac744fa](https://github.com/PurrNet/PurrNet/commit/ac744fae020357d342b719d288dec2c84aa694a4))
+
 # [1.22.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.9...v1.22.0-beta.10) (2026-07-30)
 
 

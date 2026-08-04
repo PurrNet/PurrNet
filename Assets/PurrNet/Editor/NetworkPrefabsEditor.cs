@@ -180,8 +180,9 @@ namespace PurrNet
             SharedAssetEditorUI.DrawGenerateButton(() =>
             {
                 networkPrefabs.Generate();
-                serializedObject.ApplyModifiedProperties();
+                serializedObject.Update();
                 prefabs = serializedObject.FindProperty("prefabs");
+                reorderableList.serializedProperty = prefabs;
                 UpdateAllPoolingState();
             });
 
@@ -211,8 +212,9 @@ namespace PurrNet
                 if (networkPrefabs.autoGenerate)
                 {
                     networkPrefabs.Generate();
-                    serializedObject.ApplyModifiedProperties();
+                    serializedObject.Update();
                     prefabs = serializedObject.FindProperty("prefabs");
+                    reorderableList.serializedProperty = prefabs;
                     UpdateAllPoolingState();
                 }
             });

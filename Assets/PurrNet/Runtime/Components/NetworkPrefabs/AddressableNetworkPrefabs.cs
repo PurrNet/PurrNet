@@ -40,6 +40,7 @@ namespace PurrNet
         private readonly Dictionary<int, string> _idToGuid = new();
         private readonly List<AsyncOperationHandle<GameObject>> _loadHandles = new();
         private readonly List<RuntimePrefabEntry> _runtimePrefabs = new();
+        private readonly HashSet<string> _warnedNameFallbacks = new();
         private int _runtimePrefabStartId;
 
         private struct RuntimePrefabEntry
@@ -103,36 +104,17 @@ namespace PurrNet
                 }
             }
 
-            // Fallback: match by name for addressable bundle-loaded prefabs
-            // where the reference is a different instance than the registered one
-            var prefabName = prefab ? prefab.name : null;
-            if (prefabName != null)
+            if (!TryMatchByName(_prefabLookup.Values, prefab, out prefabData))
+                return false;
+
+            if (_warnedNameFallbacks.Add(prefab.name))
             {
-                PrefabData? candidate = null;
-                bool ambiguous = false;
-
-                foreach (var data in _prefabLookup.Values)
-                {
-                    if (data.prefab && data.prefab.name == prefabName)
-                    {
-                        if (candidate.HasValue)
-                        {
-                            ambiguous = true;
-                            break;
-                        }
-                        candidate = data;
-                    }
-                }
-
-                if (candidate.HasValue && !ambiguous)
-                {
-                    prefabData = candidate.Value;
-                    return true;
-                }
+                PurrLogger.LogWarning(
+                    $"Resolved addressable network prefab `{prefab.name}` by name because the given reference isn't the registered one.\n" +
+                    "This happens when the same asset is duplicated across bundles; fix the Addressables group setup to avoid spawning the wrong prefab.");
             }
 
-            prefabData = default;
-            return false;
+            return true;
         }
 
         public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)

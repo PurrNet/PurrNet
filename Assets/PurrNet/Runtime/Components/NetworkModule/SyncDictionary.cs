@@ -3,6 +3,7 @@ using PurrNet.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using PurrNet.Packing;
 using PurrNet.Transports;
 
 namespace PurrNet
@@ -142,6 +143,10 @@ namespace PurrNet
 
         public void OnAfterDeserialize()
         {
+            _dict ??= new Dictionary<TKey, TValue>();
+            _serializedDict ??= new SerializableDictionary<TKey, TValue>();
+            _initialSerializedDict ??= new SerializableDictionary<TKey, TValue>();
+
             _serializedDict.CopyTo(_dict);
             CacheInitialDict();
         }
@@ -155,20 +160,26 @@ namespace PurrNet
         {
             _initialSerializedDict.CopyTo(_dict);
         }
-
-        public override void OnSpawn()
+        
+        public override void OnSpawnSent()
         {
-            base.OnSpawn();
+            if (isServer || !IsController(_ownerAuth))
+                return;
 
-            if (!IsController(_ownerAuth)) return;
+            if (!_isDirty && _initialSerializedDict.Matches(_dict))
+                return;
 
-            if (isServer)
-                SendInitialStateToAll(_dict);
-            else SendInitialStateToServer(_dict);
+            SendInitialStateToServer(_dict);
+            _pendingChanges.Clear();
+            _isDirty = false;
+            _wasLastDirty = false;
         }
 
-        public override void OnObserverAdded(PlayerID player)
+        public override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
+            if (isSpawner && ownerAuth && owner == player)
+                return;
+
             HandleInitialStateTarget(player, _dict);
         }
 
@@ -607,13 +618,18 @@ namespace PurrNet
         [SerializeField] private List<string> stringKeys = new List<string>();
         [SerializeField] private List<string> stringValues = new List<string>();
 
-        private bool isKeySerializable;
-        private bool isValueSerializable;
+        private static readonly bool isKeySerializable =
+            typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
 
-        public SerializableDictionary()
+        private static readonly bool isValueSerializable =
+            typeof(TValue).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
+
+        private void EnsureLists()
         {
-            isKeySerializable = typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
-            isValueSerializable = typeof(TValue).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
+            keys ??= new List<TKey>();
+            values ??= new List<TValue>();
+            stringKeys ??= new List<string>();
+            stringValues ??= new List<string>();
         }
 
         public Dictionary<TKey, TValue> ToDictionary()
@@ -623,8 +639,39 @@ namespace PurrNet
             return dict;
         }
 
+        public bool Matches(Dictionary<TKey, TValue> dict)
+        {
+            if (!isKeySerializable || !isValueSerializable)
+                return false;
+
+            EnsureLists();
+
+            int count = Mathf.Min(keys.Count, values.Count);
+
+            if (dict.Count != count)
+                return false;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (keys[i] == null)
+                    return false;
+
+                if (!dict.TryGetValue(keys[i], out var value))
+                    return false;
+
+                if (!PurrEquality<TValue>.Equals(value, values[i]))
+                    return false;
+            }
+
+            return true;
+        }
+
         public void CopyTo(Dictionary<TKey, TValue> dict)
         {
+            if (dict == null)
+                return;
+
+            EnsureLists();
             dict.Clear();
 
             if (isKeySerializable && isValueSerializable)
@@ -649,6 +696,10 @@ namespace PurrNet
 
         public void FromDictionary(Dictionary<TKey, TValue> dict)
         {
+            if (dict == null)
+                return;
+
+            EnsureLists();
             keys.Clear();
             values.Clear();
             stringKeys.Clear();

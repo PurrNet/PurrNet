@@ -27,6 +27,9 @@ namespace PurrNet.Codegen
 
         public static bool HasDuplicateInterface(TypeReference def)
         {
+            if (def is ArrayType || def is PointerType || def is ByReferenceType)
+                return false;
+
             var resolved = def.Resolve();
             return resolved != null && HasDuplicateInterface(resolved);
         }
