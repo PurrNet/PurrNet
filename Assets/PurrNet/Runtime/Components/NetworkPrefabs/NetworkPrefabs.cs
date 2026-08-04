@@ -56,7 +56,8 @@ namespace PurrNet
                 }
             }
 
-            return TryMatchByName(this.allPrefabs, prefab, out prefabData);
+            prefabData = default;
+            return false;
         }
 
         public bool TryGetPersistentId(int prefabId, out string persistentId)
