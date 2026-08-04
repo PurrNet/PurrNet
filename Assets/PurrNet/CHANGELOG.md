@@ -1,3 +1,22 @@
+# [1.22.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.18...v1.22.0-beta.19) (2026-08-04)
+
+
+### Bug Fixes
+
+* Async instantiation proper versioning support ([c8adfd8](https://github.com/PurrNet/PurrNet/commit/c8adfd8b8f6037aff459217e99e91bfb0d0410fe))
+* handle late async spawn confirmations ([b23c031](https://github.com/PurrNet/PurrNet/commit/b23c031fbea81ed560f68f7804294f1754dbb1dd))
+* hierarchy traversal optimization ([da7dee1](https://github.com/PurrNet/PurrNet/commit/da7dee18b3c22b0a90cbf63ffe21e5888dd9b3dd))
+* more async instantiation overloads ([606d231](https://github.com/PurrNet/PurrNet/commit/606d23126f8680c47531ae2e924e5bb483a55a80))
+* Opt out of auto spawning ([f25ce91](https://github.com/PurrNet/PurrNet/commit/f25ce919ab87df8eb9166f678930f866635d605f))
+* Player spawner introduced inconsistency ([787320e](https://github.com/PurrNet/PurrNet/commit/787320e92bdf908f903bc917b16af032b111418e))
+* PlayerSpawner makes up for opt-out auto spawning ([afd734b](https://github.com/PurrNet/PurrNet/commit/afd734bd1773a02efbeee69994ffc3ae68ae0194))
+* validate serializer method return types ([e0fddd7](https://github.com/PurrNet/PurrNet/commit/e0fddd7fdf7936f730db30ff7c22cfe4e576553a))
+
+
+### Features
+
+* async instantiation ([365df09](https://github.com/PurrNet/PurrNet/commit/365df0965b7c51f3211186eaa4fcb2966f2235ed))
+
 # [1.22.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.17...v1.22.0-beta.18) (2026-08-04)
 
 
