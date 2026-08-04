@@ -1686,12 +1686,21 @@ namespace PurrNet.Modules
             }
 
             int prefabId = state.packet.prototype.framework[0].pid.prefabId;
-            NetworkManager.SetupPrefabInfo(result, prefabId, false);
-            if (!HasMatchingAsyncNetworkShape(prefab, result, out var mismatch))
+            var identities = ListPool<NetworkIdentity>.Instantiate();
+            try
             {
-                ReportAsyncShapeMismatch(prefab, result, mismatch);
-                FailPendingAsyncInstantiation(rootId, state, result);
-                return;
+                result.GetComponentsInChildren(true, identities);
+                NetworkManager.SetupPrefabInfo(result, prefabId, false, identities);
+                if (!HasMatchingAsyncNetworkShape(prefab, result, identities, out var mismatch))
+                {
+                    ReportAsyncShapeMismatch(prefab, result, mismatch);
+                    FailPendingAsyncInstantiation(rootId, state, result);
+                    return;
+                }
+            }
+            finally
+            {
+                ListPool<NetworkIdentity>.Destroy(identities);
             }
 
             state.result = result;
@@ -2649,15 +2658,25 @@ namespace PurrNet.Modules
             // Async-origin instances are never allowed into PurrNet's pool, even when the
             // registered prefab is normally poolable.
             _hasConfiguredPoolBypass = true;
-            NetworkManager.SetupPrefabInfo(obj, data.prefabId, false);
 
-            if (!ShouldAutoSpawn(obj, true))
-                return;
-
-            if (!HasMatchingAsyncNetworkShape(data.prefab, obj, out var mismatch))
+            var identities = ListPool<NetworkIdentity>.Instantiate();
+            try
             {
-                ReportAsyncShapeMismatch(data.prefab, obj, mismatch);
-                return;
+                obj.GetComponentsInChildren(true, identities);
+                NetworkManager.SetupPrefabInfo(obj, data.prefabId, false, identities);
+
+                if (!ShouldAutoSpawn(obj, true))
+                    return;
+
+                if (!HasMatchingAsyncNetworkShape(data.prefab, obj, identities, out var mismatch))
+                {
+                    ReportAsyncShapeMismatch(data.prefab, obj, mismatch);
+                    return;
+                }
+            }
+            finally
+            {
+                ListPool<NetworkIdentity>.Destroy(identities);
             }
 
             InternalSpawn(obj, true);
@@ -3391,13 +3410,26 @@ namespace PurrNet.Modules
         }
 
         private static readonly HashSet<int> _reportedAsyncShapeMismatches = new();
+        private static readonly Dictionary<int, List<AsyncNetworkShapeEntry>> _cachedPrefabAsyncShapes = new();
 
-        private static bool HasMatchingAsyncNetworkShape(GameObject prefab, GameObject instance, out string mismatch)
+        private static List<AsyncNetworkShapeEntry> GetPrefabAsyncNetworkShape(GameObject prefab)
         {
-            var expected = new List<AsyncNetworkShapeEntry>();
+            int key = prefab.GetInstanceID();
+            if (_cachedPrefabAsyncShapes.TryGetValue(key, out var shape))
+                return shape;
+
+            shape = new List<AsyncNetworkShapeEntry>();
+            CaptureAsyncNetworkShape(prefab, shape);
+            _cachedPrefabAsyncShapes[key] = shape;
+            return shape;
+        }
+
+        private static bool HasMatchingAsyncNetworkShape(GameObject prefab, GameObject instance,
+            List<NetworkIdentity> instanceIdentities, out string mismatch)
+        {
+            var expected = GetPrefabAsyncNetworkShape(prefab);
             var actual = new List<AsyncNetworkShapeEntry>();
-            CaptureAsyncNetworkShape(prefab, expected);
-            CaptureAsyncNetworkShape(instance, actual);
+            CaptureAsyncNetworkShape(instance, instanceIdentities, actual);
 
             if (expected.Count != actual.Count)
             {
@@ -3428,6 +3460,18 @@ namespace PurrNet.Modules
 
             var identities = ListPool<NetworkIdentity>.Instantiate();
             root.GetComponentsInChildren(true, identities);
+            CaptureAsyncNetworkShape(root, identities, result);
+            ListPool<NetworkIdentity>.Destroy(identities);
+        }
+
+        private static void CaptureAsyncNetworkShape(GameObject root, List<NetworkIdentity> identities,
+            List<AsyncNetworkShapeEntry> result)
+        {
+            if (!root)
+                return;
+
+            Transform runTransform = null;
+            int runStart = 0;
 
             for (var i = 0; i < identities.Count; i++)
             {
@@ -3435,13 +3479,17 @@ namespace PurrNet.Modules
                 if (!identity)
                     continue;
 
-                var siblings = ListPool<NetworkIdentity>.Instantiate();
-                identity.gameObject.GetComponents(siblings);
-                int componentIndex = siblings.IndexOf(identity);
-                ListPool<NetworkIdentity>.Destroy(siblings);
+                var trs = identity.transform;
+                if (!ReferenceEquals(trs, runTransform))
+                {
+                    runTransform = trs;
+                    runStart = i;
+                }
+
+                int componentIndex = i - runStart;
 
                 var inversePath = ListPool<int>.Instantiate();
-                var current = identity.transform;
+                var current = trs;
                 while (current && current != root.transform)
                 {
                     inversePath.Add(current.GetSiblingIndex());
@@ -3455,8 +3503,6 @@ namespace PurrNet.Modules
 
                 result.Add(new AsyncNetworkShapeEntry(identity.GetType(), componentIndex, path));
             }
-
-            ListPool<NetworkIdentity>.Destroy(identities);
         }
 
         private static void ReportAsyncShapeMismatch(GameObject prefab, GameObject instance, string mismatch)
