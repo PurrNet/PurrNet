@@ -85,6 +85,11 @@
             "name": "Unity",
             "expression": "6000.0.33f1",
             "define": "PURRNET_UNITY_INSTANTIATE_ASYNC_PARAMETERS_CANCELLATION"
+        },
+        {
+            "name": "Unity",
+            "expression": "6000.0.33f1",
+            "define": "PURRNET_UNITY_INSTANTIATE_PARAMETERS"
         }
     ],
     "noEngineReferences": false
