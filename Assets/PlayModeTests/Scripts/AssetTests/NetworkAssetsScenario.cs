@@ -60,6 +60,12 @@ public class NetworkAssetsScenario : Scenario
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
+        if (!ctx.networkManager.prefabProvider.TryGetPrefabData(_prefab.gameObject, out var registeredData))
+            return ScenarioResult.Fail("registered prefab did not resolve by reference");
+
+        if (registeredData.prefab != _prefab.gameObject)
+            return ScenarioResult.Fail($"registered prefab resolved to `{registeredData.prefab}` instead of itself");
+
         if (ctx.isServer)
         {
             var inst = Instantiate(_prefab);
