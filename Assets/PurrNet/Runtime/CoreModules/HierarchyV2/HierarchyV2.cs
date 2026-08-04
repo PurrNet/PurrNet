@@ -370,6 +370,7 @@ namespace PurrNet.Modules
         {
             _enabled = false;
             ClearAsyncSpawnState();
+            _cachedPrefabAsyncShapes.Clear();
             _pendingLocalDespawnEchoes.Dispose();
             PurrNetGameObjectUtils.onGameObjectCreated -= OnGameObjectCreated;
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
@@ -3410,17 +3411,21 @@ namespace PurrNet.Modules
         }
 
         private static readonly HashSet<int> _reportedAsyncShapeMismatches = new();
-        private static readonly Dictionary<int, List<AsyncNetworkShapeEntry>> _cachedPrefabAsyncShapes = new();
+        private static readonly Dictionary<GameObject, List<AsyncNetworkShapeEntry>> _cachedPrefabAsyncShapes = new();
+
+        private static readonly List<AsyncNetworkShapeEntry> _emptyAsyncShape = new();
 
         private static List<AsyncNetworkShapeEntry> GetPrefabAsyncNetworkShape(GameObject prefab)
         {
-            int key = prefab.GetInstanceID();
-            if (_cachedPrefabAsyncShapes.TryGetValue(key, out var shape))
+            if (!prefab)
+                return _emptyAsyncShape;
+
+            if (_cachedPrefabAsyncShapes.TryGetValue(prefab, out var shape))
                 return shape;
 
             shape = new List<AsyncNetworkShapeEntry>();
             CaptureAsyncNetworkShape(prefab, shape);
-            _cachedPrefabAsyncShapes[key] = shape;
+            _cachedPrefabAsyncShapes[prefab] = shape;
             return shape;
         }
 
