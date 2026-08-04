@@ -120,12 +120,6 @@ public class StackedIdentityComponentIndexTests
 
     private static List<int> CaptureAsyncShapeComponentIndices(GameObject root)
     {
-        var entryType = typeof(HierarchyV2).GetNestedType("AsyncNetworkShapeEntry", BindingFlags.NonPublic);
-        Assert.IsNotNull(entryType, "AsyncNetworkShapeEntry was renamed or removed");
-
-        var listType = typeof(List<>).MakeGenericType(entryType);
-        var result = Activator.CreateInstance(listType);
-
         MethodInfo capture = null;
         var methods = typeof(HierarchyV2).GetMethods(BindingFlags.NonPublic | BindingFlags.Static);
 
@@ -136,18 +130,23 @@ public class StackedIdentityComponentIndexTests
 
             var parameters = methods[i].GetParameters();
             if (parameters.Length != 2 || parameters[0].ParameterType != typeof(GameObject) ||
-                parameters[1].ParameterType != listType)
+                !parameters[1].ParameterType.IsGenericType)
                 continue;
 
             capture = methods[i];
             break;
         }
 
-        Assert.IsNotNull(capture, "CaptureAsyncNetworkShape(GameObject, List<AsyncNetworkShapeEntry>) was not found");
-        capture.Invoke(null, new[] { root, result });
+        Assert.IsNotNull(capture, "CaptureAsyncNetworkShape(GameObject, List<shape entry>) was not found");
+
+        var listType = capture.GetParameters()[1].ParameterType;
+        var entryType = listType.GetGenericArguments()[0];
+        var result = Activator.CreateInstance(listType);
+
+        capture.Invoke(null, new object[] { root, result });
 
         var field = entryType.GetField("componentIndex");
-        Assert.IsNotNull(field, "AsyncNetworkShapeEntry.componentIndex was renamed or removed");
+        Assert.IsNotNull(field, $"{entryType.Name}.componentIndex was renamed or removed");
 
         var indices = new List<int>();
         foreach (var entry in (IEnumerable)result)

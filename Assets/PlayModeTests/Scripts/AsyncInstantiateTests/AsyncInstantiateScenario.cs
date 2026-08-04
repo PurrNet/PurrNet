@@ -847,30 +847,40 @@ public sealed class AsyncInstantiateScenario : Scenario
                 }
             }
 
-            int expectedAlive = failingPeer ? 0 : 1;
-            if (!await WaitUntil(
-                    () => AsyncInstantiateProbe.aliveCount == expectedAlive,
-                    _spawnTimeoutSeconds,
-                    ctx))
-            {
-                failures.Add(
-                    $"receiver failure isolation: local alive count was " +
-                    $"{AsyncInstantiateProbe.aliveCount}/{expectedAlive}");
-            }
-
             if (failingPeer)
             {
-                if (AsyncInstantiateAwakeShapeMutator.mutatedCloneCount != 1)
+                if (!await WaitUntil(
+                        () => AsyncInstantiateAwakeShapeMutator.mutatedCloneCount == 1,
+                        _spawnTimeoutSeconds,
+                        ctx))
                 {
                     failures.Add(
                         "receiver failure isolation: designated receiver mutated " +
                         $"{AsyncInstantiateAwakeShapeMutator.mutatedCloneCount}/1 clones");
                 }
+
+                if (AsyncInstantiateProbe.aliveCount != 0)
+                {
+                    failures.Add(
+                        "receiver failure isolation: local alive count was " +
+                        $"{AsyncInstantiateProbe.aliveCount}/0");
+                }
             }
             else
             {
+                if (!await WaitUntil(
+                        () => AsyncInstantiateProbe.aliveCount == 1,
+                        _spawnTimeoutSeconds,
+                        ctx))
+                {
+                    failures.Add(
+                        "receiver failure isolation: local alive count was " +
+                        $"{AsyncInstantiateProbe.aliveCount}/1");
+                }
+
                 if (AsyncInstantiateAwakeShapeMutator.mutatedCloneCount != 0)
                     failures.Add("receiver failure isolation: a non-designated peer mutated its clone");
+
                 if (!await WaitUntil(
                         () => AsyncInstantiateProbe.observerRpcTokenCount == 1 &&
                               AsyncInstantiateProbe.AllExpectedStatesApplied(1),
