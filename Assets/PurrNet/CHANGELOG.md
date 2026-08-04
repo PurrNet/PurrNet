@@ -1,3 +1,10 @@
+# [1.22.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.17...v1.22.0-beta.18) (2026-08-04)
+
+
+### Bug Fixes
+
+* Prefab lookup ([b37ccc2](https://github.com/PurrNet/PurrNet/commit/b37ccc265d810b7a269a5771e5fcdfd404b6872f))
+
 # [1.22.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.16...v1.22.0-beta.17) (2026-08-04)
 
 
