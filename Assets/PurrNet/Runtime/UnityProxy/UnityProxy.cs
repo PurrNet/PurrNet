@@ -192,6 +192,25 @@ namespace PurrNet
             where T : Object
             => Object.InstantiateAsync(original);
 
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => Object.InstantiateAsync(original, position, rotation);
+
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(T original, Transform parent)
+            where T : Object
+            => Object.InstantiateAsync(original, parent);
+
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(
+            T original,
+            Transform parent,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => Object.InstantiateAsync(original, parent, position, rotation);
+
         [UsedByIL]
         public static AsyncInstantiateOperation<T> InstantiateAsync<T>(T original)
             where T : Object
