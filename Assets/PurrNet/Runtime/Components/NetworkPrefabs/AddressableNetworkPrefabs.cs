@@ -40,6 +40,7 @@ namespace PurrNet
         private readonly Dictionary<int, string> _idToGuid = new();
         private readonly List<AsyncOperationHandle<GameObject>> _loadHandles = new();
         private readonly List<RuntimePrefabEntry> _runtimePrefabs = new();
+        private readonly HashSet<string> _warnedNameFallbacks = new();
         private int _runtimePrefabStartId;
 
         private struct RuntimePrefabEntry
@@ -103,7 +104,17 @@ namespace PurrNet
                 }
             }
 
-            return TryMatchByName(_prefabLookup.Values, prefab, out prefabData);
+            if (!TryMatchByName(_prefabLookup.Values, prefab, out prefabData))
+                return false;
+
+            if (_warnedNameFallbacks.Add(prefab.name))
+            {
+                PurrLogger.LogWarning(
+                    $"Resolved addressable network prefab `{prefab.name}` by name because the given reference isn't the registered one.\n" +
+                    "This happens when the same asset is duplicated across bundles; fix the Addressables group setup to avoid spawning the wrong prefab.");
+            }
+
+            return true;
         }
 
         public override void AddRuntimePrefab(string uniqueName, GameObject prefab, bool pooled = false, int warmup = 5)

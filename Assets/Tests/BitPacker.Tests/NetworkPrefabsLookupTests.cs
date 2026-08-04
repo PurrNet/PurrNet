@@ -56,11 +56,26 @@ public class NetworkPrefabsLookupTests
     }
 
     [Test]
+    public void EachRegisteredPrefabResolvesToItselfDespiteSharedNames()
+    {
+        var provider = CreateProvider();
+        var first = CreateNetworkedPrefab(SHARED_NAME);
+        var second = CreateNetworkedPrefab(SHARED_NAME);
+        provider.AddRuntimePrefab("registered-a", first);
+        provider.AddRuntimePrefab("registered-b", second);
+
+        Assert.That(provider.TryGetPrefabData(first, out var firstData), Is.True);
+        Assert.That(firstData.prefab, Is.EqualTo(first));
+
+        Assert.That(provider.TryGetPrefabData(second, out var secondData), Is.True);
+        Assert.That(secondData.prefab, Is.EqualTo(second));
+    }
+
+    [Test]
     public void NonNetworkedPrefabSharingNameIsNotResolved()
     {
         var provider = CreateProvider();
-        var networked = CreateNetworkedPrefab(SHARED_NAME);
-        provider.AddRuntimePrefab("registered", networked);
+        provider.AddRuntimePrefab("registered", CreateNetworkedPrefab(SHARED_NAME));
 
         var foreign = CreatePlainPrefab(SHARED_NAME);
 
@@ -69,39 +84,10 @@ public class NetworkPrefabsLookupTests
     }
 
     [Test]
-    public void NetworkedPrefabCopySharingNameStillResolves()
-    {
-        var provider = CreateProvider();
-        var networked = CreateNetworkedPrefab(SHARED_NAME);
-        provider.AddRuntimePrefab("registered", networked);
-
-        var bundleCopy = CreateNetworkedPrefab(SHARED_NAME);
-
-        Assert.That(provider.TryGetPrefabData(bundleCopy, out var data), Is.True);
-        Assert.That(data.prefab, Is.EqualTo(networked));
-    }
-
-    [Test]
-    public void NetworkedPrefabWithDifferentIdentityCountIsNotResolved()
-    {
-        var provider = CreateProvider();
-        var networked = CreateNetworkedPrefab(SHARED_NAME);
-        provider.AddRuntimePrefab("registered", networked);
-
-        var unrelated = CreateNetworkedPrefab(SHARED_NAME);
-        var child = new GameObject("Nested");
-        child.AddComponent<NetworkIdentity>();
-        child.transform.SetParent(unrelated.transform);
-
-        Assert.That(provider.TryGetPrefabData(unrelated, out _), Is.False);
-    }
-
-    [Test]
     public void UnregisteredNetworkedPrefabSharingNameIsNotResolved()
     {
         var provider = CreateProvider();
-        var registered = CreateNetworkedPrefab(SHARED_NAME);
-        provider.AddRuntimePrefab("registered", registered);
+        provider.AddRuntimePrefab("registered", CreateNetworkedPrefab(SHARED_NAME));
 
         var unrelated = CreateNetworkedPrefab(SHARED_NAME);
 
@@ -110,29 +96,24 @@ public class NetworkPrefabsLookupTests
     }
 
     [Test]
-    public void BundleCopyResolvesEvenWhenAnotherPrefabSharesTheName()
+    public void IdenticalUnregisteredCopyIsNotResolved()
     {
         var provider = CreateProvider();
-        var registeredA = CreateNetworkedPrefab(SHARED_NAME);
-        var registeredB = CreateNetworkedPrefab(SHARED_NAME);
-        provider.AddRuntimePrefab("registered-a", registeredA);
-        provider.AddRuntimePrefab("registered-b", registeredB);
+        provider.AddRuntimePrefab("registered", CreateNetworkedPrefab(SHARED_NAME));
 
-        var bundleCopyOfA = CreateNetworkedPrefab(SHARED_NAME);
+        var copy = CreateNetworkedPrefab(SHARED_NAME);
 
-        Assert.That(provider.TryGetPrefabData(bundleCopyOfA, out var data), Is.True);
-        Assert.That(data.prefab, Is.EqualTo(registeredA));
+        Assert.That(provider.TryGetPrefabData(copy, out _), Is.False);
     }
 
     [Test]
-    public void AmbiguousNameIsNotResolved()
+    public void UnregisteredPrefabIsNotResolvedWhenNothingShareItsName()
     {
         var provider = CreateProvider();
-        provider.AddRuntimePrefab("registered-a", CreateNetworkedPrefab(SHARED_NAME));
-        provider.AddRuntimePrefab("registered-b", CreateNetworkedPrefab(SHARED_NAME));
+        provider.AddRuntimePrefab("registered", CreateNetworkedPrefab(SHARED_NAME));
 
-        var bundleCopy = CreateNetworkedPrefab(SHARED_NAME);
+        var unrelated = CreateNetworkedPrefab("SomethingElse");
 
-        Assert.That(provider.TryGetPrefabData(bundleCopy, out _), Is.False);
+        Assert.That(provider.TryGetPrefabData(unrelated, out _), Is.False);
     }
 }
