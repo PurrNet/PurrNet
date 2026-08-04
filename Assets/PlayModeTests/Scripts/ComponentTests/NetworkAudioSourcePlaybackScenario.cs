@@ -71,22 +71,24 @@ public class NetworkAudioSourcePlaybackScenario : Scenario
             manager.networkAssets = networkAssets;
         }
 
-        // Each peer creates its own matching runtime clip during setup. Adding it to the
-        // existing collection preserves assets registered by other scenarios and gives
-        // the clip the same network index on every peer.
+        // Each peer creates its own matching runtime clip. Adding it immediately before
+        // spawning gives the clip the same network index on every peer without allowing
+        // another scenario's setup to replace the active NetworkAssets afterward.
         networkAssets.AddAsset(_shortClip, false);
     }
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
         CreatePrefab();
-        RegisterClip(manager);
         manager.prefabProvider.AddRuntimePrefab(_prefab.name, _prefab.gameObject);
     }
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
         NetworkAudioSourcePlaybackRoot instance = null;
+
+        RegisterClip(ctx.networkManager);
+        await ScenarioBarrier.Wait(ctx, BarrierBase, _barrierTimeoutSeconds);
 
         if (ctx.isServer)
             instance = Instantiate(_prefab);

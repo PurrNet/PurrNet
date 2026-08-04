@@ -551,23 +551,48 @@ namespace PurrNet
                 instance.AddComponent<NetworkIdentity>();
 
             instance.GetComponentsInChildren(true, children);
+            SetupPrefabInfo(instance, pid, shouldBePooled, children);
+            ListPool<NetworkIdentity>.Destroy(children);
+        }
+
+        /// <summary>
+        /// Prepares the prefab info for the given instance, reusing an already collected identity list.
+        /// </summary>
+        /// <param name="instance"></param>
+        /// <param name="pid">The prefab index in the network prefabs list.</param>
+        /// <param name="shouldBePooled">Whether the object should be pooled.</param>
+        /// <param name="children">The result of GetComponentsInChildren(true) on the instance.</param>
+        public static void SetupPrefabInfo(GameObject instance, int pid, bool shouldBePooled,
+            List<NetworkIdentity> children)
+        {
+            if (!instance.GetComponent<NetworkIdentity>())
+            {
+                instance.AddComponent<NetworkIdentity>();
+                children.Clear();
+                instance.GetComponentsInChildren(true, children);
+            }
+
+            Transform runTransform = null;
+            int runStart = 0;
 
             for (var i = 0; i < children.Count; i++)
             {
                 var child = children[i];
                 var trs = child.transform;
 
-                var first = trs.GetComponent<NetworkIdentity>();
+                if (!ReferenceEquals(trs, runTransform))
+                {
+                    runTransform = trs;
+                    runStart = i;
+                }
 
                 child.PreparePrefabInfo(
                     pid,
-                    child == first ? i : first.componentIndex,
+                    i == runStart ? i : children[runStart].componentIndex,
                     shouldBePooled,
                     false
                 );
             }
-
-            ListPool<NetworkIdentity>.Destroy(children);
         }
 
         static bool ReferencesAssembly(Assembly asm, string targetSimpleName)

@@ -17,6 +17,14 @@ namespace PurrNet
     [UsedByIL]
     public static class UnityProxy
     {
+        public delegate void AsyncInstantiateCompleted(Object original, Object instance);
+
+        /// <summary>
+        /// Invoked once for each network prefab instance successfully produced by
+        /// <c>Object.InstantiateAsync</c>. Async instantiation always bypasses PurrNet pooling.
+        /// </summary>
+        public static event AsyncInstantiateCompleted onAsyncInstantiateCompleted;
+
         static GameObject GetGameObject<T>(T obj) where T : Object
         {
             return obj switch
@@ -132,6 +140,282 @@ namespace PurrNet
 
             return manager.prefabProvider.TryGetPrefabData(prefabGo, out prefabData);
         }
+
+#if PURRNET_UNITY_INSTANTIATE_ASYNC
+        static AsyncInstantiateOperation<T> TrackAsyncInstantiate<T>(
+            T original,
+            AsyncInstantiateOperation<T> operation)
+            where T : Object
+        {
+            // Non-network prefabs are a pure native pass-through. Network prefabs deliberately
+            // do not consult HierarchyPool: choosing InstantiateAsync opts this instance out of pooling.
+            if (!TryGetPrefabData(original, out _))
+                return operation;
+
+            operation.completed += _ =>
+            {
+                T[] results;
+                try
+                {
+                    results = operation.Result;
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception e)
+                {
+                    // Cancellation/failure can leave the operation without readable results.
+                    PurrLogger.LogException(e);
+                    return;
+                }
+
+                if (results == null)
+                    return;
+
+                for (var i = 0; i < results.Length; i++)
+                {
+                    var instance = results[i];
+                    if (instance)
+                        onAsyncInstantiateCompleted?.Invoke(original, instance);
+                }
+            };
+
+            return operation;
+        }
+
+        /// <summary>
+        /// Native async instantiation without registering a local-spawn notification.
+        /// Intended for replicated receiver-side creation.
+        /// </summary>
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(T original)
+            where T : Object
+            => Object.InstantiateAsync(original);
+
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => Object.InstantiateAsync(original, position, rotation);
+
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(T original, Transform parent)
+            where T : Object
+            => Object.InstantiateAsync(original, parent);
+
+        public static AsyncInstantiateOperation<T> InstantiateAsyncDirectly<T>(
+            T original,
+            Transform parent,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => Object.InstantiateAsync(original, parent, position, rotation);
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(T original)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(T original, Transform parent)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, parent));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, position, rotation));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            Transform parent,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, parent, position, rotation));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(T original, int count)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, count));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(T original, int count, Transform parent)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, count, parent));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, count, position, rotation));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            ReadOnlySpan<Vector3> positions,
+            ReadOnlySpan<Quaternion> rotations)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, count, positions, rotations));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Transform parent,
+            Vector3 position,
+            Quaternion rotation)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, parent, position, rotation));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Transform parent,
+            ReadOnlySpan<Vector3> positions,
+            ReadOnlySpan<Quaternion> rotations)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, parent, positions, rotations));
+
+#if PURRNET_UNITY_INSTANTIATE_ASYNC_CANCELLATION
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Transform parent,
+            Vector3 position,
+            Quaternion rotation,
+            System.Threading.CancellationToken cancellationToken)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, parent, position, rotation, cancellationToken));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Transform parent,
+            ReadOnlySpan<Vector3> positions,
+            ReadOnlySpan<Quaternion> rotations,
+            System.Threading.CancellationToken cancellationToken)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, parent, positions, rotations, cancellationToken));
+#endif
+
+#if PURRNET_UNITY_INSTANTIATE_ASYNC_PARAMETERS_CANCELLATION
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            InstantiateParameters parameters,
+            System.Threading.CancellationToken cancellationToken = default)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, parameters, cancellationToken));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            InstantiateParameters parameters,
+            System.Threading.CancellationToken cancellationToken = default)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, parameters, cancellationToken));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation,
+            InstantiateParameters parameters,
+            System.Threading.CancellationToken cancellationToken = default)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, position, rotation, parameters, cancellationToken));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Vector3 position,
+            Quaternion rotation,
+            InstantiateParameters parameters,
+            System.Threading.CancellationToken cancellationToken = default)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, position, rotation, parameters, cancellationToken));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            ReadOnlySpan<Vector3> positions,
+            ReadOnlySpan<Quaternion> rotations,
+            InstantiateParameters parameters,
+            System.Threading.CancellationToken cancellationToken = default)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, positions, rotations, parameters, cancellationToken));
+#endif
+
+#if PURRNET_UNITY_INSTANTIATE_ASYNC_PARAMETERS_LEGACY
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(T original, InstantiateParameters parameters)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, parameters));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            InstantiateParameters parameters)
+            where T : Object
+            => TrackAsyncInstantiate(original, Object.InstantiateAsync(original, count, parameters));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            Vector3 position,
+            Quaternion rotation,
+            InstantiateParameters parameters)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, position, rotation, parameters));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            Vector3 position,
+            Quaternion rotation,
+            InstantiateParameters parameters)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, position, rotation, parameters));
+
+        [UsedByIL]
+        public static AsyncInstantiateOperation<T> InstantiateAsync<T>(
+            T original,
+            int count,
+            ReadOnlySpan<Vector3> positions,
+            ReadOnlySpan<Quaternion> rotations,
+            InstantiateParameters parameters)
+            where T : Object
+            => TrackAsyncInstantiate(original,
+                Object.InstantiateAsync(original, count, positions, rotations, parameters));
+#endif
+#endif
 
         [UsedByIL]
         public static void DontDestroyOnLoadDirectly(Object target) => Object.DontDestroyOnLoad(target);
@@ -323,7 +607,7 @@ namespace PurrNet
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original));
         }
 
-#if UNITY_6000_0_OR_NEWER
+#if PURRNET_UNITY_INSTANTIATE_PARAMETERS
         [UsedByIL]
         public static T Instantiate<T>(T original, InstantiateParameters parameters) where T : Object
         {

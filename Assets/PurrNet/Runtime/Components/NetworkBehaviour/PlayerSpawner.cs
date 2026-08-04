@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace PurrNet
 {
@@ -152,30 +153,55 @@ namespace PurrNet
             }
 
             GameObject newPlayer;
+            NetworkIdentity identity;
 
             CleanupSpawnPoints();
 
             if (_spawnPointProvider != null)
             {
                 var point = _spawnPointProvider.NextSpawnPoint(player, scene);
-                newPlayer = UnityProxy.Instantiate(_playerPrefab, point.position, point.rotation, unityScene);
+                newPlayer = SpawnPlayer(point.position, point.rotation, unityScene, out identity);
             }
             else if (spawnPoints.Count > 0)
             {
                 var spawnPoint = spawnPoints[_currentSpawnPoint];
                 _currentSpawnPoint = (_currentSpawnPoint + 1) % spawnPoints.Count;
-                newPlayer = UnityProxy.Instantiate(_playerPrefab, spawnPoint.position, spawnPoint.rotation, unityScene);
+                newPlayer = SpawnPlayer(spawnPoint.position, spawnPoint.rotation, unityScene, out identity);
             }
             else
             {
                 _playerPrefab.transform.GetPositionAndRotation(out var position, out var rotation);
-                newPlayer = UnityProxy.Instantiate(_playerPrefab, position, rotation, unityScene);
+                newPlayer = SpawnPlayer(position, rotation, unityScene, out identity);
             }
+
+            if (!newPlayer)
+                return;
 
             _prefabInstantiatedProvider?.OnPrefabInstantiated(newPlayer, player, scene);
 
-            if (newPlayer.TryGetComponent(out NetworkIdentity identity))
+            if (identity)
                 identity.GiveOwnership(player);
+        }
+
+        private GameObject SpawnPlayer(Vector3 position, Quaternion rotation, Scene unityScene,
+            out NetworkIdentity identity)
+        {
+            identity = null;
+
+            var newPlayer = UnityProxy.Instantiate(_playerPrefab, position, rotation, unityScene);
+
+            if (!newPlayer)
+                return null;
+
+            if (!newPlayer.TryGetComponent(out identity))
+                return newPlayer;
+
+            var nm = manager ? manager : NetworkManager.main;
+
+            if (nm && !identity.IsSpawned(nm.isServer))
+                nm.Spawn(newPlayer);
+
+            return newPlayer;
         }
     }
 }

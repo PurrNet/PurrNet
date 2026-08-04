@@ -11,6 +11,8 @@ namespace PurrNet.Modules
     {
         public SceneID sceneId;
         public SpawnID packetIdx;
+        public bool bypassPool;
+        public bool isAsync;
         public GameObjectPrototype prototype;
         public BitData customData;
 
