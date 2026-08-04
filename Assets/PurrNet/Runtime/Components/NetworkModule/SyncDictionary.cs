@@ -143,6 +143,10 @@ namespace PurrNet
 
         public void OnAfterDeserialize()
         {
+            _dict ??= new Dictionary<TKey, TValue>();
+            _serializedDict ??= new SerializableDictionary<TKey, TValue>();
+            _initialSerializedDict ??= new SerializableDictionary<TKey, TValue>();
+
             _serializedDict.CopyTo(_dict);
             CacheInitialDict();
         }
@@ -614,13 +618,18 @@ namespace PurrNet
         [SerializeField] private List<string> stringKeys = new List<string>();
         [SerializeField] private List<string> stringValues = new List<string>();
 
-        private bool isKeySerializable;
-        private bool isValueSerializable;
+        private static readonly bool isKeySerializable =
+            typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
 
-        public SerializableDictionary()
+        private static readonly bool isValueSerializable =
+            typeof(TValue).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
+
+        private void EnsureLists()
         {
-            isKeySerializable = typeof(TKey).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TKey));
-            isValueSerializable = typeof(TValue).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(TValue));
+            keys ??= new List<TKey>();
+            values ??= new List<TValue>();
+            stringKeys ??= new List<string>();
+            stringValues ??= new List<string>();
         }
 
         public Dictionary<TKey, TValue> ToDictionary()
@@ -634,6 +643,8 @@ namespace PurrNet
         {
             if (!isKeySerializable || !isValueSerializable)
                 return false;
+
+            EnsureLists();
 
             int count = Mathf.Min(keys.Count, values.Count);
 
@@ -657,6 +668,10 @@ namespace PurrNet
 
         public void CopyTo(Dictionary<TKey, TValue> dict)
         {
+            if (dict == null)
+                return;
+
+            EnsureLists();
             dict.Clear();
 
             if (isKeySerializable && isValueSerializable)
@@ -681,6 +696,10 @@ namespace PurrNet
 
         public void FromDictionary(Dictionary<TKey, TValue> dict)
         {
+            if (dict == null)
+                return;
+
+            EnsureLists();
             keys.Clear();
             values.Clear();
             stringKeys.Clear();

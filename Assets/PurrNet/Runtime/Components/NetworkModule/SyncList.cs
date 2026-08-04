@@ -753,6 +753,9 @@ namespace PurrNet
 
         public void OnAfterDeserialize()
         {
+            _list ??= new List<T>();
+            _initialList ??= new List<T>();
+
             CacheInitialList();
         }
     }
