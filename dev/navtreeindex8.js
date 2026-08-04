@@ -1,5 +1,7 @@
 var NAVTREEINDEX8 =
 {
+"structPurrNet_1_1SyncStatus.html":[1,0,0,172],
+"structPurrNet_1_1TimestampedSnapshot.html":[0,0,0,178],
 "structPurrNet_1_1TimestampedSnapshot.html":[1,0,0,178],
 "structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76":[0,0,0,178,0],
 "structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76":[1,0,0,178,0],
@@ -9,10 +11,10 @@ var NAVTREEINDEX8 =
 "structPurrNet_1_1Transports_1_1ClientJoinInfo.html":[0,0,0,9,2],
 "structPurrNet_1_1Transports_1_1Connection.html":[1,0,0,9,4],
 "structPurrNet_1_1Transports_1_1Connection.html":[0,0,0,9,4],
-"structPurrNet_1_1Transports_1_1FragmentDropInfo.html":[1,0,0,9,6],
 "structPurrNet_1_1Transports_1_1FragmentDropInfo.html":[0,0,0,9,6],
-"structPurrNet_1_1Transports_1_1FragmentDropInfo.html#a0d627459013e64d8c000e212507d40a4":[1,0,0,9,6,0],
+"structPurrNet_1_1Transports_1_1FragmentDropInfo.html":[1,0,0,9,6],
 "structPurrNet_1_1Transports_1_1FragmentDropInfo.html#a0d627459013e64d8c000e212507d40a4":[0,0,0,9,6,0],
+"structPurrNet_1_1Transports_1_1FragmentDropInfo.html#a0d627459013e64d8c000e212507d40a4":[1,0,0,9,6,0],
 "structPurrNet_1_1Transports_1_1HostJoinInfo.html":[1,0,0,9,8],
 "structPurrNet_1_1Transports_1_1HostJoinInfo.html":[0,0,0,9,8],
 "structPurrNet_1_1Transports_1_1NetworkSimulation.html":[0,0,0,9,13],
@@ -23,12 +25,12 @@ var NAVTREEINDEX8 =
 "structPurrNet_1_1Transports_1_1Relayers.html":[0,0,0,9,16],
 "structPurrNet_1_1UnionRPCHeader.html":[1,0,0,179],
 "structPurrNet_1_1UnionRPCHeader.html":[0,0,0,179],
-"structPurrNet_1_1Vector3WithParent.html":[0,0,0,182],
 "structPurrNet_1_1Vector3WithParent.html":[1,0,0,182],
-"structPurrNet_1_1Vector3WithParent.html#a52830a0eb6c07ad2bd6216a6caccf540":[0,0,0,182,0],
+"structPurrNet_1_1Vector3WithParent.html":[0,0,0,182],
 "structPurrNet_1_1Vector3WithParent.html#a52830a0eb6c07ad2bd6216a6caccf540":[1,0,0,182,0],
-"structPurrNet_1_1Vector3WithParent.html#a77d5a95d83ab10fe65614c4b8e5d1818":[1,0,0,182,1],
+"structPurrNet_1_1Vector3WithParent.html#a52830a0eb6c07ad2bd6216a6caccf540":[0,0,0,182,0],
 "structPurrNet_1_1Vector3WithParent.html#a77d5a95d83ab10fe65614c4b8e5d1818":[0,0,0,182,1],
+"structPurrNet_1_1Vector3WithParent.html#a77d5a95d83ab10fe65614c4b8e5d1818":[1,0,0,182,1],
 "structPurrNet_1_1VisibilityRules.html":[0,0,0,183],
 "structPurrNet_1_1VisibilityRules.html":[1,0,0,183]
 };

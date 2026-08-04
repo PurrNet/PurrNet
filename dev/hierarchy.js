@@ -281,6 +281,7 @@ var hierarchy =
       [ "PurrNet.MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
       [ "PurrNet.MinimalModuleHeader", "structPurrNet_1_1MinimalModuleHeader.html", null ],
       [ "PurrNet.MinimalStaticHeader", "structPurrNet_1_1MinimalStaticHeader.html", null ],
+      [ "PurrNet.Modules.AsyncSpawnReadyPacket", "structPurrNet_1_1Modules_1_1AsyncSpawnReadyPacket.html", null ],
       [ "PurrNet.Modules.ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
       [ "PurrNet.Modules.ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],
       [ "PurrNet.Modules.DespawnPacket", "structPurrNet_1_1Modules_1_1DespawnPacket.html", null ],
@@ -373,6 +374,7 @@ var hierarchy =
       [ "PurrNet.StaticRPCPacket", "structPurrNet_1_1StaticRPCPacket.html", null ]
     ] ],
     [ "ISerializationCallbackReceiver", null, [
+      [ "PurrNet.NetworkRules", "classPurrNet_1_1NetworkRules.html", null ],
       [ "PurrNet.NetworkSceneRules", "structPurrNet_1_1NetworkSceneRules.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
       [ "PurrNet.SyncDictionary< TKey, TValue >", "classPurrNet_1_1SyncDictionary.html", null ],
