@@ -193,8 +193,13 @@ namespace PurrNet
             if (!newPlayer)
                 return null;
 
-            if (newPlayer.TryGetComponent(out identity) && !identity.IsSpawned(manager.isServer))
-                manager.Spawn(newPlayer);
+            if (!newPlayer.TryGetComponent(out identity))
+                return newPlayer;
+
+            var nm = manager ? manager : NetworkManager.main;
+
+            if (nm && !identity.IsSpawned(nm.isServer))
+                nm.Spawn(newPlayer);
 
             return newPlayer;
         }
