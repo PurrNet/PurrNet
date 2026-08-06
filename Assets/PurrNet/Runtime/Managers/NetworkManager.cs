@@ -1703,13 +1703,21 @@ namespace PurrNet
             _clientBroadcast?.SetDeferNonImmediate(defer);
         }
 
+        private bool _sendFlushRequested;
+
+        internal void RequestSendFlushThisFrame()
+        {
+            _sendFlushRequested = true;
+        }
+
         // Runs from UnityLatestUpdate's post phase (execution order 32000, after every
         // onLatestUpdate subscriber) so immediate RPCs queued by gameplay LateUpdate or
         // latest-update callbacks still flush this frame; this manager's own LateUpdate
         // would run before them at -999.
         private void FlushImmediateRPCsLate()
         {
-            bool flushedAny = false;
+            bool flushedAny = _sendFlushRequested;
+            _sendFlushRequested = false;
 
             if (serverState == ConnectionState.Connected)
                 flushedAny |= _serverModules.FlushImmediateRPCs();
