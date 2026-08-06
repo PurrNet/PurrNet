@@ -1,3 +1,10 @@
+# [1.22.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.19...v1.22.0-beta.20) (2026-08-06)
+
+
+### Bug Fixes
+
+* Statistics manager packet loss + reconnect bug ([5541f1b](https://github.com/PurrNet/PurrNet/commit/5541f1b12fc1749c527f30c214485b66488edb0c))
+
 # [1.22.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.18...v1.22.0-beta.19) (2026-08-04)
 
 
