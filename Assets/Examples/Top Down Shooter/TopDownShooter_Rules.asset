@@ -24,8 +24,8 @@ MonoBehaviour:
     despawnIfOwnerDisconnects: 0
     cleanupSpawnedObjects: 1
     includeInstantiatedSceneObjects: 0
-    autoSpawnOnInstantiate: 0
-    autoSpawnOnInstantiateAsync: 0
+    autoSpawnOnInstantiate: 1
+    autoSpawnOnInstantiateAsync: 1
   _defaultRpcRules:
     ignoreRequireServerAttribute: 1
     ignoreRequireOwnerAttribute: 1
