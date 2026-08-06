@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 #if UNITASK_PURRNET_SUPPORT
 using Cysharp.Threading.Tasks;
 #else
@@ -120,6 +121,8 @@ namespace PurrNet
             return shouldDestroy;
         }
 
+        static readonly HashSet<string> _warnedUnresolvedPrefabs = new();
+
         static bool TryGetPrefabData(Object prefab, out PrefabData prefabData)
         {
             var prefabGo = GetGameObject(prefab);
@@ -138,7 +141,20 @@ namespace PurrNet
                 return false;
             }
 
-            return manager.prefabProvider.TryGetPrefabData(prefabGo, out prefabData);
+            if (manager.prefabProvider.TryGetPrefabData(prefabGo, out prefabData))
+                return true;
+
+            if (prefabGo.GetComponentInChildren<NetworkIdentity>(true) &&
+                _warnedUnresolvedPrefabs.Add(prefabGo.name))
+            {
+                PurrLogger.LogWarning(
+                    $"Instantiating `{prefabGo.name}` without networking: it has a NetworkIdentity but isn't a registered network prefab, so it won't be spawned.\n" +
+                    "If this prefab is registered, the given reference is a different copy of the asset. " +
+                    "This commonly happens when an addressable scene references a non-addressable prefab, duplicating it into the scene bundle; " +
+                    "make the prefab addressable and register it via AddressableNetworkPrefabs.", prefabGo);
+            }
+
+            return false;
         }
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
