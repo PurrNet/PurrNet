@@ -1,3 +1,12 @@
+# [1.22.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.20...v1.22.0-beta.21) (2026-08-07)
+
+
+### Bug Fixes
+
+* Duplicate network prefab non spawning issue ([ab1b7c4](https://github.com/PurrNet/PurrNet/commit/ab1b7c48adb99c3aed3057a83e78a58731504213))
+* Improved eventual consistency of network rigidbody ([23d440a](https://github.com/PurrNet/PurrNet/commit/23d440a60abceb17ce8f3a80bc7c1572c0cfaf04))
+* Smoother eventual consistency for network RB ([a4a5fe4](https://github.com/PurrNet/PurrNet/commit/a4a5fe48840eb87f0f2c1f22dbef5c2f9ee4c827))
+
 # [1.22.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.19...v1.22.0-beta.20) (2026-08-06)
 
 
