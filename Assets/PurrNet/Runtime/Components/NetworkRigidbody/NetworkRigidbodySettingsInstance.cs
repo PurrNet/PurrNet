@@ -139,6 +139,9 @@ namespace PurrNet
 
     internal static class NetworkRigidbodyPhysics
     {
+        private const float STATIC_BREAKAWAY_BODY_SPEED_SQR = 0.0004f;
+        private const float STATIC_BREAKAWAY_TARGET_SPEED_SQR = 0.01f;
+
         internal static bool CanApplyDynamicMotion(Rigidbody rb)
         {
             return rb && !rb.isKinematic;
@@ -233,6 +236,13 @@ namespace PurrNet
             var range = Mathf.Max(correctionRange, 0.01f);
             var ratio = Mathf.Clamp01(positionError / range);
             var velocity = GetLinearVelocity(rb);
+
+            if (velocity.sqrMagnitude < STATIC_BREAKAWAY_BODY_SPEED_SQR
+                && targetLinearVelocity.sqrMagnitude > STATIC_BREAKAWAY_TARGET_SPEED_SQR)
+            {
+                SetLinearVelocity(rb, targetLinearVelocity);
+                velocity = targetLinearVelocity;
+            }
 
             var positionalPull = (targetPosition - rb.position) * (w * w * ratio);
             var velocityDamping = (targetLinearVelocity - velocity) * (2f * w);
