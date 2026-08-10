@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using PurrNet;
 using PurrNet.Modules;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 
@@ -54,41 +55,11 @@ public class SceneUnloadApiScenario : Scenario
         if (buildIndex < 0)
             return ScenarioResult.Fail($"target scene missing from build settings: {TargetScenePath}");
 
-        string failure = null;
+        string failure;
 
         try
         {
-            for (var cycle = 0; cycle < Cycles; cycle++)
-            {
-                for (var i = 0; i < Phases.Length; i++)
-                {
-                    var phase = Phases[i];
-                    var label = $"cycle {cycle} / {phase}";
-                    var barrier = BarrierBase + (cycle * Phases.Length + i) * 10;
-
-                    if (failure == null)
-                    {
-                        var load = ctx.isServer
-                            ? await ServerLoad(ctx, phase, buildIndex, label)
-                            : await ClientWaitLoaded(ctx, phase, buildIndex, label);
-                        if (!load.success)
-                            failure = load.message;
-                    }
-
-                    await WaitBarrier(ctx, barrier + 1);
-
-                    if (failure == null)
-                    {
-                        var unload = ctx.isServer
-                            ? await ServerUnload(ctx, phase, buildIndex, label)
-                            : await ClientWaitUnloaded(ctx, phase, buildIndex, label);
-                        if (!unload.success)
-                            failure = unload.message;
-                    }
-
-                    await WaitBarrier(ctx, barrier + 2);
-                }
-            }
+            failure = await RunPhases(ctx, buildIndex);
         }
         finally
         {
@@ -99,6 +70,45 @@ public class SceneUnloadApiScenario : Scenario
         return failure == null
             ? ScenarioResult.Ok($"{Cycles} cycles x {Phases.Length} unload entry points")
             : ScenarioResult.Fail(failure);
+    }
+
+    /// <summary>
+    /// Returns the first failure message, or null when every phase passed. Bails out on the first
+    /// failure instead of limping through the remaining barriers: once one side stops participating
+    /// every later barrier costs its full timeout, which would blow the sequencer's ack budget and
+    /// take down the scenarios that come after this one.
+    /// </summary>
+    private async UniTask<string> RunPhases(ScenarioContext ctx, int buildIndex)
+    {
+        for (var cycle = 0; cycle < Cycles; cycle++)
+        {
+            for (var i = 0; i < Phases.Length; i++)
+            {
+                var phase = Phases[i];
+                var label = $"cycle {cycle} / {phase}";
+                var barrier = BarrierBase + (cycle * Phases.Length + i) * 10;
+
+                var load = ctx.isServer
+                    ? await ServerLoad(ctx, phase, buildIndex, label)
+                    : await ClientWaitLoaded(ctx, phase, buildIndex, label);
+                if (!load.success)
+                    return load.message;
+
+                if (!await WaitBarrier(ctx, barrier + 1))
+                    return $"{label}: peers never reached the post-load barrier";
+
+                var unload = ctx.isServer
+                    ? await ServerUnload(ctx, phase, buildIndex, label)
+                    : await ClientWaitUnloaded(ctx, phase, buildIndex, label);
+                if (!unload.success)
+                    return unload.message;
+
+                if (!await WaitBarrier(ctx, barrier + 2))
+                    return $"{label}: peers never reached the post-unload barrier";
+            }
+        }
+
+        return null;
     }
 
     private async UniTask<ScenarioResult> ServerLoad(
@@ -289,7 +299,13 @@ public class SceneUnloadApiScenario : Scenario
 
         try
         {
-            await UniTaskUtils.WaitWithTimeout(() => handle.IsDone, _unloadTimeoutSeconds, ctx.cancellationToken);
+            // An auto-released handle goes invalid the moment it completes, and every member
+            // access on it then throws - that would make the handle impossible to await, which
+            // is the whole point of returning it.
+            await UniTaskUtils.WaitWithTimeout(
+                () => !handle.IsValid() || handle.IsDone,
+                _unloadTimeoutSeconds,
+                ctx.cancellationToken);
         }
         catch (TimeoutException)
         {
@@ -297,9 +313,13 @@ public class SceneUnloadApiScenario : Scenario
                 $"{label}: addressable unload handle never completed: {DescribeState(ctx, buildIndex)}");
         }
 
+        if (!handle.IsValid())
+            return ScenarioResult.Fail($"{label}: addressable unload handle was released before it could be awaited");
+
         if (handle.Status != AsyncOperationStatus.Succeeded)
             return ScenarioResult.Fail($"{label}: addressable unload failed: {handle.OperationException}");
 
+        Addressables.Release(handle);
         return ScenarioResult.Ok();
     }
 
@@ -362,7 +382,11 @@ public class SceneUnloadApiScenario : Scenario
             SceneManager.UnloadSceneAsync(SceneManager.GetSceneByName(TargetSceneName));
 
         if (scenes.TryGetSceneIdByAddressableGuid(AddressableSceneGuid, out var addressableId))
-            scenes.UnloadAddressableSceneAsync(addressableId);
+        {
+            var handle = scenes.UnloadAddressableSceneAsync(addressableId);
+            if (handle.IsValid())
+                handle.Completed += completed => Addressables.Release(completed);
+        }
         else if (IsSceneLoaded(AddressableSceneName))
             SceneManager.UnloadSceneAsync(SceneManager.GetSceneByName(AddressableSceneName));
 
@@ -381,14 +405,16 @@ public class SceneUnloadApiScenario : Scenario
         }
     }
 
-    private async UniTask WaitBarrier(ScenarioContext ctx, int barrierId)
+    private async UniTask<bool> WaitBarrier(ScenarioContext ctx, int barrierId)
     {
         try
         {
             await ScenarioBarrier.Wait(ctx, barrierId, _barrierTimeoutSeconds);
+            return true;
         }
         catch (TimeoutException)
         {
+            return false;
         }
     }
 

@@ -161,13 +161,15 @@ namespace PurrNet.Modules
 
         private bool TryUnloadAddressableScene(SceneID sceneId, UnloadSceneOptions options)
         {
-            return TryRemoveAddressableScene(sceneId, options, false, out _);
+            return TryRemoveAddressableScene(sceneId, options, false, false, out _);
         }
 
         /// <summary>
         /// Unloads an Addressable scene asynchronously by its SceneID.
         /// Use this instead of UnloadSceneAsync when you need to await an Addressable scene unload,
         /// since Addressables doesn't expose a Unity AsyncOperation for unloading.
+        /// The returned handle is not auto-released, so it stays valid while you await it;
+        /// call Addressables.Release on it once you are done.
         /// </summary>
         /// <param name="sceneId">The SceneID of the Addressable scene to unload</param>
         /// <param name="options">The UnityEngine UnloadSceneOptions to use for the unloading</param>
@@ -195,7 +197,7 @@ namespace PurrNet.Modules
             }
 
             _history.AddUnloadAction(new UnloadSceneAction { sceneID = sceneId, options = options });
-            TryRemoveAddressableScene(sceneId, options, false, out var handle);
+            TryRemoveAddressableScene(sceneId, options, false, true, out var handle);
 
             return handle;
         }
@@ -262,7 +264,7 @@ namespace PurrNet.Modules
 
         private void RemoveExistingTransferScene(SceneID sceneId, SceneState state)
         {
-            if (TryRemoveAddressableScene(sceneId, UnloadSceneOptions.None, true, out _))
+            if (TryRemoveAddressableScene(sceneId, UnloadSceneOptions.None, true, false, out _))
                 return;
 
             RemoveScene(state.scene, true);
@@ -297,7 +299,7 @@ namespace PurrNet.Modules
                 if (targetAddressableScenes.TryGetValue(id, out var targetGuid) && existingGuid == targetGuid)
                     continue;
 
-                TryRemoveAddressableScene(id, UnloadSceneOptions.None, true, out _);
+                TryRemoveAddressableScene(id, UnloadSceneOptions.None, true, false, out _);
             }
         }
 
@@ -331,6 +333,7 @@ namespace PurrNet.Modules
             SceneID sceneId,
             UnloadSceneOptions options,
             bool playUnloadEventsImmediately,
+            bool keepUnloadHandleAlive,
             out AsyncOperationHandle<SceneInstance> unloadHandle)
         {
             unloadHandle = default;
@@ -343,7 +346,7 @@ namespace PurrNet.Modules
             var hasState = _scenes.TryGetValue(sceneId, out var state);
 
             if (hasHandle && handle.IsValid())
-                unloadHandle = Addressables.UnloadSceneAsync(handle, options);
+                unloadHandle = Addressables.UnloadSceneAsync(handle, options, !keepUnloadHandleAlive);
             else if (hasState && !ShouldKeepLocalSceneDuringTransfer(state.scene) &&
                      state.scene.IsValid() && state.scene.isLoaded)
                 SceneManager.UnloadSceneAsync(state.scene, options);
