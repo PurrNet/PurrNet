@@ -15,6 +15,10 @@ on:
         description: "Hard timeout for the whole job, in minutes"
         required: true
         default: "30"
+      scenario:
+        description: "Run a single scenario component by name (empty runs the full suite)"
+        required: false
+        default: ""
   workflow_call:
     inputs:
       clientCount:
@@ -31,6 +35,11 @@ on:
         default: "30"
       player_artifact:
         description: "Name of a prebuilt StandaloneLinux64 player artifact to reuse instead of building."
+        type: string
+        required: false
+        default: ""
+      scenario:
+        description: "Run a single scenario component by name (empty runs the full suite)."
         type: string
         required: false
         default: ""
@@ -108,6 +117,7 @@ jobs:
           CLIENT_COUNT: ${{ inputs.clientCount }}
           CONNECT_DELAY: ${{ inputs.connectionDelaySeconds }}
           MODE: ${{ matrix.mode }}
+          SCENARIO: ${{ inputs.scenario }}
         run: |
           set -u
           BIN="$PWD/build/StandaloneLinux64/PurrNetTests"
@@ -140,9 +150,17 @@ jobs:
           # even with -batchmode -nographics, so wrap each invocation in xvfb-run.
           RUN=(xvfb-run -a --server-args="-screen 0 1024x768x24")
 
+          # Empty input -> full suite; otherwise every process runs just that scenario.
+          SCENARIO_ARGS=()
+          if [ -n "$SCENARIO" ]; then
+            SCENARIO_ARGS=(-scenario "$SCENARIO")
+            echo "Running single scenario: $SCENARIO"
+          fi
+
           echo "::group::Launching $MODE process"
           "${RUN[@]}" "$BIN" -batchmode -nographics \
             -role "$MODE" -count "$TOTAL_COUNT" \
+            "${SCENARIO_ARGS[@]}" \
             -results "$RESULTS_DIR/$MODE.json" \
             -logFile "$LOGS_DIR/$MODE.log" &
           SERVER_PID=$!
@@ -162,6 +180,7 @@ jobs:
             echo "::group::Launching client $i"
             "${RUN[@]}" "$BIN" -batchmode -nographics \
               -role client \
+              "${SCENARIO_ARGS[@]}" \
               -results "$RESULTS_DIR/client-$i.json" \
               -logFile "$LOGS_DIR/client-$i.log" &
             PID=$!
