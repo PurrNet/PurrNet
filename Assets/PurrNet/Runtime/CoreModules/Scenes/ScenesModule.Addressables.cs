@@ -161,7 +161,51 @@ namespace PurrNet.Modules
 
         private bool TryUnloadAddressableScene(SceneID sceneId, UnloadSceneOptions options)
         {
-            return TryRemoveAddressableScene(sceneId, options, false);
+            return TryRemoveAddressableScene(sceneId, options, false, out _);
+        }
+
+        /// <summary>
+        /// Unloads an Addressable scene asynchronously by its SceneID.
+        /// Use this instead of UnloadSceneAsync when you need to await an Addressable scene unload,
+        /// since Addressables doesn't expose a Unity AsyncOperation for unloading.
+        /// </summary>
+        /// <param name="sceneId">The SceneID of the Addressable scene to unload</param>
+        /// <param name="options">The UnityEngine UnloadSceneOptions to use for the unloading</param>
+        /// <returns>The AsyncOperationHandle for the unload, or a default handle if invalid</returns>
+        public AsyncOperationHandle<SceneInstance> UnloadAddressableSceneAsync(
+            SceneID sceneId,
+            UnloadSceneOptions options = UnloadSceneOptions.None)
+        {
+            if (!_asServer)
+            {
+                PurrLogger.LogError("Only server can unload scenes; for now at least ;)");
+                return default;
+            }
+
+            if (!IsAddressableScene(sceneId))
+            {
+                PurrLogger.LogError($"Scene with ID {sceneId} is not a loaded Addressable scene");
+                return default;
+            }
+
+            if (_scenes.TryGetValue(sceneId, out var state) && _networkManager.gameObject.scene == state.scene)
+            {
+                PurrLogger.LogError("Can't unload the network manager scene");
+                return default;
+            }
+
+            _history.AddUnloadAction(new UnloadSceneAction { sceneID = sceneId, options = options });
+            TryRemoveAddressableScene(sceneId, options, false, out var handle);
+
+            return handle;
+        }
+
+        /// <summary>
+        /// Returns true if the given SceneID was loaded through Addressables.
+        /// </summary>
+        public bool IsAddressableScene(SceneID sceneId)
+        {
+            return _addressableSceneHandles.ContainsKey(sceneId) || _addressableSceneIdToGuid.ContainsKey(sceneId);
         }
 
         private bool TryReconcileLoadedAddressableTransferScene(
@@ -218,7 +262,7 @@ namespace PurrNet.Modules
 
         private void RemoveExistingTransferScene(SceneID sceneId, SceneState state)
         {
-            if (TryRemoveAddressableScene(sceneId, UnloadSceneOptions.None, true))
+            if (TryRemoveAddressableScene(sceneId, UnloadSceneOptions.None, true, out _))
                 return;
 
             RemoveScene(state.scene, true);
@@ -253,7 +297,7 @@ namespace PurrNet.Modules
                 if (targetAddressableScenes.TryGetValue(id, out var targetGuid) && existingGuid == targetGuid)
                     continue;
 
-                TryRemoveAddressableScene(id, UnloadSceneOptions.None, true);
+                TryRemoveAddressableScene(id, UnloadSceneOptions.None, true, out _);
             }
         }
 
@@ -286,19 +330,23 @@ namespace PurrNet.Modules
         private bool TryRemoveAddressableScene(
             SceneID sceneId,
             UnloadSceneOptions options,
-            bool playUnloadEventsImmediately)
+            bool playUnloadEventsImmediately,
+            out AsyncOperationHandle<SceneInstance> unloadHandle)
         {
-            var hasHandle = _addressableSceneHandles.TryGetValue(sceneId, out var handle);
-            var hasState = _scenes.TryGetValue(sceneId, out var state);
+            unloadHandle = default;
 
-            if (!hasHandle && !hasState && !_addressableSceneIdToGuid.ContainsKey(sceneId))
+            var hasHandle = _addressableSceneHandles.TryGetValue(sceneId, out var handle);
+
+            if (!hasHandle && !_addressableSceneIdToGuid.ContainsKey(sceneId))
                 return false;
 
+            var hasState = _scenes.TryGetValue(sceneId, out var state);
+
             if (hasHandle && handle.IsValid())
-                Addressables.UnloadSceneAsync(handle, options);
+                unloadHandle = Addressables.UnloadSceneAsync(handle, options);
             else if (hasState && !ShouldKeepLocalSceneDuringTransfer(state.scene) &&
                      state.scene.IsValid() && state.scene.isLoaded)
-                SceneManager.UnloadSceneAsync(state.scene);
+                SceneManager.UnloadSceneAsync(state.scene, options);
 
             UnregisterAddressableScene(sceneId);
             if (hasState)
