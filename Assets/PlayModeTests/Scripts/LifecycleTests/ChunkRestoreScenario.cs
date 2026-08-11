@@ -67,6 +67,9 @@ public class ChunkRestoreScenario : Scenario
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
+        // Ensure the first load tests the staged Spawn + child Despawn transaction on every peer.
+        await ScenarioBarrier.Wait(ctx, BarrierBase, _barrierTimeoutSeconds);
+
         for (int cycle = 0; cycle < _cycles; cycle++)
         {
             int barrier = BarrierBase + cycle * 10;

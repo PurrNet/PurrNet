@@ -551,23 +551,48 @@ namespace PurrNet
                 instance.AddComponent<NetworkIdentity>();
 
             instance.GetComponentsInChildren(true, children);
+            SetupPrefabInfo(instance, pid, shouldBePooled, children);
+            ListPool<NetworkIdentity>.Destroy(children);
+        }
+
+        /// <summary>
+        /// Prepares the prefab info for the given instance, reusing an already collected identity list.
+        /// </summary>
+        /// <param name="instance"></param>
+        /// <param name="pid">The prefab index in the network prefabs list.</param>
+        /// <param name="shouldBePooled">Whether the object should be pooled.</param>
+        /// <param name="children">The result of GetComponentsInChildren(true) on the instance.</param>
+        public static void SetupPrefabInfo(GameObject instance, int pid, bool shouldBePooled,
+            List<NetworkIdentity> children)
+        {
+            if (!instance.GetComponent<NetworkIdentity>())
+            {
+                instance.AddComponent<NetworkIdentity>();
+                children.Clear();
+                instance.GetComponentsInChildren(true, children);
+            }
+
+            Transform runTransform = null;
+            int runStart = 0;
 
             for (var i = 0; i < children.Count; i++)
             {
                 var child = children[i];
                 var trs = child.transform;
 
-                var first = trs.GetComponent<NetworkIdentity>();
+                if (!ReferenceEquals(trs, runTransform))
+                {
+                    runTransform = trs;
+                    runStart = i;
+                }
 
                 child.PreparePrefabInfo(
                     pid,
-                    child == first ? i : first.componentIndex,
+                    i == runStart ? i : children[runStart].componentIndex,
                     shouldBePooled,
                     false
                 );
             }
-
-            ListPool<NetworkIdentity>.Destroy(children);
         }
 
         static bool ReferencesAssembly(Assembly asm, string targetSimpleName)
@@ -785,6 +810,7 @@ namespace PurrNet
 
             _serverModules = new ModulesCollection(this, true);
             _clientModules = new ModulesCollection(this, false);
+            UnityLatestUpdate.onPostLatestUpdate += FlushImmediateRPCsLate;
             _ready = true;
 
             if (_dontDestroyOnLoad)
@@ -1656,8 +1682,51 @@ namespace PurrNet
             _serverModules.TriggerOnUpdate();
             _clientModules.TriggerOnUpdate();
 
-            if (_transportLayer != null)
+            if (_transportLayer == null)
+                return;
+
+            SetReceiveDeferral(true);
+
+            try
+            {
                 _transportLayer.UnityUpdate(Time.deltaTime);
+            }
+            finally
+            {
+                SetReceiveDeferral(false);
+            }
+        }
+
+        private void SetReceiveDeferral(bool defer)
+        {
+            _serverBroadcast?.SetDeferNonImmediate(defer);
+            _clientBroadcast?.SetDeferNonImmediate(defer);
+        }
+
+        private bool _sendFlushRequested;
+
+        internal void RequestSendFlushThisFrame()
+        {
+            _sendFlushRequested = true;
+        }
+
+        // Runs from UnityLatestUpdate's post phase (execution order 32000, after every
+        // onLatestUpdate subscriber) so immediate RPCs queued by gameplay LateUpdate or
+        // latest-update callbacks still flush this frame; this manager's own LateUpdate
+        // would run before them at -999.
+        private void FlushImmediateRPCsLate()
+        {
+            bool flushedAny = _sendFlushRequested;
+            _sendFlushRequested = false;
+
+            if (serverState == ConnectionState.Connected)
+                flushedAny |= _serverModules.FlushImmediateRPCs();
+
+            if (clientState == ConnectionState.Connected)
+                flushedAny |= _clientModules.FlushImmediateRPCs();
+
+            if (flushedAny)
+                SendMessagesNow();
         }
 
         private void OnDrawGizmos()
@@ -1685,6 +1754,17 @@ namespace PurrNet
 
         private double _lastSendTime;
 
+        private void SendMessagesNow(float fallbackDelta = 0f)
+        {
+            if (_transportLayer == null)
+                return;
+
+            var now = Time.unscaledTimeAsDouble;
+            var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : fallbackDelta;
+            _lastSendTime = now;
+            _transportLayer.SendMessages(sendDelta);
+        }
+
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
@@ -1702,6 +1782,9 @@ namespace PurrNet
 
             using (_receiveMessagesMarker.Auto())
             {
+                _serverBroadcast?.DrainDeferred();
+                _clientBroadcast?.DrainDeferred();
+
                 if (_transportLayer != null)
                     _transportLayer.ReceiveMessages(delta);
             }
@@ -1744,13 +1827,7 @@ namespace PurrNet
 
             using (_onSendMessagesMarker.Auto())
             {
-                if (_transportLayer != null)
-                {
-                    var now = Time.unscaledTimeAsDouble;
-                    var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : delta;
-                    _lastSendTime = now;
-                    _transportLayer.SendMessages(sendDelta);
-                }
+                SendMessagesNow(delta);
             }
 
             if (_isCleaningClient)
@@ -1803,16 +1880,24 @@ namespace PurrNet
 
         private void OnDestroy()
         {
+            UnityLatestUpdate.onPostLatestUpdate -= FlushImmediateRPCsLate;
+
             if (_transport)
             {
                 StopClient();
                 StopServer();
 
                 if (clientState != ConnectionState.Disconnected)
+                {
+                    // drain while the PlayersBroadcaster bridge is still attached;
+                    // module Disable order would detach it before the broadcaster's own drain
+                    _clientBroadcast?.DrainDeferred();
                     _clientModules.UnregisterModules();
+                }
 
                 if (serverState != ConnectionState.Disconnected)
                 {
+                    _serverBroadcast?.DrainDeferred();
                     _isServerTicking = false;
                     _serverModules.UnregisterModules();
                 }
@@ -2229,9 +2314,13 @@ namespace PurrNet
         private void OnLostConnection(Connection conn, DisconnectReason reason, bool asServer)
         {
             if (asServer)
+            {
+                _serverBroadcast?.DrainDeferred(conn);
                 _serverModules.OnLostConnection(conn, true);
+            }
             else
             {
+                _clientBroadcast?.DrainDeferred();
                 clientToServerConn = null;
                 _clientModules.OnLostConnection(conn, false);
             }

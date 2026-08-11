@@ -5,9 +5,8 @@ using UnityEngine;
 
 // Proves NetworkAnimator parameter replication end to end: a server-controlled animator's
 // float/bool/int/trigger writes (manual API, including the damped SetFloat overload) must land on
-// every peer with the LAST value winning. Regression coverage for OptimizeBatch keeping the stale
-// value when the same parameter is written twice with another action interleaved in one tick, and
-// for consecutive ResetTrigger calls on different triggers collapsing into one.
+// every peer with the LAST value winning. Also covers authoritative writes while the local Animator
+// is disabled: they must not warn, must survive auto-sync, and must still reach observers.
 public class NetworkAnimatorParamsScenario : Scenario
 {
     [SerializeField] private float _spawnTimeoutSeconds = 15f;
@@ -158,6 +157,94 @@ public class NetworkAnimatorParamsScenario : Scenario
         await ScenarioBarrier.Wait(ctx, BarrierBase + 3, _barrierTimeoutSeconds);
 
         if (ctx.isServer && instance)
+        {
+            var anim = instance.animator;
+            var na = instance.networkAnimator;
+            int disabledAnimatorWarnings = 0;
+
+            void OnLogMessage(string condition, string stackTrace, LogType type)
+            {
+                if (type == LogType.Warning && condition.Contains("Animator is not playing an AnimatorController"))
+                    disabledAnimatorWarnings++;
+            }
+
+            anim.enabled = false;
+            Application.logMessageReceived += OnLogMessage;
+            try
+            {
+                na.SetFloat(FloatA, 4.25f);
+                na.SetBool(BoolA, false);
+                na.SetInteger(IntA, 42);
+                na.SetTrigger(TrigA);
+            }
+            finally
+            {
+                Application.logMessageReceived -= OnLogMessage;
+            }
+
+            if (disabledAnimatorWarnings != 0)
+                return ScenarioResult.Fail(
+                    $"disabled Animator parameter writes logged {disabledAnimatorWarnings} warning(s)");
+
+            if (!Mathf.Approximately(na.GetFloat(FloatA), 4.25f) ||
+                na.GetBool(BoolA) || na.GetInteger(IntA) != 42)
+                return ScenarioResult.Fail("disabled Animator shadow parameter state was not retained");
+        }
+
+        if (!ctx.isServer)
+        {
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () =>
+                    {
+                        var local = NetworkAnimatorRoot.LocalInstance;
+                        if (local == null)
+                            return false;
+
+                        var anim = local.animator;
+                        return Mathf.Approximately(anim.GetFloat(FloatA), 4.25f)
+                               && !anim.GetBool(BoolA)
+                               && anim.GetInteger(IntA) == 42
+                               && anim.GetBool(TrigA);
+                    },
+                    _syncTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                var anim = NetworkAnimatorRoot.LocalInstance ? NetworkAnimatorRoot.LocalInstance.animator : null;
+                return ScenarioResult.Fail(anim == null
+                    ? "disabled Animator writes never synced: no local instance"
+                    : $"disabled writes didn't sync: FloatA={anim.GetFloat(FloatA)} (want 4.25), " +
+                      $"BoolA={anim.GetBool(BoolA)} (want false), IntA={anim.GetInteger(IntA)} (want 42), " +
+                      $"TrigA={anim.GetBool(TrigA)} (want true)");
+            }
+        }
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 4, _barrierTimeoutSeconds);
+
+        if (ctx.isServer && instance)
+        {
+            instance.animator.enabled = true;
+            try
+            {
+                await UniTaskUtils.WaitWithTimeout(
+                    () => Mathf.Approximately(instance.animator.GetFloat(FloatA), 4.25f)
+                          && !instance.animator.GetBool(BoolA)
+                          && instance.animator.GetInteger(IntA) == 42,
+                    _syncTimeoutSeconds,
+                    ctx.cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                return ScenarioResult.Fail("shadow parameter state was not restored after enabling the Animator");
+            }
+        }
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 5, _barrierTimeoutSeconds);
+
+        if (ctx.isServer && instance)
             instance.Despawn();
 
         try
@@ -172,8 +259,9 @@ public class NetworkAnimatorParamsScenario : Scenario
             return ScenarioResult.Fail("despawn incomplete");
         }
 
-        await ScenarioBarrier.Wait(ctx, BarrierBase + 4, _barrierTimeoutSeconds);
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 6, _barrierTimeoutSeconds);
 
-        return ScenarioResult.Ok("params, interleaved last-write-wins, trigger resets, damped float all synced");
+        return ScenarioResult.Ok(
+            "params, disabled Animator writes, last-write-wins, trigger resets, and damped float all synced");
     }
 }

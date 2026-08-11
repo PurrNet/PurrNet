@@ -53,7 +53,6 @@ namespace PurrNet.Transports
         [Header("Shared Settings")]
         [Tooltip("The amount of time in seconds before socket is disconnected due to no data being received.")]
         [SerializeField, HideInInspector] private float _timeoutInSeconds = 5f;
-        [SerializeField, HideInInspector] private bool _pollEventsInUpdate;
 
         [Tooltip("Use NAT hole-punching to establish a direct P2P link when possible. " +
                  "If a punch succeeds the session runs over P2P; if that link is later " +
@@ -1541,42 +1540,24 @@ namespace PurrNet.Transports
 
         public void ReceiveMessages(float delta)
         {
-            if (!_pollEventsInUpdate)
+            if (_isUsingUDP)
             {
-                if (_isUsingUDP)
-                {
-                    if (_udpClient.IsRunning)
-                        _udpClient.PollEvents();
-                    if (_udpServer.IsRunning)
-                        _udpServer.PollEvents();
-                    PollNatPunch();
-                }
-                else
-                {
-                    _server?.ProcessMessageQueue();
-                    _client?.ProcessMessageQueue();
-                }
+                if (_udpClient.IsRunning)
+                    _udpClient.PollEvents();
+                if (_udpServer.IsRunning)
+                    _udpServer.PollEvents();
+                PollNatPunch();
+            }
+            else
+            {
+                _server?.ProcessMessageQueue();
+                _client?.ProcessMessageQueue();
             }
         }
 
         public void UnityUpdate(float delta)
         {
-            if (_pollEventsInUpdate)
-            {
-                if (_isUsingUDP)
-                {
-                    if (_udpClient.IsRunning)
-                        _udpClient.PollEvents();
-                    if (_udpServer.IsRunning)
-                        _udpServer.PollEvents();
-                    PollNatPunch();
-                }
-                else
-                {
-                    _server?.ProcessMessageQueue();
-                    _client?.ProcessMessageQueue();
-                }
-            }
+            ReceiveMessages(delta);
         }
 
         public void SendMessages(float delta)

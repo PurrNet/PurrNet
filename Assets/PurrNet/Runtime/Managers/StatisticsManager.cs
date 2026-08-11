@@ -68,6 +68,9 @@ namespace PurrNet
         private const int MAX_SEQUENCE_TRACKING = 256;
         private const float PACKET_LOSS_WINDOW = 5f;
         private const float MIN_INFLIGHT_GRACE = 0.5f;
+        private const float PACKET_LOSS_WARMUP = 3f;
+        private const int DEFAULT_PACKETS_PER_SEC = 20;
+        private const uint MAX_VALID_PING_MS = 60000;
 
         private readonly uint[] _seqIds = new uint[MAX_SEQUENCE_TRACKING];
         private readonly float[] _seqSendTimes = new float[MAX_SEQUENCE_TRACKING];
@@ -76,9 +79,9 @@ namespace PurrNet
         private int _seqCount;
         private uint _packetSequence;
 
-        private int _packetsToSendPerSec = 20;
-        private uint _lastPacketSendTick;
-        private uint _lastPingSendTick;
+        private int _packetsToSendPerSec = DEFAULT_PACKETS_PER_SEC;
+        private float _lastPacketSendTime;
+        private float _lastPingSendTime;
 
         private float _totalDataReceived;
         private float _totalDataSent;
@@ -192,8 +195,6 @@ namespace PurrNet
                     rt.onDataReceived -= OnDataReceived;
                     rt.onDataSent -= OnDataSent;
                 }
-                if (_networkManager.TryGetModule(out TickManager tm, false))
-                    tm.onTick -= OnClientTick;
             }
 
             if (_playersServerBroadcaster != null)
@@ -399,13 +400,13 @@ namespace PurrNet
 
         private void Update()
         {
-            if (Time.time - _lastDataCheckTime >= 1f)
+            if (Time.unscaledTime - _lastDataCheckTime >= 1f)
             {
                 download = _totalDataReceived / 1024f;
                 upload = _totalDataSent / 1024f;
                 _totalDataReceived = 0;
                 _totalDataSent = 0;
-                _lastDataCheckTime = Time.time;
+                _lastDataCheckTime = Time.unscaledTime;
             }
 
             if (connectedClient)
@@ -429,6 +430,11 @@ namespace PurrNet
                     _playersServerBroadcaster.Unsubscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Unsubscribe<PacketMessage>(ReceivePacket);
                     _playersServerBroadcaster = null;
+                    if (_networkManager.TryGetModule<PlayersManager>(true, out var serverPlayersCleanup))
+                    {
+                        serverPlayersCleanup.UnregisterImmediateType<PingMessage>();
+                        serverPlayersCleanup.UnregisterImmediateType<PacketMessage>();
+                    }
                     var rt = _networkManager.rawTransport;
                     if (rt != null)
                     {
@@ -441,6 +447,11 @@ namespace PurrNet
                     _playersServerBroadcaster = _networkManager.GetModule<PlayersBroadcaster>(true);
                     _playersServerBroadcaster.Subscribe<PingMessage>(ReceivePing);
                     _playersServerBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
+                    if (_networkManager.TryGetModule<PlayersManager>(true, out var serverPlayers))
+                    {
+                        serverPlayers.RegisterImmediateType<PingMessage>();
+                        serverPlayers.RegisterImmediateType<PacketMessage>();
+                    }
                     _networkManager.rawTransport.onDataReceived += OnDataReceived;
                     _networkManager.rawTransport.onDataSent += OnDataSent;
                     ServerSubscribe_ServerStats();
@@ -465,7 +476,11 @@ namespace PurrNet
             {
                 _playersClientBroadcaster.Unsubscribe<PingMessage>(ReceivePing);
                 _playersClientBroadcaster.Unsubscribe<PacketMessage>(ReceivePacket);
-                _tickManager.onTick -= OnClientTick;
+                if (_networkManager.TryGetModule<PlayersManager>(false, out var clientPlayersCleanup))
+                {
+                    clientPlayersCleanup.UnregisterImmediateType<PingMessage>();
+                    clientPlayersCleanup.UnregisterImmediateType<PacketMessage>();
+                }
                 if (!connectedServer)
                 {
                     var rt = _networkManager.rawTransport;
@@ -483,7 +498,11 @@ namespace PurrNet
 
             _playersClientBroadcaster.Subscribe<PingMessage>(ReceivePing);
             _playersClientBroadcaster.Subscribe<PacketMessage>(ReceivePacket);
-            _tickManager.onTick += OnClientTick;
+            if (_networkManager.TryGetModule<PlayersManager>(false, out var clientPlayers))
+            {
+                clientPlayers.RegisterImmediateType<PingMessage>();
+                clientPlayers.RegisterImmediateType<PacketMessage>();
+            }
 
             if (!connectedServer)
             {
@@ -491,6 +510,7 @@ namespace PurrNet
                 _networkManager.rawTransport.onDataSent += OnDataSent;
             }
 
+            _packetsToSendPerSec = DEFAULT_PACKETS_PER_SEC;
             if (_tickManager.tickRate < _packetsToSendPerSec)
                 _packetsToSendPerSec = Mathf.Max(5, _tickManager.tickRate / 2);
 
@@ -505,12 +525,14 @@ namespace PurrNet
             packetLoss = 0;
             _emaPing = 0;
             _hasPingSample = false;
-            _connectionTime = Time.time;
+            _connectionTime = Time.unscaledTime;
             _lastRawPing = 0;
             _emaJitter = 0;
             _seqHead = 0;
             _seqCount = 0;
             _packetSequence = 0;
+            _lastPingSendTime = 0;
+            _lastPacketSendTime = 0;
             _lastClientDataReceivedTime = Time.unscaledTime;
 
             for (int i = 0; i < MAX_SEQUENCE_TRACKING; i++)
@@ -529,32 +551,35 @@ namespace PurrNet
             ResetStatistics_ServerStats();
         }
 
-        private void OnClientTick()
+        private void LateUpdate()
         {
-            if (!gameObject.activeInHierarchy)
+            if (!connectedClient || _playersClientBroadcaster == null)
                 return;
 
-            HandlePingCheck();
-            HandlePacketCheck();
+            float now = Time.unscaledTime;
+
+            if (now - _lastPingSendTime >= checkInterval)
+                SendPingCheck(now);
+
+            if (now - _lastPacketSendTime >= 1f / _packetsToSendPerSec)
+                SendPacketCheck(now);
         }
 
-        private void HandlePingCheck()
+        private static uint NowMilliseconds()
         {
-            if (_lastPingSendTick + _tickManager.TimeToTick(checkInterval) > _tickManager.localTick)
-                return;
-
-            SendPingCheck();
+            return (uint)(Time.unscaledTimeAsDouble * 1000.0);
         }
 
-        private void SendPingCheck()
+        private void SendPingCheck(float now)
         {
             _playersClientBroadcaster.SendToServer(
                 new PingMessage {
-                    sendTime = _tickManager.localTick,
-                    realSendTime = Time.time
+                    sendTime = NowMilliseconds(),
+                    realSendTime = now
                 },
-                Channel.ReliableUnordered);
-            _lastPingSendTick = _tickManager.localTick;
+                Channel.Unreliable);
+            _lastPingSendTime = now;
+            _networkManager.RequestSendFlushThisFrame();
         }
 
         private void ReceivePing(PlayerID sender, PingMessage msg, bool asServer)
@@ -566,18 +591,19 @@ namespace PurrNet
                         sendTime = msg.sendTime,
                         realSendTime = msg.realSendTime
                     },
-                    Channel.ReliableUnordered);
+                    Channel.Unreliable);
+                _networkManager.RequestSendFlushThisFrame();
                 return;
             }
 
-            if (Time.time - _connectionTime < WARMUP_DURATION)
+            if (Time.unscaledTime - _connectionTime < WARMUP_DURATION)
                 return;
 
-            float sentTime = msg.realSendTime;
-            int currentPing = Mathf.Max(0, Mathf.FloorToInt((Time.time - sentTime) * 1000));
+            uint elapsedMs = NowMilliseconds() - msg.sendTime;
+            if (elapsedMs > MAX_VALID_PING_MS)
+                return;
 
-            var compensation = _tickManager.tickDelta * (_networkManager.isServer ? 3f : 2f);
-            currentPing -= Mathf.Min(currentPing, Mathf.RoundToInt(compensation * 1000));
+            int currentPing = (int)elapsedMs;
 
             if (_hasPingSample)
             {
@@ -601,16 +627,13 @@ namespace PurrNet
             jitter = Mathf.RoundToInt(_emaJitter);
         }
 
-        private void HandlePacketCheck()
+        private void SendPacketCheck(float now)
         {
-            if (_lastPacketSendTick + _tickManager.TimeToTick(1f / _packetsToSendPerSec) > _tickManager.localTick)
-                return;
-
-            _lastPacketSendTick = _tickManager.localTick;
+            _lastPacketSendTime = now;
 
             int idx = _seqHead;
             _seqIds[idx] = _packetSequence;
-            _seqSendTimes[idx] = Time.time;
+            _seqSendTimes[idx] = now;
             _seqAcked[idx] = false;
             _seqHead = (_seqHead + 1) % MAX_SEQUENCE_TRACKING;
             if (_seqCount < MAX_SEQUENCE_TRACKING)
@@ -621,12 +644,12 @@ namespace PurrNet
 
         private void CalculatePacketLoss()
         {
-            float now = Time.time;
+            float now = Time.unscaledTime;
             float gracePeriod = Mathf.Max(MIN_INFLIGHT_GRACE, (_emaPing / 1000f) * 3f);
             float graceThreshold = now - gracePeriod;
             float windowStart = now - PACKET_LOSS_WINDOW;
 
-            if (_tickManager != null && _tickManager.localTick < 3 * _tickManager.tickRate)
+            if (now - _connectionTime < PACKET_LOSS_WARMUP)
             {
                 packetLoss = 0;
                 return;

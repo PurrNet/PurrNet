@@ -25,7 +25,7 @@ namespace PurrNet.Modules
 
             for (var i = 0; i < count; i++)
             {
-                if (components[i].IsObserver(playerID))
+                if (components[i].IsObserverOrPending(playerID))
                 {
                     hasObserver = true;
                     break;

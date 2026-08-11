@@ -179,14 +179,23 @@ namespace PurrNet
         [Tooltip("If true, resets the rigidbody linear velocity once the hard snap distance is exceeded.")]
         [SerializeField] private bool _resetLinearVelocityOnSnap = false;
 
-        [Tooltip("If the rotation error (degrees) exceeds this threshold, snap rotation instead of using torque. Negative to disable.")]
-        [SerializeField] private float _hardSnapAngle = 210f;
+        [Tooltip("If the rotation error (degrees) exceeds this threshold, snap rotation instead of using torque. Rotation error can never exceed 180 degrees, so values above 175 are clamped to 175. Negative to disable.")]
+        [SerializeField] private float _hardSnapAngle = 120f;
 
         [Tooltip("If true, resets the rigidbody angular velocity once the hard snap angle is exceeded.")]
         [SerializeField] private bool _resetAngularVelocityOnSnap = false;
 
         [Tooltip("Rotation error (degrees) below which rotation correction stops. Negative to disable rotation correction entirely.")]
         [SerializeField] private float _acceptableRotationError = 1f;
+
+        [Tooltip("Master switch for stall recovery: the settle servo that eases a settling body onto the settled target, the kinematic recovery for rotation errors torque cannot close, and the opt-in settled hard snap (which uses this value as its delay). Negative to disable all of them.")]
+        [SerializeField] private float _stallRecoveryDelay = 0.25f;
+
+        [Tooltip("Position error (meters) above which a settled body is considered misaligned and recovered to the settled target.")]
+        [SerializeField] private float _settledSnapPositionError = 0.01f;
+
+        [Tooltip("If true, a body that stays settled in the wrong pose teleports straight to the settled target instead of relying on the settle servo. Enable only when instant realignment matters more than visual continuity.")]
+        [SerializeField] private bool _hardSnapOnStall;
 
         [Header("Sync")]
         [Tooltip("Minimum distance moved required to trigger a network update.")]
@@ -202,6 +211,19 @@ namespace PurrNet
         private Rigidbody _rigidbody => _cachedRigidbody ? _cachedRigidbody : (_cachedRigidbody = GetComponent<Rigidbody>());
 
         private const int BUFFER_SIZE = 32;
+        private const float MAX_HARD_SNAP_ANGLE = 175f;
+        private const float SETTLED_LINEAR_SPEED_SQR = 0.0004f;
+        private const float SETTLED_ANGULAR_SPEED_SQR = 0.01f;
+        private const float ROTATION_STALL_MIN_ERROR = 20f;
+        private const float ROTATION_RECOVERY_DEGREES_PER_SECOND = 540f;
+        private const float ROTATION_RECOVERY_MAX_DURATION = 2f;
+        private const float SETTLE_SERVO_CLOSING_TIME = 0.5f;
+        private const float SETTLE_SERVO_MAX_SPEED = 1.5f;
+        private const float SETTLE_SERVO_MAX_ANGULAR = 4f;
+        private const float SETTLE_SERVO_RESPONSE = 0.1f;
+        private const float SETTLE_SERVO_ENGAGE_SPEED = 0.75f;
+        private const float SETTLE_SERVO_ENGAGE_ANGULAR = 3f;
+        private const float SETTLE_SERVO_ROTATION_EPSILON = 0.25f;
         private readonly TimestampedSnapshot[] _snapshotBuffer = new TimestampedSnapshot[BUFFER_SIZE];
         private int _bufferHead;
         private int _bufferCount;
@@ -233,6 +255,11 @@ namespace PurrNet
         private string _bufferSampleMode = "None";
         private double _lastLogTime;
         private float _predictionOffset;
+
+        private float _stallSettledTimer;
+        private float _rotationStallTimer;
+        private float _rotationRecoveryRemaining;
+        private bool _settleServoActive;
 
         /// <summary>
         /// Process-wide fallback used when a NetworkRigidbody has no runtime override
@@ -699,6 +726,11 @@ namespace PurrNet
 
             var ctx = BuildCorrectionContext(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, rotationError);
 
+            if (TryStallSnapRecovery(in ctx))
+                return;
+
+            bool rotationRecovery = UpdateRotationStallRecovery(in ctx);
+
             if (_settingsInstance != null)
             {
                 if (_settingsInstance.ShouldTeleport(in ctx))
@@ -710,7 +742,7 @@ namespace PurrNet
                     return;
                 }
 
-                bool hardSnapRotation = _settingsInstance.ShouldSnapRotation(in ctx);
+                bool hardSnapRotation = !rotationRecovery && _settingsInstance.ShouldSnapRotation(in ctx);
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
@@ -721,10 +753,14 @@ namespace PurrNet
 
                 _settingsInstance.ApplyPositionCorrection(in ctx);
 
-                if (!hardSnapRotation && _settingsInstance.ShouldCorrectRotation(in ctx))
+                if (!hardSnapRotation && !rotationRecovery && _settingsInstance.ShouldCorrectRotation(in ctx))
                     _settingsInstance.ApplyRotationCorrection(in ctx);
 
-                if (!hardSnapRotation)
+                if (rotationRecovery)
+                {
+                    _lastCorrectionReason = "Rotation (Stall Recovery)";
+                }
+                else if (!hardSnapRotation)
                 {
                     bool correctingRot = _settingsInstance.ShouldCorrectRotation(in ctx);
                     _lastCorrectionReason = correctingRot
@@ -748,10 +784,12 @@ namespace PurrNet
 
                 bool kinematicRotation = useKinematicRotationCorrection;
 
+                float snapAngle = effectiveHardSnapAngle;
                 bool hardSnapRotation = !kinematicRotation
-                                      && _hardSnapAngle >= 0
+                                      && !rotationRecovery
+                                      && snapAngle >= 0
                                       && _acceptableRotationError >= 0
-                                      && rotationError > _hardSnapAngle;
+                                      && rotationError > snapAngle;
                 if (hardSnapRotation)
                 {
                     _lastCorrectionReason = "Hard (Rotation)";
@@ -759,19 +797,199 @@ namespace PurrNet
                     SetAngularVelocity(_resetAngularVelocityOnSnap ? Vector3.zero : worldTargetAngVel);
                 }
 
-                bool correctRotation = kinematicRotation
-                                     || (!hardSnapRotation
-                                         && _acceptableRotationError >= 0
-                                         && rotationError > _acceptableRotationError);
+                bool correctRotation = !rotationRecovery
+                                     && (kinematicRotation
+                                         || (!hardSnapRotation
+                                             && _acceptableRotationError >= 0
+                                             && rotationError > _acceptableRotationError));
 
-                _lastCorrectionReason = hardSnapRotation
-                    ? (positionError > 0.001f ? "Hard (Rotation) + Position" : "Hard (Rotation)")
-                    : correctRotation
-                        ? kinematicRotation ? "Position+Rotation (Kinematic)" : "Position+Rotation"
-                        : positionError > 0.001f ? "Position" : "No";
+                _lastCorrectionReason = rotationRecovery
+                    ? "Rotation (Stall Recovery)"
+                    : hardSnapRotation
+                        ? (positionError > 0.001f ? "Hard (Rotation) + Position" : "Hard (Rotation)")
+                        : correctRotation
+                            ? kinematicRotation ? "Position+Rotation (Kinematic)" : "Position+Rotation"
+                            : positionError > 0.001f ? "Position" : "No";
 
                 ApplyCorrection(worldTargetPos, worldTargetRot, worldTargetLinVel, worldTargetAngVel, positionError, correctRotation);
             }
+
+            ApplySettleServo(in ctx, rotationRecovery);
+        }
+
+        private float effectiveHardSnapAngle => _hardSnapAngle < 0f ? _hardSnapAngle : Mathf.Min(_hardSnapAngle, MAX_HARD_SNAP_ANGLE);
+
+        private bool TryStallSnapRecovery(in RigidbodyCorrectionContext ctx)
+        {
+            if (!_hardSnapOnStall || _stallRecoveryDelay < 0f || !CanApplyDynamicMotion())
+            {
+                _stallSettledTimer = 0f;
+                return false;
+            }
+
+            bool targetSettled = _targetLinearVelocity.sqrMagnitude <= SETTLED_LINEAR_SPEED_SQR
+                              && _targetAngularVelocity.sqrMagnitude <= SETTLED_ANGULAR_SPEED_SQR;
+
+            bool bodySettled = (GetLinearVelocity() - ctx.targetLinearVelocity).sqrMagnitude <= SETTLED_LINEAR_SPEED_SQR
+                            && (_rigidbody.angularVelocity - ctx.targetAngularVelocity).sqrMagnitude <= SETTLED_ANGULAR_SPEED_SQR;
+
+            bool rotationMatters = useKinematicRotationCorrection || _acceptableRotationError >= 0f;
+            float positionEpsilon = Mathf.Max(_settledSnapPositionError, 0.001f);
+            float rotationEpsilon = Mathf.Max(_acceptableRotationError, 1f);
+            bool poseMismatch = ctx.positionError > positionEpsilon
+                             || (rotationMatters && ctx.rotationError > rotationEpsilon);
+
+            if (!targetSettled || !bodySettled || !poseMismatch)
+            {
+                _stallSettledTimer = 0f;
+                return false;
+            }
+
+            _stallSettledTimer += Time.fixedDeltaTime;
+            if (_stallSettledTimer < _stallRecoveryDelay)
+                return false;
+
+            _stallSettledTimer = 0f;
+            _rotationStallTimer = 0f;
+            _rotationRecoveryRemaining = 0f;
+            _settleServoActive = false;
+            _lastCorrectionReason = "Hard (Settled Stall)";
+
+            if (_settingsInstance != null)
+            {
+                _settingsInstance.ApplyHardCorrection(in ctx);
+                _settingsInstance.OnReset(in ctx);
+            }
+            else
+            {
+                HardCorrect(ctx.targetPosition, ctx.targetRotation, ctx.targetLinearVelocity, ctx.targetAngularVelocity);
+            }
+
+            onTeleportCorrection?.Invoke(ctx);
+            return true;
+        }
+
+        private void ApplySettleServo(in RigidbodyCorrectionContext ctx, bool rotationRecovery)
+        {
+            if (_stallRecoveryDelay < 0f || !CanApplyDynamicMotion())
+            {
+                _settleServoActive = false;
+                return;
+            }
+
+            bool targetSettled = _targetLinearVelocity.sqrMagnitude <= SETTLED_LINEAR_SPEED_SQR
+                              && _targetAngularVelocity.sqrMagnitude <= SETTLED_ANGULAR_SPEED_SQR;
+            if (!targetSettled)
+            {
+                _settleServoActive = false;
+                return;
+            }
+
+            var velocity = GetLinearVelocity();
+            var angularVelocity = _rigidbody.angularVelocity;
+            var relativeVelocity = velocity - ctx.targetLinearVelocity;
+            var relativeAngularVelocity = angularVelocity - ctx.targetAngularVelocity;
+
+            var toTarget = ctx.targetPosition - _rigidbody.position;
+            float distance = toTarget.magnitude;
+
+            bool rotationMatters = !rotationRecovery && !ctx.useKinematicRotation && _acceptableRotationError >= 0f;
+            float positionEpsilon = Mathf.Max(_settledSnapPositionError * 0.25f, 0.001f);
+            bool positionDone = distance <= positionEpsilon;
+            bool rotationDone = !rotationMatters || ctx.rotationError <= SETTLE_SERVO_ROTATION_EPSILON;
+
+            if (positionDone && rotationDone)
+            {
+                _settleServoActive = false;
+                return;
+            }
+
+            if (!_settleServoActive)
+            {
+                if (relativeVelocity.magnitude > SETTLE_SERVO_ENGAGE_SPEED
+                    || relativeAngularVelocity.magnitude > SETTLE_SERVO_ENGAGE_ANGULAR)
+                    return;
+
+                _settleServoActive = true;
+            }
+            else if (relativeVelocity.magnitude > SETTLE_SERVO_ENGAGE_SPEED + SETTLE_SERVO_MAX_SPEED
+                     || relativeAngularVelocity.magnitude > SETTLE_SERVO_ENGAGE_ANGULAR + SETTLE_SERVO_MAX_ANGULAR)
+            {
+                _settleServoActive = false;
+                return;
+            }
+
+            float blend = Mathf.Clamp01(Time.fixedDeltaTime / SETTLE_SERVO_RESPONSE);
+            _lastCorrectionReason = "Settle Servo";
+
+            if (!positionDone)
+            {
+                var desiredVelocity = ctx.targetLinearVelocity
+                    + Vector3.ClampMagnitude(toTarget * (1f / SETTLE_SERVO_CLOSING_TIME), SETTLE_SERVO_MAX_SPEED);
+                SetLinearVelocity(Vector3.Lerp(velocity, desiredVelocity, blend));
+            }
+
+            if (!rotationDone)
+            {
+                var rotationDelta = NormalizeQuaternion(ctx.targetRotation) * Quaternion.Inverse(_rigidbody.rotation);
+                rotationDelta.ToAngleAxis(out float angle, out Vector3 axis);
+
+                if (!float.IsNaN(axis.x) && axis.sqrMagnitude > 0.001f)
+                {
+                    if (angle > 180f)
+                        angle -= 360f;
+
+                    var desiredAngularVelocity = ctx.targetAngularVelocity
+                        + Vector3.ClampMagnitude(axis * (angle * Mathf.Deg2Rad / SETTLE_SERVO_CLOSING_TIME), SETTLE_SERVO_MAX_ANGULAR);
+                    SetAngularVelocity(Vector3.Lerp(angularVelocity, desiredAngularVelocity, blend));
+                }
+            }
+        }
+
+        private bool UpdateRotationStallRecovery(in RigidbodyCorrectionContext ctx)
+        {
+            if (_stallRecoveryDelay < 0f || !CanApplyDynamicMotion() || ctx.useKinematicRotation || _acceptableRotationError < 0f)
+            {
+                _rotationStallTimer = 0f;
+                _rotationRecoveryRemaining = 0f;
+                return false;
+            }
+
+            if (_rotationRecoveryRemaining <= 0f)
+            {
+                bool rotationStalled = ctx.rotationError > ROTATION_STALL_MIN_ERROR
+                    && (_rigidbody.angularVelocity - ctx.targetAngularVelocity).sqrMagnitude <= SETTLED_ANGULAR_SPEED_SQR;
+
+                if (!rotationStalled)
+                {
+                    _rotationStallTimer = 0f;
+                    return false;
+                }
+
+                _rotationStallTimer += Time.fixedDeltaTime;
+                if (_rotationStallTimer < _stallRecoveryDelay)
+                    return false;
+
+                _rotationStallTimer = 0f;
+                _rotationRecoveryRemaining = ROTATION_RECOVERY_MAX_DURATION;
+            }
+
+            _rotationRecoveryRemaining -= Time.fixedDeltaTime;
+
+            float rotationEpsilon = Mathf.Max(_acceptableRotationError, 1f);
+            if (ctx.rotationError <= rotationEpsilon || _rotationRecoveryRemaining <= 0f)
+            {
+                _rotationRecoveryRemaining = 0f;
+                return false;
+            }
+
+            var step = Quaternion.RotateTowards(
+                _rigidbody.rotation,
+                NormalizeQuaternion(ctx.targetRotation),
+                ROTATION_RECOVERY_DEGREES_PER_SECOND * Time.fixedDeltaTime);
+            _rigidbody.MoveRotation(step);
+            SetAngularVelocity(ctx.targetAngularVelocity);
+            return true;
         }
 
         private void ApplyCorrection(Vector3 worldTargetPos, Quaternion worldTargetRot, Vector3 worldTargetLinVel, Vector3 worldTargetAngVel, float positionError, bool correctRotation)
@@ -861,7 +1079,7 @@ namespace PurrNet
                 correctionRange = _correctionRange,
                 rotationStrength = _rotationStrength,
                 hardSnapDistance = _hardSnapDistance,
-                hardSnapAngle = _hardSnapAngle,
+                hardSnapAngle = effectiveHardSnapAngle,
                 acceptableRotationError = _acceptableRotationError,
                 useKinematicRotation = useKinematicRotationCorrection
             };
@@ -891,6 +1109,10 @@ namespace PurrNet
             _bufferHead = 0;
             _bufferCount = 0;
             _hasSenderTimeOffset = false;
+            _stallSettledTimer = 0f;
+            _rotationStallTimer = 0f;
+            _rotationRecoveryRemaining = 0f;
+            _settleServoActive = false;
         }
 
         private double MapToLocalTimeline(double senderTime, double now)

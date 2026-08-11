@@ -13,18 +13,30 @@ namespace PurrNet
 
         readonly List<PlayerID> _reconcilePlayers = new List<PlayerID>();
 
+        // set when a reconcile went out while the animator was disabled and thus
+        // couldn't include animation state (Play/layer weights); once the animator
+        // is active again a full reconcile is re-sent
+        private bool _needsStateReconcile;
+
         protected override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
             if (isSpawner)
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, false);
+            using var data = NetAnimatorActionBatch.CreateReconcile(
+                _dontSyncHashes, _animator, false, _boolValues, _floatValues, _intValues);
             ReconcileState(player, data);
             _reconcilePlayers.Add(player);
+
+            if (_animator && !_animator.isActiveAndEnabled)
+                _needsStateReconcile = true;
         }
 
         public void OnTick(float delta)
         {
+            ApplyPendingAnimatorParameterState();
+            TryCatchUpStateReconcile();
+
             if (!IsController(_ownerAuth))
             {
                 if (_dirty.Count > 0)
@@ -33,6 +45,25 @@ namespace PurrNet
             }
 
             FlushImmediately();
+        }
+
+        private void TryCatchUpStateReconcile()
+        {
+            if (!_needsStateReconcile || !_animator || !_animator.isActiveAndEnabled)
+                return;
+
+            _needsStateReconcile = false;
+
+            if (IsController(_ownerAuth))
+            {
+                Reconcile();
+            }
+            else if (isServer)
+            {
+                using var data = NetAnimatorActionBatch.CreateReconcile(
+                    _dontSyncHashes, _animator, false, _boolValues, _floatValues, _intValues);
+                ApplyActionsOnObservers(data);
+            }
         }
 
         /// <summary>
@@ -44,7 +75,11 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, isIk);
+            if (!isIk && _animator && !_animator.isActiveAndEnabled)
+                _needsStateReconcile = true;
+
+            using var data = NetAnimatorActionBatch.CreateReconcile(
+                _dontSyncHashes, _animator, isIk, _boolValues, _floatValues, _intValues);
 
             if (isServer)
             {
@@ -68,7 +103,11 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateReconcile(_dontSyncHashes, _animator, isIk);
+            if (!isIk && _animator && !_animator.isActiveAndEnabled)
+                _needsStateReconcile = true;
+
+            using var data = NetAnimatorActionBatch.CreateReconcile(
+                _dontSyncHashes, _animator, isIk, _boolValues, _floatValues, _intValues);
 
             if (isServer)
             {
@@ -85,7 +124,8 @@ namespace PurrNet
             if (!IsController(_ownerAuth))
                 return;
 
-            using var data = NetAnimatorActionBatch.CreateTimeReconcile(_dontSyncHashes, _animator);
+            using var data = NetAnimatorActionBatch.CreateTimeReconcile(
+                _dontSyncHashes, _animator, _boolValues, _floatValues, _intValues);
 
             if (isServer)
             {
@@ -161,6 +201,8 @@ namespace PurrNet
         /// </summary>
         public void FlushImmediately()
         {
+            ApplyPendingAnimatorParameterState();
+
             if (_autoSyncParameters)
                 CheckForParameterChanges();
             SendDirtyActions();
@@ -269,6 +311,16 @@ namespace PurrNet
 
                 if (!ResolveParamRef(ref action))
                     continue;
+
+                bool hasCachedValue = CacheParameterValue(action);
+                if (!canApplyAnimatorParameters && IsParameterAction(action.type))
+                {
+                    if (hasCachedValue)
+                        _hasPendingAnimatorParameterState = true;
+                    else if (action.type is NetAnimatorAction.SetTrigger or NetAnimatorAction.ResetTrigger)
+                        QueuePendingTrigger(action);
+                    continue;
+                }
 
                 bool isIk = action.type is
                     NetAnimatorAction.SetIKPosition or NetAnimatorAction.SetIKRotation or

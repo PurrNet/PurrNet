@@ -120,9 +120,9 @@ namespace PurrNet.Codegen
             {
                 if (attribute.AttributeType.FullName == typeof(ServerRpcAttribute).FullName)
                 {
-                    if (attribute.ConstructorArguments.Count != 8)
+                    if (attribute.ConstructorArguments.Count != 9)
                     {
-                        Error(messages, "ServerRPC attribute must have 8 arguments", method);
+                        Error(messages, "ServerRPC attribute must have 9 arguments", method);
                         return null;
                     }
 
@@ -134,6 +134,7 @@ namespace PurrNet.Codegen
                     var stripCode = (StripCodeModeOverride)attribute.ConstructorArguments[5].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[6].Value;
                     var mtuExceeded = (MTUBehaviour)attribute.ConstructorArguments[7].Value;
+                    var immediate = (bool)attribute.ConstructorArguments[8].Value;
 
                     data = new RPCSignature
                     {
@@ -149,15 +150,16 @@ namespace PurrNet.Codegen
                         compressionLevel = compressionLevel,
                         stripCodeMode = stripCode,
                         deltaPacked = deltaPacked,
-                        mtuExceeded = mtuExceeded
+                        mtuExceeded = mtuExceeded,
+                        immediate = immediate
                     };
                     rpcCount++;
                 }
                 else if (attribute.AttributeType.FullName == typeof(ObserversRpcAttribute).FullName)
                 {
-                    if (attribute.ConstructorArguments.Count != 10)
+                    if (attribute.ConstructorArguments.Count != 11)
                     {
-                        Error(messages, "ObserversRPC attribute must have 10 arguments", method);
+                        Error(messages, "ObserversRPC attribute must have 11 arguments", method);
                         return null;
                     }
 
@@ -171,6 +173,7 @@ namespace PurrNet.Codegen
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[7].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[8].Value;
                     var mtuExceeded = (MTUBehaviour)attribute.ConstructorArguments[9].Value;
+                    var immediate = (bool)attribute.ConstructorArguments[10].Value;
 
                     if (bufferLast && deltaPacked)
                     {
@@ -192,15 +195,16 @@ namespace PurrNet.Codegen
                         asyncTimeoutInSec = asyncTimeoutInSec,
                         compressionLevel = compressionLevel,
                         deltaPacked = deltaPacked,
-                        mtuExceeded = mtuExceeded
+                        mtuExceeded = mtuExceeded,
+                        immediate = immediate
                     };
                     rpcCount++;
                 }
                 else if (attribute.AttributeType.FullName == typeof(TargetRpcAttribute).FullName)
                 {
-                    if (attribute.ConstructorArguments.Count != 8)
+                    if (attribute.ConstructorArguments.Count != 9)
                     {
-                        Error(messages, "TargetRPC attribute must have 8 arguments", method);
+                        Error(messages, "TargetRPC attribute must have 9 arguments", method);
                         return null;
                     }
 
@@ -212,6 +216,7 @@ namespace PurrNet.Codegen
                     var asyncTimeoutInSec = (float)attribute.ConstructorArguments[5].Value;
                     var deltaPacked = (bool)attribute.ConstructorArguments[6].Value;
                     var mtuExceeded = (MTUBehaviour)attribute.ConstructorArguments[7].Value;
+                    var immediate = (bool)attribute.ConstructorArguments[8].Value;
 
                     if (bufferLast && deltaPacked)
                     {
@@ -233,7 +238,8 @@ namespace PurrNet.Codegen
                         asyncTimeoutInSec = asyncTimeoutInSec,
                         compressionLevel = compressionLevel,
                         deltaPacked = deltaPacked,
-                        mtuExceeded = mtuExceeded
+                        mtuExceeded = mtuExceeded,
+                        immediate = immediate
                     };
                     rpcCount++;
                 }
@@ -254,6 +260,14 @@ namespace PurrNet.Codegen
                 Warning(messages,
                     "mtuExceeded override is ignored on UnreliableSequenced; the NetworkManager setting governs the whole channel",
                     method);
+            }
+
+            if (data.immediate && data.channel != Channel.Unreliable)
+            {
+                Error(messages,
+                    "immediate requires Channel.Unreliable; ordered and sequenced delivery cannot span an independently flushed lane",
+                    method);
+                return null;
             }
 
             return data;
@@ -3340,6 +3354,7 @@ namespace PurrNet.Codegen
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.excludeSender ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.deltaPacked ? 1 : 0));
             code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.mtuExceeded));
+            code.Append(Instruction.Create(OpCodes.Ldc_I4, rpc.Signature.immediate ? 1 : 0));
         }
 
         private static void PushRPCSignature(ModuleDefinition module, ILProcessor code, RPCMethod rpc,

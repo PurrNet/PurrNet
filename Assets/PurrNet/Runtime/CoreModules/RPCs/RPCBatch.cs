@@ -17,6 +17,12 @@ namespace PurrNet.Modules
         public BitData data;
     }
 
+    internal struct ImmediateRPCBatchPacket : IPackedAuto
+    {
+        public Size count;
+        public BitData data;
+    }
+
     internal struct PendingBatchedData
     {
         public BatchKey key;
@@ -44,6 +50,12 @@ namespace PurrNet.Modules
         MTUExceededBehaviour mtuExceededBehaviour { get; }
         int GetMTU(PlayerID player, Channel channel, bool asServer);
         void Send(PlayerID player, RPCBatchPacket data, Channel channel, MTUExceededBehaviour? mtuOverride = null);
+
+        void Send(PlayerID player, ImmediateRPCBatchPacket data, Channel channel,
+            MTUExceededBehaviour? mtuOverride = null)
+        {
+        }
+
         void Subscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback);
         void Unsubscribe(PlayerBroadcastDelegate<RPCBatchPacket> callback);
     }
@@ -97,33 +109,66 @@ namespace PurrNet.Modules
         public delegate void RPCReceivedDelegate(PlayerID sender, UnionRPCHeader header, BitData content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
 
-        public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback)
+        private readonly bool _subscribed;
+        private readonly bool _sendAsImmediate;
+
+        /// <summary>
+        /// Raised when immediate content reaches the transport outside a flush
+        /// (oversized solo entry), so the owner can still force a send this frame.
+        /// </summary>
+        internal Action onImmediateAutoFlush;
+
+        public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback, bool subscribeToReceives = true,
+            bool sendAsImmediate = false)
         {
             _playersManager = playersManager;
             _onRPCReceived = callback;
             _batchIndexMap = new BatchIndexMap(128);
-            _playersManager.Subscribe<RPCBatchPacket>(OnBatchReceived);
+            _subscribed = subscribeToReceives;
+            _sendAsImmediate = sendAsImmediate;
+            if (subscribeToReceives)
+                _playersManager.Subscribe<RPCBatchPacket>(OnBatchReceived);
         }
 
 #if UNITY_INCLUDE_TESTS
-        internal RPCBatch(IRPCBatchBackend backend, RPCReceivedDelegate callback)
+        internal RPCBatch(IRPCBatchBackend backend, RPCReceivedDelegate callback, bool sendAsImmediate = false)
         {
             _backend = backend;
             _onRPCReceived = callback;
             _batchIndexMap = new BatchIndexMap(128);
+            _subscribed = true;
+            _sendAsImmediate = sendAsImmediate;
             _backend.Subscribe(OnBatchReceived);
         }
 #endif
+
+        public bool hasPending
+        {
+            get
+            {
+                for (int i = 0; i < _batchCount; i++)
+                {
+                    if (_batches[i].batchCount > 0)
+                        return true;
+                }
+
+                return false;
+            }
+        }
 
         public void Dispose()
         {
 #if UNITY_INCLUDE_TESTS
             if (_playersManager != null)
-                _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
+            {
+                if (_subscribed)
+                    _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
+            }
             else
                 _backend.Unsubscribe(OnBatchReceived);
 #else
-            _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
+            if (_subscribed)
+                _playersManager.Unsubscribe<RPCBatchPacket>(OnBatchReceived);
 #endif
 
             Clear();
@@ -186,19 +231,38 @@ namespace PurrNet.Modules
             if (batch.batchCount == 0)
                 return;
 
-            var data = new RPCBatchPacket
-            {
-                count = batch.batchCount,
-                data = new BitData(batch.batchedData)
-            };
-
-            Send(batch.key.playerId, data, batch.key.channel);
+            Send(batch.key.playerId, batch.batchCount, new BitData(batch.batchedData), batch.key.channel);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Send(PlayerID player, RPCBatchPacket data, Channel channel,
+        private void Send(PlayerID player, Size count, BitData payload, Channel channel,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            if (_sendAsImmediate)
+            {
+                var immediate = new ImmediateRPCBatchPacket
+                {
+                    count = count,
+                    data = payload
+                };
+
+#if UNITY_INCLUDE_TESTS
+                if (_playersManager != null)
+                    _playersManager.Send(player, immediate, channel, mtuOverride);
+                else
+                    _backend.Send(player, immediate, channel, mtuOverride);
+#else
+                _playersManager.Send(player, immediate, channel, mtuOverride);
+#endif
+                return;
+            }
+
+            var data = new RPCBatchPacket
+            {
+                count = count,
+                data = payload
+            };
+
 #if UNITY_INCLUDE_TESTS
             if (_playersManager != null)
                 _playersManager.Send(player, data, channel, mtuOverride);
@@ -380,6 +444,9 @@ namespace PurrNet.Modules
                     batch.batchedData.ResetPositionAndMode(false);
                     GetCachedEntry(default, default, 0, header, content, contentLen, out entryData,
                         out entryBitLength);
+
+                    if (_sendAsImmediate)
+                        onImmediateAutoFlush?.Invoke();
                 }
             }
 
@@ -417,14 +484,11 @@ namespace PurrNet.Modules
 
         private void SendSoloEntry(ref PendingBatchedData batch, Channel channel)
         {
-            var packet = new RPCBatchPacket
-            {
-                count = 1,
-                data = new BitData(batch.batchedData)
-            };
-
-            Send(batch.key.playerId, packet, channel, MTUExceededBehaviour.Fragment);
+            Send(batch.key.playerId, 1, new BitData(batch.batchedData), channel, MTUExceededBehaviour.Fragment);
             ResetBatchEncoderState(ref batch);
+
+            if (_sendAsImmediate)
+                onImmediateAutoFlush?.Invoke();
         }
 
         private static void ResetBatchEncoderState(ref PendingBatchedData batch)
@@ -436,17 +500,22 @@ namespace PurrNet.Modules
             batch.batchCount = 0;
         }
 
-        private unsafe void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
+        private void OnBatchReceived(PlayerID player, RPCBatchPacket data, bool asServer)
+        {
+            ProcessReceivedBatch(player, data.count, data.data, asServer);
+        }
+
+        internal unsafe void ProcessReceivedBatch(PlayerID player, Size count, BitData data, bool asServer)
         {
             _batchReceivedMarker.Begin();
 
             UnionRPCHeader lastHeader = default;
             Size lastLen = default;
 
-            var packer = data.data.packer;
-            using (data.data.AutoScope())
+            var packer = data.packer;
+            using (data.AutoScope())
             {
-                for (var i = 0; i < data.count.value; ++i)
+                for (var i = 0; i < count.value; ++i)
                 {
                     NativeDeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
                     DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
@@ -577,6 +646,9 @@ namespace PurrNet.Modules
                     SendBatch(ref batch);
                     batch.batchCount = 0;
                     batch.batchedData.ResetPositionAndMode(false);
+
+                    if (_sendAsImmediate)
+                        onImmediateAutoFlush?.Invoke();
 
                     // redo the last write
                     NativeDeltaPacker<UnionRPCHeader>.WriteFunc(batch.batchedData, default, header);

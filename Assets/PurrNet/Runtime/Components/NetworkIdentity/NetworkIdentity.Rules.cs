@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using PurrNet.Collections;
 using PurrNet.Logging;
+using PurrNet.Pooling;
 using UnityEngine;
 
 namespace PurrNet
@@ -170,6 +171,16 @@ namespace PurrNet
             return rules && rules.ShouldClientGiveOwnershipOnSpawn();
         }
 
+        public bool ShouldAutoSpawnOnInstantiate(NetworkManager manager, bool isAsync)
+        {
+            var rules = GetNetworkRules(manager);
+
+            if (!rules)
+                return true;
+
+            return isAsync ? rules.ShouldAutoSpawnOnInstantiateAsync() : rules.ShouldAutoSpawnOnInstantiate();
+        }
+
         public bool ShouldPlayRPCsWhenDisabled()
         {
             var rules = networkRules;
@@ -233,7 +244,7 @@ namespace PurrNet
 
         internal bool TryAddObserver(PlayerID player)
         {
-            if (_observers.Contains(player))
+            if (_observers.Contains(player) || _pendingObservers?.Contains(player) == true)
                 return false;
             _observers.Add(player);
             return true;
@@ -241,7 +252,37 @@ namespace PurrNet
 
         internal bool TryRemoveObserver(PlayerID player)
         {
-            return _observers.Remove(player);
+            return _observers.Remove(player) || TryRemovePendingObserver(player);
+        }
+
+        internal bool TryMoveObserverToPending(PlayerID player)
+        {
+            if (!_observers.Remove(player))
+                return false;
+
+            _pendingObservers ??= ListPool<PlayerID>.Instantiate();
+            _pendingObservers.Add(player);
+            return true;
+        }
+
+        internal bool TryPromotePendingObserver(PlayerID player)
+        {
+            if (_pendingObservers == null || !_pendingObservers.Remove(player))
+                return false;
+
+            ReleasePendingObserversIfEmpty();
+            if (!_observers.Contains(player))
+                _observers.Add(player);
+            return true;
+        }
+
+        internal bool TryRemovePendingObserver(PlayerID player)
+        {
+            if (_pendingObservers == null || !_pendingObservers.Remove(player))
+                return false;
+
+            ReleasePendingObserversIfEmpty();
+            return true;
         }
     }
 }

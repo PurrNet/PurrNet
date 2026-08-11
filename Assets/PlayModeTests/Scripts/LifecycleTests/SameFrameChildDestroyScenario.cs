@@ -61,6 +61,10 @@ public class SameFrameChildDestroyScenario : Scenario
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
+        // Make cycle 0 exercise Spawn + child Despawn for established observers instead of
+        // occasionally taking the easier late catch-up path after the children are already gone.
+        await ScenarioBarrier.Wait(ctx, BarrierBase, _barrierTimeoutSeconds);
+
         for (int cycle = 0; cycle < _cycles; cycle++)
         {
             int barrier = BarrierBase + cycle * 10;

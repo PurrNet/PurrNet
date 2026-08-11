@@ -28,7 +28,14 @@ public class NetworkAssetsScenario : Scenario
 
     void CreateAssets(NetworkManager manager)
     {
-        var na = ScriptableObject.CreateInstance<NetworkAssets>();
+        var na = manager.networkAssets;
+
+        if (!na)
+        {
+            na = ScriptableObject.CreateInstance<NetworkAssets>();
+            manager.networkAssets = na;
+        }
+
         var linked = ScriptableObject.CreateInstance<NetworkAssets>();
 
         _so = ScriptableObject.CreateInstance<NetworkAssetTestSO>();
@@ -46,8 +53,6 @@ public class NetworkAssetsScenario : Scenario
         na.linkedNetworkAssets.Add(linked);
         na.Refresh();
 
-        manager.networkAssets = na;
-
         NetworkAssetCarrier.SerializeAsset = _so;
     }
 
@@ -60,6 +65,12 @@ public class NetworkAssetsScenario : Scenario
 
     public override async UniTask<ScenarioResult> RunScenario(ScenarioContext ctx)
     {
+        if (!ctx.networkManager.prefabProvider.TryGetPrefabData(_prefab.gameObject, out var registeredData))
+            return ScenarioResult.Fail("registered prefab did not resolve by reference");
+
+        if (registeredData.prefab != _prefab.gameObject)
+            return ScenarioResult.Fail($"registered prefab resolved to `{registeredData.prefab}` instead of itself");
+
         if (ctx.isServer)
         {
             var inst = Instantiate(_prefab);

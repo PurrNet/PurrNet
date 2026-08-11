@@ -203,7 +203,7 @@ namespace PurrNet
             SendInputServerRpc(value, id);
         }
 
-        [ServerRpc(channel: Channel.Unreliable)]
+        [ServerRpc(channel: Channel.Unreliable, immediate:true)]
         private void SendInputServerRpc(T value, int id, RPCInfo info = default)
         {
             _lastValue = _value;
@@ -213,7 +213,7 @@ namespace PurrNet
                 onChanged?.Invoke(_value);
         }
 
-        [TargetRpc(channel: Channel.Unreliable)]
+        [TargetRpc(channel: Channel.Unreliable, immediate:true)]
         private void Acknowledge(PlayerID player, int id)
         {
             if (isHost) return;

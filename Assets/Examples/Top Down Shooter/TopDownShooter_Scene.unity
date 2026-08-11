@@ -1670,6 +1670,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+  _adaptiveSynchronization: 2
 --- !u!65 &863271034
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2345,6 +2346,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+  _adaptiveSynchronization: 2
 --- !u!4 &1129046907
 Transform:
   m_ObjectHideFlags: 0
@@ -2578,11 +2580,11 @@ MonoBehaviour:
   _startClientFlags: 3
   _cookieScope: 1
   _dontDestroyOnLoad: 1
-  _transport: {fileID: 1216416912}
+  _transport: {fileID: 1216416902}
   _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
   _addressableNetworkPrefabs: {fileID: 0}
   _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
-  _networkRules: {fileID: 11400000, guid: 747e061513ae392488b31690e00d22c7, type: 2}
+  _networkRules: {fileID: 11400000, guid: 5879a6fa5625f844e9c773a4ca0099dc, type: 2}
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 1216416905}
   _tickRate: 20
@@ -2621,7 +2623,6 @@ MonoBehaviour:
   _maxConnections: 100
   _address: 127.0.0.1
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
   _networkSimulation:
     includeInBuild: 0
     simulateLatency: 0
@@ -2691,7 +2692,6 @@ MonoBehaviour:
   _address: 127.0.0.1
   _query: 
   _path: 
-  _pollEventsInUpdate: 0
   _enableSSL: 0
   _certPath: fesfes
   _certPassword: fesfes
@@ -2713,7 +2713,6 @@ MonoBehaviour:
   _region: nj-us
   _host: purrtransport-nj-us.purrservers.com
   _timeoutInSeconds: 5
-  _pollEventsInUpdate: 0
   _useNat: 1
   _natResolveTimeout: 8
   _networkSimulation:
@@ -3023,6 +3022,7 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+  _adaptiveSynchronization: 2
 --- !u!65 &1353588530
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3681,7 +3681,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ced7bf28cdbee104e8cdc34ab761b039, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerPrefab: {fileID: 2021845121686469242, guid: 20ec334e1da5edf44ac0079941c62c2b, type: 3}
   _playerPrefab: {fileID: 2021845121686469242, guid: 20ec334e1da5edf44ac0079941c62c2b, type: 3}
   _ignoreNetworkRules: 0
   spawnPoints:
@@ -4016,10 +4015,12 @@ MonoBehaviour:
   _useParentFramePositionError: 0
   _settingsOverride: {fileID: 0}
   _interpolationDelay: 0.05
+  _autoInterpolationDelay: 1
   _predictionFactor: 0
   _maxExtrapolationDuration: 0.25
   _positionStrength: 5
   _correctionRange: 2
+  _rotationCorrection: 0
   _rotationStrength: 3
   _hardSnapDistance: 3
   _resetLinearVelocityOnSnap: 0

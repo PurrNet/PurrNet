@@ -16,6 +16,17 @@
     ],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "Unity",
+            "expression": "[2022.3.20f1,2023.0)",
+            "define": "PURRNET_HAS_INSTANTIATE_ASYNC"
+        },
+        {
+            "name": "Unity",
+            "expression": "2023.3.0a16",
+            "define": "PURRNET_HAS_INSTANTIATE_ASYNC"
+        }
+    ],
     "noEngineReferences": false
 }

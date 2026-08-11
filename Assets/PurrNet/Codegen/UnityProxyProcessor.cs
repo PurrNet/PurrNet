@@ -52,6 +52,7 @@ namespace PurrNet.Codegen
                         if (declaringTypeName == objectClassFullName)
                         {
                             if (methodReference.Name != "Instantiate" &&
+                                methodReference.Name != "InstantiateAsync" &&
                                 methodReference.Name != "Destroy" &&
                                 methodReference.Name != "DontDestroyOnLoad")
                                 continue;
@@ -86,7 +87,7 @@ namespace PurrNet.Codegen
                                 targerRef = module.ImportReference(genRef);
                             }
 
-                            processor.Replace(instruction, processor.Create(OpCodes.Call, targerRef));
+                            processor.Replace(instruction, processor.Create(instruction.OpCode, targerRef));
                             continue;
                         }
 

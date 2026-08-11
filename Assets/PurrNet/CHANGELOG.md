@@ -1,3 +1,186 @@
+# [1.22.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.22...v1.22.0-beta.23) (2026-08-10)
+
+
+### Bug Fixes
+
+* Scene module addressable handling fix ([2f832aa](https://github.com/PurrNet/PurrNet/commit/2f832aaa07927a301cf7af4625d4fe277cb542b8))
+
+# [1.22.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.21...v1.22.0-beta.22) (2026-08-10)
+
+
+### Bug Fixes
+
+* Addressable scene handling return op ([3e16c03](https://github.com/PurrNet/PurrNet/commit/3e16c034dac1a63c4d145a7ce68b8eb34ec49d8f))
+
+# [1.22.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.20...v1.22.0-beta.21) (2026-08-07)
+
+
+### Bug Fixes
+
+* Duplicate network prefab non spawning issue ([ab1b7c4](https://github.com/PurrNet/PurrNet/commit/ab1b7c48adb99c3aed3057a83e78a58731504213))
+* Improved eventual consistency of network rigidbody ([23d440a](https://github.com/PurrNet/PurrNet/commit/23d440a60abceb17ce8f3a80bc7c1572c0cfaf04))
+* Smoother eventual consistency for network RB ([a4a5fe4](https://github.com/PurrNet/PurrNet/commit/a4a5fe48840eb87f0f2c1f22dbef5c2f9ee4c827))
+
+# [1.22.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.19...v1.22.0-beta.20) (2026-08-06)
+
+
+### Bug Fixes
+
+* Statistics manager packet loss + reconnect bug ([5541f1b](https://github.com/PurrNet/PurrNet/commit/5541f1b12fc1749c527f30c214485b66488edb0c))
+
+# [1.22.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.18...v1.22.0-beta.19) (2026-08-04)
+
+
+### Bug Fixes
+
+* Async instantiation proper versioning support ([c8adfd8](https://github.com/PurrNet/PurrNet/commit/c8adfd8b8f6037aff459217e99e91bfb0d0410fe))
+* handle late async spawn confirmations ([b23c031](https://github.com/PurrNet/PurrNet/commit/b23c031fbea81ed560f68f7804294f1754dbb1dd))
+* hierarchy traversal optimization ([da7dee1](https://github.com/PurrNet/PurrNet/commit/da7dee18b3c22b0a90cbf63ffe21e5888dd9b3dd))
+* more async instantiation overloads ([606d231](https://github.com/PurrNet/PurrNet/commit/606d23126f8680c47531ae2e924e5bb483a55a80))
+* Opt out of auto spawning ([f25ce91](https://github.com/PurrNet/PurrNet/commit/f25ce919ab87df8eb9166f678930f866635d605f))
+* Player spawner introduced inconsistency ([787320e](https://github.com/PurrNet/PurrNet/commit/787320e92bdf908f903bc917b16af032b111418e))
+* PlayerSpawner makes up for opt-out auto spawning ([afd734b](https://github.com/PurrNet/PurrNet/commit/afd734bd1773a02efbeee69994ffc3ae68ae0194))
+* validate serializer method return types ([e0fddd7](https://github.com/PurrNet/PurrNet/commit/e0fddd7fdf7936f730db30ff7c22cfe4e576553a))
+
+
+### Features
+
+* async instantiation ([365df09](https://github.com/PurrNet/PurrNet/commit/365df0965b7c51f3211186eaa4fcb2966f2235ed))
+
+# [1.22.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.17...v1.22.0-beta.18) (2026-08-04)
+
+
+### Bug Fixes
+
+* Prefab lookup ([b37ccc2](https://github.com/PurrNet/PurrNet/commit/b37ccc265d810b7a269a5771e5fcdfd404b6872f))
+
+# [1.22.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.16...v1.22.0-beta.17) (2026-08-04)
+
+
+### Bug Fixes
+
+* Inspector inconsistency for Odin support ([babe1f8](https://github.com/PurrNet/PurrNet/commit/babe1f8609b2022063482d6be5a1c7568c3925f9))
+
+# [1.22.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.15...v1.22.0-beta.16) (2026-08-04)
+
+
+### Bug Fixes
+
+* Name clash of network prefabs ([b30c2fe](https://github.com/PurrNet/PurrNet/commit/b30c2feb21da3a4792ef2a8298b422b5a4e4a059))
+
+# [1.22.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.14...v1.22.0-beta.15) (2026-08-03)
+
+
+### Bug Fixes
+
+* Generate on assets saves properly ([1701013](https://github.com/PurrNet/PurrNet/commit/1701013631660caa3a1d829dd01c16b7a6415510))
+
+# [1.22.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.13...v1.22.0-beta.14) (2026-08-03)
+
+
+### Bug Fixes
+
+* Codegen CoreCLR cleanup ([a04ab68](https://github.com/PurrNet/PurrNet/commit/a04ab6878901a0f04c53e65fe3e161856b449913))
+* **codegen:** make serializer registration CoreCLR-safe ([857d158](https://github.com/PurrNet/PurrNet/commit/857d15824820b9e9e5cb3ab21a2d45e0d2ebd7d4))
+
+# [1.22.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.12...v1.22.0-beta.13) (2026-08-03)
+
+
+### Bug Fixes
+
+* Sync dictionary and list initial packet match check ([8300ef7](https://github.com/PurrNet/PurrNet/commit/8300ef708b608f6817d518386ae331a6860227ac))
+
+# [1.22.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.11...v1.22.0-beta.12) (2026-08-03)
+
+
+### Bug Fixes
+
+* Make sync input utilize Immediate data ([08ec4b0](https://github.com/PurrNet/PurrNet/commit/08ec4b0315b66daec987550547133f90cdb57fdd))
+
+# [1.22.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.10...v1.22.0-beta.11) (2026-08-01)
+
+
+### Bug Fixes
+
+* undo value behavior of disposable collections ([ac744fa](https://github.com/PurrNet/PurrNet/commit/ac744fae020357d342b719d288dec2c84aa694a4))
+
+# [1.22.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.9...v1.22.0-beta.10) (2026-07-30)
+
+
+### Bug Fixes
+
+* Optimize allocation of Network Transform ([a977820](https://github.com/PurrNet/PurrNet/commit/a9778207d6f3f538ad9a30570d72490b41b4ceee))
+
+# [1.22.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.8...v1.22.0-beta.9) (2026-07-30)
+
+
+### Bug Fixes
+
+* Network transform default to local ([b90d2e7](https://github.com/PurrNet/PurrNet/commit/b90d2e789c7a6f26d2a617ce77db0e4e8d7018ee))
+
+# [1.22.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.7...v1.22.0-beta.8) (2026-07-30)
+
+
+### Bug Fixes
+
+* include Nakama transport warning ([4b54eee](https://github.com/PurrNet/PurrNet/commit/4b54eeef0257dbc9fcd9c210b03793d91f1149bd))
+
+# [1.22.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.6...v1.22.0-beta.7) (2026-07-30)
+
+
+### Bug Fixes
+
+* add search bar to the editor packages window ([410b995](https://github.com/PurrNet/PurrNet/commit/410b995c4440d3da98e664c62c797f82cb715c10))
+
+# [1.22.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.5...v1.22.0-beta.6) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow to see pending updates on the category ([82cb076](https://github.com/PurrNet/PurrNet/commit/82cb07689a2cf866d2b8a1e219ed15c8433b4a2c))
+
+# [1.22.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.4...v1.22.0-beta.5) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow purrnet package manager to import tools as simple unitypackages ([ac84ca7](https://github.com/PurrNet/PurrNet/commit/ac84ca7b0d8391f7ca03cde0c524fb2032183c86))
+
+# [1.22.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.3...v1.22.0-beta.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* NetworkAudioSource skipping small clips or starting delayed ([655fc20](https://github.com/PurrNet/PurrNet/commit/655fc20fe7365b483dc2ea8288a24ef7219aea8f))
+
+# [1.22.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.2...v1.22.0-beta.3) (2026-07-29)
+
+
+### Bug Fixes
+
+* NetworkAnimator reconcile logic ([68a9d95](https://github.com/PurrNet/PurrNet/commit/68a9d957fc1fb5a67705340e3ab10da1be10c604))
+
+# [1.22.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.22.0-beta.1...v1.22.0-beta.2) (2026-07-29)
+
+
+### Features
+
+* DesyncPolicy for determinism and packet loss improvements ([a5e7c62](https://github.com/PurrNet/PurrNet/commit/a5e7c620c985964c600876044d5518244481ab5c))
+
+# [1.22.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.21.1...v1.22.0-beta.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* if animator is disabled don't mess with it's state cause it causes unity warnings to spam ([eb51ca7](https://github.com/PurrNet/PurrNet/commit/eb51ca7e8fc7818609bc7b9d8f7d79457a3974b6))
+* improve tick timing accuracy to prevent big jumps ([3bbe66e](https://github.com/PurrNet/PurrNet/commit/3bbe66e043ee3d5fd03457265a7313334021266b))
+* network bones, include inactive skinnes mesh renderers to avoid ([da5978d](https://github.com/PurrNet/PurrNet/commit/da5978d8f7bba4be8ee87ad77e1a149c81259185))
+
+
+### Features
+
+* immediate RPCs ([e45d30d](https://github.com/PurrNet/PurrNet/commit/e45d30dd2a5bdea229755f9f2ff7a397415d47a2))
+
 ## [1.21.1](https://github.com/PurrNet/PurrNet/compare/v1.21.0...v1.21.1) (2026-07-28)
 
 

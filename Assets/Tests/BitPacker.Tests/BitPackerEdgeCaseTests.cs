@@ -767,7 +767,7 @@ public class BitPackerEdgeCaseTests
     }
 
     [Test]
-    public void MyersDeltaList_ChangedAfterUnchanged_DisposesSharedBaselineCopy()
+    public void MyersDeltaList_ChangedAfterUnchanged_PreservesIndependentBaselineCopy()
     {
         var old = DisposableList<int>.Create();
         old.Add(1);
@@ -784,8 +784,9 @@ public class BitPackerEdgeCaseTests
         _packer.ResetPositionAndMode(true);
         MyersPackDisposableLists.ReadDisposableDeltaList(_packer, old, ref value);
 
-        Assert.AreSame(old.rawList, value.rawList);
-        Assert.AreEqual(2, old.refCountForTests);
+        Assert.AreNotSame(old.rawList, value.rawList);
+        CollectionAssert.AreEqual(new[] { 1, 2, 3 }, old);
+        CollectionAssert.AreEqual(new[] { 1, 2, 3 }, value);
 
         var newValue = DisposableList<int>.Create();
         newValue.Add(9);
@@ -795,7 +796,8 @@ public class BitPackerEdgeCaseTests
         _packer.ResetPositionAndMode(true);
         MyersPackDisposableLists.ReadDisposableDeltaList(_packer, old, ref value);
 
-        Assert.AreEqual(1, old.refCountForTests);
+        Assert.AreNotSame(old.rawList, value.rawList);
+        CollectionAssert.AreEqual(new[] { 1, 2, 3 }, old);
         Assert.AreEqual(1, value.Count);
         Assert.AreEqual(9, value[0]);
 
@@ -805,7 +807,7 @@ public class BitPackerEdgeCaseTests
     }
 
     [Test]
-    public void DisposableList_MutatingAliasUnderShare_InvalidatesOtherAliases()
+    public void DisposableList_DuplicateIsIndependentAndMutationKeepsShallowAliasesValid()
     {
         var original = DisposableList<int>.Create();
         original.Add(1);
@@ -815,12 +817,14 @@ public class BitPackerEdgeCaseTests
         var alias = original;
 
         original.Add(3);
+        alias.Add(4);
 
-        Assert.IsTrue(alias.isDisposed);
-        Assert.Throws<ObjectDisposedException>(() => alias.Add(4));
-        Assert.AreEqual(3, original.Count);
+        Assert.IsFalse(alias.isDisposed);
+        Assert.AreNotSame(original.rawList, snapshot.rawList);
+        CollectionAssert.AreEqual(new[] { 1, 2, 3, 4 }, original);
+        CollectionAssert.AreEqual(new[] { 1, 2, 3, 4 }, alias);
         Assert.AreEqual(2, snapshot.Count);
-        Assert.AreEqual(1, snapshot.refCountForTests);
+        CollectionAssert.AreEqual(new[] { 1, 2 }, snapshot);
 
         original.Dispose();
         snapshot.Dispose();

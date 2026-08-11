@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PurrNet.Utils;
 using UnityEngine;
 using Object = UnityEngine.Object;
 #if UNITY_6000_3_OR_NEWER
@@ -530,14 +531,7 @@ namespace PurrNet
             return id >= 0;
         }
 
-        private static ObjectId GetObjectId(Object obj)
-        {
-#if UNITY_6000_3_OR_NEWER
-            return obj.GetEntityId();
-#else
-            return obj.GetInstanceID();
-#endif
-        }
+        private static ObjectId GetObjectId(Object obj) => PurrObjectId.Of(obj);
     }
 
 }

@@ -3,7 +3,9 @@
     "rootNamespace": "",
     "references": [
         "GUID:6e20f757a1bae164fa42750dd2b27dcb",
-        "GUID:e0cd26848372d4e5c891c569017e11f1"
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -25,6 +27,11 @@
             "name": "com.unity.modules.physics",
             "expression": "",
             "define": "UNITY_PHYSICS_3D"
+        },
+        {
+            "name": "com.unity.addressables",
+            "expression": "",
+            "define": "ADDRESSABLES_PURRNET_SUPPORT"
         }
     ],
     "noEngineReferences": false

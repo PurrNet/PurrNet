@@ -30,10 +30,6 @@ namespace PurrNet.Transports
         [SerializeField]
         private float _timeoutInSeconds = 5f;
 
-        [Tooltip("When enabled, the transport will poll events in the Update method instead of per Tick.")]
-        [SerializeField]
-        private bool _pollEventsInUpdate;
-
         [SerializeField] private NetworkSimulation _networkSimulation = NetworkSimulation.@default;
 
         public event OnConnected onConnected;
@@ -348,11 +344,8 @@ namespace PurrNet.Transports
 
         public void UnityUpdate(float delta)
         {
-            if (_pollEventsInUpdate)
-            {
-                if (_server.IsRunning) _server.PollEvents();
-                if (_client.IsRunning) _client.PollEvents();
-            }
+            if (_server.IsRunning) _server.PollEvents();
+            if (_client.IsRunning) _client.PollEvents();
         }
 
         public void Connect(string ip, ushort port)

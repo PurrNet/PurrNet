@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
 namespace PurrNet.Editor
@@ -16,6 +17,7 @@ namespace PurrNet.Editor
         private int _selectedIndex = -1;
         private Vector2 _listScrollPosition;
         private Vector2 _detailScrollPosition;
+        private string _searchQuery = string.Empty;
 
         private float _splitWidth = 240f;
         private bool _isDraggingSplitter;
@@ -44,6 +46,7 @@ namespace PurrNet.Editor
         // Cached sorted list rebuilt each frame from _packages
         private readonly List<(PackageInfo pkg, VersionInfo release, VersionInfo dev)> _sortedPackages = new();
         private readonly List<(string name, int startIndex, int count)> _categories = new();
+        private readonly Dictionary<string, int> _categoryUpdateCounts = new();
 
         private static readonly Color _headerBg = new Color(0.17f, 0.17f, 0.17f, 1f);
         private static readonly Color _accentColor = new Color(0.4f, 0.7f, 1f, 1f);
@@ -70,9 +73,12 @@ namespace PurrNet.Editor
         [NonSerialized] private GUIStyle _smallLabelStyle;
         [NonSerialized] private GUIStyle _listItemStyle;
         [NonSerialized] private GUIStyle _listItemDetailStyle;
+        [NonSerialized] private GUIStyle _earlyAccessListStyle;
         [NonSerialized] private GUIStyle _categoryStyle;
+        [NonSerialized] private GUIStyle _categoryUpdateStyle;
         [NonSerialized] private GUIStyle _detailTitleStyle;
         [NonSerialized] private GUIStyle _releaseNotesStyle;
+        [NonSerialized] private SearchField _searchField;
         private Texture2D _logo;
 
         private const int StudiosEntryIndex = int.MaxValue;
@@ -81,6 +87,7 @@ namespace PurrNet.Editor
         private const float ListItemHeight = 28f;
         private const float CategoryHeaderHeight = 20f;
         private const float CategoryGap = 8f;
+        private const float SearchAreaHeight = 26f;
         private const float SplitterWidth = 6f;
         private const string CategoryFoldoutPreferencePrefix = "PurrNet.PackageManager.CategoryExpanded.";
         private const string PackageWebsiteBaseUrl = "https://purrnet.dev/packages/";
@@ -199,7 +206,10 @@ namespace PurrNet.Editor
 
         private void InitStyles()
         {
-            if (_detailTitleStyle != null && _listItemDetailStyle != null && _releaseNotesStyle != null)
+            _searchField ??= new SearchField();
+
+            if (_detailTitleStyle != null && _listItemDetailStyle != null &&
+                _releaseNotesStyle != null && _categoryUpdateStyle != null)
                 return;
 
             _descStyle = new GUIStyle(EditorStyles.label)
@@ -240,6 +250,13 @@ namespace PurrNet.Editor
                 normal = { textColor = new Color(0.6f, 0.6f, 0.6f, 1f) }
             };
 
+            _earlyAccessListStyle = new GUIStyle(_listItemDetailStyle)
+            {
+                fontSize = 8,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = _updateColor }
+            };
+
             _categoryStyle = new GUIStyle(EditorStyles.foldout)
             {
                 fontSize = 9,
@@ -247,6 +264,16 @@ namespace PurrNet.Editor
                 padding = new RectOffset(14, 4, 3, 3),
                 margin = new RectOffset(0, 0, 0, 0),
                 normal = { textColor = new Color(0.48f, 0.48f, 0.48f, 1f) }
+            };
+
+            _categoryUpdateStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = 8,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleRight,
+                padding = new RectOffset(2, 2, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+                normal = { textColor = _updateColor }
             };
 
             _detailTitleStyle = new GUIStyle(EditorStyles.boldLabel)
@@ -346,15 +373,8 @@ namespace PurrNet.Editor
             }
 
             RebuildSortedPackages();
-            _updatableCount = CountUpdatablePackages();
-
-            // Clamp selection (preserve special entries like Studios)
-            if (_selectedIndex != StudiosEntryIndex && _selectedIndex >= _sortedPackages.Count)
-                _selectedIndex = _sortedPackages.Count - 1;
-
-            // Auto-select first if nothing selected
-            if (_selectedIndex < 0 && _sortedPackages.Count > 0)
-                _selectedIndex = 0;
+            _updatableCount = RebuildCategoryUpdateCounts();
+            ReconcileSelectionWithSearch();
 
             _splitWidth = Mathf.Clamp(_splitWidth, SplitMargin, position.width - SplitMargin);
 
@@ -620,27 +640,77 @@ namespace PurrNet.Editor
         {
             EditorGUI.DrawRect(areaRect, _listBg);
 
+            var searchBackgroundRect = new Rect(
+                areaRect.x,
+                areaRect.y,
+                areaRect.width,
+                SearchAreaHeight);
+            EditorGUI.DrawRect(searchBackgroundRect, _categoryBg);
+
+            var searchRect = new Rect(
+                searchBackgroundRect.x + 5f,
+                searchBackgroundRect.y + 4f,
+                Mathf.Max(0f, searchBackgroundRect.width - 10f),
+                18f);
+            string nextSearchQuery = _searchField.OnGUI(searchRect, _searchQuery ?? string.Empty);
+            if (!string.Equals(nextSearchQuery, _searchQuery, StringComparison.Ordinal))
+            {
+                _searchQuery = nextSearchQuery;
+                _listScrollPosition = Vector2.zero;
+                Repaint();
+            }
+
+            var listAreaRect = new Rect(
+                areaRect.x,
+                areaRect.y + SearchAreaHeight,
+                areaRect.width,
+                Mathf.Max(0f, areaRect.height - SearchAreaHeight));
+            bool isSearching = HasSearchQuery();
+
             // Calculate total content height
             float totalHeight = 0;
+            int visibleCategoryCount = 0;
             for (int c = 0; c < _categories.Count; c++)
             {
-                if (c > 0) totalHeight += CategoryGap;
+                var category = _categories[c];
+                int visiblePackageCount = CountSearchMatches(category.startIndex, category.count);
+                bool showStudios = ShouldShowStudiosEntry(category.name);
+                if (visiblePackageCount == 0 && !showStudios)
+                    continue;
+
+                if (visibleCategoryCount > 0) totalHeight += CategoryGap;
+                visibleCategoryCount++;
                 totalHeight += CategoryHeaderHeight;
-                if (IsCategoryExpanded(_categories[c].name))
+                if (isSearching || IsCategoryExpanded(category.name))
                 {
-                    int extra = string.Equals(_categories[c].name, "Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-                    totalHeight += (_categories[c].count + extra) * ListItemHeight;
+                    totalHeight += (visiblePackageCount + (showStudios ? 1 : 0)) * ListItemHeight;
                 }
             }
 
-            bool needsScroll = totalHeight > areaRect.height;
-            var viewRect = new Rect(0, 0, areaRect.width - (needsScroll ? 13f : 0f), totalHeight);
-            _listScrollPosition = GUI.BeginScrollView(areaRect, _listScrollPosition, viewRect);
+            if (visibleCategoryCount == 0)
+            {
+                var emptyRect = new Rect(
+                    listAreaRect.x + 10f,
+                    listAreaRect.y + 12f,
+                    Mathf.Max(0f, listAreaRect.width - 20f),
+                    18f);
+                GUI.Label(emptyRect, "No matching packages.", _smallLabelStyle);
+                return;
+            }
+
+            bool needsScroll = totalHeight > listAreaRect.height;
+            var viewRect = new Rect(0, 0, listAreaRect.width - (needsScroll ? 13f : 0f), totalHeight);
+            _listScrollPosition = GUI.BeginScrollView(listAreaRect, _listScrollPosition, viewRect);
 
             float y = 0;
             bool firstCategory = true;
             foreach (var (categoryName, startIndex, count) in _categories)
             {
+                int visiblePackageCount = CountSearchMatches(startIndex, count);
+                bool showStudios = ShouldShowStudiosEntry(categoryName);
+                if (visiblePackageCount == 0 && !showStudios)
+                    continue;
+
                 // Gap between categories
                 if (!firstCategory)
                     y += CategoryGap;
@@ -651,13 +721,39 @@ namespace PurrNet.Editor
                 var catRect = new Rect(0, y, viewRect.width, CategoryHeaderHeight);
 
                 EditorGUI.DrawRect(catRect, _categoryBg);
-                bool isExpanded = IsCategoryExpanded(categoryName);
-                bool nextExpanded = GUI.Toggle(catRect, isExpanded, catLabel.ToUpperInvariant(), _categoryStyle);
-                if (nextExpanded != isExpanded)
+                bool isExpanded;
+                if (isSearching)
                 {
-                    SetCategoryExpanded(categoryName, nextExpanded);
-                    isExpanded = nextExpanded;
+                    isExpanded = true;
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        _categoryStyle.Draw(
+                            catRect,
+                            new GUIContent(catLabel.ToUpperInvariant()),
+                            catRect.Contains(Event.current.mousePosition),
+                            false,
+                            true,
+                            false);
+                    }
                 }
+                else
+                {
+                    isExpanded = IsCategoryExpanded(categoryName);
+                    bool nextExpanded = GUI.Toggle(
+                        catRect,
+                        isExpanded,
+                        catLabel.ToUpperInvariant(),
+                        _categoryStyle);
+                    if (nextExpanded != isExpanded)
+                    {
+                        SetCategoryExpanded(categoryName, nextExpanded);
+                        isExpanded = nextExpanded;
+                    }
+                }
+
+                if (_categoryUpdateCounts.TryGetValue(categoryName ?? string.Empty, out int categoryUpdateCount))
+                    DrawCategoryUpdateIndicator(catRect, categoryUpdateCount);
+
                 y += CategoryHeaderHeight;
 
                 if (!isExpanded)
@@ -666,6 +762,9 @@ namespace PurrNet.Editor
                 // Package items in this category
                 for (int i = startIndex; i < startIndex + count; i++)
                 {
+                    if (!PackageMatchesSearch(_sortedPackages[i].pkg))
+                        continue;
+
                     var itemRect = new Rect(0, y, viewRect.width, ListItemHeight);
                     var entry = _sortedPackages[i];
                     DrawListItem(entry.pkg, entry.release, entry.dev, i, itemRect);
@@ -673,7 +772,7 @@ namespace PurrNet.Editor
                 }
 
                 // "PurrNet for Studios" entry at the end of the Core category
-                if (string.Equals(categoryName, "Core", StringComparison.OrdinalIgnoreCase))
+                if (showStudios)
                 {
                     var studioRect = new Rect(0, y, viewRect.width, ListItemHeight);
                     DrawStudiosListItem(studioRect);
@@ -682,6 +781,147 @@ namespace PurrNet.Editor
             }
 
             GUI.EndScrollView();
+        }
+
+        private void ReconcileSelectionWithSearch()
+        {
+            int nextIndex = _selectedIndex;
+
+            if (nextIndex != StudiosEntryIndex &&
+                (nextIndex < 0 || nextIndex >= _sortedPackages.Count))
+            {
+                nextIndex = -1;
+            }
+
+            if (HasSearchQuery())
+            {
+                bool selectionMatches = nextIndex == StudiosEntryIndex
+                    ? MatchesStudiosSearch()
+                    : nextIndex >= 0 && PackageMatchesSearch(_sortedPackages[nextIndex].pkg);
+                if (!selectionMatches)
+                    nextIndex = FindFirstSearchResult();
+            }
+            else if (nextIndex < 0 && _sortedPackages.Count > 0)
+            {
+                nextIndex = 0;
+            }
+
+            if (nextIndex == _selectedIndex)
+                return;
+
+            _selectedIndex = nextIndex;
+            _releasePopupIndex = -1;
+            _devPopupIndex = -1;
+            _releasePopupTouched = false;
+            _devPopupTouched = false;
+        }
+
+        private int FindFirstSearchResult()
+        {
+            for (int i = 0; i < _sortedPackages.Count; i++)
+            {
+                if (PackageMatchesSearch(_sortedPackages[i].pkg))
+                    return i;
+            }
+
+            return MatchesStudiosSearch() ? StudiosEntryIndex : -1;
+        }
+
+        private int CountSearchMatches(int startIndex, int count)
+        {
+            int matches = 0;
+            for (int i = startIndex; i < startIndex + count; i++)
+            {
+                if (PackageMatchesSearch(_sortedPackages[i].pkg))
+                    matches++;
+            }
+
+            return matches;
+        }
+
+        private bool ShouldShowStudiosEntry(string categoryName)
+        {
+            return string.Equals(categoryName, "Core", StringComparison.OrdinalIgnoreCase) &&
+                   MatchesStudiosSearch();
+        }
+
+        private bool HasSearchQuery()
+        {
+            return !string.IsNullOrWhiteSpace(_searchQuery);
+        }
+
+        private bool PackageMatchesSearch(PackageInfo package)
+        {
+            if (!HasSearchQuery())
+                return true;
+
+            string[] tokens = Regex.Split(_searchQuery.Trim(), @"\s+");
+            foreach (string token in tokens)
+            {
+                if (ContainsSearchToken(package.DisplayName, token) ||
+                    ContainsSearchToken(package.Id, token) ||
+                    ContainsSearchToken(package.Slug, token) ||
+                    ContainsSearchToken(package.UpmPackageName, token) ||
+                    ContainsSearchToken(package.Category, token) ||
+                    ContainsSearchToken(package.Description, token) ||
+                    ContainsSearchToken(package.GithubOwner, token) ||
+                    ContainsSearchToken(package.GithubRepo, token) ||
+                    ContainsSearchToken(package.RequiredTier, token) ||
+                    package.IsEarlyAccess && ContainsSearchToken("early access", token) ||
+                    package.IsUserEditable && ContainsSearchToken("user editable", token))
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool MatchesStudiosSearch()
+        {
+            if (!HasSearchQuery())
+                return true;
+
+            string[] tokens = Regex.Split(_searchQuery.Trim(), @"\s+");
+            const string studiosSearchText = "PurrNet for Studios studio premium team source access";
+            foreach (string token in tokens)
+            {
+                if (!ContainsSearchToken(studiosSearchText, token))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool ContainsSearchToken(string value, string token)
+        {
+            return !string.IsNullOrEmpty(value) &&
+                   value.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private void DrawCategoryUpdateIndicator(Rect categoryRect, int updateCount)
+        {
+            bool useCompactLabel = categoryRect.width < 150f;
+            string label = useCompactLabel
+                ? $"↑ {updateCount}"
+                : updateCount == 1 ? "1 UPDATE" : $"{updateCount} UPDATES";
+            string packageLabel = updateCount == 1 ? "package has" : "packages have";
+            var content = new GUIContent(label,
+                $"{updateCount} {packageLabel} an update available in this category.");
+
+            float width = Mathf.Ceil(_categoryUpdateStyle.CalcSize(content).x);
+            var labelRect = new Rect(
+                categoryRect.xMax - width - 5f,
+                categoryRect.y + 3f,
+                width,
+                CategoryHeaderHeight - 6f);
+
+            // Cover any long category title beneath the right-aligned indicator.
+            EditorGUI.DrawRect(new Rect(labelRect.x - 2f, categoryRect.y, width + 7f, categoryRect.height),
+                _categoryBg);
+            GUI.Label(labelRect, content, _categoryUpdateStyle);
         }
 
         private static bool IsCategoryExpanded(string categoryName)
@@ -738,9 +978,12 @@ namespace PurrNet.Editor
             }
 
             // Build right-side info text
+            bool showEarlyAccess = package.IsEarlyAccess && package.HasAccess;
             string info;
             if (!package.HasAccess)
                 info = "No access";
+            else if (showEarlyAccess)
+                info = "EARLY ACCESS";
             else if (package.IsExternal && isGitInstall)
                 info = hasGitUpdate ? "update" : "installed";
             else if (hasUpdate)
@@ -753,7 +996,8 @@ namespace PurrNet.Editor
                 info = "";
 
             // Measure right-side text width
-            float infoWidth = string.IsNullOrEmpty(info) ? 0 : _listItemDetailStyle.CalcSize(new GUIContent(info)).x + 4;
+            var infoStyle = showEarlyAccess ? _earlyAccessListStyle : _listItemDetailStyle;
+            float infoWidth = string.IsNullOrEmpty(info) ? 0 : infoStyle.CalcSize(new GUIContent(info)).x + 4;
 
             // Status dot
             bool showDot = hasUpdate || hasGitUpdate || isInstalled;
@@ -790,7 +1034,7 @@ namespace PurrNet.Editor
                 }
                 else
                 {
-                    _listItemDetailStyle.Draw(infoRect, info, false, false, false, false);
+                    infoStyle.Draw(infoRect, info, false, false, false, false);
                 }
             }
 
@@ -995,6 +1239,9 @@ namespace PurrNet.Editor
             if (package.IsEarlyAccess)
                 DrawBadge("EARLY ACCESS", _updateColor);
 
+            if (package.IsUserEditable)
+                DrawBadge("USER EDITABLE", _accentColor);
+
             if (package.IsExternal && isGitInstall)
             {
                 if (hasGitUpdate)
@@ -1049,6 +1296,10 @@ namespace PurrNet.Editor
             if (!string.IsNullOrEmpty(tierName))
                 GUILayout.Label($"Tier: {tierName}", _smallLabelStyle);
 
+            if (package.IsUserEditable)
+                GUILayout.Label("Uses Unity's interactive importer to install selected files under Assets",
+                    _smallLabelStyle);
+
             if (!string.IsNullOrEmpty(package.Slug))
             {
                 string packageUrl = PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug);
@@ -1079,6 +1330,8 @@ namespace PurrNet.Editor
             EditorGUILayout.EndVertical();
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
+
+            DrawDependencies(package);
 
             // Frozen notice (non-external only)
             if (!package.IsExternal && package.Frozen)
@@ -1270,6 +1523,78 @@ namespace PurrNet.Editor
             EditorGUILayout.EndScrollView();
         }
 
+        private void DrawDependencies(PackageInfo package)
+        {
+            if (package.DependencyIds == null || package.DependencyIds.Length == 0)
+                return;
+
+            EditorGUILayout.Space(8);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(8);
+            EditorGUILayout.BeginVertical();
+
+            GUILayout.Label($"Dependencies ({package.DependencyIds.Length})", EditorStyles.boldLabel);
+
+            foreach (var dependencyId in package.DependencyIds)
+            {
+                var dependency = FindPackageById(dependencyId);
+                string dependencyName = dependency?.DisplayName ?? dependencyId;
+                string status;
+                Color statusColor;
+
+                if (dependency == null)
+                {
+                    status = "Unavailable";
+                    statusColor = _frozenColor;
+                }
+                else if (PurrPackageManagerInstaller.IsInstalled(dependency))
+                {
+                    status = "Installed";
+                    statusColor = _installedColor;
+                }
+                else if (!dependency.HasAccess)
+                {
+                    status = "No access";
+                    statusColor = _noAccessColor;
+                }
+                else
+                {
+                    status = "Will install";
+                    statusColor = _updateColor;
+                }
+
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label($"\u2022  {dependencyName}", _smallLabelStyle);
+                GUILayout.FlexibleSpace();
+
+                var statusStyle = new GUIStyle(_listItemDetailStyle)
+                {
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = statusColor }
+                };
+                GUILayout.Label(status, statusStyle, GUILayout.ExpandWidth(false));
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(8);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private PackageInfo FindPackageById(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId) || _packages?.Packages == null)
+                return null;
+
+            foreach (var package in _packages.Packages)
+            {
+                if (string.Equals(package.Id, packageId, StringComparison.OrdinalIgnoreCase))
+                    return package;
+            }
+
+            return null;
+        }
+
         private void DrawVersionDropdown(string channelLabel, List<VersionInfo> versions,
             ref int popupIndex, ref bool popupTouched, bool isInstalled, string installedVersion,
             PackageInfo package, Color color)
@@ -1314,7 +1639,13 @@ namespace PurrNet.Editor
             bool isSelectedInstalled = isInstalled && installedVersion == selected.Version;
             var operationKey = GetPackageOperationKey(package, selected);
             bool isActive = IsPackageOperationActive(operationKey);
-            var buttonLabel = isSelectedInstalled ? "Installed" : isActive ? BusyLabel("Installing") : "Install";
+            string importLabel = package.IsUserEditable ? "Import" : "Install";
+            string importingLabel = package.IsUserEditable ? "Importing" : "Installing";
+            var buttonLabel = isSelectedInstalled
+                ? "Installed"
+                : isActive
+                    ? BusyLabel(importingLabel)
+                    : importLabel;
 
             GUI.enabled = !isSelectedInstalled && !isActive && CanStartPackageOperation();
             GUI.color = color;
@@ -1352,8 +1683,10 @@ namespace PurrNet.Editor
                 string activeLabel;
                 if (!isInstalled)
                 {
-                    label = $"Install {channelLabel} v{version.Version}";
-                    activeLabel = "Installing";
+                    label = package.IsUserEditable
+                        ? $"Import {channelLabel} v{version.Version}"
+                        : $"Install {channelLabel} v{version.Version}";
+                    activeLabel = package.IsUserEditable ? "Importing" : "Installing";
                 }
                 else if (IsInstalledOnChannel(package, version.Channel, installedVersion))
                 {
@@ -1691,34 +2024,45 @@ namespace PurrNet.Editor
             return text;
         }
 
-        private int CountUpdatablePackages()
+        private int RebuildCategoryUpdateCounts()
         {
-            int count = 0;
+            _categoryUpdateCounts.Clear();
+            int totalCount = 0;
 
-            foreach (var (pkg, release, dev) in _sortedPackages)
+            foreach (var (categoryName, startIndex, count) in _categories)
             {
-                if (!pkg.HasAccess || pkg.Frozen) continue;
-
-                bool isInstalled = PurrPackageManagerInstaller.IsInstalled(pkg);
-                if (!isInstalled) continue;
-
-                bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
-                var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
-
-                if (pkg.IsExternal && isGitInstall)
+                int categoryCount = 0;
+                for (int i = startIndex; i < startIndex + count; i++)
                 {
-                    var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
-                    if (HasGitUpdate(pkg, hash))
-                        count++;
+                    var (pkg, release, dev) = _sortedPackages[i];
+                    if (HasAvailableUpdate(pkg, release, dev))
+                        categoryCount++;
                 }
-                else
-                {
-                    if (GetVersionUpdateTarget(pkg, installedVersion, release, dev) != null)
-                        count++;
-                }
+
+                if (categoryCount == 0)
+                    continue;
+
+                _categoryUpdateCounts[categoryName ?? string.Empty] = categoryCount;
+                totalCount += categoryCount;
             }
 
-            return count;
+            return totalCount;
+        }
+
+        private static bool HasAvailableUpdate(PackageInfo pkg, VersionInfo release, VersionInfo dev)
+        {
+            if (!pkg.HasAccess || pkg.Frozen || !PurrPackageManagerInstaller.IsInstalled(pkg))
+                return false;
+
+            bool isGitInstall = PurrPackageManagerInstaller.IsInstalledViaGit(pkg);
+            if (pkg.IsExternal && isGitInstall)
+            {
+                var hash = PurrPackageManagerInstaller.GetInstalledCommitHash(pkg);
+                return HasGitUpdate(pkg, hash);
+            }
+
+            var installedVersion = PurrPackageManagerInstaller.GetInstalledVersion(pkg);
+            return GetVersionUpdateTarget(pkg, installedVersion, release, dev) != null;
         }
 
         private List<(PackageInfo pkg, VersionInfo version, string gitUrl)> CollectUpdatablePackages()

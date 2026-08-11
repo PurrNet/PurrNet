@@ -285,6 +285,10 @@ namespace PurrNet.Pooling
 
         public bool IsReadOnly => false;
 
+        /// <summary>
+        /// Creates an independently owned copy. A regular struct assignment aliases the
+        /// same pooled collection and must not be disposed independently.
+        /// </summary>
         public DisposableHashSet<T> Duplicate()
         {
             if (isDisposed)

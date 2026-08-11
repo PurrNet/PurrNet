@@ -124,6 +124,9 @@ namespace PurrNet
 
         public void OnBeforeSerialize()
         {
+            _serializedItems ??= new List<T>();
+            _array ??= new T[_length];
+
             _serializedItems.Clear();
             for (int i = 0; i < _length && i < _array.Length; i++)
             {
@@ -133,6 +136,7 @@ namespace PurrNet
 
         public void OnAfterDeserialize()
         {
+            _serializedItems ??= new List<T>();
             _array = new T[_length];
 
             for (int i = 0; i < _serializedItems.Count && i < _length; i++)

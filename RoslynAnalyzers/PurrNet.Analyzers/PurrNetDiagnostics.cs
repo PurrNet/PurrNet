@@ -110,6 +110,11 @@ namespace PurrNet.Analyzers
             "mtuExceeded override on '{0}' is ignored on UnreliableSequenced; the NetworkManager setting governs the whole channel",
             RpcCategory);
 
+        public static readonly DiagnosticDescriptor ImmediateOnNonUnreliableChannel = Error(
+            "PN0107",
+            "immediate requires Channel.Unreliable",
+            "immediate on '{0}' requires Channel.Unreliable; ordered and sequenced delivery cannot span an independently flushed lane");
+
         private static DiagnosticDescriptor Error(string id, string title, string messageFormat, string category = RpcCategory) =>
             new DiagnosticDescriptor(id, title, messageFormat, category, DiagnosticSeverity.Error, true);
 

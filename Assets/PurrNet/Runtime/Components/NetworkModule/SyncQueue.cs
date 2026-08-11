@@ -41,11 +41,13 @@ namespace PurrNet
 
         public void OnBeforeSerialize()
         {
+            _serializedQueue ??= new SerializableQueue<T>();
             _serializedQueue.FromQueue(_queue);
         }
 
         public void OnAfterDeserialize()
         {
+            _serializedQueue ??= new SerializableQueue<T>();
             _queue = _serializedQueue.ToQueue();
         }
 
@@ -374,15 +376,18 @@ namespace PurrNet
         [SerializeField] private List<T> _values = new List<T>();
         [SerializeField] private List<string> _stringValues = new List<string>();
 
-        private bool _isValueSerializable;
+        private static readonly bool _isValueSerializable =
+            typeof(T).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(T));
 
-        public SerializableQueue()
+        private void EnsureLists()
         {
-            _isValueSerializable = typeof(T).IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(typeof(T));
+            _values ??= new List<T>();
+            _stringValues ??= new List<string>();
         }
 
         public Queue<T> ToQueue()
         {
+            EnsureLists();
             var queue = new Queue<T>();
 
             if (_isValueSerializable)
@@ -405,6 +410,10 @@ namespace PurrNet
 
         public void FromQueue(Queue<T> queue)
         {
+            if (queue == null)
+                return;
+
+            EnsureLists();
             _values.Clear();
             _stringValues.Clear();
 

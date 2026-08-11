@@ -67,8 +67,6 @@ namespace PurrNet.Packing
             }
             else if (!old.isDisposed && old.rawList == value.rawList)
             {
-                if (!value.SharesHandleWith(old))
-                    value.Dispose();
                 value = DisposableList<T>.Create();
             }
 

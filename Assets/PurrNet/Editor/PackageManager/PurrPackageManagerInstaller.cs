@@ -23,6 +23,9 @@ namespace PurrNet.Editor
         private static string LegacyPackagesDir => Path.Combine(ProjectRoot, LegacyPackagesFolderName);
         private static string ManifestPath => Path.Combine(PackagesDirectory, "manifest.json");
         private static string LockFilePath => Path.Combine(PackagesDirectory, "packages-lock.json");
+        private static string EditableInstallStatePath =>
+            Path.Combine(ProjectRoot, "ProjectSettings", "PurrNetEditablePackages.json");
+        private const string EditableAssetsInstallPrefix = "assets:";
 
         // The package-manager window re-queries install state on every OnGUI repaint — once per
         // package row, plus the "Update All" count — and each query parsed manifest.json /
@@ -33,6 +36,8 @@ namespace PurrNet.Editor
         private static DateTime _cachedManifestMtime;
         private static JObject _cachedLockFile;
         private static DateTime _cachedLockFileMtime;
+        private static JObject _cachedEditableInstallState;
+        private static DateTime _cachedEditableInstallStateMtime;
 
         private static JObject ReadJsonCached(string path, ref JObject cache, ref DateTime cacheMtime)
         {
@@ -60,11 +65,15 @@ namespace PurrNet.Editor
 
         private static JObject GetManifestJson() => ReadJsonCached(ManifestPath, ref _cachedManifest, ref _cachedManifestMtime);
         private static JObject GetLockFileJson() => ReadJsonCached(LockFilePath, ref _cachedLockFile, ref _cachedLockFileMtime);
+        private static JObject GetEditableInstallState() =>
+            ReadJsonCached(EditableInstallStatePath, ref _cachedEditableInstallState,
+                ref _cachedEditableInstallStateMtime);
 
         private static void InvalidateFileCaches()
         {
             _cachedManifest = null;
             _cachedLockFile = null;
+            _cachedEditableInstallState = null;
         }
 
         private static string FormatInstallFailure(Exception exception, PackageInfo package)
@@ -446,6 +455,258 @@ namespace PurrNet.Editor
             }
         }
 
+        private static string GetEditableInstallStateKey(PackageInfo package)
+        {
+            return !string.IsNullOrEmpty(package?.Id)
+                ? package.Id
+                : package?.GetUpmPackageName();
+        }
+
+        private static JObject GetEditableInstallRecord(PackageInfo package)
+        {
+            var key = GetEditableInstallStateKey(package);
+            if (string.IsNullOrEmpty(key))
+                return null;
+
+            return GetEditableInstallState()?["packages"]?[key] as JObject;
+        }
+
+        private static bool HasEditableImportedAssets(JObject record)
+        {
+            bool hasRecordedGuids = false;
+            if (record?["asset_guids"] is JArray guids)
+            {
+                foreach (var guid in guids.Values<string>())
+                {
+                    if (string.IsNullOrEmpty(guid))
+                        continue;
+
+                    hasRecordedGuids = true;
+                    if (!string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid)))
+                        return true;
+                }
+            }
+
+            if (hasRecordedGuids)
+                return false;
+
+            if (record?["asset_paths"] is JArray paths)
+            {
+                foreach (var path in paths.Values<string>())
+                {
+                    var normalized = NormalizeImportedAssetPath(path);
+                    if (normalized == null)
+                        continue;
+
+                    var fullPath = Path.Combine(
+                        ProjectRoot,
+                        normalized.Replace('/', Path.DirectorySeparatorChar));
+                    if (File.Exists(fullPath) || Directory.Exists(fullPath))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void RecordEditableAssetsInstall(PackageInfo package, VersionInfo version,
+            IEnumerable<string> importedAssetPaths)
+        {
+            var key = GetEditableInstallStateKey(package);
+            if (string.IsNullOrEmpty(key))
+                throw new InvalidOperationException("Cannot record an editable package without an id or package name.");
+
+            var state = GetEditableInstallState() ?? new JObject();
+            if (state["packages"] is not JObject packages)
+            {
+                packages = new JObject();
+                state["packages"] = packages;
+            }
+
+            var existing = packages[key] as JObject;
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var guids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (existing?["asset_paths"] is JArray existingPaths)
+            {
+                foreach (var path in existingPaths.Values<string>())
+                {
+                    if (!string.IsNullOrEmpty(path))
+                        paths.Add(path);
+                }
+            }
+
+            if (existing?["asset_guids"] is JArray existingGuids)
+            {
+                foreach (var guid in existingGuids.Values<string>())
+                {
+                    if (!string.IsNullOrEmpty(guid))
+                        guids.Add(guid);
+                }
+            }
+
+            foreach (var importedPath in importedAssetPaths ?? Array.Empty<string>())
+            {
+                var assetPath = NormalizeImportedAssetPath(importedPath);
+                if (assetPath == null)
+                    continue;
+
+                paths.Add(assetPath);
+                var guid = AssetDatabase.AssetPathToGUID(assetPath);
+                if (!string.IsNullOrEmpty(guid))
+                    guids.Add(guid);
+            }
+
+            packages[key] = new JObject
+            {
+                ["display_name"] = package.DisplayName,
+                ["upm_package_name"] = package.GetUpmPackageName(),
+                ["version"] = version.Version,
+                ["asset_paths"] = new JArray(paths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase)),
+                ["asset_guids"] = new JArray(guids.OrderBy(guid => guid, StringComparer.OrdinalIgnoreCase))
+            };
+
+            PurrPackageManagerIO.WriteAllTextAtomic(
+                EditableInstallStatePath,
+                state.ToString(Formatting.Indented));
+            InvalidateFileCaches();
+        }
+
+        private static string NormalizeImportedAssetPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            var normalized = path.Replace('\\', '/').Trim();
+            if (Path.IsPathRooted(normalized))
+            {
+                try
+                {
+                    normalized = Path.GetRelativePath(ProjectRoot, normalized).Replace('\\', '/');
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return normalized.Equals("Assets", StringComparison.OrdinalIgnoreCase)
+                   || normalized.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)
+                ? normalized
+                : null;
+        }
+
+        private static void RemoveEditableInstallRecord(PackageInfo package)
+        {
+            var key = GetEditableInstallStateKey(package);
+            var state = GetEditableInstallState();
+            if (string.IsNullOrEmpty(key) || state?["packages"] is not JObject packages)
+                return;
+
+            packages.Remove(key);
+            PurrPackageManagerIO.WriteAllTextAtomic(
+                EditableInstallStatePath,
+                state.ToString(Formatting.Indented));
+            InvalidateFileCaches();
+        }
+
+        private static void RemoveEditableAssetsInstall(PackageInfo package)
+        {
+            var key = GetEditableInstallStateKey(package);
+            var state = GetEditableInstallState();
+            if (string.IsNullOrEmpty(key) || state?["packages"] is not JObject packages)
+                return;
+
+            var record = packages[key] as JObject;
+            if (record == null)
+                return;
+
+            var protectedGuids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var protectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in packages.Properties())
+            {
+                if (string.Equals(property.Name, key, StringComparison.OrdinalIgnoreCase)
+                    || property.Value is not JObject otherRecord)
+                    continue;
+
+                if (otherRecord["asset_guids"] is JArray otherGuids)
+                {
+                    foreach (var guid in otherGuids.Values<string>())
+                    {
+                        if (!string.IsNullOrEmpty(guid))
+                            protectedGuids.Add(guid);
+                    }
+                }
+
+                if (otherRecord["asset_paths"] is JArray otherPaths)
+                {
+                    foreach (var path in otherPaths.Values<string>())
+                    {
+                        var normalized = NormalizeImportedAssetPath(path);
+                        if (normalized != null)
+                            protectedPaths.Add(normalized);
+                    }
+                }
+            }
+
+            var assetsToDelete = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            bool hasRecordedGuids = record["asset_guids"] is JArray { Count: > 0 };
+            if (record["asset_guids"] is JArray guids)
+            {
+                foreach (var guid in guids.Values<string>())
+                {
+                    if (string.IsNullOrEmpty(guid) || protectedGuids.Contains(guid))
+                        continue;
+
+                    var currentPath = NormalizeImportedAssetPath(AssetDatabase.GUIDToAssetPath(guid));
+                    if (currentPath != null && !protectedPaths.Contains(currentPath))
+                        assetsToDelete.Add(currentPath);
+                }
+            }
+
+            // Paths are a compatibility fallback for records created when Unity did not return
+            // asset GUIDs. Prefer GUIDs so moved assets are removed at their current location
+            // without risking an unrelated replacement at their original path.
+            if (!hasRecordedGuids && record["asset_paths"] is JArray paths)
+            {
+                foreach (var path in paths.Values<string>())
+                {
+                    var normalized = NormalizeImportedAssetPath(path);
+                    if (normalized != null && !protectedPaths.Contains(normalized))
+                        assetsToDelete.Add(normalized);
+                }
+            }
+
+            var failures = new List<string>();
+            foreach (var assetPath in assetsToDelete.OrderByDescending(path => path.Length))
+            {
+                // Never recursively delete imported folders: users may have added their own files.
+                if (AssetDatabase.IsValidFolder(assetPath))
+                    continue;
+
+                var fullPath = Path.Combine(ProjectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(fullPath) && !File.Exists(fullPath + ".meta"))
+                    continue;
+
+                if (!AssetDatabase.DeleteAsset(assetPath))
+                    failures.Add(assetPath);
+            }
+
+            if (failures.Count > 0)
+            {
+                throw new IOException(
+                    "Unity could not remove these imported assets: " + string.Join(", ", failures));
+            }
+
+            RemoveEditableInstallRecord(package);
+            AssetDatabase.Refresh();
+        }
+
+        private static bool IsEditableAssetsInstall(string value)
+        {
+            return value?.StartsWith(EditableAssetsInstallPrefix, StringComparison.OrdinalIgnoreCase) == true;
+        }
+
         public static bool IsInstalled(PackageInfo package)
         {
             return FindInstalledEntry(package) != null;
@@ -459,6 +720,9 @@ namespace PurrNet.Editor
 
             var value = match.Value.value;
             var key = match.Value.key;
+
+            if (IsEditableAssetsInstall(value))
+                return value.Substring(EditableAssetsInstallPrefix.Length);
 
             // Git URL entries — prefer the version tag baked into the manifest URL (#vX.Y.Z).
             // It's written synchronously by Install() and is the source of truth, unlike
@@ -536,14 +800,23 @@ namespace PurrNet.Editor
         }
 
         /// <summary>
-        /// Finds the installed entry for a package. Checks embedded packages in Packages/{name}/,
-        /// manifest entries (git URLs), and legacy PurrPackages/ file: references.
+        /// Finds the installed entry for a package. Checks user-selected Assets imports,
+        /// embedded packages in Packages/{name}/, manifest entries (git URLs), and legacy
+        /// PurrPackages/ file: references.
         /// </summary>
         private static (string key, string value)? FindInstalledEntry(PackageInfo package)
         {
             var apiName = package.GetUpmPackageName();
             if (string.IsNullOrEmpty(apiName))
                 return null;
+
+            var editableRecord = GetEditableInstallRecord(package);
+            var editableVersion = editableRecord?["version"]?.ToString();
+            if (!string.IsNullOrEmpty(editableVersion)
+                && HasEditableImportedAssets(editableRecord))
+            {
+                return (apiName, EditableAssetsInstallPrefix + editableVersion);
+            }
 
             // Check for embedded package first (Packages/{name}/ takes priority in Unity)
             if (HasEmbeddedPackage(apiName))
@@ -839,6 +1112,83 @@ namespace PurrNet.Editor
             return package.Versions[0];
         }
 
+        private static async Task<Result<bool>> ImportEditableAssetsPackage(string packagePath,
+            PackageInfo package, VersionInfo version, Action beforeRecording = null, Action afterRecording = null)
+        {
+            if (!string.Equals(Path.GetExtension(packagePath), ".unitypackage",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return Result<bool>.Fail(
+                    $"'{package.DisplayName}' is marked user-editable, but its release asset is not a .unitypackage. " +
+                    "Attach a .unitypackage release asset so Unity can show the interactive file importer.");
+            }
+
+            var completion =
+                new TaskCompletionSource<Result<bool>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var importedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            void Unsubscribe()
+            {
+                AssetDatabase.importPackageCancelled -= OnCancelled;
+                AssetDatabase.importPackageFailed -= OnFailed;
+                AssetDatabase.onImportPackageItemsCompleted -= OnItemsCompleted;
+            }
+
+            void Complete(Result<bool> result)
+            {
+                Unsubscribe();
+                completion.TrySetResult(result);
+            }
+
+            void OnItemsCompleted(string[] assetPaths)
+            {
+                try
+                {
+                    if (assetPaths != null)
+                    {
+                        foreach (var path in assetPaths)
+                            importedPaths.Add(path);
+                    }
+
+                    beforeRecording?.Invoke();
+                    RecordEditableAssetsInstall(package, version, importedPaths);
+                    afterRecording?.Invoke();
+                    Complete(Result<bool>.Ok(true));
+                }
+                catch (Exception e)
+                {
+                    Complete(Result<bool>.Fail(
+                        $"Unity imported {package.DisplayName}, but its installation metadata could not be finalized: {e.Message}"));
+                }
+            }
+
+            void OnCancelled(string importedPackageName)
+            {
+                Complete(Result<bool>.Fail("Package import cancelled by user."));
+            }
+
+            void OnFailed(string importedPackageName, string error)
+            {
+                Complete(Result<bool>.Fail($"Unity could not import {package.DisplayName}: {error}"));
+            }
+
+            AssetDatabase.importPackageCancelled += OnCancelled;
+            AssetDatabase.importPackageFailed += OnFailed;
+            AssetDatabase.onImportPackageItemsCompleted += OnItemsCompleted;
+
+            try
+            {
+                EditorUtility.ClearProgressBar();
+                AssetDatabase.ImportPackage(packagePath, true);
+            }
+            catch (Exception e)
+            {
+                Complete(Result<bool>.Fail($"Unity could not open the package importer: {e.Message}"));
+            }
+
+            return await completion.Task;
+        }
+
         public static async Task<Result<bool>> Install(string apiKey, PackageInfo package, VersionInfo version, bool resolve = true)
         {
             if (package == null || string.IsNullOrEmpty(package.GetUpmPackageName()))
@@ -866,8 +1216,19 @@ namespace PurrNet.Editor
 
             try
             {
-                // Git+tag fast path: no download needed, just set manifest to git URL with tag
-                if (!package.IsExternal)
+                var existingInstall = FindInstalledEntry(package);
+                if (!package.IsUserEditable
+                    && existingInstall != null
+                    && IsEditableAssetsInstall(existingInstall.Value.value))
+                {
+                    return Result<bool>.Fail(
+                        $"{package.DisplayName} was previously imported into Assets. Remove it first before " +
+                        "switching back to the Package Manager installation, so local customizations are not deleted without confirmation.");
+                }
+
+                // User-editable packages use the release asset and Unity's interactive importer.
+                // The normal Git path is cached by UPM and read-only.
+                if (!package.IsExternal && !package.IsUserEditable)
                 {
                     var gitUrl = GetGitUrlForChannel(package, version.Channel);
                     if (gitUrl != null && !string.IsNullOrEmpty(version.TagName))
@@ -918,6 +1279,38 @@ namespace PurrNet.Editor
                 {
                     EditorUtility.ClearProgressBar();
                     return Result<bool>.Fail(fileResult.Error);
+                }
+
+                if (package.IsUserEditable)
+                {
+                    var previousInstall = FindInstalledEntry(package);
+                    bool replaceUpmInstall = previousInstall != null
+                                             && !IsEditableAssetsInstall(previousInstall.Value.value);
+
+                    Action beforeRecording = null;
+                    Action afterRecording = null;
+                    if (replaceUpmInstall)
+                    {
+                        beforeRecording = () =>
+                        {
+                            ClearExistingInstall(package, package.GetUpmPackageName(), quarantine);
+                            quarantine.Commit();
+                        };
+                        if (resolve)
+                        {
+                            afterRecording = () =>
+                            {
+                                PurrPackageManagerCache.Invalidate();
+                                UnityEditor.PackageManager.Client.Resolve();
+                            };
+                        }
+                    }
+
+                    var importResult = await ImportEditableAssetsPackage(
+                        tempPath, package, version, beforeRecording, afterRecording);
+                    if (importResult.Success)
+                        mutationCommitted = true;
+                    return importResult;
                 }
 
                 EditorUtility.DisplayProgressBar("PurrNet Package Manager", "Installing package...", 0.7f);
@@ -1030,10 +1423,31 @@ namespace PurrNet.Editor
                 if (match == null)
                     return Result<bool>.Ok(false);
 
-                if (askForConfirmation && !EditorUtility.DisplayDialog("Remove Package",
-                    $"Are you sure you want to remove {package.DisplayName}?",
-                    "Remove", "Cancel"))
-                    return Result<bool>.Ok(false);
+                if (askForConfirmation)
+                {
+                    string removeMessage = IsEditableAssetsInstall(match.Value.value)
+                        ? $"Are you sure you want to remove {package.DisplayName}? " +
+                          "Assets selected in Unity's package importer, including local modifications to them, " +
+                          "will be deleted. Additional files you created are left in place."
+                        : $"Are you sure you want to remove {package.DisplayName}?";
+                    if (!EditorUtility.DisplayDialog("Remove Package", removeMessage, "Remove", "Cancel"))
+                        return Result<bool>.Ok(false);
+                }
+
+                if (IsEditableAssetsInstall(match.Value.value))
+                {
+                    try
+                    {
+                        RemoveEditableAssetsInstall(package);
+                        PurrPackageManagerCache.Invalidate();
+                        return Result<bool>.Ok(true);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[PurrNet] Failed to remove imported package assets: {e}");
+                        return Result<bool>.Fail(e.Message);
+                    }
+                }
 
                 var backup = ManifestBackup.Capture();
                 using var quarantine = new QuarantineScope();
