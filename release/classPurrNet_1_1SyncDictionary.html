@@ -126,11 +126,12 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>OnBeforeSerialize</b>
 <tr class="memitem:a862454d0b3d51b4876b7d03c16f02607"><td class="memItemLeft" align="right" valign="top"><a id="a862454d0b3d51b4876b7d03c16f02607" name="a862454d0b3d51b4876b7d03c16f02607"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>OnAfterDeserialize</b> ()</td></tr>
 <tr class="separator:a862454d0b3d51b4876b7d03c16f02607"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a17ef5ca2f5023e39f7d74d9b9873240c"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncDictionary.html#a17ef5ca2f5023e39f7d74d9b9873240c">OnSpawn</a> ()</td></tr>
-<tr class="separator:a17ef5ca2f5023e39f7d74d9b9873240c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a10e63b11b9d0383a1e5bf9f0580d80aa"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncDictionary.html#a10e63b11b9d0383a1e5bf9f0580d80aa">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
-<tr class="memdesc:a10e63b11b9d0383a1e5bf9f0580d80aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncDictionary.html#a10e63b11b9d0383a1e5bf9f0580d80aa">More...</a><br /></td></tr>
-<tr class="separator:a10e63b11b9d0383a1e5bf9f0580d80aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a81c8fbcda137961be0d98849997fccec"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncDictionary.html#a81c8fbcda137961be0d98849997fccec">OnSpawnSent</a> ()</td></tr>
+<tr class="memdesc:a81c8fbcda137961be0d98849997fccec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called only on the spawning peer, at the end of the frame the object was spawned in, right before batched RPCs flush. Anything queued here departs in the same flush as the spawn, ordered right behind the spawn packet.   <a href="classPurrNet_1_1SyncDictionary.html#a81c8fbcda137961be0d98849997fccec">More...</a><br /></td></tr>
+<tr class="separator:a81c8fbcda137961be0d98849997fccec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab581e3e06db1e460b90bbe85ee7c4bae"><td class="memItemLeft" align="right" valign="top">override void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncDictionary.html#ab581e3e06db1e460b90bbe85ee7c4bae">OnObserverAdded</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, bool isSpawner)</td></tr>
+<tr class="memdesc:ab581e3e06db1e460b90bbe85ee7c4bae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when an observer is added. Server only.   <a href="classPurrNet_1_1SyncDictionary.html#ab581e3e06db1e460b90bbe85ee7c4bae">More...</a><br /></td></tr>
+<tr class="separator:ab581e3e06db1e460b90bbe85ee7c4bae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7d5f554a53932554be01d6caf124c9e6"><td class="memItemLeft" align="right" valign="top"><a id="a7d5f554a53932554be01d6caf124c9e6" name="a7d5f554a53932554be01d6caf124c9e6"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Add</b> (TKey key, TValue value)</td></tr>
 <tr class="memdesc:a7d5f554a53932554be01d6caf124c9e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds an entry to the dictionary and syncs the change  <br /></td></tr>
@@ -420,8 +421,8 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a10e63b11b9d0383a1e5bf9f0580d80aa" name="a10e63b11b9d0383a1e5bf9f0580d80aa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a10e63b11b9d0383a1e5bf9f0580d80aa">&#9670;&#160;</a></span>OnObserverAdded()</h2>
+<a id="ab581e3e06db1e460b90bbe85ee7c4bae" name="ab581e3e06db1e460b90bbe85ee7c4bae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab581e3e06db1e460b90bbe85ee7c4bae">&#9670;&#160;</a></span>OnObserverAdded()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -433,8 +434,18 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
           <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncDictionary.html">PurrNet.SyncDictionary</a>&lt; TKey, TValue &gt;.OnObserverAdded </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
-          <td class="paramname"><em>player</em></td><td>)</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>isSpawner</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
   </td>
@@ -448,11 +459,12 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">player</td><td>The observer player id</td></tr>
+    <tr><td class="paramname">isSpawner</td><td>If this object was just spawned and the observer is the spawner</td></tr>
   </table>
   </dd>
 </dl>
 
-<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#aa550885b27e3617c3c8cd392c23a5524">PurrNet.NetworkModule</a>.</p>
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#af5eaddc8cdab129670207485eb8bd787">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>
@@ -485,8 +497,8 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 
 </div>
 </div>
-<a id="a17ef5ca2f5023e39f7d74d9b9873240c" name="a17ef5ca2f5023e39f7d74d9b9873240c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a17ef5ca2f5023e39f7d74d9b9873240c">&#9670;&#160;</a></span>OnSpawn()</h2>
+<a id="a81c8fbcda137961be0d98849997fccec" name="a81c8fbcda137961be0d98849997fccec"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a81c8fbcda137961be0d98849997fccec">&#9670;&#160;</a></span>OnSpawnSent()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -495,7 +507,7 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncDictionary.html">PurrNet.SyncDictionary</a>&lt; TKey, TValue &gt;.OnSpawn </td>
+          <td class="memname">override void <a class="el" href="classPurrNet_1_1SyncDictionary.html">PurrNet.SyncDictionary</a>&lt; TKey, TValue &gt;.OnSpawnSent </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -508,7 +520,9 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 </table>
 </div><div class="memdoc">
 
-<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html">PurrNet.NetworkModule</a>.</p>
+<p>Called only on the spawning peer, at the end of the frame the object was spawned in, right before batched RPCs flush. Anything queued here departs in the same flush as the spawn, ordered right behind the spawn packet.  </p>
+
+<p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a79f55a0c992dda9c7eabb81b69e28328">PurrNet.NetworkModule</a>.</p>
 
 </div>
 </div>

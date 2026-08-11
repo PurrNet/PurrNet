@@ -93,6 +93,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Modules_1_1TickManager
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
 <a href="classPurrNet_1_1Modules_1_1TickManager-members.html">List of all members</a>  </div>
@@ -172,6 +173,17 @@ Action&#160;</td><td class="memItemRight" valign="bottom"><b>onReliableTick</b><
 Action&#160;</td><td class="memItemRight" valign="bottom"><b>onReliablePostTick</b></td></tr>
 <tr class="separator:a34a576bf30c1f9f1c33a48f5bb287cc0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:ad9a8aec93d64077d3ec46894c8d7c085"><td class="memItemLeft" align="right" valign="top"><a id="ad9a8aec93d64077d3ec46894c8d7c085" name="ad9a8aec93d64077d3ec46894c8d7c085"></a>
+const double&#160;</td><td class="memItemRight" valign="bottom"><b>minTickPacingScale</b> = 0.98d</td></tr>
+<tr class="memdesc:ad9a8aec93d64077d3ec46894c8d7c085"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lower clamp for <a class="el" href="classPurrNet_1_1Modules_1_1TickManager.html#af41cd29881761a5086846acf53f09636" title="Wall-clock multiplier applied to the tick accumulation interval. Values below 1 fire ticks slightly f...">tickPacingScale</a>.  <br /></td></tr>
+<tr class="separator:ad9a8aec93d64077d3ec46894c8d7c085"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af7382299064bbc6bd8bb6526d469be9c"><td class="memItemLeft" align="right" valign="top"><a id="af7382299064bbc6bd8bb6526d469be9c" name="af7382299064bbc6bd8bb6526d469be9c"></a>
+const double&#160;</td><td class="memItemRight" valign="bottom"><b>maxTickPacingScale</b> = 1.02d</td></tr>
+<tr class="memdesc:af7382299064bbc6bd8bb6526d469be9c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Upper clamp for <a class="el" href="classPurrNet_1_1Modules_1_1TickManager.html#af41cd29881761a5086846acf53f09636" title="Wall-clock multiplier applied to the tick accumulation interval. Values below 1 fire ticks slightly f...">tickPacingScale</a>.  <br /></td></tr>
+<tr class="separator:af7382299064bbc6bd8bb6526d469be9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
 <tr class="memitem:ab8ea7b7b0dce2b4c4a7b1c2cd5887899"><td class="memItemLeft" align="right" valign="top"><a id="ab8ea7b7b0dce2b4c4a7b1c2cd5887899" name="ab8ea7b7b0dce2b4c4a7b1c2cd5887899"></a>
@@ -204,6 +216,14 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>localPreciseTick</b
 int&#160;</td><td class="memItemRight" valign="bottom"><b>tickRate</b><code> [get]</code></td></tr>
 <tr class="memdesc:af5c5d812bf4da892d3ad579ac80b1c5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The amount of ticks per second  <br /></td></tr>
 <tr class="separator:af5c5d812bf4da892d3ad579ac80b1c5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af41cd29881761a5086846acf53f09636"><td class="memItemLeft" align="right" valign="top"><a id="af41cd29881761a5086846acf53f09636" name="af41cd29881761a5086846acf53f09636"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>tickPacingScale</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:af41cd29881761a5086846acf53f09636"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wall-clock multiplier applied to the tick accumulation interval. Values below 1 fire ticks slightly faster, values above 1 slightly slower. Clamped to [<a class="el" href="classPurrNet_1_1Modules_1_1TickManager.html#ad9a8aec93d64077d3ec46894c8d7c085" title="Lower clamp for tickPacingScale.">minTickPacingScale</a>, <a class="el" href="classPurrNet_1_1Modules_1_1TickManager.html#af7382299064bbc6bd8bb6526d469be9c" title="Upper clamp for tickPacingScale.">maxTickPacingScale</a>]. The simulation tick delta is unaffected; only the real time between ticks bends.  <br /></td></tr>
+<tr class="separator:af41cd29881761a5086846acf53f09636"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b48e0bb801526643d64756a339c2fd4"><td class="memItemLeft" align="right" valign="top"><a id="a3b48e0bb801526643d64756a339c2fd4" name="a3b48e0bb801526643d64756a339c2fd4"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>lastTickTime</b><code> [get]</code></td></tr>
+<tr class="memdesc:a3b48e0bb801526643d64756a339c2fd4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wall-clock time of the most recent tick boundary, in Time.unscaledTimeAsDouble seconds.  <br /></td></tr>
+<tr class="separator:a3b48e0bb801526643d64756a339c2fd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>

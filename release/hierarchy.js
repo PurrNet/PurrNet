@@ -214,6 +214,8 @@ var hierarchy =
       [ "PurrNet.LODIntervalScheduler", "classPurrNet_1_1LODIntervalScheduler.html", null ]
     ] ],
     [ "PurrNet.IMath< T >", "interfacePurrNet_1_1IMath.html", null ],
+    [ "PurrNet.Modules.ImmediateRpcRejection", "structPurrNet_1_1Modules_1_1ImmediateRpcRejection.html", null ],
+    [ "PurrNet.Modules.ImmediateRpcResponse", "structPurrNet_1_1Modules_1_1ImmediateRpcResponse.html", null ],
     [ "INetLogger", null, [
       [ "PurrNet.Transports.UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", null ]
     ] ],
@@ -262,6 +264,7 @@ var hierarchy =
     [ "PurrNet.InterpolatedWithDispose< T >", "classPurrNet_1_1InterpolatedWithDispose.html", null ],
     [ "PurrNet.IOwnerAuth", "interfacePurrNet_1_1IOwnerAuth.html", null ],
     [ "PurrNet.Packing.IPacked", "interfacePurrNet_1_1Packing_1_1IPacked.html", [
+      [ "PurrNet.AudioPlaybackCommand", "structPurrNet_1_1AudioPlaybackCommand.html", null ],
       [ "PurrNet.AudioSourceDelta", "structPurrNet_1_1AudioSourceDelta.html", null ],
       [ "PurrNet.StateMachine.StateMachineState", "structPurrNet_1_1StateMachine_1_1StateMachineState.html", null ]
     ] ],
@@ -278,6 +281,7 @@ var hierarchy =
       [ "PurrNet.MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],
       [ "PurrNet.MinimalModuleHeader", "structPurrNet_1_1MinimalModuleHeader.html", null ],
       [ "PurrNet.MinimalStaticHeader", "structPurrNet_1_1MinimalStaticHeader.html", null ],
+      [ "PurrNet.Modules.AsyncSpawnReadyPacket", "structPurrNet_1_1Modules_1_1AsyncSpawnReadyPacket.html", null ],
       [ "PurrNet.Modules.ChangeParentAction", "structPurrNet_1_1Modules_1_1ChangeParentAction.html", null ],
       [ "PurrNet.Modules.ChangeParentPacket", "structPurrNet_1_1Modules_1_1ChangeParentPacket.html", null ],
       [ "PurrNet.Modules.DespawnPacket", "structPurrNet_1_1Modules_1_1DespawnPacket.html", null ],
@@ -370,6 +374,7 @@ var hierarchy =
       [ "PurrNet.StaticRPCPacket", "structPurrNet_1_1StaticRPCPacket.html", null ]
     ] ],
     [ "ISerializationCallbackReceiver", null, [
+      [ "PurrNet.NetworkRules", "classPurrNet_1_1NetworkRules.html", null ],
       [ "PurrNet.NetworkSceneRules", "structPurrNet_1_1NetworkSceneRules.html", null ],
       [ "PurrNet.SyncArray< T >", "classPurrNet_1_1SyncArray.html", null ],
       [ "PurrNet.SyncDictionary< TKey, TValue >", "classPurrNet_1_1SyncDictionary.html", null ],

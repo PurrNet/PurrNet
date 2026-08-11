@@ -117,6 +117,13 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a6480209779b9da0cff2fc074c20a91d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a961023ebe5a39df1803088c717021549"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html#a961023ebe5a39df1803088c717021549">Disable</a> (bool asServer)</td></tr>
 <tr class="separator:a961023ebe5a39df1803088c717021549"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa14d483db6930c6eb20e54603abeba8e"><td class="memItemLeft" align="right" valign="top"><a id="aa14d483db6930c6eb20e54603abeba8e" name="aa14d483db6930c6eb20e54603abeba8e"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterImmediateType&lt; T &gt;</b> ()</td></tr>
+<tr class="memdesc:aa14d483db6930c6eb20e54603abeba8e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Marks a broadcast type as immediate: while the defer window is active, messages of this type dispatch on arrival while everything else is queued for the next fixed receive phase.  <br /></td></tr>
+<tr class="separator:aa14d483db6930c6eb20e54603abeba8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a78bc07364eac086a7c9fefb677bbcca2"><td class="memItemLeft" align="right" valign="top"><a id="a78bc07364eac086a7c9fefb677bbcca2" name="a78bc07364eac086a7c9fefb677bbcca2"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>UnregisterImmediateType&lt; T &gt;</b> ()</td></tr>
+<tr class="separator:a78bc07364eac086a7c9fefb677bbcca2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a956e3ce267918e2ad5c9bceb17f90f41"><td class="memItemLeft" align="right" valign="top"><a id="a956e3ce267918e2ad5c9bceb17f90f41" name="a956e3ce267918e2ad5c9bceb17f90f41"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SendToAll&lt; T &gt;</b> (T data, Channel method=Channel.ReliableOrdered, <a class="el" href="namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701">MTUExceededBehaviour</a>? mtuOverride=null)</td></tr>
 <tr class="separator:a956e3ce267918e2ad5c9bceb17f90f41"><td class="memSeparator" colspan="2">&#160;</td></tr>
