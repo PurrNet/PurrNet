@@ -1919,6 +1919,8 @@ GameObject:
   - component: {fileID: 277924965}
   - component: {fileID: 1680343666}
   - component: {fileID: 1680343667}
+  - component: {fileID: 1680343668}
+  - component: {fileID: 1680343669}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -3236,6 +3238,47 @@ MonoBehaviour:
   _reconnectRetrySeconds: 2
   _rejoinTimeoutSeconds: 30
   _barrierTimeoutSeconds: 90
+--- !u!114 &1680343668
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3734070a078a492595f8de081b07939d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::PublicSceneReconnectScenario
+  _sceneTimeoutSeconds: 30
+  _membershipTimeoutSeconds: 30
+  _disconnectTimeoutSeconds: 30
+  _reconnectTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _settleSeconds: 2
+  _stayDisconnectedSeconds: 1
+  _barrierTimeoutSeconds: 60
+  _removeVictimFromSceneWhileDisconnected: 1
+--- !u!114 &1680343669
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c5d5708c9464c12b54731bba01bdf03, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::PublicAddressableSceneReconnectScenario
+  _sceneTimeoutSeconds: 30
+  _membershipTimeoutSeconds: 30
+  _disconnectTimeoutSeconds: 30
+  _reconnectTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
+  _settleSeconds: 2
+  _stayDisconnectedSeconds: 1
+  _barrierTimeoutSeconds: 60
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

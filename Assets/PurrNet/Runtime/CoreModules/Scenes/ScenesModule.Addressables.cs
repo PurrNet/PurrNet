@@ -85,6 +85,16 @@ namespace PurrNet.Modules
 
         private void ProcessLoadAddressableAction(LoadAddressableSceneAction action)
         {
+            // A reconnect delivers the same load action twice: once in the
+            // first-join batch and once when the player is re-added to the
+            // public scene. Loading again would duplicate the addressable scene
+            // and clash with the already assigned SceneID.
+            if (_scenes.ContainsKey(action.sceneID) || IsScenePending(action.sceneID))
+            {
+                _sceneActionScenes.Add(action.sceneID);
+                return;
+            }
+
             var guid = action.guid.value;
             if (string.IsNullOrEmpty(guid))
             {

@@ -315,8 +315,6 @@ namespace PurrNet.Modules
             if (!MarkReceived(stream, data.seq, out var packetOrder))
                 return;
 
-            UpdateOffsetEstimate(stream, data.tick);
-
             bool committed = false;
             var decoded = ListPool<NTUnreliableEntry>.Instantiate();
 
@@ -468,6 +466,12 @@ namespace PurrNet.Modules
                     stream.ackDirty = oldAckDirty;
                 }
             }
+
+            // Only sample the clock offset from packets that decoded cleanly — the
+            // rollback above doesn't cover offset state, so a malformed packet must
+            // not touch it.
+            if (committed)
+                UpdateOffsetEstimate(stream, data.tick);
 
             if (committed && ShouldFlushAckAfterPacket(stream))
                 SendStandaloneAck(sender, stream);
@@ -1351,7 +1355,11 @@ namespace PurrNet.Modules
 
         private void UpdateOffsetEstimate(NTUnreliableRecvStream stream, ushort senderTick)
         {
-            uint localTick = _manager.tickModule.localTick;
+            var tickManager = _manager ? _manager.tickModule : null;
+            if (tickManager == null)
+                return;
+
+            uint localTick = tickManager.localTick;
             ushort off = (ushort)((ushort)localTick - senderTick);
 
             if (!stream.offsetInit)

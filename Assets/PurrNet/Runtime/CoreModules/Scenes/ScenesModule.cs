@@ -616,6 +616,18 @@ namespace PurrNet.Modules
                         }
 
                         var loadAction = action.loadSceneAction;
+
+                        // A reconnect delivers the same load action twice: once in the
+                        // first-join batch and once when the player is re-added to the
+                        // public scene. Loading again would duplicate the unity scene
+                        // and clash with the already assigned SceneID.
+                        if (_scenes.ContainsKey(loadAction.sceneID) || IsScenePending(loadAction.sceneID))
+                        {
+                            _sceneActionScenes.Add(loadAction.sceneID);
+                            _actionsQueue.Dequeue();
+                            break;
+                        }
+
                         var localBuildIndex = BuildIndexFromScenePathHash(loadAction.scenePathHash);
 
                         if (localBuildIndex == -1)

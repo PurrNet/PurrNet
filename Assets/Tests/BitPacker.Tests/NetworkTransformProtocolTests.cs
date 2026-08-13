@@ -9,6 +9,12 @@ using UnityEngine;
 
 public class NetworkTransformProtocolTests
 {
+    [OneTimeSetUp]
+    public void RegisterSerializers()
+    {
+        NetworkManager.CallAllRegisters();
+    }
+
     [Test]
     public void PerTransformOrderSurvivesContinuousSequenceHalfRange()
     {
