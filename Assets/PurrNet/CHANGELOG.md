@@ -1,3 +1,10 @@
+## [1.22.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.1...v1.22.1-beta.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* scene reload cleanup issue ([762ee79](https://github.com/PurrNet/PurrNet/commit/762ee7987ccfebe7f5ffb5bc1b6efcfd17c43d2d))
+
 ## [1.22.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.22.0...v1.22.1-beta.1) (2026-08-13)
 
 
