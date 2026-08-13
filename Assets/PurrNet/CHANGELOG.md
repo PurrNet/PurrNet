@@ -1,3 +1,11 @@
+## [1.22.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.22.0...v1.22.1-beta.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* include `com.uniy.mathematics` dep ([375ce4b](https://github.com/PurrNet/PurrNet/commit/375ce4bc50ac8893e7a3cf312c3f2ce2e3f30c14))
+* not sure why my unity has something not on the website ([9df82f5](https://github.com/PurrNet/PurrNet/commit/9df82f5d66bc44b1f852787d70a90e82aec265e9))
+
 # [1.22.0](https://github.com/PurrNet/PurrNet/compare/v1.21.1...v1.22.0) (2026-08-11)
 
 
