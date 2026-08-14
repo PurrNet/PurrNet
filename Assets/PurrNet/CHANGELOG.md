@@ -1,3 +1,10 @@
+## [1.22.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.2...v1.22.1-beta.3) (2026-08-14)
+
+
+### Bug Fixes
+
+* NetworkTransform ownership transfers smoothly transitions instead of teleporting ([b8fafaf](https://github.com/PurrNet/PurrNet/commit/b8fafaf740d12b85690d275b3a625f0f8e053829))
+
 ## [1.22.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.1...v1.22.1-beta.2) (2026-08-13)
 
 
