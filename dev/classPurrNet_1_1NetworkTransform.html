@@ -125,7 +125,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetPositionTransform<
 <tr class="memdesc:a39207ab962a55ede8548732de65d3adf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Forces the latest NT state to everyone, voiding compression and other optimizations   <a href="classPurrNet_1_1NetworkTransform.html#a39207ab962a55ede8548732de65d3adf">More...</a><br /></td></tr>
 <tr class="separator:a39207ab962a55ede8548732de65d3adf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c221c6f4c2c8978f4a03c77f3538d6b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b">ClearInterpolation</a> (Vector3? targetPos, Quaternion? targetRot, Vector3? targetScale)</td></tr>
-<tr class="memdesc:a9c221c6f4c2c8978f4a03c77f3538d6b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears interpolation and teleports the transform to the target position, rotation and scale. Works on both owner and non-owner clients.   <a href="classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b">More...</a><br /></td></tr>
+<tr class="memdesc:a9c221c6f4c2c8978f4a03c77f3538d6b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears interpolation and teleports the transform to the target position, rotation and scale. Works on both owner and non-owner clients. Also cancels any in-flight seam blending (e.g. from an ownership handoff) so the snap is not smoothed away.   <a href="classPurrNet_1_1NetworkTransform.html#a9c221c6f4c2c8978f4a03c77f3538d6b">More...</a><br /></td></tr>
 <tr class="separator:a9c221c6f4c2c8978f4a03c77f3538d6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab71f2b4b20f1da57b8ab4db71642c09b"><td class="memItemLeft" align="right" valign="top"><a id="ab71f2b4b20f1da57b8ab4db71642c09b" name="ab71f2b4b20f1da57b8ab4db71642c09b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StartIgnoringParentChanges</b> ()</td></tr>
@@ -768,7 +768,7 @@ LODTierChangedDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onL
       </table>
 </div><div class="memdoc">
 
-<p>Clears interpolation and teleports the transform to the target position, rotation and scale. Works on both owner and non-owner clients.  </p>
+<p>Clears interpolation and teleports the transform to the target position, rotation and scale. Works on both owner and non-owner clients. Also cancels any in-flight seam blending (e.g. from an ownership handoff) so the snap is not smoothed away.  </p>
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1INetworkTransform.html#a39cd6bbcf091951284317363b09ec235">PurrNet.INetworkTransform</a>.</p>
 
