@@ -57,10 +57,10 @@ namespace PurrNet
 
             if (_buffer.Count >= maxBufferSize)
             {
-                // remove up to minBufferSize
+                // Rebase on the rendered value, else the restarted lerp snaps back mid-segment.
+                _lastValue = _lerp(_lastValue, _buffer[0], _timer / _tickDelta);
                 var removeCount = _buffer.Count - minBufferSize;
                 _buffer.RemoveRange(0, removeCount);
-                // _lastValue = _currentState;
                 _timer = 0f;
             }
             _buffer.Add(value);

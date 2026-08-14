@@ -1921,6 +1921,8 @@ GameObject:
   - component: {fileID: 1680343667}
   - component: {fileID: 1680343668}
   - component: {fileID: 1680343669}
+  - component: {fileID: 1680343670}
+  - component: {fileID: 1680343671}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -3279,6 +3281,40 @@ MonoBehaviour:
   _settleSeconds: 2
   _stayDisconnectedSeconds: 1
   _barrierTimeoutSeconds: 60
+--- !u!114 &1680343670
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad429205d48e4914bd3e4f9f62bfb42d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::NTHandoffSmoothnessScenario
+  _spawnTimeoutSeconds: 15
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+  _warmupSeconds: 1.2
+  _phaseSeconds: 1.6
+--- !u!114 &1680343671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84399ec0ef60464c967b9f08e5a3fd5e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::NTHandoffOriginShiftScenario
+  _spawnTimeoutSeconds: 15
+  _despawnTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 60
+  _warmupSeconds: 1.2
+  _phaseSeconds: 1.6
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

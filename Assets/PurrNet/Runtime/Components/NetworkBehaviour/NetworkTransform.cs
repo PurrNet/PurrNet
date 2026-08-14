@@ -444,6 +444,7 @@ namespace PurrNet
         protected override void OnEarlySpawn()
         {
             _trs = transform;
+            _hasLivePose = false;
             CacheCurrentPose();
             ReCacheIsController();
             ResolvePositionTransform();
@@ -731,10 +732,18 @@ namespace PurrNet
 
         /// <summary>
         /// Clears interpolation and teleports the transform to the target position, rotation and scale.
-        /// Works on both owner and non-owner clients.
+        /// Works on both owner and non-owner clients. Also cancels any in-flight seam blending
+        /// (e.g. from an ownership handoff) so the snap is not smoothed away.
         /// </summary>
         public void ClearInterpolation(Vector3? targetPos, Quaternion? targetRot, Vector3? targetScale)
         {
+            _hasCorrOffset = false;
+            _corrPending = false;
+            _hasPrevAnchor = false;
+            _hasCorrPrevTarget = false;
+            _hasLastSample = false;
+            _seamOffset = Vector3.zero;
+
             var p = _trs.parent;
             if (syncPosition && targetPos.HasValue)
             {
@@ -759,6 +768,15 @@ namespace PurrNet
             if (!ForceAdoptRecvGen(gen))
                 return;
 
+            if (_hasStrategy && !_cachedIsController && _hasLivePose)
+            {
+                // Teleporting to the new owner's render-delayed pose would bake a rewind into
+                // the relayed stream; keep rendering from the current pose instead. The stream
+                // stays continuous, so observer baselines stay valid without a gen bump.
+                _lastReadData = state.data;
+                return;
+            }
+
             BumpSendGen();
             AdoptState(state);
             _lastSentDelta = state.data;
@@ -777,7 +795,12 @@ namespace PurrNet
             if (!ForceAdoptRecvGen(gen))
                 return false;
 
+            // Adopting on the controller would briefly replace the outgoing capture with a stale pose.
+            if (_cachedIsController)
+                return true;
+
             AdoptState(state);
+            _hasLivePose = true;
 
             if (applyPosition)
             {
@@ -945,7 +968,14 @@ namespace PurrNet
 
         private void OnIsControlledChanged(bool isController)
         {
-            if (!isController)
+            if (isController)
+            {
+                _hasLivePose = true;
+                // The receive pipeline is inert while controlling; stale anchors and history
+                // must not survive into a later return to observer rendering.
+                ResetUnreliableRecvState();
+            }
+            else
             {
                 _latestData = GetCurrentTransformData();
                 RefreshLatestFrame();
@@ -1317,6 +1347,8 @@ namespace PurrNet
         private ushort _lastAppliedSenderTick;
         private bool _hasLastAppliedState;
 
+        private bool _hasLivePose;
+
         private const float CORRECTION_DECAY = 0.65f;
         private const float RENDER_RATE_GAIN = 0.2f;
         private const float RENDER_RATE_MAX_SLOWDOWN = 0.5f;
@@ -1334,6 +1366,8 @@ namespace PurrNet
         private NetworkID _corrParentId;
         private bool _hasCorrOffset;
         private bool _corrPending;
+        private double3 _corrPrevTarget;
+        private bool _hasCorrPrevTarget;
 
         private NetworkTransformState _anchorState;
         private NetworkTransformVelocity _anchorVelocity;
@@ -1493,6 +1527,7 @@ namespace PurrNet
             _hasRenderTimeline = false;
             _hasCorrOffset = false;
             _corrPending = false;
+            _hasCorrPrevTarget = false;
             _seamOffset = Vector3.zero;
         }
 
@@ -1555,6 +1590,12 @@ namespace PurrNet
 
         internal static string DebugPos(in NetworkTransformState state)
         {
+            if (state.data.absolutePosition.HasValue)
+            {
+                var a = state.data.absolutePosition.Value;
+                return $"abs:{a.x:F4}|{a.y:F4}|{a.z:F4}";
+            }
+
             var p = state.data.position;
             return p.HasValue ? $"{p.Value.x.value:F4}|{p.Value.y.value:F4}|{p.Value.z.value:F4}" : "na";
         }
@@ -1690,8 +1731,46 @@ namespace PurrNet
 
             if (_hasCorrOffset)
             {
+                float posStep = 0f;
+                double3 curTarget = default;
+                bool hasCurTarget = true;
+
+                if (target.data.position.HasValue)
+                {
+                    var tp = target.data.position.Value;
+                    curTarget = new double3(tp.x.value, tp.y.value, tp.z.value);
+                }
+                else if (target.data.absolutePosition.HasValue)
+                {
+                    curTarget = target.data.absolutePosition.Value;
+                }
+                else
+                {
+                    hasCurTarget = false;
+                }
+
+                if (hasCurTarget)
+                {
+                    if (_hasCorrPrevTarget)
+                        posStep = (float)math.length(curTarget - _corrPrevTarget);
+                    _corrPrevTarget = curTarget;
+                    _hasCorrPrevTarget = true;
+                }
+
+                // Cap the shrink at the target's own speed so a seam slows the render down
+                // instead of playing the motion backwards.
+                var nmc = networkManager;
+                float corrTickDelta = nmc && nmc.tickModule != null ? nmc.tickModule.tickDelta : 1f / 30f;
+                float posCap = Mathf.Max(posStep, corrTickDelta * 0.25f);
+                float posMag = _corrPosOffset.magnitude;
+                if (posMag > 0f)
+                {
+                    float shrink = Mathf.Min(posMag * (1f - CORRECTION_DECAY), posCap);
+                    _corrPosOffset *= (posMag - shrink) / posMag;
+                }
+
                 _corrWeight *= CORRECTION_DECAY;
-                if (_corrWeight < 0.02f)
+                if (_corrWeight < 0.02f && _corrPosOffset.sqrMagnitude < 1e-8f)
                     _hasCorrOffset = false;
                 else
                     ApplyCorrectionOffset(ref target);
@@ -1723,6 +1802,11 @@ namespace PurrNet
                 var tp = target.data.position.Value;
                 posDelta = new Vector3(op.x.value - tp.x.value, op.y.value - tp.y.value, op.z.value - tp.z.value);
             }
+            else if (old.data.absolutePosition.HasValue && target.data.absolutePosition.HasValue)
+            {
+                var d = old.data.absolutePosition.Value - target.data.absolutePosition.Value;
+                posDelta = new Vector3((float)d.x, (float)d.y, (float)d.z);
+            }
 
             var oRot = old.data.rotation;
             var tRot = target.data.rotation;
@@ -1736,7 +1820,7 @@ namespace PurrNet
 
             if (_hasCorrOffset)
             {
-                posDelta += _corrPosOffset * _corrWeight;
+                posDelta += _corrPosOffset;
                 rotDelta = Quaternion.Slerp(Quaternion.identity, _corrRotOffset, _corrWeight) * rotDelta;
                 scaleDelta += _corrScaleOffset * _corrWeight;
             }
@@ -1750,13 +1834,69 @@ namespace PurrNet
             _hasCorrOffset = true;
         }
 
+        // Beyond this seam size the pose is treated as an intentional teleport and snaps instead.
+        private const float MAX_SEAM_DISTANCE = 10f;
+
+        private void SeedSeamCorrection(in NetworkTransformState state, Transform p)
+        {
+            if (!syncPosition)
+                return;
+
+            Vector3 posOffset;
+
+            if (state.data.absolutePosition.HasValue)
+            {
+                if (!TryResolvePositionTransform(out var frame))
+                    return;
+
+                var d = frame.ToAbsolute(this, position) - state.data.absolutePosition.Value;
+                posOffset = new Vector3((float)d.x, (float)d.y, (float)d.z);
+            }
+            else if (state.data.position.HasValue)
+            {
+                bool isLocal = _syncPosition == SyncMode.Local && p;
+                var renderedPos = isLocal ? p.InverseTransformPoint(position) : position;
+                var sp = state.data.position.Value;
+                posOffset = renderedPos - new Vector3(sp.x.value, sp.y.value, sp.z.value);
+            }
+            else
+            {
+                return;
+            }
+
+            if (posOffset.sqrMagnitude > MAX_SEAM_DISTANCE * MAX_SEAM_DISTANCE)
+                return;
+
+            var renderedRot = _syncRotation == SyncMode.Local && p
+                ? Quaternion.Inverse(p.rotation) * rotation
+                : rotation;
+            var tr = state.data.rotation;
+            var rotOffset = renderedRot *
+                            Quaternion.Inverse(new Quaternion(tr.x, tr.y, tr.z, tr.w).normalized);
+
+            _corrPosOffset = posOffset;
+            _corrRotOffset = rotOffset;
+            _corrScaleOffset = Vector3.zero;
+            _corrWeight = 1f;
+            _corrFrame = state.frame;
+            _corrParentId = state.parentId;
+            _hasCorrOffset = true;
+            _hasCorrPrevTarget = false;
+        }
+
         private void ApplyCorrectionOffset(ref NetworkTransformState target)
         {
             if (target.data.position.HasValue && _corrPosOffset != Vector3.zero)
             {
                 var p = target.data.position.Value;
-                var pos = new Vector3(p.x.value, p.y.value, p.z.value) + _corrPosOffset * _corrWeight;
+                var pos = new Vector3(p.x.value, p.y.value, p.z.value) + _corrPosOffset;
                 target.data.position = (CompressedVector3)pos;
+            }
+            else if (target.data.absolutePosition.HasValue && _corrPosOffset != Vector3.zero)
+            {
+                var ap = target.data.absolutePosition.Value;
+                target.data.absolutePosition = new double3(
+                    ap.x + _corrPosOffset.x, ap.y + _corrPosOffset.y, ap.z + _corrPosOffset.z);
             }
 
             if (Mathf.Abs(_corrRotOffset.w) < 0.9999999f)
@@ -2381,18 +2521,39 @@ namespace PurrNet
             _lastAppliedState = state;
             _lastAppliedSenderTick = senderTick;
             _hasLastAppliedState = true;
+            bool hadLivePose = _hasLivePose;
+            _hasLivePose = true;
 
             if (_hasStrategy)
             {
                 if (isAbsolute)
                 {
-                    ClearAdaptiveAnchors();
-                    SetAdaptiveAnchor(state, default);
-                    TeleportBuffers(state, p);
+                    // Mid-stream absolutes (ownership change, stream reset, baseline recovery)
+                    // blend instead of teleporting.
+                    bool smooth = hadLivePose;
+
+                    if (!smooth)
+                    {
+                        ClearAdaptiveAnchors();
+                        SetAdaptiveAnchor(state, default);
+                        TeleportBuffers(state, p);
+                    }
+                    else if (_hasAdaptiveAnchor)
+                    {
+                        SetAdaptiveAnchor(state, default);
+                    }
+                    else
+                    {
+                        SeedSeamCorrection(state, p);
+                        SetAdaptiveAnchor(state, default);
+                        _corrPending = false;
+                        _hasPrevAnchor = false;
+                        _hasRenderTimeline = false;
+                    }
 
                     if (_adaptiveDebugDump)
                         DebugDumpLine($"apply,senderTick={senderTick},abs=True,order={packetOrder}," +
-                                      $"pos={DebugPos(state)}");
+                                      $"smooth={smooth},pos={DebugPos(state)}");
                 }
                 else
                 {
