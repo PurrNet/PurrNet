@@ -1,3 +1,10 @@
+## [1.22.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.4...v1.22.1-beta.5) (2026-08-17)
+
+
+### Bug Fixes
+
+* improved delta packers for other primitive types ([5d1ca99](https://github.com/PurrNet/PurrNet/commit/5d1ca99b5890c7a6653454e7b065ff9290e64491))
+
 ## [1.22.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.3...v1.22.1-beta.4) (2026-08-17)
 
 
