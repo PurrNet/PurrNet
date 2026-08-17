@@ -1,6 +1,7 @@
 using System;
 using PurrNet.Packing;
 using PurrNet.Transports;
+using PurrNet.Utils;
 using UnityEngine;
 
 namespace PurrNet.Modules
@@ -71,6 +72,8 @@ namespace PurrNet.Modules
 
         public event Action onPreTick, onTick, onPostTick;
         public event Action onReliablePreTick, onReliableTick, onReliablePostTick;
+
+        private readonly PurrAction<ITickListener> _tickListeners = new(static listener => listener.OnTick(), 256);
 
         /// <summary>
         /// Lower clamp for <see cref="tickPacingScale"/>.
@@ -211,7 +214,10 @@ namespace PurrNet.Modules
                 onReliablePreTick?.Invoke();
 
                 if (triggerNormalTicks)
+                {
                     onTick?.Invoke();
+                    _tickListeners.Invoke();
+                }
                 onReliableTick?.Invoke();
 
                 if (triggerNormalTicks)
@@ -220,6 +226,16 @@ namespace PurrNet.Modules
 
                 ticksHandled++;
             }
+        }
+        
+        public void AddTickListener(ITickListener listener)
+        {
+            _tickListeners.Add(listener);
+        }
+        
+        public void RemoveTickListener(ITickListener listener)
+        {
+            _tickListeners.Remove(listener);
         }
 
         /// <summary>
