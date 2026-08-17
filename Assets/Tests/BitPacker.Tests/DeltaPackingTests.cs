@@ -232,6 +232,152 @@ public class DeltaFloatBitPerfectionTests
     }
 }
 
+public class IntDeltaBitPerfectionTests
+{
+    private BitPacker packer;
+
+    [OneTimeSetUp]
+    public void Init()
+    {
+        NetworkManager.LoadOrGenerateHashes();
+    }
+
+    [SetUp]
+    public void Setup()
+    {
+        packer = BitPackerPool.Get();
+    }
+
+    [TearDown]
+    public void Teardown()
+    {
+        packer?.Dispose();
+    }
+
+    void TestAllPairs<T>(T[] values)
+    {
+        var comparer = System.Collections.Generic.EqualityComparer<T>.Default;
+
+        foreach (T oldVal in values)
+        {
+            foreach (T newVal in values)
+            {
+                T readValue = default;
+                bool expectChanged = !comparer.Equals(oldVal, newVal);
+
+                packer.ResetPositionAndMode(false);
+                bool wasChanged = DeltaPacker<T>.Write(packer, oldVal, newVal);
+
+                Assert.That(wasChanged, Is.EqualTo(expectChanged),
+                    $"{typeof(T).Name} change flag wrong for old:{oldVal} new:{newVal}");
+                if (!expectChanged)
+                    Assert.That(packer.positionInBits, Is.EqualTo(1),
+                        $"{typeof(T).Name} unchanged value not 1 bit: {oldVal}");
+
+                packer.ResetPositionAndMode(true);
+                DeltaPacker<T>.Read(packer, oldVal, ref readValue);
+
+                Assert.That(readValue, Is.EqualTo(newVal),
+                    $"{typeof(T).Name} not exact for old:{oldVal} new:{newVal}");
+            }
+        }
+    }
+
+    [Test]
+    public void SByteDelta_AllEdgePairs() =>
+        TestAllPairs(new sbyte[] { sbyte.MinValue, -127, -1, 0, 1, 126, sbyte.MaxValue });
+
+    [Test]
+    public void ByteDelta_AllEdgePairs() =>
+        TestAllPairs(new byte[] { 0, 1, 2, 127, 128, 254, byte.MaxValue });
+
+    [Test]
+    public void ShortDelta_AllEdgePairs() =>
+        TestAllPairs(new short[] { short.MinValue, -256, -1, 0, 1, 256, short.MaxValue });
+
+    [Test]
+    public void UShortDelta_AllEdgePairs() =>
+        TestAllPairs(new ushort[] { 0, 1, 255, 256, 32768, 65534, ushort.MaxValue });
+
+    [Test]
+    public void IntDelta_AllEdgePairs() =>
+        TestAllPairs(new[] { int.MinValue, -65536, -1, 0, 1, 65536, int.MaxValue });
+
+    [Test]
+    public void UIntDelta_AllEdgePairs() =>
+        TestAllPairs(new uint[] { 0, 1, 12345, 1u << 31, uint.MaxValue - 1, uint.MaxValue });
+
+    [Test]
+    public void LongDelta_AllEdgePairs() =>
+        TestAllPairs(new[] { long.MinValue, -(1L << 40), -1, 0, 1, 1L << 40, long.MaxValue });
+
+    [Test]
+    public void ULongDelta_AllEdgePairs() =>
+        TestAllPairs(new ulong[] { 0, 1, 1UL << 63, ulong.MaxValue - 1, ulong.MaxValue });
+
+    [Test]
+    public void PackedTypesDelta_AllEdgePairs()
+    {
+        TestAllPairs(new PackedUInt[] { new(0), new(1), new(12345), new(uint.MaxValue) });
+        TestAllPairs(new PackedULong[] { new(0), new(1), new(1UL << 63), new(ulong.MaxValue) });
+        TestAllPairs(new PackedUShort[] { new(0), new(1), new(256), new(ushort.MaxValue) });
+        TestAllPairs(new PackedLong[] { new(long.MinValue), new(-1), new(0), new(1), new(long.MaxValue) });
+        TestAllPairs(new Size[] { new(0), new(1), new(12345), new(uint.MaxValue) });
+    }
+
+    [Test]
+    public void IntDelta_RandomChains_AreExact()
+    {
+        var rng = new Random(9003);
+
+        packer.ResetPositionAndMode(false);
+        var values = new int[10_000];
+        int previous = 0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            values[i] = rng.Next(int.MinValue, int.MaxValue);
+            DeltaPacker<int>.Write(packer, previous, values[i]);
+            previous = values[i];
+        }
+
+        packer.ResetPositionAndMode(true);
+        previous = 0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            int readValue = default;
+            DeltaPacker<int>.Read(packer, previous, ref readValue);
+            Assert.That(readValue, Is.EqualTo(values[i]), $"Chain diverged at {i}");
+            previous = readValue;
+        }
+    }
+
+    [Test]
+    public void ULongDelta_RandomChains_AreExact()
+    {
+        var rng = new Random(9004);
+
+        packer.ResetPositionAndMode(false);
+        var values = new ulong[10_000];
+        ulong previous = 0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            values[i] = ((ulong)(uint)rng.Next(int.MinValue, int.MaxValue) << 32) | (uint)rng.Next(int.MinValue, int.MaxValue);
+            DeltaPacker<ulong>.Write(packer, previous, values[i]);
+            previous = values[i];
+        }
+
+        packer.ResetPositionAndMode(true);
+        previous = 0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            ulong readValue = default;
+            DeltaPacker<ulong>.Read(packer, previous, ref readValue);
+            Assert.That(readValue, Is.EqualTo(values[i]), $"Chain diverged at {i}");
+            previous = readValue;
+        }
+    }
+}
+
 public class ClientDeltaTrackerTests
 {
     [Test]
