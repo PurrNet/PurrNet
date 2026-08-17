@@ -23,6 +23,10 @@ namespace PurrNet.Utils
 
         public void Add(T listener)
         {
+            // a null slot is a tombstone, so it must never enter as a live entry
+            if (listener == null)
+                return;
+
             if (_invokeDepth == 0 && ShouldCompact())
                 Compact();
 
@@ -34,6 +38,10 @@ namespace PurrNet.Utils
 
         public void Remove(T listener)
         {
+            // would otherwise match an existing tombstone and double-count it
+            if (listener == null)
+                return;
+
             var listeners = _listeners;
 
             for (var i = _count - 1; i >= 0; i--)
