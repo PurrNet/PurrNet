@@ -10,7 +10,7 @@ using PurrNet.Utils;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver
+    public class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver, ITickListener
     {
         private TickManager _tickManager;
 
@@ -122,7 +122,7 @@ namespace PurrNet
 
             _isSubscribedToTickManager = true;
             _subscribedTicker = networkManager.tickModule;
-            _subscribedTicker.onTick += OnTick;
+            _subscribedTicker.AddTickListener(this);
         }
 
         private void UnsubscribeFromTickManager()
@@ -131,7 +131,7 @@ namespace PurrNet
                 return;
 
             _isSubscribedToTickManager = false;
-            _subscribedTicker.onTick -= OnTick;
+            _subscribedTicker.RemoveTickListener(this);
         }
 
         public override void OnInitializeModules()
