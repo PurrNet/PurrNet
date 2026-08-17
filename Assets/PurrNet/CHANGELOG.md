@@ -1,3 +1,10 @@
+## [1.22.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.3...v1.22.1-beta.4) (2026-08-17)
+
+
+### Bug Fixes
+
+* better float delta packer ([ec0638b](https://github.com/PurrNet/PurrNet/commit/ec0638bd74f6f85a1f11b17b2df0e4bb8407c096))
+
 ## [1.22.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.2...v1.22.1-beta.3) (2026-08-14)
 
 
