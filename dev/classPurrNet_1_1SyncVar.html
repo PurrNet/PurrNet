@@ -105,7 +105,9 @@ Inheritance diagram for PurrNet.SyncVar&lt; T &gt;:</div>
  <div class="center">
   <img src="classPurrNet_1_1SyncVar.png" usemap="#PurrNet.SyncVar_3C_20T_20_3E_map" alt=""/>
   <map id="PurrNet.SyncVar_3C_20T_20_3E_map" name="PurrNet.SyncVar_3C_20T_20_3E_map">
-<area href="classPurrNet_1_1NetworkModule.html" alt="PurrNet.NetworkModule" shape="rect" coords="0,0,184,24"/>
+<area href="classPurrNet_1_1NetworkModule.html" alt="PurrNet.NetworkModule" shape="rect" coords="0,56,184,80"/>
+<area href="interfacePurrNet_1_1ITickListener.html" alt="PurrNet.ITickListener" shape="rect" coords="388,56,572,80"/>
+<area href="interfacePurrNet_1_1IBaseTickListener.html" alt="PurrNet.IBaseTickListener" shape="rect" coords="388,0,572,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -145,8 +147,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetDirty</b> ()</td><
 <tr class="memitem:ae4bc5edce17f7612b4aef6a30241bb67"><td class="memItemLeft" align="right" valign="top"><a id="ae4bc5edce17f7612b4aef6a30241bb67" name="ae4bc5edce17f7612b4aef6a30241bb67"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushImmediately</b> ()</td></tr>
 <tr class="separator:ae4bc5edce17f7612b4aef6a30241bb67"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8aae448d44d16efadfaff3ad4f59038c"><td class="memItemLeft" align="right" valign="top"><a id="a8aae448d44d16efadfaff3ad4f59038c" name="a8aae448d44d16efadfaff3ad4f59038c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>OnTick</b> ()</td></tr>
+<tr class="memitem:a8aae448d44d16efadfaff3ad4f59038c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1SyncVar.html#a8aae448d44d16efadfaff3ad4f59038c">OnTick</a> ()</td></tr>
 <tr class="separator:a8aae448d44d16efadfaff3ad4f59038c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad3e16faa5c8779edd63f82b2f24c54da"><td class="memItemLeft" align="right" valign="top"><a id="ad3e16faa5c8779edd63f82b2f24c54da" name="ad3e16faa5c8779edd63f82b2f24c54da"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>SyncVar</b> (T initialValue=default, float sendIntervalInSeconds=0f, bool ownerAuth=false)</td></tr>
@@ -253,6 +254,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnInitializeM
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>PromoteToServer</b> ()</td></tr>
 <tr class="memdesc:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promotes the <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> instance to function as a server entity. This is used for host-migration, when a client is promoted to host. Use this to ensure client has everything it needs to function as server.  <br /></td></tr>
 <tr class="separator:a1370d458228d460a3bc2ce33610555ed inherit pub_methods_classPurrNet_1_1NetworkModule"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa99862f0388d807279639df059067ffa"><td class="memItemLeft" align="right" valign="top"><a id="aa99862f0388d807279639df059067ffa" name="aa99862f0388d807279639df059067ffa"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>OnTick</b> ()</td></tr>
+<tr class="separator:aa99862f0388d807279639df059067ffa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -692,6 +696,25 @@ static string&#160;</td><td class="memItemRight" valign="bottom"><b>GetPermissio
 <p>Called only on the spawning peer, at the end of the frame the object was spawned in, right before batched RPCs flush. Anything queued here departs in the same flush as the spawn, ordered right behind the spawn packet.  </p>
 
 <p>Reimplemented from <a class="el" href="classPurrNet_1_1NetworkModule.html#a79f55a0c992dda9c7eabb81b69e28328">PurrNet.NetworkModule</a>.</p>
+
+</div>
+</div>
+<a id="a8aae448d44d16efadfaff3ad4f59038c" name="a8aae448d44d16efadfaff3ad4f59038c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8aae448d44d16efadfaff3ad4f59038c">&#9670;&#160;</a></span>OnTick()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void <a class="el" href="classPurrNet_1_1SyncVar.html">PurrNet.SyncVar</a>&lt; T &gt;.OnTick </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1ITickListener.html">PurrNet.ITickListener</a>.</p>
 
 </div>
 </div>

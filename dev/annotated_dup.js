@@ -184,6 +184,7 @@ var annotated_dup =
         [ "WebTransport", "classPurrNet_1_1Transports_1_1WebTransport.html", null ]
       ] ],
       [ "Utils", "namespacePurrNet_1_1Utils.html", [
+        [ "PurrAction", "classPurrNet_1_1Utils_1_1PurrAction.html", null ],
         [ "PurrDocsAttribute", "classPurrNet_1_1Utils_1_1PurrDocsAttribute.html", null ],
         [ "PurrLockAttribute", "classPurrNet_1_1Utils_1_1PurrLockAttribute.html", null ],
         [ "PurrReadOnlyAttribute", "classPurrNet_1_1Utils_1_1PurrReadOnlyAttribute.html", null ]
@@ -209,6 +210,7 @@ var annotated_dup =
       [ "HalfQuaternion", "structPurrNet_1_1HalfQuaternion.html", null ],
       [ "HostMigrationRules", "structPurrNet_1_1HostMigrationRules.html", null ],
       [ "IAsyncPrefabProvider", "interfacePurrNet_1_1IAsyncPrefabProvider.html", null ],
+      [ "IBaseTickListener", "interfacePurrNet_1_1IBaseTickListener.html", null ],
       [ "ILODScheduler", "interfacePurrNet_1_1ILODScheduler.html", null ],
       [ "IMath", "interfacePurrNet_1_1IMath.html", null ],
       [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", null ],
@@ -223,7 +225,9 @@ var annotated_dup =
       [ "IPlayerAuthenticator", "interfacePurrNet_1_1IPlayerAuthenticator.html", null ],
       [ "IPlayerBroadcaster", "interfacePurrNet_1_1IPlayerBroadcaster.html", null ],
       [ "IPlayerEvents", "interfacePurrNet_1_1IPlayerEvents.html", null ],
+      [ "IPostTickListener", "interfacePurrNet_1_1IPostTickListener.html", null ],
       [ "IPrefabProvider", "interfacePurrNet_1_1IPrefabProvider.html", null ],
+      [ "IPreTickListener", "interfacePurrNet_1_1IPreTickListener.html", null ],
       [ "IProvidePrefabInstantiated", "interfacePurrNet_1_1IProvidePrefabInstantiated.html", null ],
       [ "IProvideSpawnPoints", "interfacePurrNet_1_1IProvideSpawnPoints.html", null ],
       [ "IPurrEvents", "interfacePurrNet_1_1IPurrEvents.html", null ],
@@ -231,6 +235,7 @@ var annotated_dup =
       [ "IRpc", "interfacePurrNet_1_1IRpc.html", null ],
       [ "IServerSceneEvents", "interfacePurrNet_1_1IServerSceneEvents.html", null ],
       [ "ITick", "interfacePurrNet_1_1ITick.html", "interfacePurrNet_1_1ITick" ],
+      [ "ITickListener", "interfacePurrNet_1_1ITickListener.html", null ],
       [ "LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
       [ "LODIntervalScheduler", "classPurrNet_1_1LODIntervalScheduler.html", null ],
       [ "MinimalIdentityHeader", "structPurrNet_1_1MinimalIdentityHeader.html", null ],

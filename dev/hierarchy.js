@@ -73,6 +73,13 @@ var hierarchy =
     [ "PurrNet.Transports.HostJoinInfo", "structPurrNet_1_1Transports_1_1HostJoinInfo.html", null ],
     [ "PurrNet.HostMigrationRules", "structPurrNet_1_1HostMigrationRules.html", null ],
     [ "PurrNet.Packing.IAsyncPackable", "interfacePurrNet_1_1Packing_1_1IAsyncPackable.html", null ],
+    [ "PurrNet.IBaseTickListener", "interfacePurrNet_1_1IBaseTickListener.html", [
+      [ "PurrNet.IPostTickListener", "interfacePurrNet_1_1IPostTickListener.html", null ],
+      [ "PurrNet.IPreTickListener", "interfacePurrNet_1_1IPreTickListener.html", null ],
+      [ "PurrNet.ITickListener", "interfacePurrNet_1_1ITickListener.html", [
+        [ "PurrNet.SyncVar< T >", "classPurrNet_1_1SyncVar.html", null ]
+      ] ]
+    ] ],
     [ "PurrNet.Modules.IBroadcastCallback", "interfacePurrNet_1_1Modules_1_1IBroadcastCallback.html", null ],
     [ "IBufferWriter", null, [
       [ "PurrNet.Packing.BitPackerWrapper", "structPurrNet_1_1Packing_1_1BitPackerWrapper.html", null ]
@@ -514,6 +521,8 @@ var hierarchy =
       [ "PurrNet.Utils.PurrLockAttribute", "classPurrNet_1_1Utils_1_1PurrLockAttribute.html", null ],
       [ "PurrNet.Utils.PurrReadOnlyAttribute", "classPurrNet_1_1Utils_1_1PurrReadOnlyAttribute.html", null ]
     ] ],
+    [ "PurrNet.Utils.PurrAction< T >", "classPurrNet_1_1Utils_1_1PurrAction.html", null ],
+    [ "PurrNet.Utils.PurrAction< PurrNet.ITickListener >", "classPurrNet_1_1Utils_1_1PurrAction.html", null ],
     [ "PurrNet.Collections.PurrHashSet< PurrNet.PlayerID >", "classPurrNet_1_1Collections_1_1PurrHashSet.html", null ],
     [ "PurrNet.Modules.PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "PurrNet.QuaternionWithParent", "structPurrNet_1_1QuaternionWithParent.html", null ],
