@@ -1,6 +1,6 @@
-# PurrNet - Unity3D 
-
-<img width="256" height="266" alt="PurrNet_Logo_-_No_BG(2)" src="https://github.com/user-attachments/assets/8aff6704-165e-435e-a5be-8c2b07ca6ad3" /> 
+<p align="center">
+    <img height="170" alt="purrnet-icon-text-horizontal-orange" src="https://github.com/user-attachments/assets/0e9a07c9-5486-4d6b-9dc2-fa9f59c662ad" />
+</p>
 
 PurrNet is our attempt at the purrfect networking solution... It's a 100% free Unity Networking solution with no pro or premium version, and no features locked behind a pay-gate.
 You can use it to release, and we ask nothing in return! Read the Unique to PurrNet section to see what we offer above other solutions!
