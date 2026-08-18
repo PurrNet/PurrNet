@@ -1,3 +1,10 @@
+## [1.22.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.5...v1.22.1-beta.6) (2026-08-18)
+
+
+### Bug Fixes
+
+* BitPacker duplicate bug ([9daf35f](https://github.com/PurrNet/PurrNet/commit/9daf35fbd7a6655e1d663da536ac67d0aba8cc3d))
+
 ## [1.22.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.4...v1.22.1-beta.5) (2026-08-17)
 
 
