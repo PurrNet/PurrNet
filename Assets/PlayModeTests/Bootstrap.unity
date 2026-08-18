@@ -220,6 +220,7 @@ GameObject:
   m_Component:
   - component: {fileID: 43754048}
   - component: {fileID: 43754052}
+  - component: {fileID: 43754053}
   - component: {fileID: 43754051}
   - component: {fileID: 43754050}
   - component: {fileID: 43754049}
@@ -298,11 +299,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ccdedeb7130eb50439b2089d5eda5f53, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SpawnSerializeScenario
   _spawnTimeoutSeconds: 15
   _serializeTimeoutSeconds: 30
   _doneTimeoutSeconds: 30
+--- !u!114 &43754053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 43754047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d4e2f8a1b5c9d3e6f0a2b4c8e1d3f5b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::AsyncSpawnSerializeScenario
+  _spawnTimeoutSeconds: 30
+  _ackTimeoutSeconds: 30
+  _barrierTimeoutSeconds: 90
 --- !u!1 &54853817
 GameObject:
   m_ObjectHideFlags: 0
