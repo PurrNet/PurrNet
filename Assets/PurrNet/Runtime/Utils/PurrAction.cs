@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace PurrNet.Utils
 {
-    public sealed class PurrAction<T> where T : class, IBaseTickListener
+    public sealed class PurrAction<T> where T : class
     {
         private const int MinNullsBeforeCompact = 8;
 
@@ -23,7 +23,6 @@ namespace PurrNet.Utils
 
         public void Add(T listener)
         {
-            // a null slot is a tombstone, so it must never enter as a live entry
             if (listener == null)
                 return;
 
@@ -38,7 +37,6 @@ namespace PurrNet.Utils
 
         public void Remove(T listener)
         {
-            // would otherwise match an existing tombstone and double-count it
             if (listener == null)
                 return;
 
