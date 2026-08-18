@@ -61,6 +61,8 @@ Coming from another solution? We have [migration guides](https://purrnet.dev/doc
 
 ## Why PurrNet
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/JJZY9cI2VqE/0.jpg)](https://www.youtube.com/watch?v=JJZY9cI2VqE)
+
 |                              |                                                                                                          |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
 | **Unity-native spawning**    | `Instantiate()` and `Destroy()` just work. Drag prefabs into the scene and they spawn too.                 |
