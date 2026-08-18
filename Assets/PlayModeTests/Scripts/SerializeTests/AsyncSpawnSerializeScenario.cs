@@ -207,12 +207,22 @@ public sealed class AsyncSpawnSerializeScenario : Scenario
             return;
         }
 
-        var inst = AsyncSpawnSerializeIdentity.LocalInstance;
-        if (!inst)
+        // Async spawns run OnDeserialize immediately but only fire OnSpawned (which sets
+        // LocalInstance) after the async ready/finish handshake, so wait for the spawn too.
+        try
         {
-            failures.Add($"{name}: deserialized but no spawned local instance");
+            await UniTaskUtils.WaitWithTimeout(
+                () => AsyncSpawnSerializeIdentity.LocalInstance,
+                _spawnTimeoutSeconds,
+                ctx.cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            failures.Add($"{name}: deserialized but never spawned a local instance");
             return;
         }
+
+        var inst = AsyncSpawnSerializeIdentity.LocalInstance;
 
         if (!inst.ReadOk)
         {
