@@ -1,3 +1,10 @@
+## [1.22.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.6...v1.22.1-beta.7) (2026-08-18)
+
+
+### Bug Fixes
+
+* PurrNet new icons ([778eba1](https://github.com/PurrNet/PurrNet/commit/778eba12a87ba7d5f5d2d8d0677ffe1dc7268a84))
+
 ## [1.22.1-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.5...v1.22.1-beta.6) (2026-08-18)
 
 
