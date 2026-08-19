@@ -1,3 +1,10 @@
+## [1.22.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.8...v1.22.1-beta.9) (2026-08-19)
+
+
+### Bug Fixes
+
+* network animator auto sync also syncs layer weights ([8c4b376](https://github.com/PurrNet/PurrNet/commit/8c4b37661de77246454abb0aa933b9f74760ab2e))
+
 ## [1.22.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.7...v1.22.1-beta.8) (2026-08-19)
 
 
