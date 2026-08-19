@@ -29,6 +29,13 @@ namespace PurrNet
         public int packetLoss { get; private set; }
         public float upload { get; private set; }
         public float download { get; private set; }
+        /// <summary>
+        /// False until the warmup has enough clean samples to publish a ping. While it is false
+        /// <see cref="ping"/> and <see cref="jitter"/> are 0 and no quality flag can raise, so a UI
+        /// can hide a readout rather than show a zero it would have to explain.
+        /// </summary>
+        public bool hasPingEstimate => _hasPingSample;
+
         public bool isHighPing => _isHighPing;
         public bool isHighJitter => _isHighJitter;
         public bool isHighPacketLoss => _isHighPacketLoss;
@@ -59,11 +66,21 @@ namespace PurrNet
         private const float PING_EMA_FALL_ALPHA = 0.1f;
         private const float JITTER_EMA_ALPHA = 0.0625f;
         private const float WARMUP_DURATION = 1.0f;
+
+        private const int PING_WARMUP_SAMPLES = 5;
+        private const float STALL_FRAME_SECONDS = 0.25f;
+
         private float _emaPing;
         private bool _hasPingSample;
         private float _connectionTime;
         private int _lastRawPing;
         private float _emaJitter;
+
+        private readonly int[] _warmupSamples = new int[PING_WARMUP_SAMPLES];
+        private readonly int[] _warmupScratch = new int[PING_WARMUP_SAMPLES];
+        private int _warmupWrites;
+        private float _lastFrameRealtime = -1f;
+        private float _lastStallRealtime = -1f;
 
         private const int MAX_SEQUENCE_TRACKING = 256;
         private const float PACKET_LOSS_WINDOW = 5f;
@@ -95,6 +112,11 @@ namespace PurrNet
         private float _highPingTransitionStarted = -1f;
         private float _highJitterTransitionStarted = -1f;
         private float _highPacketLossTransitionStarted = -1f;
+        private int _highPingTransitionTicks;
+        private int _highJitterTransitionTicks;
+        private int _highPacketLossTransitionTicks;
+
+        private const int MIN_QUALITY_TICKS = 3;
 
         private int _cachedPing = -1;
         private int _cachedJitter = -1;
@@ -400,6 +422,8 @@ namespace PurrNet
 
         private void Update()
         {
+            TrackLocalStalls();
+
             if (Time.unscaledTime - _lastDataCheckTime >= 1f)
             {
                 download = _totalDataReceived / 1024f;
@@ -525,6 +549,7 @@ namespace PurrNet
             packetLoss = 0;
             _emaPing = 0;
             _hasPingSample = false;
+            _warmupWrites = 0;
             _connectionTime = Time.unscaledTime;
             _lastRawPing = 0;
             _emaJitter = 0;
@@ -575,7 +600,7 @@ namespace PurrNet
             _playersClientBroadcaster.SendToServer(
                 new PingMessage {
                     sendTime = NowMilliseconds(),
-                    realSendTime = now
+                    realSendTime = Time.realtimeSinceStartup
                 },
                 Channel.Unreliable);
             _lastPingSendTime = now;
@@ -596,7 +621,7 @@ namespace PurrNet
                 return;
             }
 
-            if (Time.unscaledTime - _connectionTime < WARMUP_DURATION)
+            if (_lastStallRealtime >= msg.realSendTime)
                 return;
 
             uint elapsedMs = NowMilliseconds() - msg.sendTime;
@@ -605,26 +630,72 @@ namespace PurrNet
 
             int currentPing = (int)elapsedMs;
 
-            if (_hasPingSample)
-            {
-                int diff = Mathf.Abs(currentPing - _lastRawPing);
-                _emaJitter += JITTER_EMA_ALPHA * (diff - _emaJitter);
-            }
-            _lastRawPing = currentPing;
-
             if (!_hasPingSample)
             {
-                _emaPing = currentPing;
-                _hasPingSample = true;
+                CollectWarmupSample(currentPing);
+                return;
             }
-            else
-            {
-                float alpha = currentPing > _emaPing ? PING_EMA_RISE_ALPHA : PING_EMA_FALL_ALPHA;
-                _emaPing = alpha * currentPing + (1f - alpha) * _emaPing;
-            }
+
+            int diff = Mathf.Abs(currentPing - _lastRawPing);
+            _emaJitter += JITTER_EMA_ALPHA * (diff - _emaJitter);
+            _lastRawPing = currentPing;
+
+            float alpha = currentPing > _emaPing ? PING_EMA_RISE_ALPHA : PING_EMA_FALL_ALPHA;
+            _emaPing = alpha * currentPing + (1f - alpha) * _emaPing;
 
             ping = Mathf.RoundToInt(_emaPing);
             jitter = Mathf.RoundToInt(_emaJitter);
+        }
+
+        private void CollectWarmupSample(int currentPing)
+        {
+            _warmupSamples[_warmupWrites % PING_WARMUP_SAMPLES] = currentPing;
+            _warmupWrites++;
+
+            if (_warmupWrites < PING_WARMUP_SAMPLES ||
+                Time.unscaledTime - _connectionTime < WARMUP_DURATION)
+            {
+                return;
+            }
+
+            _emaPing = MedianWarmupSample();
+            _lastRawPing = Mathf.RoundToInt(_emaPing);
+            _emaJitter = 0f;
+            _hasPingSample = true;
+
+            ping = Mathf.RoundToInt(_emaPing);
+            jitter = 0;
+        }
+
+        private int MedianWarmupSample()
+        {
+            System.Array.Copy(_warmupSamples, _warmupScratch, PING_WARMUP_SAMPLES);
+
+            for (int i = 1; i < PING_WARMUP_SAMPLES; i++)
+            {
+                int value = _warmupScratch[i];
+                int j = i - 1;
+
+                while (j >= 0 && _warmupScratch[j] > value)
+                {
+                    _warmupScratch[j + 1] = _warmupScratch[j];
+                    j--;
+                }
+
+                _warmupScratch[j + 1] = value;
+            }
+
+            return _warmupScratch[PING_WARMUP_SAMPLES / 2];
+        }
+
+        private void TrackLocalStalls()
+        {
+            float realtime = Time.realtimeSinceStartup;
+
+            if (_lastFrameRealtime >= 0f && realtime - _lastFrameRealtime >= STALL_FRAME_SECONDS)
+                _lastStallRealtime = realtime;
+
+            _lastFrameRealtime = realtime;
         }
 
         private void SendPacketCheck(float now)
@@ -680,25 +751,29 @@ namespace PurrNet
         {
             float now = Time.unscaledTime;
 
-            if (UpdateQualityState(ping, _highPingThreshold, _highPingRecoveryThreshold, now, ref _isHighPing, ref _highPingTransitionStarted))
-                onHighPingChanged?.Invoke(_isHighPing, ping);
+            if (_hasPingSample)
+            {
+                if (UpdateQualityState(ping, _highPingThreshold, _highPingRecoveryThreshold, now, ref _isHighPing, ref _highPingTransitionStarted, ref _highPingTransitionTicks))
+                    onHighPingChanged?.Invoke(_isHighPing, ping);
 
-            if (UpdateQualityState(jitter, _highJitterThreshold, _highJitterRecoveryThreshold, now, ref _isHighJitter, ref _highJitterTransitionStarted))
-                onHighJitterChanged?.Invoke(_isHighJitter, jitter);
+                if (UpdateQualityState(jitter, _highJitterThreshold, _highJitterRecoveryThreshold, now, ref _isHighJitter, ref _highJitterTransitionStarted, ref _highJitterTransitionTicks))
+                    onHighJitterChanged?.Invoke(_isHighJitter, jitter);
+            }
 
-            if (UpdateQualityState(packetLoss, _highPacketLossThreshold, _highPacketLossRecoveryThreshold, now, ref _isHighPacketLoss, ref _highPacketLossTransitionStarted))
+            if (UpdateQualityState(packetLoss, _highPacketLossThreshold, _highPacketLossRecoveryThreshold, now, ref _isHighPacketLoss, ref _highPacketLossTransitionStarted, ref _highPacketLossTransitionTicks))
                 onHighPacketLossChanged?.Invoke(_isHighPacketLoss, packetLoss);
 
             UpdateConnectionStall(now);
         }
 
-        private bool UpdateQualityState(int value, int threshold, int recoveryThreshold, float now, ref bool isActive, ref float transitionStarted)
+        private bool UpdateQualityState(int value, int threshold, int recoveryThreshold, float now, ref bool isActive, ref float transitionStarted, ref int transitionTicks)
         {
             bool shouldChange = isActive ? value <= recoveryThreshold : value >= threshold;
 
             if (!shouldChange)
             {
                 transitionStarted = -1f;
+                transitionTicks = 0;
                 return false;
             }
 
@@ -706,17 +781,24 @@ namespace PurrNet
             {
                 isActive = !isActive;
                 transitionStarted = -1f;
+                transitionTicks = 0;
                 return true;
             }
 
             if (transitionStarted < 0f)
+            {
                 transitionStarted = now;
+                transitionTicks = 0;
+            }
 
-            if (now - transitionStarted < _qualityChangeDuration)
+            transitionTicks++;
+
+            if (now - transitionStarted < _qualityChangeDuration || transitionTicks < MIN_QUALITY_TICKS)
                 return false;
 
             isActive = !isActive;
             transitionStarted = -1f;
+            transitionTicks = 0;
             return true;
         }
 
@@ -748,6 +830,9 @@ namespace PurrNet
             _highPingTransitionStarted = -1f;
             _highJitterTransitionStarted = -1f;
             _highPacketLossTransitionStarted = -1f;
+            _highPingTransitionTicks = 0;
+            _highJitterTransitionTicks = 0;
+            _highPacketLossTransitionTicks = 0;
 
             if (_isHighPing)
             {

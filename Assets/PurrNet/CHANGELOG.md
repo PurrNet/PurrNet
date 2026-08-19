@@ -1,3 +1,10 @@
+## [1.22.1-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.7...v1.22.1-beta.8) (2026-08-19)
+
+
+### Bug Fixes
+
+* Statistics manager improved initial ping & reporting ([cbfabac](https://github.com/PurrNet/PurrNet/commit/cbfabacfb06c28ed82bfbe3b1e40f165d60262c8))
+
 ## [1.22.1-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.6...v1.22.1-beta.7) (2026-08-18)
 
 
