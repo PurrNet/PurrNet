@@ -9,11 +9,12 @@ var searchData=
   ['hasconnectedowner_6',['hasConnectedOwner',['../classPurrNet_1_1NetworkIdentity.html#a844e2d660b4b912092a2b73c0803e8b2',1,'PurrNet::NetworkIdentity']]],
   ['hasfirstword_7',['hasFirstWord',['../structPurrNet_1_1Transports_1_1FragmentDropInfo.html#a0d627459013e64d8c000e212507d40a4',1,'PurrNet::Transports::FragmentDropInfo']]],
   ['hashsetpool_8',['HashSetPool',['../classPurrNet_1_1Pooling_1_1HashSetPool.html',1,'PurrNet::Pooling']]],
-  ['hassyncstrategy_9',['hasSyncStrategy',['../classPurrNet_1_1NetworkTransform.html#a04cf05293af9b2b88c43d57f858b0fd2',1,'PurrNet::NetworkTransform']]],
-  ['hierarchyfactory_10',['HierarchyFactory',['../classPurrNet_1_1Modules_1_1HierarchyFactory.html',1,'PurrNet::Modules']]],
-  ['hierarchyhistory_11',['HierarchyHistory',['../classPurrNet_1_1Modules_1_1HierarchyHistory.html',1,'PurrNet::Modules']]],
-  ['hierarchypool_12',['HierarchyPool',['../classPurrNet_1_1Modules_1_1HierarchyPool.html',1,'PurrNet::Modules']]],
-  ['hierarchyv2_13',['HierarchyV2',['../classPurrNet_1_1Modules_1_1HierarchyV2.html',1,'PurrNet::Modules']]],
-  ['hostjoininfo_14',['HostJoinInfo',['../structPurrNet_1_1Transports_1_1HostJoinInfo.html',1,'PurrNet::Transports']]],
-  ['hostmigrationrules_15',['HostMigrationRules',['../structPurrNet_1_1HostMigrationRules.html',1,'PurrNet']]]
+  ['haspingestimate_9',['hasPingEstimate',['../classPurrNet_1_1StatisticsManager.html#ae862864d983e6d6f64d41a2884486d07',1,'PurrNet::StatisticsManager']]],
+  ['hassyncstrategy_10',['hasSyncStrategy',['../classPurrNet_1_1NetworkTransform.html#a04cf05293af9b2b88c43d57f858b0fd2',1,'PurrNet::NetworkTransform']]],
+  ['hierarchyfactory_11',['HierarchyFactory',['../classPurrNet_1_1Modules_1_1HierarchyFactory.html',1,'PurrNet::Modules']]],
+  ['hierarchyhistory_12',['HierarchyHistory',['../classPurrNet_1_1Modules_1_1HierarchyHistory.html',1,'PurrNet::Modules']]],
+  ['hierarchypool_13',['HierarchyPool',['../classPurrNet_1_1Modules_1_1HierarchyPool.html',1,'PurrNet::Modules']]],
+  ['hierarchyv2_14',['HierarchyV2',['../classPurrNet_1_1Modules_1_1HierarchyV2.html',1,'PurrNet::Modules']]],
+  ['hostjoininfo_15',['HostJoinInfo',['../structPurrNet_1_1Transports_1_1HostJoinInfo.html',1,'PurrNet::Transports']]],
+  ['hostmigrationrules_16',['HostMigrationRules',['../structPurrNet_1_1HostMigrationRules.html',1,'PurrNet']]]
 ];
