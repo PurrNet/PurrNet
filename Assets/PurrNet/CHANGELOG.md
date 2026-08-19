@@ -1,3 +1,10 @@
+## [1.22.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.9...v1.22.1-beta.10) (2026-08-19)
+
+
+### Bug Fixes
+
+* Timing of instance handler to subsystem registration ([3c0f676](https://github.com/PurrNet/PurrNet/commit/3c0f676b75f33c613576077ae544f1dcb19e7dfc))
+
 ## [1.22.1-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.8...v1.22.1-beta.9) (2026-08-19)
 
 
