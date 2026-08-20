@@ -1,3 +1,12 @@
+## [1.22.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.11...v1.22.1-beta.12) (2026-08-20)
+
+
+### Bug Fixes
+
+* cleanup ([cee08b7](https://github.com/PurrNet/PurrNet/commit/cee08b74af42e6345014bc7bdb6c1b1d2d98bff4))
+* Performance boost for new PurrAction ([2a80252](https://github.com/PurrNet/PurrNet/commit/2a80252cc80b8567393a021053ad1c3150ac63a1))
+* PurrAction guard against null entries ([d489ca5](https://github.com/PurrNet/PurrNet/commit/d489ca56753785dce283289df76f2a9a6bb9d432))
+
 ## [1.22.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.10...v1.22.1-beta.11) (2026-08-20)
 
 
