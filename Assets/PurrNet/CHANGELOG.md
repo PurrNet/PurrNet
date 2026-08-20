@@ -1,3 +1,10 @@
+## [1.22.1-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.12...v1.22.1-beta.13) (2026-08-20)
+
+
+### Bug Fixes
+
+* camelCase consistency ([0bd00f1](https://github.com/PurrNet/PurrNet/commit/0bd00f1d09109149b7f36a4ae3cbeb5fccd3a325))
+
 ## [1.22.1-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.11...v1.22.1-beta.12) (2026-08-20)
 
 
