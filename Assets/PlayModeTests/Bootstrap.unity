@@ -2772,6 +2772,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1999225764}
   - component: {fileID: 1999225767}
+  - component: {fileID: 1999225768}
   - component: {fileID: 1999225766}
   - component: {fileID: 1999225765}
   m_Layer: 0
@@ -2840,6 +2841,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3156d9a205ec80e458eb9826f57652b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncBigDataServerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _transferTimeoutSeconds: 60
+  _doneTimeoutSeconds: 30
+--- !u!114 &1999225768
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999225763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a7c1d3e9b2f45c4aa1e6d8f30b7c952, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncBigDataOwnerAuthScenario
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
   _transferTimeoutSeconds: 60
