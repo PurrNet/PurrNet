@@ -1,44 +1,62 @@
-using System.Collections.Generic;
+using System;
+using System.Runtime.CompilerServices;
 
 namespace PurrNet.Utils
 {
-    public sealed class PurrAction<T> where T : class, IBaseTickListener
+    public sealed class PurrAction<T> where T : class
     {
-        private readonly List<T> _listeners;
-        private readonly System.Action<T> _invoke;
-        private bool _isInvoking;
+        private const int MinNullsBeforeCompact = 8;
 
-        public PurrAction(System.Action<T> invoke, int capacity = 0)
+        private T[] _listeners;
+        private int _count;
+        private int _nullCount;
+        private int _invokeDepth;
+        private readonly Action<T> _invoke;
+
+        public int Count => _count - _nullCount;
+
+        public PurrAction(Action<T> invoke, int capacity = 0)
         {
-            _listeners = new List<T>(capacity);
             _invoke = invoke;
+            _listeners = capacity > 0 ? new T[capacity] : Array.Empty<T>();
         }
 
         public void Add(T listener)
         {
-            _listeners.Add(listener);
+            if (listener == null)
+                return;
+
+            if (_invokeDepth == 0 && ShouldCompact())
+                Compact();
+
+            if (_count == _listeners.Length)
+                EnsureCapacity();
+
+            _listeners[_count++] = listener;
         }
 
         public void Remove(T listener)
         {
-            for (var i = _listeners.Count - 1; i >= 0; i--)
+            if (listener == null)
+                return;
+
+            var listeners = _listeners;
+
+            for (var i = _count - 1; i >= 0; i--)
             {
-                if (_listeners[i] != listener)
+                if (listeners[i] != listener)
                     continue;
 
-                if (_isInvoking)
-                    _listeners[i] = null;
-                else
-                    _listeners.RemoveAt(i);
-
+                listeners[i] = null;
+                _nullCount++;
                 return;
             }
         }
 
         public void Invoke()
         {
-            var count = _listeners.Count;
-            _isInvoking = true;
+            var count = _count;
+            _invokeDepth++;
 
             try
             {
@@ -51,26 +69,73 @@ namespace PurrNet.Utils
             }
             finally
             {
-                _isInvoking = false;
-                Compact();
+                if (--_invokeDepth == 0 && _nullCount > 0)
+                    Compact();
             }
+        }
+
+        /// <summary>Force reclamation of removed slots. No-op during dispatch.</summary>
+        public void CompactNow()
+        {
+            if (_invokeDepth == 0 && _nullCount > 0)
+                Compact();
+        }
+
+        public void Clear()
+        {
+            if (_invokeDepth > 0)
+            {
+
+                for (var i = 0; i < _count; i++)
+                {
+                    if (_listeners[i] == null)
+                        continue;
+
+                    _listeners[i] = null;
+                    _nullCount++;
+                }
+                return;
+            }
+
+            Array.Clear(_listeners, 0, _count);
+            _count = 0;
+            _nullCount = 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool ShouldCompact()
+        {
+            return _nullCount >= MinNullsBeforeCompact && _nullCount * 2 >= _count;
+        }
+
+        private void EnsureCapacity()
+        {
+            if (_invokeDepth == 0 && _nullCount > 0)
+            {
+                Compact();
+                if (_count < _listeners.Length)
+                    return;
+            }
+
+            Array.Resize(ref _listeners, _listeners.Length == 0 ? 4 : _listeners.Length * 2);
         }
 
         private void Compact()
         {
-            var writeIndex = 0;
+            var listeners = _listeners;
+            var count = _count;
+            var write = 0;
 
-            for (var readIndex = 0; readIndex < _listeners.Count; readIndex++)
+            for (var read = 0; read < count; read++)
             {
-                var listener = _listeners[readIndex];
-                if (listener == null)
-                    continue;
-
-                _listeners[writeIndex++] = listener;
+                var listener = listeners[read];
+                if (listener != null)
+                    listeners[write++] = listener;
             }
 
-            if (writeIndex < _listeners.Count)
-                _listeners.RemoveRange(writeIndex, _listeners.Count - writeIndex);
+            Array.Clear(listeners, write, count - write);
+            _count = write;
+            _nullCount = 0;
         }
     }
 }
