@@ -12,10 +12,11 @@ var searchData=
   ['clearpast_9',['ClearPast',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a6084cacf773a7fdf1b40fa522317eaff',1,'PurrNet::Modules::SimpleHistory']]],
   ['clearservertransportfilter_10',['ClearServerTransportFilter',['../classPurrNet_1_1Transports_1_1CompositeTransport.html#a88e15a7f876566b8c0294e04e0811b8d',1,'PurrNet::Transports::CompositeTransport']]],
   ['clearsoftparent_11',['ClearSoftParent',['../classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487',1,'PurrNet::NetworkRigidbody']]],
-  ['compareto_12',['CompareTo',['../structPurrNet_1_1Packing_1_1Half.html#ab8bcf3bc5826881dcd901b701f6ab214',1,'PurrNet.Packing.Half.CompareTo(Half other)'],['../structPurrNet_1_1Packing_1_1Half.html#a565dbedf44864368c1d6386ce47301b9',1,'PurrNet.Packing.Half.CompareTo(object obj)']]],
-  ['configure_13',['Configure',['../classPurrNet_1_1NetworkLODProfile.html#a22f8e795ccff8a103d0419b077accd05',1,'PurrNet::NetworkLODProfile']]],
-  ['connectaspipe_14',['ConnectAsPipe',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a3042976559865d9b8b8a9cc7deb57977',1,'PurrNet::Transports::PurrTransport']]],
-  ['contains_15',['Contains',['../interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html#aa87379b63804d381b446d9546ff7b499',1,'PurrNet.Collections.IReadonlyHashSet.Contains()'],['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a65e9c8cae7805721c8655361920456db',1,'PurrNet.Collections.PurrHashSet.Contains()']]],
-  ['createbot_16',['CreateBot',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afcc4d8439d05cb7ed9fca3be12d52429',1,'PurrNet::Modules::PlayersManager']]],
-  ['createprototype_17',['CreatePrototype',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8',1,'PurrNet::Modules::HierarchyV2']]]
+  ['compactnow_12',['CompactNow',['../classPurrNet_1_1Utils_1_1PurrAction.html#aa3e82b92b7e44a37e3bdc67188b562a3',1,'PurrNet::Utils::PurrAction']]],
+  ['compareto_13',['CompareTo',['../structPurrNet_1_1Packing_1_1Half.html#ab8bcf3bc5826881dcd901b701f6ab214',1,'PurrNet.Packing.Half.CompareTo(Half other)'],['../structPurrNet_1_1Packing_1_1Half.html#a565dbedf44864368c1d6386ce47301b9',1,'PurrNet.Packing.Half.CompareTo(object obj)']]],
+  ['configure_14',['Configure',['../classPurrNet_1_1NetworkLODProfile.html#a22f8e795ccff8a103d0419b077accd05',1,'PurrNet::NetworkLODProfile']]],
+  ['connectaspipe_15',['ConnectAsPipe',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a3042976559865d9b8b8a9cc7deb57977',1,'PurrNet::Transports::PurrTransport']]],
+  ['contains_16',['Contains',['../interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html#aa87379b63804d381b446d9546ff7b499',1,'PurrNet.Collections.IReadonlyHashSet.Contains()'],['../classPurrNet_1_1Collections_1_1PurrHashSet.html#a65e9c8cae7805721c8655361920456db',1,'PurrNet.Collections.PurrHashSet.Contains()']]],
+  ['createbot_17',['CreateBot',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afcc4d8439d05cb7ed9fca3be12d52429',1,'PurrNet::Modules::PlayersManager']]],
+  ['createprototype_18',['CreatePrototype',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a9b147ed32462002e028cb4b65b7d2ff8',1,'PurrNet::Modules::HierarchyV2']]]
 ];

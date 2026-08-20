@@ -1,5 +1,7 @@
 var NAVTREEINDEX6 =
 {
+"interfacePurrNet_1_1IMath.html":[0,0,0,34],
+"interfacePurrNet_1_1INetworkManager.html":[0,0,0,35],
 "interfacePurrNet_1_1INetworkManager.html":[1,0,0,35],
 "interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html":[0,0,0,36],
 "interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html":[1,0,0,36],
@@ -247,7 +249,5 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html":[0,0,0,4,56],
 "structPurrNet_1_1Modules_1_1SceneState.html":[1,0,0,4,57],
 "structPurrNet_1_1Modules_1_1SceneState.html":[0,0,0,4,57],
-"structPurrNet_1_1Modules_1_1SceneState.html#a77339bb6ee1cb2496ce4c797fb2a6ad1":[1,0,0,4,57,0],
-"structPurrNet_1_1Modules_1_1SceneState.html#a77339bb6ee1cb2496ce4c797fb2a6ad1":[0,0,0,4,57,0],
-"structPurrNet_1_1Modules_1_1SceneState.html#abec0619094f4777df3f2c4f953391260":[0,0,0,4,57,1]
+"structPurrNet_1_1Modules_1_1SceneState.html#a77339bb6ee1cb2496ce4c797fb2a6ad1":[1,0,0,4,57,0]
 };

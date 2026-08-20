@@ -56,9 +56,9 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkModule.html#ab76e77b984192522e5a9e686986d35c1",
 "classPurrNet_1_1PlayersBroadcaster.html",
 "classPurrNet_1_1SyncHashSet.html#a69d5d055eb6b43f47507b6f9683976d9",
-"interfacePurrNet_1_1INetworkManager.html",
-"structPurrNet_1_1Modules_1_1SceneState.html#abec0619094f4777df3f2c4f953391260",
-"structPurrNet_1_1SyncArrayChange.html"
+"interfacePurrNet_1_1IMath.html",
+"structPurrNet_1_1Modules_1_1SceneState.html#a77339bb6ee1cb2496ce4c797fb2a6ad1",
+"structPurrNet_1_1StringUTF8.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

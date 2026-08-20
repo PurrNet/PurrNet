@@ -1,5 +1,7 @@
 var NAVTREEINDEX8 =
 {
+"structPurrNet_1_1StringUTF8.html":[1,0,0,154],
+"structPurrNet_1_1SyncArrayChange.html":[0,0,0,156],
 "structPurrNet_1_1SyncArrayChange.html":[1,0,0,156],
 "structPurrNet_1_1SyncDictionaryChange.html":[0,0,0,160],
 "structPurrNet_1_1SyncDictionaryChange.html":[1,0,0,160],
