@@ -1,3 +1,10 @@
+## [1.22.1-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.10...v1.22.1-beta.11) (2026-08-20)
+
+
+### Bug Fixes
+
+* SyncBigData resilience and bad config for non "unsafe" network ([dc5ba05](https://github.com/PurrNet/PurrNet/commit/dc5ba051d3dc4f7550048b0839d3e89793f6df70))
+
 ## [1.22.1-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.9...v1.22.1-beta.10) (2026-08-19)
 
 
