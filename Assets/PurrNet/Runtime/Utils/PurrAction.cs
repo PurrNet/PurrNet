@@ -13,7 +13,7 @@ namespace PurrNet.Utils
         private int _invokeDepth;
         private readonly Action<T> _invoke;
 
-        public int Count => _count - _nullCount;
+        public int count => _count - _nullCount;
 
         public PurrAction(Action<T> invoke, int capacity = 0)
         {
