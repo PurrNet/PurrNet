@@ -506,6 +506,7 @@ var hierarchy =
       [ "PurrNet.Modules.UsedByILAttribute", "classPurrNet_1_1Modules_1_1UsedByILAttribute.html", null ],
       [ "PurrNet.ObserversRpcAttribute", "classPurrNet_1_1ObserversRpcAttribute.html", null ],
       [ "PurrNet.OwnerAttribute", "classPurrNet_1_1OwnerAttribute.html", null ],
+      [ "PurrNet.OwnerOnlyAttribute", "classPurrNet_1_1OwnerOnlyAttribute.html", null ],
       [ "PurrNet.Packing.GeneratedByILAttribute", "classPurrNet_1_1Packing_1_1GeneratedByILAttribute.html", null ],
       [ "PurrNet.Packing.RegisterPackersAttribute", "classPurrNet_1_1Packing_1_1RegisterPackersAttribute.html", null ],
       [ "PurrNet.PurrButtonAttribute", "classPurrNet_1_1PurrButtonAttribute.html", null ],
