@@ -1782,6 +1782,7 @@ GameObject:
   - component: {fileID: 1438235318}
   - component: {fileID: 1438235317}
   - component: {fileID: 1438235321}
+  - component: {fileID: 1438235322}
   m_Layer: 0
   m_Name: SyncTypesNiche
   m_TagString: Untagged
@@ -1885,6 +1886,22 @@ MonoBehaviour:
   _stateTimeoutSeconds: 30
   _doneTimeoutSeconds: 30
   _postRejectVerifyDelaySeconds: 0.25
+--- !u!114 &1438235322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438235315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b3ce41a9f204d1e8c56ad0b2f61e4c7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncEventOwnerAuthScenario
+  _spawnTimeoutSeconds: 15
+  _readyTimeoutSeconds: 30
+  _stateTimeoutSeconds: 30
+  _doneTimeoutSeconds: 30
 --- !u!1 &1680343622
 GameObject:
   m_ObjectHideFlags: 0

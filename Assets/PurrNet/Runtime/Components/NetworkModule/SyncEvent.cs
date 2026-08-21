@@ -10,35 +10,39 @@ namespace PurrNet
 {
     public struct SyncEventData : IDisposable
     {
-        public BitPacker _dataPacker;
+        public BitData data;
 
-        public SyncEventData AddData<T>(T data)
+        [DontPack] private bool _ownsPacker;
+
+        public SyncEventData AddData<T>(T value)
         {
-            _dataPacker ??= BitPackerPool.Get();
-            Packer<T>.Write(_dataPacker, data);
+            var packer = _ownsPacker ? data.packer : BitPackerPool.Get();
+            _ownsPacker = true;
+
+            Packer<T>.Write(packer, value);
+            data = new BitData(packer);
             return this;
         }
 
         public T ReadData<T>()
         {
-            if (_dataPacker == null)
+            if (data.packer == null)
                 return default;
 
-            return Packer<T>.Read(_dataPacker);
+            return Packer<T>.Read(data.packer);
         }
 
-        public void ResetPosition()
-        {
-            _dataPacker?.ResetPosition();
-        }
+        public BitDataScope BeginRead() => data.AutoScope();
 
         public void Dispose()
         {
-            if (_dataPacker != null)
+            if (_ownsPacker)
             {
-                _dataPacker.Dispose();
-                _dataPacker = null;
+                data.Dispose();
+                _ownsPacker = false;
             }
+
+            data = default;
         }
     }
 
@@ -214,7 +218,7 @@ namespace PurrNet
 
         protected override void InvokeLocal()
         {
-            _lastData.ResetPosition();
+            using var scope = _lastData.BeginRead();
             var value = _lastData.ReadData<T>();
             unityEvent.Invoke(value);
         }
@@ -254,7 +258,7 @@ namespace PurrNet
 
         protected override void InvokeLocal()
         {
-            _lastData.ResetPosition();
+            using var scope = _lastData.BeginRead();
             var value1 = _lastData.ReadData<T1>();
             var value2 = _lastData.ReadData<T2>();
             unityEvent.Invoke(value1, value2);
@@ -294,7 +298,7 @@ namespace PurrNet
         public void Invoke(T1 a, T2 b, T3 c) => InvokePacket(new SyncEventData().AddData<T1>(a).AddData<T2>(b).AddData<T3>(c));
         protected override void InvokeLocal()
         {
-            _lastData.ResetPosition();
+            using var scope = _lastData.BeginRead();
             var value1 = _lastData.ReadData<T1>();
             var value2 = _lastData.ReadData<T2>();
             var value3 = _lastData.ReadData<T3>();
@@ -335,7 +339,7 @@ namespace PurrNet
         public void Invoke(T1 a, T2 b, T3 c, T4 d) => InvokePacket(new SyncEventData().AddData<T1>(a).AddData<T2>(b).AddData<T3>(c).AddData<T4>(d));
         protected override void InvokeLocal()
         {
-            _lastData.ResetPosition();
+            using var scope = _lastData.BeginRead();
             var value1 = _lastData.ReadData<T1>();
             var value2 = _lastData.ReadData<T2>();
             var value3 = _lastData.ReadData<T3>();
@@ -374,7 +378,7 @@ namespace PurrNet
         public void Invoke(T1 a, T2 b, T3 c, T4 d, T5 e) => InvokePacket(new SyncEventData().AddData<T1>(a).AddData<T2>(b).AddData<T3>(c).AddData<T4>(d).AddData<T5>(e));
         protected override void InvokeLocal()
         {
-            _lastData.ResetPosition();
+            using var scope = _lastData.BeginRead();
             var value1 = _lastData.ReadData<T1>();
             var value2 = _lastData.ReadData<T2>();
             var value3 = _lastData.ReadData<T3>();
