@@ -194,9 +194,11 @@ namespace PurrNet
 
             if (isServer)
             {
-                for (var i = parent.observers.Count - 1; i >= 0; i--)
+                var targets = observers;
+
+                for (var i = targets.Count - 1; i >= 0; i--)
                 {
-                    var observer = parent.observers[i];
+                    var observer = targets[i];
 
                     if (observer == localPlayer || (_ownerAuth && observer == owner))
                         continue;

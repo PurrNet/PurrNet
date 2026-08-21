@@ -4658,6 +4658,36 @@ namespace PurrNet.Codegen
             return type.Resolve() != null;
         }
 
+        private static bool HasOwnerOnlyAttribute(FieldDefinition field)
+        {
+            var ownerOnlyName = typeof(OwnerOnlyAttribute).FullName;
+
+            foreach (var attribute in field.CustomAttributes)
+            {
+                if (attribute.AttributeType.FullName == ownerOnlyName)
+                    return true;
+            }
+
+            if (!field.Name.EndsWith(">k__BackingField"))
+                return false;
+
+            var propertyName = field.Name.Substring(1, field.Name.Length - ">k__BackingField".Length - 1);
+
+            foreach (var property in field.DeclaringType.Properties)
+            {
+                if (property.Name != propertyName)
+                    continue;
+
+                foreach (var attribute in property.CustomAttributes)
+                {
+                    if (attribute.AttributeType.FullName == ownerOnlyName)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
         private static void CreateSyncVarInitMethod(bool isNetworkIdentity, ModuleDefinition module,
             TypeDefinition type, List<FieldDefinition> networkFields)
         {
@@ -4741,6 +4771,23 @@ namespace PurrNet.Codegen
                 code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
                 code.Append(Instruction.Create(OpCodes.Ldc_I4, isNetworkIdentity ? 1 : 0));
                 code.Append(Instruction.Create(OpCodes.Call, registerModule));
+
+                if (HasOwnerOnlyAttribute(field))
+                {
+                    var skipOwnerOnly = Instruction.Create(OpCodes.Nop);
+                    var setOwnerOnly = module.GetTypeDefinition<NetworkModule>()
+                        .GetMethod("SetOwnerOnlyInternal").Import(module);
+
+                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                    code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
+                    code.Append(Instruction.Create(OpCodes.Brfalse, skipOwnerOnly));
+
+                    code.Append(Instruction.Create(OpCodes.Ldarg_0));
+                    code.Append(Instruction.Create(OpCodes.Ldfld, fieldRef));
+                    code.Append(Instruction.Create(OpCodes.Callvirt, setOwnerOnly));
+
+                    code.Append(skipOwnerOnly);
+                }
 
                 var endInstruction = Instruction.Create(OpCodes.Nop);
 

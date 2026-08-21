@@ -1550,6 +1550,44 @@ namespace PurrNet
                     Debug.LogException(e);
                 }
             }
+
+            // ownerOnly modules scope visibility by ownership, but the identity observer set doesn't
+            // change on transfer, so no add/remove fires. Emulate it so their catch-up logic runs.
+            if (asServer && !isSpawner)
+            {
+                for (int i = 0; i < _externalModulesView.Count; i++)
+                {
+                    var module = _externalModulesView[i];
+
+                    if (!module.ownerOnly)
+                        continue;
+
+                    if (oldOwner.HasValue && IsObserver(oldOwner.Value))
+                    {
+                        try
+                        {
+                            module.OnObserverRemoved(oldOwner.Value);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
+
+                    if (newOwner.HasValue && IsObserver(newOwner.Value))
+                    {
+                        try
+                        {
+                            module.OnObserverAdded(newOwner.Value);
+                            module.OnObserverAdded(newOwner.Value, false);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
+                }
+            }
         }
 
         internal void TriggerOnOwnerDisconnected(PlayerID ownerId)
@@ -1626,9 +1664,14 @@ namespace PurrNet
 
             for (int i = 0; i < _externalModulesView.Count; i++)
             {
+                var module = _externalModulesView[i];
+
+                if (module.ownerOnly && target != owner)
+                    continue;
+
                 try
                 {
-                    _externalModulesView[i].OnPreObserverAdded(target);
+                    module.OnPreObserverAdded(target);
                 }
                 catch (Exception e)
                 {
@@ -1637,7 +1680,7 @@ namespace PurrNet
 
                 try
                 {
-                    _externalModulesView[i].OnPreObserverAdded(target, isSpawner);
+                    module.OnPreObserverAdded(target, isSpawner);
                 }
                 catch (Exception e)
                 {
@@ -1668,9 +1711,14 @@ namespace PurrNet
 
             for (int i = 0; i < _externalModulesView.Count; i++)
             {
+                var module = _externalModulesView[i];
+
+                if (module.ownerOnly && target != owner)
+                    continue;
+
                 try
                 {
-                    _externalModulesView[i].OnObserverAdded(target);
+                    module.OnObserverAdded(target);
                 }
                 catch (Exception e)
                 {
@@ -1679,7 +1727,7 @@ namespace PurrNet
 
                 try
                 {
-                    _externalModulesView[i].OnObserverAdded(target, isSpawner);
+                    module.OnObserverAdded(target, isSpawner);
                 }
                 catch (Exception e)
                 {

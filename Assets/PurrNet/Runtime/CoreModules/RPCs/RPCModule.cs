@@ -579,6 +579,12 @@ namespace PurrNet.Modules
                 if (data.sig.excludeOwner && _ownership.TryGetOwner(identity, out var owner) && owner == player)
                     continue;
 
+                if (identity.TryGetModule((int)data.header.childId.value, out var module) && module is { ownerOnly: true } &&
+                    (!_ownership.TryGetOwner(identity, out var moduleOwner) || moduleOwner != player))
+                {
+                    continue;
+                }
+
                 switch (data.sig.type)
                 {
                     case RPCType.ObserversRPC:

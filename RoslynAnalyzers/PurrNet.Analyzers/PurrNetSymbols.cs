@@ -13,6 +13,7 @@ namespace PurrNet.Analyzers
         public INamedTypeSymbol? RpcInfo { get; }
         public INamedTypeSymbol? PlayerId { get; }
         public INamedTypeSymbol? OwnerAttribute { get; }
+        public INamedTypeSymbol? OwnerOnlyAttribute { get; }
         public INamedTypeSymbol? LocalModeAttribute { get; }
         public IMethodSymbol? EnterLocalExecution { get; }
         public IMethodSymbol? ExitLocalExecution { get; }
@@ -39,6 +40,7 @@ namespace PurrNet.Analyzers
             RpcInfo = compilation.GetTypeByMetadataName("PurrNet.RPCInfo");
             PlayerId = compilation.GetTypeByMetadataName("PurrNet.PlayerID");
             OwnerAttribute = compilation.GetTypeByMetadataName("PurrNet.OwnerAttribute");
+            OwnerOnlyAttribute = compilation.GetTypeByMetadataName("PurrNet.OwnerOnlyAttribute");
             LocalModeAttribute = compilation.GetTypeByMetadataName("PurrNet.LocalModeAttribute");
             IEnumerableOfT = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1");
             IListOfT = compilation.GetTypeByMetadataName("System.Collections.Generic.IList`1");

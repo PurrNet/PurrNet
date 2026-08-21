@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using JetBrains.Annotations;
 using PurrNet.Logging;
@@ -43,6 +44,62 @@ namespace PurrNet
         [UsedByIL] protected PlayerID localPlayerForced => parent ? parent.localPlayerForced : default;
 
         public PlayerID? owner => parent ? parent.owner : null;
+
+        /// <summary>
+        /// True when this module was declared with <see cref="OwnerOnlyAttribute"/>.
+        /// Its state is only ever sent to the owner of the parent identity.
+        /// </summary>
+        public bool ownerOnly { get; private set; }
+
+        private List<PlayerID> _ownerOnlyObservers;
+
+        /// <summary>
+        /// The observers this module is allowed to send to.
+        /// Same as the parent's observer list, unless the module is <see cref="ownerOnly"/>,
+        /// in which case it contains only the owner (or nothing when there is no owner).
+        /// Server only.
+        /// </summary>
+        public IReadOnlyList<PlayerID> observers
+        {
+            get
+            {
+                if (!parent)
+                    return Array.Empty<PlayerID>();
+
+                if (!ownerOnly)
+                    return parent.observers;
+
+                RefreshOwnerOnlyObservers();
+                return _ownerOnlyObservers;
+            }
+        }
+
+        private void RefreshOwnerOnlyObservers()
+        {
+            _ownerOnlyObservers.Clear();
+
+            var cachedOwner = parent.owner;
+            if (!cachedOwner.HasValue)
+                return;
+
+            var all = parent.observers;
+
+            for (var i = 0; i < all.Count; i++)
+            {
+                if (all[i] != cachedOwner.Value)
+                    continue;
+
+                _ownerOnlyObservers.Add(cachedOwner.Value);
+                return;
+            }
+        }
+
+        [UsedByIL]
+        public void SetOwnerOnlyInternal()
+        {
+            ownerOnly = true;
+            _ownerOnlyObservers ??= new List<PlayerID>(1);
+        }
 
         public bool isController => parent && parent.isController;
 
@@ -222,9 +279,9 @@ namespace PurrNet
                 module.AppendToBufferedRPCs(packet, signature);
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
-            parent.SendRPCChild(_myType, module, packet, signature);
+            parent.SendRPCChild(_myType, module, packet, signature, ownerOnly);
 #else
-            parent.SendRPCChild(null, module, packet, signature);
+            parent.SendRPCChild(null, module, packet, signature, ownerOnly);
 #endif
         }
 
@@ -239,13 +296,43 @@ namespace PurrNet
             _myType ??= GetType();
             Statistics.ReceivedRPC(_myType, signature.type, signature.rpcName, data.rpcData, parent);
 #endif
-            return parent && parent.ValidateIncomingRPC(info, signature, data, asServer, requestId, isAwaitable);
+            return parent && parent.ValidateIncomingRPC(info, signature, data, asServer, requestId, isAwaitable, ownerOnly);
         }
 
         [UsedByIL]
         public DisposableList<PlayerID> GetObservers(RPCSignature signature)
         {
-            return parent.GetObservers(signature);
+            if (!ownerOnly)
+                return parent.GetObservers(signature);
+
+            var players = DisposableList<PlayerID>.Create(1);
+            var cachedOwner = parent.owner;
+
+            if (!cachedOwner.HasValue || signature.excludeOwner)
+                return players;
+
+            if (signature.targetPlayer != null)
+            {
+                if (signature.targetPlayer.Value == cachedOwner.Value)
+                    players.Add(cachedOwner.Value);
+                return players;
+            }
+
+            if (signature.runLocally && cachedOwner.Value == networkManager.localPlayer)
+                return players;
+
+            var all = parent.observers;
+
+            for (var i = 0; i < all.Count; i++)
+            {
+                if (all[i] != cachedOwner.Value)
+                    continue;
+
+                players.Add(cachedOwner.Value);
+                break;
+            }
+
+            return players;
         }
 
         [UsedByIL]
