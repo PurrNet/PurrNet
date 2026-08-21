@@ -1,3 +1,10 @@
+# [1.23.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.1...v1.23.0-beta.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* move OwnerOnly to be an override of NetworkModule ([58e4984](https://github.com/PurrNet/PurrNet/commit/58e4984dc61b8936701c608ecba3c7ac5174ef82))
+
 # [1.23.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.15...v1.23.0-beta.1) (2026-08-21)
 
 
