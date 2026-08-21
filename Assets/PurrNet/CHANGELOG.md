@@ -1,3 +1,10 @@
+# [1.23.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.15...v1.23.0-beta.1) (2026-08-21)
+
+
+### Features
+
+* [OwnerOnly] for sync types, this is a common case to not dealing ([6e597de](https://github.com/PurrNet/PurrNet/commit/6e597de06e08b902a189dc1cfba566483a6f9023))
+
 ## [1.22.1-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.14...v1.22.1-beta.15) (2026-08-21)
 
 
