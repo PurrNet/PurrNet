@@ -281,7 +281,6 @@ var annotated_dup =
       [ "NoVisibilityRule", "classPurrNet_1_1NoVisibilityRule.html", "classPurrNet_1_1NoVisibilityRule" ],
       [ "ObserversRpcAttribute", "classPurrNet_1_1ObserversRpcAttribute.html", null ],
       [ "OwnerAttribute", "classPurrNet_1_1OwnerAttribute.html", null ],
-      [ "OwnerOnlyAttribute", "classPurrNet_1_1OwnerOnlyAttribute.html", null ],
       [ "OwnershipComponentToggle", "structPurrNet_1_1OwnershipComponentToggle.html", null ],
       [ "OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],
       [ "OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],

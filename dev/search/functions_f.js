@@ -42,5 +42,5 @@ var searchData=
   ['stopserver_39',['StopServer',['../classPurrNet_1_1NetworkManager.html#a7a05daf2910e5ae7ecfe98a26fa7110c',1,'PurrNet.NetworkManager.StopServer()'],['../classPurrNet_1_1RawNetManager.html#a3237cd0464243984be679f04cc12cfba',1,'PurrNet.RawNetManager.StopServer()'],['../classPurrNet_1_1Transports_1_1GenericTransport.html#ae4065a99f6c59c1565f25d3b20e5e2db',1,'PurrNet.Transports.GenericTransport.StopServer()']]],
   ['subscribe_3c_20t_20_3e_40',['Subscribe&lt; T &gt;',['../classPurrNet_1_1NetworkManager.html#a497ba975811d4b1cd3d82bf233cd5d97',1,'PurrNet.NetworkManager.Subscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback, bool asServer)'],['../classPurrNet_1_1NetworkManager.html#aaaa6cb198e1d29e6ab40e79527c43752',1,'PurrNet.NetworkManager.Subscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback)']]],
   ['subtract_41',['Subtract',['../structPurrNet_1_1Packing_1_1Half.html#a2db028ac39b62d727a733ce0840e1aad',1,'PurrNet::Packing::Half']]],
-  ['syncdictionary_42',['SyncDictionary',['../classPurrNet_1_1SyncDictionary.html#a384458472cafdf6d603eadc52cee6066',1,'PurrNet::SyncDictionary']]]
+  ['syncdictionary_42',['SyncDictionary',['../classPurrNet_1_1SyncDictionary.html#ada4ef21f9ae132688aca2ab86f78b339',1,'PurrNet::SyncDictionary']]]
 ];

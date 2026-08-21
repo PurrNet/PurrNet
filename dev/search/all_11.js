@@ -102,7 +102,7 @@ var searchData=
   ['syncasset_99',['SyncAsset',['../classPurrNet_1_1SyncAsset.html',1,'PurrNet']]],
   ['syncasset_3c_20texture2d_20_3e_100',['SyncAsset&lt; Texture2D &gt;',['../classPurrNet_1_1SyncAsset.html',1,'PurrNet']]],
   ['syncbigdata_101',['SyncBigData',['../classPurrNet_1_1SyncBigData.html',1,'PurrNet']]],
-  ['syncdictionary_102',['SyncDictionary',['../classPurrNet_1_1SyncDictionary.html',1,'PurrNet.SyncDictionary&lt; TKey, TValue &gt;'],['../classPurrNet_1_1SyncDictionary.html#a384458472cafdf6d603eadc52cee6066',1,'PurrNet.SyncDictionary.SyncDictionary()']]],
+  ['syncdictionary_102',['SyncDictionary',['../classPurrNet_1_1SyncDictionary.html',1,'PurrNet.SyncDictionary&lt; TKey, TValue &gt;'],['../classPurrNet_1_1SyncDictionary.html#ada4ef21f9ae132688aca2ab86f78b339',1,'PurrNet.SyncDictionary.SyncDictionary()']]],
   ['syncdictionarychange_103',['SyncDictionaryChange',['../structPurrNet_1_1SyncDictionaryChange.html',1,'PurrNet']]],
   ['syncdictionaryoperation_104',['SyncDictionaryOperation',['../namespacePurrNet.html#a7aa16184a63314ebb157015a347b6ae0',1,'PurrNet']]],
   ['syncedtick_105',['syncedTick',['../classPurrNet_1_1Modules_1_1TickManager.html#ab92243b9733c0b56fb5a2b2d7d04e249',1,'PurrNet::Modules::TickManager']]],

@@ -15,5 +15,5 @@ var classPurrNet_1_1NetworkModule =
     [ "OnSpawnSent", "classPurrNet_1_1NetworkModule.html#a79f55a0c992dda9c7eabb81b69e28328", null ],
     [ "PromoteToServer", "classPurrNet_1_1NetworkModule.html#a1370d458228d460a3bc2ce33610555ed", null ],
     [ "observers", "classPurrNet_1_1NetworkModule.html#a9bc3a60a1dfd5f741ac25ff487873f7c", null ],
-    [ "ownerOnly", "classPurrNet_1_1NetworkModule.html#aaab029085f3d7e5853d660a8eb398f6d", null ]
+    [ "ownerOnly", "classPurrNet_1_1NetworkModule.html#a4e3079e7c0e3aefebf4d28383429ff41", null ]
 ];
