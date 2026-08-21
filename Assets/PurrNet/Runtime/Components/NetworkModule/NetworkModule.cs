@@ -46,10 +46,11 @@ namespace PurrNet
         public PlayerID? owner => parent ? parent.owner : null;
 
         /// <summary>
-        /// True when this module was declared with <see cref="OwnerOnlyAttribute"/>.
-        /// Its state is only ever sent to the owner of the parent identity.
+        /// When true, this module's state is only ever sent to the owner of the parent identity.
+        /// Non-owner observers still see the object, they just never receive this module's data.
+        /// Override in your module (or pass ownerOnly: true to a sync type's constructor) to enable.
         /// </summary>
-        public bool ownerOnly { get; private set; }
+        public virtual bool ownerOnly => false;
 
         private List<PlayerID> _ownerOnlyObservers;
 
@@ -76,6 +77,7 @@ namespace PurrNet
 
         private void RefreshOwnerOnlyObservers()
         {
+            _ownerOnlyObservers ??= new List<PlayerID>(1);
             _ownerOnlyObservers.Clear();
 
             var cachedOwner = parent.owner;
@@ -92,13 +94,6 @@ namespace PurrNet
                 _ownerOnlyObservers.Add(cachedOwner.Value);
                 return;
             }
-        }
-
-        [UsedByIL]
-        public void SetOwnerOnlyInternal()
-        {
-            ownerOnly = true;
-            _ownerOnlyObservers ??= new List<PlayerID>(1);
         }
 
         public bool isController => parent && parent.isController;

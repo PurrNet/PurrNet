@@ -18,7 +18,6 @@ namespace PurrNet.Analyzers
                 PurrNetDiagnostics.NetworkModuleProperty,
                 PurrNetDiagnostics.UninitializedNetworkModuleField,
                 PurrNetDiagnostics.NetworkModuleFieldReassignedAfterInitialization,
-                PurrNetDiagnostics.OwnerOnlyOnNonNetworkModule,
                 PurrNetDiagnostics.ObserversBypassesOwnerOnly);
 
         public override void Initialize(AnalysisContext context)
@@ -80,16 +79,6 @@ namespace PurrNet.Analyzers
         {
             var field = (IFieldSymbol)context.Symbol;
 
-            if (symbols.HasAttribute(field, symbols.OwnerOnlyAttribute) &&
-                !symbols.IsNetworkModule(field.Type))
-            {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    PurrNetDiagnostics.OwnerOnlyOnNonNetworkModule,
-                    field.Locations.FirstOrDefault(),
-                    field.Name,
-                    field.Type?.Name ?? "<unknown>"));
-            }
-
             if (!symbols.IsNetworkModule(field.Type))
                 return;
 
@@ -133,16 +122,6 @@ namespace PurrNet.Analyzers
             var property = (IPropertySymbol)context.Symbol;
             if (property.IsImplicitlyDeclared || property.IsIndexer)
                 return;
-
-            if (symbols.HasAttribute(property, symbols.OwnerOnlyAttribute) &&
-                !symbols.IsNetworkModule(property.Type))
-            {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    PurrNetDiagnostics.OwnerOnlyOnNonNetworkModule,
-                    property.Locations.FirstOrDefault(),
-                    property.Name,
-                    property.Type?.Name ?? "<unknown>"));
-            }
 
             if (!symbols.IsNetworkModule(property.Type))
                 return;

@@ -11,8 +11,8 @@ public class SyncVarOwnerOnlyIdentity : NetworkIdentity
 {
     public const int PhaseCount = 7;
 
-    [OwnerOnly, SerializeField] private SyncVar<int> _secret = new(0);
-    [OwnerOnly, SerializeField] private SyncVar<int> _ownerSecret = new(0, ownerAuth: true);
+    [SerializeField] private SyncVar<int> _secret = new(0, ownerOnly: true);
+    [SerializeField] private SyncVar<int> _ownerSecret = new(0, ownerAuth: true, ownerOnly: true);
     [SerializeField] private SyncVar<int> _shared = new(0);
     [SerializeField] private SyncVar<int> _phaseToSample = new(0);
     [SerializeField] private SyncVar<int> _ownerWriteRequest = new(0);

@@ -46,6 +46,10 @@ namespace PurrNet
     {
         [SerializeField] private SyncStatus _syncStatus;
         [SerializeField, PurrLock] private bool _ownerAuth;
+
+        [SerializeField, PurrLock] private bool _ownerOnly;
+
+        public override bool ownerOnly => _ownerOnly;
         [SerializeField, Min(1)] private int _maxKBPerSec;
 
         private List<BigDataState> _pending = new ();
@@ -92,9 +96,10 @@ namespace PurrNet
 
         private float partsPerSecond => maxKBPerSec * 1000f / PART_SIZE;
 
-        public SyncBigData(bool ownerAuth = false, int maxKBPerSec = 15)
+        public SyncBigData(bool ownerAuth = false, int maxKBPerSec = 15, bool ownerOnly = false)
         {
             _ownerAuth = ownerAuth;
+            _ownerOnly = ownerOnly;
             _maxKBPerSec = Mathf.Max(1, maxKBPerSec);
         }
 

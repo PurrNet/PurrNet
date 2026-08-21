@@ -104,12 +104,6 @@ namespace PurrNet.Analyzers
             "NetworkModule member is assigned after module initialization",
             "Assign NetworkModule member '{0}' in an initializer, constructor, Awake, or OnInitializeModules so it is registered correctly");
 
-        public static readonly DiagnosticDescriptor OwnerOnlyOnNonNetworkModule = Error(
-            "PN0108",
-            "[OwnerOnly] requires a NetworkModule member",
-            "[OwnerOnly] on '{0}' has no effect because '{1}' does not inherit NetworkModule",
-            NetworkModuleCategory);
-
         public static readonly DiagnosticDescriptor ObserversBypassesOwnerOnly = Warning(
             "PN0109",
             "parent.observers bypasses owner-only scoping",

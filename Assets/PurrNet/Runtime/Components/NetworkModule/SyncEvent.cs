@@ -51,14 +51,19 @@ namespace PurrNet
     {
         [SerializeField, PurrLock] protected bool _ownerAuth;
 
+        [SerializeField, PurrLock] protected bool _ownerOnly;
+
         /// <summary>
         /// Whether it is the owner or  the server that has the authority to invoke the event
         /// </summary>
         public bool ownerAuth => _ownerAuth;
 
-        protected SyncEventBase(bool ownerAuth = false)
+        public override bool ownerOnly => _ownerOnly;
+
+        protected SyncEventBase(bool ownerAuth = false, bool ownerOnly = false)
         {
             _ownerAuth = ownerAuth;
+            _ownerOnly = ownerOnly;
         }
 
         protected bool ValidateInvoke()
@@ -85,7 +90,7 @@ namespace PurrNet
     {
         protected SyncEventData _lastData;
 
-        protected SyncEventLogic(bool ownerAuth = false) : base(ownerAuth) { }
+        protected SyncEventLogic(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         protected abstract void InvokeUnityEvent(T data);
         protected virtual void ClearUnityEvent() { }
@@ -171,7 +176,7 @@ namespace PurrNet
     {
         [SerializeField] private SerializableSyncUnityEvent unityEvent = new SerializableSyncUnityEvent();
 
-        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+        public SyncEvent(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         public void AddListener(UnityAction listener) => unityEvent.AddListener(listener);
         public void RemoveListener(UnityAction listener) => unityEvent.RemoveListener(listener);
@@ -209,7 +214,7 @@ namespace PurrNet
     {
         [SerializeField] private SerializableSyncUnityEvent<T> unityEvent = new SerializableSyncUnityEvent<T>();
 
-        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+        public SyncEvent(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         public void AddListener(UnityAction<T> listener) => unityEvent.AddListener(listener);
         public void RemoveListener(UnityAction<T> listener) => unityEvent.RemoveListener(listener);
@@ -249,7 +254,7 @@ namespace PurrNet
     {
         [SerializeField] private SerializableSyncUnityEvent<T1, T2> unityEvent = new SerializableSyncUnityEvent<T1, T2>();
 
-        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+        public SyncEvent(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         public void AddListener(UnityAction<T1, T2> listener) => unityEvent.AddListener(listener);
         public void RemoveListener(UnityAction<T1, T2> listener) => unityEvent.RemoveListener(listener);
@@ -290,7 +295,7 @@ namespace PurrNet
     {
         [SerializeField] private SerializableSyncUnityEvent<T1, T2, T3> unityEvent = new SerializableSyncUnityEvent<T1, T2, T3>();
 
-        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+        public SyncEvent(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         public void AddListener(UnityAction<T1, T2, T3> listener) => unityEvent.AddListener(listener);
         public void RemoveListener(UnityAction<T1, T2, T3> listener) => unityEvent.RemoveListener(listener);
@@ -331,7 +336,7 @@ namespace PurrNet
     {
         [SerializeField] private SerializableSyncUnityEvent<T1, T2, T3, T4> unityEvent = new SerializableSyncUnityEvent<T1, T2, T3, T4>();
 
-        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+        public SyncEvent(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         public void AddListener(UnityAction<T1, T2, T3, T4> listener) => unityEvent.AddListener(listener);
         public void RemoveListener(UnityAction<T1, T2, T3, T4> listener) => unityEvent.RemoveListener(listener);
@@ -370,7 +375,7 @@ namespace PurrNet
     {
         private event Action<T1, T2, T3, T4, T5> unityEvent;
 
-        public SyncEvent(bool ownerAuth = false) : base(ownerAuth) { }
+        public SyncEvent(bool ownerAuth = false, bool ownerOnly = false) : base(ownerAuth, ownerOnly) { }
 
         public void AddListener(Action<T1, T2, T3, T4, T5> listener) => unityEvent += listener;
         public void RemoveListener(Action<T1, T2, T3, T4, T5> listener) => unityEvent -= listener;

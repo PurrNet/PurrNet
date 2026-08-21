@@ -21,9 +21,13 @@ namespace PurrNet
         [SerializeField, Space(-5), Header("Sync Settings"), PurrLock]
         private bool _ownerAuth;
 
+        [SerializeField, PurrLock] private bool _ownerOnly;
+
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
 
         public bool ownerAuth => _ownerAuth;
+
+        public override bool ownerOnly => _ownerOnly;
 
         public float sendIntervalInSeconds
         {
@@ -267,12 +271,13 @@ namespace PurrNet
         [SerializeField, HideInInspector]
         private T _initialValue;
 
-        public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false)
+        public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false, bool ownerOnly = false)
         {
             _initialValue = initialValue;
             _value = initialValue;
             _sendIntervalInSeconds = sendIntervalInSeconds;
             _ownerAuth = ownerAuth;
+            _ownerOnly = ownerOnly;
         }
 
         [TargetRpc, UsedImplicitly]
