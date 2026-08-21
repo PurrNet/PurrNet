@@ -1,3 +1,10 @@
+## [1.22.1-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.14...v1.22.1-beta.15) (2026-08-21)
+
+
+### Bug Fixes
+
+* Awaitable ServerRpc returning an IPackedSimple struct returns ([9d61f33](https://github.com/PurrNet/PurrNet/commit/9d61f338a02a2467550eeff027e8f3d05e37fc44))
+
 ## [1.22.1-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.13...v1.22.1-beta.14) (2026-08-21)
 
 
