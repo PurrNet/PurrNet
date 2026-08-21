@@ -1,3 +1,10 @@
+## [1.22.1-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.13...v1.22.1-beta.14) (2026-08-21)
+
+
+### Bug Fixes
+
+* SyncEvent bitpacker bug ([5359f7b](https://github.com/PurrNet/PurrNet/commit/5359f7be26e7c7ae7dea566eed285fe3c19982c3))
+
 ## [1.22.1-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.22.1-beta.12...v1.22.1-beta.13) (2026-08-20)
 
 
