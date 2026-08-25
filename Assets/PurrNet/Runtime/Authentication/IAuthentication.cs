@@ -252,7 +252,8 @@ namespace PurrNet.Authentication
                         ? rules.GetVersionMismatchBehaviour()
                         : VersionMismatchBehaviour.Warning;
 
-                    if (behaviour == VersionMismatchBehaviour.Deny)
+                    if (PurrNet.NetworkManager.ShouldDenyVersionMismatch(
+                            behaviour, _networkManager as PurrNet.NetworkManager))
                         throw new Exception($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");
 
                     PurrLogger.LogWarning($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");
@@ -374,7 +375,8 @@ namespace PurrNet.Authentication
                         ? rules.GetVersionMismatchBehaviour()
                         : VersionMismatchBehaviour.Warning;
 
-                    if (behaviour == VersionMismatchBehaviour.Deny)
+                    if (PurrNet.NetworkManager.ShouldDenyVersionMismatch(
+                            behaviour, _networkManager as PurrNet.NetworkManager))
                         throw new Exception($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");
 
                     PurrLogger.LogWarning($"Client version mismatch. Client version: {clientVersion}, Server version: {NetworkManager.version}");

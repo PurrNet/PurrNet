@@ -7,14 +7,16 @@ using UnityEngine;
 
 namespace PurrNet.Modules
 {
-    public class AddressablesSyncModule : INetworkModule
+    public class AddressablesSyncModule : INetworkModule, IPromoteToServerModule
     {
         public delegate void OnClientAddressableLoadStateChanged(PlayerID player, string guid, bool loaded);
-        
+
         private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
 
         private readonly Dictionary<PlayerID, HashSet<string>> _clientLoadedGuids = new();
+        internal bool isClientModeEnabled { get; private set; }
+        internal bool isServerModeEnabled { get; private set; }
 
         /// <summary>
         /// Fired on the server when a client reports that an Addressable asset has been loaded or unloaded.
@@ -31,18 +33,28 @@ namespace PurrNet.Modules
         {
             if (asServer)
             {
+                if (isServerModeEnabled)
+                    return;
+
+                isServerModeEnabled = true;
                 _playersManager.Subscribe<AddressableLoadStatePacket>(OnLoadStateReceived);
                 _playersManager.onPlayerLeft += OnPlayerLeft;
             }
             else
             {
+                if (isClientModeEnabled)
+                    return;
+
+                isClientModeEnabled = true;
                 if (_manager.networkRules && _manager.networkRules.AddressablesSyncLoadState &&
                     _manager.addressableNetworkPrefabs)
                 {
                     _playersManager.Subscribe<AddressableLoadRequestPacket>(OnLoadRequestReceived);
+                    _playersManager.onLocalPlayerReceivedID += OnLocalPlayerReceivedID;
                     AddressableNetworkPrefabs.onLoadStateChanged += OnClientLoadStateChanged;
-                    foreach (var guid in _manager.addressableNetworkPrefabs.GetLoadedGuids())
-                        SendLoadState(guid, true);
+
+                    if (_playersManager.localPlayerId.HasValue)
+                        ReplayLoadedGuids();
                 }
             }
         }
@@ -51,15 +63,34 @@ namespace PurrNet.Modules
         {
             if (asServer)
             {
+                if (!isServerModeEnabled)
+                    return;
+
+                isServerModeEnabled = false;
                 _playersManager.Unsubscribe<AddressableLoadStatePacket>(OnLoadStateReceived);
                 _playersManager.onPlayerLeft -= OnPlayerLeft;
                 _clientLoadedGuids.Clear();
             }
             else
             {
+                if (!isClientModeEnabled)
+                    return;
+
+                isClientModeEnabled = false;
                 _playersManager.Unsubscribe<AddressableLoadRequestPacket>(OnLoadRequestReceived);
+                _playersManager.onLocalPlayerReceivedID -= OnLocalPlayerReceivedID;
                 AddressableNetworkPrefabs.onLoadStateChanged -= OnClientLoadStateChanged;
             }
+        }
+
+        public void PromoteToServerModule()
+        {
+            Disable(false);
+            Enable(true);
+        }
+
+        public void PostPromoteToServerModule()
+        {
         }
 
         private async void OnLoadRequestReceived(PlayerID sender, AddressableLoadRequestPacket packet, bool asServer)
@@ -82,6 +113,22 @@ namespace PurrNet.Modules
                 return;
 
             SendLoadState(guid, loaded);
+        }
+
+        private void OnLocalPlayerReceivedID(PlayerID player)
+        {
+            ReplayLoadedGuids();
+        }
+
+        private void ReplayLoadedGuids()
+        {
+            if (!isClientModeEnabled || !_manager.networkRules ||
+                !_manager.networkRules.AddressablesSyncLoadState ||
+                !_manager.addressableNetworkPrefabs)
+                return;
+
+            foreach (var guid in _manager.addressableNetworkPrefabs.GetLoadedGuids())
+                SendLoadState(guid, true);
         }
 
         private void SendLoadState(string guid, bool loaded)
@@ -116,7 +163,7 @@ namespace PurrNet.Modules
             if (packet.loaded && _manager.TryGetModule<HierarchyFactory>(true, out var factory))
                 factory.EvaluateVisibilityForPlayer(player);
         }
-        
+
         /// <summary>
         /// Gets which GUIDs the given client has loaded
         /// </summary>
@@ -131,10 +178,10 @@ namespace PurrNet.Modules
         {
             if (!asServer)
                 return;
-            
+
             _clientLoadedGuids.Remove(player);
         }
-        
+
         /// <summary>
         /// Returns all players that have reported the given Addressable GUID as loaded.
         /// </summary>

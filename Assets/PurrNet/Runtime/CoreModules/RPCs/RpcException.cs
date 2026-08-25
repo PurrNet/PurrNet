@@ -47,6 +47,16 @@ namespace PurrNet
     }
 
     /// <summary>
+    /// Raised on every in-flight awaited RPC when a host migration (promotion or transfer)
+    /// fences it: a response from the old authority cannot safely complete a request that
+    /// now belongs to the new one. Retry the call against the new host if needed.
+    /// </summary>
+    public sealed class HostMigratedException : RpcException
+    {
+        public HostMigratedException(string message) : base(message) { }
+    }
+
+    /// <summary>
     /// Wraps an exception thrown by an RPC handler so the manifest entry shows up in the message
     /// while the original stack trace is preserved as InnerException for clickable navigation.
     /// </summary>

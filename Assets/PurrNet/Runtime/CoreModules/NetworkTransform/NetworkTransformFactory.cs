@@ -3,7 +3,8 @@ using PurrNet.Logging;
 
 namespace PurrNet.Modules
 {
-    public class NetworkTransformFactory : INetworkModule, IPostBatch, IPromoteToServerModule
+    public class NetworkTransformFactory : INetworkModule, IPostBatch, IPromoteToServerModule,
+        ITransferToNewServer
     {
         readonly ScenesModule _scenes;
         readonly ScenePlayersModule _scenePlayers;
@@ -36,6 +37,12 @@ namespace PurrNet.Modules
                 _rawModules[i].PostPromoteToServerModule();
         }
 
+        public void TransferToNewServer()
+        {
+            for (var i = 0; i < _rawModules.Count; i++)
+                _rawModules[i].TransferToNewServer();
+        }
+
         public void Enable(bool asServer)
         {
             var scenes = _scenes.sceneStates;
@@ -46,8 +53,9 @@ namespace PurrNet.Modules
                     OnPreSceneLoaded(id, asServer);
             }
 
-            _scenes.onPreSceneLoaded += OnPreSceneLoaded;
+            _scenes.onSceneRegistrationAdded += OnPreSceneLoaded;
             _scenes.onSceneUnloaded += OnSceneUnloaded;
+            _scenes.onSceneRegistrationRemoved += OnSceneUnloaded;
         }
 
         public void Disable(bool asServer)
@@ -55,8 +63,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _rawModules.Count; i++)
                 _rawModules[i].Disable(asServer);
 
-            _scenes.onPreSceneLoaded -= OnPreSceneLoaded;
+            _scenes.onSceneRegistrationAdded -= OnPreSceneLoaded;
             _scenes.onSceneUnloaded -= OnSceneUnloaded;
+            _scenes.onSceneRegistrationRemoved -= OnSceneUnloaded;
         }
 
         private void OnPreSceneLoaded(SceneID scene, bool asServer)

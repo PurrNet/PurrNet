@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PurrNet.Logging;
 using PurrNet.Packing;
 using PurrNet.Pooling;
+using PurrNet.Transports;
 using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -21,6 +23,43 @@ namespace PurrNet.Modules
 
     public class HierarchyV2 : IPromoteToServerModule, ITransferToNewServer
     {
+        private readonly struct RetainedIdentityGraphEntry
+        {
+            internal readonly NetworkIdentity identity;
+            internal readonly NetworkID roleId;
+            internal readonly NetworkIdentity parent;
+            internal readonly NetworkIdentity root;
+            internal readonly Transform transformParent;
+            internal readonly bool isManual;
+
+            internal RetainedIdentityGraphEntry(NetworkIdentity identity, NetworkID roleId,
+                NetworkIdentity parent, NetworkIdentity root, Transform transformParent,
+                bool isManual)
+            {
+                this.identity = identity;
+                this.roleId = roleId;
+                this.parent = parent;
+                this.root = root;
+                this.transformParent = transformParent;
+                this.isManual = isManual;
+            }
+        }
+
+        private sealed class RetainedSceneGraphProof : IDisposable
+        {
+            internal bool regularRootsOnly;
+            internal readonly List<RetainedIdentityGraphEntry> identities = new();
+            internal readonly Dictionary<NetworkIdentity, GameObjectPrototype> rootTopologies = new();
+
+            public void Dispose()
+            {
+                foreach (var topology in rootTopologies.Values)
+                    topology.Dispose();
+                rootTopologies.Clear();
+                identities.Clear();
+            }
+        }
+
         private bool _asServer;
 
         private readonly NetworkManager _manager;
@@ -31,11 +70,11 @@ namespace PurrNet.Modules
         private readonly VisilityV2 _visibility;
 
         private readonly HierarchyPool _scenePool;
+        private NetworkPoolManager.ScenePoolLease _scenePoolLease;
         private readonly HierarchyPool _prefabsPool;
 
-        private readonly List<NetworkIdentity> _spawnedIdentities = new();
-        private readonly Dictionary<NetworkID, NetworkIdentity> _spawnedIdentitiesMap = new();
-
+        private List<NetworkIdentity> _spawnedIdentities = new();
+        private Dictionary<NetworkID, NetworkIdentity> _spawnedIdentitiesMap = new();
         private ulong _nextId;
 
         private bool _areSceneObjectsReady;
@@ -92,6 +131,14 @@ namespace PurrNet.Modules
         /// </summary>
         public event IdentityAction onIdentityRemoved;
 
+        internal void AppendSpawnedIdentitySnapshot(List<NetworkIdentity> destination)
+        {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            destination.AddRange(_spawnedIdentities);
+        }
+
         /// <summary>
         /// Triggered whenever a new observer is added to a networked identity.
         /// This event allows for custom logic to be executed when an observer becomes associated
@@ -130,6 +177,393 @@ namespace PurrNet.Modules
 
         private bool _isPlayerReady;
 
+        private HostMigrationTransitionOptions _transferReconciliationOptions;
+        private bool _transferReconciliationRequested;
+        private bool _transferSessionValidated;
+        private bool _transferPreambleReceived;
+        private bool _transferReconciliationArmed;
+        private bool _transferEndReceived;
+        private bool _transferReconciliationComplete = true;
+        private readonly HashSet<NetworkIdentity> _retainedTransferRoots = new();
+        private readonly HashSet<NetworkIdentity> _ownedManualTransferRoots = new();
+        private readonly HashSet<NetworkIdentity> _confirmedTransferRoots = new();
+        private readonly Dictionary<NetworkID, NetworkIdentity> _retainedTransferRootsById = new();
+        private readonly Dictionary<SpawnID, DisposableList<NetworkIdentity>>
+            _pendingReconciledSpawns = new();
+        private readonly List<Task> _pendingReconciliationReadiness = new();
+        private readonly HashSet<NetworkIdentity> _reconciliationNotifiedIdentities = new();
+        private readonly Dictionary<SpawnID, HostMigrationTransitionOptions>
+            _exactBarrierBypassFinishes = new();
+        private PlayerID? _buildingExactSnapshotForPlayer;
+        private HostMigrationTransitionOptions _buildingExactSnapshotTransition;
+        private ExactSceneSnapshotStagingJournal _activeExactSnapshotStagingJournal;
+        private SceneSpawnReconcileManifest _expectedTransferSpawnManifest;
+        private Exception _transferReconciliationFailure;
+        private Task _promotionReadiness = Task.CompletedTask;
+
+        private readonly struct PendingSceneReconcileEnd
+        {
+            internal readonly PlayerID player;
+            internal readonly SceneSpawnReconcilePacket packet;
+            internal readonly HierarchyV2 promotedListenClient;
+
+            internal PendingSceneReconcileEnd(PlayerID player,
+                SceneSpawnReconcilePacket packet, HierarchyV2 promotedListenClient)
+            {
+                this.player = player;
+                this.packet = packet;
+                this.promotedListenClient = promotedListenClient;
+            }
+        }
+
+        private readonly List<PendingSceneReconcileEnd> _sceneReconcileEndsNextFrame = new();
+
+        internal sealed class ExactSceneSnapshotPlan : IDisposable
+        {
+            internal readonly HierarchyV2 hierarchy;
+            internal readonly PlayerID player;
+            internal readonly HostMigrationTransitionOptions transition;
+            internal readonly HierarchyV2 promotedListenClient;
+            internal SceneSpawnReconcileBeginPacket preamble;
+            internal bool ownsPreamble;
+            internal SpawnPacketBatch batch;
+            internal bool ownsBatch;
+            internal SceneSpawnReconcileManifest promotedManifest;
+            internal List<SpawnID> syntheticFinishes;
+            internal List<NetworkIdentity> promotedNewlyRegistered;
+            private ExactSceneSnapshotStagingJournal _stagingJournal;
+            internal IDisposable graphProof;
+            internal IDisposable promotedClientGraphProof;
+
+            internal ExactSceneSnapshotPlan(HierarchyV2 hierarchy, PlayerID player,
+                HostMigrationTransitionOptions transition,
+                HierarchyV2 promotedListenClient,
+                SceneSpawnReconcileBeginPacket preamble)
+            {
+                this.hierarchy = hierarchy;
+                this.player = player;
+                this.transition = transition;
+                this.promotedListenClient = promotedListenClient;
+                this.preamble = preamble;
+                ownsPreamble = true;
+            }
+
+            internal void AttachStagingJournal(ExactSceneSnapshotStagingJournal journal)
+            {
+                if (_stagingJournal != null)
+                    throw new InvalidOperationException(
+                        $"Scene {hierarchy._sceneId} exact snapshot already owns a staging journal.");
+                _stagingJournal = journal ?? throw new ArgumentNullException(nameof(journal));
+            }
+
+            internal void AcceptStaging()
+            {
+                _stagingJournal?.Accept();
+            }
+
+            public void Dispose()
+            {
+                if (ownsPreamble)
+                {
+                    ownsPreamble = false;
+                    preamble.Dispose();
+                }
+
+                if (ownsBatch)
+                {
+                    ownsBatch = false;
+                    batch.Dispose();
+                }
+
+                _stagingJournal?.Dispose();
+                _stagingJournal = null;
+
+                graphProof?.Dispose();
+                graphProof = null;
+                promotedClientGraphProof?.Dispose();
+                promotedClientGraphProof = null;
+
+                promotedManifest?.Dispose();
+                promotedManifest = null;
+                if (syntheticFinishes != null)
+                {
+                    ListPool<SpawnID>.Destroy(syntheticFinishes);
+                    syntheticFinishes = null;
+                }
+                promotedNewlyRegistered = null;
+            }
+        }
+
+        private enum ExactObserverState : byte
+        {
+            None,
+            Observer,
+            Pending
+        }
+
+        internal enum ExactObserverLifecycle : byte
+        {
+            Added,
+            Removed
+        }
+
+        private readonly struct ExactObserverSnapshot
+        {
+            internal readonly NetworkIdentity identity;
+            internal readonly ExactObserverState state;
+
+            internal ExactObserverSnapshot(NetworkIdentity identity, ExactObserverState state)
+            {
+                this.identity = identity;
+                this.state = state;
+            }
+        }
+
+        private readonly struct ExactObserverLifecycleEntry
+        {
+            internal readonly NetworkIdentity identity;
+            internal readonly ExactObserverLifecycle lifecycle;
+            internal readonly bool isSpawner;
+
+            internal ExactObserverLifecycleEntry(NetworkIdentity identity,
+                ExactObserverLifecycle lifecycle, bool isSpawner)
+            {
+                this.identity = identity;
+                this.lifecycle = lifecycle;
+                this.isSpawner = isSpawner;
+            }
+        }
+
+        internal sealed class ExactSceneSnapshotStagingJournal : IDisposable
+        {
+            private readonly HierarchyV2 _hierarchy;
+            private readonly PlayerID _player;
+            private readonly List<ExactObserverSnapshot> _observers = new();
+            private readonly HashSet<NetworkIdentity> _capturedIdentities = new();
+            private readonly List<ExactObserverLifecycleEntry> _lifecycle = new();
+            private readonly List<PlayerNid> _lateObservers;
+            private readonly Dictionary<SpawnID, PendingAsyncObserverSpawn> _pendingAsyncObservers;
+            private readonly Dictionary<SpawnID, PendingAsyncObserverSpawn> _readyAsyncObservers;
+            private readonly Dictionary<PendingAsyncObserverSpawn, bool> _asyncSentState = new();
+            private readonly HashSet<(PlayerID player, NetworkID root)> _failedAsyncObserverRoots;
+            private readonly List<SpawnID> _toCompleteNextFrame;
+            private readonly Dictionary<SpawnID, HostMigrationTransitionOptions> _exactFinishes;
+            private readonly List<PendingSceneReconcileEnd> _sceneReconcileEnds;
+            private bool _accepted;
+            private bool _disposed;
+
+            internal ExactSceneSnapshotStagingJournal(HierarchyV2 hierarchy, PlayerID player)
+            {
+                _hierarchy = hierarchy;
+                _player = player;
+
+                for (var i = 0; i < hierarchy._spawnedIdentities.Count; i++)
+                {
+                    var identity = hierarchy._spawnedIdentities[i];
+                    if (!identity)
+                        continue;
+
+                    var state = identity.IsObserver(player)
+                        ? ExactObserverState.Observer
+                        : identity.IsObserverOrPending(player)
+                            ? ExactObserverState.Pending
+                            : ExactObserverState.None;
+                    _observers.Add(new ExactObserverSnapshot(identity, state));
+                    _capturedIdentities.Add(identity);
+                }
+
+                _lateObservers = new List<PlayerNid>(hierarchy._triggerLateObserverAdded);
+                _pendingAsyncObservers = new Dictionary<SpawnID, PendingAsyncObserverSpawn>(
+                    hierarchy._pendingAsyncObservers);
+                _readyAsyncObservers = new Dictionary<SpawnID, PendingAsyncObserverSpawn>(
+                    hierarchy._readyAsyncObservers);
+                foreach (var pending in _pendingAsyncObservers.Values)
+                    _asyncSentState[pending] = pending.sent;
+                foreach (var ready in _readyAsyncObservers.Values)
+                    _asyncSentState[ready] = ready.sent;
+                _failedAsyncObserverRoots = new HashSet<(PlayerID player, NetworkID root)>(
+                    hierarchy._failedAsyncObserverRoots);
+                _toCompleteNextFrame = new List<SpawnID>(hierarchy._toCompleteNextFrame);
+                _exactFinishes = new Dictionary<SpawnID, HostMigrationTransitionOptions>(
+                    hierarchy._exactBarrierBypassFinishes);
+                _sceneReconcileEnds = new List<PendingSceneReconcileEnd>(
+                    hierarchy._sceneReconcileEndsNextFrame);
+            }
+
+            internal void Record(NetworkIdentity identity, ExactObserverLifecycle lifecycle,
+                bool isSpawner = false)
+            {
+                if (!_accepted && !_disposed && identity)
+                    _lifecycle.Add(new ExactObserverLifecycleEntry(identity, lifecycle, isSpawner));
+            }
+
+            internal bool IsFor(PlayerID player) => _player == player;
+            internal PlayerID player => _player;
+
+            internal void Accept()
+            {
+                _accepted = true;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+                _disposed = true;
+                if (_accepted)
+                    return;
+
+                _hierarchy.RollbackExactSnapshotStaging(this);
+            }
+
+            internal void RestoreState()
+            {
+                RestoreObserverMembership();
+
+                RestorePlayerScopedDictionary(
+                    _hierarchy._pendingAsyncObservers, _pendingAsyncObservers);
+                RestorePlayerScopedDictionary(
+                    _hierarchy._readyAsyncObservers, _readyAsyncObservers);
+                foreach (var pair in _pendingAsyncObservers)
+                {
+                    if (pair.Key.target == _player && _asyncSentState.TryGetValue(pair.Value, out var sent))
+                        pair.Value.sent = sent;
+                }
+                foreach (var pair in _readyAsyncObservers)
+                {
+                    if (pair.Key.target == _player && _asyncSentState.TryGetValue(pair.Value, out var sent))
+                        pair.Value.sent = sent;
+                }
+
+                _hierarchy._failedAsyncObserverRoots.RemoveWhere(entry => entry.player == _player);
+                foreach (var entry in _failedAsyncObserverRoots)
+                {
+                    if (entry.player == _player)
+                        _hierarchy._failedAsyncObserverRoots.Add(entry);
+                }
+
+                _hierarchy._toCompleteNextFrame.RemoveAll(id => id.target == _player);
+                for (var i = 0; i < _toCompleteNextFrame.Count; i++)
+                {
+                    if (_toCompleteNextFrame[i].target == _player)
+                        _hierarchy._toCompleteNextFrame.Add(_toCompleteNextFrame[i]);
+                }
+
+                RestorePlayerScopedDictionary(
+                    _hierarchy._exactBarrierBypassFinishes, _exactFinishes);
+
+                _hierarchy._sceneReconcileEndsNextFrame.RemoveAll(end => end.player == _player);
+                for (var i = 0; i < _sceneReconcileEnds.Count; i++)
+                {
+                    if (_sceneReconcileEnds[i].player == _player)
+                        _hierarchy._sceneReconcileEndsNextFrame.Add(_sceneReconcileEnds[i]);
+                }
+
+                _hierarchy._triggerLateObserverAdded.RemoveAll(entry => entry.player == _player);
+                for (var i = 0; i < _lateObservers.Count; i++)
+                {
+                    if (_lateObservers[i].player == _player)
+                        _hierarchy._triggerLateObserverAdded.Add(_lateObservers[i]);
+                }
+            }
+
+            private void RestorePlayerScopedDictionary<TValue>(
+                Dictionary<SpawnID, TValue> live, Dictionary<SpawnID, TValue> snapshot)
+            {
+                using var toRemove = DisposableList<SpawnID>.Create(16);
+                foreach (var pair in live)
+                {
+                    if (pair.Key.target == _player)
+                        toRemove.Add(pair.Key);
+                }
+                for (var i = 0; i < toRemove.Count; i++)
+                    live.Remove(toRemove[i]);
+
+                foreach (var pair in snapshot)
+                {
+                    if (pair.Key.target == _player)
+                        live[pair.Key] = pair.Value;
+                }
+            }
+
+            private void RestoreObserverMembership()
+            {
+                for (var i = 0; i < _hierarchy._spawnedIdentities.Count; i++)
+                {
+                    var current = _hierarchy._spawnedIdentities[i];
+                    if (current && !_capturedIdentities.Contains(current))
+                        current.TryRemoveObserver(_player);
+                }
+
+                for (var i = 0; i < _observers.Count; i++)
+                {
+                    var snapshot = _observers[i];
+                    var identity = snapshot.identity;
+                    if (!identity)
+                        continue;
+
+                    identity.TryRemoveObserver(_player);
+                    switch (snapshot.state)
+                    {
+                        case ExactObserverState.Observer:
+                            identity.TryAddObserver(_player);
+                            break;
+                        case ExactObserverState.Pending:
+                            if (identity.TryAddObserver(_player))
+                                identity.TryMoveObserverToPending(_player);
+                            break;
+                    }
+                }
+            }
+
+            internal void CompensateLifecycle()
+            {
+                for (var i = _lifecycle.Count - 1; i >= 0; i--)
+                {
+                    var entry = _lifecycle[i];
+                    if (!entry.identity)
+                        continue;
+
+                    if (entry.lifecycle == ExactObserverLifecycle.Added)
+                    {
+                        _hierarchy.InvokeExactRollbackObserverRemoved(_player, entry.identity);
+                    }
+                    else
+                    {
+                        _hierarchy.InvokeExactRollbackObserverAdded(
+                            _player, entry.identity, entry.isSpawner);
+                    }
+                }
+            }
+        }
+
+        internal Task promotionReadiness => _promotionReadiness;
+
+        internal SceneID sceneId => _sceneId;
+
+        internal bool IsAwaitingExactTransferPreamble(
+            HostMigrationTransitionOptions transition) =>
+            !_asServer && _transferReconciliationRequested &&
+            !_transferReconciliationComplete &&
+            _transferReconciliationOptions == transition;
+
+        internal bool isTransferReconciliationComplete
+        {
+            get
+            {
+                PollReconciliationReadiness();
+                TryFinalizeTransferReconciliation();
+                return !_transferReconciliationRequested || _transferReconciliationComplete;
+            }
+        }
+
+        internal bool TryGetTransferReconciliationFailure(out Exception failure)
+        {
+            PollReconciliationReadiness();
+            failure = _transferReconciliationFailure;
+            return failure != null;
+        }
+
         public HierarchyV2(NetworkManager manager, SceneID sceneId, Scene scene,
             ScenePlayersModule players, PlayersManager playersManager, bool asServer)
         {
@@ -142,16 +576,40 @@ namespace PurrNet.Modules
             _asServer = asServer;
             _playersManager = playersManager;
 
-            _scenePool = NetworkPoolManager.GetScenePool(scene, sceneId);
-            _prefabsPool = NetworkPoolManager.GetPool(manager);
+            _scenePoolLease = NetworkPoolManager.AcquireScenePool(manager, scene, sceneId);
+            _scenePool = _scenePoolLease.pool;
 
-            UnityLatestUpdate.TriggerPendingAsaps();
-
-            SetupSceneObjects(scene);
+            try
+            {
+                _prefabsPool = NetworkPoolManager.GetPool(manager);
+                UnityLatestUpdate.TriggerPendingAsaps();
+                SetupSceneObjects(scene);
+            }
+            catch
+            {
+                ReleaseScenePoolLease();
+                throw;
+            }
         }
 
         public void PromoteToServerModule()
         {
+            if (_manager.hostMigrationSession.canReconcile &&
+                (TryGetAuthoritySwitchQueueFailure(out var queueFailure) ||
+                 !TryValidateExactAuthoritySwitchGraph(
+                     _manager, _sceneId, _scene, true, out queueFailure)))
+            {
+                throw new InvalidOperationException(
+                    $"Scene {_sceneId} cannot begin exact server promotion while ordinary " +
+                    $"hierarchy work is pending: {queueFailure}.");
+            }
+
+            _clientSpawnGeneration++;
+            _deferredPrefabSpawnCount = 0;
+            ClearAsyncSpawnState();
+            ClearPendingReceivedSpawnTransactions();
+            _pendingLocalDespawnEchoes.Dispose();
+
             _asServer = true;
             _nextId = default;
             _isDisposed = false;
@@ -164,54 +622,334 @@ namespace PurrNet.Modules
                     _nextId = identity.id.Value.id.value + 1;
 
                 identity.ClearObservers();
+                identity.ReconcileClientRoleAsServer(this);
             }
+        }
+
+        internal bool TryGetAuthoritySwitchQueueFailure(out string failure)
+        {
+            List<string> pending = null;
+
+            void Add(string name, int count)
+            {
+                if (count <= 0)
+                    return;
+                pending ??= new List<string>();
+                pending.Add($"{name}={count}");
+            }
+
+            Add("spawn-lifecycle", _toSpawnNextFrame.Count);
+            Add("spawn-lifecycle-buffer", _toSpawnNextFrameBuffer.Count);
+            Add("outgoing-finish", _toCompleteNextFrame.Count);
+            Add("outgoing-batches", _spawnPackets.Count);
+            Add("late-observer-callbacks", _triggerLateObserverAdded.Count);
+            Add("reconcile-end", _sceneReconcileEndsNextFrame.Count);
+            Add("incoming-spawns", _pendingSpawns.Count);
+            Add("early-finish", _pendingFinishSpawns.Count);
+            Add("early-despawn", _pendingDespawns.Count);
+            Add("deferred-prefab", _deferredPrefabSpawnCount);
+            Add("async-client-spawns", _asyncPendingSpawns.Count);
+            Add("async-observer-spawns", _pendingAsyncObservers.Count);
+            Add("ready-async-observers", _readyAsyncObservers.Count);
+            if (!_pendingLocalDespawnEchoes.isDisposed)
+                Add("local-despawn-echoes", _pendingLocalDespawnEchoes.Count);
+#if PURRNET_UNITY_INSTANTIATE_ASYNC
+            Add("async-instantiations", _pendingAsyncInstantiations.Count);
+#endif
+
+            if (pending == null)
+            {
+                failure = null;
+                return false;
+            }
+
+            failure = $"scene {_sceneId}: {string.Join(", ", pending)}";
+            return true;
+        }
+
+        internal bool TryPreflightExactStaleSceneRetirement(
+            Scene claimedScene, bool asServer, out string failure)
+        {
+            failure = null;
+            if (_asServer != asServer || !_enabled || _isDisposed)
+            {
+                failure = $"scene {_sceneId} is not an enabled retained " +
+                          $"{(asServer ? "server" : "client")} hierarchy";
+                return false;
+            }
+
+            if (_scene != claimedScene || !_scene.IsValid() || !_scene.isLoaded)
+            {
+                failure = $"scene {_sceneId} is not bound to the claimed loaded Unity scene";
+                return false;
+            }
+
+            if (_transferReconciliationFailure != null)
+            {
+                failure = $"scene {_sceneId} already rejected exact reconciliation: " +
+                          _transferReconciliationFailure.Message;
+                return false;
+            }
+
+            if (TryGetAuthoritySwitchQueueFailure(out failure))
+            {
+                failure = $"scene {_sceneId} cannot retire its stale hierarchy while work is pending: " +
+                          failure;
+                return false;
+            }
+
+            if (!TryValidateRetainedSceneMembership(out failure))
+                return false;
+
+            return TryValidateStaleRetirementPhysicalRoster(out failure);
+        }
+
+        internal bool TryRetireExactStaleSceneHierarchy(
+            Scene claimedScene, bool asServer, out string failure)
+        {
+            if (!TryPreflightExactStaleSceneRetirement(
+                    claimedScene, asServer, out failure))
+                return false;
+
+            if (_spawnedIdentities.Count == 0)
+                return true;
+
+            var identities = ListPool<NetworkIdentity>.Instantiate();
+            var preservedRoots = HashSetPool<NetworkIdentity>.Instantiate();
+            var regularRoots = HashSetPool<NetworkIdentity>.Instantiate();
+            identities.AddRange(_spawnedIdentities);
+
+            try
+            {
+                for (var i = 0; i < identities.Count; i++)
+                {
+                    var identity = identities[i];
+                    var root = identity ? identity.GetRootIdentity() : null;
+                    if (root && (identity.isManualSpawn || identity.IsSpawned(!_asServer)))
+                        preservedRoots.Add(root);
+                }
+
+                for (var i = 0; i < identities.Count; i++)
+                {
+                    var identity = identities[i];
+                    var root = identity ? identity.GetRootIdentity() : null;
+                    if (root && !preservedRoots.Contains(root))
+                        regularRoots.Add(root);
+                }
+
+                foreach (var root in regularRoots)
+                {
+                    try
+                    {
+                        Despawn(root.gameObject, true, true);
+                    }
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogError(
+                            $"Scene {_sceneId} could not physically retire stale root " +
+                            $"'{root.name}'; preserving it after network-role retirement: {e.Message}");
+                        PurrLogger.LogException(e);
+                    }
+                }
+
+                for (var i = identities.Count - 1; i >= 0; i--)
+                    RetireStaleIdentityRoleIfRegistered(identities[i]);
+
+                if (_spawnedIdentities.Count != 0 || _spawnedIdentitiesMap.Count != 0)
+                {
+                    failure = $"scene {_sceneId} still owns {_spawnedIdentities.Count} list and " +
+                              $"{_spawnedIdentitiesMap.Count} mapped identities after stale retirement";
+                    return false;
+                }
+
+                failure = null;
+                return true;
+            }
+            finally
+            {
+                HashSetPool<NetworkIdentity>.Destroy(regularRoots);
+                HashSetPool<NetworkIdentity>.Destroy(preservedRoots);
+                ListPool<NetworkIdentity>.Destroy(identities);
+            }
+        }
+
+        private void RetireStaleIdentityRoleIfRegistered(NetworkIdentity identity)
+        {
+            if (!identity)
+                return;
+
+            var roleId = identity.GetNetworkID(_asServer);
+            if (!roleId.HasValue ||
+                !_spawnedIdentitiesMap.TryGetValue(roleId.Value, out var registered) ||
+                !ReferenceEquals(registered, identity))
+                return;
+
+            if (identity.IsSpawned(_asServer))
+                ManualDespawn(identity);
+            else
+                UnregisterIdentity(identity);
+        }
+
+        internal bool TryValidateExactAuthoritySwitchGraph(NetworkManager claimedManager,
+            SceneID claimedSceneId, Scene claimedScene, bool promotion, out string failure)
+        {
+            failure = null;
+            if (_asServer || !ReferenceEquals(_manager, claimedManager))
+            {
+                failure = $"scene {_sceneId} is not a retained client hierarchy for the claimed manager";
+                return false;
+            }
+
+            if (!_enabled || _isDisposed)
+            {
+                failure = $"scene {_sceneId} retained client hierarchy is disabled or disposed";
+                return false;
+            }
+
+            if (_sceneId != claimedSceneId || _scene != claimedScene ||
+                !_scene.IsValid() || !_scene.isLoaded)
+            {
+                failure = $"scene {_sceneId} is not bound to its claimed loaded Unity scene";
+                return false;
+            }
+
+            if (_spawnedIdentities.Count != _spawnedIdentitiesMap.Count)
+            {
+                failure = $"scene {_sceneId} identity list/map counts differ " +
+                          $"({_spawnedIdentities.Count}/{_spawnedIdentitiesMap.Count})";
+                return false;
+            }
+
+            var registered = new HashSet<NetworkIdentity>();
+            var clientIds = new HashSet<NetworkID>();
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                if (!identity)
+                {
+                    failure = $"scene {_sceneId} identity list contains a destroyed entry";
+                    return false;
+                }
+
+                if (!registered.Add(identity))
+                {
+                    failure = $"scene {_sceneId} identity list contains {identity.name} more than once";
+                    return false;
+                }
+
+                if (!ReferenceEquals(identity.networkManager, _manager) ||
+                    identity.sceneId != _sceneId || identity.gameObject.scene != _scene)
+                {
+                    failure = $"scene {_sceneId} identity {identity.name} has drifted from its " +
+                              "manager, SceneID, or physical Unity scene";
+                    return false;
+                }
+
+                if (!identity.CanRetainClientRoleForExactAuthoritySwitch(
+                        this, promotion, out var clientId, out var roleFailure))
+                {
+                    failure = $"scene {_sceneId} identity {identity.name} is not stable: {roleFailure}";
+                    return false;
+                }
+
+                if (!clientIds.Add(clientId))
+                {
+                    failure = $"scene {_sceneId} client-role NetworkID {clientId} is duplicated";
+                    return false;
+                }
+
+                if (!_spawnedIdentitiesMap.TryGetValue(clientId, out var mapped) ||
+                    !ReferenceEquals(mapped, identity))
+                {
+                    failure = $"scene {_sceneId} identity list/map disagree at client-role " +
+                              $"NetworkID {clientId}";
+                    return false;
+                }
+            }
+
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                var root = identity.gameObject.GetComponent<NetworkIdentity>();
+                if (!root || !registered.Contains(root))
+                {
+                    failure = $"scene {_sceneId} identity {identity.name} has no registered stable root";
+                    return false;
+                }
+
+                var ancestry = new HashSet<NetworkIdentity> { identity };
+                var current = identity.parent;
+                while (!ReferenceEquals(current, null))
+                {
+                    if (!current)
+                    {
+                        failure = $"scene {_sceneId} identity {identity.name} has a destroyed parent";
+                        return false;
+                    }
+
+                    if (!registered.Contains(current))
+                    {
+                        failure = $"scene {_sceneId} identity {identity.name} has an unregistered parent";
+                        return false;
+                    }
+
+                    if (!ancestry.Add(current))
+                    {
+                        failure = $"scene {_sceneId} identity {identity.name} has a cyclic root chain";
+                        return false;
+                    }
+
+                    root = current;
+                    current = current.parent;
+                }
+
+                var rootId = root.GetNetworkID(false);
+                if (!rootId.HasValue ||
+                    !_spawnedIdentitiesMap.TryGetValue(rootId.Value, out var mappedRoot) ||
+                    !ReferenceEquals(mappedRoot, root))
+                {
+                    failure = $"scene {_sceneId} identity {identity.name} resolves to an unstable root";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void ClearLegacyAuthoritySwitchQueues()
+        {
+            _toSpawnNextFrame.Clear();
+            _toSpawnNextFrameBuffer.Clear();
+            _toCompleteNextFrame.Clear();
+            _exactBarrierBypassFinishes.Clear();
+            _triggerLateObserverAdded.Clear();
+            _sceneReconcileEndsNextFrame.Clear();
+
+            foreach (var batch in _spawnPackets.Values)
+                batch.Dispose();
+            _spawnPackets.Clear();
         }
 
         public void PostPromoteToServerModule()
         {
-            for (var i = 0; i < _spawnedIdentities.Count; i++)
-            {
-                var identity = _spawnedIdentities[i];
-                var clientId = identity.GetNetworkID(false);
-                if (clientId.HasValue)
-                    identity.SetID(clientId.Value);
-
-                if (identity.IsSpawned(false))
-                {
-                    var owner = identity.owner;
-                    if (owner.HasValue)
-                    {
-                        identity.TriggerOnOwnerChanged(owner.Value, null, false, false);
-                    }
-                    identity.TriggerDespawnEvent(false);
-                    identity.SetIsSpawned(false, false);
-                }
-            }
-
-            for (var i = 0; i < _spawnedIdentities.Count; i++)
-            {
-                var identity = _spawnedIdentities[i];
-                var prevOwner = identity.internalOwnerServer;
-                identity.SetIdentity(_manager, this, _sceneId, _asServer, false);
-                identity.internalOwnerServer = prevOwner;
-                identity.TriggerEarlySpawnEvent(true);
-
-                if (prevOwner.HasValue)
-                {
-                    identity.TriggerOnOwnerChanged(null, prevOwner.Value, true, false);
-                    identity.TriggerOnOwnerDisconnected(prevOwner.Value);
-                }
-
-                identity.TriggerSpawnEvent(true);
-            }
-
             RebuildSpawnedHierarchyLinks();
 
+            List<Task> readiness = null;
+
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
-                identity.TriggerPromoteToServer();
+                var task = identity.TriggerPromoteToServer(_manager.hostMigrationSession);
+                if (task.IsCompletedSuccessfully)
+                    continue;
+
+                readiness ??= new List<Task>();
+                readiness.Add(task);
             }
+
+            _promotionReadiness = readiness == null
+                ? Task.CompletedTask
+                : Task.WhenAll(readiness);
         }
 
         private void RebuildSpawnedHierarchyLinks()
@@ -343,6 +1081,7 @@ namespace PurrNet.Modules
 #endif
             _visibility.visibilityChanged += OnVisibilityChanged;
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
+            _scenePlayers.onPrePlayerSceneReboundInternal += OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
 
@@ -353,7 +1092,9 @@ namespace PurrNet.Modules
             _playersManager.Subscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Subscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
             _playersManager.Subscribe<AsyncSpawnReadyPacket>(OnAsyncSpawnReadyPacket);
+            _playersManager.Subscribe<SceneSpawnReconcileBeginPacket>(OnSceneSpawnReconcileBeginPacket);
             _playersManager.Subscribe<SceneSpawnReconcilePacket>(OnSceneSpawnReconcilePacket);
+            _playersManager.Subscribe<SceneSpawnReconcileAbortPacket>(OnSceneSpawnReconcileAbortPacket);
             _playersManager.Subscribe<ChangeParentPacket>(OnParentChangedPacket);
         }
 
@@ -368,8 +1109,25 @@ namespace PurrNet.Modules
 
         public void Disable()
         {
+            try
+            {
+                DisableCore();
+            }
+            finally
+            {
+                ReleaseScenePoolLease();
+            }
+        }
+
+        private void DisableCore()
+        {
             _enabled = false;
+            _clientSpawnGeneration++;
+            _deferredPrefabSpawnCount = 0;
             ClearAsyncSpawnState();
+            ClearTransferReconciliationState();
+            _sceneReconcileEndsNextFrame.Clear();
+            _exactBarrierBypassFinishes.Clear();
             _cachedPrefabAsyncShapes.Clear();
             _pendingLocalDespawnEchoes.Dispose();
             PurrNetGameObjectUtils.onGameObjectCreated -= OnGameObjectCreated;
@@ -378,6 +1136,7 @@ namespace PurrNet.Modules
 #endif
             _visibility.visibilityChanged -= OnVisibilityChanged;
             _scenePlayers.onPrePlayerLoadedScene -= OnPlayerLoadedScene;
+            _scenePlayers.onPrePlayerSceneReboundInternal -= OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             _playersManager.onLocalPlayerReceivedID -= OnPlayerReceivedID;
             _playersManager.onNetworkIDReceived -= OnNetworkIDReceived;
@@ -387,59 +1146,866 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<DespawnPacket>(OnDespawnPacket);
             _playersManager.Unsubscribe<FinishSpawnPacket>(OnFinishSpawnPacket);
             _playersManager.Unsubscribe<AsyncSpawnReadyPacket>(OnAsyncSpawnReadyPacket);
+            _playersManager.Unsubscribe<SceneSpawnReconcileBeginPacket>(OnSceneSpawnReconcileBeginPacket);
             _playersManager.Unsubscribe<SceneSpawnReconcilePacket>(OnSceneSpawnReconcilePacket);
+            _playersManager.Unsubscribe<SceneSpawnReconcileAbortPacket>(OnSceneSpawnReconcileAbortPacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
 
-            if (!_manager.isTranferingToNewServer)
-                NetworkPoolManager.RemovePool(_sceneId);
+        }
+
+        private void ReleaseScenePoolLease()
+        {
+            _scenePoolLease?.Dispose();
+            _scenePoolLease = null;
+        }
+
+        private void OnSceneSpawnReconcileBeginPacket(PlayerID player,
+            SceneSpawnReconcileBeginPacket data, bool asServer)
+        {
+            try
+            {
+                if (_asServer || data.sceneId != _sceneId || !_transferReconciliationRequested)
+                    return;
+
+                var transition = new HostMigrationTransitionOptions(data.sessionId, data.epoch);
+                var accepted = TryAcceptTransferPreamble(ref data);
+                if (_manager.TryGetModule<HierarchyFactory>(false, out var factory))
+                {
+                    factory.RegisterExactTransferPreamble(
+                        this, transition, accepted,
+                        accepted ? null : _transferReconciliationFailure?.Message);
+                }
+                else if (accepted)
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} accepted an exact topology preamble without a client hierarchy coordinator.");
+                }
+            }
+            finally
+            {
+                data.Dispose();
+            }
+        }
+
+        private bool TryAcceptTransferPreamble(ref SceneSpawnReconcileBeginPacket data)
+        {
+            if (_asServer || data.sceneId != _sceneId || !_transferReconciliationRequested)
+                return false;
+
+            var descriptor = new HostMigrationTransitionOptions(data.sessionId, data.epoch);
+            if (!_transferSessionValidated || !descriptor.canReconcile ||
+                descriptor != _transferReconciliationOptions)
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} received a host-migration preamble for an unexpected session ({descriptor}).");
+                return false;
+            }
+
+            if (_transferPreambleReceived || _expectedTransferSpawnManifest != null)
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} received more than one host-migration manifest preamble.");
+                return false;
+            }
+
+            if (!TryValidateRetainedSceneMembership(out var membershipFailure))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} retained graph changed before its topology preflight: " +
+                    membershipFailure);
+                return false;
+            }
+
+            if (!TryCreateTransferSpawnManifest(data.spawns, out var manifest, out var failure))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} rejected its host-migration topology preflight: {failure}.");
+                return false;
+            }
+
+            data.spawns = default;
+            _expectedTransferSpawnManifest = manifest;
+            _transferPreambleReceived = true;
+            return true;
+        }
+
+        private bool TryCreateTransferSpawnManifest(
+            DisposableList<SceneSpawnReconcileSpawnTopology> topologies,
+            out SceneSpawnReconcileManifest manifest, out string failure)
+        {
+            manifest = null;
+            failure = null;
+            var existingRootByIdentity = new Dictionary<NetworkID, NetworkID>();
+            var retainedTopologyByRoot = new Dictionary<NetworkID, GameObjectPrototype>();
+
+            try
+            {
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    var root = identity ? identity.GetRootIdentity() : null;
+                    if (!identity || !identity.id.HasValue || !root || !root.id.HasValue)
+                    {
+                        failure = "the retained registry contains an identity without a stable root or NetworkID";
+                        return false;
+                    }
+
+                    if (!existingRootByIdentity.TryAdd(identity.id.Value, root.id.Value))
+                    {
+                        failure = $"the retained registry contains duplicate NetworkID {identity.id.Value}";
+                        return false;
+                    }
+                }
+
+                foreach (var retainedRoot in _retainedTransferRoots)
+                {
+                    if (!retainedRoot || !retainedRoot.id.HasValue)
+                    {
+                        failure = "a retained root lost its NetworkID before the topology preflight";
+                        return false;
+                    }
+
+                    var topology = HierarchyPool.GetFullPrototype(retainedRoot.transform, null, true);
+                    if (!retainedTopologyByRoot.TryAdd(retainedRoot.id.Value, topology))
+                    {
+                        topology.Dispose();
+                        failure = $"retained root {retainedRoot.id.Value} is registered more than once";
+                        return false;
+                    }
+                }
+
+                return SceneSpawnReconcileManifest.TryCreate(topologies,
+                    existingRootByIdentity, retainedTopologyByRoot, out manifest, out failure);
+            }
+            catch (Exception exception)
+            {
+                failure = $"the retained topology could not be captured: {exception.Message}";
+                return false;
+            }
+            finally
+            {
+                foreach (var topology in retainedTopologyByRoot.Values)
+                    topology.Dispose();
+            }
         }
 
         private void OnSceneSpawnReconcilePacket(PlayerID player, SceneSpawnReconcilePacket data, bool asServer)
         {
-            if (data.sceneId != _sceneId)
+            if (data.sceneId != _sceneId || _asServer)
                 return;
 
-            if (_asServer)
+            if (!_transferReconciliationRequested)
+            {
+                _scenePool.ReconcileActiveScenePieces();
+                return;
+            }
+
+            var descriptor = new HostMigrationTransitionOptions(data.sessionId, data.epoch);
+            if (!_transferSessionValidated || !_transferPreambleReceived ||
+                !descriptor.canReconcile || descriptor != _transferReconciliationOptions)
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} received a host-migration end marker without a matching preamble.");
+                return;
+            }
+
+            if (!TryAuthorizeTransactionWideExactSnapshot(out var transactionFailure))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} received its host-migration end marker before the complete " +
+                    $"scene topology set was proven: {transactionFailure}");
+                return;
+            }
+
+            if (_expectedTransferSpawnManifest == null ||
+                _expectedTransferSpawnManifest.unconsumedCount != 0)
+            {
+                SpawnID unconsumed = default;
+                _expectedTransferSpawnManifest?.TryGetFirstUnconsumed(out unconsumed);
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} received its host-migration end marker with " +
+                    $"{_expectedTransferSpawnManifest?.unconsumedCount ?? 0} unconsumed spawn entries" +
+                    (_expectedTransferSpawnManifest?.unconsumedCount > 0
+                        ? $" (first: {unconsumed})."
+                        : "."));
+                return;
+            }
+
+            _transferEndReceived = true;
+            TryFinalizeTransferReconciliation();
+        }
+
+        private void OnSceneSpawnReconcileAbortPacket(PlayerID player,
+            SceneSpawnReconcileAbortPacket data, bool asServer)
+        {
+            if (_asServer || data.sceneId != _sceneId || !_transferReconciliationRequested)
                 return;
 
-            _scenePool.ReconcileActiveScenePieces();
+            var descriptor = new HostMigrationTransitionOptions(data.sessionId, data.epoch);
+            if (!descriptor.canReconcile || descriptor != _transferReconciliationOptions)
+                return;
+
+            var reason = string.IsNullOrWhiteSpace(data.reason)
+                ? $"Scene {_sceneId} exact spawn snapshot was rejected by the new authority."
+                : data.reason;
+            AbortTransferReconciliation(reason);
         }
 
         public void TransferToNewServer()
         {
+            var exactTransfer = _manager.expectedHostMigrationSession.canReconcile;
+            if (exactTransfer &&
+                (TryGetAuthoritySwitchQueueFailure(out var queueFailure) ||
+                 !TryValidateExactAuthoritySwitchGraph(
+                     _manager, _sceneId, _scene, false, out queueFailure)))
+            {
+                throw new InvalidOperationException(
+                    $"Scene {_sceneId} cannot begin exact client transfer while ordinary " +
+                    $"hierarchy work is pending: {queueFailure}.");
+            }
+
+            _clientSpawnGeneration++;
+            _deferredPrefabSpawnCount = 0;
             ClearAsyncSpawnState();
+            ClearPendingReceivedSpawnTransactions();
+            _sceneReconcileEndsNextFrame.Clear();
+            _exactBarrierBypassFinishes.Clear();
             _pendingLocalDespawnEchoes.Dispose();
             isReadyToSpawn = false;
             _nextId = default;
             _isPlayerReady = false;
 
-            var hash = HashSetPool<NetworkIdentity>.Instantiate();
+            if (exactTransfer)
+                BeginTransferReconciliation();
+            else
+            {
+                ClearLegacyAuthoritySwitchQueues();
+                ClearTransferReconciliationState();
+                _transferReconciliationComplete = true;
+                DestroyAllSpawnedRoots();
+            }
+
+            Init();
+            UnityLatestUpdate.TriggerPendingAsaps();
+        }
+
+        private void BeginTransferReconciliation()
+        {
+            ClearTransferReconciliationState();
+            _transferReconciliationOptions = _manager.expectedHostMigrationSession;
+            _transferReconciliationRequested = _transferReconciliationOptions.canReconcile;
+            _transferReconciliationComplete = !_transferReconciliationRequested;
+            if (!_transferReconciliationRequested)
+                return;
+
+            if (!TryValidateRetainedSceneMembership(out var sceneFailure))
+            {
+                RecordTransferReconciliationFailure(new InvalidOperationException(sceneFailure));
+                return;
+            }
+
+            var manualRoots = HashSetPool<NetworkIdentity>.Instantiate();
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                var root = identity ? identity.GetRootIdentity() : null;
+                if (identity && identity.isManualSpawn && root)
+                    manualRoots.Add(root);
+            }
 
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
-                var nid = _spawnedIdentities[i];
-                if (!nid)
-                    continue;
-
-                var root = nid.GetRootIdentity();
-
-                if (!root)
-                    continue;
-
-                hash.Add(root);
+                var identity = _spawnedIdentities[i];
+                var root = identity ? identity.GetRootIdentity() : null;
+                if (root && !manualRoots.Contains(root) && _retainedTransferRoots.Add(root))
+                {
+                    if (!root.id.HasValue ||
+                        !_retainedTransferRootsById.TryAdd(root.id.Value, root))
+                    {
+                        RecordTransferReconciliationFailure(new InvalidOperationException(
+                            $"Scene {_sceneId} contains a retained regular root without a unique NetworkID."));
+                        break;
+                    }
+                }
             }
 
-            foreach (var r in hash)
+            if (_transferReconciliationFailure != null)
             {
-                if (!r) continue;
-                Despawn(r.gameObject, true, true);
+                HashSetPool<NetworkIdentity>.Destroy(manualRoots);
+                return;
             }
 
-            HashSetPool<NetworkIdentity>.Destroy(hash);
+            var ownershipFailures = new List<Exception>();
+            foreach (var manualRoot in manualRoots)
+            {
+                var hasOwner = false;
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    if (!identity || !identity.OwnsHostMigrationManualRoot(
+                            manualRoot, ownershipFailures))
+                        continue;
 
-            Init();
+                    hasOwner = true;
+                    break;
+                }
 
-            UnityLatestUpdate.TriggerPendingAsaps();
+                if (hasOwner)
+                {
+                    _ownedManualTransferRoots.Add(manualRoot);
+                    continue;
+                }
+
+                RecordTransferReconciliationFailure(new InvalidOperationException(
+                    $"Scene {_sceneId} contains unclaimed package-managed/manual root " +
+                    $"{manualRoot.id?.ToString() ?? manualRoot.name}. A scoped transfer requires " +
+                    $"an exact {nameof(IHostMigrationManualHierarchyParticipant)} owner for every " +
+                    "manual root; PurrNet cannot infer or implicitly replace its state."));
+                break;
+            }
+            if (ownershipFailures.Count > 0)
+            {
+                RecordTransferReconciliationFailure(new AggregateException(
+                    $"One or more packages could not classify manual roots in scene {_sceneId}.",
+                    ownershipFailures));
+            }
+            HashSetPool<NetworkIdentity>.Destroy(manualRoots);
+
+            if (_transferReconciliationFailure != null)
+                return;
+
+            if (_manager.hasReceivedHostMigrationSession)
+            {
+                ReceiveHostMigrationSession(_manager.hostMigrationSession,
+                    _manager.isHostMigrationSessionValidated);
+            }
+        }
+
+        internal bool TryArmTransferReconciliation(out string failure)
+        {
+            failure = null;
+            if (_asServer || !_transferReconciliationRequested ||
+                !_transferSessionValidated || !_transferPreambleReceived ||
+                _expectedTransferSpawnManifest == null)
+            {
+                failure = $"Scene {_sceneId} cannot arm package reconciliation before its " +
+                          "accepted exact preamble.";
+                return false;
+            }
+
+            if (_transferReconciliationArmed)
+                return true;
+
+            var beginIdentities = new List<NetworkIdentity>(_spawnedIdentities);
+            if (!TryCaptureRetainedSceneGraphProof(
+                    out var graphProof, out failure, regularRootsOnly: true))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} could not freeze its retained graph before package Begin: {failure}");
+                return false;
+            }
+
+            using (graphProof)
+            {
+                var beginFailures = new List<Exception>();
+                for (var i = 0; i < beginIdentities.Count; i++)
+                {
+                    var identity = beginIdentities[i];
+                    if (identity)
+                    {
+                        identity.TriggerBeginHostMigrationReconciliation(
+                            _transferReconciliationOptions, beginFailures);
+                    }
+                }
+
+                if (beginFailures.Count > 0)
+                {
+                    RecordTransferReconciliationFailure(new AggregateException(
+                        $"One or more packages could not begin host-migration reconciliation for scene {_sceneId}.",
+                        beginFailures));
+                    failure = _transferReconciliationFailure.Message;
+                    return false;
+                }
+
+                if (!TryValidateRetainedSceneMembership(out var membershipFailure) ||
+                    !TryValidateRetainedSceneGraphProof(graphProof, out membershipFailure))
+                {
+                    failure = $"Scene {_sceneId} retained graph changed while package Begin hooks " +
+                              $"armed exact reconciliation: {membershipFailure}";
+                    AbortTransferReconciliation(failure);
+                    return false;
+                }
+            }
+
+            _transferReconciliationArmed = true;
+            return true;
+        }
+
+        private bool TryCaptureRetainedSceneGraphProof(
+            out RetainedSceneGraphProof proof, out string failure,
+            bool regularRootsOnly = false)
+        {
+            proof = null;
+            if (!TryValidateRetainedSceneMembership(out failure))
+                return false;
+
+            var captured = new RetainedSceneGraphProof();
+            try
+            {
+                captured.regularRootsOnly = regularRootsOnly;
+
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    var roleId = identity.GetNetworkID(_asServer);
+                    var root = identity.GetRootIdentity();
+                    if (!roleId.HasValue || !root)
+                    {
+                        failure = $"retained identity {identity.name} has no stable role ID or root";
+                        return false;
+                    }
+
+                    if (regularRootsOnly && !_retainedTransferRoots.Contains(root))
+                        continue;
+
+                    captured.identities.Add(new RetainedIdentityGraphEntry(
+                        identity, roleId.Value, identity.parent, root,
+                        identity.transform.parent, identity.isManualSpawn));
+
+                    if (!captured.rootTopologies.ContainsKey(root))
+                    {
+                        captured.rootTopologies.Add(root,
+                            HierarchyPool.GetFullPrototype(root.transform, null, true));
+                    }
+                }
+
+                proof = captured;
+                captured = null;
+                failure = null;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                failure = exception.Message;
+                return false;
+            }
+            finally
+            {
+                captured?.Dispose();
+            }
+        }
+
+        private bool TryValidateRetainedSceneGraphProof(
+            RetainedSceneGraphProof proof, out string failure)
+        {
+            if (proof == null)
+            {
+                failure = "the retained graph proof is missing";
+                return false;
+            }
+
+            List<NetworkIdentity> currentIdentities;
+            if (proof.regularRootsOnly)
+            {
+                if (!TryRefreshOwnedManualTransferRoots(out var manualRoots, out failure))
+                    return false;
+
+                currentIdentities = new List<NetworkIdentity>(_spawnedIdentities.Count);
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    var root = identity ? identity.GetRootIdentity() : null;
+                    if (root && manualRoots.Contains(root))
+                        continue;
+                    currentIdentities.Add(identity);
+                }
+            }
+            else
+            {
+                currentIdentities = _spawnedIdentities;
+            }
+
+            if (proof.identities.Count != currentIdentities.Count)
+            {
+                failure = proof.regularRootsOnly
+                    ? "the retained regular identity roster count changed"
+                    : "the retained identity roster count changed";
+                return false;
+            }
+
+            var currentRoots = new HashSet<NetworkIdentity>();
+            for (var i = 0; i < proof.identities.Count; i++)
+            {
+                var expected = proof.identities[i];
+                var identity = currentIdentities[i];
+                var roleId = identity ? identity.GetNetworkID(_asServer) : null;
+                var root = identity ? identity.GetRootIdentity() : null;
+                if (!identity || !ReferenceEquals(identity, expected.identity) ||
+                    !roleId.HasValue || roleId.Value != expected.roleId ||
+                    !ReferenceEquals(identity.parent, expected.parent) ||
+                    !ReferenceEquals(root, expected.root) ||
+                    !ReferenceEquals(identity.transform.parent, expected.transformParent) ||
+                    identity.isManualSpawn != expected.isManual)
+                {
+                    failure = $"retained identity roster entry {i} changed its identity, role, " +
+                              "parent, root, or spawn classification";
+                    return false;
+                }
+
+                currentRoots.Add(root);
+            }
+
+            if (currentRoots.Count != proof.rootTopologies.Count)
+            {
+                failure = "the retained root roster changed";
+                return false;
+            }
+
+            foreach (var pair in proof.rootTopologies)
+            {
+                if (!pair.Key || !currentRoots.Contains(pair.Key))
+                {
+                    failure = "a retained root was removed or replaced";
+                    return false;
+                }
+
+                using var current = HierarchyPool.GetFullPrototype(pair.Key.transform, null, true);
+                if (!ArePrototypesCompatible(pair.Value, current))
+                {
+                    failure = $"retained root {pair.Key.name} changed its network topology";
+                    return false;
+                }
+            }
+
+            failure = null;
+            return true;
+        }
+
+        private bool TryCollectOwnedManualTransferRoots(
+            out HashSet<NetworkIdentity> manualRoots, out string failure)
+        {
+            manualRoots = new HashSet<NetworkIdentity>();
+            failure = null;
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                var root = identity ? identity.GetRootIdentity() : null;
+                if (identity && identity.isManualSpawn && root)
+                    manualRoots.Add(root);
+            }
+
+            var ownershipFailures = new List<Exception>();
+            foreach (var manualRoot in manualRoots)
+            {
+                var hasOwner = false;
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    if (!identity || !identity.OwnsHostMigrationManualRoot(
+                            manualRoot, ownershipFailures))
+                        continue;
+
+                    hasOwner = true;
+                    break;
+                }
+
+                if (hasOwner)
+                    continue;
+
+                failure = $"manual root {manualRoot.name} is no longer claimed by a " +
+                          nameof(IHostMigrationManualHierarchyParticipant);
+                return false;
+            }
+
+            if (ownershipFailures.Count > 0)
+            {
+                failure = new AggregateException(
+                    $"One or more packages could not classify manual roots in scene {_sceneId}.",
+                    ownershipFailures).Message;
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryRefreshOwnedManualTransferRoots(
+            out HashSet<NetworkIdentity> manualRoots, out string failure)
+        {
+            if (!TryCollectOwnedManualTransferRoots(out manualRoots, out failure))
+                return false;
+
+            _ownedManualTransferRoots.Clear();
+            foreach (var manualRoot in manualRoots)
+                _ownedManualTransferRoots.Add(manualRoot);
+            return true;
+        }
+
+        private bool TryValidateRetainedSceneMembership(out string failure)
+        {
+            if (!_scene.IsValid() || !_scene.isLoaded)
+            {
+                failure = $"Scene {_sceneId} has no valid loaded Unity scene for exact retained reconciliation.";
+                return false;
+            }
+
+            if (_spawnedIdentities.Count != _spawnedIdentitiesMap.Count)
+            {
+                failure = $"Scene {_sceneId} retained identity list/map counts differ " +
+                          $"({_spawnedIdentities.Count}/{_spawnedIdentitiesMap.Count}).";
+                return false;
+            }
+
+            var registered = new HashSet<NetworkIdentity>();
+            var roleIds = new HashSet<NetworkID>();
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                if (!identity)
+                {
+                    failure = $"Scene {_sceneId} retained registry contains a destroyed identity.";
+                    return false;
+                }
+
+                if (identity.sceneId != _sceneId || identity.gameObject.scene != _scene)
+                {
+                    failure = $"Retained identity {identity.name} is registered in scene {_sceneId}, " +
+                              $"but physically belongs to Unity scene '{identity.gameObject.scene.name}'. " +
+                              "Exact reconciliation does not support cross-scene or DontDestroyOnLoad drift.";
+                    return false;
+                }
+
+                if (!ReferenceEquals(identity.networkManager, _manager) ||
+                    !identity.IsSpawned(_asServer) || !registered.Add(identity))
+                {
+                    failure = $"Retained identity {identity.name} in scene {_sceneId} has a dead, " +
+                              "duplicate, or foreign hierarchy role.";
+                    return false;
+                }
+
+                var roleId = identity.GetNetworkID(_asServer);
+                if (!roleId.HasValue || !roleIds.Add(roleId.Value) ||
+                    !_spawnedIdentitiesMap.TryGetValue(roleId.Value, out var mapped) ||
+                    !ReferenceEquals(mapped, identity))
+                {
+                    failure = $"Retained identity {identity.name} in scene {_sceneId} has no unique " +
+                              "bijective role NetworkID.";
+                    return false;
+                }
+            }
+
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                var root = identity.gameObject.GetComponent<NetworkIdentity>();
+                if (!root || !registered.Contains(root))
+                {
+                    failure = $"Retained identity {identity.name} in scene {_sceneId} has no registered root.";
+                    return false;
+                }
+
+                var ancestry = new HashSet<NetworkIdentity> { identity };
+                var current = identity.parent;
+                while (!ReferenceEquals(current, null))
+                {
+                    if (!current || !registered.Contains(current))
+                    {
+                        failure = $"Retained identity {identity.name} in scene {_sceneId} has a dead " +
+                                  "or unregistered parent.";
+                        return false;
+                    }
+
+                    if (!ancestry.Add(current))
+                    {
+                        failure = $"Retained identity {identity.name} in scene {_sceneId} has a cyclic root chain.";
+                        return false;
+                    }
+
+                    root = current;
+                    current = current.parent;
+                }
+
+                var rootId = root.GetNetworkID(_asServer);
+                if (!rootId.HasValue ||
+                    !_spawnedIdentitiesMap.TryGetValue(rootId.Value, out var mappedRoot) ||
+                    !ReferenceEquals(mappedRoot, root))
+                {
+                    failure = $"Retained identity {identity.name} in scene {_sceneId} resolves to an unstable root.";
+                    return false;
+                }
+            }
+
+            failure = null;
+            return true;
+        }
+
+        private bool TryValidateStaleRetirementPhysicalRoster(out string failure)
+        {
+            var roots = _scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var identities = roots[i].GetComponentsInChildren<NetworkIdentity>(true);
+                for (var j = 0; j < identities.Length; j++)
+                {
+                    var identity = identities[j];
+                    if (!identity || !ReferenceEquals(identity.networkManager, _manager) ||
+                        !identity.IsSpawned(_asServer))
+                        continue;
+
+                    var roleId = identity.GetNetworkID(_asServer);
+                    if (identity.sceneId != _sceneId || !roleId.HasValue ||
+                        !_spawnedIdentitiesMap.TryGetValue(roleId.Value, out var registered) ||
+                        !ReferenceEquals(registered, identity))
+                    {
+                        failure = $"loaded scene '{_scene.name}' contains a live " +
+                                  $"{(_asServer ? "server" : "client")} identity " +
+                                  $"'{identity.name}' outside SceneID {_sceneId}'s hierarchy registry";
+                        return false;
+                    }
+                }
+            }
+
+            failure = null;
+            return true;
+        }
+
+        internal void ReceiveHostMigrationSession(HostMigrationTransitionOptions session, bool matched)
+        {
+            if (!_transferReconciliationRequested)
+                return;
+
+            _transferSessionValidated = matched && session.canReconcile &&
+                                        session == _transferReconciliationOptions;
+            if (!_transferSessionValidated)
+            {
+                AbortTransferReconciliation(
+                    $"The connected server advertised host-migration session {session}, expected " +
+                    $"{_transferReconciliationOptions}.");
+            }
+        }
+
+        private void AbortTransferReconciliation(string reason)
+        {
+            if (!_transferReconciliationRequested)
+                return;
+
+            if (_transferReconciliationFailure == null)
+                PurrLogger.LogError(reason);
+            RecordTransferReconciliationFailure(new InvalidOperationException(reason));
+        }
+
+        internal void AbortExactTransferFromFactory(string reason)
+        {
+            AbortTransferReconciliation(reason);
+        }
+
+        private bool TryAuthorizeTransactionWideExactSnapshot(out string failure)
+        {
+            failure = null;
+            if (_asServer || !_transferReconciliationRequested)
+                return true;
+
+            if (!_manager.TryGetModule<HierarchyFactory>(false, out var factory))
+            {
+                failure = "the client hierarchy coordinator is unavailable";
+                return false;
+            }
+
+            return factory.TryAuthorizeExactTransferSnapshot(
+                this, _transferReconciliationOptions, out failure);
+        }
+
+        private void RecordTransferReconciliationFailure(Exception failure)
+        {
+            if (failure == null)
+                return;
+
+            ClearExpectedTransferSpawnManifest();
+            _transferReconciliationFailure = _transferReconciliationFailure == null
+                ? failure
+                : new AggregateException(_transferReconciliationFailure, failure);
+        }
+
+        private void ClearExpectedTransferSpawnManifest()
+        {
+            _expectedTransferSpawnManifest?.Dispose();
+            _expectedTransferSpawnManifest = null;
+        }
+
+        private void ClearTransferReconciliationState()
+        {
+            ClearExpectedTransferSpawnManifest();
+            foreach (var pending in _pendingReconciledSpawns.Values)
+            {
+                if (!pending.isDisposed)
+                    pending.Dispose();
+            }
+
+            _pendingReconciledSpawns.Clear();
+            _pendingReconciliationReadiness.Clear();
+            _reconciliationNotifiedIdentities.Clear();
+            _transferReconciliationFailure = null;
+            _retainedTransferRoots.Clear();
+            _ownedManualTransferRoots.Clear();
+            _retainedTransferRootsById.Clear();
+            _confirmedTransferRoots.Clear();
+            _transferReconciliationOptions = default;
+            _transferReconciliationRequested = false;
+            _transferSessionValidated = false;
+            _transferPreambleReceived = false;
+            _transferReconciliationArmed = false;
+            _transferEndReceived = false;
+        }
+
+        private void ClearPendingReceivedSpawnTransactions()
+        {
+            foreach (var pending in _pendingSpawns.Values)
+            {
+                if (!pending.isDisposed)
+                    pending.Dispose();
+            }
+
+            _pendingSpawns.Clear();
+            _pendingFinishSpawns.Clear();
+            _pendingDespawns.Clear();
+        }
+
+        private void DestroyAllSpawnedRoots()
+        {
+            var roots = HashSetPool<NetworkIdentity>.Instantiate();
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                var root = identity ? identity.GetRootIdentity() : null;
+                if (root)
+                    roots.Add(root);
+            }
+
+            foreach (var root in roots)
+            {
+                if (root)
+                    Despawn(root.gameObject, true, true);
+            }
+
+            HashSetPool<NetworkIdentity>.Destroy(roots);
+        }
+
+        private void DestroyRetainedTransferRoots(bool includeConfirmed)
+        {
+            var roots = ListPool<NetworkIdentity>.Instantiate();
+            foreach (var root in _retainedTransferRoots)
+            {
+                if (root && (includeConfirmed || !_confirmedTransferRoots.Contains(root)))
+                    roots.Add(root);
+            }
+
+            for (var i = 0; i < roots.Count; i++)
+            {
+                var root = roots[i];
+                if (root)
+                    Despawn(root.gameObject, true, true);
+            }
+
+            ListPool<NetworkIdentity>.Destroy(roots);
         }
 
         private void OnSpawnPacketBatch(PlayerID player, SpawnPacketBatch data, bool asServer)
@@ -535,6 +2101,9 @@ namespace PurrNet.Modules
             _isPlayerReady = true;
 
             if (_asServer || !_manager.isServer)
+                return;
+
+            if (_manager.expectedHostMigrationSession.canReconcile)
                 return;
 
             if (!_manager.TryGetModule<HierarchyFactory>(true, out var factory) ||
@@ -741,6 +2310,8 @@ namespace PurrNet.Modules
 
         private readonly Dictionary<SpawnID, DisposableList<NetworkIdentity>> _pendingSpawns = new();
         private readonly HashSet<SpawnID> _asyncPendingSpawns = new();
+        private ulong _clientSpawnGeneration;
+        private int _deferredPrefabSpawnCount;
         private readonly List<(SpawnID packetIdx, PlayerID player, bool asServer)> _pendingFinishSpawns = new();
         private readonly List<(PlayerID player, DespawnPacket packet, bool asServer)> _pendingDespawns = new();
         private DisposableList<NetworkID> _pendingLocalDespawnEchoes;
@@ -861,7 +2432,7 @@ namespace PurrNet.Modules
                     var state = states[i];
                     state.cancelled = true;
                     try { state.operation?.Cancel(); }
-                    catch { /* teardown must continue */ }
+                    catch { }
                     if (state.result)
                         UnityProxy.DestroyDirectly(state.result);
                     state.result = null;
@@ -875,6 +2446,13 @@ namespace PurrNet.Modules
         {
             if (data.sceneId != _sceneId)
                 return;
+
+            if (_pendingReconciledSpawns.Remove(data.packetIdx, out var reconciled))
+            {
+                CompleteReconciledSpawn(reconciled);
+                TryFinalizeTransferReconciliation();
+                return;
+            }
 
             if (_cancelledPendingSpawns.Count > 0 && _cancelledPendingSpawns.Remove(data.packetIdx))
                 return;
@@ -903,7 +2481,8 @@ namespace PurrNet.Modules
                                 if (!nid.IsObserver(spawner)) continue;
                                 onObserverAdded?.Invoke(spawner, nid);
                                 nid.TriggerOnPreObserverAdded(spawner, true);
-                                _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
+                                _triggerLateObserverAdded.Add(
+                                    CreateLateObserverEntry(spawner, nid, true));
                             }
 
                             var lastNid = list[count - 1];
@@ -933,11 +2512,177 @@ namespace PurrNet.Modules
                         onIdentityAdded?.Invoke(nid);
                     }
                 }
+                TryFinalizeTransferReconciliation();
             }
             else
             {
                 _pendingFinishSpawns.Add((data.packetIdx, player, asServer));
             }
+        }
+
+        private void CompleteReconciledSpawn(DisposableList<NetworkIdentity> identities)
+        {
+            using (identities)
+            {
+                for (var i = 0; i < identities.Count; i++)
+                {
+                    var identity = identities[i];
+                    if (identity && identity.isSpawned)
+                    {
+                        BeginIdentityReconciliationReadiness(identity);
+                    }
+                }
+            }
+        }
+
+        private void BeginManualHierarchyParticipantReadiness(
+            HashSet<NetworkIdentity> manualRoots)
+        {
+            for (var i = 0; i < _spawnedIdentities.Count; i++)
+            {
+                var identity = _spawnedIdentities[i];
+                var root = identity ? identity.GetRootIdentity() : null;
+                if (!identity || !root ||
+                    (!manualRoots.Contains(root) && !_confirmedTransferRoots.Contains(root)) ||
+                    !identity.HasHostMigrationManualHierarchyParticipant())
+                    continue;
+
+                BeginIdentityReconciliationReadiness(identity);
+            }
+        }
+
+        private void BeginIdentityReconciliationReadiness(NetworkIdentity identity)
+        {
+            if (!identity || !_reconciliationNotifiedIdentities.Add(identity))
+                return;
+
+            var readiness = identity.TriggerOnHostMigrationRebound(
+                _transferReconciliationOptions);
+            if (!readiness.IsCompleted)
+                _pendingReconciliationReadiness.Add(readiness);
+            else
+                RecordReconciliationReadinessResult(readiness);
+        }
+
+        private void PollReconciliationReadiness()
+        {
+            for (var i = _pendingReconciliationReadiness.Count - 1; i >= 0; i--)
+            {
+                var task = _pendingReconciliationReadiness[i];
+                if (!task.IsCompleted)
+                    continue;
+
+                _pendingReconciliationReadiness.RemoveAt(i);
+                RecordReconciliationReadinessResult(task);
+            }
+        }
+
+        private void RecordReconciliationReadinessResult(Task task)
+        {
+            if (_transferReconciliationFailure != null || task == null)
+                return;
+
+            if (task.IsCanceled)
+            {
+                _transferReconciliationFailure = new TaskCanceledException(
+                    $"A package cancelled host-migration reconciliation for scene {_sceneId}.");
+            }
+            else if (task.IsFaulted)
+            {
+                _transferReconciliationFailure = task.Exception?.GetBaseException() ??
+                                                 new InvalidOperationException(
+                                                     $"A package failed host-migration reconciliation for scene {_sceneId}.");
+            }
+        }
+
+        private void ProcessBufferedFinishSpawnForReconciled(SpawnID packetIdx)
+        {
+            for (var i = _pendingFinishSpawns.Count - 1; i >= 0; i--)
+            {
+                if (!_pendingFinishSpawns[i].packetIdx.Equals(packetIdx))
+                    continue;
+
+                _pendingFinishSpawns.RemoveAt(i);
+                if (_pendingReconciledSpawns.Remove(packetIdx, out var reconciled))
+                    CompleteReconciledSpawn(reconciled);
+                TryFinalizeTransferReconciliation();
+                return;
+            }
+        }
+
+        private void TryFinalizeTransferReconciliation()
+        {
+            if (!_transferReconciliationRequested || _transferReconciliationComplete ||
+                !_transferEndReceived || _pendingReconciledSpawns.Count > 0 ||
+                _pendingSpawns.Count > 0 || _pendingFinishSpawns.Count > 0 ||
+                _deferredPrefabSpawnCount > 0 || _pendingReconciliationReadiness.Count > 0 ||
+                _transferReconciliationFailure != null)
+                return;
+
+#if PURRNET_UNITY_INSTANTIATE_ASYNC
+            if (_pendingAsyncInstantiations.Count > 0)
+                return;
+#endif
+
+            while (true)
+            {
+                if (!TryRefreshOwnedManualTransferRoots(
+                        out var manualRoots, out var ownershipFailure))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} has invalid manual-root ownership before " +
+                        $"reconciliation readiness: {ownershipFailure}");
+                    return;
+                }
+
+                var notifiedBefore = _reconciliationNotifiedIdentities.Count;
+                BeginManualHierarchyParticipantReadiness(manualRoots);
+                if (_pendingReconciliationReadiness.Count > 0 ||
+                    _transferReconciliationFailure != null)
+                    return;
+
+                if (!TryRefreshOwnedManualTransferRoots(
+                        out _, out ownershipFailure))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} has invalid manual-root ownership after " +
+                        $"reconciliation readiness: {ownershipFailure}");
+                    return;
+                }
+
+                if (_reconciliationNotifiedIdentities.Count == notifiedBefore)
+                    break;
+            }
+
+            if (!TryValidateRetainedSceneMembership(out var membershipFailure))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} retained graph changed before reconciliation completion: " +
+                    membershipFailure);
+                return;
+            }
+
+            DestroyRetainedTransferRoots(includeConfirmed: false);
+            _scenePool.ReconcileActiveScenePieces();
+            if (!TryValidateRetainedSceneMembership(out membershipFailure))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} retained graph changed at reconciliation commit: " +
+                    membershipFailure);
+                return;
+            }
+
+            if (!TryRefreshOwnedManualTransferRoots(
+                    out _, out var commitOwnershipFailure))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} has invalid manual-root ownership after stale regular-root " +
+                    $"retirement: {commitOwnershipFailure}");
+                return;
+            }
+
+            ClearTransferReconciliationState();
+            _transferReconciliationComplete = true;
         }
 
         private void DrainObserverEventsFor(DisposableList<NetworkIdentity> list)
@@ -1028,7 +2773,8 @@ namespace PurrNet.Modules
                             if (!nid.IsObserver(spawner)) continue;
                             onObserverAdded?.Invoke(spawner, nid);
                             nid.TriggerOnPreObserverAdded(spawner, true);
-                            _triggerLateObserverAdded.Add(new PlayerNid { player = spawner, nid = nid, isSpawner = true });
+                            _triggerLateObserverAdded.Add(
+                                CreateLateObserverEntry(spawner, nid, true));
                         }
 
                         var lastNid = list[count - 1];
@@ -1111,6 +2857,25 @@ namespace PurrNet.Modules
             if (scene != _sceneId)
                 return;
 
+            for (var i = _sceneReconcileEndsNextFrame.Count - 1; i >= 0; i--)
+            {
+                if (_sceneReconcileEndsNextFrame[i].player == player)
+                    _sceneReconcileEndsNextFrame.RemoveAt(i);
+            }
+
+            if (_exactBarrierBypassFinishes.Count != 0)
+            {
+                var staleFinishes = ListPool<SpawnID>.Instantiate();
+                foreach (var pair in _exactBarrierBypassFinishes)
+                {
+                    if (pair.Key.target == player)
+                        staleFinishes.Add(pair.Key);
+                }
+                for (var i = 0; i < staleFinishes.Count; i++)
+                    _exactBarrierBypassFinishes.Remove(staleFinishes[i]);
+                ListPool<SpawnID>.Destroy(staleFinishes);
+            }
+
             var roots = HashSetPool<NetworkIdentity>.Instantiate();
             var count = _spawnedIdentities.Count;
 
@@ -1122,7 +2887,7 @@ namespace PurrNet.Modules
 
                 var root = id.GetRootIdentity();
 
-                if (!root || !roots.Add(root))
+                if (!root || root.isManualSpawn || !roots.Add(root))
                     continue;
 
                 _visibility.ClearVisibilityForGameObject(root.transform, player);
@@ -1138,6 +2903,7 @@ namespace PurrNet.Modules
 
         private void HandleSpawn(PlayerID player, SpawnPacket data, bool flushData)
         {
+            NetworkID[] replacementRootIds = null;
             if (_asServer)
                 data.packetIdx.scope = player;
 
@@ -1155,6 +2921,93 @@ namespace PurrNet.Modules
                     return;
             }
 
+            if (!_asServer && _transferReconciliationRequested)
+            {
+                SceneSpawnReconcileClassification classification = default;
+                string manifestFailure = null;
+                if (!TryAuthorizeTransactionWideExactSnapshot(out var transactionFailure))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} received spawn {data.packetIdx} before the complete " +
+                        $"scene topology set was proven: {transactionFailure}");
+                    return;
+                }
+                else if (!_transferSessionValidated || !_transferPreambleReceived)
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} received a spawn before its host-migration manifest preamble.");
+                    return;
+                }
+                else if (_expectedTransferSpawnManifest == null ||
+                         !_expectedTransferSpawnManifest.TryConsume(_sceneId, data,
+                             out classification, out manifestFailure))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} rejected spawn {data.packetIdx}: " +
+                        (manifestFailure ?? "no accepted topology preflight exists"));
+                    return;
+                }
+                else if (classification.isRetained)
+                {
+                    var retainedResult = TryReconcileRetainedSpawn(data, classification.retainedRootId);
+                    if (retainedResult == RetainedSpawnResult.Reconciled)
+                    {
+                        if (flushData)
+                            FlushSpawnPackets();
+                        return;
+                    }
+
+                    if (_transferReconciliationFailure != null)
+                        return;
+                }
+                else if (classification.replacementRootIds is { Length: > 0 })
+                {
+                    replacementRootIds = classification.replacementRootIds;
+                }
+            }
+
+            if (replacementRootIds != null && data.prototype.framework.Count > 0)
+            {
+                var rootPrefabId = (int)data.prototype.framework[0].pid.prefabId;
+                PrefabData prefabData = default;
+                if (rootPrefabId >= 0 &&
+                    (_manager.prefabProvider == null ||
+                     !_manager.prefabProvider.TryGetPrefabData(rootPrefabId, out prefabData)))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} cannot replace incompatible roots for spawn " +
+                        $"{data.packetIdx}: prefab {rootPrefabId} is unavailable.");
+                    return;
+                }
+
+                if (rootPrefabId >= 0 && !prefabData.prefab)
+                {
+                    if (_manager.prefabProvider is IAsyncPrefabProvider deferredAsyncProvider &&
+                        !data.isAsync)
+                    {
+                        _deferredPrefabSpawnCount++;
+                        ProcessSpawnWhenLoadedAsync(data, flushData, deferredAsyncProvider, rootPrefabId,
+                            _clientSpawnGeneration, replacementRootIds);
+                    }
+                    else
+                    {
+                        AbortTransferReconciliation(
+                            $"Scene {_sceneId} cannot replace incompatible roots for spawn " +
+                            $"{data.packetIdx}: prefab {rootPrefabId} is not loaded.");
+                    }
+                    return;
+                }
+
+                if (!TryRetireReplacedTransferRoots(data.packetIdx, replacementRootIds,
+                        out var replacementFailure))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} could not replace the incompatible local roots for " +
+                        $"spawn {data.packetIdx}: {replacementFailure}");
+                    return;
+                }
+            }
+
             ReplacePartialLocalHierarchy(data.prototype);
 
             if (data.prototype.framework.Count > 0)
@@ -1164,6 +3017,14 @@ namespace PurrNet.Modules
                     var piece = data.prototype.framework[i];
                     if (TryGetIdentity(piece.id, out var existing))
                     {
+                        if (!_asServer && _transferReconciliationRequested)
+                        {
+                            AbortTransferReconciliation(
+                                $"Scene {_sceneId} received declared fresh spawn {data.packetIdx}, " +
+                                $"but NetworkID {piece.id} appeared after its topology preflight.");
+                            return;
+                        }
+
                         PurrLogger.LogError(
                             $"Spawn failed for player `{player}`. Identity with id `{piece.id}` already exists: `{existing.gameObject.name}`",
                             existing);
@@ -1213,12 +3074,235 @@ namespace PurrNet.Modules
                         return;
                     }
 
-                    ProcessSpawnWhenLoadedAsync(data, flushData, asyncProvider, rootPrefabId);
+                    _deferredPrefabSpawnCount++;
+                    ProcessSpawnWhenLoadedAsync(data, flushData, asyncProvider, rootPrefabId,
+                        _clientSpawnGeneration);
                     return;
                 }
             }
 
             CompleteReceivedSpawn(data, flushData);
+        }
+
+        private bool TryRetireReplacedTransferRoots(SpawnID spawnId,
+            IReadOnlyList<NetworkID> replacementRootIds, out string failure)
+        {
+            failure = null;
+            var roots = ListPool<NetworkIdentity>.Instantiate();
+            try
+            {
+                for (var i = 0; i < replacementRootIds.Count; i++)
+                {
+                    var rootId = replacementRootIds[i];
+                    if (!_retainedTransferRootsById.TryGetValue(rootId, out var root))
+                    {
+                        continue;
+                    }
+
+                    if (!root || !_retainedTransferRoots.Contains(root))
+                    {
+                        failure = $"retained root {rootId} disappeared after topology preflight";
+                        return false;
+                    }
+
+                    if (!roots.Contains(root))
+                        roots.Add(root);
+                }
+
+                for (var i = 0; i < replacementRootIds.Count; i++)
+                    _retainedTransferRootsById.Remove(replacementRootIds[i]);
+                for (var i = 0; i < roots.Count; i++)
+                {
+                    _retainedTransferRoots.Remove(roots[i]);
+                    _confirmedTransferRoots.Remove(roots[i]);
+                }
+
+                for (var i = 0; i < roots.Count; i++)
+                {
+                    var root = roots[i];
+                    if (root)
+                        Despawn(root.gameObject, true, true);
+                }
+
+                if (!TryValidateRetainedSceneMembership(out failure))
+                    return false;
+
+                if (roots.Count > 0)
+                {
+                    PurrLogger.LogWarning(
+                        $"Scene {_sceneId} retained the Unity scene while replacing {roots.Count} " +
+                        $"incompatible network root(s) for authoritative spawn {spawnId}.");
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                failure = exception.Message;
+                return false;
+            }
+            finally
+            {
+                ListPool<NetworkIdentity>.Destroy(roots);
+            }
+        }
+
+        private enum RetainedSpawnResult
+        {
+            NotRetained,
+            Reconciled,
+            Failed
+        }
+
+        private RetainedSpawnResult TryReconcileRetainedSpawn(SpawnPacket data,
+            NetworkID retainedRootId)
+        {
+            if (data.prototype.framework.Count == 0)
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} declared retained spawn {data.packetIdx} with an empty topology.");
+                return RetainedSpawnResult.Failed;
+            }
+
+            if (!_retainedTransferRootsById.TryGetValue(retainedRootId, out var retainedRoot) ||
+                !retainedRoot || !_retainedTransferRoots.Contains(retainedRoot))
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} lost retained root {retainedRootId} before spawn {data.packetIdx} could apply.");
+                return RetainedSpawnResult.Failed;
+            }
+
+            var identities = DisposableList<NetworkIdentity>.Create(data.prototype.framework.Count);
+            bool compatible;
+            try
+            {
+                compatible = retainedRoot &&
+                             IsRetainedPrototypeCompatible(retainedRoot, data.prototype, identities.list);
+            }
+            catch (Exception exception)
+            {
+                identities.Dispose();
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} could not inspect retained spawn {data.packetIdx}: " +
+                    exception.Message);
+                return RetainedSpawnResult.Failed;
+            }
+
+            if (!compatible)
+            {
+                identities.Dispose();
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} could not exactly reconcile retained spawn {data.packetIdx}: " +
+                    $"retained root {retainedRootId} changed after the topology preflight.");
+                return RetainedSpawnResult.Failed;
+            }
+
+            if (_pendingReconciledSpawns.ContainsKey(data.packetIdx))
+            {
+                identities.Dispose();
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} received duplicate retained spawn transaction {data.packetIdx}.");
+                return RetainedSpawnResult.Failed;
+            }
+
+            if (!TryValidateRetainedSceneMembership(out var membershipFailure))
+            {
+                identities.Dispose();
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} retained graph changed before spawn {data.packetIdx} " +
+                    $"could apply custom state: {membershipFailure}");
+                return RetainedSpawnResult.Failed;
+            }
+
+            try
+            {
+                if (data.customData.bitLength > 0)
+                {
+                    using var scope = data.customData.AutoScope();
+                    for (var i = 0; i < identities.Count; i++)
+                    {
+                        var identity = identities[i];
+                        if (identity)
+                            identity.TriggerOnDeserialize(data.customData.packer);
+                    }
+                }
+
+                if (!TryValidateRetainedSceneMembership(out membershipFailure))
+                {
+                    identities.Dispose();
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} retained graph changed while spawn {data.packetIdx} " +
+                        $"applied custom state: {membershipFailure}");
+                    return RetainedSpawnResult.Failed;
+                }
+
+                _pendingReconciledSpawns.Add(data.packetIdx, identities);
+                _confirmedTransferRoots.Add(retainedRoot);
+
+                if (data.isAsync)
+                    SendAsyncSpawnReady(data.packetIdx, true);
+
+                ProcessBufferedFinishSpawnForReconciled(data.packetIdx);
+                ProcessBufferedDespawnsFor(data.prototype);
+                return RetainedSpawnResult.Reconciled;
+            }
+            catch (Exception e)
+            {
+                if (_pendingReconciledSpawns.Remove(data.packetIdx, out var pending) &&
+                    !pending.isDisposed)
+                    pending.Dispose();
+                else if (!identities.isDisposed)
+                    identities.Dispose();
+
+                PurrLogger.LogError(
+                    $"Failed to reconcile retained spawn {data.packetIdx}: {e.Message}\n{e.StackTrace}");
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} could not apply authoritative state to retained spawn " +
+                    $"{data.packetIdx}: {e.Message}");
+                return RetainedSpawnResult.Failed;
+            }
+        }
+
+        internal static bool ArePrototypesCompatible(GameObjectPrototype retained,
+            GameObjectPrototype authoritative)
+        {
+            if (retained.framework.Count != authoritative.framework.Count ||
+                retained.parentID != authoritative.parentID ||
+                retained.defaultParentSiblingIndex != authoritative.defaultParentSiblingIndex ||
+                !ArePathsEqual(retained.path, authoritative.path))
+                return false;
+
+            for (var i = 0; i < retained.framework.Count; i++)
+            {
+                var retainedPiece = retained.framework[i];
+                var authoritativePiece = authoritative.framework[i];
+                if (retainedPiece.id != authoritativePiece.id ||
+                    !retainedPiece.AreEqual(authoritativePiece))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool ArePathsEqual(int[] left, int[] right)
+        {
+            if (ReferenceEquals(left, right))
+                return true;
+            if (left == null || right == null || left.Length != right.Length)
+                return false;
+            for (var i = 0; i < left.Length; i++)
+            {
+                if (left[i] != right[i])
+                    return false;
+            }
+            return true;
+        }
+
+        private static bool IsRetainedPrototypeCompatible(NetworkIdentity retainedRoot,
+            GameObjectPrototype authoritative, List<NetworkIdentity> identities)
+        {
+            using var retained = HierarchyPool.GetFullPrototype(retainedRoot.transform, identities);
+            return ArePrototypesCompatible(retained, authoritative);
         }
 
         private void ReplacePartialLocalHierarchy(GameObjectPrototype prototype)
@@ -1244,7 +3328,8 @@ namespace PurrNet.Modules
         }
 
         private async void ProcessSpawnWhenLoadedAsync(SpawnPacket data, bool flushData,
-            IAsyncPrefabProvider asyncProvider, int rootPrefabId)
+            IAsyncPrefabProvider asyncProvider, int rootPrefabId, ulong spawnGeneration,
+            NetworkID[] replacementRootIds = null)
         {
             try
             {
@@ -1258,17 +3343,27 @@ namespace PurrNet.Modules
                 try
                 {
                     var loaded = await asyncProvider.LoadPrefabAsync(rootPrefabId);
-                    if (loaded.prefab == null)
+
+                    if (_isDisposed || !_enabled || spawnGeneration != _clientSpawnGeneration)
                     {
-                        PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
-                        RejectDeferredAsyncSpawn(packetIdx, sceneId, isAsync, prototypeCopy);
                         prototypeCopy.Dispose();
                         customDataCopy.Dispose();
                         return;
                     }
 
-                    if (_isDisposed || !_enabled)
+                    if (loaded.prefab == null)
                     {
+                        PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
+                        if (!_asServer && _transferReconciliationRequested)
+                        {
+                            AbortTransferReconciliation(
+                                $"Scene {_sceneId} could not load prefab {rootPrefabId} for " +
+                                $"declared spawn {packetIdx}.");
+                        }
+                        else
+                        {
+                            RejectDeferredAsyncSpawn(packetIdx, sceneId, isAsync, prototypeCopy);
+                        }
                         prototypeCopy.Dispose();
                         customDataCopy.Dispose();
                         return;
@@ -1283,20 +3378,51 @@ namespace PurrNet.Modules
                         prototype = prototypeCopy,
                         customData = customDataCopy
                     };
+
+                    if (replacementRootIds is { Length: > 0 } &&
+                        !TryRetireReplacedTransferRoots(packetIdx, replacementRootIds,
+                            out var replacementFailure))
+                    {
+                        AbortTransferReconciliation(
+                            $"Scene {_sceneId} loaded prefab {rootPrefabId}, but could not replace " +
+                            $"the incompatible local roots for spawn {packetIdx}: " +
+                            replacementFailure);
+                        spawnData.Dispose();
+                        return;
+                    }
+
                     CompleteReceivedSpawn(spawnData, flushData);
                     spawnData.Dispose();
                 }
                 catch (Exception e)
                 {
                     PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: exception for prefab {rootPrefabId}: {e.Message}\n{e.StackTrace}");
-                    RejectDeferredAsyncSpawn(packetIdx, sceneId, isAsync, prototypeCopy);
-                    try { prototypeCopy.Dispose(); } catch { /* ignore */ }
-                    try { customDataCopy.Dispose(); } catch { /* ignore */ }
+                    if (!_isDisposed && _enabled && spawnGeneration == _clientSpawnGeneration)
+                    {
+                        if (!_asServer && _transferReconciliationRequested)
+                        {
+                            AbortTransferReconciliation(
+                                $"Scene {_sceneId} could not load prefab {rootPrefabId} for " +
+                                $"declared spawn {packetIdx}: {e.Message}");
+                        }
+                        else
+                        {
+                            RejectDeferredAsyncSpawn(packetIdx, sceneId, isAsync, prototypeCopy);
+                        }
+                    }
+                    try { prototypeCopy.Dispose(); } catch { }
+                    try { customDataCopy.Dispose(); } catch { }
                 }
             }
             catch (Exception e)
             {
                 Debug.LogException(e);
+            }
+            finally
+            {
+                if (spawnGeneration == _clientSpawnGeneration && _deferredPrefabSpawnCount > 0)
+                    _deferredPrefabSpawnCount--;
+                TryFinalizeTransferReconciliation();
             }
         }
 
@@ -1331,7 +3457,12 @@ namespace PurrNet.Modules
         {
             if (!data.isAsync)
             {
-                CompleteSpawn(data, flushData, data.bypassPool);
+                if (!CompleteSpawn(data, flushData, data.bypassPool) &&
+                    !_asServer && _transferReconciliationRequested)
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} could not materialize declared spawn {data.packetIdx}.");
+                }
                 return;
             }
 
@@ -1402,6 +3533,15 @@ namespace PurrNet.Modules
                     RegisterIdentity(nid, false, false);
                 }
 
+                if (!_asServer && _transferReconciliationRequested &&
+                    !TryValidateRetainedSceneMembership(out var membershipFailure))
+                {
+                    AbortTransferReconciliation(
+                        $"Scene {_sceneId} graph changed before fresh spawn {data.packetIdx} " +
+                        $"could apply custom state: {membershipFailure}");
+                    throw new InvalidOperationException(membershipFailure);
+                }
+
                 if (hasCustomData)
                 {
                     for (var i = 0; i < createdNids.Count; i++)
@@ -1409,6 +3549,15 @@ namespace PurrNet.Modules
                         var nid = createdNids[i];
                         if (nid)
                             nid.TriggerOnDeserialize(data.customData.packer);
+                    }
+
+                    if (!_asServer && _transferReconciliationRequested &&
+                        !TryValidateRetainedSceneMembership(out membershipFailure))
+                    {
+                        AbortTransferReconciliation(
+                            $"Scene {_sceneId} graph changed while fresh spawn {data.packetIdx} " +
+                            $"applied custom state: {membershipFailure}");
+                        throw new InvalidOperationException(membershipFailure);
                     }
                 }
 
@@ -1526,7 +3675,9 @@ namespace PurrNet.Modules
             if (!identity.id.HasValue ||
                 !_spawnedIdentitiesMap.TryGetValue(identity.id.Value, out var registered) ||
                 !ReferenceEquals(registered, identity))
+            {
                 return;
+            }
 
             _spawnedIdentitiesMap.Remove(identity.id.Value);
             try
@@ -1565,6 +3716,12 @@ namespace PurrNet.Modules
                     _failedAsyncSpawnRoots.Remove(rootId);
             }
             SendAsyncSpawnReady(packet.packetIdx, false);
+            if (!_asServer && _transferReconciliationRequested)
+            {
+                AbortTransferReconciliation(
+                    $"Scene {_sceneId} could not materialize declared asynchronous spawn " +
+                    $"{packet.packetIdx}.");
+            }
         }
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
@@ -1974,6 +4131,363 @@ namespace PurrNet.Modules
             FlushSpawnPackets();
         }
 
+        internal bool TryPreflightExactSceneSnapshot(PlayerID player,
+            HostMigrationTransitionOptions session, out HierarchyV2 promotedListenClient,
+            out string failure)
+        {
+            promotedListenClient = null;
+            failure = null;
+            if (!_asServer || !session.canReconcile ||
+                !_playersManager.IsPendingRetainedHostMigrationPlayer(player, session))
+            {
+                failure = $"Scene {_sceneId} is not serving pending exact player {player} for {session}.";
+                return false;
+            }
+
+            if (HasQueuedSpawnWork(player))
+            {
+                failure = $"Scene {_sceneId} cannot stage an exact snapshot while that player's queue is non-empty.";
+                return false;
+            }
+
+            if (!TryValidateRetainedSceneMembership(out failure))
+                return false;
+
+            if (!_playersManager.TryBeginExactOutboundBarrier(player, session, out failure))
+                return false;
+
+            if (!IsServerHost() || _manager.localPlayer != player)
+                return true;
+
+            if (!_manager.TryGetModule<HierarchyFactory>(false, out var factory) ||
+                !factory.TryGetHierarchy(_sceneId, out promotedListenClient))
+            {
+                failure = $"Scene {_sceneId} has no fresh listen-client hierarchy to bind.";
+                return false;
+            }
+
+            return promotedListenClient.CanAttachPromotedListenGraph(this, out failure);
+        }
+
+        internal bool TryStagePromotedListenSnapshotPlan(PlayerID player,
+            HostMigrationTransitionOptions session, HierarchyV2 promotedListenClient,
+            out ExactSceneSnapshotPlan plan, out string failure)
+        {
+            plan = null;
+            failure = null;
+            RetainedSceneGraphProof graphProof = null;
+            var roots = HashSetPool<NetworkIdentity>.Instantiate();
+            var preamble = default(SceneSpawnReconcileBeginPacket);
+            var ownsPreamble = false;
+            try
+            {
+                if (!TryCaptureRetainedSceneGraphProof(out graphProof, out failure))
+                    return false;
+
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    if (!identity || identity.isManualSpawn)
+                        continue;
+                    var root = identity.GetRootIdentity();
+                    if (root)
+                        roots.Add(root);
+                }
+
+                preamble = BuildPromotedListenPreamble(player, roots, session);
+                ownsPreamble = true;
+                if (!promotedListenClient.TryStagePromotedListenManifest(
+                        this, ref preamble, out var manifest, out failure))
+                    return false;
+
+                plan = new ExactSceneSnapshotPlan(
+                    this, player, session, promotedListenClient, preamble)
+                {
+                    promotedManifest = manifest
+                };
+                plan.graphProof = graphProof;
+                graphProof = null;
+                ownsPreamble = false;
+                return true;
+            }
+            finally
+            {
+                graphProof?.Dispose();
+                if (ownsPreamble)
+                    preamble.Dispose();
+                HashSetPool<NetworkIdentity>.Destroy(roots);
+            }
+        }
+
+        internal bool TryPrepareExactSceneSnapshot(PlayerID player,
+            HostMigrationTransitionOptions session, HierarchyV2 promotedListenClient,
+            ExactSceneSnapshotPlan stagedPlan, out ExactSceneSnapshotPlan plan,
+            out string failure)
+        {
+            plan = stagedPlan;
+            failure = null;
+            if (promotedListenClient != null && stagedPlan == null)
+            {
+                failure = $"Scene {_sceneId} has no pure promoted-listen topology plan.";
+                return false;
+            }
+
+            var roots = HashSetPool<NetworkIdentity>.Instantiate();
+            var preamble = default(SceneSpawnReconcileBeginPacket);
+            var ownsPreamble = false;
+            RetainedSceneGraphProof graphProof = null;
+            ExactSceneSnapshotStagingJournal stagingJournal = null;
+            var journalAttached = false;
+            try
+            {
+                if (_activeExactSnapshotStagingJournal != null)
+                {
+                    failure = $"Scene {_sceneId} is already staging another exact snapshot.";
+                    return false;
+                }
+
+                if (stagedPlan == null &&
+                    !TryCaptureRetainedSceneGraphProof(out graphProof, out failure))
+                    return false;
+
+                stagingJournal = new ExactSceneSnapshotStagingJournal(this, player);
+                _activeExactSnapshotStagingJournal = stagingJournal;
+                _buildingExactSnapshotForPlayer = player;
+                _buildingExactSnapshotTransition = session;
+
+                if (IsServerHost() && _manager.localPlayer == player)
+                    CatchupClient(player);
+
+                for (var i = 0; i < _spawnedIdentities.Count; i++)
+                {
+                    var identity = _spawnedIdentities[i];
+                    if (!identity || identity.isManualSpawn)
+                        continue;
+                    var root = identity.GetRootIdentity();
+                    if (root && roots.Add(root))
+                        _visibility.RefreshVisibilityForGameObject(player, root.transform);
+                }
+
+                if (_spawnPackets.TryGetValue(player, out var queued) &&
+                    !queued.despawnPackets.isDisposed && queued.despawnPackets.Count > 0)
+                {
+                    failure = $"Scene {_sceneId} generated despawns while staging its exact snapshot.";
+                    return false;
+                }
+
+                if (promotedListenClient != null)
+                {
+                    if (_spawnPackets.TryGetValue(player, out queued) &&
+                        !queued.spawnPackets.isDisposed && queued.spawnPackets.Count > 0)
+                    {
+                        failure = $"Scene {_sceneId} generated loopback spawns for a directly-bound listen graph.";
+                        return false;
+                    }
+
+                    plan.syntheticFinishes ??= ListPool<SpawnID>.Instantiate();
+                    plan.AttachStagingJournal(stagingJournal);
+                    journalAttached = true;
+                    return true;
+                }
+
+                preamble = BuildQueuedSpawnPreamble(player, session);
+                ownsPreamble = true;
+                plan = new ExactSceneSnapshotPlan(this, player, session, null, preamble);
+                plan.graphProof = graphProof;
+                graphProof = null;
+                ownsPreamble = false;
+                if (_spawnPackets.Remove(player, out var batch))
+                {
+                    plan.batch = batch;
+                    plan.ownsBatch = true;
+                }
+                plan.AttachStagingJournal(stagingJournal);
+                journalAttached = true;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                failure = $"Scene {_sceneId} could not stage its exact snapshot: {exception.Message}";
+                return false;
+            }
+            finally
+            {
+                if (ReferenceEquals(_activeExactSnapshotStagingJournal, stagingJournal))
+                    _activeExactSnapshotStagingJournal = null;
+                if (_buildingExactSnapshotForPlayer == player &&
+                    _buildingExactSnapshotTransition == session)
+                {
+                    _buildingExactSnapshotForPlayer = null;
+                    _buildingExactSnapshotTransition = default;
+                }
+
+                if (ownsPreamble)
+                    preamble.Dispose();
+                graphProof?.Dispose();
+                if (!journalAttached)
+                    stagingJournal?.Dispose();
+                HashSetPool<NetworkIdentity>.Destroy(roots);
+            }
+        }
+
+        internal bool TryValidateExactSceneSnapshotPlan(
+            ExactSceneSnapshotPlan plan, out string failure)
+        {
+            if (plan == null || !ReferenceEquals(plan.hierarchy, this))
+            {
+                failure = $"Scene {_sceneId} received an exact snapshot plan for another hierarchy.";
+                return false;
+            }
+
+            if (!TryValidateRetainedSceneMembership(out failure) ||
+                !TryValidateRetainedSceneGraphProof(
+                    plan.graphProof as RetainedSceneGraphProof, out failure))
+                return false;
+
+            if (plan.promotedListenClient == null)
+                return true;
+
+            if (!plan.promotedListenClient.TryValidateRetainedSceneMembership(out failure) ||
+                !plan.promotedListenClient.TryValidateRetainedSceneGraphProof(
+                    plan.promotedClientGraphProof as RetainedSceneGraphProof, out failure))
+            {
+                failure = $"the promoted listen-client graph changed: {failure}";
+                return false;
+            }
+
+            return true;
+        }
+
+        internal bool TryCapturePromotedClientSnapshotPlanProof(
+            ExactSceneSnapshotPlan plan, out string failure)
+        {
+            failure = null;
+            if (plan == null || !ReferenceEquals(plan.promotedListenClient, this) ||
+                plan.promotedClientGraphProof != null)
+            {
+                failure = $"Scene {_sceneId} cannot bind a promoted client graph proof to this plan.";
+                return false;
+            }
+
+            if (!TryCaptureRetainedSceneGraphProof(out var proof, out failure))
+                return false;
+
+            plan.promotedClientGraphProof = proof;
+            return true;
+        }
+
+        internal bool TryPublishExactScenePreamble(ExactSceneSnapshotPlan plan, out string failure)
+        {
+            failure = null;
+            if (plan.promotedListenClient != null)
+                return true;
+            if (_playersManager.SendExactBarrierBypass(
+                    plan.player, plan.transition, plan.preamble, Channel.ReliableOrdered))
+                return true;
+            failure = $"Scene {_sceneId} lost its exact outbound barrier before its topology preamble.";
+            return false;
+        }
+
+        internal bool TryPublishExactSpawnTopology(ExactSceneSnapshotPlan plan, out string failure)
+        {
+            failure = null;
+            if (!plan.ownsBatch)
+                return true;
+            if (_playersManager.SendExactBarrierBypass(
+                    plan.player, plan.transition, plan.batch, Channel.ReliableOrdered))
+                return true;
+            failure = $"Scene {_sceneId} lost its exact outbound barrier before its spawn topology batch.";
+            return false;
+        }
+
+        internal bool TryCommitExactSceneSnapshot(ExactSceneSnapshotPlan plan, out string failure)
+        {
+            failure = null;
+            if (plan.promotedListenClient != null &&
+                !plan.promotedListenClient.TryApplyAcceptedPromotedListenManifest(
+                    plan.syntheticFinishes, out failure))
+                return false;
+
+            try
+            {
+                if (!_playersManager.RunExactOutboundBarrierBypass(
+                        plan.player, plan.transition, () =>
+                        {
+                            CommitPreparedExactSpawnBatch(plan);
+                            _manager.FlushBatchedRPCs();
+                        }))
+                {
+                    failure = $"Scene {_sceneId} lost its exact outbound barrier while committing snapshot baselines.";
+                    return false;
+                }
+            }
+            catch (Exception exception)
+            {
+                failure = $"Scene {_sceneId} snapshot baseline failed: {exception.Message}";
+                return false;
+            }
+
+            if (plan.syntheticFinishes != null)
+            {
+                for (var i = 0; i < plan.syntheticFinishes.Count; i++)
+                {
+                    var finish = plan.syntheticFinishes[i];
+                    _exactBarrierBypassFinishes[finish] = plan.transition;
+                    _toCompleteNextFrame.Add(finish);
+                }
+            }
+
+            _sceneReconcileEndsNextFrame.Add(new PendingSceneReconcileEnd(
+                plan.player,
+                new SceneSpawnReconcilePacket
+                {
+                    sceneId = _sceneId,
+                    sessionId = plan.transition.sessionId,
+                    epoch = plan.transition.epoch
+                },
+                plan.promotedListenClient));
+            return true;
+        }
+
+        private void CommitPreparedExactSpawnBatch(ExactSceneSnapshotPlan plan)
+        {
+            if (!plan.ownsBatch)
+                return;
+
+            var batch = plan.batch;
+            var count = batch.spawnPackets.isDisposed ? 0 : batch.spawnPackets.Count;
+            for (var i = 0; i < count; i++)
+            {
+                var packet = batch.spawnPackets[i];
+                if (packet.isAsync &&
+                    _pendingAsyncObservers.TryGetValue(packet.packetIdx, out var pendingAsync))
+                    pendingAsync.sent = true;
+
+                if (packet.localcache != null)
+                {
+                    for (var j = 0; j < packet.localcache.Count; j++)
+                    {
+                        var piece = packet.localcache[j];
+                        if (piece && piece.id.HasValue)
+                            onSentSpawnPacket?.Invoke(plan.player, _sceneId, piece.id.Value);
+                    }
+                }
+                else if (!packet.prototype.framework.isDisposed)
+                {
+                    for (var j = 0; j < packet.prototype.framework.Count; j++)
+                        onSentSpawnPacket?.Invoke(
+                            plan.player, _sceneId, packet.prototype.framework[j].id);
+                }
+
+                _exactBarrierBypassFinishes[packet.packetIdx] = plan.transition;
+                if (!(_asServer && packet.isAsync))
+                    _toCompleteNextFrame.Add(packet.packetIdx);
+            }
+
+            plan.ownsBatch = false;
+            batch.Dispose();
+        }
+
         private void OnPlayerLoadedScene(PlayerID player, SceneID scene, bool asserver)
         {
             if (!_asServer)
@@ -1982,43 +4496,480 @@ namespace PurrNet.Modules
             if (scene != _sceneId)
                 return;
 
-            if (IsServerHost() && _manager.localPlayer == player)
-                CatchupClient(player);
-
-            var roots = HashSetPool<NetworkIdentity>.Instantiate();
-            var count = _spawnedIdentities.Count;
-
-            for (var i = 0; i < count; i++)
+            var session = _manager.hostMigrationSession;
+            var isExactReconciliation = session.canReconcile &&
+                                        _playersManager.IsPendingRetainedHostMigrationPlayer(
+                                            player, session);
+            if (isExactReconciliation)
             {
-                var id = _spawnedIdentities[i];
-
-                if (!id) continue;
-
-                if (id.isManualSpawn)
-                    continue;
-
-                var root = id.GetRootIdentity();
-
-                if (!root || !roots.Add(root))
-                    continue;
-
-                _visibility.RefreshVisibilityForGameObject(player, root.transform);
+                RejectExactSpawnSnapshot(player, session,
+                    $"Scene {_sceneId} exact acknowledgement bypassed the transaction-wide hierarchy gate.");
+                return;
             }
 
-            FlushSpawnPackets();
-            SendSceneSpawnReconcile(player);
-            HashSetPool<NetworkIdentity>.Destroy(roots);
+            var roots = HashSetPool<NetworkIdentity>.Instantiate();
+            try
+            {
+                if (IsServerHost() && _manager.localPlayer == player)
+                    CatchupClient(player);
+
+                var count = _spawnedIdentities.Count;
+                for (var i = 0; i < count; i++)
+                {
+                    var id = _spawnedIdentities[i];
+                    if (!id || id.isManualSpawn)
+                        continue;
+
+                    var root = id.GetRootIdentity();
+                    if (root && roots.Add(root))
+                        _visibility.RefreshVisibilityForGameObject(player, root.transform);
+                }
+
+                FlushSpawnPackets();
+
+                _playersManager.Send(player, new SceneSpawnReconcilePacket
+                {
+                    sceneId = _sceneId,
+                    sessionId = session.sessionId,
+                    epoch = session.epoch
+                }, Channel.ReliableOrdered);
+            }
+            finally
+            {
+                HashSetPool<NetworkIdentity>.Destroy(roots);
+            }
         }
 
-        private void SendSceneSpawnReconcile(PlayerID player)
+        private bool HasQueuedSpawnWork(PlayerID player)
         {
-            if (!_asServer)
+            if (!_spawnPackets.TryGetValue(player, out var batch))
+                return false;
+
+            return (!batch.spawnPackets.isDisposed && batch.spawnPackets.Count > 0) ||
+                   (!batch.despawnPackets.isDisposed && batch.despawnPackets.Count > 0);
+        }
+
+        private void RejectExactSpawnSnapshot(PlayerID player,
+            HostMigrationTransitionOptions session, string reason)
+        {
+            PurrLogger.LogError(reason);
+            if (_spawnPackets.Remove(player, out var batch))
+                batch.Dispose();
+
+            if (IsServerHost() && _manager.localPlayer == player &&
+                _manager.TryGetModule<HierarchyFactory>(false, out var clientFactory) &&
+                clientFactory.TryGetHierarchy(_sceneId, out var localClient))
+            {
+                localClient.AbortTransferReconciliation(reason);
+                return;
+            }
+
+            var abort = new SceneSpawnReconcileAbortPacket
+            {
+                sceneId = _sceneId,
+                sessionId = session.sessionId,
+                epoch = session.epoch,
+                reason = reason
+            };
+            if (!_playersManager.SendExactBarrierBypass(
+                    player, session, abort, Channel.ReliableOrdered))
+                _playersManager.Send(player, abort, Channel.ReliableOrdered);
+        }
+
+        internal void RejectExactSpawnSnapshotFromFactory(PlayerID player,
+            HostMigrationTransitionOptions session, string reason)
+        {
+            RejectExactSpawnSnapshot(player, session, reason);
+        }
+
+        private SceneSpawnReconcileBeginPacket BuildQueuedSpawnPreamble(PlayerID player,
+            HostMigrationTransitionOptions session)
+        {
+            var topologies = DisposableList<SceneSpawnReconcileSpawnTopology>.Create();
+            if (_spawnPackets.TryGetValue(player, out var batch) && !batch.spawnPackets.isDisposed)
+            {
+                for (var i = 0; i < batch.spawnPackets.Count; i++)
+                {
+                    var spawn = batch.spawnPackets[i];
+                    topologies.Add(new SceneSpawnReconcileSpawnTopology
+                    {
+                        spawnId = spawn.packetIdx,
+                        bypassPool = spawn.bypassPool,
+                        isAsync = spawn.isAsync,
+                        prototype = spawn.prototype.Clone()
+                    });
+                }
+            }
+
+            return new SceneSpawnReconcileBeginPacket
+            {
+                sceneId = _sceneId,
+                sessionId = session.sessionId,
+                epoch = session.epoch,
+                spawns = topologies
+            };
+        }
+
+        private SceneSpawnReconcileBeginPacket BuildPromotedListenPreamble(PlayerID player,
+            HashSet<NetworkIdentity> regularRoots, HostMigrationTransitionOptions session)
+        {
+            var topologies = DisposableList<SceneSpawnReconcileSpawnTopology>.Create(regularRoots.Count);
+            foreach (var root in regularRoots)
+            {
+                if (!root || !root.id.HasValue)
+                    continue;
+
+                topologies.Add(new SceneSpawnReconcileSpawnTopology
+                {
+                    spawnId = new SpawnID(_nextPacketIdx++, player, _playersManager.localPlayerId),
+                    prototype = HierarchyPool.GetFullPrototype(root.transform, null, true)
+                });
+            }
+
+            return new SceneSpawnReconcileBeginPacket
+            {
+                sceneId = _sceneId,
+                sessionId = session.sessionId,
+                epoch = session.epoch,
+                spawns = topologies
+            };
+        }
+
+        internal bool CanAttachPromotedListenGraph(HierarchyV2 serverHierarchy, out string failure)
+        {
+            failure = null;
+            if (_asServer || serverHierarchy == null || !serverHierarchy._asServer ||
+                !ReferenceEquals(_manager, serverHierarchy._manager) ||
+                _sceneId != serverHierarchy._sceneId || _scene != serverHierarchy._scene)
+            {
+                failure = "The promoted listen graph does not belong to the paired server/client scene.";
+                return false;
+            }
+
+            if (!serverHierarchy.TryValidateRetainedSceneMembership(out failure))
+                return false;
+
+            var serverIdentities = serverHierarchy._spawnedIdentities;
+            if (serverHierarchy._spawnedIdentitiesMap.Count != serverIdentities.Count)
+            {
+                failure = $"Scene {_sceneId} server list/map registry is incomplete.";
+                return false;
+            }
+
+            if (_spawnedIdentities.Count != _spawnedIdentitiesMap.Count ||
+                (_spawnedIdentities.Count != 0 &&
+                 _spawnedIdentities.Count != serverIdentities.Count))
+            {
+                failure = $"Scene {_sceneId} has a partial fresh-client registry; refusing a mixed graph bind.";
+                return false;
+            }
+
+            var clientRegistryEmpty = _spawnedIdentities.Count == 0;
+            var seen = new HashSet<NetworkID>();
+            HashSet<NetworkIdentity> existingClientIdentities = null;
+            if (!clientRegistryEmpty)
+            {
+                existingClientIdentities = new HashSet<NetworkIdentity>(_spawnedIdentities);
+                if (existingClientIdentities.Count != _spawnedIdentities.Count)
+                {
+                    failure = $"Scene {_sceneId} fresh-client list contains duplicate identities.";
+                    return false;
+                }
+            }
+
+            for (var i = 0; i < serverIdentities.Count; i++)
+            {
+                var identity = serverIdentities[i];
+                var id = identity ? identity.GetNetworkID(true) : null;
+                if (!identity || !identity.IsSpawned(true) || !id.HasValue || !seen.Add(id.Value))
+                {
+                    failure = $"Scene {_sceneId} server graph contains a dead or duplicate identity.";
+                    return false;
+                }
+
+                if (!serverHierarchy._spawnedIdentitiesMap.TryGetValue(
+                        id.Value, out var registeredServer) ||
+                    !ReferenceEquals(registeredServer, identity))
+                {
+                    failure = $"Scene {_sceneId} server registry conflicts at NetworkID {id.Value}.";
+                    return false;
+                }
+
+                if (!identity.CanAttachPromotedListenClientRole(this, out failure))
+                    return false;
+
+                if (!clientRegistryEmpty &&
+                    (!_spawnedIdentitiesMap.TryGetValue(id.Value, out var registeredClient) ||
+                     !ReferenceEquals(registeredClient, identity) ||
+                     !existingClientIdentities.Contains(identity)))
+                {
+                    failure = $"Scene {_sceneId} fresh-client registry conflicts at NetworkID {id.Value}.";
+                    return false;
+                }
+            }
+
+            if (!clientRegistryEmpty && _spawnedIdentitiesMap.Count != seen.Count)
+            {
+                failure = $"Scene {_sceneId} fresh-client map contains identities outside the promoted graph.";
+                return false;
+            }
+
+            return true;
+        }
+
+        internal bool TryStagePromotedListenManifest(HierarchyV2 serverHierarchy,
+            ref SceneSpawnReconcileBeginPacket preamble,
+            out SceneSpawnReconcileManifest manifest, out string failure)
+        {
+            manifest = null;
+            failure = null;
+            if (!CanAttachPromotedListenGraph(serverHierarchy, out failure))
+                return false;
+
+            var existingRootByIdentity = new Dictionary<NetworkID, NetworkID>();
+            var retainedTopologyByRoot = new Dictionary<NetworkID, GameObjectPrototype>();
+            try
+            {
+                for (var i = 0; i < serverHierarchy._spawnedIdentities.Count; i++)
+                {
+                    var identity = serverHierarchy._spawnedIdentities[i];
+                    var root = identity ? identity.GetRootIdentity() : null;
+                    var identityId = identity ? identity.GetNetworkID(true) : null;
+                    var rootId = root ? root.GetNetworkID(true) : null;
+                    if (!identity || !root || !identityId.HasValue || !rootId.HasValue ||
+                        !existingRootByIdentity.TryAdd(identityId.Value, rootId.Value))
+                    {
+                        failure = $"Scene {_sceneId} promoted graph has no stable unique root mapping.";
+                        return false;
+                    }
+                }
+
+                for (var i = 0; i < serverHierarchy._spawnedIdentities.Count; i++)
+                {
+                    var identity = serverHierarchy._spawnedIdentities[i];
+                    var root = identity ? identity.GetRootIdentity() : null;
+                    if (!identity || identity.isManualSpawn || !ReferenceEquals(identity, root))
+                        continue;
+                    var rootId = root.GetNetworkID(true);
+                    if (!rootId.HasValue)
+                    {
+                        failure = $"Scene {_sceneId} promoted regular root has no server NetworkID.";
+                        return false;
+                    }
+
+                    var topology = HierarchyPool.GetFullPrototype(root.transform, null, true);
+                    if (!retainedTopologyByRoot.TryAdd(rootId.Value, topology))
+                    {
+                        topology.Dispose();
+                        failure = $"Scene {_sceneId} promoted regular root {rootId.Value} is duplicated.";
+                        return false;
+                    }
+                }
+
+                if (preamble.spawns.isDisposed ||
+                    preamble.spawns.Count != retainedTopologyByRoot.Count)
+                {
+                    failure = $"Scene {_sceneId} promoted topology declared " +
+                              $"{(preamble.spawns.isDisposed ? 0 : preamble.spawns.Count)} roots, " +
+                              $"expected {retainedTopologyByRoot.Count}.";
+                    return false;
+                }
+
+                if (!SceneSpawnReconcileManifest.TryCreate(preamble.spawns,
+                        existingRootByIdentity, retainedTopologyByRoot, false,
+                        out manifest, out failure))
+                    return false;
+
+                preamble.spawns = default;
+                return true;
+            }
+            finally
+            {
+                foreach (var topology in retainedTopologyByRoot.Values)
+                    topology.Dispose();
+            }
+        }
+
+        internal bool TryInstallPromotedListenManifest(
+            SceneSpawnReconcileManifest manifest,
+            HostMigrationTransitionOptions transition, out string failure)
+        {
+            failure = null;
+            if (manifest == null || !_transferReconciliationRequested ||
+                !_transferSessionValidated || transition != _transferReconciliationOptions ||
+                _transferPreambleReceived || _expectedTransferSpawnManifest != null)
+            {
+                failure = $"Scene {_sceneId} cannot install its staged promoted-listen topology manifest.";
+                return false;
+            }
+
+            if (manifest.count != _retainedTransferRoots.Count ||
+                !TryValidateRetainedSceneMembership(out failure))
+            {
+                failure ??= $"Scene {_sceneId} promoted-listen retained graph changed after pure topology proof.";
+                return false;
+            }
+
+            _expectedTransferSpawnManifest = manifest;
+            _transferPreambleReceived = true;
+            return true;
+        }
+
+        internal bool TryAttachPromotedListenGraphCore(HierarchyV2 serverHierarchy,
+            out List<NetworkIdentity> newlyRegistered, out string failure)
+        {
+            newlyRegistered = null;
+            if (!CanAttachPromotedListenGraph(serverHierarchy, out failure))
+                return false;
+
+            var serverIdentities = serverHierarchy._spawnedIdentities;
+            var clientRegistryEmpty = _spawnedIdentities.Count == 0;
+            var registered = clientRegistryEmpty
+                ? new List<NetworkIdentity>(serverIdentities.Count)
+                : new List<NetworkIdentity>();
+            try
+            {
+                for (var i = 0; i < serverIdentities.Count; i++)
+                {
+                    var identity = serverIdentities[i];
+                    if (!identity.AttachPromotedListenClientRole(this, out _, out failure))
+                        return false;
+                }
+
+                if (clientRegistryEmpty)
+                {
+                    for (var i = 0; i < serverIdentities.Count; i++)
+                    {
+                        var identity = serverIdentities[i];
+                        var id = identity.GetNetworkID(false).Value;
+                        _spawnedIdentities.Add(identity);
+                        _spawnedIdentitiesMap.Add(id, identity);
+                        registered.Add(identity);
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                failure = $"Scene {_sceneId} could not attach its promoted listen graph: {exception.Message}";
+                return false;
+            }
+
+            newlyRegistered = registered;
+            return true;
+        }
+
+        internal bool TryPublishPromotedListenRegistrySignals(
+            List<NetworkIdentity> newlyRegistered, out string failure)
+        {
+            failure = null;
+            if (newlyRegistered == null || newlyRegistered.Count == 0)
+                return true;
+
+            var signalFailures = new List<Exception>();
+            for (var i = 0; i < newlyRegistered.Count; i++)
+            {
+                InvokePromotedListenRegistrySignal(onEarlyIdentityAdded,
+                    newlyRegistered[i], "early identity-added", signalFailures);
+            }
+
+            for (var i = 0; i < newlyRegistered.Count; i++)
+            {
+                InvokePromotedListenRegistrySignal(onIdentityAdded,
+                    newlyRegistered[i], "identity-added", signalFailures);
+            }
+
+            if (signalFailures.Count == 0)
+                return true;
+
+            failure = new AggregateException(
+                $"Scene {_sceneId} promoted-listen registry signals failed after the full graph was published.",
+                signalFailures).ToString();
+            return false;
+        }
+
+        internal bool TryCapturePromotedListenTransfer(
+            HostMigrationTransitionOptions transition,
+            ref SceneSpawnReconcileManifest stagedManifest, out string failure)
+        {
+            BeginTransferReconciliation();
+            ReceiveHostMigrationSession(transition, true);
+            if (_transferReconciliationFailure != null)
+            {
+                failure = _transferReconciliationFailure.Message;
+                return false;
+            }
+
+            if (!TryInstallPromotedListenManifest(stagedManifest, transition, out failure))
+                return false;
+
+            stagedManifest = null;
+            return true;
+        }
+
+        private static void InvokePromotedListenRegistrySignal(IdentityAction signal,
+            NetworkIdentity identity, string phase, List<Exception> failures)
+        {
+            if (signal == null)
                 return;
 
-            _playersManager.Send(player, new SceneSpawnReconcilePacket
+            var subscribers = signal.GetInvocationList();
+            for (var i = 0; i < subscribers.Length; i++)
             {
-                sceneId = _sceneId
-            });
+                try
+                {
+                    ((IdentityAction)subscribers[i])(identity);
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new InvalidOperationException(
+                        $"{phase} subscriber failed for {identity.name}.", exception));
+                }
+            }
+        }
+
+        internal bool TryApplyAcceptedPromotedListenManifest(
+            List<SpawnID> syntheticFinishes, out string failure)
+        {
+            failure = null;
+            if (!_transferReconciliationArmed || _expectedTransferSpawnManifest == null)
+            {
+                failure = $"Scene {_sceneId} cannot apply promoted-listen state before the " +
+                          "transaction-wide topology gate is armed.";
+                return false;
+            }
+
+            var count = _expectedTransferSpawnManifest.count;
+            for (var i = 0; i < count; i++)
+            {
+                var topology = _expectedTransferSpawnManifest.GetTopology(i);
+                var synthetic = new SpawnPacket
+                {
+                    sceneId = _sceneId,
+                    packetIdx = topology.spawnId,
+                    bypassPool = topology.bypassPool,
+                    isAsync = topology.isAsync,
+                    prototype = topology.prototype
+                };
+
+                if (!_expectedTransferSpawnManifest.TryConsume(_sceneId, synthetic,
+                        out var classification, out failure) || !classification.isRetained)
+                {
+                    failure ??= $"Synthetic spawn {topology.spawnId} did not classify as one retained root.";
+                    return false;
+                }
+
+                if (TryReconcileRetainedSpawn(synthetic, classification.retainedRootId) !=
+                    RetainedSpawnResult.Reconciled)
+                {
+                    failure = _transferReconciliationFailure?.Message ??
+                              $"Synthetic spawn {topology.spawnId} could not reconcile its retained root.";
+                    return false;
+                }
+
+                syntheticFinishes.Add(topology.spawnId);
+            }
+
+            return true;
         }
 
         public void EvaluateVisibilityForPlayer(PlayerID player)
@@ -2084,10 +5035,27 @@ namespace PurrNet.Modules
             public PlayerID player;
             public NetworkIdentity nid;
             public bool isSpawner;
+            public HostMigrationTransitionOptions exactTransition;
         }
 
         private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
+
+        private PlayerNid CreateLateObserverEntry(PlayerID player,
+            NetworkIdentity identity, bool isSpawner)
+        {
+            var exactTransition = _buildingExactSnapshotForPlayer.HasValue &&
+                                  _buildingExactSnapshotForPlayer.Value == player
+                ? _buildingExactSnapshotTransition
+                : default;
+            return new PlayerNid
+            {
+                player = player,
+                nid = identity,
+                isSpawner = isSpawner,
+                exactTransition = exactTransition
+            };
+        }
 
         private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
         {
@@ -2095,6 +5063,85 @@ namespace PurrNet.Modules
             {
                 if (_triggerLateObserverAdded[i].player == player && _triggerLateObserverAdded[i].nid == id)
                     _triggerLateObserverAdded.RemoveAt(i--);
+            }
+        }
+
+        private void RecordExactSnapshotObserverLifecycle(PlayerID player,
+            NetworkIdentity identity, ExactObserverLifecycle lifecycle, bool isSpawner = false)
+        {
+            if (_activeExactSnapshotStagingJournal != null &&
+                _activeExactSnapshotStagingJournal.IsFor(player))
+            {
+                _activeExactSnapshotStagingJournal.Record(identity, lifecycle, isSpawner);
+            }
+        }
+
+        private void RollbackExactSnapshotStaging(ExactSceneSnapshotStagingJournal journal)
+        {
+            if (journal == null)
+                return;
+
+            if (ReferenceEquals(_activeExactSnapshotStagingJournal, journal))
+                _activeExactSnapshotStagingJournal = null;
+
+            DropStagedExactSpawnBatch(journal);
+            journal.RestoreState();
+            journal.CompensateLifecycle();
+
+            journal.RestoreState();
+            DropStagedExactSpawnBatch(journal);
+        }
+
+        private void DropStagedExactSpawnBatch(ExactSceneSnapshotStagingJournal journal)
+        {
+            if (_spawnPackets.Remove(journal.player, out var batch))
+                batch.Dispose();
+        }
+
+        private void InvokeExactRollbackObserverAdded(PlayerID player,
+            NetworkIdentity identity, bool isSpawner)
+        {
+            InvokeExactRollbackObserverSignal(onObserverAdded, player, identity);
+            TryInvokeExactRollback(() => identity.TriggerOnPreObserverAdded(player, isSpawner));
+            TryInvokeExactRollback(() => identity.TriggerOnObserverAdded(player, isSpawner));
+            InvokeExactRollbackObserverSignal(onLateObserverAdded, player, identity);
+        }
+
+        private void InvokeExactRollbackObserverRemoved(PlayerID player, NetworkIdentity identity)
+        {
+            TryInvokeExactRollback(() => identity.TriggerOnObserverRemoved(player));
+            InvokeExactRollbackObserverSignal(onObserverRemoved, player, identity);
+        }
+
+        private static void InvokeExactRollbackObserverSignal(ObserverAction signal,
+            PlayerID player, NetworkIdentity identity)
+        {
+            if (signal == null)
+                return;
+
+            var callbacks = signal.GetInvocationList();
+            for (var i = 0; i < callbacks.Length; i++)
+            {
+                try
+                {
+                    ((ObserverAction)callbacks[i])(player, identity);
+                }
+                catch (Exception exception)
+                {
+                    PurrLogger.LogException(exception);
+                }
+            }
+        }
+
+        private static void TryInvokeExactRollback(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                PurrLogger.LogException(exception);
             }
         }
 
@@ -2275,12 +5322,8 @@ namespace PurrNet.Modules
 
                     onObserverAdded?.Invoke(player, identity);
                     identity.TriggerOnPreObserverAdded(player, false);
-                    _triggerLateObserverAdded.Add(new PlayerNid
-                    {
-                        player = player,
-                        nid = identity,
-                        isSpawner = false
-                    });
+                    _triggerLateObserverAdded.Add(
+                        CreateLateObserverEntry(player, identity, false));
                 }
 
                 for (var i = 0; i < pending.identities.Count; i++)
@@ -2377,9 +5420,12 @@ namespace PurrNet.Modules
                     for (var i = 0; i < children.Count; i++)
                     {
                         var nid = children[i];
+                        RecordExactSnapshotObserverLifecycle(
+                            player, nid, ExactObserverLifecycle.Added);
                         onObserverAdded?.Invoke(player, nid);
                         nid.TriggerOnPreObserverAdded(player, false);
-                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false });
+                        _triggerLateObserverAdded.Add(
+                            CreateLateObserverEntry(player, nid, false));
                     }
                 }
                 else PurrLogger.LogError($"Failed to get prototype for '{scope.name}'.", scope);
@@ -2397,6 +5443,8 @@ namespace PurrNet.Modules
                     {
                         var child = children[i];
                         ClearPendingLateObserverAdded(player, child);
+                        RecordExactSnapshotObserverLifecycle(
+                            player, child, ExactObserverLifecycle.Removed);
                         child.TriggerOnObserverRemoved(player);
                         onObserverRemoved?.Invoke(player, child);
                     }
@@ -2426,6 +5474,8 @@ namespace PurrNet.Modules
                         continue;
 
                     ClearPendingLateObserverAdded(player, child);
+                    RecordExactSnapshotObserverLifecycle(
+                        player, child, ExactObserverLifecycle.Removed);
                     child.TriggerOnObserverRemoved(player);
                     onObserverRemoved?.Invoke(player, child);
                 }
@@ -2436,6 +5486,8 @@ namespace PurrNet.Modules
                     if (!removed || children.Contains(removed))
                         continue;
                     ClearPendingLateObserverAdded(player, removed);
+                    RecordExactSnapshotObserverLifecycle(
+                        player, removed, ExactObserverLifecycle.Removed);
                     removed.TriggerOnObserverRemoved(player);
                     onObserverRemoved?.Invoke(player, removed);
                 }
@@ -3009,64 +6061,105 @@ namespace PurrNet.Modules
             }
         }
 
-        private void FlushSpawnPackets()
+        private void FlushSpawnPackets(PlayerID? exactBarrierBypassPlayer = null,
+            HostMigrationTransitionOptions exactTransition = default)
         {
-            foreach (var (player, batch) in _spawnPackets)
+            if (_spawnPackets.Count == 0)
+                return;
+
+            using var entries = DisposableList<KeyValuePair<PlayerID, SpawnPacketBatch>>
+                .Create(_spawnPackets.Count);
+            foreach (var pair in _spawnPackets)
+                entries.Add(pair);
+            _spawnPackets.Clear();
+
+            var processed = 0;
+            try
             {
-                using (batch)
+                for (; processed < entries.Count; processed++)
                 {
-                    int count = batch.spawnPackets.Count;
-                    if (player.isServer)
+                    var (player, batch) = entries[processed];
+                    using (batch)
                     {
-                        _playersManager.SendToServer(batch);
-                    }
-                    else
-                    {
-                        _playersManager.Send(player, batch);
+                        int count = batch.spawnPackets.Count;
+                        if (player.isServer)
+                        {
+                            _playersManager.SendToServer(batch, Channel.ReliableOrdered);
+                        }
+                        else
+                        {
+                            var exactSnapshotBatch = exactBarrierBypassPlayer.HasValue &&
+                                                     exactBarrierBypassPlayer.Value == player &&
+                                                     exactTransition.canReconcile;
+                            if (exactSnapshotBatch)
+                            {
+                                if (!_playersManager.SendExactBarrierBypass(
+                                        player, exactTransition, batch, Channel.ReliableOrdered))
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Scene {_sceneId} lost player {player}'s exact outbound " +
+                                        "barrier before its declared spawn batch was sent.");
+                                }
+                            }
+                            else
+                                _playersManager.Send(player, batch, Channel.ReliableOrdered);
+
+                            for (var i = 0; i < count; i++)
+                            {
+                                var packet = batch.spawnPackets[i];
+
+                                if (packet.isAsync &&
+                                    _pendingAsyncObservers.TryGetValue(packet.packetIdx, out var pendingAsync))
+                                    pendingAsync.sent = true;
+
+                                if (_asServer && packet.isAsync)
+                                    continue;
+
+                                if (packet.localcache != null)
+                                {
+                                    for (var j = 0; j < packet.localcache.Count; j++)
+                                    {
+                                        var piece = packet.localcache[j];
+                                        if (!piece) continue;
+                                        var pieceid = piece.id;
+                                        if (!pieceid.HasValue) continue;
+                                        onSentSpawnPacket?.Invoke(player, _sceneId, pieceid.Value);
+                                    }
+                                }
+                                else if (packet.prototype.framework.Count > 0)
+                                {
+                                    for (var j = 0; j < packet.prototype.framework.Count; j++)
+                                    {
+                                        var piece = packet.prototype.framework[j];
+                                        onSentSpawnPacket?.Invoke(player, _sceneId, piece.id);
+                                    }
+                                }
+                            }
+                        }
 
                         for (var i = 0; i < count; i++)
                         {
                             var packet = batch.spawnPackets[i];
-
-                            if (packet.isAsync &&
-                                _pendingAsyncObservers.TryGetValue(packet.packetIdx, out var pendingAsync))
-                                pendingAsync.sent = true;
-
-                            if (_asServer && packet.isAsync)
-                                continue;
-
-                            if (packet.localcache != null)
+                            if (exactBarrierBypassPlayer.HasValue &&
+                                exactBarrierBypassPlayer.Value == player &&
+                                exactTransition.canReconcile)
                             {
-                                for (var j = 0; j < packet.localcache.Count; j++)
-                                {
-                                    var piece = packet.localcache[j];
-                                    if (!piece) continue;
-                                    var pieceid = piece.id;
-                                    if (!pieceid.HasValue) continue;
-                                    onSentSpawnPacket?.Invoke(player, _sceneId, pieceid.Value);
-                                }
+                                _exactBarrierBypassFinishes[packet.packetIdx] = exactTransition;
                             }
-                            else if (packet.prototype.framework.Count > 0)
+
+                            if (!(_asServer && packet.isAsync))
                             {
-                                for (var j = 0; j < packet.prototype.framework.Count; j++)
-                                {
-                                    var piece = packet.prototype.framework[j];
-                                    onSentSpawnPacket?.Invoke(player, _sceneId, piece.id);
-                                }
+                                _toCompleteNextFrame.Add(packet.packetIdx);
                             }
                         }
                     }
-
-                    for (var i = 0; i < count; i++)
-                    {
-                        var packet = batch.spawnPackets[i];
-                        if (!(_asServer && packet.isAsync))
-                            _toCompleteNextFrame.Add(packet.packetIdx);
-                    }
                 }
             }
-
-            _spawnPackets.Clear();
+            finally
+            {
+                for (var i = processed + 1; i < entries.Count; i++)
+                    entries[i].Value.Dispose();
+            }
         }
 
         public void PreNetworkMessages()
@@ -3082,6 +6175,7 @@ namespace PurrNet.Modules
             TriggerSpawnSentEvents();
             _manager.FlushBatchedRPCs();
             onPreFinishSpawn?.Invoke(_sceneId);
+            SendDelayedSceneReconcileEnds();
             SendDelayedCompleteSpawns();
             SpawnDelayedIdentities();
         }
@@ -3132,8 +6226,31 @@ namespace PurrNet.Modules
                 if (!nid.nid || !nid.nid.isSpawned)
                     continue;
 
-                nid.nid.TriggerOnObserverAdded(nid.player, nid.isSpawner);
-                onLateObserverAdded?.Invoke(nid.player, nid.nid);
+                var exactSnapshotObserver = nid.exactTransition.canReconcile;
+                if (exactSnapshotObserver)
+                {
+                    _manager.FlushBatchedRPCs();
+                }
+
+                if (!exactSnapshotObserver)
+                {
+                    nid.nid.TriggerOnObserverAdded(nid.player, nid.isSpawner);
+                    onLateObserverAdded?.Invoke(nid.player, nid.nid);
+                    continue;
+                }
+
+                if (!_playersManager.RunExactOutboundBarrierBypass(
+                        nid.player, nid.exactTransition, () =>
+                        {
+                            nid.nid.TriggerOnObserverAdded(nid.player, nid.isSpawner);
+                            onLateObserverAdded?.Invoke(nid.player, nid.nid);
+                            _manager.FlushBatchedRPCs();
+                        }))
+                {
+                    RejectExactSpawnSnapshot(nid.player, nid.exactTransition,
+                        $"Scene {_sceneId} lost its exact outbound barrier while flushing " +
+                        "observer callback RPC baselines.");
+                }
             }
 
             _triggerLateObserverAdded.Clear();
@@ -3151,7 +6268,17 @@ namespace PurrNet.Modules
                 };
 
                 if (_asServer)
-                    _playersManager.Send(toComplete.target, packet);
+                {
+                    if (_exactBarrierBypassFinishes.Count == 0 ||
+                        !_exactBarrierBypassFinishes.Remove(
+                            toComplete, out var exactTransition) ||
+                        !_playersManager.SendExactBarrierBypass(
+                            toComplete.target, exactTransition, packet,
+                            Channel.ReliableOrdered))
+                    {
+                        _playersManager.Send(toComplete.target, packet);
+                    }
+                }
                 else _playersManager.SendToServer(packet);
 
                 if (_asServer && _readyAsyncObservers.Count > 0)
@@ -3159,6 +6286,37 @@ namespace PurrNet.Modules
             }
 
             _toCompleteNextFrame.Clear();
+        }
+
+        private void SendDelayedSceneReconcileEnds()
+        {
+            if (_sceneReconcileEndsNextFrame.Count == 0)
+                return;
+
+            for (var i = 0; i < _sceneReconcileEndsNextFrame.Count; i++)
+            {
+                var pending = _sceneReconcileEndsNextFrame[i];
+                if (pending.promotedListenClient != null)
+                {
+                    pending.promotedListenClient.OnSceneSpawnReconcilePacket(
+                        pending.player, pending.packet, false);
+                }
+                else
+                {
+                    var transition = new HostMigrationTransitionOptions(
+                        pending.packet.sessionId, pending.packet.epoch);
+                    if (!transition.canReconcile ||
+                        !_playersManager.SendExactBarrierBypass(
+                            pending.player, transition, pending.packet,
+                            Channel.ReliableOrdered))
+                    {
+                        _playersManager.Send(
+                            pending.player, pending.packet, Channel.ReliableOrdered);
+                    }
+                }
+            }
+
+            _sceneReconcileEndsNextFrame.Clear();
         }
 
         private void CatchupClient(PlayerID playerId)
@@ -3170,29 +6328,36 @@ namespace PurrNet.Modules
                 if (!identity.isSpawned)
                     continue;
 
-                if (identity.IsSpawned(false))
-                    continue;
-
                 if (!identity.id.HasValue)
                     continue;
 
                 if (_toSpawnNextFrame.Contains(identity))
                     continue;
 
-                identity.SetIsSpawned(true, false);
-                identity.TriggerEarlySpawnEvent(false);
+                var needsClientLifecycle = !identity.IsSpawned(false);
+                if (needsClientLifecycle)
+                {
+                    identity.SetIsSpawned(true, false);
+                    identity.TriggerEarlySpawnEvent(false);
+                }
 
                 onSentSpawnPacket?.Invoke(playerId, _sceneId, identity.id.Value);
 
                 if (identity.TryAddObserver(playerId))
                 {
+                    RecordExactSnapshotObserverLifecycle(
+                        playerId, identity, ExactObserverLifecycle.Added);
                     onObserverAdded?.Invoke(playerId, identity);
                     identity.TriggerOnPreObserverAdded(playerId, false);
-                    _triggerLateObserverAdded.Add(new PlayerNid { player = playerId, nid = identity, isSpawner = false });
+                    _triggerLateObserverAdded.Add(
+                        CreateLateObserverEntry(playerId, identity, false));
                 }
 
-                identity.TriggerSpawnEvent(false);
-                onIdentityAdded?.Invoke(identity);
+                if (needsClientLifecycle)
+                {
+                    identity.TriggerSpawnEvent(false);
+                    onIdentityAdded?.Invoke(identity);
+                }
             }
         }
 
@@ -3689,20 +6854,22 @@ namespace PurrNet.Modules
         /// </summary>
         public void ManualDespawn(NetworkIdentity identity)
         {
-            if (!_asServer)
+            if (!identity || !identity.IsSpawned(_asServer))
                 return;
 
-            var observersCopy = ListPool<PlayerID>.Instantiate();
-            observersCopy.AddRange(identity.observers);
-            for (var i = 0; i < observersCopy.Count; i++)
-                ManualRemoveObserver(identity, observersCopy[i]);
-            ListPool<PlayerID>.Destroy(observersCopy);
+            if (_asServer)
+            {
+                var observersCopy = ListPool<PlayerID>.Instantiate();
+                observersCopy.AddRange(identity.observers);
+                for (var i = 0; i < observersCopy.Count; i++)
+                    ManualRemoveObserver(identity, observersCopy[i]);
+                ListPool<PlayerID>.Destroy(observersCopy);
+            }
 
             TriggerDespawnEvent(identity);
             UnregisterIdentity(identity);
 
-            identity.SetIsSpawned(false, false);
-            onIdentityRemoved?.Invoke(identity);
+            identity.SetIsSpawned(false, _asServer);
         }
 
         /// <summary>

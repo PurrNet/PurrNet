@@ -133,6 +133,23 @@ namespace PurrNet.Modules
 
     internal class SceneHistory
     {
+        internal sealed class Snapshot
+        {
+            internal readonly List<SceneAction> actions;
+            internal readonly List<SceneAction> pending;
+            internal readonly bool hasUnflushedActions;
+
+            internal Snapshot(
+                List<SceneAction> actions,
+                List<SceneAction> pending,
+                bool hasUnflushedActions)
+            {
+                this.actions = actions;
+                this.pending = pending;
+                this.hasUnflushedActions = hasUnflushedActions;
+            }
+        }
+
         readonly List<SceneAction> _actions = new List<SceneAction>();
         readonly List<SceneAction> _pending = new List<SceneAction>();
 
@@ -169,11 +186,33 @@ namespace PurrNet.Modules
             hasUnflushedActions = false;
         }
 
+        internal Snapshot Capture()
+        {
+            return new Snapshot(
+                new List<SceneAction>(_actions),
+                new List<SceneAction>(_pending),
+                hasUnflushedActions);
+        }
+
+        internal void Restore(Snapshot snapshot)
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+
+            _actions.Clear();
+            _actions.AddRange(snapshot.actions);
+            _pending.Clear();
+            _pending.AddRange(snapshot.pending);
+            hasUnflushedActions = snapshot.hasUnflushedActions;
+        }
+
         private readonly List<SceneID> _sceneIds = new List<SceneID>();
 
         private void OptimizeHistory()
         {
             _sceneIds.Clear();
+            var retainedSetActiveIndex = -1;
+            var retainedSetActiveScene = default(SceneID);
 
             for (int i = 0; i < _actions.Count; i++)
             {
@@ -182,16 +221,32 @@ namespace PurrNet.Modules
                 {
                     case SceneActionType.Load:
                         if (action.loadSceneAction.parameters.mode == LoadSceneMode.Single)
+                        {
                             _sceneIds.Clear();
+                            retainedSetActiveIndex = -1;
+                        }
                         _sceneIds.Add(action.loadSceneAction.sceneID);
                         break;
                     case SceneActionType.LoadAddressable:
                         if (action.loadAddressableSceneAction.parameters.mode == LoadSceneMode.Single)
+                        {
                             _sceneIds.Clear();
+                            retainedSetActiveIndex = -1;
+                        }
                         _sceneIds.Add(action.loadAddressableSceneAction.sceneID);
                         break;
                     case SceneActionType.Unload:
                         _sceneIds.Remove(action.unloadSceneAction.sceneID);
+                        if (retainedSetActiveIndex >= 0 &&
+                            retainedSetActiveScene == action.unloadSceneAction.sceneID)
+                            retainedSetActiveIndex = -1;
+                        break;
+                    case SceneActionType.SetActive:
+                        if (_sceneIds.Contains(action.setActiveSceneAction.sceneID))
+                        {
+                            retainedSetActiveIndex = i;
+                            retainedSetActiveScene = action.setActiveSceneAction.sceneID;
+                        }
                         break;
                 }
             }
@@ -211,6 +266,11 @@ namespace PurrNet.Modules
                         break;
                     case SceneActionType.Unload:
                         if (!_sceneIds.Contains(action.unloadSceneAction.sceneID))
+                            _actions.RemoveAt(i);
+                        break;
+                    case SceneActionType.SetActive:
+                        if (i != retainedSetActiveIndex ||
+                            !_sceneIds.Contains(action.setActiveSceneAction.sceneID))
                             _actions.RemoveAt(i);
                         break;
                 }
@@ -245,6 +305,17 @@ namespace PurrNet.Modules
             {
                 type = SceneActionType.Unload,
                 unloadSceneAction = action
+            });
+
+            hasUnflushedActions = true;
+        }
+
+        internal void AddSetActiveAction(SetActiveSceneAction action)
+        {
+            _pending.Add(new SceneAction
+            {
+                type = SceneActionType.SetActive,
+                setActiveSceneAction = action
             });
 
             hasUnflushedActions = true;

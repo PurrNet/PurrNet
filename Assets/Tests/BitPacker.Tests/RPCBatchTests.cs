@@ -292,6 +292,36 @@ public class RPCBatchTests
     }
 
     [Test]
+    public void DropTargetDiscardsOnlyThatPlayersPendingBatches()
+    {
+        var dropped = new PlayerID(31, false);
+        var retained = new PlayerID(32, false);
+        using var backend = new TestRPCBatchBackend();
+        using var batch = new RPCBatch(backend, (_, _, _, _) => { });
+        using var payload = BitPackerPool.Get();
+
+        WritePayload(payload, 1, 8);
+        batch.Queue(dropped, MakeHeader(Channel.ReliableOrdered, 1),
+            new BitData(payload), Channel.ReliableOrdered);
+        batch.Queue(retained, MakeHeader(Channel.ReliableOrdered, 1),
+            new BitData(payload), Channel.ReliableOrdered);
+        WritePayload(payload, 2, 8);
+        batch.Queue(dropped, MakeHeader(Channel.Unreliable, 2),
+            new BitData(payload), Channel.Unreliable);
+        batch.Queue(retained, MakeHeader(Channel.Unreliable, 2),
+            new BitData(payload), Channel.Unreliable);
+
+        batch.Drop(dropped);
+        batch.Flush();
+
+        Assert.That(backend.sent, Has.Count.EqualTo(2));
+        Assert.That(backend.Count(dropped, Channel.ReliableOrdered), Is.Zero);
+        Assert.That(backend.Count(dropped, Channel.Unreliable), Is.Zero);
+        Assert.That(backend.Count(retained, Channel.ReliableOrdered), Is.EqualTo(1));
+        Assert.That(backend.Count(retained, Channel.Unreliable), Is.EqualTo(1));
+    }
+
+    [Test]
     public void StateVersionWrapDoesNotAliasDivergedRecipients()
     {
         var targets = new[]

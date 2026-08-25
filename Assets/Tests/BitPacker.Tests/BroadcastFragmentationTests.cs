@@ -133,6 +133,152 @@ public class BroadcastFragmentationTests
     }
 
     [Test]
+    public void ExactOutboundBarrier_BypassesSnapshotCoreThenReleasesCapturedTrafficInOrder()
+    {
+        var transport = new TestTransport { mtu = 64 };
+        var sender = new BroadcastModule(
+            new TestManager(transport, MTUExceededBehaviour.Fragment), true);
+        var receiver = new BroadcastModule(
+            new TestManager(new TestTransport(), MTUExceededBehaviour.Fragment), false);
+        var connection = new Connection(41);
+
+        sender.BeginReliableOrderedOutboundBarrier(connection);
+        sender.Send(connection, "held-before-end", Channel.Unreliable);
+        sender.SendBarrierBypass(connection, "snapshot-end", Channel.ReliableOrdered);
+        sender.Send(connection, "held-during-readiness", Channel.UnreliableSequenced);
+
+        Assert.That(transport.sent, Has.Count.EqualTo(1));
+        sender.ReleaseReliableOrderedOutboundBarrier(connection);
+        Assert.That(transport.sent, Has.Count.EqualTo(3));
+        Assert.That(transport.sent[0].channel, Is.EqualTo(Channel.ReliableOrdered));
+        Assert.That(transport.sent[1].channel, Is.EqualTo(Channel.ReliableOrdered));
+        Assert.That(transport.sent[2].channel, Is.EqualTo(Channel.ReliableOrdered));
+
+        var received = new List<string>();
+        receiver.Subscribe<string>((_, value, _) => received.Add(value));
+        for (var i = 0; i < transport.sent.Count; i++)
+            Deliver(receiver, connection, transport.sent[i]);
+
+        Assert.That(received, Is.EqualTo(new[]
+        {
+            "snapshot-end", "held-before-end", "held-during-readiness"
+        }));
+    }
+
+    [Test]
+    public void ExactPackageBaseline_IsSerializedBeforeTopologyAndPublishedAtExplicitCut()
+    {
+        var transport = new TestTransport { mtu = 64 };
+        var sender = new BroadcastModule(
+            new TestManager(transport, MTUExceededBehaviour.Fragment), true);
+        var receiver = new BroadcastModule(
+            new TestManager(new TestTransport(), MTUExceededBehaviour.Fragment), false);
+        var connection = new Connection(45);
+
+        sender.BeginReliableOrderedOutboundBarrier(connection);
+        sender.Send(connection, "ordinary-before-topology", Channel.Unreliable);
+        Assert.That(sender.BeginPackageBaselineCapture(connection, out var beginFailure),
+            Is.True, beginFailure);
+        sender.Send(connection, "prepared-package-baseline", Channel.UnreliableSequenced);
+        Assert.That(sender.FinishPackageBaselineCapture(
+            connection, true, out var finishFailure), Is.True, finishFailure);
+
+        Assert.That(transport.sent, Is.Empty,
+            "Preparation must serialize without publishing package or ordinary traffic.");
+        sender.SendBarrierBypass(connection, "topology-body", Channel.ReliableOrdered);
+        Assert.That(sender.PublishPackageBaselines(connection, out var publishFailure),
+            Is.True, publishFailure);
+        sender.Send(connection, "ordinary-during-readiness", Channel.Unreliable);
+
+        Assert.That(transport.sent, Has.Count.EqualTo(2));
+        sender.ReleaseReliableOrderedOutboundBarrier(connection);
+        Assert.That(transport.sent, Has.Count.EqualTo(4));
+        Assert.That(transport.sent, Has.All.Matches<SentPacket>(packet =>
+            packet.channel == Channel.ReliableOrdered));
+
+        var received = new List<string>();
+        receiver.Subscribe<string>((_, value, _) => received.Add(value));
+        for (var i = 0; i < transport.sent.Count; i++)
+            Deliver(receiver, connection, transport.sent[i]);
+
+        Assert.That(received, Is.EqualTo(new[]
+        {
+            "topology-body",
+            "prepared-package-baseline",
+            "ordinary-before-topology",
+            "ordinary-during-readiness"
+        }));
+    }
+
+    [Test]
+    public void ExactPackageBaseline_ImmediatePayloadWaitsForDeferredTopology()
+    {
+        var transport = new TestTransport { mtu = 64 };
+        var sender = new BroadcastModule(
+            new TestManager(transport, MTUExceededBehaviour.Fragment), true);
+        var receiver = new BroadcastModule(
+            new TestManager(new TestTransport(), MTUExceededBehaviour.Fragment), false);
+        var connection = new Connection(47);
+
+        sender.BeginReliableOrderedOutboundBarrier(connection);
+        Assert.That(sender.BeginPackageBaselineCapture(connection, out var beginFailure),
+            Is.True, beginFailure);
+        sender.Send(connection, "prepared-immediate-baseline", Channel.ReliableOrdered);
+        Assert.That(sender.FinishPackageBaselineCapture(
+            connection, true, out var finishFailure), Is.True, finishFailure);
+        sender.SendBarrierBypass(connection, 17, Channel.ReliableOrdered);
+        Assert.That(sender.PublishPackageBaselines(connection, out var publishFailure),
+            Is.True, publishFailure);
+
+        var received = new List<string>();
+        receiver.Subscribe<int>((_, value, _) => received.Add($"topology:{value}"));
+        receiver.Subscribe<string>((_, value, _) => received.Add(value));
+        receiver.RegisterImmediateType<string>();
+        receiver.SetDeferNonImmediate(true);
+
+        for (var i = 0; i < transport.sent.Count; i++)
+            Deliver(receiver, connection, transport.sent[i]);
+
+        Assert.That(received, Is.Empty,
+            "The package payload must not bypass the topology receive barrier merely because " +
+            "its original broadcast type is immediate.");
+
+        receiver.DrainDeferred(connection);
+        Assert.That(received, Is.EqualTo(new[]
+        {
+            "topology:17",
+            "prepared-immediate-baseline"
+        }));
+    }
+
+    [Test]
+    public void FailedExactPackageBaselineCapture_IsDiscarded()
+    {
+        var transport = new TestTransport { mtu = 64 };
+        var sender = new BroadcastModule(
+            new TestManager(transport, MTUExceededBehaviour.Fragment), true);
+        var receiver = new BroadcastModule(
+            new TestManager(new TestTransport(), MTUExceededBehaviour.Fragment), false);
+        var connection = new Connection(46);
+
+        sender.BeginReliableOrderedOutboundBarrier(connection);
+        sender.Send(connection, "ordinary", Channel.Unreliable);
+        Assert.That(sender.BeginPackageBaselineCapture(connection, out var beginFailure),
+            Is.True, beginFailure);
+        sender.Send(connection, "partial-package-baseline", Channel.ReliableOrdered);
+        Assert.That(sender.FinishPackageBaselineCapture(
+            connection, false, out var finishFailure), Is.True, finishFailure);
+        sender.ReleaseReliableOrderedOutboundBarrier(connection);
+
+        var received = new List<string>();
+        receiver.Subscribe<string>((_, value, _) => received.Add(value));
+        for (var i = 0; i < transport.sent.Count; i++)
+            Deliver(receiver, connection, transport.sent[i]);
+
+        Assert.That(received, Is.EqualTo(new[] { "ordinary" }));
+    }
+
+    [Test]
     public void UnreliableOversizeMessage_IsFragmentedWithinMTUAndReassembledOutOfOrder()
     {
         var senderTransport = new TestTransport { mtu = 64 };

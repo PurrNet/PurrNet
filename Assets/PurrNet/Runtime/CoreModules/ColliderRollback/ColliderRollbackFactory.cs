@@ -19,7 +19,7 @@ namespace PurrNet.Modules
                 serverFactory.TryGetModule(scene, out var serverModule))
                 return serverModule;
 
-            if (scenes.TryGetSceneState(scene, out var state))
+            if (scenes.TryGetRegisteredOrStagedSceneState(scene, out var state))
                 return new RollbackModule(_tick, state.scene);
             return new RollbackModule(_tick, default);
         }

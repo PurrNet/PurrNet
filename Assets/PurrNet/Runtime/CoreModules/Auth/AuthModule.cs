@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using PurrNet.Authentication;
 using PurrNet.Logging;
+using PurrNet.Packing;
 using PurrNet.Transports;
 using UnityEngine;
 
@@ -19,6 +20,13 @@ namespace PurrNet.Modules
         public float addedTimeStamp;
     }
 
+    internal struct HostMigrationPlayerClaim : IPackedAuto
+    {
+        public string sessionId;
+        public uint epoch;
+        public PlayerID playerId;
+    }
+
     public class AuthModule : INetworkModule, IConnectionListener, IFixedUpdate, IPromoteToServerModule
     {
         private const float FALLBACK_DENIAL_TIMEOUT = 5f;
@@ -32,6 +40,8 @@ namespace PurrNet.Modules
         private AuthenticationLayer _authenticator;
         private readonly List<WaitingConnectionAuth> _waitingConnections = new List<WaitingConnectionAuth>();
         private readonly List<PendingDenialAck> _pendingDenialAcks = new List<PendingDenialAck>();
+        private readonly Dictionary<Connection, HostMigrationPlayerClaim>
+            _hostMigrationPlayerClaims = new();
 
         public event Action<Connection, AuthenticationResponse> onConnection;
 
@@ -52,6 +62,18 @@ namespace PurrNet.Modules
             _cookiesModule.Set(CONNECTION_COOKIE_KEY, cookie, false);
         }
 
+        internal bool TryTakeHostMigrationPlayerClaim(Connection conn,
+            out HostMigrationPlayerClaim claim)
+        {
+            if (_hostMigrationPlayerClaims.Count == 0)
+            {
+                claim = default;
+                return false;
+            }
+
+            return _hostMigrationPlayerClaims.Remove(conn, out claim);
+        }
+
         public AuthModule(NetworkManager manager, BroadcastModule broadcastModule, CookiesModule cookiesModule)
         {
             _cookiesModule = cookiesModule;
@@ -66,6 +88,7 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            Disable(false);
             Enable(true);
         }
 
@@ -85,6 +108,7 @@ namespace PurrNet.Modules
 
             _broadcastModule.Subscribe<AuthenticationRequest>(OnNonAuthRequest);
             _broadcastModule.Subscribe<AuthenticationDenialAck>(OnDenialAck);
+            _broadcastModule.Subscribe<HostMigrationPlayerClaim>(OnHostMigrationPlayerClaim);
 
             if (!_authenticator)
                 return;
@@ -104,6 +128,8 @@ namespace PurrNet.Modules
 
             _broadcastModule.Unsubscribe<AuthenticationRequest>(OnNonAuthRequest);
             _broadcastModule.Unsubscribe<AuthenticationDenialAck>(OnDenialAck);
+            _broadcastModule.Unsubscribe<HostMigrationPlayerClaim>(OnHostMigrationPlayerClaim);
+            _hostMigrationPlayerClaims.Clear();
 
             if (!_authenticator)
                 return;
@@ -117,6 +143,9 @@ namespace PurrNet.Modules
         {
             if (!asServer)
             {
+                if (_playersManager.TryGetOutgoingHostMigrationPlayerClaim(out var claim))
+                    _broadcastModule.SendToServer(claim, Channel.ReliableOrdered);
+
                 if (_authenticator)
                 {
                     _authenticator.SendClientPayload(_broadcastModule, _cookiesModule);
@@ -139,12 +168,18 @@ namespace PurrNet.Modules
                 conn = conn,
                 addedTimeStamp = Time.time
             });
+            if (_hostMigrationPlayerClaims.Count != 0)
+                _hostMigrationPlayerClaims.Remove(conn);
         }
 
         public void OnDisconnected(Connection conn, bool asServer)
         {
             if (!asServer)
                 return;
+
+            RemoveFromWaitingList(conn);
+            if (_hostMigrationPlayerClaims.Count != 0)
+                _hostMigrationPlayerClaims.Remove(conn);
 
             for (int i = _pendingDenialAcks.Count - 1; i >= 0; i--)
             {
@@ -156,6 +191,9 @@ namespace PurrNet.Modules
         private void OnNonAuthRequest(Connection conn, AuthenticationRequest data, bool asserver)
         {
             if (!asserver)
+                return;
+
+            if (IsDenialPending(conn))
                 return;
 
             RemoveFromWaitingList(conn);
@@ -173,7 +211,7 @@ namespace PurrNet.Modules
                     ? _manager.networkRules.GetVersionMismatchBehaviour()
                     : VersionMismatchBehaviour.Warning;
 
-                if (behaviour == VersionMismatchBehaviour.Deny)
+                if (NetworkManager.ShouldDenyVersionMismatch(behaviour, _manager))
                 {
                     PurrLogger.LogError($"Client version mismatch. Client version: {data.version}, Server version: {NetworkManager.version}");
                     DenyConnection(conn, DenialKind.VersionMismatch, default);
@@ -192,6 +230,9 @@ namespace PurrNet.Modules
 
         private void OnAuthenticationComplete(Connection conn, AuthenticationResponse response)
         {
+            if (IsDenialPending(conn))
+                return;
+
             RemoveFromWaitingList(conn);
 
             if (!response.success)
@@ -204,6 +245,26 @@ namespace PurrNet.Modules
             }
 
             onConnection?.Invoke(conn, response);
+        }
+
+        private void OnHostMigrationPlayerClaim(Connection conn,
+            HostMigrationPlayerClaim data, bool asServer)
+        {
+            if (!asServer || IsDenialPending(conn))
+                return;
+
+            if (_hostMigrationPlayerClaims.TryGetValue(conn, out var existingClaim) &&
+                (existingClaim.sessionId != data.sessionId ||
+                 existingClaim.epoch != data.epoch ||
+                 existingClaim.playerId != data.playerId))
+            {
+                PurrLogger.LogError(
+                    $"Connection `{conn}` changed its host-migration PlayerID claim during authentication.");
+                DenyConnection(conn, DenialKind.AuthenticatorRejected, default);
+                return;
+            }
+
+            _hostMigrationPlayerClaims[conn] = data;
         }
 
         private void OnAuthenticatorDeniedWithReason(Connection conn, ByteData? reason)

@@ -95,16 +95,8 @@ namespace PurrNet.Modules
 
         public bool RemoveOwnership(NetworkIdentity identity)
         {
-            if (identity.id.HasValue && _owners.Remove(identity.id.Value, out var oldOwner))
+            if (identity.id.HasValue && RemoveOwnership(identity.id.Value))
             {
-                if (_playerOwnedIds.TryGetValue(oldOwner, out var ownedIds))
-                {
-                    ownedIds.Remove(identity.id.Value);
-
-                    if (ownedIds.Count == 0)
-                        _playerOwnedIds.Remove(oldOwner);
-                }
-
                 if (_asServer)
                     identity.internalOwnerServer = null;
                 else identity.internalOwnerClient = null;
@@ -112,6 +104,22 @@ namespace PurrNet.Modules
             }
 
             return false;
+        }
+
+        public bool RemoveOwnership(NetworkID identity)
+        {
+            if (!_owners.Remove(identity, out var oldOwner))
+                return false;
+
+            if (_playerOwnedIds.TryGetValue(oldOwner, out var ownedIds))
+            {
+                ownedIds.Remove(identity);
+
+                if (ownedIds.Count == 0)
+                    _playerOwnedIds.Remove(oldOwner);
+            }
+
+            return true;
         }
     }
 }

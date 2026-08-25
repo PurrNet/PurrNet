@@ -830,6 +830,20 @@ public class BitPackerEdgeCaseTests
         snapshot.Dispose();
     }
 
+    [Test]
+    public void ByteData_DuplicateCopiesOnlyTheOffsetView()
+    {
+        var backing = new byte[] { 90, 91, 1, 2, 3, 92 };
+        var duplicate = new ByteData(backing, 2, 3).Duplicate();
+
+        Assert.That(duplicate.offset, Is.Zero);
+        Assert.That(duplicate.length, Is.EqualTo(3));
+        CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, duplicate.data);
+
+        backing[2] = 99;
+        CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, duplicate.data);
+    }
+
     private static void Capture(ByteData data, List<byte[]> target)
     {
         var copy = new byte[data.length];

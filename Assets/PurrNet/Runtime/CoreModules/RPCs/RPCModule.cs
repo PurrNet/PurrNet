@@ -83,6 +83,8 @@ namespace PurrNet.Modules
             _unionBatch.Clear();
             _immediateBatch.Clear();
             _immediateContentFlushed = false;
+            _playersManager.onHostMigrationConnectionRebound -= OnPlayerJoined;
+            _playersManager.onHostMigrationConnectionRebound += OnPlayerJoined;
         }
 
         public void PostPromoteToServerModule() { }
@@ -101,7 +103,10 @@ namespace PurrNet.Modules
             _playersManager.Subscribe<ChildRPCPacket>(ReceiveChildRPC);
 
             _playersManager.onPlayerJoined += OnPlayerJoined;
+            if (asServer)
+                _playersManager.onHostMigrationConnectionRebound += OnPlayerJoined;
             _scenes.onSceneUnloaded += OnSceneUnloaded;
+            _scenes.onSceneRegistrationRemoved += OnSceneUnloaded;
 
             _hierarchyModule.onSentSpawnPacket += OnObserverAdded;
             _hierarchyModule.onIdentityRemoved += OnIdentityRemoved;
@@ -140,7 +145,9 @@ namespace PurrNet.Modules
             _playersManager.UnregisterImmediateType<ImmediateRPCBatchPacket>();
 
             _playersManager.onPlayerJoined -= OnPlayerJoined;
+            _playersManager.onHostMigrationConnectionRebound -= OnPlayerJoined;
             _scenes.onSceneUnloaded -= OnSceneUnloaded;
+            _scenes.onSceneRegistrationRemoved -= OnSceneUnloaded;
 
             _hierarchyModule.onSentSpawnPacket -= OnObserverAdded;
             _hierarchyModule.onIdentityRemoved -= OnIdentityRemoved;
@@ -431,6 +438,7 @@ namespace PurrNet.Modules
 
             if (!asServer)
             {
+                module.CaptureReceivedBufferedRPC(data, signature);
                 return true;
             }
 
@@ -703,6 +711,32 @@ namespace PurrNet.Modules
             signature.targetPlayerList = null;
             signature.targetPlayerEnumerable = null;
             return signature;
+        }
+
+        internal void CaptureReceivedBufferedRPC<T>(T data, RPCSignature signature) where T : struct, IRpc
+        {
+            if (!signature.bufferLast)
+                return;
+
+            var rules = _manager.networkRules;
+            if (!rules || !rules.IsHostMigrationEnabled())
+                return;
+
+            if (signature.type == RPCType.TargetRPC)
+                signature = WithSingleTarget(signature, data.targetPlayerId);
+
+            switch (data)
+            {
+                case StaticRPCPacket staticRpc:
+                    AppendToBufferedRPCs(staticRpc, signature);
+                    break;
+                case RPCPacket rpcPacket:
+                    AppendToBufferedRPCs(rpcPacket, signature);
+                    break;
+                case ChildRPCPacket childRpc:
+                    AppendToBufferedRPCs(childRpc, signature);
+                    break;
+            }
         }
 
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
@@ -1254,6 +1288,12 @@ namespace PurrNet.Modules
         public void FlushBatchedRPCs()
         {
             BatchNetworkMessages();
+        }
+
+        internal void DropBatchedRPCs(PlayerID player)
+        {
+            _unionBatch?.Drop(player);
+            _immediateBatch?.Drop(player);
         }
 
         /// <summary>

@@ -28,8 +28,9 @@ namespace PurrNet.Modules
                     OnPreSceneLoaded(id, asServer);
             }
 
-            this.scenes.onPreSceneLoaded += OnPreSceneLoaded;
+            this.scenes.onSceneRegistrationAdded += OnPreSceneLoaded;
             this.scenes.onSceneUnloaded += OnSceneUnloaded;
+            this.scenes.onSceneRegistrationRemoved += OnSceneUnloaded;
         }
 
         public void Disable(bool asServer)
@@ -37,8 +38,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < modules.Count; i++)
                 modules[i].Disable(asServer);
 
-            scenes.onPreSceneLoaded -= OnPreSceneLoaded;
+            scenes.onSceneRegistrationAdded -= OnPreSceneLoaded;
             scenes.onSceneUnloaded -= OnSceneUnloaded;
+            scenes.onSceneRegistrationRemoved -= OnSceneUnloaded;
         }
 
         protected abstract T CreateModule(SceneID scene, bool asServer);

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using PurrNet.Packing;
 using PurrNet.Transports;
 using PurrNet.Utils;
@@ -6,7 +7,7 @@ using UnityEngine;
 
 namespace PurrNet.Modules
 {
-    public class TickManager : INetworkModule, IUpdate, IPromoteToServerModule
+    public class TickManager : INetworkModule, IUpdate, IPromoteToServerModule, ITransferToNewServer
     {
         /// <summary>
         /// Tracks local ticks starting from client connection to the server for synchronization.
@@ -126,6 +127,7 @@ namespace PurrNet.Modules
 
         private uint _syncedTick;
         private float _lastSyncTime = -99;
+        private float _latestSyncRequestTime = float.NegativeInfinity;
         private double _lastTickTime;
         private const int MaxTickPerFrame = 5;
 
@@ -169,11 +171,29 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             Disable(false);
+            FencePendingSyncResponses();
+            _syncedTick = localTick;
+            rtt = 0d;
+            tickPacingScale = 1d;
             _asServer = true;
             Enable(true);
         }
 
         public void PostPromoteToServerModule() { }
+
+        public void TransferToNewServer()
+        {
+            FencePendingSyncResponses();
+            rtt = 0d;
+            _lastSyncTime = -99f;
+            tickPacingScale = 1d;
+        }
+
+        internal void RebaseAfterSimulationPause()
+        {
+            _lastTickTime = Time.unscaledTimeAsDouble;
+            floatingPoint = 0d;
+        }
 
         public void Update()
         {
@@ -227,12 +247,12 @@ namespace PurrNet.Modules
                 ticksHandled++;
             }
         }
-        
+
         public void AddTickListener(ITickListener listener)
         {
             _tickListeners.Add(listener);
         }
-        
+
         public void RemoveTickListener(ITickListener listener)
         {
             _tickListeners.Remove(listener);
@@ -288,6 +308,9 @@ namespace PurrNet.Modules
             try
             {
                 float requestSendTime = Time.unscaledTime;
+                if (requestSendTime <= _latestSyncRequestTime)
+                    requestSendTime = BitIncrement(_latestSyncRequestTime);
+                _latestSyncRequestTime = requestSendTime;
 
                 _broadcaster.SendToServer(new TickManagerRequestLocalTick
                 {
@@ -302,7 +325,10 @@ namespace PurrNet.Modules
 
         private void OnServerRespondedPing(Connection conn, TickManagerResponseLocalTick data, bool asServer)
         {
-            rtt = Time.unscaledTime - data.requestTime;
+            if (data.requestTime != _latestSyncRequestTime)
+                return;
+
+            rtt = Math.Max(0d, Time.unscaledTime - data.requestTime);
             float halfRTT = (float)rtt / 2;
             syncedTick = data.tick + TimeToTick(halfRTT);
         }
@@ -316,6 +342,31 @@ namespace PurrNet.Modules
             };
 
             _broadcaster.Send(conn, packet);
+        }
+
+        private void FencePendingSyncResponses()
+        {
+            var floor = Math.Max(Time.unscaledTime, _latestSyncRequestTime);
+            _latestSyncRequestTime = BitIncrement(floor);
+        }
+
+        private static float BitIncrement(float value)
+        {
+            if (float.IsNaN(value) || value == float.PositiveInfinity)
+                return value;
+            if (value == 0f)
+                return float.Epsilon;
+
+            var bits = new FloatIntBits { floating = value };
+            bits.integer += value > 0f ? 1 : -1;
+            return bits.floating;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct FloatIntBits
+        {
+            [FieldOffset(0)] public float floating;
+            [FieldOffset(0)] public int integer;
         }
     }
 

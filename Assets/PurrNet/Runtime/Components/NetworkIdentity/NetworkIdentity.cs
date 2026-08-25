@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Modules;
@@ -378,7 +379,7 @@ namespace PurrNet
 
         public bool IsObserver(PlayerID player) => _observers.Contains(player);
 
-        internal bool IsObserverOrPending(PlayerID player) =>
+        public bool IsObserverOrPending(PlayerID player) =>
             _observers.Contains(player) || _pendingObservers?.Contains(player) == true;
 
         private void ReleasePendingObserversIfEmpty()
@@ -430,6 +431,10 @@ namespace PurrNet
         }
 
         private IServerSceneEvents _serverSceneEvents;
+        private PlayersManager _serverPlayerEventsSource;
+        private PlayersManager _clientPlayerEventsSource;
+        private ScenePlayersModule _serverSceneEventsSource;
+        private ScenePlayersModule _clientSceneEventsSource;
         private int onTickCount;
         private ITick _ticker;
 
@@ -488,8 +493,17 @@ namespace PurrNet
                 RegisterTickEvent(asServer);
             }
 
+            SubscribeRoleEvents(asServer);
+        }
+
+        private void SubscribeRoleEvents(bool asServer)
+        {
             if (networkManager.TryGetModule<PlayersManager>(asServer, out var players))
             {
+                if (asServer)
+                    _serverPlayerEventsSource = players;
+                else _clientPlayerEventsSource = players;
+
                 // ReSharper disable once SuspiciousTypeConversion.Global
                 if (this is IPlayerEvents events)
                 {
@@ -499,6 +513,10 @@ namespace PurrNet
 
                 if (networkManager.TryGetModule<ScenePlayersModule>(asServer, out var scenePlayers))
                 {
+                    if (asServer)
+                        _serverSceneEventsSource = scenePlayers;
+                    else _clientSceneEventsSource = scenePlayers;
+
                     // ReSharper disable once SuspiciousTypeConversion.Global
                     if (this is IServerSceneEvents sceneEvents)
                     {
@@ -540,21 +558,38 @@ namespace PurrNet
                 UnregisterTickEvent(asServer);
             }
 
-            if (!networkManager.TryGetModule<PlayersManager>(asServer, out var players)) return;
+            UnsubscribeRoleEvents(asServer);
+        }
+
+        private void UnsubscribeRoleEvents(bool asServer)
+        {
+            var players = asServer ? _serverPlayerEventsSource : _clientPlayerEventsSource;
 
             // ReSharper disable once SuspiciousTypeConversion.Global
-            if (this is IPlayerEvents events)
+            if (players != null && this is IPlayerEvents events)
             {
                 players.onPlayerJoined -= events.OnPlayerConnected;
                 players.onPlayerLeft -= events.OnPlayerDisconnected;
             }
 
-            if (!networkManager.TryGetModule<ScenePlayersModule>(asServer, out var scenePlayers)) return;
+            if (asServer)
+                _serverPlayerEventsSource = null;
+            else _clientPlayerEventsSource = null;
 
-            if (_serverSceneEvents == null) return;
+            var scenePlayers = asServer ? _serverSceneEventsSource : _clientSceneEventsSource;
 
-            scenePlayers.onPlayerLoadedScene -= OnServerJoinedScene;
-            scenePlayers.onPlayerUnloadedScene -= OnServerLeftScene;
+            if (scenePlayers != null)
+            {
+                scenePlayers.onPlayerLoadedScene -= OnServerJoinedScene;
+                scenePlayers.onPlayerUnloadedScene -= OnServerLeftScene;
+            }
+
+            if (asServer)
+                _serverSceneEventsSource = null;
+            else _clientSceneEventsSource = null;
+
+            if (_serverSceneEventsSource == null && _clientSceneEventsSource == null)
+                _serverSceneEvents = null;
         }
 
         private void UnregisterTickEvent(bool asServer)
@@ -956,6 +991,10 @@ namespace PurrNet
             _spawnedCount = 0;
             _onSpawnedQueue?.Clear();
             _serverSceneEvents = null;
+            _serverPlayerEventsSource = null;
+            _clientPlayerEventsSource = null;
+            _serverSceneEventsSource = null;
+            _clientSceneEventsSource = null;
             _serverTickManager = null;
             _clientTickManager = null;
             _ticker = null;
@@ -1022,6 +1061,7 @@ namespace PurrNet
                 _visitiblityRules = Instantiate(_visitiblityRules);
                 _visitiblityRules.Setup(manager);
             }
+
         }
 
         private PlayerID? _pendingOwnershipRequest;
@@ -1242,14 +1282,176 @@ namespace PurrNet
         public bool isManualSpawn { get; internal set; }
 
         /// <summary>
-        /// Promotes the NetworkIdentity instance to function as a server entity.
-        /// This is used for host-migration, when a client is promoted to host.
-        /// Use this to ensure client has everything it needs to function as server.
+        /// Called once after host migration has reconciled this identity's existing client role
+        /// into its server role in place. Every identity in the promoted hierarchy has already
+        /// been reconciled when this runs. Normal role/global early-spawn, spawn, and despawn
+        /// callbacks are intentionally not replayed; use this hook for transition-only work.
         /// </summary>
         protected virtual void PromoteToServer() { }
 
-        internal void TriggerPromoteToServer()
+        /// <summary>
+        /// Called after this retained client identity has been matched to the new host's
+        /// authoritative spawn manifest, its custom spawn data has been applied, and the
+        /// ordered FinishSpawn marker has arrived. Normal spawn/despawn callbacks are not replayed.
+        /// </summary>
+        protected virtual void OnHostMigrationRebound(HostMigrationTransitionOptions transition) { }
+
+        internal void ReconcileClientRoleAsServer(HierarchyV2 serverHierarchy)
         {
+            if (!_isSpawnedClient || _isSpawnedServer)
+                return;
+
+            var promotedId = _idClient;
+            var promotedOwner = internalOwnerClient;
+
+            RebindTickRoleAsServer();
+            UnsubscribeRoleEvents(false);
+
+            _serverHierarchy = serverHierarchy;
+            _clientHierarchy = null;
+            _idServer = promotedId;
+            _isSpawnedServer = true;
+            _isSpawnedClient = false;
+            internalOwnerServer = promotedOwner;
+            internalOwnerClient = null;
+            RecacheHasConnectedOwner();
+
+            SubscribeRoleEvents(true);
+        }
+
+        internal bool CanRetainClientRoleForExactAuthoritySwitch(HierarchyV2 clientHierarchy,
+            bool promotion, out NetworkID networkId, out string failure)
+        {
+            networkId = default;
+            failure = null;
+
+            if (clientHierarchy == null || !_isSpawnedClient || !_idClient.HasValue ||
+                !ReferenceEquals(_clientHierarchy, clientHierarchy))
+            {
+                failure = $"{name} does not have a complete client-role hierarchy binding";
+                return false;
+            }
+
+            var liveRoleCount = (_isSpawnedClient ? 1 : 0) + (_isSpawnedServer ? 1 : 0);
+            if (isInPool || _spawnedCount != liveRoleCount || liveRoleCount == 0 ||
+                !_wasEarlySpawned)
+            {
+                failure = $"{name} has not completed exactly one lifecycle for each live role";
+                return false;
+            }
+
+            if (promotion && _isSpawnedServer)
+            {
+                failure = $"{name} still has a live server role before promotion";
+                return false;
+            }
+
+            if (_idServer.HasValue && _idServer.Value != _idClient.Value)
+            {
+                failure = $"{name} has conflicting server/client NetworkIDs";
+                return false;
+            }
+
+            if (_isSpawnedServer && _serverHierarchy == null)
+            {
+                failure = $"{name} has an incomplete server-role hierarchy binding";
+                return false;
+            }
+
+            networkId = _idClient.Value;
+            return true;
+        }
+
+        internal bool CanAttachPromotedListenClientRole(HierarchyV2 clientHierarchy,
+            out string failure)
+        {
+            failure = null;
+
+            if (clientHierarchy == null)
+            {
+                failure = $"{name} cannot attach to a null client hierarchy";
+                return false;
+            }
+
+            if (!_isSpawnedServer || !_idServer.HasValue)
+            {
+                failure = $"{name} is not a live server identity with a stable NetworkID";
+                return false;
+            }
+
+            if (_idClient.HasValue && _idClient.Value != _idServer.Value)
+            {
+                failure = $"{name} has conflicting server/client NetworkIDs";
+                return false;
+            }
+
+            if (_clientHierarchy != null && !ReferenceEquals(_clientHierarchy, clientHierarchy))
+            {
+                failure = $"{name} is already attached to another client hierarchy";
+                return false;
+            }
+
+            if (_isSpawnedClient && (!_idClient.HasValue || _clientHierarchy == null))
+            {
+                failure = $"{name} has an incomplete existing client-role attachment";
+                return false;
+            }
+
+            return true;
+        }
+
+        internal bool AttachPromotedListenClientRole(HierarchyV2 clientHierarchy,
+            out bool newlyAttached, out string failure)
+        {
+            newlyAttached = false;
+            if (!CanAttachPromotedListenClientRole(clientHierarchy, out failure))
+                return false;
+
+            _clientHierarchy = clientHierarchy;
+            _idClient = _idServer;
+            internalOwnerClient = internalOwnerServer;
+            RecacheHasConnectedOwner();
+
+            if (_isSpawnedClient)
+                return true;
+
+            _isSpawnedClient = true;
+            if (_ticker != null || _tickables.Count > 0)
+                RegisterTickEvent(false);
+            SubscribeRoleEvents(false);
+            _spawnedCount++;
+            newlyAttached = true;
+            return true;
+        }
+
+        private void RebindTickRoleAsServer()
+        {
+            if (_tickRegisteredClient > 0 && _clientTickManager != null)
+                _clientTickManager.onTick -= ClientTick;
+
+            _tickRegisteredClient = 0;
+            _clientTickManager = null;
+
+            if (_ticker == null && _tickables.Count == 0)
+                return;
+
+            if (_tickRegisteredServer > 0)
+                return;
+
+            if (!networkManager.TryGetModule<TickManager>(true, out var tickManager))
+                return;
+
+            _serverTickManager = tickManager;
+            _tickRegisteredServer = 1;
+            _serverTickManager.onTick += ServerTick;
+        }
+
+        internal Task TriggerPromoteToServer(HostMigrationTransitionOptions transition = default)
+        {
+            var migrationModules = SnapshotHostMigrationModules();
+            List<Task> readinessTasks = null;
+            List<Exception> failures = null;
+
             try
             {
                 PromoteToServer();
@@ -1257,19 +1459,252 @@ namespace PurrNet
             catch (Exception e)
             {
                 Debug.LogException(e);
+                failures ??= new List<Exception>();
+                failures.Add(new InvalidOperationException(
+                    $"{GetType().FullName}.PromoteToServer failed.", e));
             }
 
-            for (int i = 0; i < _externalModulesView.Count; i++)
+            for (var i = 0; i < migrationModules.Length; i++)
             {
+                var module = migrationModules[i];
                 try
                 {
-                    _externalModulesView[i].PromoteToServer();
+                    module.PromoteToServer();
                 }
                 catch (Exception e)
                 {
                     Debug.LogException(e);
+                    failures ??= new List<Exception>();
+                    failures.Add(new InvalidOperationException(
+                        $"{module.GetType().FullName}.PromoteToServer failed.", e));
                 }
             }
+
+            AddHostMigrationPromotionReadinessTask(this, transition, ref readinessTasks);
+            for (var i = 0; i < migrationModules.Length; i++)
+            {
+                AddHostMigrationPromotionReadinessTask(
+                    migrationModules[i], transition, ref readinessTasks);
+            }
+
+            if (failures != null)
+            {
+                readinessTasks ??= new List<Task>();
+                readinessTasks.Add(Task.FromException(new AggregateException(
+                    "One or more retained components failed during host promotion.", failures)));
+            }
+
+            return readinessTasks == null ? Task.CompletedTask : Task.WhenAll(readinessTasks);
+        }
+
+        internal Task TriggerOnHostMigrationRebound(HostMigrationTransitionOptions transition)
+        {
+            var migrationModules = SnapshotHostMigrationModules();
+            List<Exception> failures = null;
+            try
+            {
+                OnHostMigrationRebound(transition);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                failures ??= new List<Exception>();
+                failures.Add(new InvalidOperationException(
+                    $"{GetType().FullName}.OnHostMigrationRebound failed.", e));
+            }
+
+            for (var i = 0; i < migrationModules.Length; i++)
+            {
+                var module = migrationModules[i];
+                try
+                {
+                    module.OnHostMigrationRebound(transition);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                    failures ??= new List<Exception>();
+                    failures.Add(new InvalidOperationException(
+                        $"{module.GetType().FullName}.OnHostMigrationRebound failed.", e));
+                }
+            }
+
+            List<Task> readinessTasks = null;
+            AddHostMigrationReadinessTask(this, transition, ref readinessTasks);
+            for (var i = 0; i < migrationModules.Length; i++)
+                AddHostMigrationReadinessTask(migrationModules[i], transition, ref readinessTasks);
+
+            if (failures != null)
+            {
+                readinessTasks ??= new List<Task>();
+                readinessTasks.Add(Task.FromException(new AggregateException(
+                    "One or more retained components failed during host-migration rebound.", failures)));
+            }
+
+            return readinessTasks == null ? Task.CompletedTask : Task.WhenAll(readinessTasks);
+        }
+
+        internal void TriggerBeginHostMigrationReconciliation(
+            HostMigrationTransitionOptions transition, List<Exception> failures)
+        {
+            var migrationModules = SnapshotHostMigrationModules();
+            TryBeginHostMigrationReconciliation(this, transition, failures);
+            for (var i = 0; i < migrationModules.Length; i++)
+                TryBeginHostMigrationReconciliation(migrationModules[i], transition, failures);
+        }
+
+        internal void TriggerPrepareHostMigrationServerBaseline(PlayerID player,
+            HostMigrationTransitionOptions transition, ref List<Exception> failures)
+        {
+            var migrationModules = SnapshotHostMigrationModules();
+            TryPrepareHostMigrationServerBaseline(this, player, transition, ref failures);
+            for (var i = 0; i < migrationModules.Length; i++)
+            {
+                TryPrepareHostMigrationServerBaseline(
+                    migrationModules[i], player, transition, ref failures);
+            }
+        }
+
+        private NetworkModule[] SnapshotHostMigrationModules()
+        {
+            return _externalModulesView.Count == 0
+                ? Array.Empty<NetworkModule>()
+                : _externalModulesView.ToArray();
+        }
+
+        private static void TryPrepareHostMigrationServerBaseline(object target, PlayerID player,
+            HostMigrationTransitionOptions transition, ref List<Exception> failures)
+        {
+            if (target is not IHostMigrationServerBaselineParticipant participant)
+                return;
+
+            try
+            {
+                participant.PrepareHostMigrationServerBaseline(player, transition);
+            }
+            catch (Exception exception)
+            {
+                failures ??= new List<Exception>();
+                failures.Add(new InvalidOperationException(
+                    $"{target.GetType().FullName} could not prepare the server package baseline " +
+                    $"for player {player} in {transition}.", exception));
+            }
+        }
+
+        private static void TryBeginHostMigrationReconciliation(object target,
+            HostMigrationTransitionOptions transition, List<Exception> failures)
+        {
+            if (target is not IHostMigrationReconciliationParticipant participant)
+                return;
+
+            try
+            {
+                participant.BeginHostMigrationReconciliation(transition);
+            }
+            catch (Exception exception)
+            {
+                failures.Add(new InvalidOperationException(
+                    $"{target.GetType().FullName} could not begin host-migration reconciliation.",
+                    exception));
+            }
+        }
+
+        internal bool HasHostMigrationManualHierarchyParticipant()
+        {
+            var migrationModules = SnapshotHostMigrationModules();
+            if (this is IHostMigrationManualHierarchyParticipant)
+                return true;
+
+            for (var i = 0; i < migrationModules.Length; i++)
+            {
+                if (migrationModules[i] is IHostMigrationManualHierarchyParticipant)
+                    return true;
+            }
+
+            return false;
+        }
+
+        internal bool OwnsHostMigrationManualRoot(NetworkIdentity root, List<Exception> failures)
+        {
+            var migrationModules = SnapshotHostMigrationModules();
+            var owns = TryOwnHostMigrationManualRoot(this, root, failures);
+
+            for (var i = 0; i < migrationModules.Length; i++)
+            {
+                if (TryOwnHostMigrationManualRoot(migrationModules[i], root, failures))
+                    owns = true;
+            }
+
+            return owns;
+        }
+
+        private static bool TryOwnHostMigrationManualRoot(object target, NetworkIdentity root,
+            List<Exception> failures)
+        {
+            if (target is not IHostMigrationManualHierarchyParticipant participant)
+                return false;
+
+            try
+            {
+                return participant.OwnsHostMigrationManualRoot(root);
+            }
+            catch (Exception exception)
+            {
+                failures.Add(new InvalidOperationException(
+                    $"{target.GetType().FullName} could not classify manual root " +
+                    $"{root?.name ?? "null"}.", exception));
+                return false;
+            }
+        }
+
+        private static void AddHostMigrationReadinessTask(object target,
+            HostMigrationTransitionOptions transition, ref List<Task> tasks)
+        {
+            if (target is not IHostMigrationReconciliationParticipant participant)
+                return;
+
+            Task task;
+            try
+            {
+                task = participant.ReconcileHostMigrationAsync(transition);
+                if (task == null)
+                {
+                    task = Task.FromException(new InvalidOperationException(
+                        $"{target.GetType().FullName}.ReconcileHostMigrationAsync returned null."));
+                }
+            }
+            catch (Exception e)
+            {
+                task = Task.FromException(e);
+            }
+
+            tasks ??= new List<Task>();
+            tasks.Add(task);
+        }
+
+        private static void AddHostMigrationPromotionReadinessTask(object target,
+            HostMigrationTransitionOptions transition, ref List<Task> tasks)
+        {
+            if (target is not IHostMigrationPromotionParticipant participant)
+                return;
+
+            Task task;
+            try
+            {
+                task = participant.ReconcileHostMigrationPromotionAsync(transition);
+                if (task == null)
+                {
+                    task = Task.FromException(new InvalidOperationException(
+                        $"{target.GetType().FullName}.ReconcileHostMigrationPromotionAsync returned null."));
+                }
+            }
+            catch (Exception e)
+            {
+                task = Task.FromException(e);
+            }
+
+            tasks ??= new List<Task>();
+            tasks.Add(task);
         }
 
         /// <summary>
@@ -1448,7 +1883,6 @@ namespace PurrNet
             InternalOnDespawn(asServer);
 
             --_spawnedCount;
-            _wasEarlySpawned = false;
 
             try
             {
@@ -1473,6 +1907,8 @@ namespace PurrNet
 
             if (_spawnedCount == 0)
             {
+                _wasEarlySpawned = false;
+
                 try
                 {
                     OnDespawned();

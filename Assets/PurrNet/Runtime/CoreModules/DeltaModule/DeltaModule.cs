@@ -10,7 +10,8 @@ namespace PurrNet.Modules
 {
     public delegate void ValueModifier<T>(ref T oldValue);
 
-    public class DeltaModule : INetworkModule, IPostFixedUpdate, IPromoteToServerModule
+    public class DeltaModule : INetworkModule, IPostFixedUpdate, IPromoteToServerModule,
+        ITransferToNewServer
     {
         private readonly PlayersManager _players;
         private readonly PlayersBroadcaster _broadcaster;
@@ -37,11 +38,12 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
-            _acknowledgements.Clear();
-            ClearTrackers();
+            ResetAuthorityState();
         }
 
         public void PostPromoteToServerModule() { }
+
+        public void TransferToNewServer() => ResetAuthorityState();
 
         public void Enable(bool asServer)
         {
@@ -59,6 +61,14 @@ namespace PurrNet.Modules
             _broadcaster.Unsubscribe<DeltaAcknowledge>(Acknowledge);
             _broadcaster.Unsubscribe<DeltaCleanup>(Cleanup);
 
+            ResetAuthorityState();
+        }
+
+        private void ResetAuthorityState()
+        {
+            for (var i = 0; i < _acknowledgements.Count; i++)
+                _acknowledgements[i].Dispose();
+            _acknowledgements.Clear();
             ClearTrackers();
         }
 

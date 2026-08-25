@@ -16,8 +16,35 @@ namespace PurrNet.Transports
 {
     [AddComponentMenu("PurrNet/Transport/Purr Transport")]
     // ReSharper disable once PartialTypeWithSinglePart
-    public partial class PurrTransport : GenericTransport, ITransport
+    public partial class PurrTransport : GenericTransport, ITransport, IHostMigrationTransport
     {
+        /// <summary>
+        /// PurrLay-specific fence used to publish a provisionally connected replacement host.
+        /// It is deliberately owned by PurrTransport rather than the transport-neutral
+        /// <see cref="IHostMigrationTransport"/> contract.
+        /// </summary>
+        [Serializable]
+        public struct HostMigrationActivationRequest
+        {
+            public string masterServer;
+            public string roomName;
+            public string incarnation;
+            public int generation;
+            public string claimId;
+            public string fencingToken;
+            public string promotedPlayerId;
+            public string activationExpiresAt;
+
+            public bool isValid =>
+                !string.IsNullOrWhiteSpace(masterServer) &&
+                !string.IsNullOrWhiteSpace(roomName) &&
+                !string.IsNullOrWhiteSpace(incarnation) &&
+                generation > 0 &&
+                !string.IsNullOrWhiteSpace(claimId) &&
+                !string.IsNullOrWhiteSpace(fencingToken) &&
+                !string.IsNullOrWhiteSpace(promotedPlayerId);
+        }
+
         enum SERVER_PACKET_TYPE : byte
         {
             SERVER_CLIENT_CONNECTED = 0,
@@ -42,6 +69,41 @@ namespace PurrNet.Transports
             public string roomName;
             public string clientSecret;
             public bool nat;
+        }
+
+        [Serializable, UsedImplicitly]
+        private struct HostMigrationClientAuthenticate
+        {
+            public string roomName;
+            public string clientSecret;
+            public bool nat;
+            public string provisionalHostSecret;
+        }
+
+        internal static string SerializeClientAuthenticate(
+            string roomName,
+            string clientSecret,
+            bool nat,
+            bool hasPreparedHostMigrationActivation,
+            string provisionalHostSecret)
+        {
+            if (!hasPreparedHostMigrationActivation)
+            {
+                return JsonUtility.ToJson(new ClientAuthenticate
+                {
+                    roomName = roomName,
+                    clientSecret = clientSecret,
+                    nat = nat
+                });
+            }
+
+            return JsonUtility.ToJson(new HostMigrationClientAuthenticate
+            {
+                roomName = roomName,
+                clientSecret = clientSecret,
+                nat = nat,
+                provisionalHostSecret = provisionalHostSecret
+            });
         }
 
         [Header("Remote Settings")]
@@ -146,13 +208,232 @@ namespace PurrNet.Transports
         private RelayServer _preparedHostMigrationServer;
         private HostJoinInfo _preparedHostMigrationJoinInfo;
         private string _preparedHostMigrationRoomName;
+        private HostMigrationActivationRequest _preparedHostMigrationActivation;
+        private bool _hasPreparedHostMigrationActivation;
+        private bool _hostMigrationActivationOutcomeIndeterminate;
+        private bool _hostMigrationActivationInFlight;
+        private bool _cancelPreparedHostMigrationDeferred;
+        private int _preparedHostMigrationActivationRevision;
+#if UNITY_INCLUDE_TESTS
+        internal Func<HostMigrationActivationRequest, string, float, bool, CancellationToken,
+            System.Threading.Tasks.Task<HostMigrationTransportActivationResult>>
+            hostMigrationActivationOverrideForTests;
+#endif
+        private string _hostMigrationServerFailure;
+        private string _hostMigrationClientFailure;
+
+        public bool hasPreparedHostMigration => _hasPreparedHostMigration;
+        public bool hasPendingHostMigrationActivation => _hasPreparedHostMigrationActivation;
+        public bool hasIndeterminateHostMigrationActivation =>
+            _hasPreparedHostMigrationActivation && _hostMigrationActivationOutcomeIndeterminate;
 
         public void PrepareHostMigration(RelayServer server, HostJoinInfo joinInfo, string roomName = null)
         {
+            PrepareHostMigration(server, joinInfo, roomName, default);
+        }
+
+        public void PrepareHostMigration(RelayServer server, HostJoinInfo joinInfo, string roomName,
+            HostMigrationActivationRequest activation)
+        {
+            if (_hostMigrationActivationInFlight)
+            {
+                if (_hasPreparedHostMigrationActivation &&
+                    IsSameHostMigrationActivation(_preparedHostMigrationActivation, activation))
+                    return;
+
+                throw new InvalidOperationException(
+                    "An in-flight relay activation must finish before preparing a different migration.");
+            }
+
+            if (hasIndeterminateHostMigrationActivation)
+            {
+                if (IsSameHostMigrationActivation(
+                        _preparedHostMigrationActivation, activation))
+                    return;
+
+                throw new InvalidOperationException(
+                    "A possibly-active relay host must be reconciled before preparing a different migration.");
+            }
+
             _preparedHostMigrationServer = server;
             _preparedHostMigrationJoinInfo = joinInfo;
             _preparedHostMigrationRoomName = string.IsNullOrWhiteSpace(roomName) ? _roomName : roomName;
             _hasPreparedHostMigration = true;
+            _preparedHostMigrationActivation = activation;
+            _hasPreparedHostMigrationActivation = activation.isValid;
+            _hostMigrationActivationOutcomeIndeterminate = false;
+            _cancelPreparedHostMigrationDeferred = false;
+            unchecked
+            {
+                _preparedHostMigrationActivationRevision++;
+            }
+            _hostMigrationServerFailure = null;
+        }
+
+        private static bool IsSameHostMigrationActivation(
+            HostMigrationActivationRequest left,
+            HostMigrationActivationRequest right)
+        {
+            return string.Equals(left.masterServer, right.masterServer, StringComparison.Ordinal) &&
+                   string.Equals(left.roomName, right.roomName, StringComparison.Ordinal) &&
+                   string.Equals(left.incarnation, right.incarnation, StringComparison.Ordinal) &&
+                   left.generation == right.generation &&
+                   string.Equals(left.claimId, right.claimId, StringComparison.Ordinal) &&
+                   string.Equals(left.fencingToken, right.fencingToken, StringComparison.Ordinal) &&
+                   string.Equals(left.promotedPlayerId, right.promotedPlayerId, StringComparison.Ordinal);
+        }
+
+        public bool TryGetPreparedHostMigrationActivation(
+            out HostMigrationActivationRequest activation)
+        {
+            activation = _preparedHostMigrationActivation;
+            return _hasPreparedHostMigrationActivation;
+        }
+
+        /// <summary>
+        /// Gets the client credential already issued to this transport for its current room.
+        /// This never performs a network request.
+        /// </summary>
+        public bool TryGetMigrationClientCredential(out string credential)
+        {
+            credential = _clientJoinInfo.secret;
+            return !string.IsNullOrWhiteSpace(credential);
+        }
+
+        /// <summary>
+        /// Gets the host credential already issued to this transport for its current room.
+        /// This never performs a network request.
+        /// </summary>
+        public bool TryGetMigrationHostCredential(out string credential)
+        {
+            credential = _hostJoinInfo.secret;
+            return !string.IsNullOrWhiteSpace(credential);
+        }
+
+        /// <summary>
+        /// Requests cleanup of one-use promotion credentials and terminal attempt state.
+        /// Cleanup is deferred while an activation outcome may still need reconciliation.
+        /// </summary>
+        public void CancelPreparedHostMigration()
+        {
+            if (_hostMigrationActivationInFlight || hasIndeterminateHostMigrationActivation)
+            {
+                _cancelPreparedHostMigrationDeferred = true;
+                return;
+            }
+
+            CancelPreparedHostMigrationImmediately();
+        }
+
+        private void CancelPreparedHostMigrationImmediately()
+        {
+            _cancelPreparedHostMigrationDeferred = false;
+            ClearPreparedHostMigration();
+            _hostMigrationServerFailure = null;
+            _hostMigrationClientFailure = null;
+        }
+
+        public bool TryGetHostMigrationFailure(bool asServer, out string failure)
+        {
+            failure = asServer ? _hostMigrationServerFailure : _hostMigrationClientFailure;
+            return !string.IsNullOrWhiteSpace(failure);
+        }
+
+        public async System.Threading.Tasks.Task<HostMigrationTransportActivationResult>
+            ActivatePreparedHostMigrationAsync(float timeoutSeconds,
+                CancellationToken cancellationToken = default)
+        {
+            if (!_hasPreparedHostMigrationActivation)
+                return new HostMigrationTransportActivationResult(
+                    HostMigrationTransportActivationStatus.Succeeded);
+
+            if (_hostMigrationActivationInFlight)
+            {
+                _hostMigrationActivationOutcomeIndeterminate = true;
+                return new HostMigrationTransportActivationResult(
+                    HostMigrationTransportActivationStatus.Indeterminate,
+                    "The exact relay activation is already in flight; its outcome must be reconciled before rollback.");
+            }
+
+            if (string.IsNullOrWhiteSpace(_hostJoinInfo.secret))
+                return new HostMigrationTransportActivationResult(
+                    HostMigrationTransportActivationStatus.Failed,
+                    "The provisional relay host credential is unavailable.");
+
+            var activation = _preparedHostMigrationActivation;
+            var activationRevision = _preparedHostMigrationActivationRevision;
+            var mayHaveActivated = _hostMigrationActivationOutcomeIndeterminate;
+            _hostMigrationActivationInFlight = true;
+            HostMigrationTransportActivationResult result;
+            try
+            {
+#if UNITY_INCLUDE_TESTS
+                if (hostMigrationActivationOverrideForTests != null)
+                    result = await hostMigrationActivationOverrideForTests(
+                        activation, _hostJoinInfo.secret, timeoutSeconds,
+                        mayHaveActivated, cancellationToken);
+                else
+#endif
+                result = await PurrTransportUtils.ActivateHostMigration(
+                    activation, _hostJoinInfo.secret, timeoutSeconds,
+                    mayHaveActivated, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                result = new HostMigrationTransportActivationResult(
+                    HostMigrationTransportActivationStatus.Indeterminate,
+                    $"Relay activation ended without an authoritative outcome: {e.Message}");
+            }
+
+            var ownsPreparedActivation =
+                activationRevision == _preparedHostMigrationActivationRevision &&
+                _hasPreparedHostMigrationActivation &&
+                IsSameHostMigrationActivation(activation, _preparedHostMigrationActivation);
+            _hostMigrationActivationInFlight = false;
+
+            if (!ownsPreparedActivation)
+                return result;
+
+            if (result.status == HostMigrationTransportActivationStatus.Indeterminate)
+            {
+                _hostMigrationActivationOutcomeIndeterminate = true;
+            }
+            else
+            {
+                _hostMigrationActivationOutcomeIndeterminate = false;
+
+                if (_cancelPreparedHostMigrationDeferred)
+                    CancelPreparedHostMigrationImmediately();
+                else if (result.succeeded)
+                    ClearPreparedHostMigrationActivation();
+            }
+
+            return result;
+        }
+
+        private void ClearPreparedHostConnection()
+        {
+            _hasPreparedHostMigration = false;
+            _preparedHostMigrationServer = default;
+            _preparedHostMigrationJoinInfo = default;
+            _preparedHostMigrationRoomName = null;
+        }
+
+        private void ClearPreparedHostMigration()
+        {
+            ClearPreparedHostConnection();
+            ClearPreparedHostMigrationActivation();
+        }
+
+        private void ClearPreparedHostMigrationActivation()
+        {
+            _preparedHostMigrationActivation = default;
+            _hasPreparedHostMigrationActivation = false;
+            _hostMigrationActivationOutcomeIndeterminate = false;
+            unchecked
+            {
+                _preparedHostMigrationActivationRevision++;
+            }
         }
 
         public bool hasRegionAndHost => !string.IsNullOrEmpty(_region) && !string.IsNullOrEmpty(_host);
@@ -514,7 +795,9 @@ namespace PurrNet.Transports
                     if (_pendingHostConns.ContainsKey(p2pConnId))
                         ResolveHostConnAsP2p(p2pConnId);
 
-                    RaiseDataReceived(new Connection(p2pConnId), data, true);
+                    var conn = new Connection(p2pConnId);
+                    if (_connections.Contains(conn))
+                        RaiseDataReceived(conn, data, true);
                 }
                 return;
             }
@@ -532,12 +815,20 @@ namespace PurrNet.Transports
             switch (type)
             {
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATED:
-                    _hasPreparedHostMigration = false;
+                    ClearPreparedHostConnection();
+                    _hostMigrationServerFailure = null;
                     listenerState = ConnectionState.Connected;
                     break;
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED:
+                {
+                    var wasMigrationListen =
+                        _hasPreparedHostMigration || _hasPreparedHostMigrationActivation;
+                    ClearPreparedHostMigration();
+                    if (wasMigrationListen)
+                        _hostMigrationServerFailure = "Relay rejected the host migration credential.";
                     StopListening();
                     break;
+                }
                 case SERVER_PACKET_TYPE.SERVER_CLIENT_CONNECTED:
                 {
                     _packer.ResetPositionAndMode(false);
@@ -609,8 +900,12 @@ namespace PurrNet.Transports
                     if (natEnabled && _pendingHostConns.ContainsKey(connId))
                         ResolveHostConnAsRelay(connId);
 
-                    RaiseDataReceived(new Connection(connId), new ByteData(data.Array, data.Offset + 5, data.Count - 5),
-                        true);
+                    var conn = new Connection(connId);
+                    if (!_connections.Contains(conn))
+                        return;
+
+                    RaiseDataReceived(conn,
+                        new ByteData(data.Array, data.Offset + 5, data.Count - 5), true);
                     break;
                 }
                 case SERVER_PACKET_TYPE.SERVER_NAT_INTRODUCE:
@@ -743,6 +1038,7 @@ namespace PurrNet.Transports
             switch (type)
             {
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATED:
+                    _hostMigrationClientFailure = null;
                     if (natEnabled && _clientPunch != null)
                     {
                         _clientConnPending = true;
@@ -755,6 +1051,8 @@ namespace PurrNet.Transports
                     }
                     break;
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED:
+                    if (_hasPreparedHostMigrationActivation)
+                        _hostMigrationClientFailure = "Relay rejected the client migration credential.";
                     Disconnect();
                     break;
                 case SERVER_PACKET_TYPE.SERVER_NAT_INTRODUCE:
@@ -812,15 +1110,21 @@ namespace PurrNet.Transports
             peer.Send(data, DeliveryMethod.ReliableOrdered);
         }
 
+        private string GetProvisionalHostSecretForClientAuth()
+        {
+            return _hasPreparedHostMigration
+                ? _preparedHostMigrationJoinInfo.secret
+                : _hostJoinInfo.secret;
+        }
+
         private void OnClientConnected()
         {
-            var authenticate = new ClientAuthenticate()
-            {
-                roomName = _roomName,
-                clientSecret = _clientJoinInfo.secret
-            };
-
-            string json = JsonUtility.ToJson(authenticate);
+            string json = SerializeClientAuthenticate(
+                _roomName,
+                _clientJoinInfo.secret,
+                false,
+                _hasPreparedHostMigrationActivation,
+                GetProvisionalHostSecretForClientAuth());
             var data = Encoding.UTF8.GetBytes(json);
 
             _client.Send(data);
@@ -828,14 +1132,12 @@ namespace PurrNet.Transports
 
         private void OnClientConnectedUDP(NetPeer peer)
         {
-            var authenticate = new ClientAuthenticate
-            {
-                roomName = _roomName,
-                clientSecret = _clientJoinInfo.secret,
-                nat = _useNat
-            };
-
-            string json = JsonUtility.ToJson(authenticate);
+            string json = SerializeClientAuthenticate(
+                _roomName,
+                _clientJoinInfo.secret,
+                _useNat,
+                _hasPreparedHostMigrationActivation,
+                GetProvisionalHostSecretForClientAuth());
             var data = Encoding.UTF8.GetBytes(json);
 
             peer.Send(data, DeliveryMethod.ReliableOrdered);
@@ -864,12 +1166,21 @@ namespace PurrNet.Transports
                 return;
             }
 
+            MarkAuthenticatedProvisionalHostConnectionLost();
             StopListening();
         }
 
         private void OnHostDisconnected()
         {
+            MarkAuthenticatedProvisionalHostConnectionLost();
             StopListening();
+        }
+
+        private void MarkAuthenticatedProvisionalHostConnectionLost()
+        {
+            if (_hasPreparedHostMigrationActivation && !_hasPreparedHostMigration)
+                _hostMigrationServerFailure =
+                    "The authenticated provisional relay host connection was lost before activation.";
         }
 
         private void OnClientDisconnected()
@@ -886,6 +1197,16 @@ namespace PurrNet.Transports
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(_hostMigrationServerFailure) &&
+                    !_hasPreparedHostMigration)
+                {
+                    PurrLogger.LogWarning(
+                        "Starting a fresh host listen while an unreconciled host migration " +
+                        $"failure was still recorded: {_hostMigrationServerFailure}");
+                }
+
+                _hostMigrationServerFailure = null;
+
                 if (listenerState != ConnectionState.Disconnected)
                     StopListening();
 
@@ -924,6 +1245,7 @@ namespace PurrNet.Transports
                             return;
 
                         _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token);
+                        _host = _hostJoinInfo.host;
                     }
 
                     if (token.IsCancellationRequested)
@@ -1042,6 +1364,8 @@ namespace PurrNet.Transports
         {
             try
             {
+                _hostMigrationClientFailure = null;
+
                 if (clientState != ConnectionState.Disconnected)
                     Disconnect();
 

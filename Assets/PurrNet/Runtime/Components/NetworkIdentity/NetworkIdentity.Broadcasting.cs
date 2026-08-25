@@ -736,6 +736,7 @@ namespace PurrNet
 
                 if (!asServer)
                 {
+                    module.CaptureReceivedBufferedRPC(data, signature);
                     return true;
                 }
 
@@ -868,7 +869,9 @@ namespace PurrNet
                 return false;
             }
 
-            if (!IsObserver(player))
+            if (!IsObserver(player) &&
+                !(IsObserverOrPending(player) &&
+                  networkManager.IsPreparingHostMigrationServerBaseline(player)))
             {
                 if (!isAwaitable)
                     PurrLogger.LogError($"Trying to send TargetRPC to player '{player}' which is not observing '{name}'.",

@@ -241,6 +241,31 @@ namespace PurrNet.Modules
             }
         }
 
+        internal void Drop(PlayerID player)
+        {
+            int writeIdx = 0;
+            for (int i = 0; i < _batchCount; i++)
+            {
+                ref var batch = ref _batches[i];
+                if (batch.key.playerId == player)
+                {
+                    batch.batchedData.Dispose();
+                    _batchIndexMap.Remove(batch.key.playerId.id.value, batch.key.channel);
+                    continue;
+                }
+
+                if (writeIdx != i)
+                    _batches[writeIdx] = batch;
+                _batchIndexMap.Set(batch.key.playerId.id.value, batch.key.channel, writeIdx);
+                writeIdx++;
+            }
+
+            _batchCount = writeIdx;
+            ResetEntryCache();
+            if (_batchCount == 0)
+                _nextStateVersion = 0;
+        }
+
         private void SendBatch(ref PendingBatchedData batch)
         {
             if (batch.batchCount == 0)

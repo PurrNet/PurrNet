@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using PurrNet.Packing;
 
 namespace PurrNet.Transports
@@ -54,7 +56,7 @@ namespace PurrNet.Transports
         public ByteData Duplicate()
         {
             var newData = new byte[length];
-            Array.Copy(data, newData, length);
+            Buffer.BlockCopy(data, offset, newData, 0, length);
             return new ByteData(newData);
         }
 
@@ -264,6 +266,115 @@ namespace PurrNet.Transports
         void UnityUpdate(float delta)
         {
         }
+    }
+
+    public enum HostMigrationTransportActivationStatus
+    {
+        Succeeded,
+        TimedOut,
+        Cancelled,
+        /// <summary>
+        /// The activation request may have committed at the relay, but no exact response
+        /// was observed. Callers must reconcile relay state and must not roll back the
+        /// fully-ready local roles while the outcome is unknown.
+        /// </summary>
+        Indeterminate,
+        Failed
+    }
+
+    public readonly struct HostMigrationTransportActivationResult
+    {
+        public HostMigrationTransportActivationStatus status { get; }
+        public bool succeeded => status == HostMigrationTransportActivationStatus.Succeeded;
+        public bool mayHaveActivated => succeeded ||
+                                        status == HostMigrationTransportActivationStatus.Indeterminate;
+        public string message { get; }
+
+        public HostMigrationTransportActivationResult(HostMigrationTransportActivationStatus status,
+            string message = null)
+        {
+            this.status = status;
+            this.message = message;
+        }
+    }
+
+    /// <summary>
+    /// Optional two-phase publication contract used by bounded host-migration transitions.
+    /// A transport whose server is usable as soon as it reports Connected does not implement
+    /// this interface; PurrNet completes promotion without an external activation phase.
+    /// Provider-specific claims and endpoint descriptors stay on the concrete transport or its
+    /// host-migration adapter rather than becoming part of this contract.
+    /// </summary>
+    public interface IHostMigrationTransport
+    {
+        /// <summary>
+        /// True after an activation request was dispatched without an authoritative
+        /// outcome. The fully-ready local roles must be preserved for reconciliation.
+        /// </summary>
+        bool hasIndeterminateHostMigrationActivation { get; }
+
+        /// <summary>
+        /// Requests cleanup of one-use credentials prepared for a pending promotion.
+        /// An exact activation descriptor must remain replayable while its outcome is unknown.
+        /// </summary>
+        void CancelPreparedHostMigration();
+
+        /// <summary>
+        /// Returns a terminal transport failure for the current migration attempt.
+        /// A true result prevents PurrNet from retrying credentials that cannot succeed.
+        /// </summary>
+        bool TryGetHostMigrationFailure(bool asServer, out string failure);
+
+        /// <summary>
+        /// Publishes a provisionally available host only after PurrNet is fully ready.
+        /// Transports without a pending external activation return Succeeded immediately.
+        /// </summary>
+        Task<HostMigrationTransportActivationResult> ActivatePreparedHostMigrationAsync(
+            float timeoutSeconds, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>
+    /// Opaque peer route captured while the current host is healthy. Address semantics belong to
+    /// the transport (for example an IP address, platform user ID, or lobby member identity).
+    /// A zero port is valid for transports whose address fully identifies the peer route.
+    /// </summary>
+    [Serializable]
+    public struct PeerMigrationEndpoint
+    {
+        public string address;
+        public ushort port;
+        public bool isValid => !string.IsNullOrWhiteSpace(address);
+
+        public PeerMigrationEndpoint(string address, ushort port = 0)
+        {
+            this.address = address;
+            this.port = port;
+        }
+    }
+
+    /// <summary>
+    /// Optional transport-neutral seam for peer-addressed host migration. The orchestration
+    /// package maps PlayerIDs to live server connections and replicates the resulting opaque
+    /// endpoints before a crash; the transport only extracts and applies its own route format.
+    /// </summary>
+    public interface IHostMigrationPeerEndpointTransport
+    {
+        /// <summary>
+        /// True when the transport's current configuration uses peer-addressed routing.
+        /// A transport can implement this interface while offering a separate direct/dedicated mode.
+        /// </summary>
+        bool supportsPeerHostMigration { get; }
+
+        bool TryGetPeerMigrationEndpoint(Connection connection,
+            out PeerMigrationEndpoint endpoint);
+
+        /// <summary>
+        /// Prepares the route before PurrNet stops and restarts roles. Promotion may receive an
+        /// empty endpoint, in which case a transport can select its native self/loopback route.
+        /// Transfer receives the last healthy-host snapshot when one was available.
+        /// </summary>
+        bool TryPreparePeerMigrationEndpoint(PeerMigrationEndpoint endpoint,
+            bool isPromotion, out string failure);
     }
 
     public enum DisconnectReason

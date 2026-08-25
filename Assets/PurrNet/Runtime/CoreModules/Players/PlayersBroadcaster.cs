@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -47,6 +48,25 @@ namespace PurrNet
 
         private readonly List<Connection> _connections = new List<Connection>();
 
+        private readonly Dictionary<PlayerID, ExactOutboundBarrier> _exactOutboundBarriers =
+            new Dictionary<PlayerID, ExactOutboundBarrier>();
+
+        private readonly Dictionary<PlayerID, int> _exactOutboundBarrierBypassDepth =
+            new Dictionary<PlayerID, int>();
+
+        private readonly struct ExactOutboundBarrier
+        {
+            public readonly HostMigrationTransitionOptions transition;
+            public readonly Connection connection;
+
+            public ExactOutboundBarrier(HostMigrationTransitionOptions transition,
+                Connection connection)
+            {
+                this.transition = transition;
+                this.connection = connection;
+            }
+        }
+
         private bool _asServer;
 
         public PlayersBroadcaster(BroadcastModule broadcastModule, PlayersManager playersManager)
@@ -90,6 +110,154 @@ namespace PurrNet
         public void Disable(bool asServer)
         {
             _broadcastModule.onRawDataReceived -= OnRawDataReceived;
+            DropAllExactOutboundBarriers();
+        }
+
+        internal bool BeginExactOutboundBarrier(PlayerID player,
+            HostMigrationTransitionOptions transition, out string failure)
+        {
+            failure = null;
+            if (!_asServer || !transition.canReconcile || player.isServer || player.isBot)
+            {
+                failure = "an exact outbound barrier requires a remote human player on the server";
+                return false;
+            }
+
+            if (!_playersManager.TryGetConnection(player, out var connection))
+            {
+                failure = $"migration player {player} has no active connection to fence";
+                return false;
+            }
+
+            if (_exactOutboundBarriers.TryGetValue(player, out var existing))
+            {
+                if (existing.transition != transition)
+                {
+                    failure = $"migration player {player} is already fenced for {existing.transition}";
+                    return false;
+                }
+
+                if (existing.connection == connection)
+                    return true;
+
+                _exactOutboundBarrierBypassDepth.Remove(player);
+                _broadcastModule.DropReliableOrderedOutboundBarrier(existing.connection);
+            }
+
+            _broadcastModule.BeginReliableOrderedOutboundBarrier(connection);
+            _exactOutboundBarriers[player] = new ExactOutboundBarrier(transition, connection);
+            return true;
+        }
+
+        internal bool ReleaseExactOutboundBarrier(PlayerID player,
+            HostMigrationTransitionOptions transition)
+        {
+            if (!_exactOutboundBarriers.TryGetValue(player, out var barrier) ||
+                barrier.transition != transition)
+                return false;
+
+            _exactOutboundBarriers.Remove(player);
+            _exactOutboundBarrierBypassDepth.Remove(player);
+            _broadcastModule.ReleaseReliableOrderedOutboundBarrier(barrier.connection);
+            return true;
+        }
+
+        internal void DropExactOutboundBarrier(PlayerID player)
+        {
+            if (!_exactOutboundBarriers.Remove(player, out var barrier))
+                return;
+
+            _exactOutboundBarrierBypassDepth.Remove(player);
+            _broadcastModule.DropReliableOrderedOutboundBarrier(barrier.connection);
+        }
+
+        internal void DropAllExactOutboundBarriers()
+        {
+            foreach (var barrier in _exactOutboundBarriers.Values)
+                _broadcastModule.DropReliableOrderedOutboundBarrier(barrier.connection);
+            _exactOutboundBarriers.Clear();
+            _exactOutboundBarrierBypassDepth.Clear();
+        }
+
+        internal void SendExactBarrierBypass<T>(PlayerID player, T data,
+            Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+        {
+            if (!_exactOutboundBarriers.TryGetValue(player, out var barrier))
+                return;
+
+            _broadcastModule.SendBarrierBypass(
+                barrier.connection, data, method, mtuOverride);
+        }
+
+        internal bool HasExactOutboundBarrier(PlayerID player,
+            HostMigrationTransitionOptions transition) =>
+            _exactOutboundBarriers.TryGetValue(player, out var barrier) &&
+            barrier.transition == transition;
+
+        internal bool BeginExactPackageBaselineCapture(PlayerID player,
+            HostMigrationTransitionOptions transition, out string failure)
+        {
+            if (!_exactOutboundBarriers.TryGetValue(player, out var barrier) ||
+                barrier.transition != transition)
+            {
+                failure = $"player {player} has no exact outbound barrier for {transition}";
+                return false;
+            }
+
+            return _broadcastModule.BeginPackageBaselineCapture(
+                barrier.connection, out failure);
+        }
+
+        internal bool FinishExactPackageBaselineCapture(PlayerID player,
+            HostMigrationTransitionOptions transition, bool commit, out string failure)
+        {
+            if (!_exactOutboundBarriers.TryGetValue(player, out var barrier) ||
+                barrier.transition != transition)
+            {
+                failure = $"player {player} has no exact outbound barrier for {transition}";
+                return false;
+            }
+
+            return _broadcastModule.FinishPackageBaselineCapture(
+                barrier.connection, commit, out failure);
+        }
+
+        internal bool PublishExactPackageBaselines(PlayerID player,
+            HostMigrationTransitionOptions transition, out string failure)
+        {
+            if (!_exactOutboundBarriers.TryGetValue(player, out var barrier) ||
+                barrier.transition != transition)
+            {
+                failure = $"player {player} has no exact outbound barrier for {transition}";
+                return false;
+            }
+
+            return _broadcastModule.PublishPackageBaselines(
+                barrier.connection, out failure);
+        }
+
+        internal bool RunExactOutboundBarrierBypass(PlayerID player,
+            HostMigrationTransitionOptions transition, Action action)
+        {
+            if (action == null || !HasExactOutboundBarrier(player, transition))
+                return false;
+
+            _exactOutboundBarrierBypassDepth.TryGetValue(player, out var depth);
+            _exactOutboundBarrierBypassDepth[player] = depth + 1;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                if (_exactOutboundBarrierBypassDepth.TryGetValue(player, out depth) && depth > 1)
+                    _exactOutboundBarrierBypassDepth[player] = depth - 1;
+                else
+                    _exactOutboundBarrierBypassDepth.Remove(player);
+            }
+
+            return true;
         }
 
         public void Subscribe<T>(PlayerBroadcastDelegate<T> callback) where T : new()
@@ -138,8 +306,19 @@ namespace PurrNet
             if (player.isBot)
                 return;
 
-            if (_playersManager.TryGetConnection(player, out var conn))
-                _broadcastModule.Send(conn, data, method, mtuOverride);
+            if (!_playersManager.TryGetConnection(player, out var conn))
+                return;
+
+            if (_exactOutboundBarrierBypassDepth.Count != 0 &&
+                _exactOutboundBarrierBypassDepth.ContainsKey(player) &&
+                _exactOutboundBarriers.TryGetValue(player, out var barrier) &&
+                barrier.connection == conn)
+            {
+                _broadcastModule.SendBarrierBypass(conn, data, method, mtuOverride);
+                return;
+            }
+
+            _broadcastModule.Send(conn, data, method, mtuOverride);
         }
 
         public void Send<T>(IEnumerable<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,

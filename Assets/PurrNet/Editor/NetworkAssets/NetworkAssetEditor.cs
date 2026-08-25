@@ -32,7 +32,7 @@ namespace PurrNet
             _cachedTypes = null;
             _target = (NetworkAssets)target;
             _folderProp = serializedObject.FindProperty("folder");
-            _assetsProp = serializedObject.FindProperty("assets");
+            _assetsProp = serializedObject.FindProperty("entries");
             _linkedProp = serializedObject.FindProperty("linkedNetworkAssets");
 
             _cachedTypes = _target.AvailableTypeNames
@@ -58,7 +58,7 @@ namespace PurrNet
 
             _reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
             {
-                var element = _assetsProp.GetArrayElementAtIndex(index);
+                var element = _assetsProp.GetArrayElementAtIndex(index).FindPropertyRelative("asset");
 
                 float x = rect.x;
                 EditorGUI.LabelField(new Rect(x, rect.y, INDEX_WIDTH, rect.height), index.ToString());
@@ -89,7 +89,7 @@ namespace PurrNet
             {
                 _target.GenerateAssets();
                 serializedObject.Update();
-                _assetsProp = serializedObject.FindProperty("assets");
+                _assetsProp = serializedObject.FindProperty("entries");
             });
 
             if (GUILayout.Button("Refresh Type List"))
@@ -105,7 +105,7 @@ namespace PurrNet
                 ref _searchFilter, i =>
                 {
                     if (i >= _assetsProp.arraySize) return null;
-                    var obj = _assetsProp.GetArrayElementAtIndex(i).objectReferenceValue;
+                    var obj = _assetsProp.GetArrayElementAtIndex(i).FindPropertyRelative("asset").objectReferenceValue;
                     return obj ? obj.name : null;
                 });
 

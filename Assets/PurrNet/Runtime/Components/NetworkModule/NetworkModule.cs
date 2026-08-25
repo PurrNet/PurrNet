@@ -457,10 +457,16 @@ namespace PurrNet
         }
 
         /// <summary>
-        /// Promotes the NetworkIdentity instance to function as a server entity.
-        /// This is used for host-migration, when a client is promoted to host.
-        /// Use this to ensure client has everything it needs to function as server.
+        /// Called once after host migration has reconciled the owning identity's existing client
+        /// role into its server role in place. Normal role/global early-spawn, spawn, and despawn
+        /// callbacks are intentionally not replayed; use this hook for transition-only work.
         /// </summary>
         public virtual void PromoteToServer() {}
+
+        /// <summary>
+        /// Called after the owning retained client identity is rebound to a matching new-host
+        /// manifest and its ordered FinishSpawn arrives. Normal lifecycle callbacks are not replayed.
+        /// </summary>
+        public virtual void OnHostMigrationRebound(HostMigrationTransitionOptions transition) {}
     }
 }

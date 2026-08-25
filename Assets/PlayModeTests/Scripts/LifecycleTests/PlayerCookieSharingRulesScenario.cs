@@ -125,19 +125,19 @@ public class PlayerCookieSharingRulesScenario : Scenario
         try
         {
             SetSharePlayerCookiesWithPeers(rules, false);
-            var disabledEvent = BuildJoinEvent(players, player, connection);
-            if (disabledEvent.cookie != null)
+            var disabledJoin = BuildJoinEvent(players, player, connection);
+            if (!string.IsNullOrEmpty(disabledJoin.cookie))
             {
                 return ScenarioResult.Fail(
-                    $"cookie sharing rules: disabled flag still emitted cookie for player {player.id.value}");
+                    $"cookie sharing rules: disabled join packet exposed a cookie for player {player.id.value}");
             }
 
             SetSharePlayerCookiesWithPeers(rules, true);
-            var enabledEvent = BuildJoinEvent(players, player, connection);
-            if (enabledEvent.cookie != cookie)
+            var enabledJoin = BuildJoinEvent(players, player, connection);
+            if (enabledJoin.cookie != cookie)
             {
                 return ScenarioResult.Fail(
-                    $"cookie sharing rules: enabled flag did not emit expected cookie for player {player.id.value}");
+                    $"cookie sharing rules: enabled join packet omitted the opted-in cookie for player {player.id.value}");
             }
         }
         finally

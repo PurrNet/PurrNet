@@ -94,6 +94,11 @@ namespace PurrNet
             }
 
             bool isClientTransfering = !_asServer && _manager.isTranferingToNewServer;
+            bool isFreshExactPromotedListenClient = !_asServer &&
+                                                    _manager is NetworkManager networkManager &&
+                                                    networkManager.isPromotingToServer &&
+                                                    networkManager.expectedHostMigrationSession.canReconcile &&
+                                                    !hasModules;
             bool transferExistingClientModules = isClientTransfering && hasModules;
 
             if (!transferExistingClientModules)
@@ -101,7 +106,7 @@ namespace PurrNet
 
             _manager.RegisterModules(this, _asServer);
 
-            if (_manager.isPromotingToServer)
+            if (_manager.isPromotingToServer && _asServer)
                 return;
 
             if (transferExistingClientModules)
@@ -160,7 +165,7 @@ namespace PurrNet
                     _IPostTransferToNewServer.Add(PostTransferToNewServer);
             }
 
-            if (isClientTransfering)
+            if (isClientTransfering || isFreshExactPromotedListenClient)
                 TransferToNewServer();
         }
 

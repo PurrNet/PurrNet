@@ -16,7 +16,8 @@ namespace PurrNet.Steam
 {
     [DefaultExecutionOrder(-100)]
     [AddComponentMenu("PurrNet/Transport/Steam Transport")]
-    public partial class SteamTransport : GenericTransport, ITransport
+    public partial class SteamTransport : GenericTransport, ITransport,
+        IHostMigrationPeerEndpointTransport
     {
         [Header("Server Settings")] [SerializeField]
         private ushort _serverPort = 5003;
@@ -292,6 +293,54 @@ namespace PurrNet.Steam
         public ulong GetSteamID(Connection conn)
         {
             return _server?.GetSteamID(conn.connectionId) ?? 0;
+        }
+
+        public bool TryGetPeerMigrationEndpoint(Connection connection,
+            out PeerMigrationEndpoint endpoint)
+        {
+            endpoint = default;
+            if (!_peerToPeer)
+                return false;
+
+            var steamId = GetSteamID(connection);
+            if (steamId == 0)
+                return false;
+
+            endpoint = new PeerMigrationEndpoint(steamId.ToString(), _serverPort);
+            return true;
+        }
+
+        public bool supportsPeerHostMigration => _peerToPeer;
+
+        public bool TryPreparePeerMigrationEndpoint(PeerMigrationEndpoint endpoint,
+            bool isPromotion, out string failure)
+        {
+            if (!_peerToPeer)
+            {
+                failure = "Steam peer host migration requires peer-to-peer mode.";
+                return false;
+            }
+
+            if (isPromotion)
+            {
+                _address = "localhost";
+                if (endpoint.port != 0)
+                    _serverPort = endpoint.port;
+                failure = null;
+                return true;
+            }
+
+            if (!endpoint.isValid)
+            {
+                failure = "Steam host migration did not receive the selected peer's endpoint.";
+                return false;
+            }
+
+            _address = endpoint.address;
+            if (endpoint.port != 0)
+                _serverPort = endpoint.port;
+            failure = null;
+            return true;
         }
 
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS

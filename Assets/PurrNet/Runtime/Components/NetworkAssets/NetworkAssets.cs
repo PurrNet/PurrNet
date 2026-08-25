@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using PurrNet.Utils;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Object = UnityEngine.Object;
 #if UNITY_6000_3_OR_NEWER
 using ObjectId = UnityEngine.EntityId;
@@ -13,7 +14,7 @@ using ObjectId = System.Int32;
 namespace PurrNet
 {
     [CreateAssetMenu(fileName = "NetworkAssets", menuName = "PurrNet/Network Assets", order = -200)]
-    public class NetworkAssets : ScriptableObject
+    public class NetworkAssets : ScriptableObject, ISerializationCallbackReceiver
     {
         public bool autoGenerate;
         public Object folder;
@@ -42,17 +43,28 @@ namespace PurrNet
             }
         }
 
-        public List<Object> assets = new();
+        /// <summary>
+        /// Asset and its persistent-id guid serialized together so they can never desync.
+        /// Guids are populated in editor from the AssetDatabase; sub-assets use the guid_localId format.
+        /// </summary>
+        [Serializable]
+        public struct AssetEntry
+        {
+            public Object asset;
+            public string guid;
+        }
+
+        public List<AssetEntry> entries = new();
+
+        [SerializeField, HideInInspector, FormerlySerializedAs("assets")]
+        private List<Object> _legacyAssets = new();
+
+        [SerializeField, HideInInspector, FormerlySerializedAs("_assetGuids")]
+        private List<string> _legacyAssetGuids = new();
 
         [SerializeField, HideInInspector]
         private List<string> _availableTypeNames = new();
         public IReadOnlyList<string> AvailableTypeNames => _availableTypeNames;
-
-        /// <summary>
-        /// GUIDs for each asset in the assets list, used for persistent ID lookup.
-        /// Populated during GenerateAssets() in editor.
-        /// </summary>
-        [SerializeField, HideInInspector] private List<string> _assetGuids = new();
 
         private readonly Dictionary<int, Object> idToAsset = new();
         private readonly Dictionary<ObjectId, int> objectIdToId = new();
@@ -66,9 +78,27 @@ namespace PurrNet
         private HashSet<(Type, string)> _warnedAmbiguous;
         private HashSet<ObjectId> _warnedUnresolved;
 
-        [SerializeField, HideInInspector] private List<int> _bakedIds = new();
-        [SerializeField, HideInInspector] private List<Object> _bakedAssets = new();
-        [SerializeField, HideInInspector] private List<string> _bakedPersistentIds = new();
+        [Serializable]
+        public struct BakedEntry
+        {
+            public int id;
+            public Object asset;
+            public string persistentId;
+        }
+
+        [SerializeField, HideInInspector] private List<BakedEntry> _baked = new();
+
+        [SerializeField, HideInInspector, FormerlySerializedAs("_bakedIds")]
+        private List<int> _legacyBakedIds = new();
+
+        [SerializeField, HideInInspector, FormerlySerializedAs("_bakedAssets")]
+        private List<Object> _legacyBakedAssets = new();
+
+        [SerializeField, HideInInspector, FormerlySerializedAs("_bakedPersistentIds")]
+        private List<string> _legacyBakedPersistentIds = new();
+
+        private List<Object> _assetsView;
+        private bool _legacyMigrated;
 
         public Object GetAsset(int index) => idToAsset.GetValueOrDefault(index);
         public Object GetAssetByPersistentId(string persistentId)
@@ -202,38 +232,128 @@ namespace PurrNet
             }
         }
 
+        public void OnBeforeSerialize() { }
+
+        public void OnAfterDeserialize()
+        {
+            _assetsView = null;
+            MigrateLegacyEntries();
+            MigrateLegacyBake();
+        }
+
+        private void MigrateLegacyEntries()
+        {
+            if (_legacyAssets.Count == 0 && _legacyAssetGuids.Count == 0)
+                return;
+
+            if (entries.Count > 0)
+            {
+                Debug.LogWarning(
+                    $"NetworkAssets: found both migrated entries ({entries.Count}) and legacy asset/guid lists " +
+                    $"({_legacyAssets.Count}/{_legacyAssetGuids.Count}). Keeping the migrated entries and " +
+                    "discarding the legacy lists; verify the asset list after this load.");
+            }
+            else
+            {
+                if (_legacyAssetGuids.Count == 0 || _legacyAssetGuids.Count == _legacyAssets.Count)
+                {
+                    for (int i = 0; i < _legacyAssets.Count; i++)
+                    {
+                        entries.Add(new AssetEntry
+                        {
+                            asset = _legacyAssets[i],
+                            guid = i < _legacyAssetGuids.Count ? _legacyAssetGuids[i] : null
+                        });
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < _legacyAssets.Count; i++)
+                        entries.Add(new AssetEntry { asset = _legacyAssets[i] });
+
+                    Debug.LogError(
+                        $"NetworkAssets: legacy asset list ({_legacyAssets.Count}) and guid list " +
+                        $"({_legacyAssetGuids.Count}) have mismatched counts. Persistent ids were dropped " +
+                        "for these entries instead of guessing pairings" +
+#if UNITY_EDITOR
+                        "; they will be regenerated from the AssetDatabase on the next refresh.");
+#else
+                        "; persistent id lookups will fail for this container.");
+#endif
+                }
+            }
+
+            _legacyAssets.Clear();
+            _legacyAssetGuids.Clear();
+            _legacyMigrated = true;
+        }
+
+        private void MigrateLegacyBake()
+        {
+            if (_legacyBakedIds.Count == 0 && _legacyBakedAssets.Count == 0 && _legacyBakedPersistentIds.Count == 0)
+                return;
+
+            if (_baked.Count == 0 &&
+                _legacyBakedIds.Count == _legacyBakedAssets.Count &&
+                _legacyBakedPersistentIds.Count == _legacyBakedAssets.Count)
+            {
+                for (int i = 0; i < _legacyBakedAssets.Count; i++)
+                {
+                    _baked.Add(new BakedEntry
+                    {
+                        id = _legacyBakedIds[i],
+                        asset = _legacyBakedAssets[i],
+                        persistentId = _legacyBakedPersistentIds[i]
+                    });
+                }
+            }
+
+            _legacyBakedIds.Clear();
+            _legacyBakedAssets.Clear();
+            _legacyBakedPersistentIds.Clear();
+            _legacyMigrated = true;
+        }
+
         private void OnEnable()
         {
             ClearLookups();
 
-            if (_bakedAssets.Count == 0 &&
-                (assets.Count > 0 || linkedNetworkAssets is { Count: > 0 }))
+            if (_legacyMigrated)
+            {
+                _legacyMigrated = false;
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    UnityEditor.EditorUtility.SetDirty(this);
+#endif
+            }
+
+            if (_baked.Count == 0 &&
+                (entries.Count > 0 || linkedNetworkAssets is { Count: > 0 }))
             {
                 Refresh();
                 return;
             }
 
-            for (int i = 0; i < _bakedAssets.Count; i++)
+            for (int i = 0; i < _baked.Count; i++)
             {
-                var obj = _bakedAssets[i];
-                int id = _bakedIds[i];
-                string persistentId = i < _bakedPersistentIds.Count ? _bakedPersistentIds[i] : null;
+                var baked = _baked[i];
+                var obj = baked.asset;
                 if (!obj) continue;
 
                 try
                 {
-                    idToAsset[id] = obj;
-                    objectIdToId[GetObjectId(obj)] = id;
-                    RegisterTypeNameFallback(obj, id);
-                    RegisterPersistentId(obj, id, persistentId);
+                    idToAsset[baked.id] = obj;
+                    objectIdToId[GetObjectId(obj)] = baked.id;
+                    RegisterTypeNameFallback(obj, baked.id);
+                    RegisterPersistentId(obj, baked.id, baked.persistentId);
                 }
                 catch
                 {
-                    idToAsset.Remove(id);
+                    idToAsset.Remove(baked.id);
                 }
             }
 
-            if (IsBakeStale() || _bakedPersistentIds.Count != _bakedAssets.Count)
+            if (IsBakeStale())
                 Refresh();
         }
 
@@ -288,9 +408,9 @@ namespace PurrNet
             {
                 if (!na || !visited.Add(na)) return false;
 
-                for (int i = 0; i < na.assets.Count; i++)
+                for (int i = 0; i < na.entries.Count; i++)
                 {
-                    var obj = na.assets[i];
+                    var obj = na.entries[i].asset;
                     if (obj && !objectIdToId.ContainsKey(GetObjectId(obj)))
                         return true;
                 }
@@ -303,6 +423,21 @@ namespace PurrNet
                 }
 
                 return false;
+            }
+        }
+
+        public IReadOnlyList<Object> assets
+        {
+            get
+            {
+                if (_assetsView == null)
+                {
+                    _assetsView = new List<Object>(entries.Count);
+                    for (int i = 0; i < entries.Count; i++)
+                        _assetsView.Add(entries[i].asset);
+                }
+
+                return _assetsView;
             }
         }
 
@@ -320,13 +455,12 @@ namespace PurrNet
             }
 #endif
             ClearLookups();
-            _bakedIds.Clear();
-            _bakedAssets.Clear();
-            _bakedPersistentIds.Clear();
+            _assetsView = null;
+            _baked.Clear();
 
             var visited = new HashSet<NetworkAssets>();
             var seenObjectIds = new HashSet<ObjectId>();
-            var buffer = new List<(Object asset, string guid)>();
+            var buffer = new List<AssetEntry>();
 
             Collect(this);
 
@@ -342,9 +476,7 @@ namespace PurrNet
                 RegisterTypeNameFallback(obj, i);
                 RegisterPersistentId(obj, i, buffer[i].guid);
 
-                _bakedIds.Add(i);
-                _bakedAssets.Add(obj);
-                _bakedPersistentIds.Add(buffer[i].guid);
+                _baked.Add(new BakedEntry { id = i, asset = obj, persistentId = buffer[i].guid });
             }
 
 #if UNITY_EDITOR
@@ -362,13 +494,11 @@ namespace PurrNet
                     UnityEditor.EditorUtility.SetDirty(na);
 #endif
 
-                for (int i = 0; i < na.assets.Count; i++)
+                for (int i = 0; i < na.entries.Count; i++)
                 {
-                    var obj = na.assets[i];
-                    if (!obj || !seenObjectIds.Add(GetObjectId(obj))) continue;
-
-                    string guid = (i < na._assetGuids.Count) ? na._assetGuids[i] : null;
-                    buffer.Add((obj, guid));
+                    var entry = na.entries[i];
+                    if (!entry.asset || !seenObjectIds.Add(GetObjectId(entry.asset))) continue;
+                    buffer.Add(entry);
                 }
 
                 if (na.linkedNetworkAssets == null) return;
@@ -391,7 +521,7 @@ namespace PurrNet
                 return;
             }
 
-            assets.Add(obj);
+            entries.Add(new AssetEntry { asset = obj });
             Refresh();
         }
 
@@ -429,15 +559,15 @@ namespace PurrNet
             if (found.Count == 0 && folder == null && !searchAllIfNoFolder)
                 return;
 
-            var existingSet = new HashSet<Object>(assets);
+            var existingSet = new HashSet<Object>(entries.Select(e => e.asset));
             bool changed = false;
 
             if (linkedAssets.Count > 0)
             {
-                int removed = assets.RemoveAll(asset => asset && linkedAssets.Contains(asset));
+                int removed = entries.RemoveAll(e => e.asset && linkedAssets.Contains(e.asset));
                 if (removed > 0)
                 {
-                    existingSet = new HashSet<Object>(assets);
+                    existingSet = new HashSet<Object>(entries.Select(e => e.asset));
                     changed = true;
                 }
             }
@@ -446,12 +576,11 @@ namespace PurrNet
             {
                 if (existingSet.Add(scan.asset))
                 {
-                    assets.Add(scan.asset);
+                    entries.Add(new AssetEntry { asset = scan.asset, guid = scan.guid });
                     changed = true;
                 }
             }
 
-            // Update GUIDs list to match assets list
             bool guidsChanged = RebuildGuids();
 
             if (changed || guidsChanged)
@@ -464,62 +593,47 @@ namespace PurrNet
             CleanupNullEntries();
         }
 
-        /// <summary>
-        /// Rebuilds the _assetGuids list from the current assets list using AssetDatabase.
-        /// </summary>
         private bool RebuildGuids()
         {
-            var previous = _assetGuids;
-            var rebuilt = new List<string>(assets.Count);
+            bool changed = false;
 
-            for (int i = 0; i < assets.Count; i++)
+            for (int i = 0; i < entries.Count; i++)
             {
-                var obj = assets[i];
-                if (!obj)
+                var entry = entries[i];
+                string guid = null;
+
+                if (entry.asset)
                 {
-                    rebuilt.Add(null);
-                    continue;
+                    string path = UnityEditor.AssetDatabase.GetAssetPath(entry.asset);
+                    guid = UnityEditor.AssetDatabase.AssetPathToGUID(path);
+
+                    // For sub-assets, append local file ID to make GUID unique
+                    if (UnityEditor.AssetDatabase.IsSubAsset(entry.asset))
+                    {
+                        if (UnityEditor.AssetDatabase.TryGetGUIDAndLocalFileIdentifier(entry.asset, out string _, out long localId))
+                            guid = $"{guid}_{localId}";
+                    }
                 }
 
-                string path = UnityEditor.AssetDatabase.GetAssetPath(obj);
-                string guid = UnityEditor.AssetDatabase.AssetPathToGUID(path);
+                if (entry.guid == guid) continue;
 
-                // For sub-assets, append local file ID to make GUID unique
-                if (UnityEditor.AssetDatabase.IsSubAsset(obj))
-                {
-                    if (UnityEditor.AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out string _, out long localId))
-                        guid = $"{guid}_{localId}";
-                }
-
-                rebuilt.Add(guid);
-            }
-
-            bool changed = previous.Count != rebuilt.Count;
-            if (!changed)
-            {
-                for (int i = 0; i < rebuilt.Count; i++)
-                {
-                    if (previous[i] == rebuilt[i]) continue;
-                    changed = true;
-                    break;
-                }
+                entry.guid = guid;
+                entries[i] = entry;
+                changed = true;
             }
 
             if (changed)
-                _assetGuids = rebuilt;
+                _assetsView = null;
 
             return changed;
         }
 
         private void CleanupNullEntries()
         {
-            int count = assets.Count;
-            assets.RemoveAll(a => a == null);
-            if (assets.Count != count)
-            {
-                RebuildGuids();
+            int count = entries.Count;
+            entries.RemoveAll(e => e.asset == null);
+            if (entries.Count != count)
                 Refresh();
-            }
         }
 #endif
 

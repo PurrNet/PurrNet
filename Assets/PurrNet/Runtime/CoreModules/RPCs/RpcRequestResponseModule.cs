@@ -122,7 +122,8 @@ namespace PurrNet.Modules
         public RpcRejection rejection;
     }
 
-    public class RpcRequestResponseModule : INetworkModule, IFixedUpdate, IPromoteToServerModule
+    public class RpcRequestResponseModule : INetworkModule, IFixedUpdate, IPromoteToServerModule,
+        ITransferToNewServer
     {
         private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
@@ -140,10 +141,40 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            FailPendingRequestsForAuthorityChange("the local client was promoted to server");
             _asServer = true;
         }
 
         public void PostPromoteToServerModule() { }
+
+        public void TransferToNewServer()
+        {
+            FailPendingRequestsForAuthorityChange("the client transferred to a new server");
+        }
+
+        private void FailPendingRequestsForAuthorityChange(string reason)
+        {
+            if (_requests.Count == 0)
+                return;
+
+            var pending = _requests.ToArray();
+            _requests.Clear();
+
+            for (var i = 0; i < pending.Length; i++)
+            {
+                var request = pending[i];
+                try
+                {
+                    request.completer.Fail(new HostMigratedException(
+                        $"Async RPC with request id '{request.id}' was cancelled because {reason}."));
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError(
+                        $"Error while cancelling RPC request after an authority change: {e}");
+                }
+            }
+        }
 
         public void Enable(bool asServer)
         {

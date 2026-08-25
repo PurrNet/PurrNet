@@ -9,7 +9,7 @@ using PurrNet.Utils;
 namespace PurrNet.Modules
 {
     public class BroadcastModule : INetworkModule, IDataListener, IConnectionListener, IFixedUpdate,
-        IPromoteToServerModule
+        IPromoteToServerModule, ITransferToNewServer
     {
         public const int MAX_HEADER_SIZE = 5;
         const int FRAGMENT_FRAME_PREFIX = 5; // 4-byte type marker + original channel
@@ -20,12 +20,18 @@ namespace PurrNet.Modules
         {
         }
 
+        sealed class ExactPackageBaselineFrameMarker
+        {
+        }
+
         static class BroadcastType<T>
         {
             public static readonly uint id = ResolveBroadcastTypeId<T>();
         }
 
         static readonly uint _fragmentFrameTypeId = Hasher<UnreliableFragmentFrameMarker>.stableHash;
+        static readonly uint _exactPackageBaselineFrameTypeId =
+            Hasher<ExactPackageBaselineFrameMarker>.stableHash;
         static readonly FragmentationLayer.FragmentCallback<FragmentSendState> _sendFragment = SendFragment;
 
         private readonly ITransport _transport;
@@ -37,6 +43,10 @@ namespace PurrNet.Modules
 
         private readonly HashSet<uint> _immediateTypeIds = new HashSet<uint>();
         private readonly List<DeferredMessage> _deferredMessages = new List<DeferredMessage>();
+        private const int MaxExactOutboundBarrierMessages = 8192;
+        private const int MaxExactOutboundBarrierBytes = 16 * 1024 * 1024;
+        private readonly Dictionary<Connection, OutboundBarrierState>
+            _deferredOutboundMessages = new Dictionary<Connection, OutboundBarrierState>();
         private bool _deferNonImmediate;
         private bool _draining;
 
@@ -52,6 +62,27 @@ namespace PurrNet.Modules
                 this.conn = conn;
                 this.data = data;
             }
+        }
+
+        readonly struct DeferredOutboundMessage
+        {
+            public readonly byte[] data;
+
+            public DeferredOutboundMessage(byte[] data)
+            {
+                this.data = data;
+            }
+        }
+
+        sealed class OutboundBarrierState
+        {
+            public readonly List<DeferredOutboundMessage> messages = new();
+            public readonly List<DeferredOutboundMessage> packageBaselines = new();
+            public int bytes;
+            public bool overflowed;
+            public bool capturingPackageBaselines;
+            public bool packageBaselinesPrepared;
+            public bool packageBaselinesPublished;
         }
 
         readonly struct FragmentSendState
@@ -96,8 +127,188 @@ namespace PurrNet.Modules
         {
             DrainDeferred();
             DisposeDeferred();
+            _deferredOutboundMessages.Clear();
             _fragmentation.Reset();
             _deferNonImmediate = false;
+        }
+
+        internal void BeginReliableOrderedOutboundBarrier(Connection connection)
+        {
+            AssertIsServer("Cannot begin an outbound client barrier from a client module.");
+            if (!_deferredOutboundMessages.ContainsKey(connection))
+            {
+                _deferredOutboundMessages.Add(
+                    connection, new OutboundBarrierState());
+            }
+        }
+
+        internal void ReleaseReliableOrderedOutboundBarrier(Connection connection)
+        {
+            AssertIsServer("Cannot release an outbound client barrier from a client module.");
+            if (!_deferredOutboundMessages.Remove(connection, out var state))
+                return;
+
+            if (state.overflowed)
+            {
+                _transport.CloseConnection(connection);
+                return;
+            }
+
+            if (state.capturingPackageBaselines ||
+                state.packageBaselinesPrepared && !state.packageBaselinesPublished)
+            {
+                PurrLogger.LogError(
+                    $"Exact outbound barrier for connection {connection} was released before " +
+                    "its prepared package baselines were published; closing instead of " +
+                    "reordering the authority stream.");
+                _transport.CloseConnection(connection);
+                return;
+            }
+
+            for (var i = 0; i < state.messages.Count; i++)
+            {
+                var bytes = state.messages[i].data;
+                _transport.SendToClient(connection,
+                    new ByteData(bytes, 0, bytes.Length), Channel.ReliableOrdered);
+            }
+        }
+
+        internal void DropReliableOrderedOutboundBarrier(Connection connection)
+        {
+            _deferredOutboundMessages.Remove(connection);
+        }
+
+        internal bool BeginPackageBaselineCapture(Connection connection, out string failure)
+        {
+            AssertIsServer("Cannot capture an outbound package baseline from a client module.");
+            failure = null;
+            if (!_deferredOutboundMessages.TryGetValue(connection, out var state))
+            {
+                failure = $"connection {connection} has no exact outbound barrier";
+                return false;
+            }
+
+            if (state.overflowed)
+            {
+                failure = $"connection {connection}'s exact outbound barrier has overflowed";
+                return false;
+            }
+
+            if (state.capturingPackageBaselines || state.packageBaselinesPrepared ||
+                state.packageBaselinesPublished)
+            {
+                failure = $"connection {connection}'s package baseline phase has already started";
+                return false;
+            }
+
+            state.capturingPackageBaselines = true;
+            return true;
+        }
+
+        internal bool FinishPackageBaselineCapture(Connection connection, bool commit,
+            out string failure)
+        {
+            AssertIsServer("Cannot finish an outbound package baseline from a client module.");
+            failure = null;
+            if (!_deferredOutboundMessages.TryGetValue(connection, out var state) ||
+                !state.capturingPackageBaselines)
+            {
+                failure = $"connection {connection} has no active package baseline capture";
+                return false;
+            }
+
+            state.capturingPackageBaselines = false;
+            if (!commit || state.overflowed)
+            {
+                DiscardPackageBaselines(state);
+                if (state.overflowed)
+                    failure = $"connection {connection}'s exact outbound barrier overflowed";
+                return !state.overflowed;
+            }
+
+            state.packageBaselinesPrepared = true;
+            return true;
+        }
+
+        internal bool PublishPackageBaselines(Connection connection, out string failure)
+        {
+            AssertIsServer("Cannot publish an outbound package baseline from a client module.");
+            failure = null;
+            if (!_deferredOutboundMessages.TryGetValue(connection, out var state))
+            {
+                failure = $"connection {connection} has no exact outbound barrier";
+                return false;
+            }
+
+            if (state.overflowed || state.capturingPackageBaselines ||
+                !state.packageBaselinesPrepared || state.packageBaselinesPublished)
+            {
+                failure = $"connection {connection}'s package baseline is not publishable";
+                return false;
+            }
+
+            for (var i = 0; i < state.packageBaselines.Count; i++)
+            {
+                var bytes = state.packageBaselines[i].data;
+                _transport.SendToClient(connection,
+                    new ByteData(bytes, 0, bytes.Length), Channel.ReliableOrdered);
+                state.bytes -= bytes.Length;
+            }
+
+            state.packageBaselines.Clear();
+            state.packageBaselinesPublished = true;
+            return true;
+        }
+
+        private static void DiscardPackageBaselines(OutboundBarrierState state)
+        {
+            for (var i = 0; i < state.packageBaselines.Count; i++)
+                state.bytes -= state.packageBaselines[i].data.Length;
+            state.packageBaselines.Clear();
+            state.packageBaselinesPrepared = false;
+        }
+
+        private bool TryDeferOutbound(Connection connection, ByteData data)
+        {
+            if (!_deferredOutboundMessages.TryGetValue(connection, out var state))
+                return false;
+
+            if (state.overflowed)
+                return true;
+
+            bool packageBaseline = state.capturingPackageBaselines;
+            var destination = packageBaseline
+                ? state.packageBaselines
+                : state.messages;
+            int capturedLength = data.length + (packageBaseline ? sizeof(uint) : 0);
+            if (state.messages.Count + state.packageBaselines.Count >=
+                    MaxExactOutboundBarrierMessages ||
+                capturedLength > MaxExactOutboundBarrierBytes - state.bytes)
+            {
+                state.messages.Clear();
+                state.packageBaselines.Clear();
+                state.bytes = 0;
+                state.overflowed = true;
+                PurrLogger.LogError(
+                    $"Exact outbound barrier for connection {connection} exceeded its bounded " +
+                    $"{MaxExactOutboundBarrierMessages}-message/{MaxExactOutboundBarrierBytes}-byte budget; " +
+                    "closing the connection instead of releasing a partial authority stream.");
+                _transport.CloseConnection(connection);
+                return true;
+            }
+
+            var copy = new byte[capturedLength];
+            int payloadOffset = 0;
+            if (packageBaseline)
+            {
+                WriteUInt32(copy, 0, _exactPackageBaselineFrameTypeId);
+                payloadOffset = sizeof(uint);
+            }
+
+            Buffer.BlockCopy(data.data, data.offset, copy, payloadOffset, data.length);
+            destination.Add(new DeferredOutboundMessage(copy));
+            state.bytes += copy.Length;
+            return true;
         }
 
         /// <summary>
@@ -224,9 +435,10 @@ namespace PurrNet.Modules
         static uint ResolveBroadcastTypeId<T>()
         {
             uint typeId = Hasher.GetStableHashU32<T>();
-            if (typeId == _fragmentFrameTypeId)
+            if (typeId == _fragmentFrameTypeId ||
+                typeId == _exactPackageBaselineFrameTypeId)
                 throw new InvalidOperationException(PurrLogger.FormatMessage(
-                    $"Broadcast type `{typeof(T)}` collides with PurrNet's reserved fragmentation frame id."));
+                    $"Broadcast type `{typeof(T)}` collides with a reserved PurrNet frame id."));
             return typeId;
         }
 
@@ -346,6 +558,7 @@ namespace PurrNet.Modules
             bool shouldTrack = ShouldTrackType(type);
 #endif
             int connCount = _transport.connections.Count;
+            bool hasOutboundBarriers = _deferredOutboundMessages.Count != 0;
             for (int i = 0; i < connCount; i++)
             {
                 var conn = _transport.connections[i];
@@ -353,6 +566,8 @@ namespace PurrNet.Modules
                 if (shouldTrack)
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
+                if (hasOutboundBarriers && TryDeferOutbound(conn, byteData))
+                    continue;
                 var connMethod = method;
                 if (!HandleMTUExceeded<T>(conn, byteData, ref connMethod, mtuOverride))
                     continue;
@@ -363,6 +578,19 @@ namespace PurrNet.Modules
         public void Send<T>(Connection conn, T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            Send(conn, data, method, mtuOverride, false);
+        }
+
+        internal void SendBarrierBypass<T>(Connection conn, T data,
+            Channel method = Channel.ReliableOrdered,
+            MTUExceededBehaviour? mtuOverride = null)
+        {
+            Send(conn, data, method, mtuOverride, true);
+        }
+
+        private void Send<T>(Connection conn, T data, Channel method,
+            MTUExceededBehaviour? mtuOverride, bool bypassOutboundBarrier)
+        {
             AssertIsServer("Cannot send data to player from client.");
 
             var byteData = GetData(data);
@@ -371,6 +599,9 @@ namespace PurrNet.Modules
             if (ShouldTrackType(type))
                 Statistics.SentBroadcast(type, byteData.segment);
 #endif
+            if (!bypassOutboundBarrier && _deferredOutboundMessages.Count != 0 &&
+                TryDeferOutbound(conn, byteData))
+                return;
             if (!HandleMTUExceeded<T>(conn, byteData, ref method, mtuOverride))
                 return;
             _transport.SendToClient(conn, byteData, method);
@@ -387,6 +618,7 @@ namespace PurrNet.Modules
             var shouldTrack = ShouldTrackType(type);
 #endif
 
+            bool hasOutboundBarriers = _deferredOutboundMessages.Count != 0;
             for (var i = 0; i < conn.Count; i++)
             {
                 var connection = conn[i];
@@ -394,6 +626,8 @@ namespace PurrNet.Modules
                 if (shouldTrack)
                     Statistics.SentBroadcast(type, byteData.segment);
 #endif
+                if (hasOutboundBarriers && TryDeferOutbound(connection, byteData))
+                    continue;
                 var connMethod = method;
                 if (!HandleMTUExceeded<T>(connection, byteData, ref connMethod, mtuOverride))
                     continue;
@@ -453,6 +687,27 @@ namespace PurrNet.Modules
                 return;
             }
 
+            if (typeId == _exactPackageBaselineFrameTypeId)
+            {
+                if (data.length <= sizeof(uint))
+                    return;
+
+                var payload = new ByteData(
+                    data.data,
+                    data.offset + sizeof(uint),
+                    data.length - sizeof(uint));
+                if (payload.length >= sizeof(uint) &&
+                    ReadUInt32(payload.data, payload.offset) == _exactPackageBaselineFrameTypeId)
+                {
+                    PurrLogger.LogError(
+                        "Nested exact package-baseline envelopes are not valid authority traffic.");
+                    return;
+                }
+
+                ProcessData(conn, payload);
+                return;
+            }
+
             using (var stream = BitPackerPool.Get(data))
             {
                 stream.SkipBits(sizeof(uint) * 8);
@@ -479,6 +734,14 @@ namespace PurrNet.Modules
                    ((uint)data[offset + 1] << 8) |
                    ((uint)data[offset + 2] << 16) |
                    ((uint)data[offset + 3] << 24);
+        }
+
+        static void WriteUInt32(byte[] data, int offset, uint value)
+        {
+            data[offset] = (byte)value;
+            data[offset + 1] = (byte)(value >> 8);
+            data[offset + 2] = (byte)(value >> 16);
+            data[offset + 3] = (byte)(value >> 24);
         }
 
         void ProcessFragment(Connection conn, ByteData data)
@@ -511,7 +774,10 @@ namespace PurrNet.Modules
         public void OnDisconnected(Connection conn, bool asServer)
         {
             if (_asServer == asServer)
+            {
                 _fragmentation.RemoveSender(conn.connectionId);
+                DropReliableOrderedOutboundBarrier(conn);
+            }
         }
 
         public void Subscribe<T>(BroadcastDelegate<T> callback)
@@ -568,7 +834,15 @@ namespace PurrNet.Modules
         {
             _fragmentation.Reset();
             DisposeDeferred();
+            _deferredOutboundMessages.Clear();
             _asServer = true;
+        }
+
+        public void TransferToNewServer()
+        {
+            _fragmentation.Reset();
+            DisposeDeferred();
+            _deferredOutboundMessages.Clear();
         }
 
         public void PostPromoteToServerModule() { }

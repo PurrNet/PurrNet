@@ -10,10 +10,13 @@ namespace PurrNet
     [Serializable]
     public struct HostMigrationRules
     {
+        [Tooltip("Master switch for exact host migration. Enables scoped promotion/transfer sessions and makes clients retain received bufferLast RPC payloads so a promoted host can replay them. Off by default so games that never migrate pay nothing.")]
+        [UsedImplicitly] public bool enableHostMigration;
+
         [Tooltip("If enabled, new server will also start as client (server+client)")]
         [UsedImplicitly] public bool migrateAsHost;
 
-        [Tooltip("Unsafe: include player reconnect cookies in player snapshots so a promoted peer can preserve PlayerIDs.")]
+        [Tooltip("If enabled, player authentication cookies are shared with peers so a future host can recognize ordinary reconnects.")]
         [UsedImplicitly] public bool sharePlayerCookiesWithPeers;
     }
 
@@ -426,6 +429,11 @@ namespace PurrNet
         public bool ShouldSharePlayerCookiesWithPeers()
         {
             return _hostMigrationRules.sharePlayerCookiesWithPeers;
+        }
+
+        public bool IsHostMigrationEnabled()
+        {
+            return _hostMigrationRules.enableHostMigration;
         }
 
         public bool ShouldIncludeInstantiatedSceneObjects()

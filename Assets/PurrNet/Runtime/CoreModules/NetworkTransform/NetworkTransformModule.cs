@@ -44,6 +44,16 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             _asServer = true;
+            ResetAuthorityState();
+        }
+
+        public void TransferToNewServer()
+        {
+            ResetAuthorityState();
+        }
+
+        private void ResetAuthorityState()
+        {
             ReleaseAllStreams();
 
             for (var i = 0; i < _networkTransforms.Count; i++)
