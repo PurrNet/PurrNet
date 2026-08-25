@@ -1,3 +1,10 @@
+# [1.23.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.2...v1.23.0-beta.3) (2026-08-25)
+
+
+### Bug Fixes
+
+* unity 2022 bad api ([b716b9c](https://github.com/PurrNet/PurrNet/commit/b716b9ca1da75d43db079271222dacc40018bcee))
+
 # [1.23.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.1...v1.23.0-beta.2) (2026-08-21)
 
 
