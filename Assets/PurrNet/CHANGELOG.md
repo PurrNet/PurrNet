@@ -1,3 +1,10 @@
+# [1.23.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.5...v1.23.0-beta.6) (2026-08-27)
+
+
+### Bug Fixes
+
+* improve new updates (perf + gc) ([21e4bfc](https://github.com/PurrNet/PurrNet/commit/21e4bfc1def19e626e08eb4852410398d46564a4))
+
 # [1.23.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.4...v1.23.0-beta.5) (2026-08-27)
 
 
