@@ -185,6 +185,7 @@ var namespacePurrNet =
     [ "TimestampedSnapshot", "structPurrNet_1_1TimestampedSnapshot.html", "structPurrNet_1_1TimestampedSnapshot" ],
     [ "UnionRPCHeader", "structPurrNet_1_1UnionRPCHeader.html", null ],
     [ "UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
+    [ "UnityUpdate", "classPurrNet_1_1UnityUpdate.html", null ],
     [ "ValidatedSyncVar", "classPurrNet_1_1ValidatedSyncVar.html", "classPurrNet_1_1ValidatedSyncVar" ],
     [ "Vector3WithParent", "structPurrNet_1_1Vector3WithParent.html", "structPurrNet_1_1Vector3WithParent" ],
     [ "VisibilityRules", "structPurrNet_1_1VisibilityRules.html", null ],

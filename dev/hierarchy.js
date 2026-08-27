@@ -455,7 +455,8 @@ var hierarchy =
         [ "PurrNet.Transports.UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", null ],
         [ "PurrNet.Transports.WebTransport", "classPurrNet_1_1Transports_1_1WebTransport.html", null ]
       ] ],
-      [ "PurrNet.UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ]
+      [ "PurrNet.UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
+      [ "PurrNet.UnityUpdate", "classPurrNet_1_1UnityUpdate.html", null ]
     ] ],
     [ "PurrNet.NetworkIdentityRules", "structPurrNet_1_1NetworkIdentityRules.html", null ],
     [ "PurrNet.NetworkLODTier", "structPurrNet_1_1NetworkLODTier.html", null ],
