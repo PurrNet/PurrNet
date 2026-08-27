@@ -1,5 +1,7 @@
 var NAVTREEINDEX7 =
 {
+"structPurrNet_1_1Modules_1_1RpcRequest.html":[0,0,0,4,50],
+"structPurrNet_1_1Modules_1_1RpcResponse.html":[0,0,0,4,52],
 "structPurrNet_1_1Modules_1_1RpcResponse.html":[1,0,0,4,52],
 "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html":[0,0,0,4,56],
 "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html":[1,0,0,4,56],
@@ -247,7 +249,5 @@ var NAVTREEINDEX7 =
 "structPurrNet_1_1SpawnRules.html":[0,0,0,150],
 "structPurrNet_1_1StateMachine_1_1StateMachineState.html":[1,0,0,8,2],
 "structPurrNet_1_1StateMachine_1_1StateMachineState.html":[0,0,0,8,2],
-"structPurrNet_1_1StaticRPCHeader.html":[1,0,0,151],
-"structPurrNet_1_1StaticRPCHeader.html":[0,0,0,151],
-"structPurrNet_1_1StaticRPCPacket.html":[1,0,0,152]
+"structPurrNet_1_1StaticRPCHeader.html":[1,0,0,151]
 };

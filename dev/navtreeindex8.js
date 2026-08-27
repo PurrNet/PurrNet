@@ -1,5 +1,7 @@
 var NAVTREEINDEX8 =
 {
+"structPurrNet_1_1StaticRPCHeader.html":[0,0,0,151],
+"structPurrNet_1_1StaticRPCPacket.html":[1,0,0,152],
 "structPurrNet_1_1StaticRPCPacket.html":[0,0,0,152],
 "structPurrNet_1_1StatisticsManager_1_1PacketMessage.html":[1,0,0,153,0],
 "structPurrNet_1_1StatisticsManager_1_1PacketMessage.html":[0,0,0,153,0],

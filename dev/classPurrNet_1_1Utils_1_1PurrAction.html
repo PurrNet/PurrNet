@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Utils_1_1PurrAction.ht
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="classPurrNet_1_1Utils_1_1PurrAction-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Utils.PurrAction&lt; T &gt; Class Template Reference</div></div>
@@ -103,9 +104,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a8061262196e502107c6e1275315683ed"><td class="memItemLeft" align="right" valign="top"><a id="a8061262196e502107c6e1275315683ed" name="a8061262196e502107c6e1275315683ed"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>PurrAction</b> (Action&lt; T &gt; invoke, int capacity=0)</td></tr>
 <tr class="separator:a8061262196e502107c6e1275315683ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab3af6c4a3acf0a574bd2efca8c60a537"><td class="memItemLeft" align="right" valign="top"><a id="ab3af6c4a3acf0a574bd2efca8c60a537" name="ab3af6c4a3acf0a574bd2efca8c60a537"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Add</b> (T listener)</td></tr>
-<tr class="separator:ab3af6c4a3acf0a574bd2efca8c60a537"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac37e82cb3a9abc4ed8d782d08be0a544"><td class="memItemLeft" align="right" valign="top"><a id="ac37e82cb3a9abc4ed8d782d08be0a544" name="ac37e82cb3a9abc4ed8d782d08be0a544"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>Add</b> (T listener)</td></tr>
+<tr class="separator:ac37e82cb3a9abc4ed8d782d08be0a544"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93986a818151968a19f53c0e6c5e326a"><td class="memItemLeft" align="right" valign="top"><a id="a93986a818151968a19f53c0e6c5e326a" name="a93986a818151968a19f53c0e6c5e326a"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>RemoveAt</b> (int handle, T listener)</td></tr>
+<tr class="memdesc:a93986a818151968a19f53c0e6c5e326a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Removes a listener by the handle Add returned. O(1) when the handle still points at <em>listener</em> , otherwise falls back to Remove.  <br /></td></tr>
+<tr class="separator:a93986a818151968a19f53c0e6c5e326a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af2ee98ba07a4ba451f4e425f20635166"><td class="memItemLeft" align="right" valign="top"><a id="af2ee98ba07a4ba451f4e425f20635166" name="af2ee98ba07a4ba451f4e425f20635166"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Remove</b> (T listener)</td></tr>
 <tr class="separator:af2ee98ba07a4ba451f4e425f20635166"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -119,6 +124,12 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>CompactNow</b> ()</td
 <tr class="memitem:a9c72cfb9a5e3d288c63b47ebd715bdf6"><td class="memItemLeft" align="right" valign="top"><a id="a9c72cfb9a5e3d288c63b47ebd715bdf6" name="a9c72cfb9a5e3d288c63b47ebd715bdf6"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Clear</b> ()</td></tr>
 <tr class="separator:a9c72cfb9a5e3d288c63b47ebd715bdf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a767e26c9ce10f9b546d8a140c352a864"><td class="memItemLeft" align="right" valign="top"><a id="a767e26c9ce10f9b546d8a140c352a864" name="a767e26c9ce10f9b546d8a140c352a864"></a>
+const int&#160;</td><td class="memItemRight" valign="bottom"><b>InvalidHandle</b> = -1</td></tr>
+<tr class="separator:a767e26c9ce10f9b546d8a140c352a864"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>

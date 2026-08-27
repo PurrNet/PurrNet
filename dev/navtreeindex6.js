@@ -1,5 +1,7 @@
 var NAVTREEINDEX6 =
 {
+"interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html#aa87379b63804d381b446d9546ff7b499":[1,0,0,1,0,0],
+"interfacePurrNet_1_1IAsyncPrefabProvider.html":[1,0,0,31],
 "interfacePurrNet_1_1IAsyncPrefabProvider.html":[0,0,0,31],
 "interfacePurrNet_1_1IBaseTickListener.html":[1,0,0,32],
 "interfacePurrNet_1_1IBaseTickListener.html":[0,0,0,32],
@@ -247,7 +249,5 @@ var NAVTREEINDEX6 =
 "structPurrNet_1_1Modules_1_1RPCPacketPacker.html":[1,0,0,4,48],
 "structPurrNet_1_1Modules_1_1RpcRejection.html":[1,0,0,4,49],
 "structPurrNet_1_1Modules_1_1RpcRejection.html":[0,0,0,4,49],
-"structPurrNet_1_1Modules_1_1RpcRequest.html":[1,0,0,4,50],
-"structPurrNet_1_1Modules_1_1RpcRequest.html":[0,0,0,4,50],
-"structPurrNet_1_1Modules_1_1RpcResponse.html":[0,0,0,4,52]
+"structPurrNet_1_1Modules_1_1RpcRequest.html":[1,0,0,4,50]
 };
