@@ -4,6 +4,7 @@ using UnityEngine;
 namespace PurrNet
 {
     [AddComponentMenu("")]
+    [DefaultExecutionOrder(-1000)]
     public class UnityUpdate : MonoBehaviour
     {
         private static UnityUpdate _instance;
