@@ -1,3 +1,10 @@
+# [1.23.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.3...v1.23.0-beta.4) (2026-08-27)
+
+
+### Bug Fixes
+
+* purrnet package manager installation process ([a266046](https://github.com/PurrNet/PurrNet/commit/a266046d2d5a5e5bf27b41dae4bbf180508cd8a7))
+
 # [1.23.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.2...v1.23.0-beta.3) (2026-08-25)
 
 
