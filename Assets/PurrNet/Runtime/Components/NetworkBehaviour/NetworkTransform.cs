@@ -364,7 +364,11 @@ namespace PurrNet
         private Action _onLateLateUpdate;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private Action _onLateFixedUpdate;
+        private int _lateFixedUpdateHandle = PurrAction<Action>.InvalidHandle;
 #endif
+        private int _updateHandle = PurrAction<Action>.InvalidHandle;
+        private int _lateUpdateHandle = PurrAction<Action>.InvalidHandle;
+        private int _lateLateUpdateHandle = PurrAction<Action>.InvalidHandle;
 
         private bool _positionTransformExplicit;
         private bool _useAbsoluteFrame;
@@ -415,11 +419,11 @@ namespace PurrNet
         private void OnEnable()
         {
             CacheCurrentPose();
-            UnityUpdate.onUpdate += _onUpdate;
-            UnityUpdate.onLateUpdate += _onLateUpdate;
-            UnityLatestUpdate.onLatestUpdate += _onLateLateUpdate;
+            _updateHandle = UnityUpdate.update.Add(_onUpdate);
+            _lateUpdateHandle = UnityUpdate.lateUpdate.Add(_onLateUpdate);
+            _lateLateUpdateHandle = UnityLatestUpdate.latestUpdate.Add(_onLateLateUpdate);
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-            UnityLatestUpdate.onFixedUpdate += _onLateFixedUpdate;
+            _lateFixedUpdateHandle = UnityLatestUpdate.fixedUpdate.Add(_onLateFixedUpdate);
 #endif
 
             if (!_trs)
@@ -441,11 +445,15 @@ namespace PurrNet
 
         private void OnDisable()
         {
-            UnityUpdate.onUpdate -= _onUpdate;
-            UnityUpdate.onLateUpdate -= _onLateUpdate;
-            UnityLatestUpdate.onLatestUpdate -= _onLateLateUpdate;
+            UnityUpdate.update.RemoveAt(_updateHandle, _onUpdate);
+            UnityUpdate.lateUpdate.RemoveAt(_lateUpdateHandle, _onLateUpdate);
+            UnityLatestUpdate.latestUpdate.RemoveAt(_lateLateUpdateHandle, _onLateLateUpdate);
+            _updateHandle = PurrAction<Action>.InvalidHandle;
+            _lateUpdateHandle = PurrAction<Action>.InvalidHandle;
+            _lateLateUpdateHandle = PurrAction<Action>.InvalidHandle;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-            UnityLatestUpdate.onFixedUpdate -= _onLateFixedUpdate;
+            UnityLatestUpdate.fixedUpdate.RemoveAt(_lateFixedUpdateHandle, _onLateFixedUpdate);
+            _lateFixedUpdateHandle = PurrAction<Action>.InvalidHandle;
 #endif
         }
 

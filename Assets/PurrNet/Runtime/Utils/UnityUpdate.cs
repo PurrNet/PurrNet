@@ -1,4 +1,5 @@
 using System;
+using PurrNet.Utils;
 using UnityEngine;
 
 namespace PurrNet
@@ -9,14 +10,30 @@ namespace PurrNet
     {
         private static UnityUpdate _instance;
 
-        public static event Action onUpdate;
-        public static event Action onLateUpdate;
+        private static readonly PurrAction<Action> _update = new(static action => action(), 64);
+        private static readonly PurrAction<Action> _lateUpdate = new(static action => action(), 64);
+
+        public static PurrAction<Action> update => _update;
+
+        public static PurrAction<Action> lateUpdate => _lateUpdate;
+
+        public static event Action onUpdate
+        {
+            add => _update.Add(value);
+            remove => _update.Remove(value);
+        }
+
+        public static event Action onLateUpdate
+        {
+            add => _lateUpdate.Add(value);
+            remove => _lateUpdate.Remove(value);
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void OnSubsystemRegistration()
         {
-            onUpdate = null;
-            onLateUpdate = null;
+            _update.Clear();
+            _lateUpdate.Clear();
 
             if (_instance)
                 return;
@@ -32,12 +49,12 @@ namespace PurrNet
 
         private void Update()
         {
-            onUpdate?.Invoke();
+            _update.Invoke();
         }
 
         private void LateUpdate()
         {
-            onLateUpdate?.Invoke();
+            _lateUpdate.Invoke();
         }
     }
 }
