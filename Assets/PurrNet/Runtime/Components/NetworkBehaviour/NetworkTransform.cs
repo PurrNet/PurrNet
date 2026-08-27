@@ -359,6 +359,8 @@ namespace PurrNet
         public Quaternion rotation { get; private set; }
         public Vector3 localScale { get; private set; }
 
+        private Action _onUpdate;
+        private Action _onLateUpdate;
         private Action _onLateLateUpdate;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private Action _onLateFixedUpdate;
@@ -387,6 +389,8 @@ namespace PurrNet
 
         private void Awake()
         {
+            _onUpdate = OnUpdate;
+            _onLateUpdate = OnLateUpdate;
             _onLateLateUpdate = LateLateUpdate;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
             _onLateFixedUpdate = LateFixedUpdate;
@@ -411,6 +415,8 @@ namespace PurrNet
         private void OnEnable()
         {
             CacheCurrentPose();
+            UnityUpdate.onUpdate += _onUpdate;
+            UnityUpdate.onLateUpdate += _onLateUpdate;
             UnityLatestUpdate.onLatestUpdate += _onLateLateUpdate;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
             UnityLatestUpdate.onFixedUpdate += _onLateFixedUpdate;
@@ -435,6 +441,8 @@ namespace PurrNet
 
         private void OnDisable()
         {
+            UnityUpdate.onUpdate -= _onUpdate;
+            UnityUpdate.onLateUpdate -= _onLateUpdate;
             UnityLatestUpdate.onLatestUpdate -= _onLateLateUpdate;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
             UnityLatestUpdate.onFixedUpdate -= _onLateFixedUpdate;
@@ -941,7 +949,7 @@ namespace PurrNet
         }
 #endif
 
-        private void Update()
+        private void OnUpdate()
         {
             if (_interpolationTiming == InterpolationTiming.Update)
                 UpdateNT();
@@ -954,7 +962,7 @@ namespace PurrNet
             }
         }
 
-        private void LateUpdate()
+        private void OnLateUpdate()
         {
             if (_interpolationTiming == InterpolationTiming.LateUpdate)
                 UpdateNT();
