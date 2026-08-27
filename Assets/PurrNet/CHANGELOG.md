@@ -1,3 +1,10 @@
+# [1.23.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.4...v1.23.0-beta.5) (2026-08-27)
+
+
+### Bug Fixes
+
+* lower GC from NetworkTransform delegates, add a handler and RemoveAt for PurrAction with O(1) removal time ([6368f93](https://github.com/PurrNet/PurrNet/commit/6368f931d10ad6f828cef240f7c81e35e4bc2e72))
+
 # [1.23.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.3...v1.23.0-beta.4) (2026-08-27)
 
 
