@@ -34,15 +34,15 @@ namespace PurrNet.Utils
                 _listeners = new T[capacity];
                 _slotToHandle = new int[capacity];
                 _handleToSlot = new int[capacity];
+                _freeHandles = new int[capacity];
             }
             else
             {
                 _listeners = Array.Empty<T>();
                 _slotToHandle = Array.Empty<int>();
                 _handleToSlot = Array.Empty<int>();
+                _freeHandles = Array.Empty<int>();
             }
-
-            _freeHandles = Array.Empty<int>();
         }
 
         public int Add(T listener)
@@ -54,7 +54,7 @@ namespace PurrNet.Utils
                 Compact();
 
             if (_count == _listeners.Length)
-                GrowSlots();
+                EnsureSlotCapacity();
 
             var handle = RentHandle();
 
@@ -203,16 +203,17 @@ namespace PurrNet.Utils
                 return _freeHandles[--_freeHandleCount];
 
             if (_handleCount == _handleToSlot.Length)
-                Array.Resize(ref _handleToSlot, _handleToSlot.Length == 0 ? 4 : _handleToSlot.Length * 2);
+            {
+                var size = _handleToSlot.Length == 0 ? 4 : _handleToSlot.Length * 2;
+                Array.Resize(ref _handleToSlot, size);
+                Array.Resize(ref _freeHandles, size);
+            }
 
             return _handleCount++;
         }
 
         private void ReturnHandle(int handle)
         {
-            if (_freeHandleCount == _freeHandles.Length)
-                Array.Resize(ref _freeHandles, _freeHandles.Length == 0 ? 4 : _freeHandles.Length * 2);
-
             _freeHandles[_freeHandleCount++] = handle;
         }
 
@@ -220,6 +221,19 @@ namespace PurrNet.Utils
         private bool ShouldCompact()
         {
             return _nullCount >= MinNullsBeforeCompact && _nullCount * 2 >= _count;
+        }
+
+        private void EnsureSlotCapacity()
+        {
+            if (_invokeDepth == 0 && _nullCount > 0)
+            {
+                Compact();
+
+                if (_count < _listeners.Length)
+                    return;
+            }
+
+            GrowSlots();
         }
 
         private void GrowSlots()

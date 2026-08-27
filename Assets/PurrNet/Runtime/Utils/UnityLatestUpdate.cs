@@ -18,11 +18,11 @@ namespace PurrNet
         private static readonly PurrAction<Action> _latestUpdate = new(static action => action(), 64);
         private static readonly PurrAction<Action> _postLatestUpdate = new(static action => action(), 8);
 
-        public static PurrAction<Action> update => _update;
+        internal static PurrAction<Action> update => _update;
 
-        public static PurrAction<Action> fixedUpdate => _fixedUpdate;
+        internal static PurrAction<Action> fixedUpdate => _fixedUpdate;
 
-        public static PurrAction<Action> latestUpdate => _latestUpdate;
+        internal static PurrAction<Action> latestUpdate => _latestUpdate;
 
         public static event Action onUpdate
         {
@@ -132,6 +132,8 @@ namespace PurrNet
             }
         }
 
+        /// <summary>Completes during the next Unity update.</summary>
+        /// <remarks>Call from the Unity main thread.</remarks>
         public static Task Yield()
         {
             var promise = new TaskCompletionSource<bool>();
@@ -147,6 +149,8 @@ namespace PurrNet
             }
         }
 
+        /// <summary>Completes after at least <paramref name="seconds"/> of Unity update time.</summary>
+        /// <remarks>Call from the Unity main thread.</remarks>
         public static Task WaitSeconds(float seconds)
         {
             var promise = new TaskCompletionSource<bool>();

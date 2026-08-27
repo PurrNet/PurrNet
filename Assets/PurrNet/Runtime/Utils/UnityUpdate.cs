@@ -13,9 +13,9 @@ namespace PurrNet
         private static readonly PurrAction<Action> _update = new(static action => action(), 64);
         private static readonly PurrAction<Action> _lateUpdate = new(static action => action(), 64);
 
-        public static PurrAction<Action> update => _update;
+        internal static PurrAction<Action> update => _update;
 
-        public static PurrAction<Action> lateUpdate => _lateUpdate;
+        internal static PurrAction<Action> lateUpdate => _lateUpdate;
 
         public static event Action onUpdate
         {
