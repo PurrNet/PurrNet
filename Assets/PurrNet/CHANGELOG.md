@@ -1,3 +1,10 @@
+# [1.23.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.6...v1.23.0-beta.7) (2026-08-29)
+
+
+### Bug Fixes
+
+* Async instantiation fix ([afc0a60](https://github.com/PurrNet/PurrNet/commit/afc0a608d6c7810fb2b3818f255deb361872a919))
+
 # [1.23.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.5...v1.23.0-beta.6) (2026-08-27)
 
 
