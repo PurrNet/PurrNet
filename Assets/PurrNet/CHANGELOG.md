@@ -1,3 +1,10 @@
+# [1.23.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.7...v1.23.0-beta.8) (2026-08-29)
+
+
+### Bug Fixes
+
+* Async instantiation despawn ordering ([d75571a](https://github.com/PurrNet/PurrNet/commit/d75571a944849ec5a5486b964d3f21ec111c94df))
+
 # [1.23.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.6...v1.23.0-beta.7) (2026-08-29)
 
 
