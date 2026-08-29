@@ -236,6 +236,7 @@ public sealed class AsyncInstantiateScenario : Scenario
         await RunReceiverFailureIsolation(ctx, failures);
         await RunVisibilityCancellationRetry(ctx, failures);
         await RunReadyTimeoutRetry(ctx, failures);
+        await RunChildDespawnDuringPending(ctx, failures);
         await RunDeferredSynchronousDespawn(ctx, failures);
         await RunClientAuthoritative(ctx, failures);
         await RunPhase(ctx, BarrierBase + 95, "InstantiateParameters scene", TestInstantiateParametersScene,
@@ -1160,6 +1161,88 @@ public sealed class AsyncInstantiateScenario : Scenario
 
         await AssertNoPendingSpawnState(ctx, "ready timeout retry", failures);
         await SafeBarrier(ctx, BarrierBase + 98, "ready timeout retry cleanup", failures);
+    }
+
+    private async UniTask RunChildDespawnDuringPending(ScenarioContext ctx, List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+
+        AsyncInstantiateProbe serverResult = null;
+
+        await SafeBarrier(ctx, BarrierBase + 99, "child despawn during pending armed", failures);
+
+        if (ctx.isServer)
+        {
+            try
+            {
+                var operation = UnityEngine.Object.InstantiateAsync(_serverPrefab);
+                if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                    failures.Add("child despawn during pending: source operation timed out");
+                else if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                    failures.Add("child despawn during pending: source operation returned no usable result");
+                else
+                {
+                    serverResult = operation.Result[0];
+                    serverResult.SetStateAndBroadcast(ServerTokenBase + 9300);
+
+                    var child = serverResult.transform.Find("NestedNetworkIdentity");
+                    if (child)
+                        UnityEngine.Object.Destroy(child.gameObject);
+                    else
+                        failures.Add("child despawn during pending: nested network child not found on source");
+                }
+            }
+            catch (Exception e)
+            {
+                failures.Add($"child despawn during pending: {e.GetType().Name}: {e.Message}");
+                Debug.LogException(e);
+            }
+        }
+
+        if (!await WaitUntil(
+                () => AsyncInstantiateProbe.aliveCount == 1 &&
+                      AsyncInstantiateProbe.observerRpcTokenCount >= 1 &&
+                      AsyncInstantiateProbe.AllExpectedStatesApplied(1),
+                _spawnTimeoutSeconds,
+                ctx))
+        {
+            failures.Add(
+                "child despawn during pending: a peer was left without the root after its transaction " +
+                $"was cancelled over the destroyed child (alive={AsyncInstantiateProbe.aliveCount}/1)");
+        }
+
+        if (!await WaitUntil(NoLiveInstanceHasNestedChild, _despawnTimeoutSeconds, ctx))
+            failures.Add("child despawn during pending: the destroyed child survived on a peer");
+
+        if (ctx.isServer && GetHierarchyCollectionCount(ctx, true, "_failedAsyncObserverRoots") != 0)
+            failures.Add("child despawn during pending: collateral cancel left a failed-observer tombstone");
+
+        await SafeBarrier(ctx, BarrierBase + 100, "child despawn during pending delivered", failures);
+
+        if (ctx.isServer && serverResult)
+            serverResult.Despawn();
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"child despawn during pending: {AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "child despawn during pending", failures);
+        await SafeBarrier(ctx, BarrierBase + 101, "child despawn during pending cleanup", failures);
+    }
+
+    private static bool NoLiveInstanceHasNestedChild()
+    {
+        var instances = AsyncInstantiateProbe.SnapshotInstances();
+        if (instances.Length == 0)
+            return false;
+
+        for (var i = 0; i < instances.Length; i++)
+        {
+            var instance = instances[i];
+            if (instance && instance.transform.Find("NestedNetworkIdentity"))
+                return false;
+        }
+
+        return true;
     }
 
     private async UniTask RunDeferredSynchronousDespawn(ScenarioContext ctx, List<string> failures)

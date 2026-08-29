@@ -778,11 +778,34 @@ namespace PurrNet.Modules
 
         internal static float asyncSpawnReadyTimeoutSeconds = 60f;
 
-        // Test seam: holds outgoing AsyncSpawnReadyPacket sends on a client for this many
-        // seconds so the server-side ready timeout can be exercised deterministically.
         internal static float debugHoldAsyncSpawnReadySeconds;
 
         private readonly List<(float dueTime, AsyncSpawnReadyPacket packet)> _heldAsyncSpawnReadies = new();
+
+        private readonly List<(PlayerID player, NetworkIdentity root)> _collateralCancelRetries = new();
+        private readonly List<(PlayerID player, NetworkIdentity root)> _collateralCancelRetriesArmed = new();
+
+        private void RetryCollateralCancelledSpawns()
+        {
+            if (!_asServer)
+                return;
+
+            for (var i = 0; i < _collateralCancelRetriesArmed.Count; i++)
+            {
+                var (player, root) = _collateralCancelRetriesArmed[i];
+                if (!root || !root.isSpawned)
+                    continue;
+
+                EvaluateVisibility(player, root.transform);
+            }
+            _collateralCancelRetriesArmed.Clear();
+
+            if (_collateralCancelRetries.Count > 0)
+            {
+                _collateralCancelRetriesArmed.AddRange(_collateralCancelRetries);
+                _collateralCancelRetries.Clear();
+            }
+        }
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
         private sealed class PendingAsyncInstantiation
@@ -854,6 +877,8 @@ namespace PurrNet.Modules
             _cancelledPendingSpawns.Clear();
             _asyncPendingSpawns.Clear();
             _heldAsyncSpawnReadies.Clear();
+            _collateralCancelRetries.Clear();
+            _collateralCancelRetriesArmed.Clear();
             _asyncVisibilityDepth = 0;
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
@@ -2511,6 +2536,9 @@ namespace PurrNet.Modules
                             continue;
                         identityCovered |= identity.transform.IsChildOf(cancelledRoot.transform);
                         SendDespawnPacket(player, cancelledRoot, true);
+
+                        if (cancelledRoot != identity)
+                            _collateralCancelRetries.Add((player, cancelledRoot));
                     }
 
                     for (var i = 0; i < failedRoots.Count; i++)
@@ -3132,6 +3160,7 @@ namespace PurrNet.Modules
 
         public void PostNetworkMessages()
         {
+            RetryCollateralCancelledSpawns();
             FlushHeldAsyncSpawnReadies();
             ExpireTimedOutAsyncObservers();
             FlushSpawnPackets();
