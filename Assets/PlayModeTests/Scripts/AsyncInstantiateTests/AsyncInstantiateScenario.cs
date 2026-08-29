@@ -35,6 +35,7 @@ public sealed class AsyncInstantiateScenario : Scenario
     [SerializeField] private float _stateAndRpcTimeoutSeconds = 30f;
     [SerializeField] private float _despawnTimeoutSeconds = 30f;
     [SerializeField] private float _barrierTimeoutSeconds = 90f;
+    [SerializeField] private float _readyTimeoutRetrySeconds = 1.5f;
 
     private const int BarrierBase = 7900;
     private const int ServerTokenBase = 100000;
@@ -54,7 +55,8 @@ public sealed class AsyncInstantiateScenario : Scenario
         "_relayAsyncSpawns",
         "_pendingAsyncInstantiations",
         "_reservedAsyncNetworkIds",
-        "_toCompleteNextFrame"
+        "_toCompleteNextFrame",
+        "_heldAsyncSpawnReadies"
     };
 
     private AsyncInstantiateProbe _serverPrefab;
@@ -233,6 +235,7 @@ public sealed class AsyncInstantiateScenario : Scenario
         await SelectTestObserver(ctx, failures);
         await RunReceiverFailureIsolation(ctx, failures);
         await RunVisibilityCancellationRetry(ctx, failures);
+        await RunReadyTimeoutRetry(ctx, failures);
         await RunDeferredSynchronousDespawn(ctx, failures);
         await RunClientAuthoritative(ctx, failures);
         await RunPhase(ctx, BarrierBase + 95, "InstantiateParameters scene", TestInstantiateParametersScene,
@@ -1037,6 +1040,113 @@ public sealed class AsyncInstantiateScenario : Scenario
             failures.Add($"visibility retry: {AsyncInstantiateProbe.aliveCount} identities remained alive");
 
         await AssertNoPendingSpawnState(ctx, "visibility retry", failures);
+    }
+
+    /// <summary>
+    /// A designated observer holds its AsyncSpawnReadyPacket past the (shrunk) server-side ready
+    /// timeout. The server must cancel that observer's async transaction and resend the spawn
+    /// synchronously — never tombstone the player — and the late Ready must arrive harmlessly.
+    /// </summary>
+    private async UniTask RunReadyTimeoutRetry(ScenarioContext ctx, List<string> failures)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+
+        if (!_hasTestObserver)
+        {
+            await SafeBarrier(ctx, BarrierBase + 96, "ready timeout retry skipped", failures);
+            return;
+        }
+
+        bool slowPeer = IsLocalTestObserver(ctx);
+        float originalTimeout = HierarchyV2.asyncSpawnReadyTimeoutSeconds;
+        float holdSeconds = _readyTimeoutRetrySeconds * 3f;
+        if (ctx.isServer)
+            HierarchyV2.asyncSpawnReadyTimeoutSeconds = _readyTimeoutRetrySeconds;
+        if (slowPeer)
+            HierarchyV2.debugHoldAsyncSpawnReadySeconds = holdSeconds;
+
+        AsyncInstantiateProbe serverResult = null;
+
+        try
+        {
+            await SafeBarrier(ctx, BarrierBase + 96, "ready timeout retry armed", failures);
+
+            if (ctx.isServer)
+            {
+                try
+                {
+                    var operation = UnityEngine.Object.InstantiateAsync(_serverPrefab);
+                    if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                        failures.Add("ready timeout retry: source operation timed out");
+                    else if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                        failures.Add("ready timeout retry: source operation returned no usable result");
+                    else
+                    {
+                        serverResult = operation.Result[0];
+                        serverResult.SetStateAndBroadcast(ServerTokenBase + 9200);
+                    }
+                }
+                catch (Exception e)
+                {
+                    failures.Add($"ready timeout retry: {e.GetType().Name}: {e.Message}");
+                    Debug.LogException(e);
+                }
+            }
+
+            // The held Ready keeps the slow peer's first copy unfinished (FinishSpawn only follows
+            // promotion), so aliveCount == 1 there can only come from the synchronous resend.
+            if (!await WaitUntil(
+                    () => AsyncInstantiateProbe.aliveCount == 1 &&
+                          AsyncInstantiateProbe.observerRpcTokenCount >= 1 &&
+                          AsyncInstantiateProbe.AllExpectedStatesApplied(1),
+                    _spawnTimeoutSeconds,
+                    ctx))
+            {
+                failures.Add(slowPeer
+                    ? "ready timeout retry: the timed-out observer did not receive the synchronous replacement spawn"
+                    : "ready timeout retry: a peer did not converge on the identity");
+            }
+
+            if (ctx.isServer)
+            {
+                var observer = FindPlayer(ctx, _testObserverId);
+                if (!await WaitUntil(
+                        () => serverResult && serverResult.IsObserver(observer),
+                        _stateAndRpcTimeoutSeconds,
+                        ctx))
+                    failures.Add("ready timeout retry: server did not restore the timed-out observer");
+
+                if (GetHierarchyCollectionCount(ctx, true, "_failedAsyncObserverRoots") != 0)
+                    failures.Add("ready timeout retry: a timeout must not leave a failed-observer tombstone");
+            }
+
+            // Wait out the held Ready so its late arrival at the server (a transaction that no
+            // longer exists) is proven harmless before the final asserts run.
+            if (slowPeer)
+                await UniTask.Delay(TimeSpan.FromSeconds(holdSeconds + 1f), true,
+                    cancellationToken: ctx.cancellationToken);
+
+            await SafeBarrier(ctx, BarrierBase + 97, "ready timeout retry late Ready flushed", failures);
+
+            if (AsyncInstantiateProbe.aliveCount != 1)
+                failures.Add($"ready timeout retry: late Ready disturbed the identity (alive={AsyncInstantiateProbe.aliveCount}/1)");
+        }
+        finally
+        {
+            if (ctx.isServer)
+                HierarchyV2.asyncSpawnReadyTimeoutSeconds = originalTimeout;
+            if (slowPeer)
+                HierarchyV2.debugHoldAsyncSpawnReadySeconds = 0f;
+        }
+
+        if (ctx.isServer && serverResult)
+            serverResult.Despawn();
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"ready timeout retry: {AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "ready timeout retry", failures);
+        await SafeBarrier(ctx, BarrierBase + 98, "ready timeout retry cleanup", failures);
     }
 
     private async UniTask RunDeferredSynchronousDespawn(ScenarioContext ctx, List<string> failures)

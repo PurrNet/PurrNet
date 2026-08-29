@@ -776,7 +776,13 @@ namespace PurrNet.Modules
             }
         }
 
-        private const float AsyncSpawnReadyTimeoutSeconds = 60f;
+        internal static float asyncSpawnReadyTimeoutSeconds = 60f;
+
+        // Test seam: holds outgoing AsyncSpawnReadyPacket sends on a client for this many
+        // seconds so the server-side ready timeout can be exercised deterministically.
+        internal static float debugHoldAsyncSpawnReadySeconds;
+
+        private readonly List<(float dueTime, AsyncSpawnReadyPacket packet)> _heldAsyncSpawnReadies = new();
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
         private sealed class PendingAsyncInstantiation
@@ -847,6 +853,7 @@ namespace PurrNet.Modules
             _failedAsyncSpawnRoots.Clear();
             _cancelledPendingSpawns.Clear();
             _asyncPendingSpawns.Clear();
+            _heldAsyncSpawnReadies.Clear();
             _asyncVisibilityDepth = 0;
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
@@ -1544,12 +1551,37 @@ namespace PurrNet.Modules
             if (_asServer || !_enabled || _isDisposed)
                 return;
 
-            _playersManager.SendToServer(new AsyncSpawnReadyPacket
+            var packet = new AsyncSpawnReadyPacket
             {
                 sceneId = _sceneId,
                 packetIdx = packetIdx,
                 success = success
-            });
+            };
+
+            if (debugHoldAsyncSpawnReadySeconds > 0f)
+            {
+                _heldAsyncSpawnReadies.Add((Time.realtimeSinceStartup + debugHoldAsyncSpawnReadySeconds, packet));
+                return;
+            }
+
+            _playersManager.SendToServer(packet);
+        }
+
+        private void FlushHeldAsyncSpawnReadies()
+        {
+            if (_asServer || _heldAsyncSpawnReadies.Count == 0)
+                return;
+
+            float now = Time.realtimeSinceStartup;
+            for (var i = 0; i < _heldAsyncSpawnReadies.Count; i++)
+            {
+                if (now < _heldAsyncSpawnReadies[i].dueTime)
+                    continue;
+
+                if (_enabled && !_isDisposed)
+                    _playersManager.SendToServer(_heldAsyncSpawnReadies[i].packet);
+                _heldAsyncSpawnReadies.RemoveAt(i--);
+            }
         }
 
         private void SendAsyncSpawnFailure(SpawnPacket packet)
@@ -2328,22 +2360,46 @@ namespace PurrNet.Modules
             foreach (var pair in _pendingAsyncObservers)
             {
                 var pending = pair.Value;
-                if (!pending.sent || now - pending.createdAt < AsyncSpawnReadyTimeoutSeconds)
+                if (!pending.sent || now - pending.createdAt < asyncSpawnReadyTimeoutSeconds)
                     continue;
 
                 expired.Add(pair.Key);
-                var root = MarkAsyncObserverSpawnFailed(pending);
-
-                PurrLogger.LogError(
-                    $"InstantiateAsync spawn {pair.Key} did not become ready on player {pending.player} within " +
-                    $"{AsyncSpawnReadyTimeoutSeconds:0} seconds. The remote operation was cancelled.", root);
-
-                if (root)
-                    SendDespawnPacket(pending.player, root, false);
             }
 
             for (var i = 0; i < expired.Count; i++)
-                _pendingAsyncObservers.Remove(expired[i]);
+            {
+                if (!_pendingAsyncObservers.Remove(expired[i], out var pending))
+                    continue;
+
+                var root = pending.identities.Count > 0 ? pending.identities[0] : null;
+
+                for (var j = 0; j < pending.identities.Count; j++)
+                {
+                    var identity = pending.identities[j];
+                    if (identity)
+                        identity.TryRemovePendingObserver(pending.player);
+                }
+
+                PurrLogger.LogWarning(
+                    $"InstantiateAsync spawn {expired[i]} did not become ready on player {pending.player} within " +
+                    $"{asyncSpawnReadyTimeoutSeconds:0} seconds. The remote operation was cancelled and the spawn " +
+                    "is resent synchronously.", root);
+
+                if (!root)
+                    continue;
+
+                SendDespawnPacket(pending.player, root, false);
+
+                // A timeout is transient (slow remote instantiate, congested link), unlike an
+                // explicit receiver failure it must not tombstone the player, or the identity
+                // stays invisible to them for its entire lifetime. The pending state was cleared
+                // above, so re-evaluating resends the spawn synchronously: no ready handshake,
+                // no second timeout, and a late Ready for the old transaction is ignored.
+                //For context, this was a previous bug that should now be fixed, hence the bigger comment
+                if (root.isSpawned)
+                    EvaluateVisibility(pending.player, root.transform);
+            }
+
             ListPool<SpawnID>.Destroy(expired);
         }
 
@@ -3076,6 +3132,7 @@ namespace PurrNet.Modules
 
         public void PostNetworkMessages()
         {
+            FlushHeldAsyncSpawnReadies();
             ExpireTimedOutAsyncObservers();
             FlushSpawnPackets();
             SendDelayedObserverEvents();
