@@ -1121,15 +1121,28 @@ public sealed class AsyncInstantiateScenario : Scenario
             }
 
             // Wait out the held Ready so its late arrival at the server (a transaction that no
-            // longer exists) is proven harmless before the final asserts run.
+            // longer exists) is proven harmless. Peer-local asserts must run BEFORE the barrier:
+            // the server despawns right after it, and as barrier coordinator it resumes first —
+            // its despawn packet reaches the other peers before their continuations run.
             if (slowPeer)
                 await UniTask.Delay(TimeSpan.FromSeconds(holdSeconds + 1f), true,
                     cancellationToken: ctx.cancellationToken);
 
-            await SafeBarrier(ctx, BarrierBase + 97, "ready timeout retry late Ready flushed", failures);
-
             if (AsyncInstantiateProbe.aliveCount != 1)
                 failures.Add($"ready timeout retry: late Ready disturbed the identity (alive={AsyncInstantiateProbe.aliveCount}/1)");
+
+            await SafeBarrier(ctx, BarrierBase + 97, "ready timeout retry late Ready flushed", failures);
+
+            // The slow peer only reports the barrier after waiting out the hold, so by release
+            // time the late Ready has landed server-side; these are server-local, race-free.
+            if (ctx.isServer)
+            {
+                if (serverResult && !serverResult.IsObserver(FindPlayer(ctx, _testObserverId)))
+                    failures.Add("ready timeout retry: late Ready revoked the restored observer");
+
+                if (GetHierarchyCollectionCount(ctx, true, "_failedAsyncObserverRoots") != 0)
+                    failures.Add("ready timeout retry: late Ready recreated a failed-observer tombstone");
+            }
         }
         finally
         {
