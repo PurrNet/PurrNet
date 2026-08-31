@@ -1,3 +1,10 @@
+# [1.23.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.10...v1.23.0-beta.11) (2026-08-31)
+
+
+### Bug Fixes
+
+* async spawning reinforcement ([c052897](https://github.com/PurrNet/PurrNet/commit/c052897759acf10287f6b767769a0bd12546668d))
+
 # [1.23.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.9...v1.23.0-beta.10) (2026-08-31)
 
 
