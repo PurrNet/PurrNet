@@ -15,7 +15,8 @@ MonoBehaviour:
   autoGenerate: 1
   networkOnly: 1
   poolByDefault: 0
-  folder: {fileID: 102900000, guid: 9d31aedd64205a94db55f028a621c35b, type: 3}
+  folder: {fileID: 102900000, guid: 3ad0ae1073aca1547a4cdb468c064909, type: 3}
+  searchAllIfNoFolder: 1
   linkedNetworkPrefabs: []
   prefabs:
   - guid: ac5f6929e1b0b3d43beacda0a058ee6b

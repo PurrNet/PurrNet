@@ -421,7 +421,9 @@ namespace PurrNet
             if (Application.isPlaying || UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) return;
 
             var enabledTypes = enabledTypeNames.Select(Type.GetType).Where(t => t != null).ToArray();
-            var found = AssetScannerUtility.ScanAssets(folder, enabledTypes, searchAllIfNoFolder);
+            var found = folder is UnityEditor.SceneAsset
+                ? AssetScannerUtility.ScanSceneAssets(UnityEditor.AssetDatabase.GetAssetPath(folder), enabledTypes)
+                : AssetScannerUtility.ScanAssets(folder, enabledTypes, searchAllIfNoFolder);
             var linkedAssets = AssetScannerUtility.CollectLinkedNetworkAssets(this);
             if (linkedAssets.Count > 0)
                 found.RemoveAll(scan => linkedAssets.Contains(scan.asset));

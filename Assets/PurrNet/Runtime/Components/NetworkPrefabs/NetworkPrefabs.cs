@@ -263,58 +263,10 @@ namespace PurrNet
             _generating = true;
             try
             {
-                string resolvedPath = AssetScannerUtility.ResolveFolderPath(folder, searchAllIfNoFolder);
+                if (folder is SceneAsset scene)
+                     GenerateFromScene(scene);
+                else GenerateFromFolder();
 
-                if (string.IsNullOrEmpty(resolvedPath))
-                {
-                    if (autoGenerate && prefabs.Count > 0)
-                    {
-                        prefabs.Clear();
-                        EditorUtility.SetDirty(this);
-                        AssetDatabase.SaveAssetIfDirty(this);
-                    }
-                    return;
-                }
-
-                var found = AssetScannerUtility.ScanPrefabs(folder, networkOnly, searchAllIfNoFolder);
-                var linkedGuids = AssetScannerUtility.CollectLinkedNetworkPrefabGuids(this);
-                if (linkedGuids.Count > 0)
-                    found.RemoveAll(scan => linkedGuids.Contains(scan.guid));
-
-                // Update GUIDs on existing entries
-                for (int i = 0; i < prefabs.Count; i++)
-                {
-                    if (!prefabs[i].prefab) continue;
-                    var path = AssetDatabase.GetAssetPath(prefabs[i].prefab);
-                    var g = AssetDatabase.AssetPathToGUID(path);
-                    if (prefabs[i].guid != g)
-                    {
-                        var p = prefabs[i];
-                        p.guid = g;
-                        prefabs[i] = p;
-                        EditorUtility.SetDirty(this);
-                    }
-                }
-
-                var (added, removed) = AssetScannerUtility.SyncEntries(
-                    prefabs,
-                    found,
-                    e => e.guid,
-                    e => e.prefab,
-                    scan => new UserPrefabData
-                    {
-                        prefab = (GameObject)scan.asset,
-                        pooled = poolByDefault,
-                        warmupCount = 5,
-                        guid = scan.guid
-                    },
-                    e => e.prefab);
-
-                if (removed > 0 || added > 0)
-                {
-                    EditorUtility.SetDirty(this);
-                    AssetDatabase.SaveAssetIfDirty(this);
-                }
             }
             catch (Exception e)
             {
@@ -327,5 +279,78 @@ namespace PurrNet
         #endif
         }
 
+#if UNITY_EDITOR
+        private void GenerateFromScene(SceneAsset scene)
+        {
+            string scenePath = AssetDatabase.GetAssetPath(scene);
+            if (string.IsNullOrEmpty(scenePath))
+                return;
+
+            var found = AssetScannerUtility.ScanScenePrefabs(scenePath, networkOnly);
+            SyncWithScanResults(found);
+        }
+
+        private void GenerateFromFolder()
+        {
+            string resolvedPath = AssetScannerUtility.ResolveFolderPath(folder, searchAllIfNoFolder);
+
+            if (string.IsNullOrEmpty(resolvedPath))
+            {
+                if (autoGenerate && prefabs.Count > 0)
+                {
+                    prefabs.Clear();
+                    EditorUtility.SetDirty(this);
+                    AssetDatabase.SaveAssetIfDirty(this);
+                }
+
+                return;
+            }
+
+            var found = AssetScannerUtility.ScanPrefabs(folder, networkOnly, searchAllIfNoFolder);
+            SyncWithScanResults(found);
+        }
+
+        private void SyncWithScanResults(List<AssetScannerUtility.ScanResult> found)
+        {
+            var linkedGuids = AssetScannerUtility.CollectLinkedNetworkPrefabGuids(this);
+            if (linkedGuids.Count > 0)
+                found.RemoveAll(scan => linkedGuids.Contains(scan.guid));
+
+            // Update GUIDs on existing entries
+            for (int i = 0; i < prefabs.Count; i++)
+            {
+                if (!prefabs[i].prefab) continue;
+                var path = AssetDatabase.GetAssetPath(prefabs[i].prefab);
+                var g = AssetDatabase.AssetPathToGUID(path);
+                if (prefabs[i].guid != g)
+                {
+                    var p = prefabs[i];
+                    p.guid = g;
+                    prefabs[i] = p;
+                    EditorUtility.SetDirty(this);
+                }
+            }
+
+            var (added, removed) = AssetScannerUtility.SyncEntries(
+                prefabs,
+                found,
+                e => e.guid,
+                e => e.prefab,
+                scan => new UserPrefabData
+                {
+                    prefab = (GameObject)scan.asset,
+                    pooled = poolByDefault,
+                    warmupCount = 5,
+                    guid = scan.guid
+                },
+                e => e.prefab);
+
+            if (removed > 0 || added > 0)
+            {
+                EditorUtility.SetDirty(this);
+                AssetDatabase.SaveAssetIfDirty(this);
+            }
+        }
+#endif
     }
 }

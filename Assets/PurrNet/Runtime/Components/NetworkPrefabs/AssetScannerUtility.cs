@@ -80,6 +80,44 @@ namespace PurrNet
             return results;
         }
 
+        public static List<ScanResult> ScanScenePrefabs(string scenePath, bool networkOnly)
+        {
+            var results = new List<ScanResult>();
+
+            if (string.IsNullOrEmpty(scenePath))
+                return results;
+
+            string[] dependencies = AssetDatabase.GetDependencies(scenePath, true);
+            var identities = new List<NetworkIdentity>();
+
+            for (int i = 0; i < dependencies.Length; i++)
+            {
+                string assetPath = dependencies[i];
+                if (!assetPath.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+                if (!prefab) continue;
+
+                if (networkOnly)
+                {
+                    identities.Clear();
+                    prefab.GetComponentsInChildren(true, identities);
+                    if (identities.Count == 0) continue;
+                }
+
+                results.Add(new ScanResult
+                {
+                    asset = prefab,
+                    guid = AssetDatabase.AssetPathToGUID(assetPath),
+                    assetPath = assetPath
+                });
+            }
+
+            results.Sort(CompareByGuid);
+            return results;
+        }
+
         /// <summary>
         /// Scans a folder for general assets, filtering by enabled types.
         /// Includes sub-assets (e.g. sprites inside a texture).
@@ -99,49 +137,78 @@ namespace PurrNet
             for (int i = 0; i < guids.Length; i++)
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
-                if (assetPath.EndsWith(".unity")) continue;
-
-                var allAtPath = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                foreach (var obj in allAtPath)
-                {
-                    if (!obj) continue;
-
-                    var ns = obj.GetType().Namespace;
-                    if (ns != null && ns.Contains("UnityEditor")) continue;
-
-                    if (!seen.Add(obj)) continue;
-
-                    bool matchesType = false;
-                    for (int t = 0; t < enabledTypes.Length; t++)
-                    {
-                        if (enabledTypes[t].IsAssignableFrom(obj.GetType()))
-                        {
-                            matchesType = true;
-                            break;
-                        }
-                    }
-
-                    if (!matchesType) continue;
-
-                    string objGuid = guids[i];
-                    // For sub-assets, append the local file ID to make the GUID unique
-                    if (AssetDatabase.IsSubAsset(obj))
-                    {
-                        if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out string _, out long localId))
-                            objGuid = $"{guids[i]}_{localId}";
-                    }
-
-                    results.Add(new ScanResult
-                    {
-                        asset = obj,
-                        guid = objGuid,
-                        assetPath = assetPath
-                    });
-                }
+                CollectAssetsAtPath(assetPath, guids[i], enabledTypes, seen, results);
             }
 
             results.Sort(CompareByGuid);
             return results;
+        }
+
+        public static List<ScanResult> ScanSceneAssets(string scenePath, Type[] enabledTypes)
+        {
+            var results = new List<ScanResult>();
+
+            if (string.IsNullOrEmpty(scenePath))
+                return results;
+
+            string[] dependencies = AssetDatabase.GetDependencies(scenePath, true);
+            var seen = new HashSet<Object>();
+
+            for (int i = 0; i < dependencies.Length; i++)
+            {
+                string assetPath = dependencies[i];
+                string guid = AssetDatabase.AssetPathToGUID(assetPath);
+                if (string.IsNullOrEmpty(guid)) continue;
+
+                CollectAssetsAtPath(assetPath, guid, enabledTypes, seen, results);
+            }
+
+            results.Sort(CompareByGuid);
+            return results;
+        }
+
+        private static void CollectAssetsAtPath(string assetPath, string guid, Type[] enabledTypes,
+            HashSet<Object> seen, List<ScanResult> results)
+        {
+            if (string.IsNullOrEmpty(assetPath) || assetPath.EndsWith(".unity")) return;
+
+            var allAtPath = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+            foreach (var obj in allAtPath)
+            {
+                if (!obj) continue;
+
+                var ns = obj.GetType().Namespace;
+                if (ns != null && ns.Contains("UnityEditor")) continue;
+
+                if (!seen.Add(obj)) continue;
+
+                bool matchesType = false;
+                for (int t = 0; t < enabledTypes.Length; t++)
+                {
+                    if (enabledTypes[t].IsAssignableFrom(obj.GetType()))
+                    {
+                        matchesType = true;
+                        break;
+                    }
+                }
+
+                if (!matchesType) continue;
+
+                string objGuid = guid;
+                // For sub-assets, append the local file ID to make the GUID unique
+                if (AssetDatabase.IsSubAsset(obj))
+                {
+                    if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out string _, out long localId))
+                        objGuid = $"{guid}_{localId}";
+                }
+
+                results.Add(new ScanResult
+                {
+                    asset = obj,
+                    guid = objGuid,
+                    assetPath = assetPath
+                });
+            }
         }
 
         /// <summary>
