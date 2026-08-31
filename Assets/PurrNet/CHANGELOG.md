@@ -1,3 +1,10 @@
+# [1.23.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.11...v1.23.0-beta.12) (2026-08-31)
+
+
+### Bug Fixes
+
+* parenting and NT smoothness ([61d2e13](https://github.com/PurrNet/PurrNet/commit/61d2e139b507d8e617b28fee303c9096a5dcc181))
+
 # [1.23.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.10...v1.23.0-beta.11) (2026-08-31)
 
 
