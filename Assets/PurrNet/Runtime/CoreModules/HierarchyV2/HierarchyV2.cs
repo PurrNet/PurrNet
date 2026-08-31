@@ -369,6 +369,7 @@ namespace PurrNet.Modules
         public void Disable()
         {
             _enabled = false;
+            _pendingUnauthorizedParentReverts.Clear();
             ClearAsyncSpawnState();
             _cachedPrefabAsyncShapes.Clear();
             _pendingLocalDespawnEchoes.Dispose();
@@ -660,6 +661,47 @@ namespace PurrNet.Modules
             }
         }
 
+        private readonly HashSet<NetworkIdentity> _pendingUnauthorizedParentReverts = new();
+
+        private void OnUnauthorizedLocalParentChange(NetworkIdentity identity)
+        {
+            if (!_pendingUnauthorizedParentReverts.Add(identity))
+                return;
+
+            var rules = identity.networkRules;
+            var localPlayer = _playersManager.localPlayerId;
+            bool isOwner = identity.owner.HasValue && identity.owner == localPlayer;
+
+            PurrLogger.LogError(
+                $"Parent change of '{identity.gameObject.name}' was ignored and will be reverted: " +
+                $"local player {localPlayer}{(isOwner ? " (owner)" : " (not the owner)")} lacks change-parent authority " +
+                $"under rules '{(rules && !string.IsNullOrEmpty(rules.name) ? rules.name : "<unnamed>")}'.\n" +
+                "Reparent from the server, use NetworkRules whose 'changeParentAuth' includes this peer, " +
+                "or call StartIgnoringParentChanges() on the NetworkTransform for intentional local-only parenting.",
+                identity.gameObject);
+        }
+
+        private void RevertUnauthorizedParentChanges()
+        {
+            if (_pendingUnauthorizedParentReverts.Count == 0)
+                return;
+
+            var toRevert = ListPool<NetworkIdentity>.Instantiate();
+            toRevert.AddRange(_pendingUnauthorizedParentReverts);
+            _pendingUnauthorizedParentReverts.Clear();
+
+            for (var i = 0; i < toRevert.Count; i++)
+            {
+                var identity = toRevert[i];
+                if (!identity || !identity.isSpawned)
+                    continue;
+
+                ApplyParentChange(identity, identity.parent, identity.invertedPathToNearestParent, false);
+            }
+
+            ListPool<NetworkIdentity>.Destroy(toRevert);
+        }
+
         public void OnParentChanged(NetworkIdentity identity, Transform parent, bool worldPositionStays = true)
         {
             if (!_asServer)
@@ -670,7 +712,10 @@ namespace PurrNet.Modules
                 bool hasAuthority = identity.HasChangeParentAuthority(_playersManager.localPlayerId.Value, _asServer);
 
                 if (!hasAuthority)
+                {
+                    OnUnauthorizedLocalParentChange(identity);
                     return;
+                }
             }
 
             if (parent && parent.gameObject.scene.handle != _scene.handle)
@@ -2979,11 +3024,11 @@ namespace PurrNet.Modules
             if (_asServer)
             {
                 _visibility.ClearVisibilityForGameObject(gameObject.transform);
-                
+
                 for (var i = 0; i < c; i++)
                 {
                     var child = children[i];
-                    
+
                     TriggerDespawnEvent(child, child.shouldBePooled);
                 }
 
@@ -2995,7 +3040,7 @@ namespace PurrNet.Modules
                 for (var i = 0; i < c; i++)
                 {
                     var child = children[i];
-                    
+
                     TriggerDespawnEvent(child, child.shouldBePooled);
                 }
 
@@ -3008,7 +3053,7 @@ namespace PurrNet.Modules
                 for (var i = 0; i < c; i++)
                 {
                     var child = children[i];
-                    
+
                     TriggerDespawnEvent(child, child.shouldBePooled);
                 }
             }
@@ -3160,6 +3205,7 @@ namespace PurrNet.Modules
 
         public void PostNetworkMessages()
         {
+            RevertUnauthorizedParentChanges();
             RetryCollateralCancelledSpawns();
             FlushHeldAsyncSpawnReadies();
             ExpireTimedOutAsyncObservers();
