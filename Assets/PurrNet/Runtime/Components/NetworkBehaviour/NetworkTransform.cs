@@ -549,7 +549,7 @@ namespace PurrNet
             ReCacheIsController();
             BumpSendGen();
 
-            if (isServer)
+            if (asServer)
                 ResetUnreliableRecvState();
 
             if (!enabled)
