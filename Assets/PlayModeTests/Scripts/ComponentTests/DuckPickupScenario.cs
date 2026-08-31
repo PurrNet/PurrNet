@@ -180,11 +180,27 @@ public class DuckPickupScenario : Scenario
         {
             // The picking player snaps the item into the holding point, like the
             // reported HoldObject code does with DOLocalMove -> localPosition = zero.
-            bool sawIt = await WaitOrFail(
-                () => IsParentedTo(strict, holderAId, useHand: true),
-                _verifyTimeoutSeconds, ctx, failures, "phase1 holderA never saw duck in own hand");
-            if (sawIt)
-                strict.transform.localPosition = Vector3.zero;
+            // Gate on ownership too, and re-assert until the snap sticks: zeroing
+            // before the ownership packet arrives means holder A is not the NT
+            // controller yet, so in-flight interpolation from the server's stream
+            // overwrites the zero — and once holder A becomes controller it streams
+            // the overwritten position to every peer (seen on CI as the duck frozen
+            // ~2 units from the hand on all clients).
+            int stableFrames = 0;
+            await WaitOrFail(() =>
+            {
+                if (!strict || !strict.isOwner || !IsParentedTo(strict, holderAId, useHand: true))
+                    return false;
+
+                if (strict.transform.localPosition.magnitude >= LocalPositionEpsilon)
+                {
+                    strict.transform.localPosition = Vector3.zero;
+                    stableFrames = 0;
+                    return false;
+                }
+
+                return ++stableFrames >= 30;
+            }, _verifyTimeoutSeconds, ctx, failures, "phase1 holderA could not settle duck in own hand");
         }
 
         await VerifyPickup(ctx, strict, holderAId, useHand: true,
