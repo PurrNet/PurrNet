@@ -1,3 +1,10 @@
+# [1.23.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.8...v1.23.0-beta.9) (2026-08-31)
+
+
+### Bug Fixes
+
+* error if parent is changed without permissions + revert to correct ([0871412](https://github.com/PurrNet/PurrNet/commit/08714126db53605d5b0ea29936e536f90d4f5ac8))
+
 # [1.23.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.7...v1.23.0-beta.8) (2026-08-29)
 
 
