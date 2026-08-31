@@ -1,3 +1,10 @@
+# [1.23.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.9...v1.23.0-beta.10) (2026-08-31)
+
+
+### Features
+
+* allow to pickup network prefabs directly from scene references ([fd3852f](https://github.com/PurrNet/PurrNet/commit/fd3852fc494fc1f8fb677843847c52a16394266b))
+
 # [1.23.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.8...v1.23.0-beta.9) (2026-08-31)
 
 
