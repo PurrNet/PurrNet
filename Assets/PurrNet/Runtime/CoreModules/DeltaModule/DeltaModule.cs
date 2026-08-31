@@ -5,6 +5,7 @@ using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
 using PurrNet.Utils;
+using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
@@ -12,6 +13,12 @@ namespace PurrNet.Modules
 
     public class DeltaModule : INetworkModule, IPostFixedUpdate, IPromoteToServerModule
     {
+        static readonly ProfilerMarker _writeMarker = new ProfilerMarker("DeltaModule.Write");
+        static readonly ProfilerMarker _writeReliableMarker = new ProfilerMarker("DeltaModule.WriteReliable");
+        static readonly ProfilerMarker _readMarker = new ProfilerMarker("DeltaModule.Read");
+        static readonly ProfilerMarker _readReliableMarker = new ProfilerMarker("DeltaModule.ReadReliable");
+        static readonly ProfilerMarker _sendAcksMarker = new ProfilerMarker("DeltaModule.SendAcks");
+
         private readonly PlayersManager _players;
         private readonly PlayersBroadcaster _broadcaster;
         private readonly Dictionary<PlayerID, Dictionary<KeyHash, ClientDeltaTracker>> _receivingTrackers;
@@ -185,6 +192,7 @@ namespace PurrNet.Modules
 
         public bool WriteReliableWithModifier<Key, T>(BitPacker packer, PlayerID player, Key key, T newValue, ValueModifier<T> modifier) where Key : struct, IStableHashable
         {
+            using var _ = _writeReliableMarker.Auto();
             var hash = GetKeyHash(key);
             var tracker = GetOrCreateTracker<T>(player, hash, true);
 
@@ -229,6 +237,7 @@ namespace PurrNet.Modules
 
         public bool WriteReliable<Key, T>(BitPacker packer, PlayerID player, Key key, T newValue) where Key : struct, IStableHashable
         {
+            using var _ = _writeReliableMarker.Auto();
             var hash = GetKeyHash(key);
             var tracker = GetOrCreateTracker<T>(player, hash, true);
 
@@ -279,6 +288,7 @@ namespace PurrNet.Modules
 
         public bool Write<T>(BitPacker packer, PlayerID player, uint precomputedHash, T newValue, ref PackedUInt cachedKey)
         {
+            using var _ = _writeMarker.Auto();
             var tracker = GetOrCreateTracker<T>(player, precomputedHash, true);
 
             T oldValue = default;
@@ -328,6 +338,7 @@ namespace PurrNet.Modules
 
         public void ReadReliable<Key, T>(BitPacker packer, Key key, ref T newValue) where Key : struct, IStableHashable
         {
+            using var _ = _readReliableMarker.Auto();
             var player = _players.localPlayerId ?? default;
 
             var keyHash = GetKeyHash(key);
@@ -350,6 +361,7 @@ namespace PurrNet.Modules
 
         public void ReadReliableWithModifier<Key, T>(BitPacker packer, Key key, ref T newValue, ValueModifier<T> modifier) where Key : struct, IStableHashable
         {
+            using var _ = _readReliableMarker.Auto();
             var player = _players.localPlayerId ?? default;
 
             var keyHash = GetKeyHash(key);
@@ -393,6 +405,7 @@ namespace PurrNet.Modules
 
         public void Read<T>(BitPacker packer, uint precomputedHash, PlayerID sender, ref T newValue, ref PackedUInt cachedKey)
         {
+            using var _ = _readMarker.Auto();
             var player = _players.localPlayerId ?? default;
             var tracker = GetOrCreateTracker<T>(player, precomputedHash, false);
 
@@ -550,6 +563,7 @@ namespace PurrNet.Modules
 
         private void SendAllAcks()
         {
+            using var _ = _sendAcksMarker.Auto();
             for (int i = 0; i < _acknowledgements.Count; i++)
             {
                 var batch = _acknowledgements[i];

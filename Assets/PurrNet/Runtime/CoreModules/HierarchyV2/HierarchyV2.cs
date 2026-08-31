@@ -873,6 +873,41 @@ namespace PurrNet.Modules
 
         private readonly Dictionary<NetworkID, PendingAsyncInstantiation> _pendingAsyncInstantiations = new();
         private readonly HashSet<NetworkID> _reservedAsyncNetworkIds = new();
+
+        private readonly struct OrphanAwaitingAsyncParent
+        {
+            public readonly NetworkIdentity identity;
+            public readonly int[] path;
+            public readonly Vector3 position;
+            public readonly Quaternion rotation;
+            public readonly Vector3 scale;
+
+            public OrphanAwaitingAsyncParent(NetworkIdentity identity, GameObjectPrototype prototype)
+            {
+                this.identity = identity;
+                position = prototype.position;
+                rotation = prototype.rotation;
+                scale = prototype.scale;
+
+                var source = prototype.path;
+                if (source == null || source.Length == 0)
+                {
+                    path = Array.Empty<int>();
+                }
+                else
+                {
+                    path = new int[source.Length];
+                    Array.Copy(source, path, source.Length);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Spawned identities whose parent id is reserved by a pending InstantiateAsync. They are
+        /// applied and live immediately (traffic keeps flowing to them) but stay parked at the
+        /// scene root until the parent's async instantiation registers its identities.
+        /// </summary>
+        private readonly Dictionary<NetworkID, List<OrphanAwaitingAsyncParent>> _orphansWaitingForAsyncParent = new();
 #endif
 
         private void ClearAsyncSpawnState()
@@ -927,6 +962,13 @@ namespace PurrNet.Modules
             _asyncVisibilityDepth = 0;
 
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
+            if (_orphansWaitingForAsyncParent.Count > 0)
+            {
+                foreach (var orphans in _orphansWaitingForAsyncParent.Values)
+                    ListPool<OrphanAwaitingAsyncParent>.Destroy(orphans);
+                _orphansWaitingForAsyncParent.Clear();
+            }
+
             if (_pendingAsyncInstantiations.Count > 0)
             {
                 var states = new List<PendingAsyncInstantiation>(_pendingAsyncInstantiations.Values);
@@ -1525,6 +1567,7 @@ namespace PurrNet.Modules
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
                 if (_pendingAsyncInstantiations.Count > 0)
                     ProcessAsyncInstantiationsWaitingForParents();
+                AttachOrphansWaitingForAsyncParent();
 #endif
                 ProcessBufferedFinishSpawnsFor(data.packetIdx);
                 ProcessBufferedDespawnsFor(data.prototype);
@@ -1854,9 +1897,82 @@ namespace PurrNet.Modules
             bool completed = CompleteSpawnWithInstance(state.packet, state.flushData, result, createdNids);
             if (!completed)
             {
+                DropOrphansWaitingForAsyncParent(state.packet);
                 SendAsyncSpawnFailure(state.packet);
             }
             state.DisposePacket();
+        }
+
+        private void AttachOrphansWaitingForAsyncParent()
+        {
+            if (_orphansWaitingForAsyncParent.Count == 0)
+                return;
+
+            List<NetworkID> readyParents = null;
+            foreach (var pair in _orphansWaitingForAsyncParent)
+            {
+                if (!TryGetIdentity(pair.Key, out _))
+                    continue;
+                readyParents ??= ListPool<NetworkID>.Instantiate();
+                readyParents.Add(pair.Key);
+            }
+
+            if (readyParents == null)
+                return;
+
+            for (var i = 0; i < readyParents.Count; i++)
+            {
+                if (!_orphansWaitingForAsyncParent.Remove(readyParents[i], out var orphans))
+                    continue;
+
+                if (TryGetIdentity(readyParents[i], out var parent) && parent)
+                {
+                    // Same sequence as the FinalizePrototypeInstance happy path: parked children
+                    // attach in arrival (server spawn) order, so their recorded sibling indices
+                    // apply without clamping.
+                    for (var j = 0; j < orphans.Count; j++)
+                    {
+                        var orphan = orphans[j];
+                        var identity = orphan.identity;
+                        if (!identity || !identity.isSpawned)
+                            continue;
+
+                        identity.transform.SetParent(parent.transform, false);
+                        ApplyParentChange(identity, parent, orphan.path, false);
+                        SetLocalPosAndRot(identity.transform, orphan.position, orphan.rotation, orphan.scale);
+                    }
+                }
+
+                ListPool<OrphanAwaitingAsyncParent>.Destroy(orphans);
+            }
+
+            ListPool<NetworkID>.Destroy(readyParents);
+        }
+
+        private void DropOrphansWaitingForAsyncParent(SpawnPacket packet)
+        {
+            if (_orphansWaitingForAsyncParent.Count == 0)
+                return;
+
+            for (var i = 0; i < packet.prototype.framework.Count; i++)
+            {
+                if (!_orphansWaitingForAsyncParent.Remove(packet.prototype.framework[i].id, out var orphans))
+                    continue;
+
+                for (var j = 0; j < orphans.Count; j++)
+                {
+                    var identity = orphans[j].identity;
+                    if (identity)
+                    {
+                        PurrLogger.LogError(
+                            $"Failed to find parent for '{identity.name}' with id " +
+                            $"'{packet.prototype.framework[i].id}'.",
+                            identity);
+                    }
+                }
+
+                ListPool<OrphanAwaitingAsyncParent>.Destroy(orphans);
+            }
         }
 
         private void ProcessAsyncInstantiationsWaitingForParents()
@@ -1888,6 +2004,7 @@ namespace PurrNet.Modules
             if (result)
                 UnityProxy.DestroyDirectly(result);
             state.result = null;
+            DropOrphansWaitingForAsyncParent(state.packet);
             SendAsyncSpawnFailure(state.packet);
             state.DisposePacket();
         }
@@ -1948,6 +2065,7 @@ namespace PurrNet.Modules
             state.result = null;
             FailAsyncInstantiationsWaitingForParent(rootId);
             _failedAsyncSpawnRoots.Remove(rootId);
+            DropOrphansWaitingForAsyncParent(state.packet);
             state.DisposePacket();
 
             for (var i = _pendingFinishSpawns.Count - 1; i >= 0; i--)
@@ -3528,17 +3646,40 @@ namespace PurrNet.Modules
             return true;
         }
 
+        /// <summary>
+        /// Sibling-index paths cannot distinguish two same-type siblings that swapped places in
+        /// Awake: positionally the shapes are identical, but network ids would silently cross-map
+        /// between the sender and every receiver. Transform names along the path catch that case
+        /// whenever the siblings are distinguishable at all.
+        /// </summary>
+        private static bool HaveMatchingNamePath(string[] a, string[] b)
+        {
+            int aLength = a?.Length ?? 0;
+            int bLength = b?.Length ?? 0;
+            if (aLength != bLength)
+                return false;
+
+            for (var i = 0; i < aLength; i++)
+            {
+                if (!string.Equals(a[i], b[i], StringComparison.Ordinal))
+                    return false;
+            }
+            return true;
+        }
+
         private readonly struct AsyncNetworkShapeEntry
         {
             public readonly Type type;
             public readonly int componentIndex;
             public readonly int[] transformPath;
+            public readonly string[] namePath;
 
-            public AsyncNetworkShapeEntry(Type type, int componentIndex, int[] transformPath)
+            public AsyncNetworkShapeEntry(Type type, int componentIndex, int[] transformPath, string[] namePath)
             {
                 this.type = type;
                 this.componentIndex = componentIndex;
                 this.transformPath = transformPath;
+                this.namePath = namePath;
             }
         }
 
@@ -3579,9 +3720,10 @@ namespace PurrNet.Modules
                 var a = expected[i];
                 var b = actual[i];
                 if (a.type != b.type || a.componentIndex != b.componentIndex ||
-                    !HaveMatchingPath(a.transformPath, b.transformPath))
+                    !HaveMatchingPath(a.transformPath, b.transformPath) ||
+                    !HaveMatchingNamePath(a.namePath, b.namePath))
                 {
-                    mismatch = $"NetworkIdentity component {i} changed type, component order, or transform path";
+                    mismatch = $"NetworkIdentity component {i} changed type, component order, transform path, or name";
                     return false;
                 }
             }
@@ -3626,19 +3768,26 @@ namespace PurrNet.Modules
                 int componentIndex = i - runStart;
 
                 var inversePath = ListPool<int>.Instantiate();
+                var inverseNames = ListPool<string>.Instantiate();
                 var current = trs;
                 while (current && current != root.transform)
                 {
                     inversePath.Add(current.GetSiblingIndex());
+                    inverseNames.Add(current.name);
                     current = current.parent;
                 }
 
                 var path = new int[inversePath.Count];
+                var names = new string[inversePath.Count];
                 for (var pathIndex = 0; pathIndex < inversePath.Count; pathIndex++)
+                {
                     path[pathIndex] = inversePath[inversePath.Count - pathIndex - 1];
+                    names[pathIndex] = inverseNames[inversePath.Count - pathIndex - 1];
+                }
                 ListPool<int>.Destroy(inversePath);
+                ListPool<string>.Destroy(inverseNames);
 
-                result.Add(new AsyncNetworkShapeEntry(identity.GetType(), componentIndex, path));
+                result.Add(new AsyncNetworkShapeEntry(identity.GetType(), componentIndex, path, names));
             }
         }
 
@@ -3649,7 +3798,7 @@ namespace PurrNet.Modules
 
             PurrLogger.LogError(
                 $"`InstantiateAsync` could not network-spawn prefab `{prefab.name}` because its NetworkIdentity hierarchy changed during asynchronous instantiation ({mismatch}). " +
-                "Do not add, remove, destroy, or reparent NetworkIdentity objects in Awake. Perform network hierarchy changes after spawning, or use regular Instantiate.",
+                "Do not add, remove, destroy, reparent, reorder, or rename NetworkIdentity objects in Awake. Perform network hierarchy changes after spawning, or use regular Instantiate.",
                 instance);
         }
 
@@ -3739,8 +3888,31 @@ namespace PurrNet.Modules
                             Debug.LogException(e);
                         }
                     }
+
+#if PURRNET_UNITY_INSTANTIATE_ASYNC
+                    // The parent is still being cloned by a pending InstantiateAsync on this
+                    // peer: its ids are reserved but not registered yet. Park the child and
+                    // attach it once the parent's spawn registers, instead of stranding it.
+                    if (_reservedAsyncNetworkIds.Contains(prototype.parentID.Value) &&
+                        result.TryGetComponent<NetworkIdentity>(out var orphan))
+                    {
+                        if (!_orphansWaitingForAsyncParent.TryGetValue(prototype.parentID.Value, out var orphans))
+                        {
+                            orphans = ListPool<OrphanAwaitingAsyncParent>.Instantiate();
+                            _orphansWaitingForAsyncParent.Add(prototype.parentID.Value, orphans);
+                        }
+                        orphans.Add(new OrphanAwaitingAsyncParent(orphan, prototype));
+                    }
+                    else
+                    {
+                        PurrLogger.LogError(
+                            $"Failed to find parent for '{result.name}' with id '{prototype.parentID}'.",
+                            result);
+                    }
+#else
                     PurrLogger.LogError($"Failed to find parent for '{result.name}' with id '{prototype.parentID}'.",
                         result);
+#endif
                 }
             }
             else if (prototype.defaultParentSiblingIndex.HasValue &&

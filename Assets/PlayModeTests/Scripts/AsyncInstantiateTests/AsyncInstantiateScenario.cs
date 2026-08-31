@@ -28,6 +28,7 @@ public sealed class AsyncInstantiateScenario : Scenario
     [SerializeField] private int _clientInstances = 4;
     [SerializeField] private int _nonNetworkInstances = 12;
     [SerializeField] private int _cancellationInstances = 256;
+    [SerializeField] private int _burstChildCount = 6;
 
     [Header("Timeouts")]
     [SerializeField] private float _operationTimeoutSeconds = 30f;
@@ -40,6 +41,10 @@ public sealed class AsyncInstantiateScenario : Scenario
     private const int BarrierBase = 7900;
     private const int ServerTokenBase = 100000;
     private const int ClientTokenBase = 200000;
+    private const int OrderingToken = ServerTokenBase + 9400;
+    private const int BurstParentToken = ServerTokenBase + 9450;
+    private const int BurstChildTokenBase = ServerTokenBase + 9460;
+    private const int MutatedToken = ServerTokenBase + 9480;
     private const string ParameterSceneName = "SceneTransferTarget";
     private const string ParameterScenePath = "Assets/PlayModeTests/SceneTransferTarget.unity";
 
@@ -55,12 +60,16 @@ public sealed class AsyncInstantiateScenario : Scenario
         "_relayAsyncSpawns",
         "_pendingAsyncInstantiations",
         "_reservedAsyncNetworkIds",
+        "_orphansWaitingForAsyncParent",
         "_toCompleteNextFrame",
         "_heldAsyncSpawnReadies"
     };
 
     private AsyncInstantiateProbe _serverPrefab;
     private AsyncInstantiateProbe _clientPrefab;
+    private AsyncInstantiateProbe _orderingPrefab;
+    private AsyncInstantiateProbe _heavyParentPrefab;
+    private AsyncInstantiateProbe _burstChildPrefab;
     private AsyncInstantiateCancellationIdentity _cancellationPrefab;
     private AsyncInstantiateAwakeShapeIdentity _shapePrefab;
     private AsyncInstantiateProbe _receiverFailurePrefab;
@@ -94,6 +103,8 @@ public sealed class AsyncInstantiateScenario : Scenario
     private static ulong _testObserverId;
     private static AsyncInstantiateDeferredPrefabProvider _localDeferredProvider;
     private static bool _deferredReleaseReceived;
+    private static bool _mutatedShapeReceived;
+    private static string _mutatedShapeExpected;
 
     public override void Setup(ScenarioContext ctx, NetworkManager manager)
     {
@@ -150,6 +161,9 @@ public sealed class AsyncInstantiateScenario : Scenario
             _deferredSyncPrefab.name,
             _deferredSyncPrefab.gameObject,
             false);
+        manager.prefabProvider.AddRuntimePrefab(_orderingPrefab.name, _orderingPrefab.gameObject, false);
+        manager.prefabProvider.AddRuntimePrefab(_heavyParentPrefab.name, _heavyParentPrefab.gameObject, false);
+        manager.prefabProvider.AddRuntimePrefab(_burstChildPrefab.name, _burstChildPrefab.gameObject, false);
 
         _cancellationOutcomeReceived = false;
         _rapidDespawnOutcomeReceived = false;
@@ -173,6 +187,9 @@ public sealed class AsyncInstantiateScenario : Scenario
             receiverFailureChild.name = "ExpectedNetworkChild";
         _receiverFailurePrefab.gameObject.AddComponent<AsyncInstantiateAwakeShapeMutator>();
         _deferredSyncPrefab = CreateProbePrefab("AsyncInstantiateDeferredSyncPrefab");
+        _orderingPrefab = CreateOrderingPrefab("AsyncInstantiateOrderingPrefab");
+        _heavyParentPrefab = CreateHeavyParentPrefab("AsyncInstantiateHeavyParentPrefab");
+        _burstChildPrefab = CreateProbePrefab("AsyncInstantiateBurstChildPrefab");
 
         var cancellationGo = new GameObject("AsyncInstantiateCancellationPrefab");
         _cancellationPrefab = cancellationGo.AddComponent<AsyncInstantiateCancellationIdentity>();
@@ -191,6 +208,9 @@ public sealed class AsyncInstantiateScenario : Scenario
         var expectedChild = new GameObject("ExpectedNetworkChild");
         expectedChild.transform.SetParent(shapeGo.transform, false);
         expectedChild.AddComponent<NetworkIdentity>();
+        var secondChild = new GameObject("SecondNetworkChild");
+        secondChild.transform.SetParent(shapeGo.transform, false);
+        secondChild.AddComponent<NetworkIdentity>();
         shapeGo.SetActive(false);
 
         _nonNetworkTemplate = new GameObject("AsyncInstantiateNonNetworkTemplate");
@@ -214,6 +234,56 @@ public sealed class AsyncInstantiateScenario : Scenario
         }
 
         go.SetActive(false);
+        return result;
+    }
+
+    /// <summary>
+    /// Interleaved plain/networked children with mixed active states across two depth levels.
+    /// Both the sibling order and every activeSelf flag must survive the async spawn verbatim on
+    /// every peer — this is the shape reported broken by users ("children reordered, items
+    /// randomly disabled" after InstantiateAsync).
+    /// </summary>
+    private static AsyncInstantiateProbe CreateOrderingPrefab(string name)
+    {
+        var go = new GameObject(name);
+        var result = go.AddComponent<AsyncInstantiateProbe>();
+
+        AddOrderingChild(go.transform, "Plain_A", true, false);
+        var netA = AddOrderingChild(go.transform, "Net_A", true, true);
+        AddOrderingChild(netA, "Net_A_Plain", false, false);
+        AddOrderingChild(netA, "Net_A_Child", false, true);
+        AddOrderingChild(go.transform, "Plain_B", false, false);
+        var netB = AddOrderingChild(go.transform, "Net_B", false, true);
+        AddOrderingChild(netB, "Net_B_Child", true, true);
+        AddOrderingChild(go.transform, "Net_C", true, true);
+        AddOrderingChild(go.transform, "Plain_C", true, false);
+
+        go.SetActive(false);
+        return result;
+    }
+
+    private static Transform AddOrderingChild(Transform parent, string name, bool active, bool networked)
+    {
+        var child = new GameObject(name);
+        child.transform.SetParent(parent, false);
+        if (networked)
+            child.AddComponent<NetworkIdentity>();
+        child.SetActive(active);
+        return child.transform;
+    }
+
+    private static AsyncInstantiateProbe CreateHeavyParentPrefab(string name)
+    {
+        var result = CreateProbePrefab(name);
+
+        // Bulk payload directly under the root widens the receiver-side native-clone window so
+        // the burst children's spawn packets reliably arrive while the parent is still pending.
+        for (int i = 0; i < 40; i++)
+        {
+            var payload = new GameObject($"HeavyPayload_{i}");
+            payload.transform.SetParent(result.transform, false);
+        }
+
         return result;
     }
 
@@ -242,12 +312,17 @@ public sealed class AsyncInstantiateScenario : Scenario
         await RunPhase(ctx, BarrierBase + 95, "InstantiateParameters scene", TestInstantiateParametersScene,
             failures);
         await RunPhase(ctx, BarrierBase + 79, "Awake shape mismatch", TestAwakeShapeMismatch, failures);
+        await RunPhase(ctx, BarrierBase + 104, "child order fidelity", TestChildOrderFidelity, failures);
+        await RunPhase(ctx, BarrierBase + 107, "async parent child burst", TestAsyncParentChildBurst, failures);
+        await RunPhase(ctx, BarrierBase + 112, "mutated reobserve ordering", TestMutatedReobserveOrdering,
+            failures);
 
         return failures.Count == 0
             ? ScenarioResult.Ok(
                 $"server={_stressCycles}x{_stressInstancesPerCycle}, " +
                 $"client={(_runClientAuthoritative ? _clientInstances.ToString() : "skipped")}, " +
-                $"rapidDespawn={_rapidDespawnInstances}, cancel={_cancellationInstances}, shape=all")
+                $"rapidDespawn={_rapidDespawnInstances}, cancel={_cancellationInstances}, shape=all, " +
+                $"order=ok, burst={_burstChildCount}")
             : ScenarioResult.Fail(string.Join(" | ", failures));
     }
 
@@ -1822,7 +1897,8 @@ public sealed class AsyncInstantiateScenario : Scenario
         {
             AsyncInstantiateAwakeMutation.AddNetworkIdentity,
             AsyncInstantiateAwakeMutation.ReparentNetworkIdentity,
-            AsyncInstantiateAwakeMutation.RemoveNetworkIdentity
+            AsyncInstantiateAwakeMutation.RemoveNetworkIdentity,
+            AsyncInstantiateAwakeMutation.SwapNetworkSiblings
         };
 
         for (var i = 0; i < mutations.Length; i++)
@@ -1887,8 +1963,7 @@ public sealed class AsyncInstantiateScenario : Scenario
                             $"Awake mutation ran {AsyncInstantiateAwakeShapeMutator.mutatedCloneCount} times");
                     }
 
-                    int identityCount = result.GetComponentsInChildren<NetworkIdentity>(true).Length;
-                    if (identityCount == 2)
+                    if (!AwakeMutationTookEffect(result, mutation))
                     {
                         success = false;
                         details.Add("clone topology did not change");
@@ -1960,6 +2035,28 @@ public sealed class AsyncInstantiateScenario : Scenario
         return _shapeSucceeded ? null : _shapeDetail;
     }
 
+    /// <summary>The shape template holds root + ExpectedNetworkChild + SecondNetworkChild.</summary>
+    private static bool AwakeMutationTookEffect(
+        AsyncInstantiateAwakeShapeIdentity result,
+        AsyncInstantiateAwakeMutation mutation)
+    {
+        int identityCount = result.GetComponentsInChildren<NetworkIdentity>(true).Length;
+        switch (mutation)
+        {
+            case AsyncInstantiateAwakeMutation.AddNetworkIdentity:
+                return identityCount == 4;
+            case AsyncInstantiateAwakeMutation.ReparentNetworkIdentity:
+            case AsyncInstantiateAwakeMutation.RemoveNetworkIdentity:
+                return identityCount == 2;
+            case AsyncInstantiateAwakeMutation.SwapNetworkSiblings:
+                return identityCount == 3 &&
+                       result.transform.childCount >= 2 &&
+                       result.transform.GetChild(0).name == "SecondNetworkChild";
+            default:
+                return false;
+        }
+    }
+
     private void CaptureShapeDiagnostic(string condition, string stackTrace, LogType type)
     {
         if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert)
@@ -1972,6 +2069,434 @@ public sealed class AsyncInstantiateScenario : Scenario
             return;
 
         _shapeDiagnosticSeen = true;
+    }
+
+    /// <summary>
+    /// The async result's children must land on every peer with the template's exact sibling
+    /// order and activeSelf pattern — verified both at OnSpawned time (the user callback where
+    /// stale order/active state would be observed) and at steady state.
+    /// </summary>
+    private async UniTask<string> TestChildOrderFidelity(ScenarioContext ctx)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+        AsyncInstantiateProbe.SetCaptureHierarchyOnSpawn(true);
+        string expected = AsyncInstantiateProbe.DescribeChildren(_orderingPrefab.transform);
+
+        try
+        {
+            await ScenarioBarrier.Wait(ctx, BarrierBase + 102, _barrierTimeoutSeconds);
+
+            AsyncInstantiateProbe serverResult = null;
+            if (ctx.isServer)
+            {
+                var operation = UnityEngine.Object.InstantiateAsync(_orderingPrefab);
+                if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                    return "native operation timed out";
+                if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                    return "native operation returned no usable result";
+
+                serverResult = operation.Result[0];
+                var sourceShape = AsyncInstantiateProbe.DescribeChildren(serverResult.transform);
+                if (sourceShape != expected)
+                    return $"source clone diverged from the template: {sourceShape} != {expected}";
+                serverResult.SetStateAndBroadcast(OrderingToken);
+            }
+
+            var failures = new List<string>();
+
+            if (!await WaitUntil(
+                    () => AsyncInstantiateProbe.aliveCount == 1 &&
+                          AsyncInstantiateProbe.observerRpcTokenCount == 1 &&
+                          AsyncInstantiateProbe.AllExpectedStatesApplied(1),
+                    _spawnTimeoutSeconds,
+                    ctx))
+            {
+                failures.Add($"spawn incomplete (alive={AsyncInstantiateProbe.aliveCount})");
+            }
+
+            var instances = AsyncInstantiateProbe.SnapshotInstances();
+            for (var i = 0; i < instances.Length; i++)
+            {
+                var instance = instances[i];
+                if (!instance)
+                    continue;
+
+                if (!instance.gameObject.activeInHierarchy)
+                    failures.Add("spawned root was left disabled");
+
+                var shape = AsyncInstantiateProbe.DescribeChildren(instance.transform);
+                if (shape != expected)
+                    failures.Add($"steady-state child order/active mismatch: [{shape}] != [{expected}]");
+            }
+
+            var snapshots = AsyncInstantiateProbe.hierarchySnapshots;
+            if (snapshots.Count == 0)
+                failures.Add("no OnSpawned hierarchy snapshot was captured");
+            for (var i = 0; i < snapshots.Count; i++)
+            {
+                if (snapshots[i] != expected)
+                    failures.Add($"OnSpawned-time child order/active mismatch: [{snapshots[i]}] != [{expected}]");
+            }
+
+            await SafeBarrier(ctx, BarrierBase + 103, "child order fidelity asserted", failures);
+
+            if (ctx.isServer && serverResult)
+                serverResult.Despawn();
+
+            if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+                failures.Add($"{AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+            await AssertNoPendingSpawnState(ctx, "child order fidelity", failures);
+            return failures.Count == 0 ? null : string.Join(", ", failures);
+        }
+        finally
+        {
+            AsyncInstantiateProbe.SetCaptureHierarchyOnSpawn(false);
+        }
+    }
+
+    /// <summary>
+    /// Children spawned synchronously under a parent whose remote native clone is still in
+    /// flight. Instantiating them inside the parent operation's completion callback puts their
+    /// spawn packets in the same batch as the parent's, so receiving peers must hold them until
+    /// the parent's async instantiation completes — and then attach every child under the parent
+    /// in the server's order, fully activated.
+    /// </summary>
+    private async UniTask<string> TestAsyncParentChildBurst(ScenarioContext ctx)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+
+        await ScenarioBarrier.Wait(ctx, BarrierBase + 105, _barrierTimeoutSeconds);
+
+        AsyncInstantiateProbe parent = null;
+        var burstChildren = new List<AsyncInstantiateProbe>();
+        Exception burstError = null;
+
+        if (ctx.isServer)
+        {
+            var operation = UnityEngine.Object.InstantiateAsync(_heavyParentPrefab);
+            // UnityProxy registered its own completion handler during the call above, so by the
+            // time this callback runs the parent is already network-spawned.
+            operation.completed += _ =>
+            {
+                try
+                {
+                    var results = operation.Result;
+                    if (results == null || results.Length != 1 || !results[0])
+                        return;
+
+                    parent = results[0];
+                    parent.SetStateAndBroadcast(BurstParentToken);
+                    for (int i = 0; i < _burstChildCount; i++)
+                    {
+                        var child = UnityEngine.Object.Instantiate(_burstChildPrefab, parent.transform);
+                        child.SetStateAndBroadcast(BurstChildTokenBase + i);
+                        burstChildren.Add(child);
+                    }
+                }
+                catch (Exception e)
+                {
+                    burstError = e;
+                }
+            };
+
+            if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                return "native operation timed out";
+            if (burstError != null)
+                return $"burst instantiation failed: {burstError.GetType().Name}: {burstError.Message}";
+            if (!parent)
+                return "native operation returned no usable result";
+            if (burstChildren.Count != _burstChildCount)
+                return $"only {burstChildren.Count}/{_burstChildCount} children were instantiated";
+        }
+
+        var failures = new List<string>();
+        int expectedAlive = 1 + _burstChildCount;
+
+        if (!await WaitUntil(
+                () => AsyncInstantiateProbe.aliveCount == expectedAlive &&
+                      AsyncInstantiateProbe.AllExpectedStatesApplied(expectedAlive),
+                _spawnTimeoutSeconds,
+                ctx))
+        {
+            failures.Add($"burst spawn incomplete (alive={AsyncInstantiateProbe.aliveCount}/{expectedAlive})");
+        }
+        else
+        {
+            ValidateBurstHierarchy(failures);
+        }
+
+        await SafeBarrier(ctx, BarrierBase + 106, "async parent burst asserted", failures);
+
+        if (ctx.isServer)
+        {
+            for (int i = 0; i < burstChildren.Count; i++)
+            {
+                if (burstChildren[i])
+                    burstChildren[i].Despawn();
+            }
+
+            if (parent)
+                parent.Despawn();
+        }
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"{AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "async parent burst", failures);
+        return failures.Count == 0 ? null : string.Join(", ", failures);
+    }
+
+    private void ValidateBurstHierarchy(List<string> failures)
+    {
+        var instances = AsyncInstantiateProbe.SnapshotInstances();
+        AsyncInstantiateProbe parentInstance = null;
+        var children = new List<AsyncInstantiateProbe>();
+
+        for (var i = 0; i < instances.Length; i++)
+        {
+            var instance = instances[i];
+            if (!instance)
+                continue;
+
+            if (instance.currentState == BurstParentToken)
+            {
+                if (parentInstance)
+                    failures.Add("more than one instance carries the burst parent token");
+                parentInstance = instance;
+            }
+            else if (instance.currentState >= BurstChildTokenBase &&
+                     instance.currentState < BurstChildTokenBase + _burstChildCount)
+            {
+                children.Add(instance);
+            }
+        }
+
+        if (!parentInstance)
+        {
+            failures.Add("burst parent instance is missing");
+            return;
+        }
+
+        if (children.Count != _burstChildCount)
+            failures.Add($"found {children.Count}/{_burstChildCount} burst children");
+
+        var parentTransform = parentInstance.transform;
+        int templateChildCount = _heavyParentPrefab.transform.childCount;
+        if (parentTransform.childCount != templateChildCount + children.Count)
+        {
+            failures.Add(
+                $"parent has {parentTransform.childCount} children, " +
+                $"expected {templateChildCount + children.Count}");
+        }
+
+        for (int i = 0; i < templateChildCount && i < parentTransform.childCount; i++)
+        {
+            if (parentTransform.GetChild(i).name == _heavyParentPrefab.transform.GetChild(i).name)
+                continue;
+            failures.Add(
+                $"pre-existing child {i} order changed: found '{parentTransform.GetChild(i).name}', " +
+                $"expected '{_heavyParentPrefab.transform.GetChild(i).name}'");
+            break;
+        }
+
+        children.Sort((a, b) => a.transform.GetSiblingIndex().CompareTo(b.transform.GetSiblingIndex()));
+        for (int i = 0; i < children.Count; i++)
+        {
+            var child = children[i];
+            if (child.transform.parent != parentTransform)
+                failures.Add($"burst child with token {child.currentState} is not under the async parent");
+
+            int expectedToken = BurstChildTokenBase + i;
+            if (child.currentState != expectedToken)
+            {
+                failures.Add(
+                    $"burst child sibling order diverged: sibling {child.transform.GetSiblingIndex()} " +
+                    $"holds token {child.currentState}, expected {expectedToken}");
+                break;
+            }
+
+            if (!child.gameObject.activeSelf || !child.gameObject.activeInHierarchy)
+                failures.Add($"burst child {i} was left disabled");
+        }
+    }
+
+    /// <summary>
+    /// Emulates the reported production failure: a spawned hierarchy mutates at runtime (one
+    /// networked child destroyed, two surviving networked siblings reordered), then a fresh
+    /// observer receives the spawn. The rebuild happens from the server's live prototype against
+    /// prefab-complete local pieces — recorded sibling paths must still resolve to the correct
+    /// parents and order, not shift into neighboring slots.
+    /// </summary>
+    private async UniTask<string> TestMutatedReobserveOrdering(ScenarioContext ctx)
+    {
+        AsyncInstantiateProbe.ResetCycle();
+        _mutatedShapeReceived = false;
+        _mutatedShapeExpected = null;
+
+        var failures = new List<string>();
+
+        if (!_hasTestObserver)
+        {
+            await SafeBarrier(ctx, BarrierBase + 108, "mutated reobserve skipped arm", failures);
+            await SafeBarrier(ctx, BarrierBase + 109, "mutated reobserve skipped converge", failures);
+            await SafeBarrier(ctx, BarrierBase + 110, "mutated reobserve skipped hide", failures);
+            await SafeBarrier(ctx, BarrierBase + 111, "mutated reobserve skipped reshow", failures);
+            return failures.Count == 0 ? null : string.Join(", ", failures);
+        }
+
+        await SafeBarrier(ctx, BarrierBase + 108, "mutated reobserve armed", failures);
+
+        AsyncInstantiateProbe serverResult = null;
+        bool hiddenPeer = IsLocalTestObserver(ctx);
+
+        if (ctx.isServer)
+        {
+            try
+            {
+                var operation = UnityEngine.Object.InstantiateAsync(_orderingPrefab);
+                if (!await WaitUntil(() => operation.isDone, _operationTimeoutSeconds, ctx))
+                    failures.Add("native operation timed out");
+                else if (operation.Result == null || operation.Result.Length != 1 || !operation.Result[0])
+                    failures.Add("native operation returned no usable result");
+                else
+                {
+                    serverResult = operation.Result[0];
+                    serverResult.SetStateAndBroadcast(MutatedToken);
+
+                    var doomed = serverResult.transform.Find("Net_A");
+                    if (doomed)
+                        UnityEngine.Object.Destroy(doomed.gameObject);
+                    else
+                        failures.Add("Net_A was not found on the source instance");
+                }
+            }
+            catch (Exception e)
+            {
+                failures.Add($"{e.GetType().Name}: {e.Message}");
+                Debug.LogException(e);
+            }
+        }
+
+        if (!await WaitUntil(
+                () => AsyncInstantiateProbe.aliveCount == 1 &&
+                      AsyncInstantiateProbe.AllExpectedStatesApplied(1) &&
+                      NoLiveInstanceHasChild("Net_A"),
+                _spawnTimeoutSeconds,
+                ctx))
+        {
+            failures.Add(
+                $"mutated spawn did not converge (alive={AsyncInstantiateProbe.aliveCount}, " +
+                $"netAGone={NoLiveInstanceHasChild("Net_A")})");
+        }
+
+        if (ctx.isServer && serverResult)
+        {
+            // Reorder two surviving networked siblings the way gameplay does (drop/re-slot). The
+            // recorded prototype must reflect the live order for any observer spawned afterwards.
+            var netB = serverResult.transform.Find("Net_B");
+            var netC = serverResult.transform.Find("Net_C");
+            if (netB && netC)
+                netC.SetSiblingIndex(netB.GetSiblingIndex());
+            else
+                failures.Add("Net_B/Net_C were not found on the source instance");
+
+            BroadcastMutatedShape(AsyncInstantiateProbe.DescribeChildren(serverResult.transform));
+        }
+
+        if (!await WaitUntil(() => _mutatedShapeReceived, _operationTimeoutSeconds, ctx))
+            failures.Add("server did not broadcast the mutated shape");
+
+        await SafeBarrier(ctx, BarrierBase + 109, "mutated shape converged", failures);
+
+        if (ctx.isServer && serverResult)
+        {
+            // Blacklist + visibility re-evaluation is the canonical hide: it removes the observer
+            // for the whole subtree and sends the despawn, mirroring the reshow step below.
+            var observer = FindPlayer(ctx, _testObserverId);
+            serverResult.BlacklistPlayer(observer);
+            if (ctx.networkManager.TryGetModule<HierarchyFactory>(true, out var factory) &&
+                factory.TryGetHierarchy(serverResult.sceneId, out var hierarchy))
+                hierarchy.EvaluateVisibility(observer, serverResult.transform);
+            else
+                failures.Add("server hierarchy was unavailable for the hide step");
+        }
+
+        if (hiddenPeer && !await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add("designated observer did not lose the mutated instance");
+
+        await SafeBarrier(ctx, BarrierBase + 110, "mutated instance hidden", failures);
+
+        if (ctx.isServer && serverResult)
+        {
+            var observer = FindPlayer(ctx, _testObserverId);
+            if (!serverResult.RemoveBlacklistPlayer(observer))
+                failures.Add("designated observer was not blacklisted");
+            else if (ctx.networkManager.TryGetModule<HierarchyFactory>(true, out var factory) &&
+                     factory.TryGetHierarchy(serverResult.sceneId, out var hierarchy))
+                hierarchy.EvaluateVisibility(observer, serverResult.transform);
+            else
+                failures.Add("server hierarchy was unavailable for the reshow step");
+        }
+
+        if (hiddenPeer)
+        {
+            if (!await WaitUntil(
+                    () => AsyncInstantiateProbe.aliveCount == 1 &&
+                          SingleInstanceHasState(MutatedToken),
+                    _spawnTimeoutSeconds,
+                    ctx))
+            {
+                failures.Add(
+                    $"re-shown observer did not receive a fresh spawn (alive={AsyncInstantiateProbe.aliveCount})");
+            }
+            else
+            {
+                var instances = AsyncInstantiateProbe.SnapshotInstances();
+                for (var i = 0; i < instances.Length; i++)
+                {
+                    if (!instances[i])
+                        continue;
+                    var shape = AsyncInstantiateProbe.DescribeChildren(instances[i].transform);
+                    if (shape != _mutatedShapeExpected)
+                        failures.Add(
+                            $"rebuilt hierarchy diverged from the live server shape: [{shape}] != " +
+                            $"[{_mutatedShapeExpected}]");
+                }
+            }
+        }
+
+        await SafeBarrier(ctx, BarrierBase + 111, "mutated reobserve verified", failures);
+
+        if (ctx.isServer && serverResult)
+            serverResult.Despawn();
+
+        if (!await WaitUntil(() => AsyncInstantiateProbe.aliveCount == 0, _despawnTimeoutSeconds, ctx))
+            failures.Add($"{AsyncInstantiateProbe.aliveCount} identities remained alive");
+
+        await AssertNoPendingSpawnState(ctx, "mutated reobserve", failures);
+        return failures.Count == 0 ? null : string.Join(", ", failures);
+    }
+
+    private static bool NoLiveInstanceHasChild(string childName)
+    {
+        var instances = AsyncInstantiateProbe.SnapshotInstances();
+        if (instances.Length == 0)
+            return false;
+
+        for (var i = 0; i < instances.Length; i++)
+        {
+            if (instances[i] && instances[i].transform.Find(childName))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool SingleInstanceHasState(int expectedToken)
+    {
+        var instances = AsyncInstantiateProbe.SnapshotInstances();
+        return instances.Length == 1 && instances[0] && instances[0].currentState == expectedToken;
     }
 
     private static bool AllResultsSpawned(AsyncInstantiateProbe[] results, int expectedCount)
@@ -2205,6 +2730,13 @@ public sealed class AsyncInstantiateScenario : Scenario
     {
         _localDeferredProvider?.Release();
         _deferredReleaseReceived = true;
+    }
+
+    [ObserversRpc(runLocally: true)]
+    private static void BroadcastMutatedShape(string expected)
+    {
+        _mutatedShapeExpected = expected;
+        _mutatedShapeReceived = true;
     }
 }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Logging;
 using PurrNet.Pooling;
@@ -583,7 +584,7 @@ namespace PurrNet.Modules
                     current.identity.id ?? default,
                     actualChildCount,
                     current.identity.gameObject.activeSelf,
-                    current.identity.invertedPathToNearestParent
+                    GetLiveRelativePath(current.parent, current.identity)
                 );
                 framework.Add(piece);
                 pieceIdentities?.Add(current.identity);
@@ -653,7 +654,7 @@ namespace PurrNet.Modules
                     current.identity.id ?? default,
                     actualChildCount,
                     current.identity.gameObject.activeSelf,
-                    current.identity.invertedPathToNearestParent
+                    GetLiveRelativePath(current.parent, current.identity)
                 );
 
                 framework.Add(piece);
@@ -849,16 +850,45 @@ namespace PurrNet.Modules
 
         private static GameObjectRuntimePair GetRuntimePair(Transform parent, NetworkIdentity rootId)
         {
+            // Walk the live transform instead of the cached direct-children list: the cache keeps
+            // insertion order, so runtime sibling reorders and destroyed siblings would otherwise
+            // produce prototypes whose piece order contradicts their recorded sibling indices —
+            // receivers then rebuild children into neighboring slots. Children that must not
+            // replicate (e.g. skipSceneAutoSpawning) never receive a NetworkID, so the capture
+            // loops' id checks still filter them out.
             var children = DisposableList<TransformIdentityPair>.Create(rootId.directChildren.Count);
             var pair = new GameObjectRuntimePair(parent, rootId, children);
+            GetDirectChildren(rootId.transform, children);
 
-            foreach (var c in rootId.directChildren)
+            // Same membership rule as RecalculateDirectChildren: only the ORDER and sibling
+            // indices come from the live transform, never additional children.
+            if (rootId.isSceneObject)
             {
-                if (!c)
-                    continue;
-                children.Add(new TransformIdentityPair(c.transform, c));
+                for (var i = 0; i < children.Count; i++)
+                {
+                    if (children[i].identity.skipSceneAutoSpawning)
+                        children.RemoveAt(i--);
+                }
             }
+
             return pair;
+        }
+
+        /// <summary>
+        /// Live replacement for the cached invertedPathToNearestParent: the cache is refreshed on
+        /// reparents but not when siblings are destroyed or reordered, so captured prototypes must
+        /// re-read the sibling indices from the transform at capture time.
+        /// </summary>
+        private static int[] GetLiveRelativePath(Transform parent, NetworkIdentity identity)
+        {
+            var pathParent = parent;
+            if (!pathParent && identity.parent)
+                pathParent = identity.parent.transform;
+            if (!pathParent)
+                return Array.Empty<int>();
+
+            using var invPath = GetInvPath(pathParent, identity.transform);
+            return invPath.list.ToArray();
         }
 
         public static void GetDirectChildren(Transform root, DisposableList<TransformIdentityPair> children)
