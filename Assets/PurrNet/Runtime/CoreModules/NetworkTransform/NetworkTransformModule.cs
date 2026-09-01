@@ -993,6 +993,9 @@ namespace PurrNet.Modules
             bool canDelta = hasAcked && dist >= 1 && dist <= NTUnreliable.MAX_BASELINE_AGE && tickDist >= 1 &&
                             nt.CanDeltaAgainst(baseline.state);
 
+            var cache = nt.unreliableEncodeCache ??= new NTEncodeCache();
+            cache.BeginTick(currentTick);
+
             if (canDelta)
             {
                 gen = baseline.gen;
@@ -1010,15 +1013,23 @@ namespace PurrNet.Modules
                     newLastDist = dist;
                 }
 
-                var predicted = NTUnreliable.GetDeltaPrediction(baseline.state, baseline.velocity, tickDist);
-                nt.WriteDeltaState(tmp, baseline.state, predicted);
-                velocity = NetworkTransformVelocity.Derive(baseline.state, current, tickDist);
+                if (!cache.TryGetDelta(baseline.tick, baseline.velocity, out var stateBits, out velocity))
+                {
+                    var predicted = NTUnreliable.GetDeltaPrediction(baseline.state, baseline.velocity, tickDist);
+                    stateBits = cache.ClaimDeltaSlot(baseline.tick, baseline.velocity);
+                    nt.WriteDeltaState(stateBits, baseline.state, predicted);
+                    velocity = NetworkTransformVelocity.Derive(baseline.state, current, tickDist);
+                    cache.CompleteDeltaSlot(velocity);
+                }
+
+                tmp.WriteBitsWithoutConsumingIt(stateBits, stateBits.positionInBits);
             }
             else
             {
                 tmp.WriteBits(1, 1);
                 Packer<byte>.Write(tmp, gen);
-                nt.WriteAbsoluteState(tmp);
+                var stateBits = cache.GetAbsolute(nt);
+                tmp.WriteBitsWithoutConsumingIt(stateBits, stateBits.positionInBits);
 
                 if (nt.hasSyncStrategy && lastWrite != null)
                 {
@@ -1230,6 +1241,9 @@ namespace PurrNet.Modules
         public void Unregister(NetworkTransform networkTransform)
         {
             _networkTransforms.Remove(networkTransform);
+
+            networkTransform.unreliableEncodeCache?.Dispose();
+            networkTransform.unreliableEncodeCache = null;
 
             if (networkTransform.id.HasValue)
             {
