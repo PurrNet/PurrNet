@@ -64,14 +64,15 @@ namespace PurrNet.Modules
             private readonly Dictionary<PlayerID, uint> _acked = new();
             private uint _nextId = 1;
 
-            private BitPacker _slotABits;
-            private BitPacker _slotBBits;
-            private uint _slotABaseline;
-            private uint _slotBBaseline;
-            private bool _slotAChanged;
-            private bool _slotBChanged;
-            private bool _slotAValid;
-            private bool _slotBValid;
+            private struct Slot
+            {
+                public uint baselineId;
+                public bool changed;
+                public BitPacker bits;
+            }
+
+            private readonly Slot[] _slots = new Slot[8];
+            private int _slotCount;
 
             public uint headId => _history.Count > 0 ? _history[^1].id : 0;
 
@@ -101,8 +102,7 @@ namespace PurrNet.Modules
                     _history.RemoveAt(0);
 
                 _history.Add(new Entry { id = _nextId++, value = value, enterTime = Time.unscaledTime });
-                _slotAValid = false;
-                _slotBValid = false;
+                _slotCount = 0;
             }
 
             public uint GetAckedBaseline(PlayerID player)
@@ -115,20 +115,16 @@ namespace PurrNet.Modules
 
             public bool WriteDelta(BitPacker packer, uint baselineId, in T newValue)
             {
-                if (_slotAValid && _slotABaseline == baselineId)
+                for (int i = 0; i < _slotCount; i++)
                 {
-                    packer.WriteBit(_slotAChanged);
-                    if (_slotAChanged)
-                        packer.WriteBitsWithoutConsumingIt(_slotABits, _slotABits.positionInBits);
-                    return _slotAChanged;
-                }
+                    ref var slot = ref _slots[i];
+                    if (slot.baselineId != baselineId)
+                        continue;
 
-                if (_slotBValid && _slotBBaseline == baselineId)
-                {
-                    packer.WriteBit(_slotBChanged);
-                    if (_slotBChanged)
-                        packer.WriteBitsWithoutConsumingIt(_slotBBits, _slotBBits.positionInBits);
-                    return _slotBChanged;
+                    packer.WriteBit(slot.changed);
+                    if (slot.changed)
+                        packer.WriteBitsWithoutConsumingIt(slot.bits, slot.bits.positionInBits);
+                    return slot.changed;
                 }
 
                 T oldValue = default;
@@ -139,30 +135,17 @@ namespace PurrNet.Modules
                         oldValue = _history[index].value;
                 }
 
-                bool useSlotB = _slotAValid;
-                var bits = useSlotB
-                    ? _slotBBits ??= BitPackerPool.Get()
-                    : _slotABits ??= BitPackerPool.Get();
-
-                bits.ResetPositionAndMode(false);
-                bool changed = DeltaPacker<T>.Write(bits, oldValue, newValue);
+                int slotIndex = _slotCount < _slots.Length ? _slotCount++ : _slots.Length - 1;
+                ref var target = ref _slots[slotIndex];
+                target.bits ??= BitPackerPool.Get();
+                target.bits.ResetPositionAndMode(false);
+                bool changed = DeltaPacker<T>.Write(target.bits, oldValue, newValue);
                 packer.WriteBit(changed);
                 if (changed)
-                    packer.WriteBitsWithoutConsumingIt(bits, bits.positionInBits);
+                    packer.WriteBitsWithoutConsumingIt(target.bits, target.bits.positionInBits);
 
-                if (useSlotB)
-                {
-                    _slotBBaseline = baselineId;
-                    _slotBChanged = changed;
-                    _slotBValid = true;
-                }
-                else
-                {
-                    _slotABaseline = baselineId;
-                    _slotAChanged = changed;
-                    _slotAValid = true;
-                }
-
+                target.baselineId = baselineId;
+                target.changed = changed;
                 return changed;
             }
 
@@ -207,10 +190,12 @@ namespace PurrNet.Modules
 
             public override void Dispose()
             {
-                _slotABits?.Dispose();
-                _slotBBits?.Dispose();
-                _slotABits = null;
-                _slotBBits = null;
+                for (int i = 0; i < _slots.Length; i++)
+                {
+                    _slots[i].bits?.Dispose();
+                    _slots[i].bits = null;
+                }
+                _slotCount = 0;
                 _history.Clear();
                 _acked.Clear();
             }
