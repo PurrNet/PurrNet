@@ -1,3 +1,12 @@
+# [1.23.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.12...v1.23.0-beta.13) (2026-09-01)
+
+
+### Bug Fixes
+
+* delta module cache ([e6274d7](https://github.com/PurrNet/PurrNet/commit/e6274d77ee4b40798376f1da9d0460536a7d0b3e))
+* network transform shared baseline ([33ebf20](https://github.com/PurrNet/PurrNet/commit/33ebf20dce3e0b7200ef79d0aeeafc12ecfc36cc))
+* shared baseline for delta module ([c3af09d](https://github.com/PurrNet/PurrNet/commit/c3af09d0567892d6033e3929f47387aad597628f))
+
 # [1.23.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.11...v1.23.0-beta.12) (2026-08-31)
 
 
