@@ -1323,6 +1323,8 @@ namespace PurrNet
 
         internal uint sendGenEpoch => _sendGenEpoch;
 
+        internal NTEncodeCache unreliableEncodeCache;
+
         private void BumpSendGen()
         {
             _sendGen++;
