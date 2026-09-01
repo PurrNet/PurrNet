@@ -41,8 +41,9 @@ namespace PurrNet.Modules
 
         private bool _asServer;
 
-        private abstract class SenderKeyState : IDisposable
+        internal abstract class SenderKeyState : IDisposable
         {
+            public abstract uint GetAckedBaseline(PlayerID player);
             public abstract void ValidateAck(PlayerID player, uint valueId);
             public abstract uint Cleanup(float maxAge);
             public abstract void RemovePlayer(PlayerID player);
@@ -63,6 +64,8 @@ namespace PurrNet.Modules
             private readonly List<Entry> _history = new();
             private readonly Dictionary<PlayerID, uint> _acked = new();
             private uint _nextId = 1;
+            private uint _minAcked;
+            private bool _minAckedValid;
 
             private struct Slot
             {
@@ -76,21 +79,20 @@ namespace PurrNet.Modules
 
             public uint headId => _history.Count > 0 ? _history[^1].id : 0;
 
+            // Ids are issued sequentially and only ever trimmed from the front, so the
+            // history is a contiguous id range and the index is a subtraction.
             private int IndexOf(uint id)
             {
-                int low = 0;
-                int high = _history.Count - 1;
+                int count = _history.Count;
+                if (count == 0)
+                    return -1;
 
-                while (low <= high)
-                {
-                    int mid = (low + high) >> 1;
-                    uint key = _history[mid].id;
-                    if (key < id) low = mid + 1;
-                    else if (key > id) high = mid - 1;
-                    else return mid;
-                }
+                uint first = _history[0].id;
+                if (id < first)
+                    return -1;
 
-                return -1;
+                ulong offset = id - first;
+                return offset < (ulong)count ? (int)offset : -1;
             }
 
             public void ReconcileHead(in T value)
@@ -105,7 +107,7 @@ namespace PurrNet.Modules
                 _slotCount = 0;
             }
 
-            public uint GetAckedBaseline(PlayerID player)
+            public override uint GetAckedBaseline(PlayerID player)
             {
                 if (!_acked.TryGetValue(player, out var id))
                     return 0;
@@ -151,16 +153,27 @@ namespace PurrNet.Modules
 
             public override void ValidateAck(PlayerID player, uint valueId)
             {
-                if (_acked.TryGetValue(player, out var existing) && existing >= valueId)
-                    return;
+                if (_acked.TryGetValue(player, out var existing))
+                {
+                    if (existing >= valueId)
+                        return;
+
+                    // The floor only moves when its holder advances; recompute lazily.
+                    if (existing == _minAcked)
+                        _minAckedValid = false;
+                }
+                else if (_minAckedValid && valueId < _minAcked)
+                {
+                    _minAcked = valueId;
+                }
 
                 _acked[player] = valueId;
             }
 
-            public override uint Cleanup(float maxAge)
+            private uint GetMinAcked()
             {
-                if (_history.Count < MAX_HISTORY_SIZE)
-                    return 0;
+                if (_minAckedValid)
+                    return _minAcked;
 
                 uint minAcked = uint.MaxValue;
                 foreach (var id in _acked.Values)
@@ -168,6 +181,18 @@ namespace PurrNet.Modules
                     if (id < minAcked)
                         minAcked = id;
                 }
+
+                _minAcked = minAcked;
+                _minAckedValid = true;
+                return minAcked;
+            }
+
+            public override uint Cleanup(float maxAge)
+            {
+                if (_history.Count < MAX_HISTORY_SIZE)
+                    return 0;
+
+                uint minAcked = GetMinAcked();
 
                 float threshold = Time.unscaledTime - maxAge;
                 int removeUpTo = 0;
@@ -185,7 +210,8 @@ namespace PurrNet.Modules
 
             public override void RemovePlayer(PlayerID player)
             {
-                _acked.Remove(player);
+                if (_acked.Remove(player, out var removed) && removed == _minAcked)
+                    _minAckedValid = false;
             }
 
             public override void Dispose()
@@ -198,12 +224,18 @@ namespace PurrNet.Modules
                 _slotCount = 0;
                 _history.Clear();
                 _acked.Clear();
+                _minAckedValid = false;
             }
         }
 
         private readonly Dictionary<KeyHash, SenderKeyState> _senderKeyStates = new();
+        // Same states keyed by the (type hash, key hash) pair acks carry, so the ack path
+        // skips the hash-to-Type resolution.
+        private readonly Dictionary<ulong, SenderKeyState> _senderKeyStatesByWireHash = new();
         private KeyHash _cachedSenderKey;
         private SenderKeyState _cachedSenderState;
+
+        private static ulong WireKey(uint typeHash, uint keyHash) => ((ulong)typeHash << 32) | keyHash;
 
         public DeltaModule(PlayersManager players, PlayersBroadcaster broadcaster)
         {
@@ -266,6 +298,7 @@ namespace PurrNet.Modules
             foreach (var state in _senderKeyStates.Values)
                 state.Dispose();
             _senderKeyStates.Clear();
+            _senderKeyStatesByWireHash.Clear();
             _cachedSenderKey = default;
             _cachedSenderState = null;
         }
@@ -526,11 +559,23 @@ namespace PurrNet.Modules
             {
                 state = new SenderKeyState<T>();
                 _senderKeyStates[key] = state;
+                _senderKeyStatesByWireHash[WireKey(Hasher.GetStableHashU32<T>(), precomputedHash)] = state;
             }
 
             _cachedSenderKey = key;
             _cachedSenderState = state;
             return (SenderKeyState<T>)state;
+        }
+
+        /// <summary>
+        /// Reconciles the shared history head for one fan-out argument and returns the state whose
+        /// per-player acked baselines decide which recipients can share an encoded payload.
+        /// </summary>
+        internal SenderKeyState PrepareFanoutKey<T>(uint precomputedHash, in T value)
+        {
+            var state = GetSenderKeyState<T>(precomputedHash);
+            state.ReconcileHead(value);
+            return state;
         }
 
         private bool WriteSharedBaseline<T>(BitPacker packer, PlayerID player, uint precomputedHash, T newValue, ref PackedUInt cachedKey)
@@ -745,23 +790,23 @@ namespace PurrNet.Modules
 
         private void Acknowledge(PlayerID player, DeltaAcknowledge data, bool asServer)
         {
-            if (!Hasher.TryGetType(data.keyType.value, out var type))
-                return;
-
             const float MAX_HISTORY_TIME_ALIVE = 0.5f;
 
             if (!asServer)
                 player = default;
 
-            var keyHash = new KeyHash(type, data.keyHash.value);
-
-            if (_senderKeyStates.TryGetValue(keyHash, out var senderState))
+            if (_senderKeyStatesByWireHash.TryGetValue(WireKey(data.keyType.value, data.keyHash.value),
+                    out var senderState))
             {
                 senderState.ValidateAck(player, data.valueId.value);
                 SendCleanup(player, data, senderState.Cleanup(MAX_HISTORY_TIME_ALIVE));
                 return;
             }
 
+            if (!Hasher.TryGetType(data.keyType.value, out var type))
+                return;
+
+            var keyHash = new KeyHash(type, data.keyHash.value);
             var tracker = GetTracker(player, keyHash, true);
 
             if (tracker == null)

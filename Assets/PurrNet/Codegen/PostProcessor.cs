@@ -1200,6 +1200,21 @@ namespace PurrNet.Codegen
             return methodName;
         }
 
+        private static string GetBeginFanoutName(RPCMethod rpcMethod, bool isNetworkClass)
+        {
+            if (isNetworkClass)
+                return "BeginFanoutChild";
+
+            return rpcMethod.Signature.isStatic ? "BeginFanoutStatic" : "BeginFanout";
+        }
+
+        private static MethodReference MakeGenericInstance(ModuleDefinition module, MethodDefinition method, TypeReference type)
+        {
+            var generic = new GenericInstanceMethod(method.Import(module));
+            generic.GenericArguments.Add(type);
+            return generic.Import(module);
+        }
+
         private static string GetCreateName(RPCMethod rpcMethod, bool isNetworkClass)
         {
             string methodName;
@@ -2221,6 +2236,11 @@ namespace PurrNet.Codegen
                                       methodRpc.Signature.type == RPCType.TargetRPC;
 
             bool useDeltaPacking = methodRpc.Signature.deltaPacked && methodRpc.Signature.type != RPCType.ServerRPC;
+            // Recipients sharing every acked baseline get one encode + a shared-entry fan-out
+            // instead of one full pipeline pass per player. Awaitable RPCs keep a per-player
+            // request id in the payload, so they stay on the per-player loop.
+            bool useFanoutGrouping = useDeltaPacking && hasMultipleTargets && returnMode == ReturnMode.Void;
+            VariableDefinition fanoutGrouper = null;
 
             if (useDeltaPacking)
             {
@@ -2257,6 +2277,68 @@ namespace PurrNet.Codegen
 
                     code.Append(Instruction.Create(OpCodes.Stloc, playersList));
 
+                    if (useFanoutGrouping)
+                    {
+                        var grouperType = module.GetTypeDefinition<DeltaFanoutGrouper>();
+                        fanoutGrouper = new VariableDefinition(grouperType.Import(module));
+                        newMethod.Body.Variables.Add(fanoutGrouper);
+
+                        // The packet header is what keys the delta history; build it once for the
+                        // key pass, the per-group loop rebuilds it with a real stream.
+                        code.Append(Instruction.Create(OpCodes.Ldc_I4, 0));
+                        code.Append(Instruction.Create(OpCodes.Call, allocStreamMethod));
+                        code.Append(Instruction.Create(OpCodes.Stloc, streamVariable));
+                        CreateAndSetPacket(module, id, methodRpc, isNetworkClass, rpcType, method, code, streamVariable, getId, getSceneId, rpcDataVariable);
+
+                        // grouper = RPCPacketPacker.BeginFanout*(manager, packet, signature, players);
+                        var beginFanout = RPCPacketPackerType.GetMethod(GetBeginFanoutName(methodRpc, isNetworkClass)).Import(module);
+                        PushNetworkManager(module, code, isNetworkClass, methodRpc.Signature.isStatic);
+                        code.Append(Instruction.Create(OpCodes.Ldloc, rpcDataVariable));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, rpcSignature));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, playersList));
+                        code.Append(Instruction.Create(OpCodes.Call, beginFanout));
+                        code.Append(Instruction.Create(OpCodes.Stloc, fanoutGrouper));
+
+                        // Same key order as the serialization below: generic type hashes, then params.
+                        var keyMethod = grouperType.GetMethod("Key", true);
+
+                        for (var g = 0; g < newMethod.GenericParameters.Count; g++)
+                        {
+                            var getStableHashU32Generic = new GenericInstanceMethod(getStableHashU32);
+                            getStableHashU32Generic.GenericArguments.Add(newMethod.GenericParameters[g]);
+
+                            code.Append(Instruction.Create(OpCodes.Ldloc, fanoutGrouper));
+                            code.Append(Instruction.Create(OpCodes.Call, getStableHashU32Generic));
+                            code.Append(Instruction.Create(OpCodes.Call, MakeGenericInstance(module, keyMethod, module.TypeSystem.UInt32)));
+                        }
+
+                        for (var p = 0; p < paramCount; p++)
+                        {
+                            var param = newMethod.Parameters[p];
+
+                            if (methodRpc.Signature.type == RPCType.TargetRPC && p == 0)
+                                continue;
+
+                            if (ShouldIgnore(methodRpc.Signature.type, param, p, paramCount, out _))
+                                continue;
+
+                            code.Append(Instruction.Create(OpCodes.Ldloc, fanoutGrouper));
+                            code.Append(Instruction.Create(OpCodes.Ldarg, param));
+                            code.Append(Instruction.Create(OpCodes.Call, MakeGenericInstance(module, keyMethod, param.ParameterType)));
+                        }
+
+                        code.Append(Instruction.Create(OpCodes.Ldloc, streamVariable));
+                        code.Append(Instruction.Create(OpCodes.Call, freeStreamMethod));
+
+                        // playersList.Dispose(); playersList = grouper.BuildRepresentatives();
+                        var disposePlayers = playersListType.GetMethodRef("Dispose");
+                        code.Append(Instruction.Create(OpCodes.Ldloca, playersList));
+                        code.Append(Instruction.Create(OpCodes.Call, disposePlayers.Import(module)));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, fanoutGrouper));
+                        code.Append(Instruction.Create(OpCodes.Call, grouperType.GetMethod("BuildRepresentatives").Import(module)));
+                        code.Append(Instruction.Create(OpCodes.Stloc, playersList));
+                    }
+
                     // i = targets.Count;
                     code.Append(Instruction.Create(OpCodes.Ldloca, playersList));
                     var prop = disposableListType.GetProperty("Count");
@@ -2278,20 +2360,37 @@ namespace PurrNet.Codegen
                     code.Append(Instruction.Create(OpCodes.Blt, playersLoopEnd));
                     // loop content
 
-                    // this.ModifyManyToOne(ref signature, players.GetAt(i));
                     var rpcModule = module.GetTypeDefinition<RPCModule>();
-                    var modifyManyToOne = rpcModule.GetMethod("ModifyManyToOne").Import(module);
-                    // ref signature
-                    code.Append(Instruction.Create(OpCodes.Ldloca, rpcSignature));
-                    // players.GetAt(i)
                     var getAtConcrete = playersListType.GetMethodRef("GetAt");
-                    code.Append(Instruction.Create(OpCodes.Ldloca, playersList));
-                    code.Append(Instruction.Create(OpCodes.Ldloc, iterator));
-                    code.Append(Instruction.Create(OpCodes.Call, getAtConcrete.Import(module)));
-                    code.Append(Instruction.Create(OpCodes.Dup));
-                    code.Append(Instruction.Create(OpCodes.Stloc, currentDeltaPlayerTarget));
-                    // ();
-                    code.Append(Instruction.Create(OpCodes.Call, modifyManyToOne));
+
+                    if (useFanoutGrouping)
+                    {
+                        // currentTarget = players.GetAt(i); RPCModule.ModifyManyToGroup(ref signature, grouper, i);
+                        var modifyManyToGroup = rpcModule.GetMethod("ModifyManyToGroup").Import(module);
+                        code.Append(Instruction.Create(OpCodes.Ldloca, playersList));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, iterator));
+                        code.Append(Instruction.Create(OpCodes.Call, getAtConcrete.Import(module)));
+                        code.Append(Instruction.Create(OpCodes.Stloc, currentDeltaPlayerTarget));
+                        code.Append(Instruction.Create(OpCodes.Ldloca, rpcSignature));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, fanoutGrouper));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, iterator));
+                        code.Append(Instruction.Create(OpCodes.Call, modifyManyToGroup));
+                    }
+                    else
+                    {
+                        // this.ModifyManyToOne(ref signature, players.GetAt(i));
+                        var modifyManyToOne = rpcModule.GetMethod("ModifyManyToOne").Import(module);
+                        // ref signature
+                        code.Append(Instruction.Create(OpCodes.Ldloca, rpcSignature));
+                        // players.GetAt(i)
+                        code.Append(Instruction.Create(OpCodes.Ldloca, playersList));
+                        code.Append(Instruction.Create(OpCodes.Ldloc, iterator));
+                        code.Append(Instruction.Create(OpCodes.Call, getAtConcrete.Import(module)));
+                        code.Append(Instruction.Create(OpCodes.Dup));
+                        code.Append(Instruction.Create(OpCodes.Stloc, currentDeltaPlayerTarget));
+                        // ();
+                        code.Append(Instruction.Create(OpCodes.Call, modifyManyToOne));
+                    }
                 }
             }
 
@@ -2587,6 +2686,14 @@ namespace PurrNet.Codegen
                 // playersList.Dispose();
                 code.Append(Instruction.Create(OpCodes.Ldloca, playersList));
                 code.Append(Instruction.Create(OpCodes.Call, disposeConcret.Import(module)));
+
+                if (useFanoutGrouping)
+                {
+                    // grouper.End();
+                    var grouperType = module.GetTypeDefinition<DeltaFanoutGrouper>();
+                    code.Append(Instruction.Create(OpCodes.Ldloc, fanoutGrouper));
+                    code.Append(Instruction.Create(OpCodes.Call, grouperType.GetMethod("End").Import(module)));
+                }
             }
 
             code.Append(Instruction.Create(OpCodes.Ldloc, rpcSignature));

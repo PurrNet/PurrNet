@@ -21,6 +21,7 @@ namespace PurrNet.Modules
 
         private readonly List<NetworkTransform> _networkTransforms = new();
         private readonly List<NetworkTransform> _changedTransforms = new();
+        private readonly List<NetworkID> _changedIds = new();
         private readonly Dictionary<PlayerID, NTUnreliableSendStream> _sendStreams = new();
         private readonly Dictionary<PlayerID, NTUnreliableRecvStream> _recvStreams = new();
         private readonly ScenePlayersModule _scenePlayers;
@@ -541,31 +542,34 @@ namespace PurrNet.Modules
                 // ACK slots are processed newest-first. Once a newer state for this transform was
                 // adopted, older retransmissions cannot improve its baseline or complete a newer
                 // revision, so skip the registration/generation work entirely.
-                if (stream.acked.TryGetValue(entry.nid, out var currentBaseline) &&
-                    slot.order <= currentBaseline.order)
+                bool hasBaseline = stream.acked.TryGetValue(entry.nid, out var currentBaseline);
+                if (hasBaseline && slot.order <= currentBaseline.order)
                     continue;
 
-                if (!TryGetRegisteredTransform(entry.nid, out var nt))
+                var nt = entry.transform;
+                if (!nt && !TryGetRegisteredTransform(entry.nid, out nt))
                     continue;
 
-                if (stream.nackFloor.TryGetValue(entry.nid, out var floor))
+                if (stream.nackFloor.Count > 0 && stream.nackFloor.TryGetValue(entry.nid, out var floor))
                 {
                     if (slot.order < floor)
                         continue;
                     stream.nackFloor.Remove(entry.nid);
                 }
 
-                currentBaseline = new NTUnreliableBaseline
+                if (!hasBaseline)
                 {
-                    state = entry.state,
-                    velocity = entry.velocity,
-                    tick = entry.tick,
-                    gen = entry.gen,
-                    genEpoch = entry.genEpoch,
-                    revision = entry.revision,
-                    order = slot.order
-                };
-                stream.acked[entry.nid] = currentBaseline;
+                    currentBaseline = new NTUnreliableBaseline();
+                    stream.acked.Add(entry.nid, currentBaseline);
+                }
+
+                currentBaseline.state = entry.state;
+                currentBaseline.velocity = entry.velocity;
+                currentBaseline.tick = entry.tick;
+                currentBaseline.gen = entry.gen;
+                currentBaseline.genEpoch = entry.genEpoch;
+                currentBaseline.revision = entry.revision;
+                currentBaseline.order = slot.order;
 
                 uint expectedEpoch = stream.generationOverrides.Count > 0 &&
                                      stream.generationOverrides.TryGetValue(entry.nid, out var generation)
@@ -778,11 +782,7 @@ namespace PurrNet.Modules
 
             for (int changedIndex = 0; changedIndex < changed.Count; changedIndex++)
             {
-                var nt = changed[changedIndex];
-                if (!nt || !nt.id.HasValue)
-                    continue;
-
-                var nid = nt.id.Value;
+                var nid = _changedIds[changedIndex];
                 bool found = false;
 
                 while (pendingIndex < stream.pending.Count)
@@ -802,7 +802,7 @@ namespace PurrNet.Modules
                     break;
                 }
 
-                if (!found && IsSendCandidate(nt, player, localPlayer))
+                if (!found && IsSendCandidate(changed[changedIndex], player, localPlayer))
                     return true;
             }
 
@@ -1175,13 +1175,14 @@ namespace PurrNet.Modules
                 writtenCount += 1;
                 pending.Add(new NTUnreliableEntry
                 {
-                    nid = nt.id.Value,
+                    nid = lastNid,
                     state = nt.capturedState,
                     velocity = velocity,
                     tick = _currentTick,
                     gen = wireGen,
                     genEpoch = wireGenEpoch,
-                    revision = nt.capturedRevision
+                    revision = nt.capturedRevision,
+                    transform = nt
                 });
                 i++;
             }
@@ -1486,6 +1487,7 @@ namespace PurrNet.Modules
 
             int ntCount = _networkTransforms.Count;
             _changedTransforms.Clear();
+            _changedIds.Clear();
 
             _gatherStateMarker.Begin();
             for (var i = 0; i < ntCount; i++)
@@ -1497,8 +1499,11 @@ namespace PurrNet.Modules
                     nt.GatherState();
                     nt.CaptureUnreliableState(_currentTick);
 
-                    if (nt.capturedRevision != previousRevision)
+                    if (nt.capturedRevision != previousRevision && nt.id.HasValue)
+                    {
                         _changedTransforms.Add(nt);
+                        _changedIds.Add(nt.id.Value);
+                    }
                 }
             }
             _gatherStateMarker.End();
