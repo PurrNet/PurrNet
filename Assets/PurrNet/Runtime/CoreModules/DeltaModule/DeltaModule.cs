@@ -43,10 +43,10 @@ namespace PurrNet.Modules
 
         internal abstract class SenderKeyState : IDisposable
         {
-            public abstract uint GetAckedBaseline(PlayerID player);
-            public abstract void ValidateAck(PlayerID player, uint valueId);
-            public abstract uint Cleanup(float maxAge);
-            public abstract void RemovePlayer(PlayerID player);
+            public abstract uint GetAckedBaseline(int playerSlot);
+            public abstract void ValidateAck(int playerSlot, uint valueId);
+            public abstract uint Cleanup(float threshold);
+            public abstract void RemovePlayer(int playerSlot);
             public abstract void Dispose();
         }
 
@@ -62,7 +62,8 @@ namespace PurrNet.Modules
             private const int MAX_HISTORY_SIZE = 64;
 
             private readonly List<Entry> _history = new();
-            private readonly Dictionary<PlayerID, uint> _acked = new();
+            private uint[] _acked = new uint[16];
+            private int _ackedLength;
             private uint _nextId = 1;
             private uint _minAcked;
             private bool _minAckedValid;
@@ -93,7 +94,7 @@ namespace PurrNet.Modules
                 return offset < (ulong)count ? (int)offset : -1;
             }
 
-            public void ReconcileHead(in T value)
+            public void ReconcileHead(in T value, float now)
             {
                 if (_history.Count > 0 && EqualityComparer<T>.Default.Equals(_history[^1].value, value))
                     return;
@@ -101,16 +102,17 @@ namespace PurrNet.Modules
                 if (_history.Count >= MAX_HISTORY_SIZE)
                     _history.RemoveAt(0);
 
-                _history.Add(new Entry { id = _nextId++, value = value, enterTime = Time.unscaledTime });
+                _history.Add(new Entry { id = _nextId++, value = value, enterTime = now });
                 _slotCount = 0;
             }
 
-            public override uint GetAckedBaseline(PlayerID player)
+            public override uint GetAckedBaseline(int playerSlot)
             {
-                if (!_acked.TryGetValue(player, out var id))
+                if (playerSlot >= _ackedLength)
                     return 0;
 
-                return IndexOf(id) >= 0 ? id : 0;
+                uint id = _acked[playerSlot];
+                return id != 0 && IndexOf(id) >= 0 ? id : 0;
             }
 
             public bool WriteDelta(BitPacker packer, uint baselineId, in T newValue)
@@ -149,14 +151,26 @@ namespace PurrNet.Modules
                 return changed;
             }
 
-            public override void ValidateAck(PlayerID player, uint valueId)
+            public override void ValidateAck(int playerSlot, uint valueId)
             {
-                if (_acked.TryGetValue(player, out var existing))
+                if (playerSlot >= _acked.Length)
+                {
+                    int size = _acked.Length;
+                    while (size <= playerSlot)
+                        size *= 2;
+                    Array.Resize(ref _acked, size);
+                }
+
+                if (playerSlot >= _ackedLength)
+                    _ackedLength = playerSlot + 1;
+
+                uint existing = _acked[playerSlot];
+
+                if (existing != 0)
                 {
                     if (existing >= valueId)
                         return;
 
-                    // The floor only moves when its holder advances; recompute lazily.
                     if (existing == _minAcked)
                         _minAckedValid = false;
                 }
@@ -165,7 +179,7 @@ namespace PurrNet.Modules
                     _minAcked = valueId;
                 }
 
-                _acked[player] = valueId;
+                _acked[playerSlot] = valueId;
             }
 
             private uint GetMinAcked()
@@ -174,9 +188,10 @@ namespace PurrNet.Modules
                     return _minAcked;
 
                 uint minAcked = uint.MaxValue;
-                foreach (var id in _acked.Values)
+                for (int i = 0; i < _ackedLength; i++)
                 {
-                    if (id < minAcked)
+                    uint id = _acked[i];
+                    if (id != 0 && id < minAcked)
                         minAcked = id;
                 }
 
@@ -185,14 +200,13 @@ namespace PurrNet.Modules
                 return minAcked;
             }
 
-            public override uint Cleanup(float maxAge)
+            public override uint Cleanup(float threshold)
             {
                 if (_history.Count < MAX_HISTORY_SIZE)
                     return 0;
 
                 uint minAcked = GetMinAcked();
 
-                float threshold = Time.unscaledTime - maxAge;
                 int removeUpTo = 0;
                 while (removeUpTo < _history.Count &&
                        _history[removeUpTo].enterTime < threshold &&
@@ -206,9 +220,15 @@ namespace PurrNet.Modules
                 return _history.Count > 0 ? _history[0].id : 0;
             }
 
-            public override void RemovePlayer(PlayerID player)
+            public override void RemovePlayer(int playerSlot)
             {
-                if (_acked.Remove(player, out var removed) && removed == _minAcked)
+                if (playerSlot >= _ackedLength)
+                    return;
+
+                uint removed = _acked[playerSlot];
+                _acked[playerSlot] = 0;
+
+                if (removed != 0 && removed == _minAcked)
                     _minAckedValid = false;
             }
 
@@ -221,9 +241,55 @@ namespace PurrNet.Modules
                 }
                 _slotCount = 0;
                 _history.Clear();
-                _acked.Clear();
+                Array.Clear(_acked, 0, _ackedLength);
+                _ackedLength = 0;
                 _minAckedValid = false;
             }
+        }
+
+        private readonly Dictionary<PlayerID, int> _playerSlots = new();
+        private readonly Stack<int> _freePlayerSlots = new();
+        private int _playerSlotCount;
+        private PlayerID _cachedSlotPlayer;
+        private int _cachedSlot = -1;
+        private float _frameTime;
+
+        private float frameTime
+        {
+            get
+            {
+                if (_frameTime == 0f)
+                    _frameTime = Time.unscaledTime;
+                return _frameTime;
+            }
+        }
+
+        internal int GetPlayerSlot(PlayerID player)
+        {
+            if (_cachedSlot >= 0 && _cachedSlotPlayer == player)
+                return _cachedSlot;
+
+            if (!_playerSlots.TryGetValue(player, out var slot))
+            {
+                slot = _freePlayerSlots.Count > 0 ? _freePlayerSlots.Pop() : _playerSlotCount++;
+                _playerSlots[player] = slot;
+            }
+
+            _cachedSlotPlayer = player;
+            _cachedSlot = slot;
+            return slot;
+        }
+
+        private void ReleasePlayerSlot(PlayerID player)
+        {
+            if (!_playerSlots.Remove(player, out var slot))
+                return;
+
+            foreach (var state in _senderKeyStates.Values)
+                state.RemovePlayer(slot);
+
+            _freePlayerSlots.Push(slot);
+            _cachedSlot = -1;
         }
 
         private readonly Dictionary<KeyHash, SenderKeyState> _senderKeyStates = new();
@@ -297,12 +363,15 @@ namespace PurrNet.Modules
             _senderKeyStatesByWireHash.Clear();
             _cachedSenderKey = default;
             _cachedSenderState = null;
+            _playerSlots.Clear();
+            _freePlayerSlots.Clear();
+            _playerSlotCount = 0;
+            _cachedSlot = -1;
         }
 
         private void OnPlayerLeft(PlayerID player, bool asServer)
         {
-            foreach (var state in _senderKeyStates.Values)
-                state.RemovePlayer(player);
+            ReleasePlayerSlot(player);
 
             if (_receivingTrackers.Remove(player, out var receiveDict))
             {
@@ -566,16 +635,16 @@ namespace PurrNet.Modules
         internal SenderKeyState PrepareFanoutKey<T>(uint precomputedHash, in T value)
         {
             var state = GetSenderKeyState<T>(precomputedHash);
-            state.ReconcileHead(value);
+            state.ReconcileHead(value, frameTime);
             return state;
         }
 
         private bool WriteSharedBaseline<T>(BitPacker packer, PlayerID player, uint precomputedHash, T newValue, ref PackedUInt cachedKey)
         {
             var state = GetSenderKeyState<T>(precomputedHash);
-            state.ReconcileHead(newValue);
+            state.ReconcileHead(newValue, frameTime);
 
-            uint baselineId = state.GetAckedBaseline(player);
+            uint baselineId = state.GetAckedBaseline(GetPlayerSlot(player));
 
             DeltaPacker<PackedUInt>.Write(packer, cachedKey, baselineId);
             cachedKey = baselineId;
@@ -767,7 +836,7 @@ namespace PurrNet.Modules
         {
             var key = new KeyHash(typeof(T), keyHash);
             if (_senderKeyStates.TryGetValue(key, out var state))
-                state.ValidateAck(player, valueId.value);
+                state.ValidateAck(GetPlayerSlot(player), valueId.value);
             else
                 GetOrCreateTracker<T>(player, keyHash, true).ValidateId(valueId);
         }
@@ -790,8 +859,8 @@ namespace PurrNet.Modules
             if (_senderKeyStatesByWireHash.TryGetValue(WireKey(data.keyType.value, data.keyHash.value),
                     out var senderState))
             {
-                senderState.ValidateAck(player, data.valueId.value);
-                SendCleanup(player, data, senderState.Cleanup(MAX_HISTORY_TIME_ALIVE));
+                senderState.ValidateAck(GetPlayerSlot(player), data.valueId.value);
+                SendCleanup(player, data, senderState.Cleanup(frameTime - MAX_HISTORY_TIME_ALIVE));
                 return;
             }
 
@@ -842,6 +911,7 @@ namespace PurrNet.Modules
 
         public void PostFixedUpdate()
         {
+            _frameTime = Time.unscaledTime;
             SendAllAcks();
         }
 

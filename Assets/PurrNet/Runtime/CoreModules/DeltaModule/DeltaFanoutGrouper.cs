@@ -25,6 +25,7 @@ namespace PurrNet.Modules
         private ulong _offset;
 
         private PlayerID[] _players = new PlayerID[16];
+        private int[] _playerSlots = new int[16];
         private int[] _groupOf = new int[16];
         private int[] _nextGroupOf = new int[16];
         private int[] _pairGroup = new int[16];
@@ -87,6 +88,7 @@ namespace PurrNet.Modules
             {
                 var player = players[i];
                 _players[i] = player;
+                _playerSlots[i] = module != null ? module.GetPlayerSlot(player) : 0;
                 _groupOf[i] = player == PlayerID.Server ? ++specialGroups : 0;
             }
 
@@ -103,6 +105,7 @@ namespace PurrNet.Modules
                 size *= 2;
 
             _players = new PlayerID[size];
+            _playerSlots = new int[size];
             _groupOf = new int[size];
             _nextGroupOf = new int[size];
             _pairGroup = new int[size];
@@ -143,7 +146,7 @@ namespace PurrNet.Modules
             for (int i = 0; i < _playerCount; i++)
             {
                 int group = _groupOf[i];
-                uint baseline = state.GetAckedBaseline(_players[i]);
+                uint baseline = state.GetAckedBaseline(_playerSlots[i]);
 
                 int next = -1;
                 for (int p = 0; p < newCount; p++)

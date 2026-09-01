@@ -878,10 +878,46 @@ namespace PurrNet.Modules
             return payloadBytes * 8L;
         }
 
-        private static NTWriteResult TryWriteEntry(BitPacker tmp, NetworkTransform nt, NTUnreliableSendStream stream,
-            ushort currentTick, int lastDist, out int newLastDist, out NetworkTransformVelocity velocity, out byte gen,
-            out uint genEpoch)
+        private struct NTEntryPlan
         {
+            public bool absolute;
+            public bool sameDist;
+            public int dist;
+            public byte gen;
+            public BitPacker stateBits;
+            public int bits;
+        }
+
+        private static void WriteEntry(BitPacker packer, in NTEntryPlan plan)
+        {
+            if (plan.absolute)
+            {
+                packer.WriteBits(1, 1);
+                Packer<byte>.Write(packer, plan.gen);
+            }
+            else
+            {
+                packer.WriteBits(0, 1);
+
+                if (plan.sameDist)
+                {
+                    packer.WriteBits(1, 1);
+                }
+                else
+                {
+                    packer.WriteBits(0, 1);
+                    packer.WriteBits((ulong)(plan.dist - 1), NTUnreliable.DISTANCE_BITS);
+                }
+            }
+
+            packer.WriteBitsWithoutConsumingIt(plan.stateBits, plan.stateBits.positionInBits);
+        }
+
+        private static NTWriteResult TryWriteEntry(NetworkTransform nt, NTUnreliableSendStream stream,
+            ushort currentTick, int lastDist, out NTEntryPlan plan, out int newLastDist,
+            out NetworkTransformVelocity velocity, out byte gen, out uint genEpoch)
+        {
+            plan = default;
             newLastDist = lastDist;
             velocity = default;
             var nid = nt.id!.Value;
@@ -891,7 +927,6 @@ namespace PurrNet.Modules
                 : new NTUnreliableGeneration { gen = nt.sendGen, epoch = nt.sendGenEpoch };
             gen = generation.gen;
             genEpoch = generation.epoch;
-            tmp.ResetPositionAndMode(false);
 
             bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == genEpoch;
 
@@ -1000,18 +1035,11 @@ namespace PurrNet.Modules
             {
                 gen = baseline.gen;
                 genEpoch = baseline.genEpoch;
-                tmp.WriteBits(0, 1);
+                plan.sameDist = dist == lastDist;
+                plan.dist = dist;
 
-                if (dist == lastDist)
-                {
-                    tmp.WriteBits(1, 1);
-                }
-                else
-                {
-                    tmp.WriteBits(0, 1);
-                    tmp.WriteBits((ulong)(dist - 1), NTUnreliable.DISTANCE_BITS);
+                if (!plan.sameDist)
                     newLastDist = dist;
-                }
 
                 if (!cache.TryGetDelta(baseline.tick, baseline.velocity, out var stateBits, out velocity))
                 {
@@ -1022,14 +1050,16 @@ namespace PurrNet.Modules
                     cache.CompleteDeltaSlot(velocity);
                 }
 
-                tmp.WriteBitsWithoutConsumingIt(stateBits, stateBits.positionInBits);
+                plan.stateBits = stateBits;
+                plan.bits = 2 + (plan.sameDist ? 0 : NTUnreliable.DISTANCE_BITS) + stateBits.positionInBits;
             }
             else
             {
-                tmp.WriteBits(1, 1);
-                Packer<byte>.Write(tmp, gen);
+                plan.absolute = true;
+                plan.gen = gen;
                 var stateBits = cache.GetAbsolute(nt);
-                tmp.WriteBitsWithoutConsumingIt(stateBits, stateBits.positionInBits);
+                plan.stateBits = stateBits;
+                plan.bits = 9 + stateBits.positionInBits;
 
                 if (nt.hasSyncStrategy && lastWrite != null)
                 {
@@ -1099,8 +1129,6 @@ namespace PurrNet.Modules
             NetworkID lastNid = default;
             PackedInt lastLen = default;
 
-            using var tmp = BitPackerPool.Get();
-
             for (var i = 0; i < stream.pending.Count;)
             {
                 var nt = stream.pending[i];
@@ -1113,7 +1141,8 @@ namespace PurrNet.Modules
                     continue;
                 }
 
-                var writeResult = TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out var newLastDist,
+                var nid = nt.id.Value;
+                var writeResult = TryWriteEntry(nt, stream, _currentTick, lastDist, out var plan, out var newLastDist,
                     out var velocity, out var wireGen, out var wireGenEpoch);
 
                 if (nt.adaptiveDebugDumpEnabled)
@@ -1135,7 +1164,7 @@ namespace PurrNet.Modules
 
                 entriesWrittenCount++;
 
-                int entryBits = tmp.positionInBits;
+                int entryBits = plan.bits;
 
                 if (writtenCount > 0 && packer!.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
                 {
@@ -1148,10 +1177,10 @@ namespace PurrNet.Modules
                     lastLen = default;
 
                     // the flush advanced nextOrder; baseline distances change, so re-encode
-                    if (TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out newLastDist, out velocity,
+                    if (TryWriteEntry(nt, stream, _currentTick, lastDist, out plan, out newLastDist, out velocity,
                             out wireGen, out wireGenEpoch) != NTWriteResult.Written)
                         continue;
-                    entryBits = tmp.positionInBits;
+                    entryBits = plan.bits;
                 }
 
                 if (packer == null)
@@ -1163,14 +1192,13 @@ namespace PurrNet.Modules
                 }
 
                 PackedInt length = entryBits;
-                tmp.ResetPositionAndMode(true);
 
                 DeltaPacker<PackedInt>.Write(packer, lastLen, length);
                 lastLen = length;
-                DeltaPacker<NetworkID>.Write(packer, lastNid, nt.id!.Value);
-                packer.WriteBits(tmp, length);
+                DeltaPacker<NetworkID>.Write(packer, lastNid, nid);
+                WriteEntry(packer, plan);
 
-                lastNid = nt.id.Value;
+                lastNid = nid;
                 lastDist = newLastDist;
                 writtenCount += 1;
                 pending.Add(new NTUnreliableEntry
