@@ -31,8 +31,6 @@ namespace PurrNet.Modules
         private uint[] _pairBaseline = new uint[16];
         private int _playerCount;
         private int _groupCount;
-        // Set once a key cannot be shared (reliable history or per-player ids): every
-        // recipient then gets its own group, which is exactly the pre-grouping behaviour.
         private bool _singletons;
 
         private readonly List<List<PlayerID>> _members = new();
@@ -84,7 +82,6 @@ namespace PurrNet.Modules
             EnsureCapacity(count);
             _playerCount = count;
 
-            // The server id keeps its dedicated send path (host loopback), so it never shares a group.
             int specialGroups = 0;
             for (int i = 0; i < count; i++)
             {

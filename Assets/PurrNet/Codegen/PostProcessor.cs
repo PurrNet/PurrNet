@@ -2236,9 +2236,6 @@ namespace PurrNet.Codegen
                                       methodRpc.Signature.type == RPCType.TargetRPC;
 
             bool useDeltaPacking = methodRpc.Signature.deltaPacked && methodRpc.Signature.type != RPCType.ServerRPC;
-            // Recipients sharing every acked baseline get one encode + a shared-entry fan-out
-            // instead of one full pipeline pass per player. Awaitable RPCs keep a per-player
-            // request id in the payload, so they stay on the per-player loop.
             bool useFanoutGrouping = useDeltaPacking && hasMultipleTargets && returnMode == ReturnMode.Void;
             VariableDefinition fanoutGrouper = null;
 

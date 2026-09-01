@@ -79,8 +79,6 @@ namespace PurrNet.Modules
 
             public uint headId => _history.Count > 0 ? _history[^1].id : 0;
 
-            // Ids are issued sequentially and only ever trimmed from the front, so the
-            // history is a contiguous id range and the index is a subtraction.
             private int IndexOf(uint id)
             {
                 int count = _history.Count;
@@ -229,8 +227,6 @@ namespace PurrNet.Modules
         }
 
         private readonly Dictionary<KeyHash, SenderKeyState> _senderKeyStates = new();
-        // Same states keyed by the (type hash, key hash) pair acks carry, so the ack path
-        // skips the hash-to-Type resolution.
         private readonly Dictionary<ulong, SenderKeyState> _senderKeyStatesByWireHash = new();
         private KeyHash _cachedSenderKey;
         private SenderKeyState _cachedSenderState;
@@ -567,10 +563,6 @@ namespace PurrNet.Modules
             return (SenderKeyState<T>)state;
         }
 
-        /// <summary>
-        /// Reconciles the shared history head for one fan-out argument and returns the state whose
-        /// per-player acked baselines decide which recipients can share an encoded payload.
-        /// </summary>
         internal SenderKeyState PrepareFanoutKey<T>(uint precomputedHash, in T value)
         {
             var state = GetSenderKeyState<T>(precomputedHash);
