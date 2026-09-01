@@ -6,10 +6,18 @@ using PurrNet.Pooling;
 using PurrNet.Transports;
 using PurrNet.Utils;
 using Unity.Profiling;
+using UnityEngine;
 
 namespace PurrNet.Modules
 {
     public delegate void ValueModifier<T>(ref T oldValue);
+
+    internal static class DeltaSharedEncodeInfo<T>
+    {
+        public static readonly bool eligible =
+            !System.Runtime.CompilerServices.RuntimeHelpers.IsReferenceOrContainsReferences<T>() &&
+            (typeof(IEquatable<T>).IsAssignableFrom(typeof(T)) || typeof(T).IsEnum);
+    }
 
     public class DeltaModule : INetworkModule, IPostFixedUpdate, IPromoteToServerModule
     {
@@ -32,6 +40,185 @@ namespace PurrNet.Modules
         private Dictionary<KeyHash, ClientDeltaTracker> _cachedReadDict;
 
         private bool _asServer;
+
+        private abstract class SenderKeyState : IDisposable
+        {
+            public abstract void ValidateAck(PlayerID player, uint valueId);
+            public abstract uint Cleanup(float maxAge);
+            public abstract void RemovePlayer(PlayerID player);
+            public abstract void Dispose();
+        }
+
+        private sealed class SenderKeyState<T> : SenderKeyState
+        {
+            private struct Entry
+            {
+                public uint id;
+                public T value;
+                public float enterTime;
+            }
+
+            private const int MAX_HISTORY_SIZE = 64;
+
+            private readonly List<Entry> _history = new();
+            private readonly Dictionary<PlayerID, uint> _acked = new();
+            private uint _nextId = 1;
+
+            private BitPacker _slotABits;
+            private BitPacker _slotBBits;
+            private uint _slotABaseline;
+            private uint _slotBBaseline;
+            private bool _slotAChanged;
+            private bool _slotBChanged;
+            private bool _slotAValid;
+            private bool _slotBValid;
+
+            public uint headId => _history.Count > 0 ? _history[^1].id : 0;
+
+            private int IndexOf(uint id)
+            {
+                int low = 0;
+                int high = _history.Count - 1;
+
+                while (low <= high)
+                {
+                    int mid = (low + high) >> 1;
+                    uint key = _history[mid].id;
+                    if (key < id) low = mid + 1;
+                    else if (key > id) high = mid - 1;
+                    else return mid;
+                }
+
+                return -1;
+            }
+
+            public void ReconcileHead(in T value)
+            {
+                if (_history.Count > 0 && EqualityComparer<T>.Default.Equals(_history[^1].value, value))
+                    return;
+
+                if (_history.Count >= MAX_HISTORY_SIZE)
+                    _history.RemoveAt(0);
+
+                _history.Add(new Entry { id = _nextId++, value = value, enterTime = Time.unscaledTime });
+                _slotAValid = false;
+                _slotBValid = false;
+            }
+
+            public uint GetAckedBaseline(PlayerID player)
+            {
+                if (!_acked.TryGetValue(player, out var id))
+                    return 0;
+
+                return IndexOf(id) >= 0 ? id : 0;
+            }
+
+            public bool WriteDelta(BitPacker packer, uint baselineId, in T newValue)
+            {
+                if (_slotAValid && _slotABaseline == baselineId)
+                {
+                    packer.WriteBit(_slotAChanged);
+                    if (_slotAChanged)
+                        packer.WriteBitsWithoutConsumingIt(_slotABits, _slotABits.positionInBits);
+                    return _slotAChanged;
+                }
+
+                if (_slotBValid && _slotBBaseline == baselineId)
+                {
+                    packer.WriteBit(_slotBChanged);
+                    if (_slotBChanged)
+                        packer.WriteBitsWithoutConsumingIt(_slotBBits, _slotBBits.positionInBits);
+                    return _slotBChanged;
+                }
+
+                T oldValue = default;
+                if (baselineId != 0)
+                {
+                    int index = IndexOf(baselineId);
+                    if (index >= 0)
+                        oldValue = _history[index].value;
+                }
+
+                bool useSlotB = _slotAValid;
+                var bits = useSlotB
+                    ? _slotBBits ??= BitPackerPool.Get()
+                    : _slotABits ??= BitPackerPool.Get();
+
+                bits.ResetPositionAndMode(false);
+                bool changed = DeltaPacker<T>.Write(bits, oldValue, newValue);
+                packer.WriteBit(changed);
+                if (changed)
+                    packer.WriteBitsWithoutConsumingIt(bits, bits.positionInBits);
+
+                if (useSlotB)
+                {
+                    _slotBBaseline = baselineId;
+                    _slotBChanged = changed;
+                    _slotBValid = true;
+                }
+                else
+                {
+                    _slotABaseline = baselineId;
+                    _slotAChanged = changed;
+                    _slotAValid = true;
+                }
+
+                return changed;
+            }
+
+            public override void ValidateAck(PlayerID player, uint valueId)
+            {
+                if (_acked.TryGetValue(player, out var existing) && existing >= valueId)
+                    return;
+
+                _acked[player] = valueId;
+            }
+
+            public override uint Cleanup(float maxAge)
+            {
+                if (_history.Count < MAX_HISTORY_SIZE)
+                    return 0;
+
+                uint minAcked = uint.MaxValue;
+                foreach (var id in _acked.Values)
+                {
+                    if (id < minAcked)
+                        minAcked = id;
+                }
+
+                float threshold = Time.unscaledTime - maxAge;
+                int removeUpTo = 0;
+                while (removeUpTo < _history.Count &&
+                       _history[removeUpTo].enterTime < threshold &&
+                       _history[removeUpTo].id < minAcked)
+                    removeUpTo++;
+
+                if (removeUpTo == 0)
+                    return 0;
+
+                _history.RemoveRange(0, removeUpTo);
+                return _history.Count > 0 ? _history[0].id : 0;
+            }
+
+            public override void RemovePlayer(PlayerID player)
+            {
+                _acked.Remove(player);
+            }
+
+            public override void Dispose()
+            {
+                _slotABits?.Dispose();
+                _slotBBits?.Dispose();
+                _slotABits = null;
+                _slotBBits = null;
+                _history.Clear();
+                _acked.Clear();
+            }
+        }
+
+        private readonly Dictionary<KeyHash, SenderKeyState> _senderKeyStates = new();
+        private KeyHash _cachedSenderKey;
+        private SenderKeyState _cachedSenderState;
 
         public DeltaModule(PlayersManager players, PlayersBroadcaster broadcaster)
         {
@@ -90,10 +277,19 @@ namespace PurrNet.Modules
             _cachedWriteDict = null;
             _cachedReadPlayer = default;
             _cachedReadDict = null;
+
+            foreach (var state in _senderKeyStates.Values)
+                state.Dispose();
+            _senderKeyStates.Clear();
+            _cachedSenderKey = default;
+            _cachedSenderState = null;
         }
 
         private void OnPlayerLeft(PlayerID player, bool asServer)
         {
+            foreach (var state in _senderKeyStates.Values)
+                state.RemovePlayer(player);
+
             if (_receivingTrackers.Remove(player, out var receiveDict))
             {
                 foreach (var tracker in receiveDict.Values)
@@ -289,6 +485,10 @@ namespace PurrNet.Modules
         public bool Write<T>(BitPacker packer, PlayerID player, uint precomputedHash, T newValue, ref PackedUInt cachedKey)
         {
             using var _ = _writeMarker.Auto();
+
+            if (DeltaSharedEncodeInfo<T>.eligible)
+                return WriteSharedBaseline(packer, player, precomputedHash, newValue, ref cachedKey);
+
             var tracker = GetOrCreateTracker<T>(player, precomputedHash, true);
 
             T oldValue = default;
@@ -325,6 +525,46 @@ namespace PurrNet.Modules
             else
             {
                 packer.SetBitPosition(pos + 1);
+            }
+
+            return changed;
+        }
+
+        private SenderKeyState<T> GetSenderKeyState<T>(uint precomputedHash)
+        {
+            var key = new KeyHash(typeof(T), precomputedHash);
+
+            if (_cachedSenderState != null && _cachedSenderKey.Equals(key))
+                return (SenderKeyState<T>)_cachedSenderState;
+
+            if (!_senderKeyStates.TryGetValue(key, out var state))
+            {
+                state = new SenderKeyState<T>();
+                _senderKeyStates[key] = state;
+            }
+
+            _cachedSenderKey = key;
+            _cachedSenderState = state;
+            return (SenderKeyState<T>)state;
+        }
+
+        private bool WriteSharedBaseline<T>(BitPacker packer, PlayerID player, uint precomputedHash, T newValue, ref PackedUInt cachedKey)
+        {
+            var state = GetSenderKeyState<T>(precomputedHash);
+            state.ReconcileHead(newValue);
+
+            uint baselineId = state.GetAckedBaseline(player);
+
+            DeltaPacker<PackedUInt>.Write(packer, cachedKey, baselineId);
+            cachedKey = baselineId;
+
+            bool changed = state.WriteDelta(packer, baselineId, newValue);
+
+            if (changed)
+            {
+                PackedUInt newId = state.headId;
+                DeltaPacker<PackedUInt>.Write(packer, cachedKey, newId);
+                cachedKey = newId;
             }
 
             return changed;
@@ -500,6 +740,17 @@ namespace PurrNet.Modules
             });
         }
 
+#if UNITY_INCLUDE_TESTS
+        internal void ConfirmDeliveryForTests<T>(PlayerID player, uint keyHash, PackedUInt valueId)
+        {
+            var key = new KeyHash(typeof(T), keyHash);
+            if (_senderKeyStates.TryGetValue(key, out var state))
+                state.ValidateAck(player, valueId.value);
+            else
+                GetOrCreateTracker<T>(player, keyHash, true).ValidateId(valueId);
+        }
+#endif
+
         public static uint GetKeyHash<T>(T key) where T : struct, IStableHashable
         {
             uint typeHash = Hasher<T>.stableHash;
@@ -518,27 +769,38 @@ namespace PurrNet.Modules
                 player = default;
 
             var keyHash = new KeyHash(type, data.keyHash.value);
+
+            if (_senderKeyStates.TryGetValue(keyHash, out var senderState))
+            {
+                senderState.ValidateAck(player, data.valueId.value);
+                SendCleanup(player, data, senderState.Cleanup(MAX_HISTORY_TIME_ALIVE));
+                return;
+            }
+
             var tracker = GetTracker(player, keyHash, true);
 
             if (tracker == null)
                 return;
 
             tracker.ValidateId(data.valueId);
-            var removeUpTo = tracker.CleanupUpTo(MAX_HISTORY_TIME_ALIVE);
+            SendCleanup(player, data, tracker.CleanupUpTo(MAX_HISTORY_TIME_ALIVE));
+        }
 
-            if (removeUpTo > 0)
+        private void SendCleanup(PlayerID player, DeltaAcknowledge data, uint removeUpTo)
+        {
+            if (removeUpTo == 0)
+                return;
+
+            var cleanupPacket = new DeltaCleanup
             {
-                var cleanupPacket = new DeltaCleanup
-                {
-                    keyType = data.keyType,
-                    keyHash = data.keyHash,
-                    upToId = removeUpTo
-                };
+                keyType = data.keyType,
+                keyHash = data.keyHash,
+                upToId = removeUpTo
+            };
 
-                if (_asServer)
-                    _broadcaster.Send(player, cleanupPacket, Channel.Unreliable);
-                else _broadcaster.SendToServer(cleanupPacket, Channel.Unreliable);
-            }
+            if (_asServer)
+                _broadcaster.Send(player, cleanupPacket, Channel.Unreliable);
+            else _broadcaster.SendToServer(cleanupPacket, Channel.Unreliable);
         }
 
         private void Cleanup(PlayerID sender, DeltaCleanup data, bool asserver)
