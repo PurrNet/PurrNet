@@ -141,7 +141,7 @@ namespace PurrNet
                 return false;
             }
 
-            if (manager.prefabProvider.TryGetPrefabData(prefabGo, out prefabData))
+            if (manager.prefabResolver.TryGetPrefabData(prefabGo, out prefabData))
                 return true;
 
             if (prefabGo.GetComponentInChildren<NetworkIdentity>(true) &&

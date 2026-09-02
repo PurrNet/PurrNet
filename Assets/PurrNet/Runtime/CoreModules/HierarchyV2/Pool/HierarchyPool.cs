@@ -28,14 +28,14 @@ namespace PurrNet.Modules
 
         private readonly Transform _parent;
 
-        [UsedImplicitly] private readonly IPrefabProvider _prefabs;
+        [UsedImplicitly] private readonly PrefabResolver _prefabs;
         private readonly bool _forceWarmupPieces;
 
         private static readonly Dictionary<GameObject, GameObjectPrototype> _prefabPrototypes = new();
 
         readonly HashSet<GameObject> _alreadyWarmedUp = new HashSet<GameObject>();
 
-        public HierarchyPool(Transform parent, IPrefabProvider prefabs = null, bool forceWarmupPieces = false)
+        public HierarchyPool(Transform parent, PrefabResolver prefabs = null, bool forceWarmupPieces = false)
         {
             _parent = parent;
             _prefabs = prefabs;
@@ -160,7 +160,7 @@ namespace PurrNet.Modules
             foreach (var child in virtualNodes)
             {
                 var pid = new PrefabPieceID(child.prefabId, child.componentIndex);
-                var pair = pid.prefabId >= 0 ? pool.prefabPool : pool.scenePool;
+                var pair = pid.prefabId.isValid ? pool.prefabPool : pool.scenePool;
 
                 // check if we should pool this object or not
                 if (!child.shouldBePooled)
@@ -416,9 +416,9 @@ namespace PurrNet.Modules
         {
             while (true)
             {
-                var pool = pid.prefabId >= 0 ? pair.prefabPool : pair.scenePool;
+                var pool = pid.prefabId.isValid ? pair.prefabPool : pair.scenePool;
 
-                if (pid.prefabId < 0 && pool.TryGetActiveScenePiece(pid, out instance))
+                if (!pid.prefabId.isValid && pool.TryGetActiveScenePiece(pid, out instance))
                     return true;
 
                 if (!pool._pool.TryGetValue(pid, out var queue))
@@ -469,7 +469,7 @@ namespace PurrNet.Modules
 
         private void Warmup(PrefabPieceID pid)
         {
-            if (pid.prefabId >= 0 && _prefabs != null)
+            if (pid.prefabId.isValid && _prefabs != null)
             {
                 if (_prefabs.TryGetPrefabData(pid.prefabId, out var prefabData))
                     Warmup(prefabData);

@@ -70,7 +70,7 @@ namespace PurrNet.Modules
             poolParent.AddComponent<PurrNetPoolRoot>();
 
             Object.DontDestroyOnLoad(poolParent);
-            pool = new HierarchyPool(poolParent.transform, prefabs);
+            pool = new HierarchyPool(poolParent.transform, manager.prefabResolver);
             _pools.Add(prefabs, pool);
             pool.Warmup();
             return pool;
