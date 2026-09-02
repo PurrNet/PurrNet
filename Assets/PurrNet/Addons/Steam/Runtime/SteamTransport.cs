@@ -58,6 +58,13 @@ namespace PurrNet.Steam
             return false;
         }
 
+        public int GetRoundTripTime(Connection conn, bool asServer)
+        {
+            if (asServer)
+                return _server?.GetRoundTripTime(conn.connectionId) ?? -1;
+            return _client?.GetRoundTripTime() ?? -1;
+        }
+
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
             return channel switch

@@ -1,3 +1,5 @@
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace PurrNet.Transports
@@ -5,6 +7,16 @@ namespace PurrNet.Transports
     [DefaultExecutionOrder(-100)]
     public abstract class GenericTransport : MonoBehaviour
     {
+        public const float DEFAULT_PING_TIMEOUT = 5f;
+
+        /// <summary>
+        /// True while <see cref="Ping(CancellationToken)"/> is running a probe connection on this transport.
+        /// The NetworkManager ignores client events from the transport while this is set.
+        /// </summary>
+        public virtual bool isPinging { get; private set; }
+
+        internal virtual bool isPumpedExternally { get; set; }
+
         /// <summary>
         /// Returns true if the transport is supported on the current platform.
         /// For example, WebGL does not support UDP or SteamTransport.
@@ -159,6 +171,126 @@ namespace PurrNet.Transports
         internal void StartServerInternalOnly()
         {
             StartServerInternal();
+        }
+
+        /// <summary>
+        /// Measures latency to the server this transport is configured to connect to.
+        /// Opens a transport level connection, reads the round trip time, then disconnects.
+        /// The probe never registers with the NetworkManager or authenticates, so it never becomes a player.
+        /// </summary>
+        public Task<PingResult> Ping(CancellationToken token = default)
+        {
+            return Ping(DEFAULT_PING_TIMEOUT, token);
+        }
+
+        /// <inheritdoc cref="Ping(CancellationToken)"/>
+        public Task<PingResult> Ping(float timeoutSeconds, CancellationToken token = default)
+        {
+            return PingInternal(null, 0, false, timeoutSeconds, token);
+        }
+
+        /// <summary>
+        /// Measures latency to a specific address, using the same address semantics as <see cref="IConnectable.Connect"/>.
+        /// </summary>
+        public Task<PingResult> Ping(string address, ushort port, CancellationToken token = default)
+        {
+            return Ping(address, port, DEFAULT_PING_TIMEOUT, token);
+        }
+
+        /// <inheritdoc cref="Ping(string, ushort, CancellationToken)"/>
+        public Task<PingResult> Ping(string address, ushort port, float timeoutSeconds, CancellationToken token = default)
+        {
+            return PingInternal(address, port, true, timeoutSeconds, token);
+        }
+
+        private async Task<PingResult> PingInternal(string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)
+        {
+            if (!isSupported)
+                return PingResult.Failed($"{GetType().Name} is not supported on this platform.");
+
+            var layer = transport;
+
+            if (layer == null)
+                return PingResult.Failed("Transport layer is null.");
+
+            if (isPinging)
+                return PingResult.Failed("A ping is already in progress.");
+
+            if (layer.clientState != ConnectionState.Disconnected)
+                return PingResult.Failed("Client is already connected or connecting.");
+
+            isPinging = true;
+
+            try
+            {
+                var startedAt = Time.realtimeSinceStartupAsDouble;
+                var deadline = startedAt + timeoutSeconds;
+
+                if (useAddress)
+                    layer.Connect(address, port);
+                else StartClientInternal();
+
+                while (layer.clientState == ConnectionState.Connecting)
+                {
+                    if (token.IsCancellationRequested)
+                        return PingResult.Failed("Cancelled.");
+
+                    if (Time.realtimeSinceStartupAsDouble > deadline)
+                        return PingResult.Failed("Timed out while connecting.");
+
+                    await PumpAndYield(layer);
+                }
+
+                if (layer.clientState != ConnectionState.Connected)
+                    return PingResult.Failed("Could not connect.");
+
+                int connectMs = (int)((Time.realtimeSinceStartupAsDouble - startedAt) * 1000);
+                int rtt = -1;
+
+                while (layer.clientState == ConnectionState.Connected)
+                {
+                    rtt = layer.GetRoundTripTime(default, false);
+
+                    if (rtt >= 0 || token.IsCancellationRequested || Time.realtimeSinceStartupAsDouble > deadline)
+                        break;
+
+                    await PumpAndYield(layer);
+                }
+
+                return new PingResult(rtt, connectMs);
+            }
+            catch (System.Exception e)
+            {
+                return PingResult.Failed(e.Message);
+            }
+            finally
+            {
+                await StopProbe(layer);
+                isPinging = false;
+            }
+        }
+
+        private async Task StopProbe(ITransport layer)
+        {
+            layer.Disconnect();
+
+            var deadline = Time.realtimeSinceStartupAsDouble + 1f;
+
+            while (layer.clientState != ConnectionState.Disconnected && Time.realtimeSinceStartupAsDouble < deadline)
+                await PumpAndYield(layer);
+        }
+
+        private async Task PumpAndYield(ITransport layer)
+        {
+            if (!isPumpedExternally)
+            {
+                float delta = Time.unscaledDeltaTime;
+                layer.UnityUpdate(delta);
+                layer.ReceiveMessages(delta);
+                layer.SendMessages(delta);
+            }
+
+            await UnityLatestUpdate.Yield();
         }
 
         protected abstract void StartClientInternal();

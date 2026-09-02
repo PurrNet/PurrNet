@@ -136,6 +136,19 @@ namespace PurrNet.Transports
             }
         }
 
+        public int GetRoundTripTime(Connection conn, bool asServer)
+        {
+            if (asServer)
+                return _connectionToPeer.TryGetValue(conn, out var peer) ? GetRoundTripTime(peer) : -1;
+
+            return GetRoundTripTime(_client?.FirstPeer);
+        }
+
+        private static int GetRoundTripTime(NetPeer peer)
+        {
+            return peer != null && peer.HasRoundTripTime ? peer.RoundTripTime : -1;
+        }
+
         private void SetupCloud()
         {
             if (_automaticCloudSetups == null)

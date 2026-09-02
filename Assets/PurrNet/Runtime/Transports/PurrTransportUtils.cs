@@ -162,6 +162,18 @@ namespace PurrNet.Transports
             return await Retry<float>(10, () => ActualPing(url));
         }
 
+        /// <summary>
+        /// HTTP round trip to a relay's API endpoint in milliseconds.
+        /// Useful for comparing regions without allocating or joining a room.
+        /// The first request warms up the connection so the TLS handshake is not counted.
+        /// </summary>
+        public static async Task<float> PingRelayAsync(RelayServer server)
+        {
+            var url = $"{server.apiEndpoint}/ping";
+            await ActualPing(url);
+            return await ActualPing(url) * 1000f;
+        }
+
         private static async Task<float> ActualPing(string url)
         {
 #if UNITY_WEB

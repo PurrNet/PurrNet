@@ -191,6 +191,11 @@ namespace LiteNetLib
         public int RoundTripTime => _avgRtt;
 
         /// <summary>
+        /// Whether at least one ping/pong exchange has completed, so <see cref="RoundTripTime"/> is a real measurement.
+        /// </summary>
+        public bool HasRoundTripTime => _rttCount > 0;
+
+        /// <summary>
         /// Current MTU - Maximum Transfer Unit ( maximum udp packet size without fragmentation )
         /// </summary>
         public int Mtu => _mtu;

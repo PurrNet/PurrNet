@@ -239,6 +239,16 @@ namespace PurrNet.Transports
             };
         }
 
+        /// <summary>
+        /// Round trip time in milliseconds for a connection, or -1 when the transport
+        /// has not measured it yet or does not support it.
+        /// On the client side the connection argument is ignored.
+        /// </summary>
+        int GetRoundTripTime(Connection conn, bool asServer)
+        {
+            return -1;
+        }
+
         bool shouldServerSendKeepAlive => false;
 
         bool shouldClientSendKeepAlive => false;

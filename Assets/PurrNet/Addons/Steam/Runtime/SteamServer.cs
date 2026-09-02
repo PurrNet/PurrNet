@@ -183,6 +183,25 @@ namespace PurrNet.Steam
 #endif
         }
         
+        public int GetRoundTripTime(int connectionId)
+        {
+#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+            if (!_connectionById.TryGetValue(connectionId, out var conn))
+                return -1;
+
+            var status = new SteamNetConnectionRealTimeStatus_t();
+            var lanes = new SteamNetConnectionRealTimeLaneStatus_t();
+
+            var result = _isDedicated
+                ? SteamGameServerNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes)
+                : SteamNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes);
+
+            return result == EResult.k_EResultOK ? status.m_nPing : -1;
+#else
+            return -1;
+#endif
+        }
+
         public ulong GetSteamID(int connectionId)
         {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS

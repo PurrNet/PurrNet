@@ -374,6 +374,7 @@ namespace PurrNet
             _transportLayer.onDisconnected += OnLostConnection;
             _transportLayer.onConnectionState += OnConnectionState;
             _transportLayer.onDataReceived += OnDataReceived;
+            _transport.isPumpedExternally = true;
         }
 
         private void TeardownTransportLayer()
@@ -386,7 +387,12 @@ namespace PurrNet
             _transportLayer.onConnectionState -= OnConnectionState;
             _transportLayer.onDataReceived -= OnDataReceived;
             _transportLayer = null;
+
+            if (_transport)
+                _transport.isPumpedExternally = false;
         }
+
+        private bool IsProbeEvent(bool asServer) => !asServer && _transport && _transport.isPinging;
 
         /// <summary>
         /// Whether the server should automatically start.
@@ -2302,6 +2308,9 @@ namespace PurrNet
 
         private void OnNewConnection(Connection conn, bool asServer)
         {
+            if (IsProbeEvent(asServer))
+                return;
+
             if (asServer)
                 _serverModules.OnNewConnection(conn, true);
             else
@@ -2313,6 +2322,9 @@ namespace PurrNet
 
         private void OnLostConnection(Connection conn, DisconnectReason reason, bool asServer)
         {
+            if (IsProbeEvent(asServer))
+                return;
+
             if (asServer)
             {
                 _serverBroadcast?.DrainDeferred(conn);
@@ -2332,6 +2344,9 @@ namespace PurrNet
 
         private void OnDataReceived(Connection conn, ByteData data, bool asServer)
         {
+            if (IsProbeEvent(asServer))
+                return;
+
             if (asServer)
                 _serverModules.OnDataReceived(conn, data, true);
             else _clientModules.OnDataReceived(conn, data, false);
@@ -2339,6 +2354,9 @@ namespace PurrNet
 
         private void OnConnectionState(ConnectionState state, bool asServer)
         {
+            if (IsProbeEvent(asServer))
+                return;
+
             if (asServer)
             {
                 isServer = state == ConnectionState.Connected;

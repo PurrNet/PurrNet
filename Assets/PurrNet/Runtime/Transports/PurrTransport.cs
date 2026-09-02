@@ -255,6 +255,26 @@ namespace PurrNet.Transports
         }
 
 
+        public int GetRoundTripTime(Connection conn, bool asServer)
+        {
+            if (asServer)
+                return _p2pPeersByConnId.TryGetValue(conn.connectionId, out var p2p) ? GetRoundTripTime(p2p) : -1;
+
+            var peer = _clientP2pSession && _p2pHostPeer != null ? _p2pHostPeer : _relayClientPeer;
+            return GetRoundTripTime(peer);
+        }
+
+        /// <summary>Round trip time in ms between the local host and the relay, or -1 when not hosting over UDP.</summary>
+        public int hostRelayRoundTripTime => GetRoundTripTime(_relayServerPeer);
+
+        /// <summary>Round trip time in ms between the local client and the relay, or -1 when not connected over UDP.</summary>
+        public int clientRelayRoundTripTime => GetRoundTripTime(_relayClientPeer);
+
+        private static int GetRoundTripTime(NetPeer peer)
+        {
+            return peer != null && peer.HasRoundTripTime ? peer.RoundTripTime : -1;
+        }
+
         public IReadOnlyList<Connection> connections => _connections;
         private readonly List<Connection> _connections = new List<Connection>();
 
