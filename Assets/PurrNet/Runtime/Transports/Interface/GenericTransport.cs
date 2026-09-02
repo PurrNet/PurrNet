@@ -11,6 +11,7 @@ namespace PurrNet.Transports
     {
         public const float DEFAULT_PING_TIMEOUT = 15f;
         private const float CONNECT_GRACE_SECONDS = 1f;
+        private const float RTT_SETTLE_SECONDS = 0.3f;
 
         /// <summary>
         /// True while <see cref="Ping(CancellationToken)"/> is running a probe connection on this transport.
@@ -287,12 +288,26 @@ namespace PurrNet.Transports
 
                 int connectMs = (int)((Time.realtimeSinceStartupAsDouble - startedAt) * 1000);
                 int rtt = -1;
+                double settleUntil = 0;
 
                 while (layer.measuresRoundTripTime && layer.clientState == ConnectionState.Connected)
                 {
-                    rtt = layer.GetRoundTripTime(default, false);
+                    int sample = layer.GetRoundTripTime(default, false);
+                    var now = Time.realtimeSinceStartupAsDouble;
 
-                    if (rtt >= 0 || token.IsCancellationRequested || Time.realtimeSinceStartupAsDouble > deadline)
+                    if (sample >= 0)
+                    {
+                        if (rtt < 0)
+                            settleUntil = now + RTT_SETTLE_SECONDS;
+
+                        if (rtt < 0 || sample < rtt)
+                            rtt = sample;
+
+                        if (now >= settleUntil)
+                            break;
+                    }
+
+                    if (token.IsCancellationRequested || now > deadline)
                         break;
 
                     await PumpAndYield(layer);
