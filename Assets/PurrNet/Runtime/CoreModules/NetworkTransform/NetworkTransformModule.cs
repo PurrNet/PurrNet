@@ -1180,9 +1180,6 @@ namespace PurrNet.Modules
                    a.velocity.scaleY == b.velocity.scaleY && a.velocity.scaleZ == b.velocity.scaleZ;
         }
 
-        // Every input of TryWriteEntry that can differ between streams lands in the key, so streams
-        // with equal keys produce byte-identical packet bodies and identical ring entries. Adaptive
-        // strategies and generation overrides keep per-player state, so those streams never share.
         private bool TryBuildShareKeys(NTUnreliableSendStream stream, ushort currentTick, out int keyCount,
             out ulong hash)
         {
