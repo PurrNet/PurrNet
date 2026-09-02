@@ -172,6 +172,7 @@ var hierarchy =
       [ "PurrNet.Modules.DeltaValue", "structPurrNet_1_1Modules_1_1DeltaValue.html", null ],
       [ "PurrNet.Modules.PrefabPieceID", "structPurrNet_1_1Modules_1_1PrefabPieceID.html", null ],
       [ "PurrNet.Modules.SpawnID", "structPurrNet_1_1Modules_1_1SpawnID.html", null ],
+      [ "PurrNet.NetworkAssetID", "structPurrNet_1_1NetworkAssetID.html", null ],
       [ "PurrNet.NetworkID", "structPurrNet_1_1NetworkID.html", null ],
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
@@ -196,6 +197,7 @@ var hierarchy =
       [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >", "structPurrNet_1_1Pooling_1_1DisposableDictionary.html", null ],
       [ "PurrNet.Pooling.DisposableHashSet< T >", "structPurrNet_1_1Pooling_1_1DisposableHashSet.html", null ],
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
+      [ "PurrNet.PrefabID", "structPurrNet_1_1PrefabID.html", null ],
       [ "PurrNet.Profiler.BroadcastSample", "structPurrNet_1_1Profiler_1_1BroadcastSample.html", null ],
       [ "PurrNet.Profiler.DroppedSample", "structPurrNet_1_1Profiler_1_1DroppedSample.html", null ],
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
@@ -305,6 +307,7 @@ var hierarchy =
       [ "PurrNet.Modules.TickManagerRequestLocalTick", "structPurrNet_1_1Modules_1_1TickManagerRequestLocalTick.html", null ],
       [ "PurrNet.Modules.TickManagerResponseLocalTick", "structPurrNet_1_1Modules_1_1TickManagerResponseLocalTick.html", null ],
       [ "PurrNet.Modules.TransformInfo", "structPurrNet_1_1Modules_1_1TransformInfo.html", null ],
+      [ "PurrNet.NetworkAssetID", "structPurrNet_1_1NetworkAssetID.html", null ],
       [ "PurrNet.NetworkIdentityRPCHeader", "structPurrNet_1_1NetworkIdentityRPCHeader.html", null ],
       [ "PurrNet.NetworkModuleRPCHeader", "structPurrNet_1_1NetworkModuleRPCHeader.html", null ],
       [ "PurrNet.Packing.BigStructSample", "structPurrNet_1_1Packing_1_1BigStructSample.html", null ],
@@ -321,6 +324,7 @@ var hierarchy =
       [ "PurrNet.Packing.PackedUShort", "structPurrNet_1_1Packing_1_1PackedUShort.html", null ],
       [ "PurrNet.Packing.Size", "structPurrNet_1_1Packing_1_1Size.html", null ],
       [ "PurrNet.PlayerID", "structPurrNet_1_1PlayerID.html", null ],
+      [ "PurrNet.PrefabID", "structPurrNet_1_1PrefabID.html", null ],
       [ "PurrNet.RPCPacket", "structPurrNet_1_1RPCPacket.html", null ],
       [ "PurrNet.SceneID", "structPurrNet_1_1SceneID.html", null ],
       [ "PurrNet.StaticRPCHeader", "structPurrNet_1_1StaticRPCHeader.html", null ],
@@ -448,6 +452,7 @@ var hierarchy =
       [ "PurrNet.PurrMonoBehaviour", "classPurrNet_1_1PurrMonoBehaviour.html", null ],
       [ "PurrNet.PurrSceneInfo", "classPurrNet_1_1PurrSceneInfo.html", null ],
       [ "PurrNet.RawNetManager", "classPurrNet_1_1RawNetManager.html", null ],
+      [ "PurrNet.SceneRegistry< T >", "classPurrNet_1_1SceneRegistry.html", null ],
       [ "PurrNet.StatisticsManager", "classPurrNet_1_1StatisticsManager.html", null ],
       [ "PurrNet.Transports.GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", [
         [ "PurrNet.Transports.CompositeTransport", "classPurrNet_1_1Transports_1_1CompositeTransport.html", null ],
@@ -459,6 +464,7 @@ var hierarchy =
       [ "PurrNet.UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
       [ "PurrNet.UnityUpdate", "classPurrNet_1_1UnityUpdate.html", null ]
     ] ],
+    [ "PurrNet.NetworkAssetResolver", "classPurrNet_1_1NetworkAssetResolver.html", null ],
     [ "PurrNet.NetworkIdentityRules", "structPurrNet_1_1NetworkIdentityRules.html", null ],
     [ "PurrNet.NetworkLODTier", "structPurrNet_1_1NetworkLODTier.html", null ],
     [ "PurrNet.NetworkModule", "classPurrNet_1_1NetworkModule.html", [
@@ -503,6 +509,7 @@ var hierarchy =
     [ "PurrNet.PoolingConfig", "structPurrNet_1_1PoolingConfig.html", null ],
     [ "PurrNet.Modules.PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", null ],
     [ "PurrNet.PrefabData", "structPurrNet_1_1PrefabData.html", null ],
+    [ "PurrNet.PrefabResolver", "classPurrNet_1_1PrefabResolver.html", null ],
     [ "PreserveAttribute", null, [
       [ "PurrNet.ClientAttribute", "classPurrNet_1_1ClientAttribute.html", null ],
       [ "PurrNet.GuardFailureActionAttribute", "classPurrNet_1_1GuardFailureActionAttribute.html", null ],
@@ -548,6 +555,12 @@ var hierarchy =
     [ "PurrNet.RpcRules", "structPurrNet_1_1RpcRules.html", null ],
     [ "PurrNet.RPCSignature", "structPurrNet_1_1RPCSignature.html", null ],
     [ "PurrNet.ScaleWithParent", "structPurrNet_1_1ScaleWithParent.html", null ],
+    [ "PurrNet.SceneRegistry< NetworkAssets >", "classPurrNet_1_1SceneRegistry.html", [
+      [ "PurrNet.NetworkSceneAssets", "classPurrNet_1_1NetworkSceneAssets.html", null ]
+    ] ],
+    [ "PurrNet.SceneRegistry< NetworkPrefabs >", "classPurrNet_1_1SceneRegistry.html", [
+      [ "PurrNet.NetworkScenePrefabs", "classPurrNet_1_1NetworkScenePrefabs.html", null ]
+    ] ],
     [ "PurrNet.Modules.SceneScopedFactory< NetworkLODModule >", "classPurrNet_1_1Modules_1_1SceneScopedFactory.html", [
       [ "PurrNet.Modules.NetworkLODFactory", "classPurrNet_1_1Modules_1_1NetworkLODFactory.html", null ]
     ] ],

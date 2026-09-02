@@ -152,9 +152,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ae2bc097590e198beb7b31719d0d46fb4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#ae2bc097590e198beb7b31719d0d46fb4">SendToAll&lt; T &gt;</a> (T data, Channel method=Channel.ReliableOrdered)</td></tr>
 <tr class="memdesc:ae2bc097590e198beb7b31719d0d46fb4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send a broadcast to everyone listening. Only possible as the server   <a href="classPurrNet_1_1NetworkManager.html#ae2bc097590e198beb7b31719d0d46fb4">More...</a><br /></td></tr>
 <tr class="separator:ae2bc097590e198beb7b31719d0d46fb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a56b78dfe383fe18bc945580d2b5c85ef"><td class="memItemLeft" align="right" valign="top"><a id="a56b78dfe383fe18bc945580d2b5c85ef" name="a56b78dfe383fe18bc945580d2b5c85ef"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabPersistentId</b> (int prefabId, out string persistentId)</td></tr>
-<tr class="separator:a56b78dfe383fe18bc945580d2b5c85ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a5554ecc92e391cae7749f8d9ae5e6f"><td class="memItemLeft" align="right" valign="top"><a id="a3a5554ecc92e391cae7749f8d9ae5e6f" name="a3a5554ecc92e391cae7749f8d9ae5e6f"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabPersistentId</b> (<a class="el" href="structPurrNet_1_1PrefabID.html">PrefabID</a> prefabId, out string persistentId)</td></tr>
+<tr class="separator:a3a5554ecc92e391cae7749f8d9ae5e6f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad14aa7fbd1bf2e7fbddf30f67b36557c"><td class="memItemLeft" align="right" valign="top"><a id="ad14aa7fbd1bf2e7fbddf30f67b36557c" name="ad14aa7fbd1bf2e7fbddf30f67b36557c"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPrefabPersistentId</b> (GameObject prefab, out string persistentId)</td></tr>
 <tr class="separator:ad14aa7fbd1bf2e7fbddf30f67b36557c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -318,12 +318,12 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:acb2f7c4e72a52689ffb75b6686f2a291"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#acb2f7c4e72a52689ffb75b6686f2a291">SetMainInstance</a> (<a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> instance)</td></tr>
 <tr class="memdesc:acb2f7c4e72a52689ffb75b6686f2a291"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the main instance of the network manager. This is used for convinience but also for static RPCs and other static functionality.   <a href="classPurrNet_1_1NetworkManager.html#acb2f7c4e72a52689ffb75b6686f2a291">More...</a><br /></td></tr>
 <tr class="separator:acb2f7c4e72a52689ffb75b6686f2a291"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a971e0a7391e5053c7d34d3e05487e3ae"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a971e0a7391e5053c7d34d3e05487e3ae">SetupPrefabInfo</a> (GameObject instance, int pid, bool shouldBePooled)</td></tr>
-<tr class="memdesc:a971e0a7391e5053c7d34d3e05487e3ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepares the prefab info for the given instance. This needs to be ready before the object is spawned.   <a href="classPurrNet_1_1NetworkManager.html#a971e0a7391e5053c7d34d3e05487e3ae">More...</a><br /></td></tr>
-<tr class="separator:a971e0a7391e5053c7d34d3e05487e3ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0762d62a9296e0b1070c69c4295a3e29"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a0762d62a9296e0b1070c69c4295a3e29">SetupPrefabInfo</a> (GameObject instance, int pid, bool shouldBePooled, List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt; children)</td></tr>
-<tr class="memdesc:a0762d62a9296e0b1070c69c4295a3e29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepares the prefab info for the given instance, reusing an already collected identity list.   <a href="classPurrNet_1_1NetworkManager.html#a0762d62a9296e0b1070c69c4295a3e29">More...</a><br /></td></tr>
-<tr class="separator:a0762d62a9296e0b1070c69c4295a3e29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a98a85e6d719d876a062e15283fe8c7a9"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a98a85e6d719d876a062e15283fe8c7a9">SetupPrefabInfo</a> (GameObject instance, <a class="el" href="structPurrNet_1_1PrefabID.html">PrefabID</a> pid, bool shouldBePooled)</td></tr>
+<tr class="memdesc:a98a85e6d719d876a062e15283fe8c7a9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepares the prefab info for the given instance. This needs to be ready before the object is spawned.   <a href="classPurrNet_1_1NetworkManager.html#a98a85e6d719d876a062e15283fe8c7a9">More...</a><br /></td></tr>
+<tr class="separator:a98a85e6d719d876a062e15283fe8c7a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad4460f9f449ba77e8cb3513b111a1ca5"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#ad4460f9f449ba77e8cb3513b111a1ca5">SetupPrefabInfo</a> (GameObject instance, <a class="el" href="structPurrNet_1_1PrefabID.html">PrefabID</a> pid, bool shouldBePooled, List&lt; <a class="el" href="classPurrNet_1_1NetworkIdentity.html">NetworkIdentity</a> &gt; children)</td></tr>
+<tr class="memdesc:ad4460f9f449ba77e8cb3513b111a1ca5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepares the prefab info for the given instance, reusing an already collected identity list.   <a href="classPurrNet_1_1NetworkManager.html#ad4460f9f449ba77e8cb3513b111a1ca5">More...</a><br /></td></tr>
+<tr class="separator:ad4460f9f449ba77e8cb3513b111a1ca5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a49ad27ed87bea42024332494d166009a"><td class="memItemLeft" align="right" valign="top"><a id="a49ad27ed87bea42024332494d166009a" name="a49ad27ed87bea42024332494d166009a"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>CallAllRegisters</b> ()</td></tr>
 <tr class="separator:a49ad27ed87bea42024332494d166009a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -382,6 +382,14 @@ StartFlags&#160;</td><td class="memItemRight" valign="bottom"><b>startClientFlag
 <a class="el" href="interfacePurrNet_1_1IPrefabProvider.html">IPrefabProvider</a>&#160;</td><td class="memItemRight" valign="bottom"><b>prefabProvider</b><code> [get]</code></td></tr>
 <tr class="memdesc:af323793ea42a36db67a21019ec004a3e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The prefab provider of the network manager.  <br /></td></tr>
 <tr class="separator:af323793ea42a36db67a21019ec004a3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acee5e0b3e1be1528054a5d525aa1a650"><td class="memItemLeft" align="right" valign="top"><a id="acee5e0b3e1be1528054a5d525aa1a650" name="acee5e0b3e1be1528054a5d525aa1a650"></a>
+<a class="el" href="classPurrNet_1_1PrefabResolver.html">PrefabResolver</a>&#160;</td><td class="memItemRight" valign="bottom"><b>prefabResolver</b><code> [get]</code></td></tr>
+<tr class="memdesc:acee5e0b3e1be1528054a5d525aa1a650"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resolves prefab ids and prefab references to prefab data. All runtime lookups go through this.  <br /></td></tr>
+<tr class="separator:acee5e0b3e1be1528054a5d525aa1a650"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01842951d0c4809b686d0090cd02d771"><td class="memItemLeft" align="right" valign="top"><a id="a01842951d0c4809b686d0090cd02d771" name="a01842951d0c4809b686d0090cd02d771"></a>
+<a class="el" href="classPurrNet_1_1NetworkAssetResolver.html">NetworkAssetResolver</a>&#160;</td><td class="memItemRight" valign="bottom"><b>networkAssetResolver</b><code> [get]</code></td></tr>
+<tr class="memdesc:a01842951d0c4809b686d0090cd02d771"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resolves network asset ids and asset references to registered assets. All runtime lookups go through this.  <br /></td></tr>
+<tr class="separator:a01842951d0c4809b686d0090cd02d771"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3d02f1808663d7c208d2300f8955d8de"><td class="memItemLeft" align="right" valign="top"><a id="a3d02f1808663d7c208d2300f8955d8de" name="a3d02f1808663d7c208d2300f8955d8de"></a>
 <a class="el" href="classPurrNet_1_1NetworkVisibilityRuleSet.html">NetworkVisibilityRuleSet</a>&#160;</td><td class="memItemRight" valign="bottom"><b>visibilityRules</b><code> [get]</code></td></tr>
 <tr class="memdesc:a3d02f1808663d7c208d2300f8955d8de"><td class="mdescLeft">&#160;</td><td class="mdescRight">The visibility rules of the network manager.  <br /></td></tr>
@@ -1308,8 +1316,8 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 
 </div>
 </div>
-<a id="a971e0a7391e5053c7d34d3e05487e3ae" name="a971e0a7391e5053c7d34d3e05487e3ae"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a971e0a7391e5053c7d34d3e05487e3ae">&#9670;&#160;</a></span>SetupPrefabInfo() <span class="overload">[1/2]</span></h2>
+<a id="a98a85e6d719d876a062e15283fe8c7a9" name="a98a85e6d719d876a062e15283fe8c7a9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a98a85e6d719d876a062e15283fe8c7a9">&#9670;&#160;</a></span>SetupPrefabInfo() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1326,7 +1334,7 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">int&#160;</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PrefabID.html">PrefabID</a>&#160;</td>
           <td class="paramname"><em>pid</em>, </td>
         </tr>
         <tr>
@@ -1360,8 +1368,8 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 
 </div>
 </div>
-<a id="a0762d62a9296e0b1070c69c4295a3e29" name="a0762d62a9296e0b1070c69c4295a3e29"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0762d62a9296e0b1070c69c4295a3e29">&#9670;&#160;</a></span>SetupPrefabInfo() <span class="overload">[2/2]</span></h2>
+<a id="ad4460f9f449ba77e8cb3513b111a1ca5" name="ad4460f9f449ba77e8cb3513b111a1ca5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad4460f9f449ba77e8cb3513b111a1ca5">&#9670;&#160;</a></span>SetupPrefabInfo() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1378,7 +1386,7 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">int&#160;</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PrefabID.html">PrefabID</a>&#160;</td>
           <td class="paramname"><em>pid</em>, </td>
         </tr>
         <tr>

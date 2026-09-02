@@ -9,7 +9,8 @@ var searchData=
   ['error_6',['error',['../structPurrNet_1_1Transports_1_1PingResult.html#a294617790220cc3a4e983d13042d1dce',1,'PurrNet::Transports::PingResult']]],
   ['evaluateallvisibilities_7',['EvaluateAllVisibilities',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#aaa8402318b604dd6bcdae13a6d3722ab',1,'PurrNet::Modules::HierarchyV2']]],
   ['evaluatevisibility_8',['EvaluateVisibility',['../classPurrNet_1_1NetworkIdentity.html#aa1dae575cde048991adc141041344a55',1,'PurrNet.NetworkIdentity.EvaluateVisibility()'],['../classPurrNet_1_1NetworkIdentity.html#ad29256abc524fb527cce1c241ebcd021',1,'PurrNet.NetworkIdentity.EvaluateVisibility(PlayerID player)'],['../classPurrNet_1_1Modules_1_1HierarchyV2.html#adcb0e61a45c8caad94c0a23ec8976fc5',1,'PurrNet.Modules.HierarchyV2.EvaluateVisibility(Transform root)'],['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a85dc41b52cfe521085d77f0cf354cdb4',1,'PurrNet.Modules.HierarchyV2.EvaluateVisibility(PlayerID player, Transform root)']]],
-  ['executeasap_9',['ExecuteAsap',['../classPurrNet_1_1UnityLatestUpdate.html#a7afb179533ee2efb252bf2c4f08b2695',1,'PurrNet::UnityLatestUpdate']]],
-  ['exit_10',['Exit',['../classPurrNet_1_1StateMachine_1_1StateNode.html#aaa3e4ad06e596f8c7cf61a5492cbb151',1,'PurrNet.StateMachine.StateNode.Exit()'],['../classPurrNet_1_1StateMachine_1_1StateNode.html#ab2819be375b17001f42ca7a483310273',1,'PurrNet.StateMachine.StateNode.Exit(bool asServer)']]],
-  ['extrabones_11',['extraBones',['../classPurrNet_1_1NetworkBones.html#afcdb140a89ca41eca2b4039e44b6abf9',1,'PurrNet::NetworkBones']]]
+  ['evictprototypes_9',['EvictPrototypes',['../classPurrNet_1_1Modules_1_1HierarchyPool.html#ad049d85239fc4767241cb2f8b4c7e2b6',1,'PurrNet::Modules::HierarchyPool']]],
+  ['executeasap_10',['ExecuteAsap',['../classPurrNet_1_1UnityLatestUpdate.html#a7afb179533ee2efb252bf2c4f08b2695',1,'PurrNet::UnityLatestUpdate']]],
+  ['exit_11',['Exit',['../classPurrNet_1_1StateMachine_1_1StateNode.html#aaa3e4ad06e596f8c7cf61a5492cbb151',1,'PurrNet.StateMachine.StateNode.Exit()'],['../classPurrNet_1_1StateMachine_1_1StateNode.html#ab2819be375b17001f42ca7a483310273',1,'PurrNet.StateMachine.StateNode.Exit(bool asServer)']]],
+  ['extrabones_12',['extraBones',['../classPurrNet_1_1NetworkBones.html#afcdb140a89ca41eca2b4039e44b6abf9',1,'PurrNet::NetworkBones']]]
 ];

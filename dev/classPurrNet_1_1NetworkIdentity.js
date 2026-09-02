@@ -52,6 +52,7 @@ var classPurrNet_1_1NetworkIdentity =
     [ "owner", "classPurrNet_1_1NetworkIdentity.html#a56b56f803fbc9405f0d394de104f112a", null ],
     [ "parent", "classPurrNet_1_1NetworkIdentity.html#a907e4b801f1df03043e4a407a699573c", null ],
     [ "sceneId", "classPurrNet_1_1NetworkIdentity.html#ade4408d8864bac675dd6cf63b13f86cb", null ],
+    [ "scopedPrefabId", "classPurrNet_1_1NetworkIdentity.html#a1246bb0f24fd04b3de1517e26f59f9d8", null ],
     [ "whitelist", "classPurrNet_1_1NetworkIdentity.html#a46974688b834f846db6ff8098c918859", null ],
     [ "onLODTierChanged", "classPurrNet_1_1NetworkIdentity.html#a42c36958f71dcbdeb255e7805fd44eaf", null ],
     [ "onParentChanged", "classPurrNet_1_1NetworkIdentity.html#a4033fcf94e189d7cb751bca972838cf3", null ]

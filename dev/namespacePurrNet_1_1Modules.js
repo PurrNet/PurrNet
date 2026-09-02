@@ -42,7 +42,7 @@ var namespacePurrNet_1_1Modules =
     [ "PlayerLeftEvent", "structPurrNet_1_1Modules_1_1PlayerLeftEvent.html", null ],
     [ "PlayersManager", "classPurrNet_1_1Modules_1_1PlayersManager.html", "classPurrNet_1_1Modules_1_1PlayersManager" ],
     [ "PlayerSnapshotEvent", "structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html", null ],
-    [ "PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", null ],
+    [ "PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", "structPurrNet_1_1Modules_1_1PoolPair" ],
     [ "PrefabPieceID", "structPurrNet_1_1Modules_1_1PrefabPieceID.html", null ],
     [ "PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "ReliableConnectionHistory", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
