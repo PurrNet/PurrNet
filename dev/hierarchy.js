@@ -499,6 +499,7 @@ var hierarchy =
     [ "PurrNet.OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
     [ "PurrNet.Transports.PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
     [ "PurrNet.Modules.PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
+    [ "PurrNet.Transports.PingResult", "structPurrNet_1_1Transports_1_1PingResult.html", null ],
     [ "PurrNet.PoolingConfig", "structPurrNet_1_1PoolingConfig.html", null ],
     [ "PurrNet.Modules.PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", null ],
     [ "PurrNet.PrefabData", "structPurrNet_1_1PrefabData.html", null ],
@@ -608,6 +609,7 @@ var hierarchy =
     [ "PurrNet.SyncVar< PurrNet.GlobalNetworkID >", "classPurrNet_1_1SyncVar.html", null ],
     [ "PurrNet.TimestampedSnapshot", "structPurrNet_1_1TimestampedSnapshot.html", null ],
     [ "PurrNet.Modules.TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
+    [ "PurrNet.Transports.TransportPingResult", "structPurrNet_1_1Transports_1_1TransportPingResult.html", null ],
     [ "PurrNet.NetworkAssets.TypeToggle", "classPurrNet_1_1NetworkAssets_1_1TypeToggle.html", null ],
     [ "UnityEvent", null, [
       [ "PurrNet.SerializableSyncUnityEvent< T >", "classPurrNet_1_1SerializableSyncUnityEvent.html", null ],

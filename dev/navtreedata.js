@@ -56,9 +56,9 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkModule.html#a79f55a0c992dda9c7eabb81b69e28328",
 "classPurrNet_1_1PlayerSpawner.html#a2c0db4145c65e4c039b5904ea5967fac",
 "classPurrNet_1_1SyncHashSet.html#a0d75d35d5015317a5fb11e1e09ce8694",
-"functions_w.html",
-"structPurrNet_1_1Modules_1_1PurrSceneSettings.html",
-"structPurrNet_1_1SpawnPoint.html"
+"functions_func_c.html",
+"structPurrNet_1_1Modules_1_1ChangeParentAction.html",
+"structPurrNet_1_1RPCManifestEntry.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

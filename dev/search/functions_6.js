@@ -18,8 +18,9 @@ var searchData=
   ['getnextid_3c_20t_20_3e_15',['GetNextId&lt; T &gt;',['../classPurrNet_1_1NetworkIdentity.html#aa9ca1d8499152c7c2a641b0b8783adf6',1,'PurrNet::NetworkIdentity']]],
   ['getp2pendpoint_16',['GetP2pEndpoint',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a494876d88e0afc801b7a91f4a82cbed2',1,'PurrNet::Transports::PurrTransport']]],
   ['getpendingoperations_17',['GetPendingOperations',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a3a7f73366d9d53e262795607b3ba6244',1,'PurrNet::Modules::ScenesModule']]],
-  ['getstate_3c_20t_20_3e_18',['GetState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#ab970c2f0ea7d01a78584b1f681739dfb',1,'PurrNet::StateMachine::StateMachine']]],
-  ['gettier_19',['GetTier',['../classPurrNet_1_1NetworkLOD.html#ae3a3eb53995e1e4b6f2f8c02bb4aa929',1,'PurrNet::NetworkLOD']]],
-  ['gettypecode_20',['GetTypeCode',['../structPurrNet_1_1Packing_1_1Half.html#a68013ae5140b43ecb16d23c22f1928bb',1,'PurrNet::Packing::Half']]],
-  ['giveownership_21',['GiveOwnership',['../classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3',1,'PurrNet::NetworkIdentity']]]
+  ['getroundtriptime_18',['GetRoundTripTime',['../classPurrNet_1_1Transports_1_1CompositeTransport.html#a6f8a4fadd2607b5f6c26828005d0939c',1,'PurrNet.Transports.CompositeTransport.GetRoundTripTime()'],['../interfacePurrNet_1_1Transports_1_1ITransport.html#ae3e1f81560c564104469b5fc729ba137',1,'PurrNet.Transports.ITransport.GetRoundTripTime()'],['../classPurrNet_1_1Transports_1_1PurrTransport.html#aab98e7f9322ba813c454a1e468adec2c',1,'PurrNet.Transports.PurrTransport.GetRoundTripTime()'],['../classPurrNet_1_1Transports_1_1UDPTransport.html#a604d335158eae7b6b70c052d695a973b',1,'PurrNet.Transports.UDPTransport.GetRoundTripTime()']]],
+  ['getstate_3c_20t_20_3e_19',['GetState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#ab970c2f0ea7d01a78584b1f681739dfb',1,'PurrNet::StateMachine::StateMachine']]],
+  ['gettier_20',['GetTier',['../classPurrNet_1_1NetworkLOD.html#ae3a3eb53995e1e4b6f2f8c02bb4aa929',1,'PurrNet::NetworkLOD']]],
+  ['gettypecode_21',['GetTypeCode',['../structPurrNet_1_1Packing_1_1Half.html#a68013ae5140b43ecb16d23c22f1928bb',1,'PurrNet::Packing::Half']]],
+  ['giveownership_22',['GiveOwnership',['../classPurrNet_1_1NetworkIdentity.html#a9ea4ce263917261b1e18c822863cb9c3',1,'PurrNet::NetworkIdentity']]]
 ];
