@@ -123,11 +123,18 @@ namespace PurrNet
         }
 #endif
 
+        /// <summary>
+        /// Folder sources watch everything under them; a scene source watches the scene file itself,
+        /// so saving the scene regenerates from its updated references.
+        /// </summary>
         private static string GetFolderPath(UnityEngine.Object folder)
         {
             string folderPath = AssetDatabase.GetAssetPath(folder);
             if (string.IsNullOrEmpty(folderPath))
                 return null;
+
+            if (folder is SceneAsset)
+                return folderPath;
 
             return folderPath.EndsWith("/", StringComparison.Ordinal) ? folderPath : folderPath + "/";
         }
@@ -226,6 +233,9 @@ namespace PurrNet
             {
                 if (!IsProcessablePath(path))
                     return false;
+
+                if (!_folderPath.EndsWith("/", StringComparison.Ordinal))
+                    return string.Equals(path, _folderPath, StringComparison.Ordinal);
 
                 if (!path.StartsWith(_folderPath, StringComparison.Ordinal))
                     return false;

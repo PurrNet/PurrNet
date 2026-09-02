@@ -398,65 +398,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 890272210}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &176456641
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 176456643}
-  - component: {fileID: 176456642}
-  - component: {fileID: 176456644}
-  m_Layer: 0
-  m_Name: ScenePrefabsAndAssets
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &176456642
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 176456641}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 289adfa25c8214840bbba5ca64622f7a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkScenePrefabs
-  _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
---- !u!4 &176456643
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 176456641}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.40256, y: 1.73879, z: 2.00736}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &176456644
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 176456641}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f0309c90699140409d74914eb5d95e8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkSceneAssets
-  _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
 --- !u!1 &190531790
 GameObject:
   m_ObjectHideFlags: 0
@@ -3551,6 +3492,65 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1534133669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1534133672}
+  - component: {fileID: 1534133671}
+  - component: {fileID: 1534133670}
+  m_Layer: 0
+  m_Name: Scoped
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1534133670
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1534133669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0309c90699140409d74914eb5d95e8e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkSceneAssets
+  _networkAssets: {fileID: 11400000, guid: a519d78740d8b804e80cc0fd8da9b0cd, type: 2}
+--- !u!114 &1534133671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1534133669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 289adfa25c8214840bbba5ca64622f7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PurrNet.Runtime::PurrNet.NetworkScenePrefabs
+  _networkPrefabs: {fileID: 11400000, guid: 37af97d33ef8d9747b965053a79d21f4, type: 2}
+--- !u!4 &1534133672
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1534133669}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2.40256, y: 1.73879, z: 2.00736}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1572562369
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4728,4 +4728,4 @@ SceneRoots:
   - {fileID: 198233782}
   - {fileID: 1871993795}
   - {fileID: 1183577489}
-  - {fileID: 176456643}
+  - {fileID: 1534133672}

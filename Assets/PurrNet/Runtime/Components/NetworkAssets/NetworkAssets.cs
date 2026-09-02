@@ -202,6 +202,19 @@ namespace PurrNet
             }
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (autoGenerate &&
+                !UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode &&
+                !UnityEditor.EditorApplication.isCompiling &&
+                !UnityEditor.EditorApplication.isUpdating)
+            {
+                UnityEditor.EditorApplication.delayCall += GenerateAssets;
+            }
+        }
+#endif
+
         private void OnEnable()
         {
             ClearLookups();
@@ -424,7 +437,8 @@ namespace PurrNet
             if (Application.isPlaying || UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) return;
 
             var enabledTypes = enabledTypeNames.Select(Type.GetType).Where(t => t != null).ToArray();
-            var found = folder is UnityEditor.SceneAsset
+            bool isSceneSource = folder is UnityEditor.SceneAsset;
+            var found = isSceneSource
                 ? AssetScannerUtility.ScanSceneAssets(UnityEditor.AssetDatabase.GetAssetPath(folder), enabledTypes)
                 : AssetScannerUtility.ScanAssets(folder, enabledTypes, searchAllIfNoFolder);
             var linkedAssets = AssetScannerUtility.CollectLinkedNetworkAssets(this);
@@ -445,6 +459,15 @@ namespace PurrNet
                     existingSet = new HashSet<Object>(assets);
                     changed = true;
                 }
+            }
+
+            // The registry mirrors its source: anything the scan no longer finds is dropped.
+            var foundSet = new HashSet<Object>(found.Select(scan => scan.asset));
+            int pruned = assets.RemoveAll(asset => !asset || !foundSet.Contains(asset));
+            if (pruned > 0)
+            {
+                existingSet = new HashSet<Object>(assets);
+                changed = true;
             }
 
             foreach (var scan in found)
