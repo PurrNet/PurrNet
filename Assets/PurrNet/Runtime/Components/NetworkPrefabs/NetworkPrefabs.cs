@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using UnityEngine;
 using PurrNet.Logging;
 using Object = UnityEngine.Object;
@@ -87,6 +88,7 @@ namespace PurrNet
             return false;
         }
 
+        [PublicAPI]
         public bool TryGetPrefabByPersistentId(string persistentId, out GameObject prefab)
         {
             if (TryGetPrefabDataByPersistentId(persistentId, out var prefabData))
@@ -156,6 +158,25 @@ namespace PurrNet
             var seenGO = new HashSet<GameObject>();
             var buffer = new List<UserPrefabData>();
 
+            Collect(this);
+
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                var ud = buffer[i];
+                var data = new PrefabData
+                {
+                    prefabId = i,
+                    prefab = ud.prefab,
+                    pooled = ud.pooled,
+                    warmupCount = ud.warmupCount
+                };
+
+                prefabLookup.Add(i, data);
+                RegisterPersistentId(ud.guid, data);
+            }
+
+            return;
+
             void Collect(NetworkPrefabs np)
             {
                 if (!np || !visited.Add(np)) return;
@@ -186,23 +207,6 @@ namespace PurrNet
                     var link = links[i];
                     if (link) Collect(link);
                 }
-            }
-
-            Collect(this);
-
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                var ud = buffer[i];
-                var data = new PrefabData
-                {
-                    prefabId = i,
-                    prefab = ud.prefab,
-                    pooled = ud.pooled,
-                    warmupCount = ud.warmupCount
-                };
-
-                prefabLookup.Add(i, data);
-                RegisterPersistentId(ud.guid, data);
             }
         }
 
