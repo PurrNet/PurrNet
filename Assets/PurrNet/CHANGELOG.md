@@ -1,3 +1,10 @@
+# [1.23.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.16...v1.23.0-beta.17) (2026-09-02)
+
+
+### Bug Fixes
+
+* Pinging fix for Steam ([e6f423e](https://github.com/PurrNet/PurrNet/commit/e6f423e86bab3ebb6c8c30dbe6cc68b99f3873d8))
+
 # [1.23.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.15...v1.23.0-beta.16) (2026-09-02)
 
 
