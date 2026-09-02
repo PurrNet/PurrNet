@@ -235,6 +235,7 @@ namespace PurrNet.Modules
         }
 
         private bool _wasSetup;
+        private bool _isDisabled;
 
         static GameObject _dontDestroyOnLoad;
 
@@ -434,10 +435,19 @@ namespace PurrNet.Modules
         public void Enable(bool asServer)
         {
             // Setup(asServer);
+            _isDisabled = false;
         }
 
         public void Disable(bool asServer)
         {
+            _isDisabled = true;
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+            // This module is about to be discarded; any addressable load still in flight would
+            // otherwise complete into a registry nobody owns and never be unloaded by anyone.
+            ReleasePendingAddressableOperations();
+#endif
+
             if (!asServer)
             {
                 _players.Unsubscribe<SceneActionsBatch>(OnSceneActionsBatch);
@@ -1440,6 +1450,16 @@ namespace PurrNet.Modules
             if (_pendingOperations.Count > 0)
                 return false;
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+            // Addressable loads are driven by their completion callback, but FixedUpdate no longer
+            // runs while disconnecting, so drain them here as well. They need to land in _scenes
+            // before UnloadAllScenesCleanup runs, otherwise nothing would ever unload them.
+            ProcessCompletedAddressableLoads();
+
+            if (_pendingAddressableOperations.Count > 0)
+                return false;
+#endif
+
             switch (_cleanupStage)
             {
                 case CleanupStage.None:
@@ -1576,7 +1596,7 @@ namespace PurrNet.Modules
             {
                 _pendingUnloads.Clear();
 
-                foreach (var (_, scene) in _scenes)
+                foreach (var (id, scene) in _scenes)
                 {
                     var unityScene = scene.scene;
 
@@ -1592,6 +1612,13 @@ namespace PurrNet.Modules
                     if (IsDontDestroyOnLoadScene(unityScene))
                         continue;
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+                    // Addressable scenes must go through Addressables so the handle is released
+                    // as well, instead of leaking next to an unloaded scene.
+                    if (TryUnloadAddressableSceneOnCleanup(id))
+                        continue;
+#endif
+
                     _pendingUnloads.Add(SceneManager.UnloadSceneAsync(unityScene));
                 }
 
@@ -1606,6 +1633,11 @@ namespace PurrNet.Modules
                         return false;
                 }
             }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+            if (!ArePendingAddressableUnloadsDone())
+                return false;
+#endif
 
             return true;
         }
