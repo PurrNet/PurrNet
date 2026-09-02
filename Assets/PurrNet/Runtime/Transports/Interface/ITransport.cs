@@ -249,6 +249,12 @@ namespace PurrNet.Transports
             return -1;
         }
 
+        /// <summary>
+        /// Short human readable description of the link the local client is currently using,
+        /// for example which relay region or whether it is a direct P2P session. Null when the transport has nothing to add.
+        /// </summary>
+        string clientLinkDescription => null;
+
         bool shouldServerSendKeepAlive => false;
 
         bool shouldClientSendKeepAlive => false;

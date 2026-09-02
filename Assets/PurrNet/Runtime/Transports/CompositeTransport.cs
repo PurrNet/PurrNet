@@ -273,6 +273,18 @@ namespace PurrNet.Transports
             }
         }
 
+        public string clientLinkDescription
+        {
+            get
+            {
+                if (!_clientTransport)
+                    return null;
+                var inner = _clientTransport.transport.clientLinkDescription;
+                var name = _clientTransport.GetType().Name;
+                return string.IsNullOrEmpty(inner) ? name : $"{name} ({inner})";
+            }
+        }
+
         public int GetRoundTripTime(Connection target, bool asServer)
         {
             if (asServer)

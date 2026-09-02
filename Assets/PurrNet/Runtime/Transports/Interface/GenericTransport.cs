@@ -8,7 +8,7 @@ namespace PurrNet.Transports
     [DefaultExecutionOrder(-100)]
     public abstract class GenericTransport : MonoBehaviour
     {
-        public const float DEFAULT_PING_TIMEOUT = 5f;
+        public const float DEFAULT_PING_TIMEOUT = 15f;
 
         /// <summary>
         /// True while <see cref="Ping(CancellationToken)"/> is running a probe connection on this transport.
@@ -251,7 +251,7 @@ namespace PurrNet.Transports
                         return PingResult.Failed("Cancelled.");
 
                     if (Time.realtimeSinceStartupAsDouble > deadline)
-                        return PingResult.Failed("Timed out while connecting.");
+                        return PingResult.Failed($"Timed out after {timeoutSeconds:0.#}s while connecting.");
 
                     await PumpAndYield(layer);
                 }
@@ -272,7 +272,7 @@ namespace PurrNet.Transports
                     await PumpAndYield(layer);
                 }
 
-                return new PingResult(rtt, connectMs);
+                return new PingResult(rtt, connectMs, layer.clientLinkDescription);
             }
             catch (System.Exception e)
             {

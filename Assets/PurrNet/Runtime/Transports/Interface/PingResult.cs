@@ -22,17 +22,21 @@ namespace PurrNet.Transports
         /// <summary>Why the ping failed, if it did.</summary>
         public readonly string error;
 
+        /// <summary>Which link the latency was measured over, as reported by the transport. May be null.</summary>
+        public readonly string link;
+
         /// <summary>Best available latency estimate: the measured round trip time, or the connect time as a fallback.</summary>
         public int latencyMs => roundTripTimeMs >= 0 ? roundTripTimeMs : connectTimeMs;
 
         /// <summary>Whether the transport measured an actual round trip time rather than falling back to connect time.</summary>
         public bool hasRoundTripTime => roundTripTimeMs >= 0;
 
-        public PingResult(int roundTripTimeMs, int connectTimeMs)
+        public PingResult(int roundTripTimeMs, int connectTimeMs, string link = null)
         {
             success = true;
             this.roundTripTimeMs = roundTripTimeMs;
             this.connectTimeMs = connectTimeMs;
+            this.link = link;
             error = null;
         }
 
@@ -41,6 +45,7 @@ namespace PurrNet.Transports
             success = false;
             roundTripTimeMs = -1;
             connectTimeMs = -1;
+            link = null;
             this.error = error;
         }
 
@@ -50,9 +55,10 @@ namespace PurrNet.Transports
         {
             if (!success)
                 return $"Ping failed: {error}";
-            return hasRoundTripTime
+            var text = hasRoundTripTime
                 ? $"RTT {roundTripTimeMs}ms (connect {connectTimeMs}ms)"
                 : $"Connect {connectTimeMs}ms (no RTT)";
+            return string.IsNullOrEmpty(link) ? text : $"{text} via {link}";
         }
     }
 

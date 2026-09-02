@@ -264,6 +264,18 @@ namespace PurrNet.Transports
             return GetRoundTripTime(peer);
         }
 
+        public string clientLinkDescription
+        {
+            get
+            {
+                if (_clientState != ConnectionState.Connected)
+                    return null;
+                if (_clientP2pSession && _p2pHostPeer != null)
+                    return $"P2P {_p2pHostPeer}";
+                return string.IsNullOrEmpty(_region) ? "Relay" : $"Relay {_region}";
+            }
+        }
+
         /// <summary>Round trip time in ms between the local host and the relay, or -1 when not hosting over UDP.</summary>
         public int hostRelayRoundTripTime => GetRoundTripTime(_relayServerPeer);
 
