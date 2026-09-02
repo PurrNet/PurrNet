@@ -10,6 +10,7 @@ namespace PurrNet.Modules
     {
         public static long entriesWrittenCount;
         public static long adaptiveHoldCount;
+        public static long sharedPacketCount;
 
         static readonly ProfilerMarker _postFixedUpdateMarker = new ProfilerMarker("NetworkTransform.PostFixedUpdate");
         static readonly ProfilerMarker _gatherStateMarker = new ProfilerMarker("NetworkTransform.GatherState");
@@ -17,10 +18,12 @@ namespace PurrNet.Modules
         static readonly ProfilerMarker _queueChangedMarker = new ProfilerMarker("NetworkTransform.QueueChangedState");
         static readonly ProfilerMarker _decodeUnreliableMarker = new ProfilerMarker("NetworkTransform.DecodeState");
         static readonly ProfilerMarker _processAckMarker = new ProfilerMarker("NetworkTransform.ProcessAck");
+        static readonly ProfilerMarker _replayMarker = new ProfilerMarker("NetworkTransform.ReplayState");
         static readonly ProfilerMarker _flushAckMarker = new ProfilerMarker("NetworkTransform.FlushAck");
 
         private readonly List<NetworkTransform> _networkTransforms = new();
         private readonly List<NetworkTransform> _changedTransforms = new();
+        private readonly List<NetworkID> _changedIds = new();
         private readonly Dictionary<PlayerID, NTUnreliableSendStream> _sendStreams = new();
         private readonly Dictionary<PlayerID, NTUnreliableRecvStream> _recvStreams = new();
         private readonly ScenePlayersModule _scenePlayers;
@@ -541,31 +544,34 @@ namespace PurrNet.Modules
                 // ACK slots are processed newest-first. Once a newer state for this transform was
                 // adopted, older retransmissions cannot improve its baseline or complete a newer
                 // revision, so skip the registration/generation work entirely.
-                if (stream.acked.TryGetValue(entry.nid, out var currentBaseline) &&
-                    slot.order <= currentBaseline.order)
+                bool hasBaseline = stream.acked.TryGetValue(entry.nid, out var currentBaseline);
+                if (hasBaseline && slot.order <= currentBaseline.order)
                     continue;
 
-                if (!TryGetRegisteredTransform(entry.nid, out var nt))
+                var nt = entry.transform;
+                if (!nt && !TryGetRegisteredTransform(entry.nid, out nt))
                     continue;
 
-                if (stream.nackFloor.TryGetValue(entry.nid, out var floor))
+                if (stream.nackFloor.Count > 0 && stream.nackFloor.TryGetValue(entry.nid, out var floor))
                 {
                     if (slot.order < floor)
                         continue;
                     stream.nackFloor.Remove(entry.nid);
                 }
 
-                currentBaseline = new NTUnreliableBaseline
+                if (!hasBaseline)
                 {
-                    state = entry.state,
-                    velocity = entry.velocity,
-                    tick = entry.tick,
-                    gen = entry.gen,
-                    genEpoch = entry.genEpoch,
-                    revision = entry.revision,
-                    order = slot.order
-                };
-                stream.acked[entry.nid] = currentBaseline;
+                    currentBaseline = new NTUnreliableBaseline();
+                    stream.acked.Add(entry.nid, currentBaseline);
+                }
+
+                currentBaseline.state = entry.state;
+                currentBaseline.velocity = entry.velocity;
+                currentBaseline.tick = entry.tick;
+                currentBaseline.gen = entry.gen;
+                currentBaseline.genEpoch = entry.genEpoch;
+                currentBaseline.revision = entry.revision;
+                currentBaseline.order = slot.order;
 
                 uint expectedEpoch = stream.generationOverrides.Count > 0 &&
                                      stream.generationOverrides.TryGetValue(entry.nid, out var generation)
@@ -778,11 +784,7 @@ namespace PurrNet.Modules
 
             for (int changedIndex = 0; changedIndex < changed.Count; changedIndex++)
             {
-                var nt = changed[changedIndex];
-                if (!nt || !nt.id.HasValue)
-                    continue;
-
-                var nid = nt.id.Value;
+                var nid = _changedIds[changedIndex];
                 bool found = false;
 
                 while (pendingIndex < stream.pending.Count)
@@ -802,7 +804,7 @@ namespace PurrNet.Modules
                     break;
                 }
 
-                if (!found && IsSendCandidate(nt, player, localPlayer))
+                if (!found && IsSendCandidate(changed[changedIndex], player, localPlayer))
                     return true;
             }
 
@@ -878,10 +880,46 @@ namespace PurrNet.Modules
             return payloadBytes * 8L;
         }
 
-        private static NTWriteResult TryWriteEntry(BitPacker tmp, NetworkTransform nt, NTUnreliableSendStream stream,
-            ushort currentTick, int lastDist, out int newLastDist, out NetworkTransformVelocity velocity, out byte gen,
-            out uint genEpoch)
+        private struct NTEntryPlan
         {
+            public bool absolute;
+            public bool sameDist;
+            public int dist;
+            public byte gen;
+            public BitPacker stateBits;
+            public int bits;
+        }
+
+        private static void WriteEntry(BitPacker packer, in NTEntryPlan plan)
+        {
+            if (plan.absolute)
+            {
+                packer.WriteBits(1, 1);
+                Packer<byte>.Write(packer, plan.gen);
+            }
+            else
+            {
+                packer.WriteBits(0, 1);
+
+                if (plan.sameDist)
+                {
+                    packer.WriteBits(1, 1);
+                }
+                else
+                {
+                    packer.WriteBits(0, 1);
+                    packer.WriteBits((ulong)(plan.dist - 1), NTUnreliable.DISTANCE_BITS);
+                }
+            }
+
+            packer.WriteBitsWithoutConsumingIt(plan.stateBits, plan.stateBits.positionInBits);
+        }
+
+        private static NTWriteResult TryWriteEntry(NetworkTransform nt, NTUnreliableSendStream stream,
+            ushort currentTick, int lastDist, out NTEntryPlan plan, out int newLastDist,
+            out NetworkTransformVelocity velocity, out byte gen, out uint genEpoch)
+        {
+            plan = default;
             newLastDist = lastDist;
             velocity = default;
             var nid = nt.id!.Value;
@@ -891,7 +929,6 @@ namespace PurrNet.Modules
                 : new NTUnreliableGeneration { gen = nt.sendGen, epoch = nt.sendGenEpoch };
             gen = generation.gen;
             genEpoch = generation.epoch;
-            tmp.ResetPositionAndMode(false);
 
             bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == genEpoch;
 
@@ -1000,18 +1037,11 @@ namespace PurrNet.Modules
             {
                 gen = baseline.gen;
                 genEpoch = baseline.genEpoch;
-                tmp.WriteBits(0, 1);
+                plan.sameDist = dist == lastDist;
+                plan.dist = dist;
 
-                if (dist == lastDist)
-                {
-                    tmp.WriteBits(1, 1);
-                }
-                else
-                {
-                    tmp.WriteBits(0, 1);
-                    tmp.WriteBits((ulong)(dist - 1), NTUnreliable.DISTANCE_BITS);
+                if (!plan.sameDist)
                     newLastDist = dist;
-                }
 
                 if (!cache.TryGetDelta(baseline.tick, baseline.velocity, out var stateBits, out velocity))
                 {
@@ -1022,14 +1052,16 @@ namespace PurrNet.Modules
                     cache.CompleteDeltaSlot(velocity);
                 }
 
-                tmp.WriteBitsWithoutConsumingIt(stateBits, stateBits.positionInBits);
+                plan.stateBits = stateBits;
+                plan.bits = 2 + (plan.sameDist ? 0 : NTUnreliable.DISTANCE_BITS) + stateBits.positionInBits;
             }
             else
             {
-                tmp.WriteBits(1, 1);
-                Packer<byte>.Write(tmp, gen);
+                plan.absolute = true;
+                plan.gen = gen;
                 var stateBits = cache.GetAbsolute(nt);
-                tmp.WriteBitsWithoutConsumingIt(stateBits, stateBits.positionInBits);
+                plan.stateBits = stateBits;
+                plan.bits = 9 + stateBits.positionInBits;
 
                 if (nt.hasSyncStrategy && lastWrite != null)
                 {
@@ -1048,13 +1080,29 @@ namespace PurrNet.Modules
         }
 
         private void FlushUnreliablePacket(PlayerID player, NTUnreliableSendStream stream, BitPacker packer,
-            List<NTUnreliableEntry> pending, int countPos, int writtenCount)
+            List<NTUnreliableEntry> pending, int countPos, int writtenCount, NTShareGroup record)
         {
             var lastPos = packer.positionInBits;
             packer.SetBitPosition(countPos);
             Packer<int>.Write(packer, writtenCount);
             packer.SetBitPosition(lastPos);
 
+            CommitPacket(player, stream, packer, pending);
+
+            if (record != null)
+            {
+                record.packets.Add(packer);
+                record.entries.Add(pending);
+            }
+            else
+            {
+                packer.Dispose();
+            }
+        }
+
+        private void CommitPacket(PlayerID player, NTUnreliableSendStream stream, BitPacker packer,
+            List<NTUnreliableEntry> pending)
+        {
             ushort seq = stream.nextSeq;
             ref var slot = ref stream.ring[seq % NTUnreliable.RING_SIZE];
             if (slot.entries != null)
@@ -1078,11 +1126,224 @@ namespace PurrNet.Modules
             }
 
             _broadcaster.Send(player, delta, Channel.Unreliable);
-
-            packer.Dispose();
         }
 
-        private void SendUnreliableStates(PlayerID player, NTUnreliableSendStream stream)
+        private struct NTShareKey
+        {
+            public NetworkID nid;
+            public ushort tick;
+            public int dist;
+            public byte gen;
+            public byte mode;
+            public uint genEpoch;
+            public NetworkTransformVelocity velocity;
+        }
+
+        private sealed class NTShareGroup
+        {
+            public ulong hash;
+            public long budgetBits;
+            public int keyCount;
+            public NTShareKey[] keys = new NTShareKey[64];
+            public readonly List<BitPacker> packets = new();
+            public readonly List<List<NTUnreliableEntry>> entries = new();
+        }
+
+        private readonly List<NTShareGroup> _shareGroups = new();
+        private int _shareGroupCount;
+        private NTShareKey[] _shareKeys = new NTShareKey[64];
+
+        private static ulong MixKey(ulong hash, in NTShareKey key)
+        {
+            const ulong prime = 1099511628211UL;
+            var v = key.velocity;
+            hash = (hash ^ key.nid.id.value) * prime;
+            hash = (hash ^ key.nid.scope.id.value) * prime;
+            hash = (hash ^ (key.tick | ((ulong)(uint)key.dist << 16) | ((ulong)key.gen << 48) | ((ulong)key.mode << 56))) * prime;
+            hash = (hash ^ key.genEpoch) * prime;
+            hash = (hash ^ ((uint)v.posX | ((ulong)(uint)v.posY << 32))) * prime;
+            hash = (hash ^ ((uint)v.posZ | ((ulong)(uint)v.scaleX << 32))) * prime;
+            hash = (hash ^ ((uint)v.scaleY | ((ulong)(uint)v.scaleZ << 32))) * prime;
+            hash = (hash ^ ((ushort)v.rotX | ((ulong)(ushort)v.rotY << 16) | ((ulong)(ushort)v.rotZ << 32) |
+                            ((ulong)(ushort)v.rotW << 48))) * prime;
+            return hash;
+        }
+
+        private static bool KeyEquals(in NTShareKey a, in NTShareKey b)
+        {
+            return a.mode == b.mode && a.tick == b.tick && a.dist == b.dist && a.gen == b.gen &&
+                   a.genEpoch == b.genEpoch && a.nid.Equals(b.nid) &&
+                   a.velocity.posX == b.velocity.posX && a.velocity.posY == b.velocity.posY &&
+                   a.velocity.posZ == b.velocity.posZ && a.velocity.rotX == b.velocity.rotX &&
+                   a.velocity.rotY == b.velocity.rotY && a.velocity.rotZ == b.velocity.rotZ &&
+                   a.velocity.rotW == b.velocity.rotW && a.velocity.scaleX == b.velocity.scaleX &&
+                   a.velocity.scaleY == b.velocity.scaleY && a.velocity.scaleZ == b.velocity.scaleZ;
+        }
+
+        private bool TryBuildShareKeys(NTUnreliableSendStream stream, ushort currentTick, out int keyCount,
+            out ulong hash)
+        {
+            keyCount = 0;
+            hash = 14695981039346656037UL;
+
+            if (stream.generationOverrides.Count > 0)
+                return false;
+
+            var pending = stream.pending;
+            if (_shareKeys.Length < pending.Count)
+                System.Array.Resize(ref _shareKeys, System.Math.Max(pending.Count, _shareKeys.Length * 2));
+
+            for (int i = 0; i < pending.Count;)
+            {
+                var nt = pending[i];
+                if (!nt || !nt.id.HasValue)
+                {
+                    pending.RemoveAt(i);
+                    continue;
+                }
+
+                if (nt.hasSyncStrategy || nt.adaptiveDebugDumpEnabled)
+                    return false;
+
+                var nid = nt.id.Value;
+                bool hasAcked = stream.acked.TryGetValue(nid, out var baseline) && baseline.genEpoch == nt.sendGenEpoch;
+
+                if (hasAcked && baseline.revision == nt.capturedRevision)
+                {
+                    pending.RemoveAt(i);
+                    continue;
+                }
+
+                int dist = hasAcked ? (int)(stream.nextOrder - baseline.order) : 0;
+                int tickDist = hasAcked ? (short)(currentTick - baseline.tick) : 0;
+                bool canDelta = hasAcked && dist >= 1 && dist <= NTUnreliable.MAX_BASELINE_AGE && tickDist >= 1 &&
+                                nt.CanDeltaAgainst(baseline.state);
+
+                ref var key = ref _shareKeys[keyCount++];
+                key.nid = nid;
+
+                if (canDelta)
+                {
+                    key.mode = 1;
+                    key.tick = baseline.tick;
+                    key.dist = dist;
+                    key.gen = baseline.gen;
+                    key.genEpoch = baseline.genEpoch;
+                    key.velocity = baseline.velocity;
+                }
+                else
+                {
+                    key.mode = 2;
+                    key.tick = 0;
+                    key.dist = 0;
+                    key.gen = nt.sendGen;
+                    key.genEpoch = nt.sendGenEpoch;
+                    key.velocity = default;
+                }
+
+                hash = MixKey(hash, key);
+                i++;
+            }
+
+            return true;
+        }
+
+        private NTShareGroup FindShareGroup(ulong hash, int keyCount, long budgetBits)
+        {
+            for (int g = 0; g < _shareGroupCount; g++)
+            {
+                var group = _shareGroups[g];
+                if (group.hash != hash || group.keyCount != keyCount || group.budgetBits != budgetBits)
+                    continue;
+
+                bool equal = true;
+                for (int i = 0; i < keyCount && equal; i++)
+                    equal = KeyEquals(group.keys[i], _shareKeys[i]);
+
+                if (equal)
+                    return group;
+            }
+
+            return null;
+        }
+
+        private NTShareGroup AcquireShareGroup(ulong hash, int keyCount, long budgetBits)
+        {
+            if (_shareGroupCount == _shareGroups.Count)
+                _shareGroups.Add(new NTShareGroup());
+
+            var group = _shareGroups[_shareGroupCount++];
+            group.hash = hash;
+            group.keyCount = keyCount;
+            group.budgetBits = budgetBits;
+
+            if (group.keys.Length < keyCount)
+                group.keys = new NTShareKey[System.Math.Max(keyCount, group.keys.Length * 2)];
+
+            System.Array.Copy(_shareKeys, group.keys, keyCount);
+            return group;
+        }
+
+        private void ReleaseShareGroups()
+        {
+            for (int g = 0; g < _shareGroupCount; g++)
+            {
+                var group = _shareGroups[g];
+                for (int p = 0; p < group.packets.Count; p++)
+                    group.packets[p].Dispose();
+                group.packets.Clear();
+                group.entries.Clear();
+            }
+
+            _shareGroupCount = 0;
+        }
+
+        private void ReplayShareGroup(PlayerID player, NTUnreliableSendStream stream, NTShareGroup group)
+        {
+            using var _ = _replayMarker.Auto();
+
+            for (int p = 0; p < group.packets.Count; p++)
+            {
+                var source = group.entries[p];
+                var entries = ListPool<NTUnreliableEntry>.Instantiate();
+                entries.AddRange(source);
+                entriesWrittenCount += entries.Count;
+                sharedPacketCount++;
+                CommitPacket(player, stream, group.packets[p], entries);
+            }
+        }
+
+        private void SendStatesShared(PlayerID player, PlayerID localPlayer)
+        {
+            var stream = PrepareSendStream(player, localPlayer);
+            if (stream.pending.Count == 0)
+                return;
+
+            if (stream.budgetBits == 0)
+                stream.budgetBits = CalculateBudgetBits(_manager.GetMTU(player, Channel.Unreliable, _asServer));
+
+            if (!TryBuildShareKeys(stream, _currentTick, out int keyCount, out ulong hash))
+            {
+                if (stream.pending.Count > 0)
+                    SendUnreliableStates(player, stream, null);
+                return;
+            }
+
+            if (keyCount == 0)
+                return;
+
+            var group = FindShareGroup(hash, keyCount, stream.budgetBits);
+            if (group != null)
+            {
+                ReplayShareGroup(player, stream, group);
+                return;
+            }
+
+            group = AcquireShareGroup(hash, keyCount, stream.budgetBits);
+            SendUnreliableStates(player, stream, group);
+        }
+
+        private void SendUnreliableStates(PlayerID player, NTUnreliableSendStream stream, NTShareGroup record)
         {
             _prepareUnreliableMarker.Begin();
 
@@ -1099,8 +1360,6 @@ namespace PurrNet.Modules
             NetworkID lastNid = default;
             PackedInt lastLen = default;
 
-            using var tmp = BitPackerPool.Get();
-
             for (var i = 0; i < stream.pending.Count;)
             {
                 var nt = stream.pending[i];
@@ -1113,7 +1372,8 @@ namespace PurrNet.Modules
                     continue;
                 }
 
-                var writeResult = TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out var newLastDist,
+                var nid = nt.id.Value;
+                var writeResult = TryWriteEntry(nt, stream, _currentTick, lastDist, out var plan, out var newLastDist,
                     out var velocity, out var wireGen, out var wireGenEpoch);
 
                 if (nt.adaptiveDebugDumpEnabled)
@@ -1135,11 +1395,11 @@ namespace PurrNet.Modules
 
                 entriesWrittenCount++;
 
-                int entryBits = tmp.positionInBits;
+                int entryBits = plan.bits;
 
                 if (writtenCount > 0 && packer!.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
                 {
-                    FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
+                    FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount, record);
                     packer = null;
                     pending = null;
                     writtenCount = 0;
@@ -1148,10 +1408,10 @@ namespace PurrNet.Modules
                     lastLen = default;
 
                     // the flush advanced nextOrder; baseline distances change, so re-encode
-                    if (TryWriteEntry(tmp, nt, stream, _currentTick, lastDist, out newLastDist, out velocity,
+                    if (TryWriteEntry(nt, stream, _currentTick, lastDist, out plan, out newLastDist, out velocity,
                             out wireGen, out wireGenEpoch) != NTWriteResult.Written)
                         continue;
-                    entryBits = tmp.positionInBits;
+                    entryBits = plan.bits;
                 }
 
                 if (packer == null)
@@ -1163,31 +1423,31 @@ namespace PurrNet.Modules
                 }
 
                 PackedInt length = entryBits;
-                tmp.ResetPositionAndMode(true);
 
                 DeltaPacker<PackedInt>.Write(packer, lastLen, length);
                 lastLen = length;
-                DeltaPacker<NetworkID>.Write(packer, lastNid, nt.id!.Value);
-                packer.WriteBits(tmp, length);
+                DeltaPacker<NetworkID>.Write(packer, lastNid, nid);
+                WriteEntry(packer, plan);
 
-                lastNid = nt.id.Value;
+                lastNid = nid;
                 lastDist = newLastDist;
                 writtenCount += 1;
                 pending.Add(new NTUnreliableEntry
                 {
-                    nid = nt.id.Value,
+                    nid = lastNid,
                     state = nt.capturedState,
                     velocity = velocity,
                     tick = _currentTick,
                     gen = wireGen,
                     genEpoch = wireGenEpoch,
-                    revision = nt.capturedRevision
+                    revision = nt.capturedRevision,
+                    transform = nt
                 });
                 i++;
             }
 
             if (writtenCount > 0)
-                FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount);
+                FlushUnreliablePacket(player, stream, packer, pending, countPos, writtenCount, record);
 
             _prepareUnreliableMarker.End();
         }
@@ -1196,7 +1456,7 @@ namespace PurrNet.Modules
         {
             var stream = PrepareSendStream(player, localPlayer);
             if (stream.pending.Count > 0)
-                SendUnreliableStates(player, stream);
+                SendUnreliableStates(player, stream, null);
         }
 
         public void Register(NetworkTransform networkTransform)
@@ -1486,6 +1746,7 @@ namespace PurrNet.Modules
 
             int ntCount = _networkTransforms.Count;
             _changedTransforms.Clear();
+            _changedIds.Clear();
 
             _gatherStateMarker.Begin();
             for (var i = 0; i < ntCount; i++)
@@ -1497,8 +1758,11 @@ namespace PurrNet.Modules
                     nt.GatherState();
                     nt.CaptureUnreliableState(_currentTick);
 
-                    if (nt.capturedRevision != previousRevision)
+                    if (nt.capturedRevision != previousRevision && nt.id.HasValue)
+                    {
                         _changedTransforms.Add(nt);
+                        _changedIds.Add(nt.id.Value);
+                    }
                 }
             }
             _gatherStateMarker.End();
@@ -1517,8 +1781,10 @@ namespace PurrNet.Modules
                     if (player == localPlayer)
                         continue;
 
-                    SendStatesTo(player, localPlayer);
+                    SendStatesShared(player, localPlayer);
                 }
+
+                ReleaseShareGroups();
             }
 
             FlushAcks();

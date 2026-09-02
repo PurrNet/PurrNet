@@ -320,6 +320,17 @@ namespace PurrNet.Modules
 #endif
                             module.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
+                        else if (signature.targetPlayerList is IReadOnlyList<PlayerID> groupTargets)
+                        {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            if (Statistics.shouldTrack && Hasher.TryGetType(packet.header.typeHash, out var type))
+                            {
+                                for (var i = groupTargets.Count - 1; i >= 0; --i)
+                                    Statistics.SentRPC(type, signature.type, signature.rpcName, packet.data, null);
+                            }
+#endif
+                            module.BatchToTargets(groupTargets, packet, signature.channel, default, signature.mtuExceeded, signature.immediate);
+                        }
                         else
                         {
                             var all = module._playersManager.players;
@@ -1034,6 +1045,25 @@ namespace PurrNet.Modules
                 players.Add(player);
             }
             return players;
+        }
+
+        [UsedByIL]
+        public static void ModifyManyToGroup(ref RPCSignature signature, DeltaFanoutGrouper grouper, int group)
+        {
+            var members = grouper.GetMembers(group);
+
+            signature.targetPlayerEnumerable = null;
+
+            if (members.Count == 1)
+            {
+                signature.targetPlayer = members[0];
+                signature.targetPlayerList = null;
+            }
+            else
+            {
+                signature.targetPlayer = null;
+                signature.targetPlayerList = members;
+            }
         }
 
         [UsedByIL]

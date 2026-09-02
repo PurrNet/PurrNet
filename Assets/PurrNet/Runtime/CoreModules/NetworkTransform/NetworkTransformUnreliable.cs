@@ -70,9 +70,11 @@ namespace PurrNet.Modules
         public uint genEpoch;
         // Send-side only: revision of the captured state, used for a cheap unchanged check.
         public uint revision;
+        // Send-side only: the transform that wrote this entry, so ack adoption skips the registry search.
+        public NetworkTransform transform;
     }
 
-    internal struct NTUnreliableBaseline
+    internal sealed class NTUnreliableBaseline
     {
         public NetworkTransformState state;
         public NetworkTransformVelocity velocity;

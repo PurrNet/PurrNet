@@ -329,6 +329,17 @@ namespace PurrNet
 #endif
                             rpcModule.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded, signature.immediate);
                         }
+                        else if (signature.targetPlayerList is IReadOnlyList<PlayerID> groupTargets)
+                        {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            if (Statistics.shouldTrack)
+                            {
+                                for (var i = groupTargets.Count - 1; i >= 0; --i)
+                                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData, this);
+                            }
+#endif
+                            rpcModule.BatchToTargets(groupTargets, packet, signature.channel, default, signature.mtuExceeded, signature.immediate);
+                        }
                         else
                         {
                             if (observers.Count == 0)
@@ -481,6 +492,17 @@ namespace PurrNet
                             Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData, this);
 #endif
                             rpcModule.BatchToTarget(signature.targetPlayer.Value, packet, signature.channel, signature.mtuExceeded, signature.immediate);
+                        }
+                        else if (signature.targetPlayerList is IReadOnlyList<PlayerID> groupTargets)
+                        {
+#if UNITY_EDITOR || PURR_RUNTIME_PROFILING
+                            if (Statistics.shouldTrack)
+                            {
+                                for (var i = groupTargets.Count - 1; i >= 0; --i)
+                                    Statistics.SentRPC(statisticsParent, signature.type, signature.rpcName, packet.rpcData, this);
+                            }
+#endif
+                            rpcModule.BatchToTargets(groupTargets, packet, signature.channel, default, signature.mtuExceeded, signature.immediate);
                         }
                         else
                         {
