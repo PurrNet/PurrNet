@@ -315,7 +315,7 @@ namespace PurrNet.Modules
             if (!_manager.networkRules.AddressablesWaitForLoadBeforeObserver)
                 return true;
 
-            if (!_manager.prefabResolver.TryGetAddressableGuid(identity.prefabId, out var guid))
+            if (!_manager.prefabResolver.TryGetAddressableGuid(identity.scopedPrefabId, out var guid))
                 return true;
 
             if (!_manager.TryGetModule<AddressablesSyncModule>(true, out var sync))

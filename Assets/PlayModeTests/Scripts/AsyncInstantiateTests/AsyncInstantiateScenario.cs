@@ -2801,7 +2801,7 @@ internal sealed class AsyncInstantiateDeferredPrefabProvider : IAsyncPrefabProvi
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         if (!_inner.TryGetPrefabData(_prefab, out var data))
             throw new InvalidOperationException("The deferred test prefab is not registered.");
-        _prefabId = data.prefabId;
+        _prefabId = (int)data.prefabId;
         Reset();
     }
 

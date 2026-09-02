@@ -55,7 +55,7 @@ namespace PurrNet
                 return instance;
             }
 
-            if (!HierarchyPool.TryGetPrefabPrototype(prefab, out var prototype))
+            if (!HierarchyPool.TryGetPrefabPrototype(prefabData.prefabId, out var prototype))
             {
                 var instance = instantiateData.Instantiate();
                 if (notifyCreated)
@@ -135,7 +135,7 @@ namespace PurrNet
 
             var manager = NetworkManager.main;
 
-            if (!manager || manager.prefabProvider == null)
+            if (!manager)
             {
                 prefabData = default;
                 return false;

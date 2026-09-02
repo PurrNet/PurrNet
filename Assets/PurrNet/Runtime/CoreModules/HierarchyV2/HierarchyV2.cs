@@ -142,7 +142,8 @@ namespace PurrNet.Modules
             _asServer = asServer;
             _playersManager = playersManager;
 
-            _scenePool = NetworkPoolManager.GetScenePool(scene, sceneId);
+            _scenePool = NetworkPoolManager.GetScenePool(scene, sceneId, manager);
+            _scenePool.Warmup(manager.prefabResolver.GetScenePrefabs(sceneId));
             _prefabsPool = NetworkPoolManager.GetPool(manager);
 
             UnityLatestUpdate.TriggerPendingAsaps();
@@ -2841,7 +2842,7 @@ namespace PurrNet.Modules
                 if (!identity || identity.shouldBePooled)
                     continue;
 
-                if (_manager.prefabResolver.TryGetPrefabData(identity.prefabId, out var prefabData) &&
+                if (_manager.prefabResolver.TryGetPrefabData(identity.scopedPrefabId, out var prefabData) &&
                     prefabData.pooled)
                     return true;
             }
@@ -2865,7 +2866,7 @@ namespace PurrNet.Modules
             if (obj.scene.handle != _scene.handle)
                 return;
 
-            if (!_manager.prefabResolver.TryGetPrefabData(prefab, out var data))
+            if (!_manager.prefabResolver.TryGetPrefabData(prefab, _sceneId, out var data))
                 return;
 
             NetworkManager.SetupPrefabInfo(obj, data.prefabId, data.pooled);
@@ -2899,7 +2900,7 @@ namespace PurrNet.Modules
             if (obj.scene.handle != _scene.handle)
                 return;
 
-            if (!_manager.prefabResolver.TryGetPrefabData(prefab, out var data))
+            if (!_manager.prefabResolver.TryGetPrefabData(prefab, _sceneId, out var data))
                 return;
 
             // Async-origin instances are never allowed into PurrNet's pool, even when the
@@ -2961,6 +2962,14 @@ namespace PurrNet.Modules
 
             if (id.isSpawned)
                 return;
+
+            if (!id.isSetup)
+            {
+                PurrLogger.LogError($"Failed to spawn object '{gameObject.name}'. It has no prefab info, " +
+                                    "so peers could not recreate it. Register its prefab in a NetworkPrefabs asset " +
+                                    "(global or scene scoped) and instantiate it through PurrNet.", gameObject);
+                return;
+            }
 
             if (!id.HasSpawnAuthority(_manager, _asServer))
             {
@@ -3815,7 +3824,7 @@ namespace PurrNet.Modules
 
             try
             {
-                var pair = new PoolPair(_scenePool, temporaryPool);
+                var pair = new PoolPair(_scenePool, temporaryPool, temporaryPool);
                 if (!HierarchyPool.TryBuildPrototype(pair, prototype, createdNids, out var result,
                         out var shouldActivate))
                     return null;
@@ -3827,7 +3836,7 @@ namespace PurrNet.Modules
                         var identity = createdNids[i];
                         if (!identity || identity.prefabId < 0)
                             continue;
-                        identity.PreparePrefabInfo(identity.prefabId, identity.componentIndex, false, false);
+                        identity.PreparePrefabInfo(identity.scopedPrefabId, identity.componentIndex, false, false);
                     }
                 }
 

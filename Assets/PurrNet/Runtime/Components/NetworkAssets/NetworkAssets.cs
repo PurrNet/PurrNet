@@ -223,6 +223,7 @@ namespace PurrNet
                 try
                 {
                     idToAsset[id] = obj;
+                    _count = Math.Max(_count, id + 1);
                     objectIdToId[GetObjectId(obj)] = id;
                     RegisterTypeNameFallback(obj, id);
                     RegisterPersistentId(obj, id, persistentId);
@@ -239,6 +240,7 @@ namespace PurrNet
 
         private void ClearLookups()
         {
+            _count = 0;
             idToAsset.Clear();
             objectIdToId.Clear();
             persistentIdToAsset.Clear();
@@ -337,6 +339,7 @@ namespace PurrNet
                 if (objectIdToId.ContainsKey(objectId)) continue;
 
                 idToAsset[i] = obj;
+                _count = Math.Max(_count, i + 1);
                 objectIdToId[objectId] = i;
 
                 RegisterTypeNameFallback(obj, i);
@@ -524,6 +527,13 @@ namespace PurrNet
             }
         }
 #endif
+
+        private int _count;
+
+        /// <summary>
+        /// Number of ids this registry hands out; the highest id is count - 1.
+        /// </summary>
+        public int count => _count;
 
         public bool TryGetAsset(int id, out Object obj) => idToAsset.TryGetValue(id, out obj);
 

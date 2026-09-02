@@ -11,11 +11,24 @@ namespace PurrNet.Modules
     {
         public readonly HierarchyPool scenePool;
         public readonly HierarchyPool prefabPool;
+        public readonly HierarchyPool scopedPrefabPool;
 
-        public PoolPair(HierarchyPool scenePool, HierarchyPool prefabPool)
+        public PoolPair(HierarchyPool scenePool, HierarchyPool prefabPool, HierarchyPool scopedPrefabPool = null)
         {
             this.scenePool = scenePool;
             this.prefabPool = prefabPool;
+            this.scopedPrefabPool = scopedPrefabPool ?? scenePool;
+        }
+
+        /// <summary>
+        /// Scene objects and scene scoped prefabs live with their scene; global prefabs live in the shared pool.
+        /// </summary>
+        public HierarchyPool GetPool(PrefabID id)
+        {
+            if (!id.isValid)
+                return scenePool;
+
+            return id.isSceneScoped ? scopedPrefabPool : prefabPool;
         }
     }
 
@@ -31,7 +44,36 @@ namespace PurrNet.Modules
         [UsedImplicitly] private readonly PrefabResolver _prefabs;
         private readonly bool _forceWarmupPieces;
 
-        private static readonly Dictionary<GameObject, GameObjectPrototype> _prefabPrototypes = new();
+        private static readonly Dictionary<PrefabID, GameObjectPrototype> _prefabPrototypes = new();
+
+        /// <summary>
+        /// Drops cached prototypes of prefabs scoped to the given scene so nothing outlives it.
+        /// </summary>
+        public static void EvictPrototypes(SceneID scene)
+        {
+            var stale = ListPool<PrefabID>.Instantiate();
+
+            foreach (var (id, _) in _prefabPrototypes)
+            {
+                if (id.scope.HasValue && id.scope.Value == scene)
+                    stale.Add(id);
+            }
+
+            for (int i = 0; i < stale.Count; i++)
+            {
+                if (_prefabPrototypes.Remove(stale[i], out var prototype))
+                    prototype.Dispose();
+            }
+
+            ListPool<PrefabID>.Destroy(stale);
+        }
+
+        public static void ClearPrototypes()
+        {
+            foreach (var (_, prototype) in _prefabPrototypes)
+                prototype.Dispose();
+            _prefabPrototypes.Clear();
+        }
 
         readonly HashSet<GameObject> _alreadyWarmedUp = new HashSet<GameObject>();
 
@@ -51,7 +93,12 @@ namespace PurrNet.Modules
             if (_prefabs == null)
                 return;
 
-            foreach (var prefabData in _prefabs.allPrefabs)
+            Warmup(_prefabs.allPrefabs);
+        }
+
+        public void Warmup(IEnumerable<PrefabData> prefabs)
+        {
+            foreach (var prefabData in prefabs)
             {
                 if (prefabData.pooled && _alreadyWarmedUp.Add(prefabData.prefab))
                 {
@@ -66,10 +113,10 @@ namespace PurrNet.Modules
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab, _parent);
             NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled || _forceWarmupPieces);
 
-            if (!_prefabPrototypes.ContainsKey(prefabData.prefab))
+            if (!_prefabPrototypes.ContainsKey(prefabData.prefabId))
             {
                 var prototype = GetFullPrototype(copy.transform, null, true);
-                _prefabPrototypes.Add(prefabData.prefab, prototype);
+                _prefabPrototypes.Add(prefabData.prefabId, prototype);
             }
 
             PutBackInPool(copy, true);
@@ -159,8 +206,8 @@ namespace PurrNet.Modules
 
             foreach (var child in virtualNodes)
             {
-                var pid = new PrefabPieceID(child.prefabId, child.componentIndex);
-                var pair = pid.prefabId.isValid ? pool.prefabPool : pool.scenePool;
+                var pid = new PrefabPieceID(child.scopedPrefabId, child.componentIndex);
+                var pair = pool.GetPool(pid.prefabId);
 
                 // check if we should pool this object or not
                 if (!child.shouldBePooled)
@@ -216,7 +263,7 @@ namespace PurrNet.Modules
                 if (!child || (respectSkipSceneAutoSpawning && child.skipSceneAutoSpawning))
                     continue;
 
-                var pid = new PrefabPieceID(child.prefabId, child.componentIndex);
+                var pid = new PrefabPieceID(child.scopedPrefabId, child.componentIndex);
 
                 if (!pidSet.Add(pid)) continue;
 
@@ -263,7 +310,7 @@ namespace PurrNet.Modules
             if (!_activeScenePieceSet.Add(target))
                 return;
 
-            var pid = new PrefabPieceID(pieceIdentity.prefabId, pieceIdentity.componentIndex);
+            var pid = new PrefabPieceID(pieceIdentity.scopedPrefabId, pieceIdentity.componentIndex);
             if (!_activeScenePieces.TryGetValue(pid, out var queue))
             {
                 queue = QueuePool<GameObject>.Instantiate();
@@ -347,7 +394,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            var pid = new PrefabPieceID(identity.prefabId, identity.componentIndex);
+            var pid = new PrefabPieceID(identity.scopedPrefabId, identity.componentIndex);
             if (!_pool.TryGetValue(pid, out var queue))
             {
                 queue = QueuePool<GameObject>.Instantiate();
@@ -416,7 +463,14 @@ namespace PurrNet.Modules
         {
             while (true)
             {
-                var pool = pid.prefabId.isValid ? pair.prefabPool : pair.scenePool;
+                var pool = pair.GetPool(pid.prefabId);
+
+                if (pool == null)
+                {
+                    PurrLogger.LogError($"No pool available for piece '{pid}'; is the prefab registered on this peer?");
+                    instance = null;
+                    return false;
+                }
 
                 if (!pid.prefabId.isValid && pool.TryGetActiveScenePiece(pid, out instance))
                     return true;
@@ -427,6 +481,7 @@ namespace PurrNet.Modules
 
                     if (!pool._pool.TryGetValue(pid, out queue))
                     {
+                        PurrLogger.LogError($"Piece '{pid}' is still missing from the pool after warmup");
                         instance = null;
                         return false;
                     }
@@ -438,6 +493,7 @@ namespace PurrNet.Modules
 
                     if (queue.Count == 0)
                     {
+                        PurrLogger.LogError($"Pool for piece '{pid}' is empty after warmup");
                         instance = null;
                         return false;
                     }
@@ -469,12 +525,18 @@ namespace PurrNet.Modules
 
         private void Warmup(PrefabPieceID pid)
         {
-            if (pid.prefabId.isValid && _prefabs != null)
+            if (!pid.prefabId.isValid)
+                return;
+
+            if (_prefabs == null)
             {
-                if (_prefabs.TryGetPrefabData(pid.prefabId, out var prefabData))
-                    Warmup(prefabData);
-                else PurrLogger.LogError($"Prefab with piece id of '{pid}' was not found");
+                PurrLogger.LogError($"Cannot warm up piece '{pid}': this pool has no prefab resolver");
+                return;
             }
+
+            if (_prefabs.TryGetPrefabData(pid.prefabId, out var prefabData))
+                Warmup(prefabData);
+            else PurrLogger.LogError($"Prefab with piece id of '{pid}' was not found");
         }
 
         public static DisposableList<int> GetInvPath(Transform parent, Transform transform)
@@ -510,20 +572,20 @@ namespace PurrNet.Modules
             ListPool<NetworkIdentity>.Destroy(children);
         }
 
-        public static bool TryGetPrefabPrototype(GameObject prefab, out GameObjectPrototype prototype)
+        public static bool TryGetPrefabPrototype(PrefabID prefabId, out GameObjectPrototype prototype)
         {
-            return _prefabPrototypes.TryGetValue(prefab, out prototype);
+            return _prefabPrototypes.TryGetValue(prefabId, out prototype);
         }
 
         public static bool TryGetOrCreatePrefabPrototype(PrefabData prefabData, out GameObjectPrototype prototype)
         {
-            if (_prefabPrototypes.TryGetValue(prefabData.prefab, out prototype))
+            if (_prefabPrototypes.TryGetValue(prefabData.prefabId, out prototype))
                 return true;
 
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab);
             NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled);
             prototype = GetFullPrototype(copy.transform, null, true);
-            _prefabPrototypes.Add(prefabData.prefab, prototype);
+            _prefabPrototypes.Add(prefabData.prefabId, prototype);
             UnityProxy.DestroyDirectly(copy);
             return true;
         }
@@ -575,7 +637,7 @@ namespace PurrNet.Modules
                     }
                 }
 
-                var pid = new PrefabPieceID(current.identity.prefabId, current.identity.componentIndex);
+                var pid = new PrefabPieceID(current.identity.scopedPrefabId, current.identity.componentIndex);
                 trs.GetLocalPositionAndRotation(out var localPos, out var localRot);
                 var localTrs = new LocalTransform(localPos, localRot, trs.localScale);
                 var piece = new GameObjectFrameworkPiece(
@@ -644,7 +706,7 @@ namespace PurrNet.Modules
                     ++actualChildCount;
                 }
 
-                var pid = new PrefabPieceID(current.identity.prefabId, current.identity.componentIndex);
+                var pid = new PrefabPieceID(current.identity.scopedPrefabId, current.identity.componentIndex);
                 trs.GetLocalPositionAndRotation(out var localPos, out var localRot);
                 var localTrs = new LocalTransform(localPos, localRot, trs.localScale);
 
@@ -713,14 +775,9 @@ namespace PurrNet.Modules
                 return TryBuildPrototypeHelper(pair, prototype, createdNids, null, 0, out result,
                     out shouldBeActive);
             }
-            catch
-#if PURRNET_DEBUG_POOLING
-                (System.Exception e)
-#endif
+            catch (Exception e)
             {
-#if PURRNET_DEBUG_POOLING
                 PurrLogger.LogError($"Build prototype exception: {e.Message}\n{e.StackTrace}");
-#endif
                 result = null;
                 shouldBeActive = false;
                 return false;

@@ -36,6 +36,8 @@ namespace PurrNet
         public override IEnumerable<PrefabData> allPrefabs => prefabLookup.Values;
         public IEnumerable<string> persistentIds => persistentIdToPrefabData.Keys;
 
+        public int count => prefabLookup.Count;
+
         private readonly Dictionary<int, PrefabData> prefabLookup = new();
         private readonly Dictionary<string, PrefabData> persistentIdToPrefabData = new();
         private readonly Dictionary<int, string> prefabIdToPersistentId = new();
@@ -72,7 +74,7 @@ namespace PurrNet
                 return true;
 
             if (TryGetPrefabData(prefab, out var prefabData))
-                return TryGetPersistentId(prefabData.prefabId, out persistentId);
+                return TryGetPersistentId((int)prefabData.prefabId, out persistentId);
 
             persistentId = null;
             return false;
@@ -216,8 +218,7 @@ namespace PurrNet
                 return;
 
             persistentIdToPrefabData.TryAdd(persistentId, prefabData);
-
-            prefabIdToPersistentId[prefabData.prefabId] = persistentId;
+            prefabIdToPersistentId[(int)prefabData.prefabId] = persistentId;
 
             if (prefabData.prefab)
                 prefabToPersistentId[prefabData.prefab] = persistentId;

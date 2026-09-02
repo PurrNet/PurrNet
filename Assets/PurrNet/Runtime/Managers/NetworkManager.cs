@@ -581,7 +581,7 @@ namespace PurrNet
                 }
 
                 child.PreparePrefabInfo(
-                    (int)pid,
+                    pid,
                     i == runStart ? i : children[runStart].componentIndex,
                     shouldBePooled,
                     false
