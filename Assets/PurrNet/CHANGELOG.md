@@ -1,3 +1,10 @@
+# [1.23.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.14...v1.23.0-beta.15) (2026-09-02)
+
+
+### Bug Fixes
+
+* Removed PurrChat from toolbar ([ed451d5](https://github.com/PurrNet/PurrNet/commit/ed451d5ce3555df05c2d8386b24df5a981c29e3a))
+
 # [1.23.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.13...v1.23.0-beta.14) (2026-09-02)
 
 
