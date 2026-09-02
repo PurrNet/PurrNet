@@ -1,3 +1,11 @@
+# [1.23.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.18...v1.23.0-beta.19) (2026-09-02)
+
+
+### Features
+
+* allow a custom prefab resolver for custom resolution of prefabs ([d1f1caa](https://github.com/PurrNet/PurrNet/commit/d1f1caa0374252cfbefd4c026de12a6ed7408c79))
+* NetworkScenePrefabs/Assets ([1ab95e6](https://github.com/PurrNet/PurrNet/commit/1ab95e63f0271912241ba0dfe99180b1a54ff6ac))
+
 # [1.23.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.17...v1.23.0-beta.18) (2026-09-02)
 
 
