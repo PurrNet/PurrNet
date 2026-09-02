@@ -1,3 +1,10 @@
+# [1.23.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.13...v1.23.0-beta.14) (2026-09-02)
+
+
+### Bug Fixes
+
+* reusing shared data instead of re-packing each time ([c0928ba](https://github.com/PurrNet/PurrNet/commit/c0928ba78641efe709c5fefa73e13e5e3eab055b))
+
 # [1.23.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.12...v1.23.0-beta.13) (2026-09-01)
 
 
