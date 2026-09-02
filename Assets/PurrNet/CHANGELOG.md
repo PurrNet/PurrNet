@@ -1,3 +1,10 @@
+# [1.23.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.17...v1.23.0-beta.18) (2026-09-02)
+
+
+### Bug Fixes
+
+* Making up for path delay with pings ([e2c160a](https://github.com/PurrNet/PurrNet/commit/e2c160abb995a65e4f34a6e8e8ff822d56ff2c35))
+
 # [1.23.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.16...v1.23.0-beta.17) (2026-09-02)
 
 
