@@ -206,22 +206,21 @@ namespace PurrNet
             return prefabResolver.TryGetPrefabDataByPersistentId(persistentId, out prefabData);
         }
 
+        private NetworkAssetResolver _networkAssetResolver;
+
+        /// <summary>
+        /// Resolves network asset ids and asset references to registered assets. All runtime lookups go through this.
+        /// </summary>
+        public NetworkAssetResolver networkAssetResolver => _networkAssetResolver ??= new NetworkAssetResolver(this);
+
         public bool TryGetNetworkAssetPersistentId(UnityEngine.Object asset, out string persistentId)
         {
-            if (_networkAssets)
-                return _networkAssets.TryGetPersistentId(asset, out persistentId);
-
-            persistentId = null;
-            return false;
+            return networkAssetResolver.TryGetPersistentId(asset, out persistentId);
         }
 
         public bool TryGetNetworkAssetByPersistentId(string persistentId, out UnityEngine.Object asset)
         {
-            if (_networkAssets)
-                return _networkAssets.TryGetAssetByPersistentId(persistentId, out asset);
-
-            asset = null;
-            return false;
+            return networkAssetResolver.TryGetAssetByPersistentId(persistentId, out asset);
         }
 
 #if ADDRESSABLES_PURRNET_SUPPORT

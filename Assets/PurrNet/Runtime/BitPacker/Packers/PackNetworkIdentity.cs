@@ -115,12 +115,12 @@ namespace PurrNet
                 if (NetworkManager.main == null || !NetworkManager.main.prefabResolver.TryGetPrefabData(trs.gameObject, out var data))
                 {
                     packer.WriteBit(true);
-                    if (NetworkManager.main != null && NetworkManager.main.networkAssets != null && NetworkManager.main.networkAssets.TryGetId(trs, out var tid))
+                    if (NetworkManager.main != null && NetworkManager.main.networkAssetResolver.TryGetId(trs, out _))
                     {
                         packer.WriteBit(true);
                         Packer.WriteAsNetworkAsset(packer, trs);
                     }
-                    else if (NetworkManager.main != null && NetworkManager.main.networkAssets != null && NetworkManager.main.networkAssets.TryGetId(trs.gameObject, out var gid))
+                    else if (NetworkManager.main != null && NetworkManager.main.networkAssetResolver.TryGetId(trs.gameObject, out _))
                     {
                         packer.WriteBit(false);
                         Packer.WriteAsNetworkAsset(packer, trs.gameObject);
