@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using JamesFrowen.SimpleWeb;
 using JetBrains.Annotations;
 using LiteNetLib;
@@ -262,6 +263,79 @@ namespace PurrNet.Transports
 
             var peer = _clientP2pSession && _p2pHostPeer != null ? _p2pHostPeer : _relayClientPeer;
             return GetRoundTripTime(peer);
+        }
+
+        /// <summary>
+        /// Pinging a PurrTransport joins the room as a throwaway client when a host is running it, which measures
+        /// the real link (direct P2P or relay). Without a room it pings the relay of the configured region over HTTP.
+        /// </summary>
+        protected override async Task<PingResult> PingInternal(string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)
+        {
+            if (!string.IsNullOrEmpty(_roomName))
+            {
+                var (checkedRoom, roomExists) = await WithDeadline(PurrTransportUtils.RoomExistsAsync(_masterServer, _roomName), timeoutSeconds);
+
+                if (checkedRoom && roomExists)
+                    return await ProbeConnection(address, port, useAddress, timeoutSeconds, token);
+            }
+
+            return await PingRelay(timeoutSeconds);
+        }
+
+        private async Task<PingResult> PingRelay(float timeoutSeconds)
+        {
+            try
+            {
+                var (found, server) = await WithDeadline(FindRelayServer(), timeoutSeconds);
+
+                if (!found)
+                    return PingResult.Failed($"Timed out after {timeoutSeconds:0.#}s while looking up relay servers.");
+
+                if (string.IsNullOrEmpty(server.apiEndpoint))
+                    return PingResult.Failed("No relay server available.");
+
+                var (pinged, ms) = await WithDeadline(PurrTransportUtils.PingRelayAsync(server), timeoutSeconds);
+
+                if (!pinged)
+                    return PingResult.Failed($"Timed out after {timeoutSeconds:0.#}s while pinging relay {server.region}.");
+
+                int rtt = Mathf.RoundToInt(ms);
+                return new PingResult(rtt, rtt, $"Relay {server.region} (HTTP)");
+            }
+            catch (Exception e)
+            {
+                return PingResult.Failed(e.Message);
+            }
+        }
+
+        private async Task<RelayServer> FindRelayServer()
+        {
+            var relayers = await PurrTransportUtils.GetRelayServersAsync(_masterServer);
+            var servers = relayers.servers;
+
+            if (servers == null || servers.Length == 0)
+                return default;
+
+            if (!string.IsNullOrEmpty(_region))
+            {
+                for (int i = 0; i < servers.Length; i++)
+                {
+                    if (servers[i].region == _region)
+                        return servers[i];
+                }
+            }
+
+            return await PurrTransportUtils.ActualGetRelayServerAsync(_masterServer);
+        }
+
+        private static async Task<(bool completed, T result)> WithDeadline<T>(Task<T> task, float seconds)
+        {
+            var winner = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(seconds)));
+
+            if (winner != task)
+                return (false, default);
+
+            return (true, await task);
         }
 
         public string clientLinkDescription

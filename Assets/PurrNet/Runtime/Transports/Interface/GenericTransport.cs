@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using PurrNet.Logging;
@@ -16,7 +17,9 @@ namespace PurrNet.Transports
         /// </summary>
         public virtual bool isPinging { get; private set; }
 
-        internal virtual bool isPumpedExternally { get; set; }
+        internal Func<bool> externalPump;
+
+        internal bool isPumpedExternally => externalPump != null && externalPump();
 
         /// <summary>
         /// Returns true if the transport is supported on the current platform.
@@ -218,7 +221,19 @@ namespace PurrNet.Transports
             PurrLogger.Log($"[{GetType().Name}] {result}", this);
         }
 
-        private async Task<PingResult> PingInternal(string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)
+        /// <summary>
+        /// Runs the ping. Transports can override this when a plain probe connection is not the right way
+        /// to measure latency, and call <see cref="ProbeConnection"/> for the default behaviour.
+        /// </summary>
+        protected virtual Task<PingResult> PingInternal(string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)
+        {
+            return ProbeConnection(address, port, useAddress, timeoutSeconds, token);
+        }
+
+        /// <summary>
+        /// Default ping: connect at the transport level, read the round trip time, then disconnect.
+        /// </summary>
+        protected async Task<PingResult> ProbeConnection(string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)
         {
             if (!isSupported)
                 return PingResult.Failed($"{GetType().Name} is not supported on this platform.");

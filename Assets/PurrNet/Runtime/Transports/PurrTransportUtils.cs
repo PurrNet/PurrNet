@@ -103,6 +103,19 @@ namespace PurrNet.Transports
             return await Retry<ClientJoinInfo>(10, () => ActualClientJoinInfo(server, roomName), cts);
         }
 
+        internal static async Task<bool> RoomExistsAsync(string server, string roomName)
+        {
+            try
+            {
+                await ActualClientJoinInfo(server, roomName);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static async Task<ClientJoinInfo> ActualClientJoinInfo(string server, string roomName)
         {
 #if UNITY_WEB

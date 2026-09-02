@@ -254,22 +254,12 @@ namespace PurrNet.Transports
             }
         }
 
-        internal override bool isPumpedExternally
-        {
-            get => base.isPumpedExternally;
-            set
-            {
-                base.isPumpedExternally = value;
-                PropagatePumping();
-            }
-        }
-
         private void PropagatePumping()
         {
             for (int i = 0; i < _transports.Length; i++)
             {
                 if (_transports[i])
-                    _transports[i].isPumpedExternally = isPumpedExternally;
+                    _transports[i].externalPump = () => isPumpedExternally;
             }
         }
 

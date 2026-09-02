@@ -374,8 +374,10 @@ namespace PurrNet
             _transportLayer.onDisconnected += OnLostConnection;
             _transportLayer.onConnectionState += OnConnectionState;
             _transportLayer.onDataReceived += OnDataReceived;
-            _transport.isPumpedExternally = true;
+            _transport.externalPump = IsTickingTransport;
         }
+
+        private bool IsTickingTransport() => _serverTickManager != null || _clientTickManager != null;
 
         private void TeardownTransportLayer()
         {
@@ -389,7 +391,7 @@ namespace PurrNet
             _transportLayer = null;
 
             if (_transport)
-                _transport.isPumpedExternally = false;
+                _transport.externalPump = null;
         }
 
         private bool IsProbeEvent(bool asServer) => !asServer && _transport && _transport.isPinging;
