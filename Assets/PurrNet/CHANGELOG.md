@@ -1,3 +1,31 @@
+# [1.23.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.17...v1.23.0-beta.18) (2026-09-02)
+
+
+### Bug Fixes
+
+* Making up for path delay with pings ([e2c160a](https://github.com/PurrNet/PurrNet/commit/e2c160abb995a65e4f34a6e8e8ff822d56ff2c35))
+
+# [1.23.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.16...v1.23.0-beta.17) (2026-09-02)
+
+
+### Bug Fixes
+
+* Pinging fix for Steam ([e6f423e](https://github.com/PurrNet/PurrNet/commit/e6f423e86bab3ebb6c8c30dbe6cc68b99f3873d8))
+
+# [1.23.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.15...v1.23.0-beta.16) (2026-09-02)
+
+
+### Bug Fixes
+
+* Pre-connection pinging support ([538e959](https://github.com/PurrNet/PurrNet/commit/538e959655c3026a3a886d9d0074782ec5c94716))
+
+# [1.23.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.14...v1.23.0-beta.15) (2026-09-02)
+
+
+### Bug Fixes
+
+* Removed PurrChat from toolbar ([ed451d5](https://github.com/PurrNet/PurrNet/commit/ed451d5ce3555df05c2d8386b24df5a981c29e3a))
+
 # [1.23.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.13...v1.23.0-beta.14) (2026-09-02)
 
 

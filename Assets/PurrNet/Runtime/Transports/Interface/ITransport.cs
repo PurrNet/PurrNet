@@ -239,6 +239,28 @@ namespace PurrNet.Transports
             };
         }
 
+        /// <summary>
+        /// Round trip time in milliseconds for a connection, or -1 when the transport
+        /// has not measured it yet or does not support it.
+        /// On the client side the connection argument is ignored.
+        /// </summary>
+        int GetRoundTripTime(Connection conn, bool asServer)
+        {
+            return -1;
+        }
+
+        /// <summary>
+        /// Whether <see cref="GetRoundTripTime"/> can ever return a value on this transport.
+        /// When false a ping reports connect time only instead of waiting for a measurement.
+        /// </summary>
+        bool measuresRoundTripTime => false;
+
+        /// <summary>
+        /// Short human readable description of the link the local client is currently using,
+        /// for example which relay region or whether it is a direct P2P session. Null when the transport has nothing to add.
+        /// </summary>
+        string clientLinkDescription => null;
+
         bool shouldServerSendKeepAlive => false;
 
         bool shouldClientSendKeepAlive => false;

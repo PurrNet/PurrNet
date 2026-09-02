@@ -1958,6 +1958,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1680343623}
+  - component: {fileID: 1680343674}
   - component: {fileID: 1680343640}
   - component: {fileID: 1680343641}
   - component: {fileID: 1680343627}
@@ -3468,6 +3469,24 @@ MonoBehaviour:
   _verifyTimeoutSeconds: 30
   _despawnTimeoutSeconds: 30
   _barrierTimeoutSeconds: 60
+--- !u!114 &1680343674
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcd4ce70adf44c2cbc26beecaf322c9d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::TransportPingScenario
+  _liveRttTimeoutSeconds: 10
+  _pingTimeoutSeconds: 5
+  _deadPingTimeoutSeconds: 3
+  _serverWatchSeconds: 8
+  _cleanupTimeoutSeconds: 15
+  _maxLocalLatencyMs: 1000
 --- !u!114 &1680343690
 MonoBehaviour:
   m_ObjectHideFlags: 0
