@@ -256,6 +256,8 @@ namespace PurrNet.Transports
         }
 
 
+        public bool measuresRoundTripTime => _isUsingUDP;
+
         public int GetRoundTripTime(Connection conn, bool asServer)
         {
             if (asServer)

@@ -136,6 +136,8 @@ namespace PurrNet.Transports
             }
         }
 
+        public bool measuresRoundTripTime => true;
+
         public int GetRoundTripTime(Connection conn, bool asServer)
         {
             if (asServer)

@@ -250,6 +250,12 @@ namespace PurrNet.Transports
         }
 
         /// <summary>
+        /// Whether <see cref="GetRoundTripTime"/> can ever return a value on this transport.
+        /// When false a ping reports connect time only instead of waiting for a measurement.
+        /// </summary>
+        bool measuresRoundTripTime => false;
+
+        /// <summary>
         /// Short human readable description of the link the local client is currently using,
         /// for example which relay region or whether it is a direct P2P session. Null when the transport has nothing to add.
         /// </summary>

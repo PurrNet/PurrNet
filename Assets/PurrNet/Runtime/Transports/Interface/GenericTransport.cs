@@ -277,7 +277,7 @@ namespace PurrNet.Transports
                 int connectMs = (int)((Time.realtimeSinceStartupAsDouble - startedAt) * 1000);
                 int rtt = -1;
 
-                while (layer.clientState == ConnectionState.Connected)
+                while (layer.measuresRoundTripTime && layer.clientState == ConnectionState.Connected)
                 {
                     rtt = layer.GetRoundTripTime(default, false);
 
