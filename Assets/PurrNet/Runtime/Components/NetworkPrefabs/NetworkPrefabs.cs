@@ -211,8 +211,7 @@ namespace PurrNet
             if (string.IsNullOrEmpty(persistentId))
                 return;
 
-            if (!persistentIdToPrefabData.ContainsKey(persistentId))
-                persistentIdToPrefabData.Add(persistentId, prefabData);
+            persistentIdToPrefabData.TryAdd(persistentId, prefabData);
 
             prefabIdToPersistentId[prefabData.prefabId] = persistentId;
 
