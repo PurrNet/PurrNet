@@ -112,15 +112,15 @@ namespace PurrNet
                 packer.WriteBit(true);
                 packer.WriteBit(false);
 
-                if (NetworkManager.main == null || NetworkManager.main.prefabProvider == null || !NetworkManager.main.prefabProvider.TryGetPrefabData(trs.gameObject, out var data))
+                if (NetworkManager.main == null || !NetworkManager.main.prefabResolver.TryGetPrefabData(trs.gameObject, out var data))
                 {
                     packer.WriteBit(true);
-                    if (NetworkManager.main != null && NetworkManager.main.networkAssets != null && NetworkManager.main.networkAssets.TryGetId(trs, out var tid))
+                    if (NetworkManager.main != null && NetworkManager.main.networkAssetResolver.TryGetId(trs, out _))
                     {
                         packer.WriteBit(true);
                         Packer.WriteAsNetworkAsset(packer, trs);
                     }
-                    else if (NetworkManager.main != null && NetworkManager.main.networkAssets != null && NetworkManager.main.networkAssets.TryGetId(trs.gameObject, out var gid))
+                    else if (NetworkManager.main != null && NetworkManager.main.networkAssetResolver.TryGetId(trs.gameObject, out _))
                     {
                         packer.WriteBit(false);
                         Packer.WriteAsNetworkAsset(packer, trs.gameObject);
@@ -130,7 +130,7 @@ namespace PurrNet
                 }
 
                 packer.WriteBit(false);
-                Packer<int>.Write(packer, data.prefabId);
+                Packer<PrefabID>.Write(packer, data.prefabId);
                 return;
             }
 
@@ -172,8 +172,8 @@ namespace PurrNet
                     return;
                 }
 
-                var prefabId = Packer<int>.Read(packer);
-                if (NetworkManager.main && NetworkManager.main.prefabProvider != null && NetworkManager.main.prefabProvider.TryGetPrefabData(prefabId, out var prefabData))
+                var prefabId = Packer<PrefabID>.Read(packer);
+                if (NetworkManager.main && NetworkManager.main.prefabResolver.TryGetPrefabData(prefabId, out var prefabData))
                     trs = prefabData.prefab.transform;
                 return;
             }

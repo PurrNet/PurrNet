@@ -182,7 +182,7 @@ namespace PurrNet
                 return true;
 
             var nm = networkManager;
-            if (!nm || !nm.networkAssets || !nm.networkAssets.TryGetIndex(asset, out _))
+            if (!nm || !nm.networkAssetResolver.TryGetId(asset, out _))
             {
                 Logging.PurrLogger.LogError(
                     $"NetworkAnimator.{memberName}: '{asset.name}' is not registered in NetworkAssets. " +

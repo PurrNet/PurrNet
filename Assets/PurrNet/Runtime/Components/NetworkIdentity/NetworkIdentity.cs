@@ -20,6 +20,10 @@ namespace PurrNet
 
         [SerializeField, HideInInspector] private int _prefabId = int.MinValue;
 
+        [SerializeField, HideInInspector] private bool _hasPrefabScope;
+
+        [SerializeField, HideInInspector] private ushort _prefabScope;
+
         [SerializeField, HideInInspector] private int _componentIndex = int.MinValue;
 
         [SerializeField, HideInInspector] private bool _shouldBePooled;
@@ -88,6 +92,13 @@ namespace PurrNet
 
         public int prefabId => _prefabId;
 
+        /// <summary>
+        /// The prefab id including its scene scope, if the prefab was registered per scene.
+        /// </summary>
+        public PrefabID scopedPrefabId => _hasPrefabScope
+            ? new PrefabID(_prefabId, new SceneID(_prefabScope))
+            : new PrefabID(_prefabId);
+
         public int componentIndex => _componentIndex;
 
         public bool shouldBePooled => _shouldBePooled;
@@ -106,6 +117,11 @@ namespace PurrNet
 
         public void PreparePrefabInfo(int prefabId, int componentIndex, bool shouldBePooled, bool isSceneObject)
         {
+            PreparePrefabInfo(new PrefabID(prefabId), componentIndex, shouldBePooled, isSceneObject);
+        }
+
+        public void PreparePrefabInfo(PrefabID prefabId, int componentIndex, bool shouldBePooled, bool isSceneObject)
+        {
             if (isSceneObject && skipSceneAutoSpawning)
                 return;
 
@@ -116,7 +132,9 @@ namespace PurrNet
 
             this.isSceneObject = isSceneObject;
 
-            this._prefabId = prefabId;
+            this._prefabId = (int)prefabId;
+            this._hasPrefabScope = prefabId.scope.HasValue;
+            this._prefabScope = prefabId.scope.HasValue ? (ushort)prefabId.scope.Value.id.value : (ushort)0;
             this._componentIndex = componentIndex;
             this._shouldBePooled = shouldBePooled;
 

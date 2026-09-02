@@ -278,7 +278,7 @@ internal sealed class DeferredSpawnSerializePrefabProvider : IAsyncPrefabProvide
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         if (!_inner.TryGetPrefabData(prefab, out var data))
             throw new InvalidOperationException("The deferred test prefab is not registered.");
-        _prefabId = data.prefabId;
+        _prefabId = (int)data.prefabId;
     }
 
     public IEnumerable<PrefabData> allPrefabs => _inner.allPrefabs;

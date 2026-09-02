@@ -142,7 +142,8 @@ namespace PurrNet.Modules
             _asServer = asServer;
             _playersManager = playersManager;
 
-            _scenePool = NetworkPoolManager.GetScenePool(scene, sceneId);
+            _scenePool = NetworkPoolManager.GetScenePool(scene, sceneId, manager);
+            _scenePool.Warmup(manager.prefabResolver.GetScenePrefabs(sceneId));
             _prefabsPool = NetworkPoolManager.GetPool(manager);
 
             UnityLatestUpdate.TriggerPendingAsaps();
@@ -1302,7 +1303,7 @@ namespace PurrNet.Modules
                         var declaring = validator.Method.DeclaringType;
                         var methodName = validator.Method.Name;
                         if (data.prototype.framework.Count > 0 &&
-                            _manager.prefabProvider.TryGetPrefabData(data.prototype.framework[0].pid.prefabId,
+                            _manager.prefabResolver.TryGetPrefabData(data.prototype.framework[0].pid.prefabId,
                                 out var pdata) &&
                             pdata.prefab)
                         {
@@ -1319,10 +1320,10 @@ namespace PurrNet.Modules
                 }
             }
 
-            if (data.prototype.framework.Count > 0 && _manager.prefabProvider is IAsyncPrefabProvider asyncProvider)
+            if (data.prototype.framework.Count > 0)
             {
-                int rootPrefabId = data.prototype.framework[0].pid.prefabId;
-                if (_manager.prefabProvider.TryGetPrefabData(rootPrefabId, out var prefabData) && !prefabData.prefab)
+                var rootPrefabId = data.prototype.framework[0].pid.prefabId;
+                if (_manager.prefabResolver.NeedsLoad(rootPrefabId))
                 {
                     if (data.isAsync)
                     {
@@ -1332,7 +1333,7 @@ namespace PurrNet.Modules
                         return;
                     }
 
-                    ProcessSpawnWhenLoadedAsync(data, flushData, asyncProvider, rootPrefabId);
+                    ProcessSpawnWhenLoadedAsync(data, flushData, rootPrefabId);
                     return;
                 }
             }
@@ -1362,8 +1363,7 @@ namespace PurrNet.Modules
             Despawn(existingRoot.gameObject, true, true);
         }
 
-        private async void ProcessSpawnWhenLoadedAsync(SpawnPacket data, bool flushData,
-            IAsyncPrefabProvider asyncProvider, int rootPrefabId)
+        private async void ProcessSpawnWhenLoadedAsync(SpawnPacket data, bool flushData, PrefabID rootPrefabId)
         {
             try
             {
@@ -1376,7 +1376,7 @@ namespace PurrNet.Modules
 
                 try
                 {
-                    var loaded = await asyncProvider.LoadPrefabAsync(rootPrefabId);
+                    var loaded = await _manager.prefabResolver.LoadPrefabAsync(rootPrefabId);
                     if (loaded.prefab == null)
                     {
                         PurrLogger.LogError($"ProcessSpawnWhenLoadedAsync: failed to load prefab {rootPrefabId}.");
@@ -1738,8 +1738,8 @@ namespace PurrNet.Modules
             }
             ListPool<NetworkID>.Destroy(reserved);
 
-            int prefabId = data.prototype.framework[0].pid.prefabId;
-            if (!_manager.prefabProvider.TryGetPrefabData(prefabId, out var prefabData) || !prefabData.prefab)
+            var prefabId = data.prototype.framework[0].pid.prefabId;
+            if (!_manager.prefabResolver.TryGetPrefabData(prefabId, out var prefabData) || !prefabData.prefab)
             {
                 ReleaseAsyncReservations(data);
                 SendAsyncSpawnFailure(data);
@@ -1831,7 +1831,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            int prefabId = state.packet.prototype.framework[0].pid.prefabId;
+            var prefabId = state.packet.prototype.framework[0].pid.prefabId;
             var identities = ListPool<NetworkIdentity>.Instantiate();
             try
             {
@@ -2842,7 +2842,7 @@ namespace PurrNet.Modules
                 if (!identity || identity.shouldBePooled)
                     continue;
 
-                if (_manager.prefabProvider.TryGetPrefabData(identity.prefabId, out var prefabData) &&
+                if (_manager.prefabResolver.TryGetPrefabData(identity.scopedPrefabId, out var prefabData) &&
                     prefabData.pooled)
                     return true;
             }
@@ -2866,7 +2866,7 @@ namespace PurrNet.Modules
             if (obj.scene.handle != _scene.handle)
                 return;
 
-            if (!_manager.prefabProvider.TryGetPrefabData(prefab, out var data))
+            if (!_manager.prefabResolver.TryGetPrefabData(prefab, _sceneId, out var data))
                 return;
 
             NetworkManager.SetupPrefabInfo(obj, data.prefabId, data.pooled);
@@ -2900,7 +2900,7 @@ namespace PurrNet.Modules
             if (obj.scene.handle != _scene.handle)
                 return;
 
-            if (!_manager.prefabProvider.TryGetPrefabData(prefab, out var data))
+            if (!_manager.prefabResolver.TryGetPrefabData(prefab, _sceneId, out var data))
                 return;
 
             // Async-origin instances are never allowed into PurrNet's pool, even when the
@@ -2962,6 +2962,14 @@ namespace PurrNet.Modules
 
             if (id.isSpawned)
                 return;
+
+            if (!id.isSetup)
+            {
+                PurrLogger.LogError($"Failed to spawn object '{gameObject.name}'. It has no prefab info, " +
+                                    "so peers could not recreate it. Register its prefab in a NetworkPrefabs asset " +
+                                    "(global or scene scoped) and instantiate it through PurrNet.", gameObject);
+                return;
+            }
 
             if (!id.HasSpawnAuthority(_manager, _asServer))
             {
@@ -3812,11 +3820,11 @@ namespace PurrNet.Modules
                 hideFlags = HideFlags.HideAndDontSave
             };
             poolRoot.SetActive(false);
-            var temporaryPool = new HierarchyPool(poolRoot.transform, _manager.prefabProvider, true);
+            var temporaryPool = new HierarchyPool(poolRoot.transform, _manager.prefabResolver, true);
 
             try
             {
-                var pair = new PoolPair(_scenePool, temporaryPool);
+                var pair = new PoolPair(_scenePool, temporaryPool, temporaryPool);
                 if (!HierarchyPool.TryBuildPrototype(pair, prototype, createdNids, out var result,
                         out var shouldActivate))
                     return null;
@@ -3828,7 +3836,7 @@ namespace PurrNet.Modules
                         var identity = createdNids[i];
                         if (!identity || identity.prefabId < 0)
                             continue;
-                        identity.PreparePrefabInfo(identity.prefabId, identity.componentIndex, false, false);
+                        identity.PreparePrefabInfo(identity.scopedPrefabId, identity.componentIndex, false, false);
                     }
                 }
 
@@ -3838,8 +3846,8 @@ namespace PurrNet.Modules
                 actual.Dispose();
                 if (!shapeMatches)
                 {
-                    int prefabId = prototype.framework[0].pid.prefabId;
-                    if (_manager.prefabProvider.TryGetPrefabData(prefabId, out var prefabData))
+                    var prefabId = prototype.framework[0].pid.prefabId;
+                    if (_manager.prefabResolver.TryGetPrefabData(prefabId, out var prefabData))
                         ReportAsyncShapeMismatch(prefabData.prefab, result,
                             "the NetworkIdentity framework changed when the instance was activated");
                     else

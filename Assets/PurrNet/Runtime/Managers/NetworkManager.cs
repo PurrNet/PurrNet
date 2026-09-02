@@ -184,49 +184,43 @@ namespace PurrNet
         /// </summary>
         public IPrefabProvider prefabProvider { get; private set; }
 
-        public bool TryGetPrefabPersistentId(int prefabId, out string persistentId)
-        {
-            if (prefabProvider is IPersistentPrefabProvider persistentProvider)
-                return persistentProvider.TryGetPersistentId(prefabId, out persistentId);
+        private PrefabResolver _prefabResolver;
 
-            persistentId = null;
-            return false;
+        /// <summary>
+        /// Resolves prefab ids and prefab references to prefab data. All runtime lookups go through this.
+        /// </summary>
+        public PrefabResolver prefabResolver => _prefabResolver ??= new PrefabResolver(this);
+
+        public bool TryGetPrefabPersistentId(PrefabID prefabId, out string persistentId)
+        {
+            return prefabResolver.TryGetPersistentId(prefabId, out persistentId);
         }
 
         public bool TryGetPrefabPersistentId(GameObject prefab, out string persistentId)
         {
-            if (prefabProvider is IPersistentPrefabProvider persistentProvider)
-                return persistentProvider.TryGetPersistentId(prefab, out persistentId);
-
-            persistentId = null;
-            return false;
+            return prefabResolver.TryGetPersistentId(prefab, out persistentId);
         }
 
         public bool TryGetPrefabDataByPersistentId(string persistentId, out PrefabData prefabData)
         {
-            if (prefabProvider is IPersistentPrefabProvider persistentProvider)
-                return persistentProvider.TryGetPrefabDataByPersistentId(persistentId, out prefabData);
-
-            prefabData = default;
-            return false;
+            return prefabResolver.TryGetPrefabDataByPersistentId(persistentId, out prefabData);
         }
+
+        private NetworkAssetResolver _networkAssetResolver;
+
+        /// <summary>
+        /// Resolves network asset ids and asset references to registered assets. All runtime lookups go through this.
+        /// </summary>
+        public NetworkAssetResolver networkAssetResolver => _networkAssetResolver ??= new NetworkAssetResolver(this);
 
         public bool TryGetNetworkAssetPersistentId(UnityEngine.Object asset, out string persistentId)
         {
-            if (_networkAssets)
-                return _networkAssets.TryGetPersistentId(asset, out persistentId);
-
-            persistentId = null;
-            return false;
+            return networkAssetResolver.TryGetPersistentId(asset, out persistentId);
         }
 
         public bool TryGetNetworkAssetByPersistentId(string persistentId, out UnityEngine.Object asset)
         {
-            if (_networkAssets)
-                return _networkAssets.TryGetAssetByPersistentId(persistentId, out asset);
-
-            asset = null;
-            return false;
+            return networkAssetResolver.TryGetAssetByPersistentId(persistentId, out asset);
         }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
@@ -551,7 +545,7 @@ namespace PurrNet
         /// <param name="instance"></param>
         /// <param name="pid">The prefab index in the network prefabs list.</param>
         /// <param name="shouldBePooled">Whether the object should be pooled.</param>
-        public static void SetupPrefabInfo(GameObject instance, int pid, bool shouldBePooled)
+        public static void SetupPrefabInfo(GameObject instance, PrefabID pid, bool shouldBePooled)
         {
             var children = ListPool<NetworkIdentity>.Instantiate();
 
@@ -570,7 +564,7 @@ namespace PurrNet
         /// <param name="pid">The prefab index in the network prefabs list.</param>
         /// <param name="shouldBePooled">Whether the object should be pooled.</param>
         /// <param name="children">The result of GetComponentsInChildren(true) on the instance.</param>
-        public static void SetupPrefabInfo(GameObject instance, int pid, bool shouldBePooled,
+        public static void SetupPrefabInfo(GameObject instance, PrefabID pid, bool shouldBePooled,
             List<NetworkIdentity> children)
         {
             if (!instance.GetComponent<NetworkIdentity>())
