@@ -68,6 +68,27 @@ namespace PurrNet.Modules
             ListPool<PrefabID>.Destroy(stale);
         }
 
+        public static bool HasPrototype(PrefabID prefabId)
+        {
+            return _prefabPrototypes.ContainsKey(prefabId);
+        }
+
+        /// <summary>
+        /// Number of idle pooled pieces belonging to the given prefab, summed over all of its pieces.
+        /// </summary>
+        public int GetPooledCount(PrefabID prefabId)
+        {
+            int count = 0;
+
+            foreach (var (pid, queue) in _pool)
+            {
+                if (pid.prefabId == prefabId)
+                    count += queue.Count;
+            }
+
+            return count;
+        }
+
         public static void ClearPrototypes()
         {
             foreach (var (_, prototype) in _prefabPrototypes)
@@ -992,6 +1013,7 @@ namespace PurrNet.Modules
                 QueuePool<GameObject>.Destroy(queue);
             _pool.Clear();
             _pooledObjects.Clear();
+            _alreadyWarmedUp.Clear();
             ClearActiveScenePieceQueues();
             _activeScenePieceSet.Clear();
 

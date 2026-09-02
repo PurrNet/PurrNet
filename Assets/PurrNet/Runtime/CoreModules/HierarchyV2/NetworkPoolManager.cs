@@ -28,6 +28,11 @@ namespace PurrNet.Modules
         private static readonly Dictionary<IPrefabProvider, HierarchyPool> _pools = new();
         private static readonly Dictionary<SceneID, HierarchyPool> _scenePools = new();
 
+        public static bool TryGetScenePool(SceneID scene, out HierarchyPool pool)
+        {
+            return _scenePools.TryGetValue(scene, out pool);
+        }
+
         public static HierarchyPool GetScenePool(Scene unityScene, SceneID scene, NetworkManager manager)
         {
             if (_scenePools.TryGetValue(scene, out var pool))
