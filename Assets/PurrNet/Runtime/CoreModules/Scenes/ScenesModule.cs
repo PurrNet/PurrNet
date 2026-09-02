@@ -445,7 +445,12 @@ namespace PurrNet.Modules
 #if ADDRESSABLES_PURRNET_SUPPORT
             // This module is about to be discarded; any addressable load still in flight would
             // otherwise complete into a registry nobody owns and never be unloaded by anyone.
-            ReleasePendingAddressableOperations();
+            // Unless the rules keep scenes around on disconnect: dropping a scene that just happened
+            // to still be loading, while every scene that finished in time is kept, is worse.
+            var sceneRules = _networkManager.networkRules;
+            var unloadPendingScenes = !sceneRules || sceneRules.ShouldCleanupScenesOnDisconnect();
+
+            DiscardPendingAddressableOperations(unloadPendingScenes);
 #endif
 
             if (!asServer)

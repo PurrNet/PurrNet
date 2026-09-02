@@ -212,9 +212,9 @@ namespace PurrNet.Modules
             return true;
         }
 
-        private void ReleasePendingAddressableOperations()
+        private void DiscardPendingAddressableOperations(bool unloadPendingScenes)
         {
-            for (var i = 0; i < _pendingAddressableOperations.Count; i++)
+            for (var i = 0; unloadPendingScenes && i < _pendingAddressableOperations.Count; i++)
             {
                 var operation = _pendingAddressableOperations[i];
 
