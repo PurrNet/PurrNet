@@ -21,6 +21,7 @@ var hierarchy =
     [ "PurrNet.BoneInfo", "structPurrNet_1_1BoneInfo.html", null ],
     [ "PurrNet.Transports.ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
     [ "PurrNet.Modules.DeltaCache", "classPurrNet_1_1Modules_1_1DeltaCache.html", null ],
+    [ "PurrNet.Modules.DeltaFanoutGrouper", "classPurrNet_1_1Modules_1_1DeltaFanoutGrouper.html", null ],
     [ "PurrNet.Modules.DeltaIDs", "classPurrNet_1_1Modules_1_1DeltaIDs.html", null ],
     [ "PurrNet.Modules.DeltaMessagesList", "structPurrNet_1_1Modules_1_1DeltaMessagesList.html", null ],
     [ "PurrNet.Packing.DeltaWritingScope", "structPurrNet_1_1Packing_1_1DeltaWritingScope.html", null ],

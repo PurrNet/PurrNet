@@ -32,6 +32,7 @@ var annotated_dup =
         [ "ColliderRollbackFactory", "classPurrNet_1_1Modules_1_1ColliderRollbackFactory.html", null ],
         [ "CookiesModule", "classPurrNet_1_1Modules_1_1CookiesModule.html", "classPurrNet_1_1Modules_1_1CookiesModule" ],
         [ "DeltaCache", "classPurrNet_1_1Modules_1_1DeltaCache.html", null ],
+        [ "DeltaFanoutGrouper", "classPurrNet_1_1Modules_1_1DeltaFanoutGrouper.html", "classPurrNet_1_1Modules_1_1DeltaFanoutGrouper" ],
         [ "DeltaIDs", "classPurrNet_1_1Modules_1_1DeltaIDs.html", null ],
         [ "DeltaMessage", "structPurrNet_1_1Modules_1_1DeltaMessage.html", null ],
         [ "DeltaMessagesList", "structPurrNet_1_1Modules_1_1DeltaMessagesList.html", null ],

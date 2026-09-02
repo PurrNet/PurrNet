@@ -51,14 +51,14 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"classPurrNet_1_1Modules_1_1ScenesModule.html#a3a7f73366d9d53e262795607b3ba6244",
-"classPurrNet_1_1NetworkIdentity.html#ace6b8cfdcdad0cdffddaa53d9aab669b",
-"classPurrNet_1_1NetworkModule.html#aa550885b27e3617c3c8cd392c23a5524",
-"classPurrNet_1_1PlayerSpawner.html#ae9c705d3fb888257159a534e8bb56413",
-"classPurrNet_1_1SyncHashSet.html#a22702942c14bbd8853621a20de48696c",
-"interfacePurrNet_1_1Collections_1_1IReadonlyHashSet.html",
-"structPurrNet_1_1Modules_1_1RpcRejection.html",
-"structPurrNet_1_1StateMachine_1_1StateMachineState.html"
+"classPurrNet_1_1Modules_1_1ScenesModule.html#a329622e10dea6bbbb6269bcaa7ddec8a",
+"classPurrNet_1_1NetworkIdentity.html#ac793e32b016d54d9f442ae2c96ee1b17",
+"classPurrNet_1_1NetworkModule.html#a79f55a0c992dda9c7eabb81b69e28328",
+"classPurrNet_1_1PlayerSpawner.html#a2c0db4145c65e4c039b5904ea5967fac",
+"classPurrNet_1_1SyncHashSet.html#a0d75d35d5015317a5fb11e1e09ce8694",
+"functions_w.html",
+"structPurrNet_1_1Modules_1_1PurrSceneSettings.html",
+"structPurrNet_1_1SpawnPoint.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
