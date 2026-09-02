@@ -10,6 +10,7 @@ namespace PurrNet.Transports
     public abstract class GenericTransport : MonoBehaviour
     {
         public const float DEFAULT_PING_TIMEOUT = 15f;
+        private const float CONNECT_GRACE_SECONDS = 1f;
 
         /// <summary>
         /// True while <see cref="Ping(CancellationToken)"/> is running a probe connection on this transport.
@@ -260,8 +261,21 @@ namespace PurrNet.Transports
                     layer.Connect(address, port);
                 else StartClientInternal();
 
-                while (layer.clientState == ConnectionState.Connecting)
+                bool leftDisconnected = false;
+                var graceUntil = startedAt + CONNECT_GRACE_SECONDS;
+
+                while (layer.clientState != ConnectionState.Connected)
                 {
+                    if (layer.clientState == ConnectionState.Disconnected)
+                    {
+                        if (leftDisconnected)
+                            return PingResult.Failed("Transport disconnected while connecting.");
+
+                        if (Time.realtimeSinceStartupAsDouble > graceUntil)
+                            return PingResult.Failed("Transport never started connecting.");
+                    }
+                    else leftDisconnected = true;
+
                     if (token.IsCancellationRequested)
                         return PingResult.Failed("Cancelled.");
 
@@ -270,9 +284,6 @@ namespace PurrNet.Transports
 
                     await PumpAndYield(layer);
                 }
-
-                if (layer.clientState != ConnectionState.Connected)
-                    return PingResult.Failed("Could not connect.");
 
                 int connectMs = (int)((Time.realtimeSinceStartupAsDouble - startedAt) * 1000);
                 int rtt = -1;

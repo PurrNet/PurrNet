@@ -851,7 +851,7 @@ namespace PurrNet.Transports
             switch (type)
             {
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATED:
-                    if (natEnabled && _clientPunch != null)
+                    if (natEnabled && _clientPunch != null && !isPinging)
                     {
                         _clientConnPending = true;
                         _clientConnDeadline = Time.realtimeSinceStartup + P2PResolveTimeout;
