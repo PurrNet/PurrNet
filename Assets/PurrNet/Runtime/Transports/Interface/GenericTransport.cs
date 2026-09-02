@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using PurrNet.Logging;
 using UnityEngine;
 
 namespace PurrNet.Transports
@@ -201,6 +202,20 @@ namespace PurrNet.Transports
         public Task<PingResult> Ping(string address, ushort port, float timeoutSeconds, CancellationToken token = default)
         {
             return PingInternal(address, port, true, timeoutSeconds, token);
+        }
+
+        [ContextMenu("PurrNet/Test Ping Connection")]
+        private async void TestPingConnection()
+        {
+            if (!Application.isPlaying)
+            {
+                PurrLogger.LogWarning($"[{GetType().Name}] Test Ping Connection only works in play mode.", this);
+                return;
+            }
+
+            PurrLogger.Log($"[{GetType().Name}] Pinging with the current settings...", this);
+            var result = await Ping();
+            PurrLogger.Log($"[{GetType().Name}] {result}", this);
         }
 
         private async Task<PingResult> PingInternal(string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)
