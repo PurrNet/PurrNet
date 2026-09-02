@@ -1,3 +1,10 @@
+# [1.23.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.15...v1.23.0-beta.16) (2026-09-02)
+
+
+### Bug Fixes
+
+* Pre-connection pinging support ([538e959](https://github.com/PurrNet/PurrNet/commit/538e959655c3026a3a886d9d0074782ec5c94716))
+
 # [1.23.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.14...v1.23.0-beta.15) (2026-09-02)
 
 
