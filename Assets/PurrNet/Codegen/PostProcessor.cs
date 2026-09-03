@@ -1916,34 +1916,40 @@ namespace PurrNet.Codegen
             AppendStripAction(method, methodName, mode, il, "stripped");
         }
 
+        /// <summary>
+        /// Widens every short branch in a body we modified. Cecil writes a short branch operand as a truncated
+        /// sbyte and never widens it, and Instruction.Offset is stale until the next write, so measuring the
+        /// distance here is unreliable once instructions have been inserted. Costs 3 bytes per branch.
+        /// </summary>
         static void FixShortFormJumps(MethodDefinition method)
         {
-            // convert short branches that overflow, took me long to figure this one out
-            foreach (var inst in method.Body.Instructions)
-            {
-                if (inst.Operand is Instruction target)
-                {
-                    int delta = target.Offset - (inst.Offset + inst.GetSize());
+            var instructions = method.Body.Instructions;
 
-                    if (delta is <= -128 or >= 127)
-                    {
-                        // Overflow - convert to long form
-                        if (inst.OpCode == OpCodes.Br_S) inst.OpCode = OpCodes.Br;
-                        else if (inst.OpCode == OpCodes.Brfalse_S) inst.OpCode = OpCodes.Brfalse;
-                        else if (inst.OpCode == OpCodes.Brtrue_S) inst.OpCode = OpCodes.Brtrue;
-                        else if (inst.OpCode == OpCodes.Beq_S) inst.OpCode = OpCodes.Beq;
-                        else if (inst.OpCode == OpCodes.Bne_Un_S) inst.OpCode = OpCodes.Bne_Un;
-                        else if (inst.OpCode == OpCodes.Bge_S) inst.OpCode = OpCodes.Bge;
-                        else if (inst.OpCode == OpCodes.Bge_Un_S) inst.OpCode = OpCodes.Bge_Un;
-                        else if (inst.OpCode == OpCodes.Bgt_S) inst.OpCode = OpCodes.Bgt;
-                        else if (inst.OpCode == OpCodes.Bgt_Un_S) inst.OpCode = OpCodes.Bgt_Un;
-                        else if (inst.OpCode == OpCodes.Ble_S) inst.OpCode = OpCodes.Ble;
-                        else if (inst.OpCode == OpCodes.Ble_Un_S) inst.OpCode = OpCodes.Ble_Un;
-                        else if (inst.OpCode == OpCodes.Blt_S) inst.OpCode = OpCodes.Blt;
-                        else if (inst.OpCode == OpCodes.Blt_Un_S) inst.OpCode = OpCodes.Blt_Un;
-                        else if (inst.OpCode == OpCodes.Leave_S) inst.OpCode = OpCodes.Leave;
-                    }
-                }
+            for (var i = 0; i < instructions.Count; i++)
+            {
+                var inst = instructions[i];
+
+                if (inst.OpCode.OperandType != OperandType.ShortInlineBrTarget)
+                    continue;
+
+                inst.OpCode = inst.OpCode.Code switch
+                {
+                    Code.Br_S => OpCodes.Br,
+                    Code.Brfalse_S => OpCodes.Brfalse,
+                    Code.Brtrue_S => OpCodes.Brtrue,
+                    Code.Beq_S => OpCodes.Beq,
+                    Code.Bne_Un_S => OpCodes.Bne_Un,
+                    Code.Bge_S => OpCodes.Bge,
+                    Code.Bge_Un_S => OpCodes.Bge_Un,
+                    Code.Bgt_S => OpCodes.Bgt,
+                    Code.Bgt_Un_S => OpCodes.Bgt_Un,
+                    Code.Ble_S => OpCodes.Ble,
+                    Code.Ble_Un_S => OpCodes.Ble_Un,
+                    Code.Blt_S => OpCodes.Blt,
+                    Code.Blt_Un_S => OpCodes.Blt_Un,
+                    Code.Leave_S => OpCodes.Leave,
+                    _ => inst.OpCode
+                };
             }
         }
 
@@ -3669,7 +3675,8 @@ namespace PurrNet.Codegen
                                 type.Name.StartsWith("RpcReceiveState", StringComparison.Ordinal))
                                 continue;
                             var newRef = GenerateNewRef(@new, methodReference);
-                            processor.Replace(instruction, Instruction.Create(instruction.OpCode, newRef));
+                            // in place: the call may be a branch target, Replace() would leave a dangling branch
+                            instruction.Operand = newRef;
                         }
                     }
 
