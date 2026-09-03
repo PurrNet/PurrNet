@@ -82,6 +82,7 @@ namespace PurrNet
             isControllingSyncVar = false;
             _isDirty = false;
             _wasLastDirty = false;
+            _sentLastTick = false;
             _id = 0;
             _ignoreServerUpdates = false;
             _value = _initialValue;
@@ -196,6 +197,7 @@ namespace PurrNet
             finally
             {
                 _wasLastDirty = false;
+                _sentLastTick = false;
                 _isDirty = false;
                 UnsubscribeFromTickManager();
             }
@@ -231,6 +233,7 @@ namespace PurrNet
             ForceSendReliable();
             _lastSendTime = Time.time;
             _wasLastDirty = false;
+            _sentLastTick = false;
             _isDirty = false;
             UnsubscribeFromTickManager();
         }
@@ -251,23 +254,46 @@ namespace PurrNet
                 float time = Time.time;
 
                 if (time - _lastSendTime < _sendIntervalInSeconds)
+                {
+                    _sentLastTick = false;
                     return;
+                }
 
-                ForceSendUnreliable();
+                if (_sentLastTick)
+                {
+                    ForceSendUnreliable();
+                    _wasLastDirty = true;
+                }
+                else
+                {
+                    ForceSendReliable();
+                    _wasLastDirty = false;
+                }
+
                 _lastSendTime = time;
-                _wasLastDirty = true;
+                _sentLastTick = true;
                 _isDirty = false;
             }
-            else if (_wasLastDirty)
+            else
             {
-                ForceSendReliable();
+                _sentLastTick = false;
+
+                if (_wasLastDirty)
+                {
+                    ForceSendReliable();
+                    _wasLastDirty = false;
+                }
+
                 UnsubscribeFromTickManager();
-                _wasLastDirty = false;
             }
         }
 
         private ulong _id;
+
         private bool _wasLastDirty;
+
+        private bool _sentLastTick;
+
         [SerializeField, HideInInspector]
         private T _initialValue;
 

@@ -1325,6 +1325,12 @@ namespace PurrNet
 
         internal NTEncodeCache unreliableEncodeCache;
 
+        internal int ntIndex = -1;
+
+        internal NetworkID ntNid;
+
+        internal bool ntRegistered;
+
         private void BumpSendGen()
         {
             _sendGen++;

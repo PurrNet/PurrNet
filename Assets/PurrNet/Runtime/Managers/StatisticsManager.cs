@@ -604,7 +604,6 @@ namespace PurrNet
                 },
                 Channel.Unreliable);
             _lastPingSendTime = now;
-            _networkManager.RequestSendFlushThisFrame();
         }
 
         private void ReceivePing(PlayerID sender, PingMessage msg, bool asServer)
@@ -617,7 +616,6 @@ namespace PurrNet
                         realSendTime = msg.realSendTime
                     },
                     Channel.Unreliable);
-                _networkManager.RequestSendFlushThisFrame();
                 return;
             }
 

@@ -1708,7 +1708,7 @@ namespace PurrNet
 
         private bool _sendFlushRequested;
 
-        internal void RequestSendFlushThisFrame()
+        public void RequestSendFlushThisFrame()
         {
             _sendFlushRequested = true;
         }
@@ -1765,7 +1765,8 @@ namespace PurrNet
             var now = Time.unscaledTimeAsDouble;
             var sendDelta = _lastSendTime > 0 ? (float)(now - _lastSendTime) : fallbackDelta;
             _lastSendTime = now;
-            _transportLayer.SendMessages(sendDelta);
+            using (_onSendMessagesMarker.Auto())
+                _transportLayer.SendMessages(sendDelta);
         }
 
         private void OnTick()
@@ -1828,10 +1829,7 @@ namespace PurrNet
                     _clientModules.TriggerOnPostBatch();
             }
 
-            using (_onSendMessagesMarker.Auto())
-            {
-                SendMessagesNow(delta);
-            }
+            SendMessagesNow(delta);
 
             if (_isCleaningClient)
             {

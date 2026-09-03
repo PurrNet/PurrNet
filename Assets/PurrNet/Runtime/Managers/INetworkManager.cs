@@ -39,5 +39,11 @@ namespace PurrNet
         void InternalUnregisterServerModules();
 
         bool HasModule<T>(bool asServer) where T : INetworkModule;
+
+        /// <summary>
+        /// Asks the manager to push queued transport data out before the next tick (this frame),
+        /// so a latency-sensitive message does not wait for the tick's regular send.
+        /// </summary>
+        void RequestSendFlushThisFrame();
     }
 }

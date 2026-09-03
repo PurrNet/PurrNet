@@ -507,28 +507,40 @@ public class NetworkTransformProtocolTests
     [Test]
     public void TargetedResetInvalidatesOnlyTheTargetBaseline()
     {
+        var objects = new List<GameObject>();
         var module = new NetworkTransformModule(null, null, null, default, null);
         var target = new PlayerID(1, false);
         var other = new PlayerID(2, false);
-        var nid = new NetworkID(10);
+        var nt = CreateNetworkTransform(10, objects);
+        var nid = nt.id!.Value;
+        module.Register(nt);
         var targetStream = module.GetSendStream(target);
         var otherStream = module.GetSendStream(other);
 
-        targetStream.acked[nid] = new NTUnreliableBaseline { gen = 1, genEpoch = 1 };
-        otherStream.acked[nid] = new NTUnreliableBaseline { gen = 1, genEpoch = 1 };
-        targetStream.ring[0] = SlotWith(nid, 1);
-        otherStream.ring[0] = SlotWith(nid, 1);
+        try
+        {
+            targetStream.baselines[nt.ntIndex] = new NTBaselineSlot { has = true, gen = 1, genEpoch = 1 };
+            otherStream.baselines[nt.ntIndex] = new NTBaselineSlot { has = true, gen = 1, genEpoch = 1 };
+            targetStream.ring[0] = SlotWith(nid, 1);
+            otherStream.ring[0] = SlotWith(nid, 1);
 
-        module.PrepareTargetedReset(target, nid, 1, 1);
+            module.PrepareTargetedReset(target, nid, 1, 1);
 
-        Assert.That(targetStream.acked.ContainsKey(nid), Is.False);
-        Assert.That(targetStream.ring[0].entries, Is.Empty);
-        Assert.That(targetStream.generationOverrides.ContainsKey(nid), Is.False);
-        Assert.That(otherStream.acked[nid].gen, Is.EqualTo(1));
-        Assert.That(otherStream.acked[nid].genEpoch, Is.EqualTo(1));
-        Assert.That(otherStream.ring[0].entries[0].genEpoch, Is.EqualTo(1));
-        Assert.That(otherStream.generationOverrides[nid].gen, Is.EqualTo(1));
-        Assert.That(otherStream.generationOverrides[nid].epoch, Is.EqualTo(1));
+            Assert.That(targetStream.baselines[nt.ntIndex].has, Is.False);
+            Assert.That(targetStream.ring[0].entries, Is.Empty);
+            Assert.That(targetStream.generationOverrides.ContainsKey(nid), Is.False);
+            Assert.That(otherStream.baselines[nt.ntIndex].has, Is.True);
+            Assert.That(otherStream.baselines[nt.ntIndex].gen, Is.EqualTo(1));
+            Assert.That(otherStream.baselines[nt.ntIndex].genEpoch, Is.EqualTo(1));
+            Assert.That(otherStream.ring[0].entries[0].genEpoch, Is.EqualTo(1));
+            Assert.That(otherStream.generationOverrides[nid].gen, Is.EqualTo(1));
+            Assert.That(otherStream.generationOverrides[nid].epoch, Is.EqualTo(1));
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+                Object.DestroyImmediate(objects[i]);
+        }
 
         module.ClearGenerationOverrides(nid);
         Assert.That(otherStream.generationOverrides.ContainsKey(nid), Is.False);

@@ -74,8 +74,9 @@ namespace PurrNet.Modules
         public NetworkTransform transform;
     }
 
-    internal sealed class NTUnreliableBaseline
+    internal struct NTBaselineSlot
     {
+        public bool has;
         public NetworkTransformState state;
         public NetworkTransformVelocity velocity;
         public ushort tick;
@@ -136,7 +137,32 @@ namespace PurrNet.Modules
         // NACK barrier: only packets written AFTER the NACK may re-establish a baseline,
         // else the ack covering the NACKed packet resurrects the phantom (acks are cumulative).
         public readonly Dictionary<NetworkID, uint> nackFloor = new();
-        public readonly Dictionary<NetworkID, NTUnreliableBaseline> acked = new();
+        public NTBaselineSlot[] baselines = System.Array.Empty<NTBaselineSlot>();
+        public bool[] pendingByIndex = System.Array.Empty<bool>();
+        public bool[] ackCompleted = System.Array.Empty<bool>();
+
+        public void EnsureBaselineCapacity(int count)
+        {
+            if (baselines.Length >= count)
+                return;
+            int size = System.Math.Max(count, System.Math.Max(16, baselines.Length * 2));
+            System.Array.Resize(ref baselines, size);
+            System.Array.Resize(ref pendingByIndex, size);
+            System.Array.Resize(ref ackCompleted, size);
+        }
+
+        public bool IsPending(NetworkTransform nt)
+        {
+            int index = nt.ntIndex;
+            return index >= 0 && index < pendingByIndex.Length && pendingByIndex[index];
+        }
+
+        public void SetPending(NetworkTransform nt, bool value)
+        {
+            int index = nt.ntIndex;
+            if (index >= 0 && index < pendingByIndex.Length)
+                pendingByIndex[index] = value;
+        }
         public readonly Dictionary<NetworkID, NTLastAdaptiveWrite> lastAdaptiveWrite = new();
         // A targeted reliable reset advances the NetworkTransform's global generation, while
         // unaffected peers remain on their existing wire generation until the next global reset.
