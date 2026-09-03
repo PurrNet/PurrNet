@@ -604,6 +604,7 @@ namespace PurrNet
         [UsedByIL]
         protected void SendRPC(RPCPacket packet, RPCSignature signature)
         {
+            NetworkAssetResolver.serializationSceneHint = null;
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
 #endif

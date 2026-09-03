@@ -15,6 +15,13 @@ namespace PurrNet
         private readonly NetworkManager _manager;
         private readonly HashSet<string> _warnedFallback = new();
 
+        /// <summary>
+        /// Scene to prefer while serializing assets that have no context of their own, such as RPC arguments.
+        /// Armed by the RPC build path with the sending identity's scene and cleared once the RPC is sent,
+        /// so an asset registered by several scenes resolves to the scene the RPC actually comes from.
+        /// </summary>
+        public static SceneID? serializationSceneHint { get; set; }
+
         internal NetworkAssetResolver(NetworkManager manager)
         {
             _manager = manager;

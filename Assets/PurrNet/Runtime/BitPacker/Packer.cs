@@ -284,7 +284,8 @@ namespace PurrNet.Packing
         {
             var manager = NetworkManager.main;
             var id = NetworkAssetID.invalid;
-            bool isNetworkAsset = manager && manager.networkAssetResolver.TryGetId(unityObj, out id, true);
+            bool isNetworkAsset = manager && manager.networkAssetResolver.TryGetId(
+                unityObj, NetworkAssetResolver.serializationSceneHint, out id, true);
             packer.WriteBit(isNetworkAsset);
 
             if (isNetworkAsset)

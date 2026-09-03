@@ -80,6 +80,48 @@ namespace PurrNet
             return results;
         }
 
+        /// <summary>
+        /// Walks a scene's dependencies without passing through registry assets. A scene that carries its
+        /// own NetworkPrefabs or NetworkAssets references the registry, and the registry references every
+        /// entry it already holds, so a plain recursive walk would re-find stale entries forever.
+        /// </summary>
+        private static string[] CollectSceneDependencies(string scenePath)
+        {
+            var collected = new List<string>();
+            var visited = new HashSet<string> { scenePath };
+            var pending = new Queue<string>(AssetDatabase.GetDependencies(scenePath, false));
+
+            while (pending.Count > 0)
+            {
+                string path = pending.Dequeue();
+                if (string.IsNullOrEmpty(path) || !visited.Add(path))
+                    continue;
+
+                if (IsRegistryAsset(path))
+                    continue;
+
+                collected.Add(path);
+
+                string[] nested = AssetDatabase.GetDependencies(path, false);
+                for (int i = 0; i < nested.Length; i++)
+                    pending.Enqueue(nested[i]);
+            }
+
+            return collected.ToArray();
+        }
+
+        private static bool IsRegistryAsset(string path)
+        {
+            if (!path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var type = AssetDatabase.GetMainAssetTypeAtPath(path);
+            if (type == null)
+                return false;
+
+            return typeof(PrefabProviderScriptable).IsAssignableFrom(type) || type == typeof(NetworkAssets);
+        }
+
         public static List<ScanResult> ScanScenePrefabs(string scenePath, bool networkOnly)
         {
             var results = new List<ScanResult>();
@@ -87,7 +129,7 @@ namespace PurrNet
             if (string.IsNullOrEmpty(scenePath))
                 return results;
 
-            string[] dependencies = AssetDatabase.GetDependencies(scenePath, true);
+            string[] dependencies = CollectSceneDependencies(scenePath);
             var identities = new List<NetworkIdentity>();
 
             for (int i = 0; i < dependencies.Length; i++)
@@ -151,7 +193,7 @@ namespace PurrNet
             if (string.IsNullOrEmpty(scenePath))
                 return results;
 
-            string[] dependencies = AssetDatabase.GetDependencies(scenePath, true);
+            string[] dependencies = CollectSceneDependencies(scenePath);
             var seen = new HashSet<Object>();
 
             for (int i = 0; i < dependencies.Length; i++)

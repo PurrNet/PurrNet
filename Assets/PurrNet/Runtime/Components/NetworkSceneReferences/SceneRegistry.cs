@@ -36,13 +36,17 @@ namespace PurrNet
 
         private void OnDisable()
         {
+            if (_cached == null)
+                return;
+
             var handle = gameObject.scene.handle;
             if (_entries.TryGetValue(handle, out var entries))
             {
-                var me = Me();
-                if (entries.Remove(me) && entries.Count == 0)
+                if (entries.Remove(_cached) && entries.Count == 0)
                     _entries.Remove(handle);
             }
+
+            _cached = default;
         }
     }
 }

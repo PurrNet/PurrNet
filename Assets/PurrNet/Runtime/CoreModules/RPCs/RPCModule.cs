@@ -256,6 +256,8 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static void SendStaticRPC(StaticRPCPacket packet, RPCSignature signature)
         {
+            NetworkAssetResolver.serializationSceneHint = null;
+
             var nm = NetworkManager.main;
 
             if (!nm)
@@ -854,6 +856,8 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static RPCPacket BuildRawRPC(NetworkID? networkId, SceneID id, int rpcId, BitPacker data)
         {
+            NetworkAssetResolver.serializationSceneHint = id;
+
             var rpc = new RPCPacket
             {
                 header = new NetworkIdentityRPCHeader
@@ -872,6 +876,8 @@ namespace PurrNet.Modules
         [UsedByIL]
         public static StaticRPCPacket BuildStaticRawRPC<T>(uint rpcId, BitPacker data)
         {
+            NetworkAssetResolver.serializationSceneHint = null;
+
             var hash = Hasher.GetStableHashU32<T>();
 
             var rpc = new StaticRPCPacket

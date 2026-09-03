@@ -536,6 +536,7 @@ namespace PurrNet
 
             prefabProvider = provider;
             prefabProvider.Refresh();
+            HierarchyPool.EvictGlobalPrototypes();
         }
 
         /// <summary>

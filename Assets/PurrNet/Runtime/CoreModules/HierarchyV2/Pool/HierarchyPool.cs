@@ -51,11 +51,25 @@ namespace PurrNet.Modules
         /// </summary>
         public static void EvictPrototypes(SceneID scene)
         {
+            EvictPrototypes(id => id.scope.HasValue && id.scope.Value == scene);
+        }
+
+        /// <summary>
+        /// Drops cached prototypes of global prefabs. Global ids are plain indices into the active provider,
+        /// so they must not survive a provider swap.
+        /// </summary>
+        public static void EvictGlobalPrototypes()
+        {
+            EvictPrototypes(id => !id.scope.HasValue);
+        }
+
+        private static void EvictPrototypes(Func<PrefabID, bool> isStale)
+        {
             var stale = ListPool<PrefabID>.Instantiate();
 
             foreach (var (id, _) in _prefabPrototypes)
             {
-                if (id.scope.HasValue && id.scope.Value == scene)
+                if (isStale(id))
                     stale.Add(id);
             }
 

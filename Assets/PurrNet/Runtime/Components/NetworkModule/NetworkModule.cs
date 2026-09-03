@@ -263,6 +263,7 @@ namespace PurrNet
         [UsedByIL]
         protected void SendRPC(ChildRPCPacket packet, RPCSignature signature)
         {
+            NetworkAssetResolver.serializationSceneHint = null;
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             _myType ??= GetType();
 #endif
@@ -377,6 +378,8 @@ namespace PurrNet
             if (!parent)
                 throw new InvalidOperationException(
                     $"Trying to send RPC from '<b>{GetType().FullName}</b> {name}' which is not spawned.");
+
+            NetworkAssetResolver.serializationSceneHint = parent.sceneId;
 
             var rpc = new ChildRPCPacket
             {
