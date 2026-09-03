@@ -1,3 +1,10 @@
+# [1.23.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.20...v1.23.0-beta.21) (2026-09-03)
+
+
+### Bug Fixes
+
+* PlayerSpawner not spawning if DespawnIfOwnerDisconnects = false && ([62b2a7f](https://github.com/PurrNet/PurrNet/commit/62b2a7f7f32bb15580c418a14df2c71134e8945c))
+
 # [1.23.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.19...v1.23.0-beta.20) (2026-09-03)
 
 
