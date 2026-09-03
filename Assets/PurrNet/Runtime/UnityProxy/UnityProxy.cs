@@ -446,8 +446,7 @@ namespace PurrNet
 
             var go = GetGameObject(target);
 
-            // if it's not a root object, don't do anything
-            if (go.transform.parent)
+            if (!go || go.transform.parent)
                 return;
 
             bool isNetworked = go.GetComponentInChildren<NetworkIdentity>() != null;
