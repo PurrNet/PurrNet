@@ -2007,6 +2007,7 @@ GameObject:
   - component: {fileID: 1680343672}
   - component: {fileID: 1680343673}
   - component: {fileID: 1680343690}
+  - component: {fileID: 1680343691}
   m_Layer: 0
   m_Name: Lifetimes
   m_TagString: Untagged
@@ -3499,6 +3500,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f5e7c3a1b8d0e4f5a6b7c8d9eafb0c7, type: 3}
   m_Name:
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneScopedRegistryScenario
+  _sceneTimeoutSeconds: 30
+  _syncTimeoutSeconds: 20
+  _barrierTimeoutSeconds: 60
+--- !u!114 &1680343691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680343622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0718293a4b5c6d7e8f90a1b2c3d4e5f6, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::SceneScopedAssetHintScenario
   _sceneTimeoutSeconds: 30
   _syncTimeoutSeconds: 20
   _barrierTimeoutSeconds: 60
