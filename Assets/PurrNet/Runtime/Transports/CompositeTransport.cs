@@ -352,6 +352,21 @@ namespace PurrNet.Transports
             }
         }
 
+        public bool FlushConnection(Connection conn, bool asServer)
+        {
+            if (asServer)
+            {
+                if (!_internalIsListening || conn.connectionId < 0 || conn.connectionId >= _rawConnections.Count)
+                    return false;
+
+                var pair = _rawConnections[conn.connectionId];
+                var protocol = _transports[pair.transportIdx];
+                return protocol && protocol.transport.FlushConnection(pair.originalConnection, true);
+            }
+
+            return _clientTransport && _clientTransport.transport.FlushConnection(conn, false);
+        }
+
         public void UnityUpdate(float delta)
         {
             for (int i = 0; i < _transports.Length; i++)

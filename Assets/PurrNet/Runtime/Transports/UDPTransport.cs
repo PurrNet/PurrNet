@@ -471,6 +471,25 @@ namespace PurrNet.Transports
             RaiseDataSent(default, data, false);
         }
 
+        public bool FlushConnection(Connection conn, bool asServer)
+        {
+            if (asServer)
+            {
+                if (listenerState is not ConnectionState.Connected)
+                    return false;
+
+                if (_connectionToPeer.TryGetValue(conn, out var peer))
+                    peer.FlushSends();
+                return true;
+            }
+
+            if (clientState != ConnectionState.Connected)
+                return false;
+
+            _client.FirstPeer?.FlushSends();
+            return true;
+        }
+
         public void CloseConnection(Connection conn)
         {
             _connectionToPeer.TryGetValue(conn, out var peer);

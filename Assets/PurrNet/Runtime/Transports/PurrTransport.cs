@@ -1681,6 +1681,43 @@ namespace PurrNet.Transports
             }
         }
 
+        public bool FlushConnection(Connection conn, bool asServer)
+        {
+            if (asServer)
+            {
+                if (listenerState != ConnectionState.Connected)
+                    return false;
+
+                if (!_isUsingUDP)
+                    return true;
+
+                if (natEnabled && _p2pSessionConns.Contains(conn.connectionId))
+                {
+                    if (_p2pPeersByConnId.TryGetValue(conn.connectionId, out var p2pPeer))
+                        p2pPeer.FlushSends();
+                    return true;
+                }
+
+                _relayServerPeer?.FlushSends();
+                return true;
+            }
+
+            if (clientState != ConnectionState.Connected)
+                return false;
+
+            if (!_isUsingUDP)
+                return true;
+
+            if (natEnabled && _clientP2pSession && _p2pHostPeer != null)
+            {
+                _p2pHostPeer.FlushSends();
+                return true;
+            }
+
+            _relayClientPeer?.FlushSends();
+            return true;
+        }
+
         private void OnDisable()
         {
             StopListening();

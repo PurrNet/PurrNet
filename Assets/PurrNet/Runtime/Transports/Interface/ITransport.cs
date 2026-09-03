@@ -256,6 +256,13 @@ namespace PurrNet.Transports
         bool measuresRoundTripTime => false;
 
         /// <summary>
+        /// Pushes data already queued for one connection onto the wire without a full send pass.
+        /// Returns false when the transport cannot do this, in which case the caller falls back to
+        /// <see cref="SendMessages"/>. On the client side the connection argument is ignored.
+        /// </summary>
+        bool FlushConnection(Connection conn, bool asServer) => false;
+
+        /// <summary>
         /// Short human readable description of the link the local client is currently using,
         /// for example which relay region or whether it is a direct P2P session. Null when the transport has nothing to add.
         /// </summary>

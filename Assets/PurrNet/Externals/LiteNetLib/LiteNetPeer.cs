@@ -1313,6 +1313,23 @@ namespace LiteNetLib
 
             UpdateMtuLogic(deltaTime);
 
+            SendQueued();
+        }
+
+        /// <summary>
+        /// Sends everything already queued on this peer: reliable channel packets, pending
+        /// unreliable packets and the merge buffer. Timers are untouched; Update still owns those.
+        /// </summary>
+        public void FlushSends()
+        {
+            if (_connectionState != ConnectionState.Connected)
+                return;
+
+            SendQueued();
+        }
+
+        private void SendQueued()
+        {
             UpdateChannels();
 
             if (_unreliablePendingCount > 0)

@@ -45,5 +45,12 @@ namespace PurrNet
         /// so a latency-sensitive message does not wait for the tick's regular send.
         /// </summary>
         void RequestSendFlushThisFrame();
+
+        /// <summary>
+        /// Same as <see cref="RequestSendFlushThisFrame()"/> but scoped to one connection, so a
+        /// transport that supports it can push just that peer instead of a full send pass.
+        /// On the client side the connection argument is ignored.
+        /// </summary>
+        void RequestSendFlushThisFrame(Connection conn, bool asServer) => RequestSendFlushThisFrame();
     }
 }

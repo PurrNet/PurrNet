@@ -1707,10 +1707,21 @@ namespace PurrNet
         }
 
         private bool _sendFlushRequested;
+        private readonly List<(Connection conn, bool asServer)> _connectionFlushRequests = new();
 
         public void RequestSendFlushThisFrame()
         {
             _sendFlushRequested = true;
+        }
+
+        public void RequestSendFlushThisFrame(Connection conn, bool asServer)
+        {
+            if (_sendFlushRequested)
+                return;
+
+            var request = (conn, asServer);
+            if (!_connectionFlushRequests.Contains(request))
+                _connectionFlushRequests.Add(request);
         }
 
         // Runs from UnityLatestUpdate's post phase (execution order 32000, after every
@@ -1729,6 +1740,25 @@ namespace PurrNet
                 flushedAny |= _clientModules.FlushImmediateRPCs();
 
             if (flushedAny)
+            {
+                _connectionFlushRequests.Clear();
+                SendMessagesNow();
+                return;
+            }
+
+            if (_connectionFlushRequests.Count == 0)
+                return;
+
+            bool flushedAll = _transportLayer != null;
+            for (int i = 0; flushedAll && i < _connectionFlushRequests.Count; i++)
+            {
+                var (conn, asServer) = _connectionFlushRequests[i];
+                flushedAll = _transportLayer.FlushConnection(conn, asServer);
+            }
+
+            _connectionFlushRequests.Clear();
+
+            if (!flushedAll)
                 SendMessagesNow();
         }
 

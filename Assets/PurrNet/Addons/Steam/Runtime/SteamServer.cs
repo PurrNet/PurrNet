@@ -218,6 +218,18 @@ namespace PurrNet.Steam
                 Array.Resize(ref buffer, packetLength);
         }
 #endif
+        public void FlushConnection(int connId)
+        {
+#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+            if (!_connectionById.TryGetValue(connId, out var conn))
+                return;
+
+            if (_isDedicated)
+                SteamGameServerNetworkingSockets.FlushMessagesOnConnection(conn);
+            else SteamNetworkingSockets.FlushMessagesOnConnection(conn);
+#endif
+        }
+
         public void SendToConnection(int connId, ByteData data, Channel channel)
         {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS

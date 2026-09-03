@@ -297,6 +297,24 @@ namespace PurrNet.Steam
             _server?.SendMessages();
             _client?.SendMessages();
         }
+
+        public bool FlushConnection(Connection conn, bool asServer)
+        {
+            if (asServer)
+            {
+                if (_server == null || listenerState is not PurrConnectionState.Connected)
+                    return false;
+
+                _server.FlushConnection(conn.connectionId);
+                return true;
+            }
+
+            if (_client == null)
+                return false;
+
+            _client.SendMessages();
+            return true;
+        }
         
         public ulong GetSteamID(Connection conn)
         {
