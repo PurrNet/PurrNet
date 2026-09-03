@@ -211,6 +211,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>GetAllPlayerOwnedIds<
 <tr class="memitem:a4253fe17a87e6e5ac113dca47c131dac"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a4253fe17a87e6e5ac113dca47c131dac">RequestSendFlushThisFrame</a> ()</td></tr>
 <tr class="memdesc:a4253fe17a87e6e5ac113dca47c131dac"><td class="mdescLeft">&#160;</td><td class="mdescRight">Asks the manager to push queued transport data out before the next tick (this frame), so a latency-sensitive message does not wait for the tick's regular send.   <a href="classPurrNet_1_1NetworkManager.html#a4253fe17a87e6e5ac113dca47c131dac">More...</a><br /></td></tr>
 <tr class="separator:a4253fe17a87e6e5ac113dca47c131dac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af638f828c1e3c5dd93b8c83796a3e9a2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#af638f828c1e3c5dd93b8c83796a3e9a2">RequestSendFlushThisFrame</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
+<tr class="memdesc:af638f828c1e3c5dd93b8c83796a3e9a2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Same as <a class="el" href="classPurrNet_1_1NetworkManager.html#a4253fe17a87e6e5ac113dca47c131dac" title="Asks the manager to push queued transport data out before the next tick (this frame),...">RequestSendFlushThisFrame()</a> but scoped to one connection, so a transport that supports it can push just that peer instead of a full send pass. On the client side the connection argument is ignored.   <a href="classPurrNet_1_1NetworkManager.html#af638f828c1e3c5dd93b8c83796a3e9a2">More...</a><br /></td></tr>
+<tr class="separator:af638f828c1e3c5dd93b8c83796a3e9a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a19356953402a12f76fe3284da8824a80"><td class="memItemLeft" align="right" valign="top"><a id="a19356953402a12f76fe3284da8824a80" name="a19356953402a12f76fe3284da8824a80"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushBatchedRPCs</b> ()</td></tr>
 <tr class="separator:a19356953402a12f76fe3284da8824a80"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -318,6 +321,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>InternalUnregisterSer
 <tr class="memitem:a1ad347be50df29501ed3a38d5a9894f3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3">RequestSendFlushThisFrame</a> ()</td></tr>
 <tr class="memdesc:a1ad347be50df29501ed3a38d5a9894f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Asks the manager to push queued transport data out before the next tick (this frame), so a latency-sensitive message does not wait for the tick's regular send.   <a href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3">More...</a><br /></td></tr>
 <tr class="separator:a1ad347be50df29501ed3a38d5a9894f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a474bf9fb0bde93dd0ade0abfbd7bfc7b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#a474bf9fb0bde93dd0ade0abfbd7bfc7b">RequestSendFlushThisFrame</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
+<tr class="memdesc:a474bf9fb0bde93dd0ade0abfbd7bfc7b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Same as <a class="el" href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3" title="Asks the manager to push queued transport data out before the next tick (this frame),...">RequestSendFlushThisFrame()</a> but scoped to one connection, so a transport that supports it can push just that peer instead of a full send pass. On the client side the connection argument is ignored.   <a href="interfacePurrNet_1_1INetworkManager.html#a474bf9fb0bde93dd0ade0abfbd7bfc7b">More...</a><br /></td></tr>
+<tr class="separator:a474bf9fb0bde93dd0ade0abfbd7bfc7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -1027,7 +1033,7 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 </div>
 </div>
 <a id="a4253fe17a87e6e5ac113dca47c131dac" name="a4253fe17a87e6e5ac113dca47c131dac"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4253fe17a87e6e5ac113dca47c131dac">&#9670;&#160;</a></span>RequestSendFlushThisFrame()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a4253fe17a87e6e5ac113dca47c131dac">&#9670;&#160;</a></span>RequestSendFlushThisFrame() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1044,6 +1050,38 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 <p>Asks the manager to push queued transport data out before the next tick (this frame), so a latency-sensitive message does not wait for the tick's regular send.  </p>
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3">PurrNet.INetworkManager</a>.</p>
+
+</div>
+</div>
+<a id="af638f828c1e3c5dd93b8c83796a3e9a2" name="af638f828c1e3c5dd93b8c83796a3e9a2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af638f828c1e3c5dd93b8c83796a3e9a2">&#9670;&#160;</a></span>RequestSendFlushThisFrame() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.NetworkManager.RequestSendFlushThisFrame </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>&#160;</td>
+          <td class="paramname"><em>conn</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>asServer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Same as <a class="el" href="classPurrNet_1_1NetworkManager.html#a4253fe17a87e6e5ac113dca47c131dac" title="Asks the manager to push queued transport data out before the next tick (this frame),...">RequestSendFlushThisFrame()</a> but scoped to one connection, so a transport that supports it can push just that peer instead of a full send pass. On the client side the connection argument is ignored.  </p>
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1INetworkManager.html#a474bf9fb0bde93dd0ade0abfbd7bfc7b">PurrNet.INetworkManager</a>.</p>
 
 </div>
 </div>

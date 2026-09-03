@@ -177,6 +177,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>DisconnectPipe</b> ()
 <tr class="separator:a5d7c1850f3b39ab58dcbadae64c3925d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a07d3bcb5b7607bc98e9084b1e90e1d8b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a07d3bcb5b7607bc98e9084b1e90e1d8b">SendMessages</a> (float delta)</td></tr>
 <tr class="separator:a07d3bcb5b7607bc98e9084b1e90e1d8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab39527cd4fca47ccde3d57cc731e5a9c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#ab39527cd4fca47ccde3d57cc731e5a9c">FlushConnection</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
+<tr class="memdesc:ab39527cd4fca47ccde3d57cc731e5a9c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pushes data already queued for one connection onto the wire without a full send pass. Returns false when the transport cannot do this, in which case the caller falls back to SendMessages. On the client side the connection argument is ignored.   <a href="classPurrNet_1_1Transports_1_1PurrTransport.html#ab39527cd4fca47ccde3d57cc731e5a9c">More...</a><br /></td></tr>
+<tr class="separator:ab39527cd4fca47ccde3d57cc731e5a9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1Transports_1_1GenericTransport"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1Transports_1_1GenericTransport')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1Transports_1_1GenericTransport.html">PurrNet.Transports.GenericTransport</a></td></tr>
 <tr class="memitem:abb3d0402cfa9ccdbf9cdc014edd2f36a inherit pub_methods_classPurrNet_1_1Transports_1_1GenericTransport"><td class="memItemLeft" align="right" valign="top"><a id="abb3d0402cfa9ccdbf9cdc014edd2f36a" name="abb3d0402cfa9ccdbf9cdc014edd2f36a"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>StartServer</b> ()</td></tr>
@@ -217,6 +220,9 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMTU</b> (<a class="
 <tr class="memitem:ae3e1f81560c564104469b5fc729ba137"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html#ae3e1f81560c564104469b5fc729ba137">GetRoundTripTime</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
 <tr class="memdesc:ae3e1f81560c564104469b5fc729ba137"><td class="mdescLeft">&#160;</td><td class="mdescRight">Round trip time in milliseconds for a connection, or -1 when the transport has not measured it yet or does not support it. On the client side the connection argument is ignored.   <a href="interfacePurrNet_1_1Transports_1_1ITransport.html#ae3e1f81560c564104469b5fc729ba137">More...</a><br /></td></tr>
 <tr class="separator:ae3e1f81560c564104469b5fc729ba137"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a84d8be7b2d22babc84aec7313f41e66c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html#a84d8be7b2d22babc84aec7313f41e66c">FlushConnection</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, bool asServer)</td></tr>
+<tr class="memdesc:a84d8be7b2d22babc84aec7313f41e66c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pushes data already queued for one connection onto the wire without a full send pass. Returns false when the transport cannot do this, in which case the caller falls back to SendMessages. On the client side the connection argument is ignored.   <a href="interfacePurrNet_1_1Transports_1_1ITransport.html#a84d8be7b2d22babc84aec7313f41e66c">More...</a><br /></td></tr>
+<tr class="separator:a84d8be7b2d22babc84aec7313f41e66c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af93c7e3cc31101e327f392839e24f9b1"><td class="memItemLeft" align="right" valign="top"><a id="af93c7e3cc31101e327f392839e24f9b1" name="af93c7e3cc31101e327f392839e24f9b1"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SendServerKeepAlive</b> ()</td></tr>
 <tr class="separator:af93c7e3cc31101e327f392839e24f9b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -509,6 +515,38 @@ const float&#160;</td><td class="memItemRight" valign="bottom"><b>DEFAULT_PING_T
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1Transports_1_1IConnectable.html">PurrNet.Transports.IConnectable</a>.</p>
+
+</div>
+</div>
+<a id="ab39527cd4fca47ccde3d57cc731e5a9c" name="ab39527cd4fca47ccde3d57cc731e5a9c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab39527cd4fca47ccde3d57cc731e5a9c">&#9670;&#160;</a></span>FlushConnection()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PurrNet.Transports.PurrTransport.FlushConnection </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a>&#160;</td>
+          <td class="paramname"><em>conn</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>asServer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Pushes data already queued for one connection onto the wire without a full send pass. Returns false when the transport cannot do this, in which case the caller falls back to SendMessages. On the client side the connection argument is ignored.  </p>
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1Transports_1_1ITransport.html#a84d8be7b2d22babc84aec7313f41e66c">PurrNet.Transports.ITransport</a>.</p>
 
 </div>
 </div>

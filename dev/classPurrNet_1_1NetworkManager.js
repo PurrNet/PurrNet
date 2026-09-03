@@ -15,6 +15,7 @@ var classPurrNet_1_1NetworkManager =
     [ "ReleaseClientStateForHostMigration", "classPurrNet_1_1NetworkManager.html#a861564130a928f1adaaacabcf232fa58", null ],
     [ "RemoveVisibilityRule", "classPurrNet_1_1NetworkManager.html#a69fac11485648ad779bde25eb3cd4548", null ],
     [ "RequestSendFlushThisFrame", "classPurrNet_1_1NetworkManager.html#a4253fe17a87e6e5ac113dca47c131dac", null ],
+    [ "RequestSendFlushThisFrame", "classPurrNet_1_1NetworkManager.html#af638f828c1e3c5dd93b8c83796a3e9a2", null ],
     [ "ResetInternalState", "classPurrNet_1_1NetworkManager.html#a11d134561fa4f5c995dd621d5668ecb6", null ],
     [ "Send< T >", "classPurrNet_1_1NetworkManager.html#a55b449859e905ad3abe77f305285fee3", null ],
     [ "Send< T >", "classPurrNet_1_1NetworkManager.html#a7afd7b813a1c1b7c23fc11ce59ce38e3", null ],

@@ -53,12 +53,12 @@ var NAVTREEINDEX =
 "annotated.html",
 "classPurrNet_1_1Modules_1_1ScenesModule.html#a2e978a865fbc025e7bae081cadb35854",
 "classPurrNet_1_1NetworkIdentity.html#ab2ecb22de5c175f5a774fb8e8dfa1ab7",
-"classPurrNet_1_1NetworkModule.html#a1f2a42582066a7fe12abdec08188bce6",
-"classPurrNet_1_1Packing_1_1GeneratedByILAttribute.html",
-"classPurrNet_1_1SyncDictionary.html#a81c8fbcda137961be0d98849997fccec",
-"classPurrNet_1_1Utils_1_1PurrAction.html#a93986a818151968a19f53c0e6c5e326a",
-"structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a3cdee677b4261b733e59384d925c9d78",
-"structPurrNet_1_1Pooling_1_1DisposableDictionary_1_1Enumerator.html"
+"classPurrNet_1_1NetworkModule.html#a1370d458228d460a3bc2ce33610555ed",
+"classPurrNet_1_1Packing_1_1BitPackerPool.html",
+"classPurrNet_1_1SyncDictionary.html#a7d5f554a53932554be01d6caf124c9e6",
+"classPurrNet_1_1Transports_1_1WebTransport.html",
+"structPurrNet_1_1Authentication_1_1AuthenticationRequest.html#a2b8227a7b9df04567305d3d036dd60bc",
+"structPurrNet_1_1Pooling_1_1AllocationDetails.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

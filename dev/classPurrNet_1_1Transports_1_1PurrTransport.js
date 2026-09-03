@@ -3,6 +3,7 @@ var classPurrNet_1_1Transports_1_1PurrTransport =
     [ "SessionLink", "classPurrNet_1_1Transports_1_1PurrTransport.html#a9c1074a3457b1be31fbf09f912e17661", null ],
     [ "ConnectAsPipe", "classPurrNet_1_1Transports_1_1PurrTransport.html#a3042976559865d9b8b8a9cc7deb57977", null ],
     [ "DisconnectPipe", "classPurrNet_1_1Transports_1_1PurrTransport.html#a275628271e951f70e0bca419822cbfe5", null ],
+    [ "FlushConnection", "classPurrNet_1_1Transports_1_1PurrTransport.html#ab39527cd4fca47ccde3d57cc731e5a9c", null ],
     [ "GetP2pEndpoint", "classPurrNet_1_1Transports_1_1PurrTransport.html#a494876d88e0afc801b7a91f4a82cbed2", null ],
     [ "GetRoundTripTime", "classPurrNet_1_1Transports_1_1PurrTransport.html#aab98e7f9322ba813c454a1e468adec2c", null ],
     [ "PingInternal", "classPurrNet_1_1Transports_1_1PurrTransport.html#a7d3471c46b45ed73ba31bfc43e427b94", null ],
