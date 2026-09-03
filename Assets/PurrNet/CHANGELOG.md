@@ -1,3 +1,10 @@
+# [1.23.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.23...v1.23.0-beta.24) (2026-09-03)
+
+
+### Bug Fixes
+
+* transports can now flush per targer ([e982797](https://github.com/PurrNet/PurrNet/commit/e98279774e484a1fa71304d1ebeee1ca144a946f))
+
 # [1.23.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.22...v1.23.0-beta.23) (2026-09-03)
 
 
