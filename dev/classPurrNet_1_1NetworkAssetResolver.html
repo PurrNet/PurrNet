@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1NetworkAssetResolver.h
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#properties">Properties</a> &#124;
 <a href="classPurrNet_1_1NetworkAssetResolver-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.NetworkAssetResolver Class Reference</div></div>
 </div><!--header-->
@@ -118,6 +119,13 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetPersistentId</b
 <tr class="memitem:a8e3de32d1075dcb5e4faa91465fb206a"><td class="memItemLeft" align="right" valign="top"><a id="a8e3de32d1075dcb5e4faa91465fb206a" name="a8e3de32d1075dcb5e4faa91465fb206a"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetAssetByPersistentId</b> (string persistentId, out Object asset)</td></tr>
 <tr class="separator:a8e3de32d1075dcb5e4faa91465fb206a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
+Properties</h2></td></tr>
+<tr class="memitem:a411de0f7fd1a4a63506d8971bcc7a81a"><td class="memItemLeft" align="right" valign="top"><a id="a411de0f7fd1a4a63506d8971bcc7a81a" name="a411de0f7fd1a4a63506d8971bcc7a81a"></a>
+static ? <a class="el" href="structPurrNet_1_1SceneID.html">SceneID</a>&#160;</td><td class="memItemRight" valign="bottom"><b>serializationSceneHint</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a411de0f7fd1a4a63506d8971bcc7a81a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scene to prefer while serializing assets that have no context of their own, such as RPC arguments. Armed by the RPC build path with the sending identity's scene and cleared once the RPC is sent, so an asset registered by several scenes resolves to the scene the RPC actually comes from.  <br /></td></tr>
+<tr class="separator:a411de0f7fd1a4a63506d8971bcc7a81a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Single entry point for turning a <a class="el" href="structPurrNet_1_1NetworkAssetID.html">NetworkAssetID</a> (or an asset reference) into a registered asset. Every runtime lookup goes through here so the resolution strategy can be changed in one place. Global assets live in the manager's registry; scene scoped assets come from the SceneRegistry&lt;T&gt; of the scene named by NetworkAssetID.scope.  </p>
