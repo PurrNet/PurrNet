@@ -153,6 +153,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>StartHost</b> ()</td>
 <tr class="separator:abd1a57e280e5fc50ddcdaa9a10e53b08"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6987ec1d10492e566c50b877448931f0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#a6987ec1d10492e566c50b877448931f0">RegisterModules</a> (<a class="el" href="structPurrNet_1_1ModulesCollection.html">ModulesCollection</a> modules, bool asServer)</td></tr>
 <tr class="separator:a6987ec1d10492e566c50b877448931f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a32fd72545a790da9e335b846abd89477"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1RawNetManager.html#a32fd72545a790da9e335b846abd89477">RequestSendFlushThisFrame</a> ()</td></tr>
+<tr class="memdesc:a32fd72545a790da9e335b846abd89477"><td class="mdescLeft">&#160;</td><td class="mdescRight">Asks the manager to push queued transport data out before the next tick (this frame), so a latency-sensitive message does not wait for the tick's regular send.   <a href="classPurrNet_1_1RawNetManager.html#a32fd72545a790da9e335b846abd89477">More...</a><br /></td></tr>
+<tr class="separator:a32fd72545a790da9e335b846abd89477"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba7803b7cf79d55bcf9f0c754c29b980"><td class="memItemLeft" align="right" valign="top"><a id="aba7803b7cf79d55bcf9f0c754c29b980" name="aba7803b7cf79d55bcf9f0c754c29b980"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterModules</b> (<a class="el" href="structPurrNet_1_1ModulesCollection.html">ModulesCollection</a> modules, bool asServer)</td></tr>
 <tr class="separator:aba7803b7cf79d55bcf9f0c754c29b980"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -176,6 +179,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>InternalUnregisterSer
 <tr class="separator:a5fbc32eff231c98a4e62d26c456ad9a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a136b52160d4acf46522f33224e800616"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#a136b52160d4acf46522f33224e800616">HasModule&lt; T &gt;</a> (bool asServer)</td></tr>
 <tr class="separator:a136b52160d4acf46522f33224e800616"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1ad347be50df29501ed3a38d5a9894f3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3">RequestSendFlushThisFrame</a> ()</td></tr>
+<tr class="memdesc:a1ad347be50df29501ed3a38d5a9894f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Asks the manager to push queued transport data out before the next tick (this frame), so a latency-sensitive message does not wait for the tick's regular send.   <a href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3">More...</a><br /></td></tr>
+<tr class="separator:a1ad347be50df29501ed3a38d5a9894f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
@@ -403,6 +409,27 @@ OnTickDelegate&#160;</td><td class="memItemRight" valign="bottom"><b>onPostTick<
 </div><div class="memdoc">
 
 <p>Implements <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a>.</p>
+
+</div>
+</div>
+<a id="a32fd72545a790da9e335b846abd89477" name="a32fd72545a790da9e335b846abd89477"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a32fd72545a790da9e335b846abd89477">&#9670;&#160;</a></span>RequestSendFlushThisFrame()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PurrNet.RawNetManager.RequestSendFlushThisFrame </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Asks the manager to push queued transport data out before the next tick (this frame), so a latency-sensitive message does not wait for the tick's regular send.  </p>
+
+<p>Implements <a class="el" href="interfacePurrNet_1_1INetworkManager.html#a1ad347be50df29501ed3a38d5a9894f3">PurrNet.INetworkManager</a>.</p>
 
 </div>
 </div>

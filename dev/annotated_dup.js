@@ -216,7 +216,7 @@ var annotated_dup =
       [ "IBaseTickListener", "interfacePurrNet_1_1IBaseTickListener.html", null ],
       [ "ILODScheduler", "interfacePurrNet_1_1ILODScheduler.html", null ],
       [ "IMath", "interfacePurrNet_1_1IMath.html", null ],
-      [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", null ],
+      [ "INetworkManager", "interfacePurrNet_1_1INetworkManager.html", "interfacePurrNet_1_1INetworkManager" ],
       [ "INetworkRigidbodyPositionTransform", "interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html", "interfacePurrNet_1_1INetworkRigidbodyPositionTransform" ],
       [ "INetworkTransform", "interfacePurrNet_1_1INetworkTransform.html", "interfacePurrNet_1_1INetworkTransform" ],
       [ "INetworkTransformPositionTransform", "interfacePurrNet_1_1INetworkTransformPositionTransform.html", null ],
