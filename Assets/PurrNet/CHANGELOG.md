@@ -1,3 +1,10 @@
+# [1.23.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.19...v1.23.0-beta.20) (2026-09-03)
+
+
+### Bug Fixes
+
+* scene scoped assets test + fixes ([325c740](https://github.com/PurrNet/PurrNet/commit/325c740e945ba7b1206a0509e6c672f9517dd02b))
+
 # [1.23.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.18...v1.23.0-beta.19) (2026-09-02)
 
 
