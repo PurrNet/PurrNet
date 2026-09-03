@@ -1,3 +1,11 @@
+# [1.23.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.21...v1.23.0-beta.22) (2026-09-03)
+
+
+### Bug Fixes
+
+* ILProcessing for unity 6.6 ([bdbbb82](https://github.com/PurrNet/PurrNet/commit/bdbbb8205c66f8729f707892e201f582a2c74824))
+* when using Purrnet, Object.DontDestroyOnLoad() can fail ([2370872](https://github.com/PurrNet/PurrNet/commit/237087254d76d0cafa9f55c40ce1d2368caae0be))
+
 # [1.23.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.20...v1.23.0-beta.21) (2026-09-03)
 
 
