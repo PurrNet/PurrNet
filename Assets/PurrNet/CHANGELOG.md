@@ -1,3 +1,10 @@
+# [1.23.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.22...v1.23.0-beta.23) (2026-09-03)
+
+
+### Bug Fixes
+
+* frame-accurate RTT; immediate rpcs also send on the same frame ([6ab4fad](https://github.com/PurrNet/PurrNet/commit/6ab4fadd785d2c3f5bd5f70c9b3506623d7fd400))
+
 # [1.23.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.21...v1.23.0-beta.22) (2026-09-03)
 
 
