@@ -1,3 +1,10 @@
+# [1.23.0-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.26...v1.23.0-beta.27) (2026-09-04)
+
+
+### Bug Fixes
+
+* optimize litenetlib batching for single packets ([b83d746](https://github.com/PurrNet/PurrNet/commit/b83d746982bbbc97542811ec07353c62ac1056bb))
+
 # [1.23.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.25...v1.23.0-beta.26) (2026-09-04)
 
 
