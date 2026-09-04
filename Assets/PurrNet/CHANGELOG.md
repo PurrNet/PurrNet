@@ -1,3 +1,10 @@
+# [1.23.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.25...v1.23.0-beta.26) (2026-09-04)
+
+
+### Bug Fixes
+
+* improving on the adaptive NT CPU usage ([1200724](https://github.com/PurrNet/PurrNet/commit/12007249941e6f8ab82feb966e7c595253ee18c5))
+
 # [1.23.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.24...v1.23.0-beta.25) (2026-09-04)
 
 
