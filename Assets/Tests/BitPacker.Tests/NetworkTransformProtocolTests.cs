@@ -541,6 +541,48 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void OnlyAnchorPacketsMoveAnEstablishedBaseline()
+    {
+        var objects = new List<GameObject>();
+        var module = new NetworkTransformModule(null, null, null, default, null);
+        var nt = CreateNetworkTransform(10, objects);
+
+        try
+        {
+            module.Register(nt);
+            var stream = module.GetSendStream(new PlayerID(1, false));
+            int index = nt.ntIndex;
+
+            nt.CaptureUnreliableState();
+            NetworkTransformModule.AddPending(stream, nt);
+
+            stream.ring[1] = SlotWith(nt, 1, nt.capturedRevision - 2, anchor: false);
+            module.ProcessAck(stream, 1, 0);
+            Assert.That(stream.baselines[index].has, Is.True, "first ack establishes a baseline even off-anchor");
+            Assert.That(stream.baselines[index].order, Is.EqualTo(1));
+
+            stream.ring[2] = SlotWith(nt, 2, nt.capturedRevision - 1, anchor: false);
+            module.ProcessAck(stream, 2, 0);
+            Assert.That(stream.baselines[index].order, Is.EqualTo(1), "off-anchor ack must not move the baseline");
+            Assert.That(stream.IsPending(nt), Is.True);
+
+            stream.ring[3] = SlotWith(nt, 3, nt.capturedRevision - 1, anchor: true);
+            module.ProcessAck(stream, 3, 0);
+            Assert.That(stream.baselines[index].order, Is.EqualTo(3), "anchor ack moves the baseline");
+
+            stream.ring[4] = SlotWith(nt, 4, nt.capturedRevision, anchor: false);
+            module.ProcessAck(stream, 4, 0);
+            Assert.That(stream.baselines[index].order, Is.EqualTo(4), "an ack of the current revision completes off-anchor");
+            Assert.That(stream.IsPending(nt), Is.False);
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+                Object.DestroyImmediate(objects[i]);
+        }
+    }
+
+    [Test]
     public void AckOnlyRemovesPendingCurrentRevision()
     {
         var objects = new List<GameObject>();
@@ -767,6 +809,7 @@ public class NetworkTransformProtocolTests
         return new NTUnreliableSlot
         {
             used = true,
+            anchor = true,
             entries = new List<NTUnreliableEntry>
             {
                 new() { nid = nid, gen = 1, genEpoch = genEpoch }
@@ -774,11 +817,12 @@ public class NetworkTransformProtocolTests
         };
     }
 
-    private static NTUnreliableSlot SlotWith(NetworkTransform nt, ushort seq, uint revision)
+    private static NTUnreliableSlot SlotWith(NetworkTransform nt, ushort seq, uint revision, bool anchor = true)
     {
         return new NTUnreliableSlot
         {
             used = true,
+            anchor = anchor,
             seq = seq,
             order = seq,
             entries = new List<NTUnreliableEntry>

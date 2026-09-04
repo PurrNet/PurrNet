@@ -120,6 +120,7 @@ namespace PurrNet.Modules
     {
         public bool used;
         public bool acked;
+        public bool anchor;
         public ushort seq;
         public uint order;
         public List<NTUnreliableEntry> entries;
@@ -141,6 +142,7 @@ namespace PurrNet.Modules
         public NTBaselineSlot[] baselines = System.Array.Empty<NTBaselineSlot>();
         public bool[] pendingByIndex = System.Array.Empty<bool>();
         public bool[] ackCompleted = System.Array.Empty<bool>();
+        public NTLastAdaptiveWrite[] adaptiveByIndex = System.Array.Empty<NTLastAdaptiveWrite>();
 
         public void EnsureBaselineCapacity(int count)
         {
@@ -150,6 +152,20 @@ namespace PurrNet.Modules
             System.Array.Resize(ref baselines, size);
             System.Array.Resize(ref pendingByIndex, size);
             System.Array.Resize(ref ackCompleted, size);
+            System.Array.Resize(ref adaptiveByIndex, size);
+        }
+
+        public NTLastAdaptiveWrite GetAdaptive(NetworkTransform nt)
+        {
+            int index = nt.GetNTIndex(asServer);
+            return index >= 0 && index < adaptiveByIndex.Length ? adaptiveByIndex[index] : null;
+        }
+
+        public void SetAdaptive(NetworkTransform nt, NTLastAdaptiveWrite value)
+        {
+            int index = nt.GetNTIndex(asServer);
+            if (index >= 0 && index < adaptiveByIndex.Length)
+                adaptiveByIndex[index] = value;
         }
 
         public bool IsPending(NetworkTransform nt)
@@ -164,7 +180,6 @@ namespace PurrNet.Modules
             if (index >= 0 && index < pendingByIndex.Length)
                 pendingByIndex[index] = value;
         }
-        public readonly Dictionary<NetworkID, NTLastAdaptiveWrite> lastAdaptiveWrite = new();
         // A targeted reliable reset advances the NetworkTransform's global generation, while
         // unaffected peers remain on their existing wire generation until the next global reset.
         public readonly Dictionary<NetworkID, NTUnreliableGeneration> generationOverrides = new();
@@ -205,6 +220,17 @@ namespace PurrNet.Modules
         // streams flush before the 32-packet selective-ACK window can leave a permanent blind spot.
         public const int ACK_INTERVAL_TICKS = 4;
         public const int ACK_PACKET_THRESHOLD = 24;
+
+        /// <summary>
+        /// Packets sent on ticks that are a multiple of this become the only ones that move a
+        /// peer's delta baseline forward once it has one. Every peer therefore converges on the
+        /// same baseline packet for every transform, so the per-peer share keys match and one
+        /// encode serves the whole audience instead of one encode per peer. Acks arrive at
+        /// most one ack interval after an anchor, so this equals the ack cadence.
+        /// </summary>
+        public const int BASELINE_ANCHOR_TICKS = ACK_INTERVAL_TICKS;
+
+        public static bool IsAnchorTick(ushort tick) => tick % BASELINE_ANCHOR_TICKS == 0;
 
         public const int ADAPTIVE_MAX_BACKFILL = 34;
         public const int ADAPTIVE_POS_TOLERANCE = 2;
