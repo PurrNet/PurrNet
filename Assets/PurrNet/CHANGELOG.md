@@ -1,3 +1,10 @@
+# [1.23.0-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.27...v1.23.0-beta.28) (2026-09-04)
+
+
+### Bug Fixes
+
+* syncvar bug and tests to ensure we dont regress ([2aea0b7](https://github.com/PurrNet/PurrNet/commit/2aea0b7ddeb940b7a44b8b93e4f39967865dc8d5))
+
 # [1.23.0-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.26...v1.23.0-beta.27) (2026-09-04)
 
 
