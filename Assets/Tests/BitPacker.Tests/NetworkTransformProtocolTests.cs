@@ -463,6 +463,84 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void HostDespawnUnregistersTransformFromClientAndServerModulesWithoutThrowing()
+    {
+        var objects = new List<GameObject>();
+        var serverModule = new NetworkTransformModule(null, null, null, default, null);
+        var clientModule = new NetworkTransformModule(null, null, null, default, null);
+        var serverOnly = CreateNetworkTransform(5, objects);
+        var nt = CreateNetworkTransform(10, objects);
+
+        try
+        {
+            // A host registers the same NetworkTransform with distinct server and client modules.
+            serverModule.PromoteToServerModule();
+            serverModule.Register(serverOnly);
+            serverModule.Register(nt);
+            clientModule.Register(nt);
+
+            Assert.That(nt.ntServerIndex, Is.EqualTo(1));
+            Assert.That(nt.ntIndex, Is.EqualTo(0));
+
+            var serverStream = serverModule.GetSendStream(new PlayerID(1, false));
+            var clientStream = clientModule.GetSendStream(PlayerID.Server);
+            Assert.That(serverStream.baselines.Length, Is.GreaterThan(nt.ntServerIndex));
+            Assert.That(clientStream.baselines.Length, Is.GreaterThan(nt.ntIndex));
+
+            nt.CaptureUnreliableState();
+            NetworkTransformModule.AddPending(serverStream, nt);
+            const ushort seq = 1;
+            serverStream.ring[seq % NTUnreliable.RING_SIZE] = SlotWith(nt, seq, nt.capturedRevision);
+            Assert.DoesNotThrow(() => serverModule.ProcessAck(serverStream, seq, 0));
+            Assert.That(serverStream.baselines[nt.ntServerIndex].has, Is.True);
+
+            Assert.DoesNotThrow(() => clientModule.Unregister(nt));
+            Assert.That(nt.ntIndex, Is.EqualTo(-1));
+            Assert.That(nt.ntServerIndex, Is.EqualTo(1));
+            Assert.That(nt.ntRegistered, Is.True);
+            Assert.That(serverStream.baselines[nt.ntServerIndex].has, Is.True);
+
+            Assert.DoesNotThrow(() => serverModule.Unregister(nt));
+            Assert.That(nt.ntServerIndex, Is.EqualTo(-1));
+            Assert.That(nt.ntRegistered, Is.False);
+            serverModule.Unregister(serverOnly);
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+                Object.DestroyImmediate(objects[i]);
+        }
+    }
+
+    [Test]
+    public void PromotedClientModuleKeepsItsTransformRegistration()
+    {
+        var objects = new List<GameObject>();
+        var module = new NetworkTransformModule(null, null, null, default, null);
+        var nt = CreateNetworkTransform(10, objects);
+
+        try
+        {
+            module.Register(nt);
+            int index = nt.ntIndex;
+
+            module.PromoteToServerModule();
+
+            Assert.That(nt.ntIndex, Is.EqualTo(-1));
+            Assert.That(nt.ntServerIndex, Is.EqualTo(index));
+            Assert.That(module.GetSendStream(new PlayerID(1, false)).baselines.Length,
+                Is.GreaterThan(nt.ntServerIndex));
+            Assert.DoesNotThrow(() => module.Unregister(nt));
+            Assert.That(nt.ntRegistered, Is.False);
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+                Object.DestroyImmediate(objects[i]);
+        }
+    }
+
+    [Test]
     public void AckOnlyRemovesPendingCurrentRevision()
     {
         var objects = new List<GameObject>();

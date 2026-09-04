@@ -127,6 +127,7 @@ namespace PurrNet.Modules
 
     internal class NTUnreliableSendStream
     {
+        public bool asServer;
         public ushort nextSeq = 1;
         public uint nextOrder = 1;
         public long budgetBits;
@@ -153,13 +154,13 @@ namespace PurrNet.Modules
 
         public bool IsPending(NetworkTransform nt)
         {
-            int index = nt.ntIndex;
+            int index = nt.GetNTIndex(asServer);
             return index >= 0 && index < pendingByIndex.Length && pendingByIndex[index];
         }
 
         public void SetPending(NetworkTransform nt, bool value)
         {
-            int index = nt.ntIndex;
+            int index = nt.GetNTIndex(asServer);
             if (index >= 0 && index < pendingByIndex.Length)
                 pendingByIndex[index] = value;
         }

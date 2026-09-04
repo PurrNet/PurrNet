@@ -1331,6 +1331,24 @@ namespace PurrNet
 
         internal bool ntRegistered;
 
+        internal int ntServerIndex = -1;
+
+        internal int GetNTIndex(bool asServer) => asServer ? ntServerIndex : ntIndex;
+
+        internal void SetNTIndex(bool asServer, int index)
+        {
+            if (asServer)
+                ntServerIndex = index;
+            else
+                ntIndex = index;
+        }
+
+        internal void PromoteNTRegistrationToServer()
+        {
+            ntServerIndex = ntIndex;
+            ntIndex = -1;
+        }
+
         private void BumpSendGen()
         {
             _sendGen++;

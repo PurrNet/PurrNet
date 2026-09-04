@@ -49,6 +49,9 @@ namespace PurrNet.Modules
 
         public void PromoteToServerModule()
         {
+            for (var i = 0; i < _networkTransforms.Count; i++)
+                _networkTransforms[i].PromoteNTRegistrationToServer();
+
             _asServer = true;
             ReleaseAllStreams();
 
@@ -107,19 +110,23 @@ namespace PurrNet.Modules
                 NTUnreliable.Release(recv.ring);
         }
 
-        private static bool IsLive(NetworkTransform nt) => nt is not null && nt.ntRegistered;
+        private bool IsLive(NetworkTransform nt) => nt is not null && nt.GetNTIndex(_asServer) >= 0;
 
         private void ClearBaseline(NTUnreliableSendStream stream, NetworkID nid)
         {
-            if (TryGetRegisteredTransform(nid, out var nt) && nt.ntIndex < stream.baselines.Length)
-                stream.baselines[nt.ntIndex] = default;
+            if (!TryGetRegisteredTransform(nid, out var nt))
+                return;
+
+            int index = nt.GetNTIndex(_asServer);
+            if (index >= 0 && index < stream.baselines.Length)
+                stream.baselines[index] = default;
         }
 
         internal NTUnreliableSendStream GetSendStream(PlayerID player)
         {
             if (!_sendStreams.TryGetValue(player, out var stream))
             {
-                stream = new NTUnreliableSendStream();
+                stream = new NTUnreliableSendStream { asServer = _asServer };
                 stream.EnsureBaselineCapacity(_byIndex.Count);
                 _sendStreams.Add(player, stream);
             }
@@ -557,7 +564,7 @@ namespace PurrNet.Modules
             for (int readIndex = 0; readIndex < pending.Count; readIndex++)
             {
                 var nt = pending[readIndex];
-                int index = nt is null ? -1 : nt.ntIndex;
+                int index = nt is null ? -1 : nt.GetNTIndex(stream.asServer);
                 if (index >= 0 && index < flags.Length && flags[index])
                 {
                     stream.pendingByIndex[index] = false;
@@ -597,7 +604,8 @@ namespace PurrNet.Modules
                 // ACK slots are processed newest-first. Once a newer state for this transform was
                 // adopted, older retransmissions cannot improve its baseline or complete a newer
                 // revision, so skip the registration/generation work entirely.
-                ref var currentBaseline = ref stream.baselines[nt.ntIndex];
+                int index = nt.GetNTIndex(stream.asServer);
+                ref var currentBaseline = ref stream.baselines[index];
                 if (currentBaseline.has && slot.order <= currentBaseline.order)
                     continue;
 
@@ -630,7 +638,7 @@ namespace PurrNet.Modules
                     currentBaseline.revision == nt.capturedRevision && restSettled)
                 {
                     completed ??= ListPool<int>.Instantiate();
-                    completed.Add(nt.ntIndex);
+                    completed.Add(index);
                 }
             }
 
@@ -919,7 +927,7 @@ namespace PurrNet.Modules
             gen = generation.gen;
             genEpoch = generation.epoch;
 
-            ref var baseline = ref stream.baselines[nt.ntIndex];
+            ref var baseline = ref stream.baselines[nt.GetNTIndex(stream.asServer)];
             bool hasAcked = baseline.has && baseline.genEpoch == genEpoch;
 
             ref readonly var current = ref nt.capturedState;
@@ -1197,7 +1205,7 @@ namespace PurrNet.Modules
                     return false;
 
                 var nid = nt.ntNid;
-                ref var baseline = ref stream.baselines[nt.ntIndex];
+                ref var baseline = ref stream.baselines[nt.GetNTIndex(stream.asServer)];
                 bool hasAcked = baseline.has && baseline.genEpoch == nt.sendGenEpoch;
 
                 if (hasAcked && baseline.revision == nt.capturedRevision)
@@ -1463,7 +1471,8 @@ namespace PurrNet.Modules
                 return;
             AddTrs(networkTransform);
 
-            if (!networkTransform.ntRegistered)
+            int registeredIndex = networkTransform.GetNTIndex(_asServer);
+            if (registeredIndex < 0)
             {
                 int index;
                 if (_freeIndices.Count > 0)
@@ -1479,7 +1488,7 @@ namespace PurrNet.Modules
                         stream.EnsureBaselineCapacity(_byIndex.Count);
                 }
 
-                networkTransform.ntIndex = index;
+                networkTransform.SetNTIndex(_asServer, index);
                 networkTransform.ntNid = networkTransform.id.Value;
                 networkTransform.ntRegistered = true;
             }
@@ -1524,8 +1533,10 @@ namespace PurrNet.Modules
             networkTransform.unreliableEncodeCache?.Dispose();
             networkTransform.unreliableEncodeCache = null;
 
-            bool wasRegistered = networkTransform.ntRegistered;
-            int index = networkTransform.ntIndex;
+            int index = networkTransform.GetNTIndex(_asServer);
+            if (index >= _byIndex.Count || (index >= 0 && !ReferenceEquals(_byIndex[index], networkTransform)))
+                index = -1;
+            bool wasRegistered = index >= 0;
             var nid = wasRegistered ? networkTransform.ntNid : networkTransform.id.GetValueOrDefault();
 
             if (wasRegistered || networkTransform.id.HasValue)
@@ -1549,9 +1560,10 @@ namespace PurrNet.Modules
             {
                 _byIndex[index] = null;
                 _freeIndices.Push(index);
-                networkTransform.ntRegistered = false;
-                networkTransform.ntIndex = -1;
-                networkTransform.ntNid = default;
+                networkTransform.SetNTIndex(_asServer, -1);
+                networkTransform.ntRegistered = networkTransform.ntIndex >= 0 || networkTransform.ntServerIndex >= 0;
+                if (!networkTransform.ntRegistered)
+                    networkTransform.ntNid = default;
             }
         }
 
