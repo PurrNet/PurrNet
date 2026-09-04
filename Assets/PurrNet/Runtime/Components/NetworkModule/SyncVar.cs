@@ -312,6 +312,9 @@ namespace PurrNet
             if (isServer)
                 return;
 
+            if (packetId.value < _id)
+                return;
+
             if (_ignoreServerUpdates)
             {
                 if (packetId.value > _id)

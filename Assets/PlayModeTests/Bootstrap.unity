@@ -2359,6 +2359,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4f0c14b8ef54d7e9a3120f62d93b6c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PurrNet.PlayModeTests::SyncVarOwnerReconnectScenario
+  _replayDelayedSnapshot: 1
   _rules: {fileID: 11400000, guid: 796d2ce3ccc5cb442bfef3dec3e82e61, type: 2}
   _spawnTimeoutSeconds: 15
   _readyTimeoutSeconds: 30
