@@ -1,3 +1,10 @@
+# [1.23.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.24...v1.23.0-beta.25) (2026-09-04)
+
+
+### Bug Fixes
+
+* NetworkTransform registration regression ([5725df0](https://github.com/PurrNet/PurrNet/commit/5725df091f703f3d07fd233b90870ff6eb09d7a0))
+
 # [1.23.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.23...v1.23.0-beta.24) (2026-09-03)
 
 
