@@ -116,41 +116,37 @@ namespace LiteNetLib
 
         private NetPacket GetNextOutgoingPacket()
         {
+            var packet = OutgoingQueue.Dequeue();
+            if (OutgoingQueue.Count == 0 || packet.IsFragmented)
+                return packet;
+
             int maxPayloadSize = Peer.Mtu - NetConstants.ChanneledHeaderSize;
-            NetPacket mergedPacket = null;
+
+            // The caller holds the queue lock. Only allocate a merge packet if
+            // the first two messages can actually be sent together.
+            var second = OutgoingQueue.Peek();
+            int firstTwoSize = packet.Size + second.Size - 2 * NetConstants.ChanneledHeaderSize + 2 * MergeHeaderSize;
+            if (second.IsFragmented || firstTwoSize + MergeSizeThreshold > maxPayloadSize)
+                return packet;
+
+            var mergedPacket = Peer.NetManager.PoolGetPacket(Peer.Mtu);
+            mergedPacket.Property = PacketProperty.ReliableMerged;
             int mergePos = 0;
 
-            List<object> userDataList = null;
-
-            while (OutgoingQueue.Count > 0)
+            var userDataList = _mergedPacketUserDataList;
+            if (userDataList == null)
             {
-                var packet = OutgoingQueue.Peek();
-                if (packet.IsFragmented)
-                    break;
+                userDataList = new List<object>();
+                _mergedPacketUserDataList = userDataList;
+            }
+            else
+            {
+                userDataList.Clear();
+            }
 
+            while (true)
+            {
                 int payloadSize = packet.Size - NetConstants.ChanneledHeaderSize;
-                int newSize = mergePos + MergeHeaderSize + payloadSize;
-                if (newSize + MergeSizeThreshold > maxPayloadSize && mergePos > 0)
-                    break;
-                if (newSize > maxPayloadSize)
-                    break;
-
-                if (mergedPacket == null)
-                {
-                    mergedPacket = Peer.NetManager.PoolGetPacket(Peer.Mtu);
-                    mergedPacket.Property = PacketProperty.ReliableMerged;
-                    userDataList = _mergedPacketUserDataList;
-                    if (userDataList == null)
-                    {
-                        userDataList = new List<object>();
-                        _mergedPacketUserDataList = userDataList;
-                    }
-                    else
-                    {
-                        userDataList.Clear();
-                    }
-                }
-
                 FastBitConverter.GetBytes(mergedPacket.RawData, NetConstants.ChanneledHeaderSize + mergePos, (ushort)payloadSize);
                 Buffer.BlockCopy(packet.RawData, NetConstants.ChanneledHeaderSize, mergedPacket.RawData, NetConstants.ChanneledHeaderSize + mergePos + MergeHeaderSize, payloadSize);
                 mergePos += payloadSize + MergeHeaderSize;
@@ -161,11 +157,17 @@ namespace LiteNetLib
                     packet.UserData = null;
                 }
 
-                Peer.NetManager.PoolRecycle(OutgoingQueue.Dequeue());
-            }
+                Peer.NetManager.PoolRecycle(packet);
+                if (OutgoingQueue.Count == 0)
+                    break;
 
-            if (mergedPacket == null)
-                return OutgoingQueue.Dequeue();
+                packet = OutgoingQueue.Peek();
+                int newSize = mergePos + MergeHeaderSize + packet.Size - NetConstants.ChanneledHeaderSize;
+                if (packet.IsFragmented || newSize + MergeSizeThreshold > maxPayloadSize)
+                    break;
+
+                OutgoingQueue.Dequeue();
+            }
 
             mergedPacket.Size = NetConstants.ChanneledHeaderSize + mergePos;
             if (userDataList.Count > 0)
