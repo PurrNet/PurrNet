@@ -1,3 +1,10 @@
+# [1.23.0-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.29...v1.23.0-beta.30) (2026-09-05)
+
+
+### Bug Fixes
+
+* improve NetworkIdentity direct children lookup ([dbb56b7](https://github.com/PurrNet/PurrNet/commit/dbb56b7683f9cece31b3d9d4cd4818b26033fce5))
+
 # [1.23.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.28...v1.23.0-beta.29) (2026-09-05)
 
 
