@@ -1,3 +1,11 @@
+# [1.23.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.28...v1.23.0-beta.29) (2026-09-05)
+
+
+### Bug Fixes
+
+* clear up some GC on the myers diff ([cdb25d0](https://github.com/PurrNet/PurrNet/commit/cdb25d0aec9ed298d86adb8b84e4d79602353ac9))
+* fast-path for when direct network children are 0 ([81668bd](https://github.com/PurrNet/PurrNet/commit/81668bd45abec6bb5dce092638c3770416ca84d2))
+
 # [1.23.0-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.23.0-beta.27...v1.23.0-beta.28) (2026-09-04)
 
 
