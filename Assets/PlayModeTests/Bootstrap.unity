@@ -271,6 +271,7 @@ GameObject:
   - component: {fileID: 43754051}
   - component: {fileID: 43754050}
   - component: {fileID: 43754049}
+  - component: {fileID: 43754054}
   m_Layer: 0
   m_Name: Serialize
   m_TagString: Untagged
@@ -293,6 +294,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 277924963}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &43754054
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 43754047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3deaa306b7b54f4d8b9a9e2e31c6e15f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: PurrNet.PlayModeTests::MixedHierarchySerializeScenario
+  _spawnTimeoutSeconds: 15
+  _barrierTimeoutSeconds: 60
 --- !u!114 &43754049
 MonoBehaviour:
   m_ObjectHideFlags: 0
