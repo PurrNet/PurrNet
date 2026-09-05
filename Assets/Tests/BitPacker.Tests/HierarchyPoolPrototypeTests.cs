@@ -2,10 +2,79 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using PurrNet;
 using PurrNet.Modules;
+using PurrNet.Packing;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 public class HierarchyPoolPrototypeTests
 {
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void SinglePiecePrototypeMatchesFilteredHierarchy(bool parented, bool observeSibling)
+    {
+        NetworkManager.LoadOrGenerateHashes();
+        var parent = new GameObject("Parent");
+        var root = new GameObject("Root");
+        var player = new PlayerID(1, false);
+
+        try
+        {
+            var parentIdentity = parent.AddComponent<NetworkIdentity>();
+            parentIdentity.PreparePrefabInfo(122, 0, false, true);
+            parentIdentity.SetID(new NetworkID(10));
+            if (parented)
+                root.transform.SetParent(parent.transform);
+            var first = root.AddComponent<NetworkIdentity>();
+            var sibling = root.AddComponent<NetworkIdentity>();
+            var visual = new GameObject("Visual");
+            visual.transform.SetParent(root.transform);
+            var hidden = AddChild(visual, "UnobservedNetworkChild");
+            first.PreparePrefabInfo(123, 0, false, true);
+            sibling.PreparePrefabInfo(123, 1, false, true);
+            first.SetID(new NetworkID(20));
+            sibling.SetID(new NetworkID(21));
+            hidden.GetComponent<NetworkIdentity>().SetID(new NetworkID(22));
+            (observeSibling ? sibling : first).TryAddObserver(player);
+            root.transform.localPosition = new Vector3(3, 4, 5);
+            root.transform.localRotation = Quaternion.Euler(10, 20, 30);
+            root.transform.localScale = new Vector3(2, 3, 4);
+            root.SetActive(false);
+
+            var expectedIdentities = new List<NetworkIdentity> { parentIdentity };
+            Assert.IsTrue(HierarchyPool.TryGetPrototype(root.transform, player, expectedIdentities, out var expected));
+            using (expected)
+            {
+                Object.DestroyImmediate(hidden);
+                var actualIdentities = new List<NetworkIdentity> { parentIdentity };
+                Assert.IsTrue(HierarchyPool.TryGetPrototype(root.transform, player, actualIdentities, out var actual));
+                using (actual)
+                {
+                    Assert.That(actual.framework.Count, Is.EqualTo(1));
+                    Assert.That(actual.parentID.HasValue, Is.EqualTo(parented));
+                    Assert.That(actual.path, parented ? Is.EqualTo(new[] { root.transform.GetSiblingIndex() }) : Is.Null);
+                    CollectionAssert.AreEqual(new[] { parentIdentity, first, sibling }, actualIdentities);
+                    CollectionAssert.AreEqual(expectedIdentities, actualIdentities);
+                    using var expectedBits = BitPackerPool.Get();
+                    using var actualBits = BitPackerPool.Get();
+                    Packer<GameObjectPrototype>.Write(expectedBits, expected);
+                    Packer<GameObjectPrototype>.Write(actualBits, actual);
+                    Assert.IsTrue(new BitData(expectedBits).Equals(new BitData(actualBits)),
+                        "Single-piece capture must preserve the exact prototype wire data.");
+                }
+            }
+
+            Assert.IsFalse(HierarchyPool.TryGetPrototype(root.transform, new PlayerID(2, false), null, out var invisible));
+            invisible.Dispose();
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(parent);
+        }
+    }
+
     [Test]
     public void PrefabPrototypeIncludesUnspawnedNestedIdentities()
     {
@@ -56,6 +125,9 @@ public class HierarchyPoolPrototypeTests
             using var prototype = HierarchyPool.GetFullPrototype(fullRoot.transform, null, true);
             var created = new List<NetworkIdentity>();
 
+            var missingPiece = prototype.framework[1].pid;
+            LogAssert.Expect(LogType.Error, $"[HierarchyPool] Cannot warm up piece '{missingPiece}': this pool has no prefab resolver");
+            LogAssert.Expect(LogType.Error, $"[HierarchyPool] Piece '{missingPiece}' is still missing from the pool after warmup");
             var success = HierarchyPool.TryBuildPrototype(pair, prototype, created, out var rebuilt, out _);
 
             Assert.IsFalse(success);

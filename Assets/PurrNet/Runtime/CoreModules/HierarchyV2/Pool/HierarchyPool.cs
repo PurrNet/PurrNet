@@ -647,9 +647,30 @@ namespace PurrNet.Modules
                 return false;
             }
 
+            var pair = GetRuntimePair(null, rootId);
+
+            // A single network piece needs no breadth-first traversal, even if it has visual children.
+            if (pair.children.Count == 0)
+            {
+                pair.Dispose();
+                transform.GetLocalPositionAndRotation(out var localPos, out var localRot);
+                framework.Add(new GameObjectFrameworkPiece(
+                    new LocalTransform(localPos, localRot, transform.localScale),
+                    new PrefabPieceID(rootId.scopedPrefabId, rootId.componentIndex),
+                    rootId.id.Value, 0, rootId.gameObject.activeSelf, GetLiveRelativePath(null, rootId)));
+                if (allChildren != null)
+                {
+                    var components = ListPool<NetworkIdentity>.Instantiate();
+                    transform.GetComponents(components);
+                    allChildren.AddRange(components);
+                    ListPool<NetworkIdentity>.Destroy(components);
+                }
+                prototype = FinishPrototype(transform, rootId, framework, isDefaultParent);
+                return true;
+            }
+
             var queue = QueuePool<GameObjectRuntimePair>.Instantiate();
             var pieceIdentities = allChildren != null ? ListPool<NetworkIdentity>.Instantiate() : null;
-            var pair = GetRuntimePair(null, rootId);
 
             queue.Enqueue(pair);
 
@@ -695,16 +716,25 @@ namespace PurrNet.Modules
                 ListPool<NetworkIdentity>.Destroy(pieceIdentities);
             }
 
+            prototype = FinishPrototype(transform, rootId, framework, isDefaultParent);
+            return true;
+        }
+
+        private static GameObjectPrototype FinishPrototype(Transform transform, NetworkIdentity rootId,
+            DisposableList<GameObjectFrameworkPiece> framework, bool isDefaultParent)
+        {
             var parentNid = rootId.parent ? rootId.parent : default;
             var parentID = parentNid?.id;
             int[] path = null;
 
             if (parentNid)
-                path = GetInvPath(parentNid.transform, transform).list.ToArray();
+            {
+                using var invPath = GetInvPath(parentNid.transform, transform);
+                path = invPath.list.ToArray();
+            }
 
-            prototype = new GameObjectPrototype(transform.localPosition, transform.localRotation, transform.localScale, parentID, path,
+            return new GameObjectPrototype(transform.localPosition, transform.localRotation, transform.localScale, parentID, path,
                 framework, isDefaultParent ? transform.GetSiblingIndex() : null);
-            return true;
         }
 
         public static GameObjectPrototype GetFullPrototype(Transform transform, List<NetworkIdentity> allChildren = null,
@@ -771,7 +801,10 @@ namespace PurrNet.Modules
             int[] path = null;
 
             if (parentNid)
-                path = GetInvPath(parentNid.transform, transform).list.ToArray();
+            {
+                using var invPath = GetInvPath(parentNid.transform, transform);
+                path = invPath.list.ToArray();
+            }
 
             return new GameObjectPrototype(transform.localPosition, transform.localRotation, transform.localScale, parentID, path, framework,
                 isDefaultParent ? transform.GetSiblingIndex() : null);
