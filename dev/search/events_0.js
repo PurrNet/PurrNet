@@ -8,8 +8,8 @@ var searchData=
   ['onclientconnectionstate_5',['onClientConnectionState',['../classPurrNet_1_1NetworkManager.html#af107336749b67361d07c646814c9771b',1,'PurrNet::NetworkManager']]],
   ['ondeniedbyserver_6',['onDeniedByServer',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a92cf06ebfc6358f240ab501ae619f736',1,'PurrNet::Authentication::AuthenticationBehaviour']]],
   ['onearlyidentityadded_7',['onEarlyIdentityAdded',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#ad2e7ac7352bbce58511f1c562dd8d013',1,'PurrNet::Modules::HierarchyV2']]],
-  ['onforcesyncwindowclosed_8',['onForceSyncWindowClosed',['../classPurrNet_1_1NetworkRigidbody.html#af820fd825b17101054493054cf4f7886',1,'PurrNet::NetworkRigidbody']]],
-  ['onforcesyncwindowopened_9',['onForceSyncWindowOpened',['../classPurrNet_1_1NetworkRigidbody.html#af6e51e3ec60610c656da3786e147b5e6',1,'PurrNet::NetworkRigidbody']]],
+  ['onforcesyncwindowclosed_8',['onForceSyncWindowClosed',['../classPurrNet_1_1NetworkRigidbodyBase.html#a50c9ed452435e187b27da9bc0b43e07e',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['onforcesyncwindowopened_9',['onForceSyncWindowOpened',['../classPurrNet_1_1NetworkRigidbodyBase.html#ac130e1a81eb26a7b9c0acc489147ad32',1,'PurrNet::NetworkRigidbodyBase']]],
   ['onidentityadded_10',['onIdentityAdded',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a18ee7405fd0d92929f0e3e8d5703d7af',1,'PurrNet::Modules::HierarchyV2']]],
   ['onidentityremoved_11',['onIdentityRemoved',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a8c3e1c7094d6c8fcf6b85ae8bec4ac0b',1,'PurrNet::Modules::HierarchyV2']]],
   ['onlateobserveradded_12',['onLateObserverAdded',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#ade57d45cb6ad5af2fc5f4475c8799309',1,'PurrNet::Modules::HierarchyV2']]],
@@ -51,6 +51,5 @@ var searchData=
   ['onsentspawnpacket_48',['onSentSpawnPacket',['../classPurrNet_1_1Modules_1_1HierarchyV2.html#a5bda74504738830db639bbdd49719ad3',1,'PurrNet::Modules::HierarchyV2']]],
   ['onserverconnectionstate_49',['onServerConnectionState',['../classPurrNet_1_1NetworkManager.html#a0e62d84e9e2449d99bc40682eea5cddd',1,'PurrNet::NetworkManager']]],
   ['onstatechanged_50',['onStateChanged',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a28eaafe981139912f35f3b793cf37f88',1,'PurrNet::StateMachine::StateMachine']]],
-  ['onteleportcorrection_51',['onTeleportCorrection',['../classPurrNet_1_1NetworkRigidbody.html#ae0c821ee8156bdae2e8e3679c9827aa8',1,'PurrNet::NetworkRigidbody']]],
-  ['ontick_52',['onTick',['../classPurrNet_1_1NetworkManager.html#a8c50f5ebe1ad6ceeceadc5f61f1e57cf',1,'PurrNet.NetworkManager.onTick()'],['../classPurrNet_1_1RawNetManager.html#a247da9c872462fdc0922e7454cad52d3',1,'PurrNet.RawNetManager.onTick()']]]
+  ['ontick_51',['onTick',['../classPurrNet_1_1NetworkManager.html#a8c50f5ebe1ad6ceeceadc5f61f1e57cf',1,'PurrNet.NetworkManager.onTick()'],['../classPurrNet_1_1RawNetManager.html#a247da9c872462fdc0922e7454cad52d3',1,'PurrNet.RawNetManager.onTick()']]]
 ];

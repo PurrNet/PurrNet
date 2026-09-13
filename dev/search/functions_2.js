@@ -11,7 +11,7 @@ var searchData=
   ['clearownerships_8',['ClearOwnerships',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html#a8c28e6e5c4d92ea4d447674bacb90d68',1,'PurrNet::Modules::GlobalOwnershipModule']]],
   ['clearpast_9',['ClearPast',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a6084cacf773a7fdf1b40fa522317eaff',1,'PurrNet::Modules::SimpleHistory']]],
   ['clearservertransportfilter_10',['ClearServerTransportFilter',['../classPurrNet_1_1Transports_1_1CompositeTransport.html#a88e15a7f876566b8c0294e04e0811b8d',1,'PurrNet::Transports::CompositeTransport']]],
-  ['clearsoftparent_11',['ClearSoftParent',['../classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487',1,'PurrNet::NetworkRigidbody']]],
+  ['clearsoftparent_11',['ClearSoftParent',['../classPurrNet_1_1NetworkRigidbodyBase.html#a7e7a227060d838388693a54259e434c5',1,'PurrNet::NetworkRigidbodyBase']]],
   ['compactnow_12',['CompactNow',['../classPurrNet_1_1Utils_1_1PurrAction.html#aa3e82b92b7e44a37e3bdc67188b562a3',1,'PurrNet::Utils::PurrAction']]],
   ['compareto_13',['CompareTo',['../structPurrNet_1_1Packing_1_1Half.html#ab8bcf3bc5826881dcd901b701f6ab214',1,'PurrNet.Packing.Half.CompareTo(Half other)'],['../structPurrNet_1_1Packing_1_1Half.html#a565dbedf44864368c1d6386ce47301b9',1,'PurrNet.Packing.Half.CompareTo(object obj)']]],
   ['configure_14',['Configure',['../classPurrNet_1_1NetworkLODProfile.html#a22f8e795ccff8a103d0419b077accd05',1,'PurrNet::NetworkLODProfile']]],

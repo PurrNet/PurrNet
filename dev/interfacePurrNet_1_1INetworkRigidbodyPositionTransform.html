@@ -97,28 +97,28 @@ $(document).ready(function(){initNavTree('interfacePurrNet_1_1INetworkRigidbodyP
 </div><!--header-->
 <div class="contents">
 
-<p>Pluggable origin converter for <a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a>.  
+<p>Pluggable origin converter for <a class="el" href="classPurrNet_1_1NetworkRigidbodyBase.html">NetworkRigidbodyBase</a> (NetworkRigidbody and NetworkRigidbody2D).  
  <a href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a4f03bf47d72526bbe63e0e575f6fce0c"><td class="memItemLeft" align="right" valign="top"><a id="a4f03bf47d72526bbe63e0e575f6fce0c" name="a4f03bf47d72526bbe63e0e575f6fce0c"></a>
-double3&#160;</td><td class="memItemRight" valign="bottom"><b>ToAbsolute</b> (<a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a> self, Vector3 localWorldPos)</td></tr>
-<tr class="memdesc:a4f03bf47d72526bbe63e0e575f6fce0c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sender side. Convert <em>localWorldPos</em>  (a position in this peer's Unity world space) into the shared peer-agnostic absolute frame that travels on the wire — e.g. add this peer's origin offset.  <br /></td></tr>
-<tr class="separator:a4f03bf47d72526bbe63e0e575f6fce0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ba997e3c9a8d6a27bf93ebe6e8233dc"><td class="memItemLeft" align="right" valign="top"><a id="a0ba997e3c9a8d6a27bf93ebe6e8233dc" name="a0ba997e3c9a8d6a27bf93ebe6e8233dc"></a>
-Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>ToLocal</b> (<a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a> self, double3 absolutePosition)</td></tr>
-<tr class="memdesc:a0ba997e3c9a8d6a27bf93ebe6e8233dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Receiver side. Convert <em>absolutePosition</em>  (a position in the shared peer-agnostic absolute frame) back into this peer's Unity world space — e.g. subtract this peer's origin offset. Must be the inverse of <a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html#a4f03bf47d72526bbe63e0e575f6fce0c" title="Sender side. Convert localWorldPos  (a position in this peer&#39;s Unity world space) into the shared pee...">ToAbsolute</a> for the current origin.  <br /></td></tr>
-<tr class="separator:a0ba997e3c9a8d6a27bf93ebe6e8233dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7ee734cd933da718c756420ee6bed555"><td class="memItemLeft" align="right" valign="top"><a id="a7ee734cd933da718c756420ee6bed555" name="a7ee734cd933da718c756420ee6bed555"></a>
+double3&#160;</td><td class="memItemRight" valign="bottom"><b>ToAbsolute</b> (<a class="el" href="classPurrNet_1_1NetworkRigidbodyBase.html">NetworkRigidbodyBase</a> self, Vector3 localWorldPos)</td></tr>
+<tr class="memdesc:a7ee734cd933da718c756420ee6bed555"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sender side. Convert <em>localWorldPos</em>  (a position in this peer's Unity world space) into the shared peer-agnostic absolute frame that travels on the wire — e.g. add this peer's origin offset.  <br /></td></tr>
+<tr class="separator:a7ee734cd933da718c756420ee6bed555"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afae8a58be83fbbdbd07af828930168f8"><td class="memItemLeft" align="right" valign="top"><a id="afae8a58be83fbbdbd07af828930168f8" name="afae8a58be83fbbdbd07af828930168f8"></a>
+Vector3&#160;</td><td class="memItemRight" valign="bottom"><b>ToLocal</b> (<a class="el" href="classPurrNet_1_1NetworkRigidbodyBase.html">NetworkRigidbodyBase</a> self, double3 absolutePosition)</td></tr>
+<tr class="memdesc:afae8a58be83fbbdbd07af828930168f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Receiver side. Convert <em>absolutePosition</em>  (a position in the shared peer-agnostic absolute frame) back into this peer's Unity world space — e.g. subtract this peer's origin offset. Must be the inverse of <a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html#a7ee734cd933da718c756420ee6bed555" title="Sender side. Convert localWorldPos  (a position in this peer&#39;s Unity world space) into the shared pee...">ToAbsolute</a> for the current origin.  <br /></td></tr>
+<tr class="separator:afae8a58be83fbbdbd07af828930168f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Pluggable origin converter for <a class="el" href="classPurrNet_1_1NetworkRigidbody.html">NetworkRigidbody</a>. </p>
+<div class="textblock"><p >Pluggable origin converter for <a class="el" href="classPurrNet_1_1NetworkRigidbodyBase.html">NetworkRigidbodyBase</a> (NetworkRigidbody and NetworkRigidbody2D). </p>
 <p >In an origin-shifted world each peer runs with a different local Unity origin, so a raw Vector3 position is meaningless on another peer and loses precision long before a large world reaches the floor of double precision. This converter is invoked only at the wire boundary: outgoing positions are mapped into a shared, peer-agnostic absolute frame (a double3) and incoming absolute positions are mapped back into this peer's Unity world space.</p>
-<p >The absolute double3 is what travels on the wire and what the interpolation buffer stores, so a local origin shift needs no extra bookkeeping — the next <a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html#a0ba997e3c9a8d6a27bf93ebe6e8233dc" title="Receiver side. Convert absolutePosition  (a position in the shared peer-agnostic absolute frame) back...">ToLocal</a> simply reflects the new offset and every buffered snapshot stays correct.</p>
+<p >The absolute double3 is what travels on the wire and what the interpolation buffer stores, so a local origin shift needs no extra bookkeeping — the next <a class="el" href="interfacePurrNet_1_1INetworkRigidbodyPositionTransform.html#afae8a58be83fbbdbd07af828930168f8" title="Receiver side. Convert absolutePosition  (a position in the shared peer-agnostic absolute frame) back...">ToLocal</a> simply reflects the new offset and every buffered snapshot stays correct.</p>
 <p >Resolution order on spawn (first non-null wins):</p><ol type="1">
-<li>Runtime override set via <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#aa75c5f52eecdc4115cab13eee992f3c6" title="Install a position transform at runtime, overriding any sibling component or static default....">NetworkRigidbody.SetPositionTransform</a>.</li>
+<li>Runtime override set via <a class="el" href="classPurrNet_1_1NetworkRigidbodyBase.html#a6292b40ebbe680cc8e6a08d09320c806" title="Install a position transform at runtime, overriding any sibling component or static default....">NetworkRigidbodyBase.SetPositionTransform</a>.</li>
 <li>Sibling component implementing this interface on the same GameObject.</li>
-<li>Static fallback at <a class="el" href="classPurrNet_1_1NetworkRigidbody.html#a0db5d022bc12ec428664fa34d2767ecc" title="Process-wide fallback used when a NetworkRigidbody has no runtime override and no sibling component i...">NetworkRigidbody.defaultPositionTransform</a>.</li>
+<li>Static fallback at <a class="el" href="classPurrNet_1_1NetworkRigidbodyBase.html#a53240782b08137d2002087beab96dadc" title="Process-wide fallback used when a NetworkRigidbody has no runtime override and no sibling component i...">NetworkRigidbodyBase.defaultPositionTransform</a>.</li>
 </ol>
 <p >When none is installed, positions travel on the wire as the legacy quantized <code>CompressedVector3</code> in this peer's own Unity world space (byte-identical to prior versions). Only translation is converted; rotation and velocity are origin-invariant.  </p>
 </div><hr/>The documentation for this interface was generated from the following file:<ul>
