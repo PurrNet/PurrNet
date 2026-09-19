@@ -55,6 +55,7 @@ var classPurrNet_1_1NetworkManager =
     [ "isServerOnly", "classPurrNet_1_1NetworkManager.html#a8240f6a207d30393ff882cbbdde135ad", null ],
     [ "localPlayer", "classPurrNet_1_1NetworkManager.html#ac200382655c66ced12c58831ca4bd69b", null ],
     [ "lodModule", "classPurrNet_1_1NetworkManager.html#a50552e18c25509e084abdd3345133c28", null ],
+    [ "maxTicksPerFrame", "classPurrNet_1_1NetworkManager.html#a5c2db88a488766c356d80b9a6cb67a21", null ],
     [ "mtuExceededBehaviour", "classPurrNet_1_1NetworkManager.html#a6b09aaaaf0343e8a7b916d4adddf2521", null ],
     [ "networkAssetResolver", "classPurrNet_1_1NetworkManager.html#a01842951d0c4809b686d0090cd02d771", null ],
     [ "networkAssets", "classPurrNet_1_1NetworkManager.html#a44d6bfd8195ca1fcaea14645ad6afb6c", null ],
