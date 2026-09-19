@@ -640,7 +640,6 @@ namespace PurrNet.Modules
                     identity.TriggerOnOwnerChanged(oldOwner, null, _asServer, false);
             }
 
-            //TODO: compress _idsCache using RLE
             var data = new OwnershipChange
             {
                 sceneId = id.sceneId,
@@ -724,7 +723,6 @@ namespace PurrNet.Modules
                 }
             }
 
-            //TODO: compress _idsCache using RLE
             var data = new OwnershipChange
             {
                 sceneId = id.sceneId,
