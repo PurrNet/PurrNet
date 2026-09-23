@@ -541,6 +541,7 @@ var hierarchy =
     [ "PurrNet.ReflectionData", "structPurrNet_1_1ReflectionData.html", null ],
     [ "PurrNet.ReflectionMethodData", "structPurrNet_1_1ReflectionMethodData.html", null ],
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
+    [ "PurrNet.Transports.PurrTransportUtils.RelayMeasurement", "structPurrNet_1_1Transports_1_1PurrTransportUtils_1_1RelayMeasurement.html", null ],
     [ "PurrNet.Transports.RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
     [ "PurrNet.Modules.ReliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
     [ "PurrNet.RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],

@@ -15,6 +15,7 @@ var classPurrNet_1_1Transports_1_1PurrTransport =
     [ "clientRelayRoundTripTime", "classPurrNet_1_1Transports_1_1PurrTransport.html#a12b0015ef7b13d01e9bd6c067eb1c7d7", null ],
     [ "clientSessionLink", "classPurrNet_1_1Transports_1_1PurrTransport.html#a5bf95d839dc60b37fec0e3342992b63a", null ],
     [ "clientUsesWebRtc", "classPurrNet_1_1Transports_1_1PurrTransport.html#a755807cd87236f10f56fe6554343f8b2", null ],
+    [ "hasProjectKey", "classPurrNet_1_1Transports_1_1PurrTransport.html#acdadb06ce5b4cac092906f8ff095a1c6", null ],
     [ "hostConnectionProtocol", "classPurrNet_1_1Transports_1_1PurrTransport.html#a5309ed8104536227fd533d88e1313782", null ],
     [ "hostLinkDescription", "classPurrNet_1_1Transports_1_1PurrTransport.html#ac028086c22f5dd8adaed9c8bb9f3b3c8", null ],
     [ "hostRelayRoundTripTime", "classPurrNet_1_1Transports_1_1PurrTransport.html#a83744f36d9067b63a463048692a16994", null ],
@@ -24,6 +25,8 @@ var classPurrNet_1_1Transports_1_1PurrTransport =
     [ "p2pConnectionCount", "classPurrNet_1_1Transports_1_1PurrTransport.html#ab6765727ea69bff54704c3bd7c4e3233", null ],
     [ "p2pHostEndpoint", "classPurrNet_1_1Transports_1_1PurrTransport.html#a6b359d220a83037363b8914f15949953", null ],
     [ "pipeConnId", "classPurrNet_1_1Transports_1_1PurrTransport.html#a0c47cd871f2e618c438dbc0579685093", null ],
+    [ "projectKey", "classPurrNet_1_1Transports_1_1PurrTransport.html#a15c9f174f60d9b04b813da01d78b2e04", null ],
+    [ "relayRoomName", "classPurrNet_1_1Transports_1_1PurrTransport.html#a1a7772562ad4b14341358371ba873671", null ],
     [ "useNat", "classPurrNet_1_1Transports_1_1PurrTransport.html#a14892dc32e17023db8badbb49b5fda3f", null ],
     [ "useWebRtcP2P", "classPurrNet_1_1Transports_1_1PurrTransport.html#a9fd61698e2d5ff7268b2b544464282d1", null ],
     [ "onPipeDataReceived", "classPurrNet_1_1Transports_1_1PurrTransport.html#adb6bca90a8777ce2400c79305c628e22", null ]
