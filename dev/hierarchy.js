@@ -42,7 +42,8 @@ var hierarchy =
         [ "PurrNet.RpcDispatchException", "classPurrNet_1_1RpcDispatchException.html", null ],
         [ "PurrNet.RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ],
         [ "PurrNet.RpcTargetDisconnectedException", "classPurrNet_1_1RpcTargetDisconnectedException.html", null ]
-      ] ]
+      ] ],
+      [ "PurrNet.Transports.RelayRefusedException", "classPurrNet_1_1Transports_1_1RelayRefusedException.html", null ]
     ] ],
     [ "PurrNet.Transports.FragmentDropInfo", "structPurrNet_1_1Transports_1_1FragmentDropInfo.html", null ],
     [ "PurrNet.Modules.GameObjectFrameworkPiece", "structPurrNet_1_1Modules_1_1GameObjectFrameworkPiece.html", null ],
@@ -506,6 +507,7 @@ var hierarchy =
     [ "PurrNet.Transports.PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
     [ "PurrNet.Modules.PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
     [ "PurrNet.Transports.PingResult", "structPurrNet_1_1Transports_1_1PingResult.html", null ],
+    [ "PurrNet.Transports.RelayUsage.Players", "classPurrNet_1_1Transports_1_1RelayUsage_1_1Players.html", null ],
     [ "PurrNet.PoolingConfig", "structPurrNet_1_1PoolingConfig.html", null ],
     [ "PurrNet.Modules.PoolPair", "structPurrNet_1_1Modules_1_1PoolPair.html", null ],
     [ "PurrNet.PrefabData", "structPurrNet_1_1PrefabData.html", null ],
@@ -543,6 +545,7 @@ var hierarchy =
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
     [ "PurrNet.Transports.PurrTransportUtils.RelayMeasurement", "structPurrNet_1_1Transports_1_1PurrTransportUtils_1_1RelayMeasurement.html", null ],
     [ "PurrNet.Transports.RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
+    [ "PurrNet.Transports.RelayUsage", "classPurrNet_1_1Transports_1_1RelayUsage.html", null ],
     [ "PurrNet.Modules.ReliableConnectionHistory< T >", "classPurrNet_1_1Modules_1_1ReliableConnectionHistory.html", null ],
     [ "PurrNet.RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
     [ "PurrNet.RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", null ],
@@ -621,6 +624,7 @@ var hierarchy =
     [ "PurrNet.SyncStatus", "structPurrNet_1_1SyncStatus.html", null ],
     [ "PurrNet.SyncVar< PurrNet.GlobalNetworkID >", "classPurrNet_1_1SyncVar.html", null ],
     [ "PurrNet.TimestampedSnapshot", "structPurrNet_1_1TimestampedSnapshot.html", null ],
+    [ "PurrNet.Transports.RelayUsage.Traffic", "classPurrNet_1_1Transports_1_1RelayUsage_1_1Traffic.html", null ],
     [ "PurrNet.Modules.TransformIdentityPair", "structPurrNet_1_1Modules_1_1TransformIdentityPair.html", null ],
     [ "PurrNet.Transports.TransportPingResult", "structPurrNet_1_1Transports_1_1TransportPingResult.html", null ],
     [ "PurrNet.NetworkAssets.TypeToggle", "classPurrNet_1_1NetworkAssets_1_1TypeToggle.html", null ],

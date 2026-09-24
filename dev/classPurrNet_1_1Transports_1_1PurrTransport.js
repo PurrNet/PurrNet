@@ -27,6 +27,7 @@ var classPurrNet_1_1Transports_1_1PurrTransport =
     [ "pipeConnId", "classPurrNet_1_1Transports_1_1PurrTransport.html#a0c47cd871f2e618c438dbc0579685093", null ],
     [ "projectKey", "classPurrNet_1_1Transports_1_1PurrTransport.html#a15c9f174f60d9b04b813da01d78b2e04", null ],
     [ "relayRoomName", "classPurrNet_1_1Transports_1_1PurrTransport.html#a1a7772562ad4b14341358371ba873671", null ],
+    [ "relayUsage", "classPurrNet_1_1Transports_1_1PurrTransport.html#ab2ec985de00ee34b3e33e8e2f2921174", null ],
     [ "useNat", "classPurrNet_1_1Transports_1_1PurrTransport.html#a14892dc32e17023db8badbb49b5fda3f", null ],
     [ "useWebRtcP2P", "classPurrNet_1_1Transports_1_1PurrTransport.html#a9fd61698e2d5ff7268b2b544464282d1", null ],
     [ "onPipeDataReceived", "classPurrNet_1_1Transports_1_1PurrTransport.html#adb6bca90a8777ce2400c79305c628e22", null ]

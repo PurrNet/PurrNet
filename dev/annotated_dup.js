@@ -183,7 +183,9 @@ var annotated_dup =
         [ "PurrTransport", "classPurrNet_1_1Transports_1_1PurrTransport.html", "classPurrNet_1_1Transports_1_1PurrTransport" ],
         [ "PurrWebClient", "classPurrNet_1_1Transports_1_1PurrWebClient.html", null ],
         [ "Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
+        [ "RelayRefusedException", "classPurrNet_1_1Transports_1_1RelayRefusedException.html", null ],
         [ "RelayServer", "structPurrNet_1_1Transports_1_1RelayServer.html", null ],
+        [ "RelayUsage", "classPurrNet_1_1Transports_1_1RelayUsage.html", "classPurrNet_1_1Transports_1_1RelayUsage" ],
         [ "TransportPingResult", "structPurrNet_1_1Transports_1_1TransportPingResult.html", null ],
         [ "UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", "classPurrNet_1_1Transports_1_1UDPTransport" ],
         [ "WebTransport", "classPurrNet_1_1Transports_1_1WebTransport.html", null ]
