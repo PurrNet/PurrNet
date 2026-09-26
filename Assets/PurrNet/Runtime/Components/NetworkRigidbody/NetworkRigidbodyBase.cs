@@ -108,6 +108,8 @@ namespace PurrNet
         public HalfVector3 angularVelocity;
         public NetworkIdentity parent;
         public bool isSoftParent;
+        public uint sequence;
+        public uint authorityEpoch;
     }
 
     public struct RigidbodySettingsData
@@ -2497,6 +2499,11 @@ namespace PurrNet
         [ObserversRpc(deltaPacked: true, runLocally: true)]
         private void Teleport(RigidbodyTeleportData data)
         {
+            ReceiveTeleport(in data);
+        }
+
+        private void ReceiveTeleport(in RigidbodyTeleportData data)
+        {
             if (IsController(_ownerAuth))
                 return;
 
@@ -2508,6 +2515,8 @@ namespace PurrNet
             var syncPos = ExtractSyncPosition(data.positionFrame, data.position, data.absolutePosition);
             if (!TryToWorldPosition(syncPos, parentTrs, data.positionFrame, out var worldPos))
                 return;
+
+            TryAcceptStateOrder(data.authorityEpoch, data.sequence);
 
             var previousPosition = bodyPosition;
             var previousRotation = bodyRotation;
@@ -2615,7 +2624,7 @@ namespace PurrNet
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
 
             WriteWirePosition(parentTrs, out var wirePos, out var wireAbs, out var wireFrame);
-            Teleport(new RigidbodyTeleportData
+            var data = new RigidbodyTeleportData
             {
                 position = wirePos,
                 absolutePosition = wireAbs,
@@ -2624,8 +2633,28 @@ namespace PurrNet
                 linearVelocity = ReadLinearVelocity(parentTrs),
                 angularVelocity = ReadAngularVelocity(parentTrs),
                 parent = parentIdentity,
-                isSoftParent = isSoft
-            });
+                isSoftParent = isSoft,
+                sequence = NextStateSequence()
+            };
+
+            if (!isServer)
+            {
+                SendTeleportToServer(data);
+                return;
+            }
+
+            StampServerTeleportOrder(ref data);
+            Teleport(data);
+        }
+
+        [ServerRpc(deltaPacked: true)]
+        private void SendTeleportToServer(RigidbodyTeleportData data, RPCInfo info = default)
+        {
+            if (!IsCurrentControllerSender(info))
+                return;
+
+            StampServerTeleportOrder(ref data);
+            Teleport(data);
         }
 
         [ServerRpc(channel: Channel.ReliableOrdered)]

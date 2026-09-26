@@ -192,4 +192,72 @@ public class NetworkRigidbodySequenceTests
         Assert.That(epoch, Is.EqualTo(5u));
         Assert.That(sequence, Is.EqualTo(1u));
     }
+
+    [Test]
+    public void Teleport_RejectsStateCapturedBeforeIt()
+    {
+        var gameObject = new GameObject(nameof(Teleport_RejectsStateCapturedBeforeIt));
+        gameObject.AddComponent<Rigidbody>();
+        var networkRigidbody = gameObject.AddComponent<NetworkRigidbody>();
+
+        try
+        {
+            var type = typeof(NetworkRigidbodyBase);
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var relay = type.GetMethod("TryPrepareStateForServerRelay", flags)!;
+            var stamp = type.GetMethod("StampServerTeleportOrder", flags)!;
+            var receive = type.GetMethod("ReceiveTeleport", flags)!;
+            var accept = type.GetMethod("TryAcceptStateOrder", flags, null, new[] { typeof(uint), typeof(uint) }, null)!;
+
+            bool TryRelay(uint sourceSequence, out RigidbodyStateData relayed)
+            {
+                object[] arguments =
+                {
+                    new RigidbodyStateData
+                    {
+                        positionFrame = RigidbodyPositionFrame.World,
+                        rotation = Quaternion.identity,
+                        time = sourceSequence,
+                        sequence = sourceSequence
+                    }
+                };
+                bool accepted = (bool)relay.Invoke(networkRigidbody, arguments);
+                relayed = (RigidbodyStateData)arguments[0];
+                return accepted;
+            }
+
+            // Server: the controller's reliable teleport overtakes the unreliable state it sent just before it.
+            Assert.That(TryRelay(1u, out var beforeTeleport), Is.True);
+            object[] teleportArguments =
+            {
+                new RigidbodyTeleportData
+                {
+                    positionFrame = RigidbodyPositionFrame.World,
+                    rotation = Quaternion.identity,
+                    sequence = 3u
+                }
+            };
+            stamp.Invoke(networkRigidbody, teleportArguments);
+            var teleport = (RigidbodyTeleportData)teleportArguments[0];
+            Assert.That(TryRelay(2u, out _), Is.False,
+                "A state captured before the teleport must not be relayed after it.");
+            Assert.That(TryRelay(4u, out var afterTeleport), Is.True);
+
+            Assert.That(teleport.authorityEpoch, Is.EqualTo(beforeTeleport.authorityEpoch));
+            Assert.That(NetworkRigidbodySequenceMath.IsNewer(teleport.sequence, beforeTeleport.sequence), Is.True);
+            Assert.That(NetworkRigidbodySequenceMath.IsNewer(afterTeleport.sequence, teleport.sequence), Is.True);
+
+            // Observer: the reliable teleport overtakes the unreliable state sent just before it.
+            Assert.That((bool)accept.Invoke(networkRigidbody, new object[] { beforeTeleport.authorityEpoch, beforeTeleport.sequence - 1u }), Is.True);
+            receive.Invoke(networkRigidbody, new object[] { teleport });
+
+            Assert.That((bool)accept.Invoke(networkRigidbody, new object[] { beforeTeleport.authorityEpoch, beforeTeleport.sequence }), Is.False,
+                "A state captured before the teleport must not be interpolated in after it.");
+            Assert.That((bool)accept.Invoke(networkRigidbody, new object[] { afterTeleport.authorityEpoch, afterTeleport.sequence }), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(gameObject);
+        }
+    }
 }

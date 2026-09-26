@@ -157,6 +157,12 @@ namespace PurrNet
             return true;
         }
 
+        private void StampServerTeleportOrder(ref RigidbodyTeleportData data)
+        {
+            TryPrepareServerOrder(data.sequence, out data.authorityEpoch);
+            data.sequence = NextServerRelaySequence();
+        }
+
         private bool TryGetLatestServerState(out RigidbodyStateData data)
         {
             data = _latestServerState;
