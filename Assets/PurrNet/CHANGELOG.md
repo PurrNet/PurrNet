@@ -1,3 +1,10 @@
+# [1.24.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.24.0-beta.14...v1.24.0-beta.15) (2026-09-24)
+
+
+### Bug Fixes
+
+* clear error instead of NRE when sending RPCs from an identity left ([b83be04](https://github.com/PurrNet/PurrNet/commit/b83be04d016c857d24e25f3e95943992a9a9f00e))
+
 # [1.24.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.24.0-beta.13...v1.24.0-beta.14) (2026-09-24)
 
 
