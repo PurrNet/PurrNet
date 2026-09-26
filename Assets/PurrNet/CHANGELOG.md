@@ -1,3 +1,10 @@
+# [1.24.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.24.0-beta.15...v1.24.0-beta.16) (2026-09-26)
+
+
+### Bug Fixes
+
+* NetworkRigidbody no longer snaps back to states captured before a teleport ([f7a3f79](https://github.com/PurrNet/PurrNet/commit/f7a3f79176c2a1208047594fbff17daf625b7819))
+
 # [1.24.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.24.0-beta.14...v1.24.0-beta.15) (2026-09-24)
 
 
