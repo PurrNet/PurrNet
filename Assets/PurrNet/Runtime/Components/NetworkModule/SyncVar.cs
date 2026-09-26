@@ -249,6 +249,18 @@ namespace PurrNet
             if (!parent.isFullySpawned)
                 return;
 
+            // The connection can stop while the identity is still spawned (despawning is deferred to
+            // the network tick). Nothing can be sent then, and the SendToServer branch would log
+            // "RPCModule is missing for client". Drop the pending update and stop ticking.
+            if (!isServer && !isClient)
+            {
+                _isDirty = false;
+                _wasLastDirty = false;
+                _sentLastTick = false;
+                UnsubscribeFromTickManager();
+                return;
+            }
+
             if (_isDirty)
             {
                 float time = Time.time;
