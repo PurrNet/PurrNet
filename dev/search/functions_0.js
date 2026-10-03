@@ -6,5 +6,6 @@ var searchData=
   ['addstate_3',['AddState',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a8ece992d3564f244d9f04a2e0a47374a',1,'PurrNet::StateMachine::StateMachine']]],
   ['addvisibilityrule_4',['AddVisibilityRule',['../classPurrNet_1_1NetworkManager.html#a1448bafa6c3157b487667ff30a125668',1,'PurrNet::NetworkManager']]],
   ['advance_5',['Advance',['../classPurrNet_1_1SyncTimer.html#a7d8159162053902ea3ab33913a8f94a6',1,'PurrNet::SyncTimer']]],
-  ['applylevel_6',['ApplyLevel',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#a32850a35467db65b4779b1fd08914f40',1,'PurrNet::NetworkTransformSyncStrategy']]]
+  ['allocate_6',['Allocate',['../classPurrNet_1_1Pooling_1_1ListPool.html#af67a1d864f47f843ce77071f3134c20e',1,'PurrNet::Pooling::ListPool']]],
+  ['applylevel_7',['ApplyLevel',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#a32850a35467db65b4779b1fd08914f40',1,'PurrNet::NetworkTransformSyncStrategy']]]
 ];

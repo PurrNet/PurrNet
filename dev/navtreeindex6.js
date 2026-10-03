@@ -1,5 +1,7 @@
 var NAVTREEINDEX6 =
 {
+"classPurrNet_1_1Transports_1_1PurrTransport.html#aab98e7f9322ba813c454a1e468adec2c":[1,0,0,9,17,6],
+"classPurrNet_1_1Transports_1_1PurrTransport.html#ab2ec985de00ee34b3e33e8e2f2921174":[1,0,0,9,17,27],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ab2ec985de00ee34b3e33e8e2f2921174":[0,0,0,9,17,27],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ab39527cd4fca47ccde3d57cc731e5a9c":[0,0,0,9,17,4],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ab39527cd4fca47ccde3d57cc731e5a9c":[1,0,0,9,17,4],
@@ -7,16 +9,16 @@ var NAVTREEINDEX6 =
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ab6765727ea69bff54704c3bd7c4e3233":[0,0,0,9,17,22],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ac028086c22f5dd8adaed9c8bb9f3b3c8":[0,0,0,9,17,17],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ac028086c22f5dd8adaed9c8bb9f3b3c8":[1,0,0,9,17,17],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#acdadb06ce5b4cac092906f8ff095a1c6":[0,0,0,9,17,15],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#acdadb06ce5b4cac092906f8ff095a1c6":[1,0,0,9,17,15],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#acfe8a7db402852b3687bb9930c289bfb":[0,0,0,9,17,10],
+"classPurrNet_1_1Transports_1_1PurrTransport.html#acdadb06ce5b4cac092906f8ff095a1c6":[0,0,0,9,17,15],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#acfe8a7db402852b3687bb9930c289bfb":[1,0,0,9,17,10],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#ad729d853134402a9c8eeddac0e6f7a08":[0,0,0,9,17,9],
+"classPurrNet_1_1Transports_1_1PurrTransport.html#acfe8a7db402852b3687bb9930c289bfb":[0,0,0,9,17,10],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#ad729d853134402a9c8eeddac0e6f7a08":[1,0,0,9,17,9],
+"classPurrNet_1_1Transports_1_1PurrTransport.html#ad729d853134402a9c8eeddac0e6f7a08":[0,0,0,9,17,9],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#adb6bca90a8777ce2400c79305c628e22":[1,0,0,9,17,30],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#adb6bca90a8777ce2400c79305c628e22":[0,0,0,9,17,30],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#af91cb81d1a9177485703c595338ceede":[1,0,0,9,17,1],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#af91cb81d1a9177485703c595338ceede":[0,0,0,9,17,1],
+"classPurrNet_1_1Transports_1_1PurrTransport.html#af91cb81d1a9177485703c595338ceede":[1,0,0,9,17,1],
 "classPurrNet_1_1Transports_1_1PurrWebClient.html":[1,0,0,9,18],
 "classPurrNet_1_1Transports_1_1PurrWebClient.html":[0,0,0,9,18],
 "classPurrNet_1_1Transports_1_1RelayRefusedException.html":[1,0,0,9,20],
@@ -247,7 +249,5 @@ var NAVTREEINDEX6 =
 "interfacePurrNet_1_1Transports_1_1ITransport.html#a42279793baeca33c813bc1c73ac8a5b7":[0,0,0,9,12,2],
 "interfacePurrNet_1_1Transports_1_1ITransport.html#a42279793baeca33c813bc1c73ac8a5b7":[1,0,0,9,12,2],
 "interfacePurrNet_1_1Transports_1_1ITransport.html#a84d8be7b2d22babc84aec7313f41e66c":[0,0,0,9,12,0],
-"interfacePurrNet_1_1Transports_1_1ITransport.html#a84d8be7b2d22babc84aec7313f41e66c":[1,0,0,9,12,0],
-"interfacePurrNet_1_1Transports_1_1ITransport.html#ae3e1f81560c564104469b5fc729ba137":[0,0,0,9,12,1],
-"interfacePurrNet_1_1Transports_1_1ITransport.html#ae3e1f81560c564104469b5fc729ba137":[1,0,0,9,12,1]
+"interfacePurrNet_1_1Transports_1_1ITransport.html#a84d8be7b2d22babc84aec7313f41e66c":[1,0,0,9,12,0]
 };

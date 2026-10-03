@@ -9,7 +9,7 @@ var namespacePurrNet_1_1Pooling =
     [ "DisposableList", "structPurrNet_1_1Pooling_1_1DisposableList.html", "structPurrNet_1_1Pooling_1_1DisposableList" ],
     [ "GenericPool", "classPurrNet_1_1Pooling_1_1GenericPool.html", null ],
     [ "HashSetPool", "classPurrNet_1_1Pooling_1_1HashSetPool.html", null ],
-    [ "ListPool", "classPurrNet_1_1Pooling_1_1ListPool.html", null ],
+    [ "ListPool", "classPurrNet_1_1Pooling_1_1ListPool.html", "classPurrNet_1_1Pooling_1_1ListPool" ],
     [ "QueuePool", "classPurrNet_1_1Pooling_1_1QueuePool.html", null ],
     [ "StackPool", "classPurrNet_1_1Pooling_1_1StackPool.html", null ]
 ];
