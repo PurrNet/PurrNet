@@ -11,9 +11,9 @@ var searchData=
   ['shouldautostartclient_8',['shouldAutoStartClient',['../classPurrNet_1_1NetworkManager.html#a486f3d2bb04554034748ef42e83e942f',1,'PurrNet.NetworkManager.shouldAutoStartClient()'],['../classPurrNet_1_1RawNetManager.html#a9328e1c9e9e07f9e9a2f2639b6ce6e9f',1,'PurrNet.RawNetManager.shouldAutoStartClient()']]],
   ['shouldautostartserver_9',['shouldAutoStartServer',['../classPurrNet_1_1NetworkManager.html#a13eb686cab9722cff602dde0451d51fe',1,'PurrNet.NetworkManager.shouldAutoStartServer()'],['../classPurrNet_1_1RawNetManager.html#a3009aa855cd43034246f26a88d1dd4bc',1,'PurrNet.RawNetManager.shouldAutoStartServer()']]],
   ['simulatedhostping_10',['simulatedHostPing',['../classPurrNet_1_1SyncInput.html#a2c00b2d37dcfb4455c7da392c97678da',1,'PurrNet::SyncInput']]],
-  ['softparent_11',['softParent',['../classPurrNet_1_1NetworkRigidbody.html#a0e4498a0d42d8f9227cf50021750bbcc',1,'PurrNet::NetworkRigidbody']]],
-  ['softparentinstance_12',['softParentInstance',['../classPurrNet_1_1NetworkRigidbody.html#ad6ba75d29e9486f2d179e6909d7c920c',1,'PurrNet::NetworkRigidbody']]],
-  ['space_13',['space',['../classPurrNet_1_1NetworkRigidbody.html#acae9cdee1795e32220bc3a5b9b04aee6',1,'PurrNet::NetworkRigidbody']]],
+  ['softparent_11',['softParent',['../classPurrNet_1_1NetworkRigidbodyBase.html#a9475a30d87fcde4fa8d2a5529def5121',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['softparentinstance_12',['softParentInstance',['../classPurrNet_1_1NetworkRigidbodyBase.html#ad7d952633ce92468b4eaf7f942c62d91',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['space_13',['space',['../classPurrNet_1_1NetworkRigidbodyBase.html#a00883209168476bb6c1981cf650575fe',1,'PurrNet::NetworkRigidbodyBase']]],
   ['spatialblend_14',['spatialBlend',['../classPurrNet_1_1NetworkAudioSource.html#a57d99acdee94a366043c92cfed2fc097',1,'PurrNet::NetworkAudioSource']]],
   ['startclientflags_15',['startClientFlags',['../classPurrNet_1_1NetworkManager.html#a1ade609f395b02e599eec909fee4e081',1,'PurrNet.NetworkManager.startClientFlags()'],['../classPurrNet_1_1RawNetManager.html#acba964e897bd483b352b1df395951b76',1,'PurrNet.RawNetManager.startClientFlags()']]],
   ['startserverflags_16',['startServerFlags',['../classPurrNet_1_1NetworkManager.html#a76e0c18a472d5675aeeddda8d4dfae4f',1,'PurrNet.NetworkManager.startServerFlags()'],['../classPurrNet_1_1RawNetManager.html#afab81fd2037d3025ee695e01ede676cb',1,'PurrNet.RawNetManager.startServerFlags()']]],
@@ -23,5 +23,5 @@ var searchData=
   ['syncposition_20',['syncPosition',['../interfacePurrNet_1_1INetworkTransform.html#a7df722412bb5c2728c4a1da166a3a67b',1,'PurrNet.INetworkTransform.syncPosition()'],['../classPurrNet_1_1NetworkTransform.html#a10e35e3a2904f2c1623175f9cbcf5c62',1,'PurrNet.NetworkTransform.syncPosition()']]],
   ['syncrotation_21',['syncRotation',['../interfacePurrNet_1_1INetworkTransform.html#aff00a94b3ce0f2a6380231b83a4206c6',1,'PurrNet.INetworkTransform.syncRotation()'],['../classPurrNet_1_1NetworkTransform.html#af57ea9e2f3fea7d488fc804f85c6387d',1,'PurrNet.NetworkTransform.syncRotation()']]],
   ['syncscale_22',['syncScale',['../interfacePurrNet_1_1INetworkTransform.html#add578efc6f2d8c5c210bac2b9ef3972f',1,'PurrNet.INetworkTransform.syncScale()'],['../classPurrNet_1_1NetworkTransform.html#a63b633d022618dae2499fb88a8e993ff',1,'PurrNet.NetworkTransform.syncScale()']]],
-  ['syncvelocityrelativetoparent_23',['syncVelocityRelativeToParent',['../classPurrNet_1_1NetworkRigidbody.html#a422c39dcd8e35cd5fcfe07222174fbc5',1,'PurrNet::NetworkRigidbody']]]
+  ['syncvelocityrelativetoparent_23',['syncVelocityRelativeToParent',['../classPurrNet_1_1NetworkRigidbodyBase.html#a56086e391544a2b6024437a36c5459cc',1,'PurrNet::NetworkRigidbodyBase']]]
 ];

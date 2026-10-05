@@ -14,7 +14,7 @@ var searchData=
   ['clearownerships_11',['ClearOwnerships',['../classPurrNet_1_1Modules_1_1GlobalOwnershipModule.html#a8c28e6e5c4d92ea4d447674bacb90d68',1,'PurrNet::Modules::GlobalOwnershipModule']]],
   ['clearpast_12',['ClearPast',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a6084cacf773a7fdf1b40fa522317eaff',1,'PurrNet::Modules::SimpleHistory']]],
   ['clearservertransportfilter_13',['ClearServerTransportFilter',['../classPurrNet_1_1Transports_1_1CompositeTransport.html#a88e15a7f876566b8c0294e04e0811b8d',1,'PurrNet::Transports::CompositeTransport']]],
-  ['clearsoftparent_14',['ClearSoftParent',['../classPurrNet_1_1NetworkRigidbody.html#a9178f3aae34e5de1f92f2b75ff281487',1,'PurrNet::NetworkRigidbody']]],
+  ['clearsoftparent_14',['ClearSoftParent',['../classPurrNet_1_1NetworkRigidbodyBase.html#a7e7a227060d838388693a54259e434c5',1,'PurrNet::NetworkRigidbodyBase']]],
   ['clientattribute_15',['ClientAttribute',['../classPurrNet_1_1ClientAttribute.html',1,'PurrNet']]],
   ['clientconnectiondescription_16',['clientConnectionDescription',['../classPurrNet_1_1StatisticsManager.html#a815128cf578f70ac3617f80d88f31549',1,'PurrNet::StatisticsManager']]],
   ['clientconnectionprotocol_17',['clientConnectionProtocol',['../classPurrNet_1_1Transports_1_1PurrTransport.html#acfe8a7db402852b3687bb9930c289bfb',1,'PurrNet::Transports::PurrTransport']]],

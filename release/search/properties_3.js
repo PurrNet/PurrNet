@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['defaultpositiontransform_0',['defaultPositionTransform',['../classPurrNet_1_1NetworkRigidbody.html#a0db5d022bc12ec428664fa34d2767ecc',1,'PurrNet::NetworkRigidbody']]]
+  ['defaultpositiontransform_0',['defaultPositionTransform',['../classPurrNet_1_1NetworkRigidbodyBase.html#a53240782b08137d2002087beab96dadc',1,'PurrNet::NetworkRigidbodyBase']]]
 ];

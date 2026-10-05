@@ -215,15 +215,15 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBit</b> (bool da
 <tr class="memitem:aa99a0691b67015391adb9f1845c7f2f5"><td class="memItemLeft" align="right" valign="top"><a id="aa99a0691b67015391adb9f1845c7f2f5" name="aa99a0691b67015391adb9f1845c7f2f5"></a>
 unsafe bool&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBit</b> ()</td></tr>
 <tr class="separator:aa99a0691b67015391adb9f1845c7f2f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d47222bc3e6b57d150f9f3a7364331b"><td class="memItemLeft" align="right" valign="top"><a id="a0d47222bc3e6b57d150f9f3a7364331b" name="a0d47222bc3e6b57d150f9f3a7364331b"></a>
-unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBitsWithoutChecks</b> (ulong data, byte bits)</td></tr>
-<tr class="separator:a0d47222bc3e6b57d150f9f3a7364331b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a787ed04d39bda87a2364cbf9a0b29e35"><td class="memItemLeft" align="right" valign="top"><a id="a787ed04d39bda87a2364cbf9a0b29e35" name="a787ed04d39bda87a2364cbf9a0b29e35"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBitsWithoutChecks</b> (ulong data, byte bits)</td></tr>
+<tr class="separator:a787ed04d39bda87a2364cbf9a0b29e35"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af9aacb4b2ce73eb0c03a23a7ff076c2e"><td class="memItemLeft" align="right" valign="top"><a id="af9aacb4b2ce73eb0c03a23a7ff076c2e" name="af9aacb4b2ce73eb0c03a23a7ff076c2e"></a>
 ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBits</b> (byte bits)</td></tr>
 <tr class="separator:af9aacb4b2ce73eb0c03a23a7ff076c2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5186900a300f10fd9d7ee784b178ae03"><td class="memItemLeft" align="right" valign="top"><a id="a5186900a300f10fd9d7ee784b178ae03" name="a5186900a300f10fd9d7ee784b178ae03"></a>
-unsafe ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBitsWithoutChecks</b> (byte bits)</td></tr>
-<tr class="separator:a5186900a300f10fd9d7ee784b178ae03"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a542fe076f834514499141f8a944ba703"><td class="memItemLeft" align="right" valign="top"><a id="a542fe076f834514499141f8a944ba703" name="a542fe076f834514499141f8a944ba703"></a>
+ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBitsWithoutChecks</b> (byte bits)</td></tr>
+<tr class="separator:a542fe076f834514499141f8a944ba703"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a107c1d8857be6f10bd0f997fb9a7c130"><td class="memItemLeft" align="right" valign="top"><a id="a107c1d8857be6f10bd0f997fb9a7c130" name="a107c1d8857be6f10bd0f997fb9a7c130"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ReadBytes</b> (Span&lt; byte &gt; destination)</td></tr>
 <tr class="separator:a107c1d8857be6f10bd0f997fb9a7c130"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -321,6 +321,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>positionInBits</b><cod
 <tr class="memitem:a368b532f3eb238e8b5f6bb21a368d6e6"><td class="memItemLeft" align="right" valign="top"><a id="a368b532f3eb238e8b5f6bb21a368d6e6" name="a368b532f3eb238e8b5f6bb21a368d6e6"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>positionInBytes</b><code> [get]</code></td></tr>
 <tr class="separator:a368b532f3eb238e8b5f6bb21a368d6e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acad7c82ac6ee6fb9abbf40594ab644be"><td class="memItemLeft" align="right" valign="top"><a id="acad7c82ac6ee6fb9abbf40594ab644be" name="acad7c82ac6ee6fb9abbf40594ab644be"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>remainingBits</b><code> [get]</code></td></tr>
+<tr class="memdesc:acad7c82ac6ee6fb9abbf40594ab644be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bits left in the logical data, including padding in its final byte. Buffer capacity and the cursor's absolute byte offset are excluded.  <br /></td></tr>
+<tr class="separator:acad7c82ac6ee6fb9abbf40594ab644be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a894ab1e3c847d5d788fe73721f432c"><td class="memItemLeft" align="right" valign="top"><a id="a6a894ab1e3c847d5d788fe73721f432c" name="a6a894ab1e3c847d5d788fe73721f432c"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>remainingBytes</b><code> [get]</code></td></tr>
+<tr class="memdesc:a6a894ab1e3c847d5d788fe73721f432c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Complete bytes readable from the current, possibly unaligned, cursor. <br /></td></tr>
+<tr class="separator:a6a894ab1e3c847d5d788fe73721f432c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aee552c1e78f4edafb17a0d797d9d9f50"><td class="memItemLeft" align="right" valign="top"><a id="aee552c1e78f4edafb17a0d797d9d9f50" name="aee552c1e78f4edafb17a0d797d9d9f50"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>length</b><code> [get]</code></td></tr>
 <tr class="separator:aee552c1e78f4edafb17a0d797d9d9f50"><td class="memSeparator" colspan="2">&#160;</td></tr>
