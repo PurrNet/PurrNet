@@ -35,6 +35,12 @@ namespace PurrNet.Steam
         private readonly Dictionary<HSteamNetConnection, int> _idByConnection =
  new Dictionary<HSteamNetConnection, int>();
         private readonly Dictionary<int, ulong> _steamIdByConnection = new Dictionary<int, ulong>();
+        private readonly Dictionary<HSteamNetConnection, SteamSendQueue> _sendQueues =
+            new Dictionary<HSteamNetConnection, SteamSendQueue>();
+        private readonly List<HSteamNetConnection> _flushConnections = new List<HSteamNetConnection>();
+        private readonly List<HSteamNetConnection> _receiveConnections = new List<HSteamNetConnection>();
+        private readonly Queue<int> _pendingDisconnects = new Queue<int>();
+        private readonly HashSet<HSteamNetConnection> _sendLimitWarnings = new HashSet<HSteamNetConnection>();
 
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
 #endif
@@ -53,8 +59,14 @@ namespace PurrNet.Steam
 
         public void Listen(ushort port, bool dedicated = false)
         {
+            Listen(port, dedicated, SteamSendSettings.defaults);
+        }
+
+        internal void Listen(ushort port, bool dedicated, SteamSendSettings sendSettings)
+        {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
             _isDedicated = dedicated;
+            var options = sendSettings.CreateOptions();
 
             var localAddress = new SteamNetworkingIPAddr();
             localAddress.Clear();
@@ -64,16 +76,16 @@ namespace PurrNet.Steam
             {
                 _listenSocket = SteamGameServerNetworkingSockets.CreateListenSocketIP(
                     ref localAddress,
-                    0,
-                    null
+                    options.Length,
+                    options
                 );
             }
             else
             {
                 _listenSocket = SteamNetworkingSockets.CreateListenSocketIP(
                     ref localAddress,
-                    0,
-                    null
+                    options.Length,
+                    options
                 );
             }
 
@@ -83,23 +95,29 @@ namespace PurrNet.Steam
 
         public void ListenP2P(bool dedicated = false)
         {
+            ListenP2P(dedicated, SteamSendSettings.defaults);
+        }
+
+        internal void ListenP2P(bool dedicated, SteamSendSettings sendSettings)
+        {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
             _isDedicated = dedicated;
+            var options = sendSettings.CreateOptions();
 
             if (dedicated)
             {
                 _listenSocket = SteamGameServerNetworkingSockets.CreateListenSocketP2P(
                     0,
-                    0,
-                    null
+                    options.Length,
+                    options
                 );
             }
             else
             {
                 _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(
                     0,
-                    0,
-                    null
+                    options.Length,
+                    options
                 );
             }
 
@@ -125,16 +143,14 @@ namespace PurrNet.Steam
         public void SendMessages()
         {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
-            for (var i = 0; i < _connections.Count; i++)
+            // Pumping a failed queue removes its connection from the live list.
+            _flushConnections.Clear();
+            _flushConnections.AddRange(_connections);
+            for (var i = 0; i < _flushConnections.Count; i++)
             {
-                var conn = _connections[i];
-
-                if (conn == HSteamNetConnection.Invalid)
-                    continue;
-
-                if (_isDedicated)
-                     SteamGameServerNetworkingSockets.FlushMessagesOnConnection(conn);
-                else SteamNetworkingSockets.FlushMessagesOnConnection(conn);
+                var conn = _flushConnections[i];
+                if (_idByConnection.ContainsKey(conn))
+                    FlushNativeConnection(conn);
             }
 #endif
         }
@@ -142,9 +158,17 @@ namespace PurrNet.Steam
         public void ReceiveMessages()
         {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
-            for (var i = 0; i < _connections.Count; i++)
+            while (_pendingDisconnects.Count > 0)
             {
-                var conn = _connections[i];
+                var disconnectedId = _pendingDisconnects.Dequeue();
+                NotifyDisconnected(disconnectedId);
+            }
+
+            _receiveConnections.Clear();
+            _receiveConnections.AddRange(_connections);
+            for (var i = 0; i < _receiveConnections.Count; i++)
+            {
+                var conn = _receiveConnections[i];
 
                 if (!_idByConnection.TryGetValue(conn, out var connId))
                     continue;
@@ -156,16 +180,30 @@ namespace PurrNet.Steam
                 for (int j = 0; j < receivedCount; j++)
                 {
                     var ptr = _messages[j];
-                    var data = Marshal.PtrToStructure<SteamNetworkingMessage_t>(ptr);
+                    if (!_connectionById.TryGetValue(connId, out var current) || current != conn)
+                    {
+                        SteamNetworkingMessage_t.Release(ptr);
+                        continue;
+                    }
 
-                    int packetLength = data.m_cbSize;
-                    MakeSureBufferCanFit(packetLength);
-
-                    Marshal.Copy(data.m_pData, buffer, 0, packetLength);
-                    var byteData = new ByteData(buffer, 0, packetLength);
-
-                    SteamNetworkingMessage_t.Release(ptr);
-                    onDataReceived?.Invoke(connId, byteData);
+                    try
+                    {
+                        var data = Marshal.PtrToStructure<SteamNetworkingMessage_t>(ptr);
+                        int packetLength = data.m_cbSize;
+                        MakeSureBufferCanFit(packetLength);
+                        Marshal.Copy(data.m_pData, buffer, 0, packetLength);
+                        SteamNetworkingMessage_t.Release(ptr);
+                        ptr = IntPtr.Zero;
+                        onDataReceived?.Invoke(connId, new ByteData(buffer, 0, packetLength));
+                    }
+                    catch
+                    {
+                        if (ptr != IntPtr.Zero)
+                            SteamNetworkingMessage_t.Release(ptr);
+                        for (var remaining = j + 1; remaining < receivedCount; remaining++)
+                            SteamNetworkingMessage_t.Release(_messages[remaining]);
+                        throw;
+                    }
                 }
             }
 #endif
@@ -177,9 +215,7 @@ namespace PurrNet.Steam
             if (!_connectionById.TryGetValue(id, out var conn))
                 return;
 
-            if (_isDedicated)
-                 SteamGameServerNetworkingSockets.CloseConnection(conn, 0, null, false);
-            else SteamNetworkingSockets.CloseConnection(conn, 0, null, false);
+            CloseConnection(conn, null, true);
 #endif
         }
         
@@ -211,6 +247,16 @@ namespace PurrNet.Steam
             return 0;
         }
 
+        public SteamSendStatistics GetSendStatistics(int connectionId)
+        {
+#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+            if (_connectionById.TryGetValue(connectionId, out var conn) &&
+                _sendQueues.TryGetValue(conn, out var queue))
+                return queue.statistics;
+#endif
+            return default;
+        }
+
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
         private static void MakeSureBufferCanFit(int packetLength)
         {
@@ -224,48 +270,111 @@ namespace PurrNet.Steam
             if (!_connectionById.TryGetValue(connId, out var conn))
                 return;
 
-            if (_isDedicated)
-                SteamGameServerNetworkingSockets.FlushMessagesOnConnection(conn);
-            else SteamNetworkingSockets.FlushMessagesOnConnection(conn);
+            FlushNativeConnection(conn);
 #endif
         }
 
         public void SendToConnection(int connId, ByteData data, Channel channel)
         {
+            TrySendToConnection(connId, data, channel);
+        }
+
+        internal bool TrySendToConnection(int connId, ByteData data, Channel channel)
+        {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
             if (!_connectionById.TryGetValue(connId, out var conn))
-                return;
+                return false;
 
-            MakeSureBufferCanFit(data.length);
-
-            var pinnedArray = GCHandle.Alloc(data.data, GCHandleType.Pinned);
-            var ptr = pinnedArray.AddrOfPinnedObject() + data.offset;
-
-            byte sendFlag = channel switch {
-                Channel.Unreliable => Constants.k_nSteamNetworkingSend_Unreliable,
-                Channel.UnreliableSequenced => Constants.k_nSteamNetworkingSend_Reliable,
-
-                Channel.ReliableOrdered => Constants.k_nSteamNetworkingSend_Reliable,
-                Channel.ReliableUnordered => Constants.k_nSteamNetworkingSend_Reliable,
-                _ => 0
-            };
-
+            string failure;
             try
             {
-                if (_isDedicated)
-                    SteamGameServerNetworkingSockets.SendMessageToConnection(conn, ptr, (uint)data.length, sendFlag,
-                        out _);
-                else SteamNetworkingSockets.SendMessageToConnection(conn, ptr, (uint)data.length, sendFlag, out _);
+                if (!_sendQueues.TryGetValue(conn, out var queue))
+                {
+                    queue = new SteamSendQueue((ptr, length, flags) => SendNative(conn, ptr, length, flags),
+                        () => UnityEngine.Time.realtimeSinceStartupAsDouble);
+                    _sendQueues.Add(conn, queue);
+                }
+                bool healthy = queue.Send(data, channel, out var accepted);
+                if (queue.statistics.lastSendResult == (int)EResult.k_EResultLimitExceeded && _sendLimitWarnings.Add(conn))
+                {
+                    try
+                    {
+                        PurrLogger.LogWarning($"Steam send buffer limit reached for server connection {connId} ({conn}). " +
+                            "Reliable messages retry in order; unreliable sends may be refused. " +
+                            "Check outgoing traffic and configured Steam send limits. This warning is logged once per connection.");
+                    }
+                    catch { }
+                }
+                if (healthy)
+                    return accepted;
+                failure = queue.failureReason;
             }
             catch (Exception e)
             {
-                PurrLogger.LogException(e);
+                failure = $"Steam send failed: {e.Message}";
             }
+            FailSend(conn, failure);
 #endif
+            return false;
         }
 
-
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+        private EResult SendNative(HSteamNetConnection conn, IntPtr data, uint length, int flags)
+        {
+            return _isDedicated
+                ? SteamGameServerNetworkingSockets.SendMessageToConnection(conn, data, length, flags, out _)
+                : SteamNetworkingSockets.SendMessageToConnection(conn, data, length, flags, out _);
+        }
+
+        private void FlushNativeConnection(HSteamNetConnection conn)
+        {
+            string failure;
+            try
+            {
+                if (_sendQueues.TryGetValue(conn, out var queue) && !queue.Pump())
+                {
+                    failure = queue.failureReason;
+                }
+                else
+                {
+                    if (_isDedicated)
+                        SteamGameServerNetworkingSockets.FlushMessagesOnConnection(conn);
+                    else SteamNetworkingSockets.FlushMessagesOnConnection(conn);
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                failure = $"Steam send failed: {e.Message}";
+            }
+            FailSend(conn, failure);
+        }
+
+        private void FailSend(HSteamNetConnection conn, string reason)
+        {
+            PurrLogger.LogError($"Disconnecting Steam connection {conn}: {reason}");
+            CloseConnection(conn, reason, true);
+        }
+
+        private void CloseConnection(HSteamNetConnection conn, string reason = null, bool deferNotification = false)
+        {
+            try
+            {
+                if (_isDedicated)
+                    SteamGameServerNetworkingSockets.CloseConnection(conn, 0, reason, false);
+                else SteamNetworkingSockets.CloseConnection(conn, 0, reason, false);
+            }
+            catch
+            {
+                // The native subsystem may already be shutting down. Still release managed state.
+            }
+            finally
+            {
+                // Steam does not post a local state callback when we explicitly close a handle.
+                RemoveConnection(conn, deferNotification);
+            }
+        }
+
         private int _nextConnectionId;
 
         private void AddConnection(HSteamNetConnection connection, ulong steamId)
@@ -279,13 +388,31 @@ namespace PurrNet.Steam
             onRemoteConnected?.Invoke(id);
         }
 
-        private void RemoveConnection(HSteamNetConnection connection)
+        private void RemoveConnection(HSteamNetConnection connection, bool deferNotification)
         {
+            _sendLimitWarnings.Remove(connection);
+            if (_sendQueues.Remove(connection, out var queue))
+                queue.Clear();
             if (_connections.Remove(connection) && _idByConnection.Remove(connection, out var _id))
             {
                 _connectionById.Remove(_id);
-                onRemoteDisconnected?.Invoke(_id);
-                _steamIdByConnection.Remove(_id);
+                if (deferNotification)
+                    _pendingDisconnects.Enqueue(_id);
+                else
+                    NotifyDisconnected(_id);
+            }
+        }
+
+        private void NotifyDisconnected(int connectionId)
+        {
+            try
+            {
+                // Disconnect handlers may still need the Steam identity for cleanup.
+                onRemoteDisconnected?.Invoke(connectionId);
+            }
+            finally
+            {
+                _steamIdByConnection.Remove(connectionId);
             }
         }
 
@@ -313,9 +440,10 @@ namespace PurrNet.Steam
                     AddConnection(args.m_hConn, args.m_info.m_identityRemote.GetSteamID64());
                     break;
                 }
-                default:
+                case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+                case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
                 {
-                    RemoveConnection(args.m_hConn);
+                    CloseConnection(args.m_hConn);
                     break;
                 }
             }
@@ -330,9 +458,6 @@ namespace PurrNet.Steam
                 _connectionStatusChanged.Dispose();
                 _connectionStatusChanged = null;
             }
-
-            if (_listenSocket == HSteamListenSocket.Invalid)
-                return;
 
             for (var o = 0; o < _connections.Count; o++)
             {
@@ -353,6 +478,14 @@ namespace PurrNet.Steam
             _connectionById.Clear();
             _idByConnection.Clear();
             _steamIdByConnection.Clear();
+            foreach (var queue in _sendQueues.Values)
+                queue.Clear();
+            _sendQueues.Clear();
+            _pendingDisconnects.Clear();
+            _sendLimitWarnings.Clear();
+
+            if (_listenSocket == HSteamListenSocket.Invalid)
+                return;
 
             try
             {

@@ -60,20 +60,26 @@ namespace PurrNet.Packing
 
         static NativeList<T> ReadListCompressed<T>(BitPacker packer) where T : unmanaged
         {
-            var count = Packer<Size>.Read(packer);
-            int len = (int)count.value;
-            var list = new NativeList<T>(len, PackNativeCollections.ReadAllocator);
+            int len = DeserializationLimits.ValidateCollectionLength<T>(Packer<Size>.Read(packer).value);
+            var list = new NativeList<T>(DeserializationLimits.ClampCapacity(packer, len), PackNativeCollections.ReadAllocator);
             var last = default(T);
 
-            for (int i = 0; i < len; i++)
+            try
             {
-                T current = default;
-                DeltaPacker<T>.Read(packer, last, ref current);
-                last = current;
-                list.Add(current);
+                for (int i = 0; i < len; i++)
+                {
+                    T current = default;
+                    DeltaPacker<T>.Read(packer, last, ref current);
+                    last = current;
+                    list.Add(current);
+                }
+                return list;
             }
-
-            return list;
+            catch
+            {
+                list.Dispose();
+                throw;
+            }
         }
 
         [UsedByIL]
@@ -93,12 +99,14 @@ namespace PurrNet.Packing
                 case OperationType.Delete:
                     Packer<Size>.Read(packer, ref index);
                     Packer<Size>.Read(packer, ref length);
-                    value = new DiffOpNative<T>(type, (int)index.value, (int)length.value);
+                    value = new DiffOpNative<T>(type, DeserializationLimits.ValidateIndex(index.value),
+                        DeserializationLimits.ValidateCollectionLength<T>(length.value));
                     break;
                 case OperationType.Insert:
                     Packer<Size>.Read(packer, ref index);
+                    var insertIndex = DeserializationLimits.ValidateIndex(index.value);
                     var valuesInsert = ReadListCompressed<T>(packer);
-                    value = new DiffOpNative<T>(type, (int)index.value, valuesInsert.Length, valuesInsert);
+                    value = new DiffOpNative<T>(type, insertIndex, valuesInsert.Length, valuesInsert);
                     break;
                 case OperationType.Add:
                     var valuesAdd = ReadListCompressed<T>(packer);
@@ -124,7 +132,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void DeltaRead<T>(this BitPacker packer, DiffOpNative<T> old, ref DiffOpNative<T> newVal) where T : unmanaged
         {
-            if (!DeltaReadingScope.Continue(packer, old, ref newVal))
+            if (!DeltaReadingScope.ContinueDisposable(packer, old, ref newVal))
                 return;
 
             packer.ReadOperation<T>(ref newVal);

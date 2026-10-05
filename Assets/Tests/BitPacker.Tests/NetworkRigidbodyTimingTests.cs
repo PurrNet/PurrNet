@@ -160,11 +160,11 @@ public class NetworkRigidbodyTimingTests
 
     private T Field<T>(string name)
     {
-        return (T)typeof(NetworkRigidbody).GetField(name, PrivateInstance).GetValue(_networkRigidbody);
+        return (T)typeof(NetworkRigidbodyBase).GetField(name, PrivateInstance).GetValue(_networkRigidbody);
     }
 
     private object Invoke(string name, params object[] arguments)
     {
-        return typeof(NetworkRigidbody).GetMethod(name, PrivateInstance).Invoke(_networkRigidbody, arguments);
+        return typeof(NetworkRigidbodyBase).GetMethod(name, PrivateInstance).Invoke(_networkRigidbody, arguments);
     }
 }

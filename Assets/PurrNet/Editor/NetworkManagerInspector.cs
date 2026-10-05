@@ -7,8 +7,18 @@ using Object = UnityEngine.Object;
 namespace PurrNet.Editor
 {
     [CustomEditor(typeof(NetworkManager), true)]
-    public class NetworkManagerInspector : UnityEditor.Editor
+    public class NetworkManagerInspector : OptionalInspector
     {
+        private static readonly string[] _editorAttributesExcludedProperties =
+        {
+            "m_Script", "_startServerFlags", "_startClientFlags", "_stopPlayingOnDisconnect", "_cookieScope",
+            "_dontDestroyOnLoad", "_networkPrefabs", "_addressableNetworkPrefabs", "_networkAssets", "_networkRules",
+            "_authenticator", "_transport", "_tickRate", "_maxTicksPerFrame", "_visibilityRules",
+            "_mtuExceededBehaviour", "_patchLingeringProcessBug"
+        };
+
+        protected override string[] editorAttributesExcludedProperties => _editorAttributesExcludedProperties;
+
         private SerializedProperty _scriptProp;
         private SerializedProperty _startServerFlags;
         private SerializedProperty _startClientFlags;
@@ -22,6 +32,7 @@ namespace PurrNet.Editor
         private SerializedProperty _authenticator;
         private SerializedProperty _transport;
         private SerializedProperty _tickRate;
+        private SerializedProperty _maxTicksPerFrame;
         private SerializedProperty _visibilityRules;
         private SerializedProperty _mtuExceededBehaviour;
         private SerializedProperty _patchLingeringProcessBug;
@@ -52,6 +63,7 @@ namespace PurrNet.Editor
             _networkRules = serializedObject.FindProperty("_networkRules");
             _transport = serializedObject.FindProperty("_transport");
             _tickRate = serializedObject.FindProperty("_tickRate");
+            _maxTicksPerFrame = serializedObject.FindProperty("_maxTicksPerFrame");
             _visibilityRules = serializedObject.FindProperty("_visibilityRules");
             _mtuExceededBehaviour = serializedObject.FindProperty("_mtuExceededBehaviour");
             _patchLingeringProcessBug = serializedObject.FindProperty("_patchLingeringProcessBug");
@@ -63,9 +75,11 @@ namespace PurrNet.Editor
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.update -= CheckForStateChanges;
+            base.OnDisable();
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)
@@ -211,6 +225,7 @@ namespace PurrNet.Editor
 
             GUI.enabled = isDisconnected;
             RenderTickSlider();
+            EditorGUILayout.PropertyField(_maxTicksPerFrame);
             EditorGUILayout.PropertyField(_mtuExceededBehaviour, new GUIContent("MTU Exceeded Behaviour"));
             EditorGUILayout.PropertyField(_stopPlayingOnDisconnect);
             EditorGUILayout.PropertyField(_patchLingeringProcessBug);

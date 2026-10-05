@@ -16,11 +16,17 @@ namespace JamesFrowen.SimpleWeb
 
         TcpListener listener;
         Thread acceptThread;
-        bool serverStopped;
+        volatile bool serverStopped;
         readonly ServerHandshake handShake;
         readonly ServerSslHelper sslHelper;
         readonly BufferPool bufferPool;
         readonly ConcurrentDictionary<int, Connection> connections = new ConcurrentDictionary<int, Connection>();
+
+        // Accepted connections that have not completed the handshake yet
+        readonly ConcurrentDictionary<Connection, byte> pendingConnections = new ConcurrentDictionary<Connection, byte>();
+
+        // guards the serverStopped check and Connected publish against Stop()
+        readonly object publishLock = new object();
 
         int _idCounter = 0;
 
@@ -48,7 +54,10 @@ namespace JamesFrowen.SimpleWeb
 
         public void Stop()
         {
-            serverStopped = true;
+            lock (publishLock)
+            {
+                serverStopped = true;
+            }
 
             // Interrupt then stop so that Exception is handled correctly
             acceptThread?.Interrupt();
@@ -61,7 +70,13 @@ namespace JamesFrowen.SimpleWeb
             foreach (Connection conn in connectionsCopy)
                 conn.Dispose();
 
+            // connections that are still handshaking, closing the socket unblocks their receive thread
+            Connection[] pendingCopy = pendingConnections.Keys.ToArray();
+            foreach (Connection conn in pendingCopy)
+                conn.Dispose();
+
             connections.Clear();
+            pendingConnections.Clear();
         }
 
         void acceptLoop()
@@ -75,9 +90,7 @@ namespace JamesFrowen.SimpleWeb
                         TcpClient client = listener.AcceptTcpClient();
                         tcpConfig.ApplyTo(client);
 
-                        // TODO keep track of connections before they are in connections dictionary
-                        //      this might not be a problem as HandshakeAndReceiveLoop checks for stop
-                        //      and returns/disposes before sending message to queue
+                        // the connection is tracked in pendingConnections by HandshakeAndReceiveLoop
                         var conn = new Connection(client, AfterConnectionDisposed);
                         Log.Info($"A client connected {conn}");
 
@@ -115,6 +128,12 @@ namespace JamesFrowen.SimpleWeb
         {
             try
             {
+                pendingConnections.TryAdd(conn, 0);
+
+                // Stop() was called while this connection was being accepted
+                if (serverStopped)
+                    return;
+
                 bool success = sslHelper.TryCreateStream(conn);
                 if (!success)
                 {
@@ -136,17 +155,17 @@ namespace JamesFrowen.SimpleWeb
                     return;
                 }
 
-                // check if Stop has been called since accepting this client
-                if (serverStopped)
+                lock (publishLock)
                 {
-                    Log.Info("Server stops after successful handshake");
-                    return;
+                    if (serverStopped) return;
+                    conn.connId = Interlocked.Increment(ref _idCounter);
+                    connections.TryAdd(conn.connId, conn);
+                    pendingConnections.TryRemove(conn, out _);
+                    receiveQueue.Enqueue(new Message(conn.connId, EventType.Connected));
                 }
 
-                conn.connId = Interlocked.Increment(ref _idCounter);
-                connections.TryAdd(conn.connId, conn);
-
-                receiveQueue.Enqueue(new Message(conn.connId, EventType.Connected));
+                if (serverStopped)
+                    return;
 
                 var sendThread = new Thread(() =>
                 {
@@ -193,6 +212,8 @@ namespace JamesFrowen.SimpleWeb
 
         void AfterConnectionDisposed(Connection conn)
         {
+            pendingConnections.TryRemove(conn, out _);
+
             if (conn.connId != Connection.IdNotSet)
             {
                 receiveQueue.Enqueue(new Message(conn.connId, EventType.Disconnected));

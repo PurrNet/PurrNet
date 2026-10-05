@@ -4,8 +4,6 @@ namespace PurrNet.Packing
 {
     internal readonly struct ArrayComparator<T> : IEqualityComparer<T[]>
     {
-        static readonly IEqualityComparer<T> eq = PurrEquality<T>.Default;
-
         public bool Equals(T[] x, T[] y)
         {
             if (ReferenceEquals(x, y)) return true;
@@ -15,10 +13,22 @@ namespace PurrNet.Packing
 
             int count = x.Length;
 
-            for (int i = 0; i < count; i++)
+            if (typeof(T).IsValueType)
             {
-                if (!eq.Equals(x[i], y[i]))
-                    return false;
+                for (int i = 0; i < count; i++)
+                {
+                    if (!Packer.AreEqualRef(ref x[i], ref y[i]))
+                        return false;
+                }
+            }
+            else
+            {
+                // Covariant arrays permit reading elements, but taking a writable T ref can throw.
+                for (int i = 0; i < count; i++)
+                {
+                    if (!PurrEquality<T>.Equals(x[i], y[i]))
+                        return false;
+                }
             }
             return true;
         }

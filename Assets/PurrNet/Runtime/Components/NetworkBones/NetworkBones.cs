@@ -27,7 +27,7 @@ namespace PurrNet
         [SerializeField, PurrLock, Min(1)] private int _maxBufferSize = 3;
 
         private DisposableList<Transform> _bones = DisposableList<Transform>.Create(512);
-        private BoneInfo[] _bonesInfo;
+        [System.NonSerialized] private BoneInfo[] _bonesInfo;
 
         /// <summary>
         /// Extra bones to sync on top of the ones gathered from SkinnedMeshRenderers.

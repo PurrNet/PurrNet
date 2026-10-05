@@ -112,7 +112,7 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (value is IDisposable disposable)
+                if (IsDisposable<T>.value && value is IDisposable disposable)
                     disposable.Dispose();
                 value = Packer.Copy(oldValue);
                 return;

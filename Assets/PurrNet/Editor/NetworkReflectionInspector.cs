@@ -116,7 +116,16 @@ namespace PurrNet.Editor
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
+            DrawInspectorExtras();
+        }
 
+        protected override string[] editorAttributesExcludedProperties => new[]
+        {
+            "_trackedBehaviour", "_trackedFields", "_trackedMethods", "_ownerAuth"
+        };
+
+        protected override void DrawInspectorExtras()
+        {
             var reflection = (NetworkReflection)target;
             var previousType = reflection.trackedType;
 

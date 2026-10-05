@@ -313,10 +313,9 @@ namespace PurrNet.Pooling
             if (Count != other.Count)
                 return false;
 
-            var equality = PurrEquality<T>.Default;
             for (int i = 0; i < Count; i++)
             {
-                if (!equality.Equals(array[i], other.array[i]))
+                if (!Packer.AreEqualRef(ref array[i], ref other.array[i]))
                     return false;
             }
 

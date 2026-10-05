@@ -93,19 +93,27 @@ namespace PurrNet.Packing
 
         private static DisposableList<T> ReadListCompressed<T>(BitPacker packer)
         {
-            var count = Packer<Size>.Read(packer);
-            var list = DisposableList<T>.Create(count);
+            var count = DeserializationLimits.ValidateCollectionLength<T>(Packer<Size>.Read(packer).value);
+            var list = DisposableList<T>.Create(DeserializationLimits.ClampCapacity(packer, count));
             var last = default(T);
 
-            for (var i = 0; i < count; i++)
+            try
             {
-                T current = default;
-                DeltaPacker<T>.Read(packer, last, ref current);
-                last = current;
-                list.Add(current);
-            }
+                for (var i = 0; i < count; i++)
+                {
+                    T current = default;
+                    DeltaPacker<T>.Read(packer, last, ref current);
+                    last = current;
+                    list.Add(current);
+                }
 
-            return list;
+                return list;
+            }
+            catch
+            {
+                list.Dispose();
+                throw;
+            }
         }
 
         [UsedByIL]
@@ -127,13 +135,15 @@ namespace PurrNet.Packing
                 case OperationType.Delete:
                     Packer<Size>.Read(packer, ref index);
                     Packer<Size>.Read(packer, ref length);
-                    value = new DiffOp<T>(type, (int)index.value, (int)length.value);
+                    value = new DiffOp<T>(type, DeserializationLimits.ValidateIndex(index.value),
+                        DeserializationLimits.ValidateCollectionLength<T>(length.value));
                     break;
                 case OperationType.Insert:
                     Packer<Size>.Read(packer, ref index);
+                    var insertIndex = DeserializationLimits.ValidateIndex(index.value);
                     values = ReadListCompressed<T>(packer);
                     //Packer<DisposableList<T>>.Read(packer, ref values);
-                    value = new DiffOp<T>(type, (int)index.value, values.Count, values);
+                    value = new DiffOp<T>(type, insertIndex, values.Count, values);
                     break;
                 case OperationType.Add:
                     // Packer<DisposableList<T>>.Read(packer, ref values);
@@ -160,7 +170,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void DeltaRead<T>(this BitPacker packer, DiffOp<T> old, ref DiffOp<T> newVal)
         {
-            if (!DeltaReadingScope.Continue(packer, old, ref newVal))
+            if (!DeltaReadingScope.ContinueDisposable(packer, old, ref newVal))
                 return;
 
             packer.ReadOperation<T>(ref newVal);

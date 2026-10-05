@@ -245,7 +245,7 @@ namespace PurrNet.Modules
                 return _dontDestroyOnLoad.scene;
             _dontDestroyOnLoad = new GameObject("PurrNet:DontDestroyOnLoad")
             {
-                hideFlags = HideFlags.DontSave | HideFlags.HideInHierarchy
+                hideFlags = HideFlags.HideInHierarchy
             };
             Object.DontDestroyOnLoad(_dontDestroyOnLoad);
             return _dontDestroyOnLoad.scene;

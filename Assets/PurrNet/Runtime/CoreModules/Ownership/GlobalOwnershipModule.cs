@@ -208,14 +208,7 @@ namespace PurrNet.Modules
             if (_sceneOwnerships.TryGetValue(identity.sceneId, out var module))
                 module.RemoveOwnership(identity);
 
-            for (var i = 0; i < _pendingOwnership.Count; i++)
-            {
-                var pendingOp = _pendingOwnership[i];
-                if (pendingOp.change.identity == identity.id.Value)
-                {
-                    _pendingOwnership.RemoveAt(i--);
-                }
-            }
+            RemovePendingOwnership(identity.sceneId, identity.id.Value);
         }
 
         struct PlayerSceneID : IEquatable<PlayerSceneID>
@@ -414,43 +407,126 @@ namespace PurrNet.Modules
 
         private void OnOwnershipChange(PlayerID player, OwnershipChangeBatch data, bool asServer)
         {
+            if (asServer)
+                return;
+
             var stateCount = data.state.Count;
 
             for (var j = 0; j < stateCount; j++)
                 HandleOwnershipBatch(data.scene, data.state[j], true);
 
             _manager.FlushBatchedRPCs();
-            if (asServer && _scenePlayers.TryGetPlayersInScene(data.scene, out var players))
-            {
-                using var copy = DisposableList<PlayerID>.Create(players.Count);
-                copy.AddRange(players);
-                copy.Remove(player);
-                _playersManager.Send(copy, data);
-            }
         }
 
         private void OnOwnershipChange(PlayerID player, OwnershipChange change, bool asServer)
         {
             var idCount = change.identities.Count;
+            var accepted = 0;
+            using var rejected = asServer ? DisposableList<NetworkID>.Create() : default;
 
             for (var j = 0; j < idCount; j++)
             {
-                if (!HandleOwnershipChange(player, change, change.identities[j], true))
-                {
-                    change.identities.RemoveAt(j--);
-                    idCount--;
-                }
+                var id = change.identities[j];
+                if (HandleOwnershipChange(player, change, id, true, asServer))
+                    change.identities[accepted++] = id;
+                else if (asServer)
+                    rejected.Add(id);
             }
+
+            change.identities.RemoveRange(accepted, idCount - accepted);
 
             _manager.FlushBatchedRPCs();
 
-            if (asServer && _scenePlayers.TryGetPlayersInScene(change.sceneId, out var players))
+            if (_asServer && accepted > 0)
+                RelayOwnershipChanges(player, change.sceneId, change.identities, change);
+
+            if (asServer && rejected.Count > 0)
+                SendOwnershipState(player, change.sceneId, rejected);
+        }
+
+        private void RelayOwnershipChanges(PlayerID actor, SceneID scene, DisposableList<NetworkID> identities,
+            OwnershipChange change)
+        {
+            if (!_sceneOwnerships.TryGetValue(scene, out var ownerships) ||
+                !_scenePlayers.TryGetPlayersInScene(scene, out var players))
+                return;
+
+            using var state = DisposableList<OwnershipInfo>.Create();
+            using var removed = DisposableList<NetworkID>.Create();
+            using var unchanged = DisposableList<NetworkID>.Create(identities.Count);
+
+            for (var i = 0; i < identities.Count; i++)
             {
+                var id = identities[i];
+                if (!_hierarchy.TryGetIdentity(scene, id, out var identity))
+                    continue;
+
+                bool hasOwner = ownerships.TryGetOwner(identity, out var owner);
+                if (hasOwner == change.isAdding && (!hasOwner || owner == change.player))
+                {
+                    unchanged.Add(id);
+                }
+                else if (hasOwner)
+                {
+                    state.Add(new OwnershipInfo { identity = id, player = owner });
+                }
+                else
+                {
+                    removed.Add(id);
+                }
+            }
+
+            if (unchanged.Count > 0)
+            {
+                change.identities = unchanged;
                 using var copy = DisposableList<PlayerID>.Create(players.Count);
                 copy.AddRange(players);
-                copy.Remove(player);
+                copy.Remove(actor);
                 _playersManager.Send(copy, change);
             }
+
+            if (state.Count > 0)
+                _playersManager.Send(players, new OwnershipChangeBatch { scene = scene, state = state });
+
+            if (removed.Count > 0)
+                _playersManager.Send(players, new OwnershipChange
+                {
+                    sceneId = scene,
+                    identities = removed,
+                    isAdding = false
+                });
+        }
+
+        private void SendOwnershipState(PlayerID player, SceneID scene, DisposableList<NetworkID> identities)
+        {
+            if (!_sceneOwnerships.TryGetValue(scene, out var ownerships) ||
+                !_playersManager.IsValidPlayer(player) || !_scenePlayers.IsPlayerInScene(player, scene))
+                return;
+
+            using var state = DisposableList<OwnershipInfo>.Create();
+            using var removed = DisposableList<NetworkID>.Create();
+
+            for (var i = 0; i < identities.Count; i++)
+            {
+                var id = identities[i];
+                if (!_hierarchy.TryGetIdentity(scene, id, out var identity))
+                    continue;
+
+                if (ownerships.TryGetOwner(identity, out var owner))
+                    state.Add(new OwnershipInfo { identity = id, player = owner });
+                else removed.Add(id);
+            }
+
+            if (state.Count > 0)
+                _playersManager.Send(player, new OwnershipChangeBatch { scene = scene, state = state });
+
+            if (removed.Count > 0)
+                _playersManager.Send(player, new OwnershipChange
+                {
+                    sceneId = scene,
+                    identities = removed,
+                    isAdding = false
+                });
         }
 
         private void OnSceneUnloaded(SceneID scene, bool asServer)
@@ -640,7 +716,6 @@ namespace PurrNet.Modules
                     identity.TriggerOnOwnerChanged(oldOwner, null, _asServer, false);
             }
 
-            //TODO: compress _idsCache using RLE
             var data = new OwnershipChange
             {
                 sceneId = id.sceneId,
@@ -724,7 +799,6 @@ namespace PurrNet.Modules
                 }
             }
 
-            //TODO: compress _idsCache using RLE
             var data = new OwnershipChange
             {
                 sceneId = id.sceneId,
@@ -833,72 +907,68 @@ namespace PurrNet.Modules
 
         struct PendingOwnershipChanges
         {
+            public PlayerID actor;
             public SceneID scene;
             public OwnershipInfo change;
+            public bool isAdding;
+            public bool isSpawner;
+            public bool fromClient;
             public float timeAdded;
         }
 
+        const int MAX_PENDING_CLIENT_CHANGES = 1024;
+
         readonly List<PendingOwnershipChanges> _pendingOwnership = new ();
+
+        private void RemovePendingOwnership(SceneID scene, NetworkID id)
+        {
+            for (var i = 0; i < _pendingOwnership.Count; i++)
+            {
+                var pending = _pendingOwnership[i];
+                if (pending.scene == scene && pending.change.identity == id)
+                    _pendingOwnership.RemoveAt(i--);
+            }
+        }
 
         private void HandleOwnershipBatch(SceneID scene, OwnershipInfo change, bool addToPending)
         {
-            if (!_hierarchy.TryGetIdentity(scene, change.identity, out var identity))
+            HandleOwnershipChange(default, new OwnershipChange
             {
-                if (addToPending)
-                {
-                    _pendingOwnership.Add(new PendingOwnershipChanges
-                    {
-                        scene = scene,
-                        change = change,
-                        timeAdded = Time.time
-                    });
-                }
-                return;
-            }
-
-            if (!identity.id.HasValue)
-                return;
-
-            if (!identity.HasGiveOwnershipAuthority(!_asServer))
-            {
-                PurrLogger.LogError(
-                    $"Failed to give ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.");
-                return;
-            }
-
-            if (!_sceneOwnerships.TryGetValue(scene, out var module))
-            {
-                PurrLogger.LogError(
-                    $"Failed to find ownership module for scene {scene} when applying ownership change for identity {change.identity}");
-                return;
-            }
-
-            var oldOwner = identity.GetOwner(_asServer);
-
-            if (oldOwner == change.player)
-                return;
-
-            if (module.GiveOwnership(identity, change.player))
-                identity.TriggerOnOwnerChanged(oldOwner, change.player, _asServer, false);
+                sceneId = scene,
+                player = change.player,
+                isAdding = true
+            }, change.identity, addToPending, false);
         }
 
-        private bool HandleOwnershipChange(PlayerID actor, OwnershipChange change, NetworkID id, bool addToPending)
+        private bool HandleOwnershipChange(PlayerID actor, OwnershipChange change, NetworkID id, bool addToPending,
+            bool fromClient)
         {
             string verb = change.isAdding ? "give" : "remove";
 
+            if (fromClient && (!_playersManager.IsValidPlayer(actor) ||
+                               !_scenePlayers.IsPlayerInScene(actor, change.sceneId)))
+                return false;
+
             if (!_hierarchy.TryGetIdentity(change.sceneId, id, out var identity))
             {
-                if (addToPending)
+                if (addToPending && (!fromClient || _pendingOwnership.Count < MAX_PENDING_CLIENT_CHANGES))
                 {
                     _pendingOwnership.Add(new PendingOwnershipChanges
                     {
+                        actor = actor,
                         scene = change.sceneId,
                         change = new OwnershipInfo { identity = id, player = change.player },
+                        isAdding = change.isAdding,
+                        isSpawner = change.isSpawner,
+                        fromClient = fromClient,
                         timeAdded = Time.time
                     });
                 }
                 return false;
             }
+
+            if (!identity.id.HasValue)
+                return false;
 
             if (!_sceneOwnerships.TryGetValue(change.sceneId, out var module))
             {
@@ -907,9 +977,9 @@ namespace PurrNet.Modules
                 return false;
             }
 
-            if (identity.HasOwner(_asServer))
+            if (fromClient && identity.HasOwner(_asServer))
             {
-                if (!identity.HasTransferOwnershipAuthority(actor, !_asServer))
+                if (!identity.HasTransferOwnershipAuthority(actor, false))
                 {
                     PurrLogger.LogError(
                         $"Failed to {verb} (transfer) ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
@@ -917,13 +987,24 @@ namespace PurrNet.Modules
                     return false;
                 }
             }
-            else if (!identity.HasGiveOwnershipAuthority(!_asServer))
+            else if (fromClient && !identity.HasGiveOwnershipAuthority(false))
             {
                 PurrLogger.LogError(
                     $"Failed to {verb} ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
                     identity);
                 return false;
             }
+
+            if (fromClient && !change.isAdding && !identity.HasRemoveOwnershipAuthority(actor, false))
+            {
+                PurrLogger.LogError(
+                    $"Failed to remove ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
+                    identity);
+                return false;
+            }
+
+            if (addToPending)
+                RemovePendingOwnership(change.sceneId, id);
 
             var oldOwner = identity.GetOwner(_asServer);
 
@@ -934,13 +1015,7 @@ namespace PurrNet.Modules
             }
             else
             {
-                if (!identity.HasRemoveOwnershipAuthority(actor, !_asServer))
-                {
-                    PurrLogger.LogError(
-                        $"Failed to remove ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
-                        identity);
-                }
-                else if (module.RemoveOwnership(identity))
+                if (module.RemoveOwnership(identity))
                 {
                     identity.TriggerOnOwnerChanged(oldOwner, null, _asServer, false);
                 }
@@ -992,8 +1067,25 @@ namespace PurrNet.Modules
                 if (!_hierarchy.TryGetIdentity(change.scene, change.change.identity, out _))
                     continue;
 
-                HandleOwnershipBatch(change.scene, change.change, false);
                 _pendingOwnership.RemoveAt(i--);
+
+                var resolved = new OwnershipChange
+                {
+                    sceneId = change.scene,
+                    player = change.change.player,
+                    isAdding = change.isAdding,
+                    isSpawner = change.isSpawner
+                };
+                if (!HandleOwnershipChange(change.actor, resolved, change.change.identity, false, change.fromClient))
+                    continue;
+
+                if (_asServer)
+                {
+                    using var identities = DisposableList<NetworkID>.Create(1);
+                    identities.Add(change.change.identity);
+                    _manager.FlushBatchedRPCs();
+                    RelayOwnershipChanges(change.actor, change.scene, identities, resolved);
+                }
             }
         }
 

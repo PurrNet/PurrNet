@@ -1,9 +1,43 @@
+#if UNITY_PHYSICS_3D
 using UnityEngine;
 
 namespace PurrNet
 {
-    public abstract class NetworkRigidbodySettingsInstance
+    public abstract class NetworkRigidbodySettingsInstance : IRigidbodyCorrectionInstance
     {
+        internal static RigidbodyCorrectionContext ToContext(in RigidbodyCorrectionData data)
+        {
+            return new RigidbodyCorrectionContext
+            {
+                rigidbody = data.body as Rigidbody,
+                previousPosition = data.previousPosition,
+                previousRotation = data.previousRotation,
+                targetPosition = data.targetPosition,
+                targetRotation = data.targetRotation,
+                targetLinearVelocity = data.targetLinearVelocity,
+                targetAngularVelocity = data.targetAngularVelocity,
+                positionError = data.positionError,
+                rotationError = data.rotationError,
+                drag = data.drag,
+                positionStrength = data.positionStrength,
+                correctionRange = data.correctionRange,
+                rotationStrength = data.rotationStrength,
+                hardSnapDistance = data.hardSnapDistance,
+                hardSnapAngle = data.hardSnapAngle,
+                acceptableRotationError = data.acceptableRotationError,
+                useKinematicRotation = data.useKinematicRotation
+            };
+        }
+
+        bool IRigidbodyCorrectionInstance.ShouldTeleport(in RigidbodyCorrectionData data) => ShouldTeleport(ToContext(in data));
+        bool IRigidbodyCorrectionInstance.ShouldSnapRotation(in RigidbodyCorrectionData data) => ShouldSnapRotation(ToContext(in data));
+        bool IRigidbodyCorrectionInstance.ShouldCorrectRotation(in RigidbodyCorrectionData data) => ShouldCorrectRotation(ToContext(in data));
+        void IRigidbodyCorrectionInstance.ApplyHardCorrection(in RigidbodyCorrectionData data) => ApplyHardCorrection(ToContext(in data));
+        void IRigidbodyCorrectionInstance.ApplyPositionCorrection(in RigidbodyCorrectionData data) => ApplyPositionCorrection(ToContext(in data));
+        void IRigidbodyCorrectionInstance.ApplyRotationCorrection(in RigidbodyCorrectionData data) => ApplyRotationCorrection(ToContext(in data));
+        void IRigidbodyCorrectionInstance.OnReset(in RigidbodyCorrectionData data) => OnReset(ToContext(in data));
+        void IRigidbodyCorrectionInstance.OnDespawned() => OnDespawned();
+
         public virtual bool ShouldTeleport(in RigidbodyCorrectionContext ctx)
         {
             return ctx.positionError >= ctx.hardSnapDistance;
@@ -59,14 +93,7 @@ namespace PurrNet
 
         public virtual void OnDespawned() { }
 
-        protected static Quaternion NormalizeQuaternion(Quaternion q)
-        {
-            float dot = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
-            if (dot < 0.0001f)
-                return Quaternion.identity;
-            float inv = 1f / Mathf.Sqrt(dot);
-            return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
-        }
+        protected static Quaternion NormalizeQuaternion(Quaternion q) => NetworkRigidbodyMath.NormalizeQuaternion(q);
 
         protected static Vector3 GetLinearVelocity(Rigidbody rb)
         {
@@ -139,9 +166,6 @@ namespace PurrNet
 
     internal static class NetworkRigidbodyPhysics
     {
-        private const float STATIC_BREAKAWAY_BODY_SPEED_SQR = 0.0004f;
-        private const float STATIC_BREAKAWAY_TARGET_SPEED_SQR = 0.01f;
-
         internal static bool CanApplyDynamicMotion(Rigidbody rb)
         {
             return rb && !rb.isKinematic;
@@ -208,17 +232,7 @@ namespace PurrNet
             return basis * new Vector3(local.x * tensor.x, local.y * tensor.y, local.z * tensor.z);
         }
 
-        internal static float StableSpringFrequency(float frequency)
-        {
-            if (frequency <= 0f)
-                return 0f;
-
-            var delta = Time.fixedDeltaTime;
-            if (delta <= 0f)
-                return frequency;
-
-            return Mathf.Min(frequency, 0.5f / delta);
-        }
+        internal static float StableSpringFrequency(float frequency) => NetworkRigidbodyMath.StableSpringFrequency(frequency);
 
         internal static void ApplyPositionSpring(
             Rigidbody rb,
@@ -237,8 +251,8 @@ namespace PurrNet
             var ratio = Mathf.Clamp01(positionError / range);
             var velocity = GetLinearVelocity(rb);
 
-            if (velocity.sqrMagnitude < STATIC_BREAKAWAY_BODY_SPEED_SQR
-                && targetLinearVelocity.sqrMagnitude > STATIC_BREAKAWAY_TARGET_SPEED_SQR)
+            if (velocity.sqrMagnitude < NetworkRigidbodyMath.STATIC_BREAKAWAY_BODY_SPEED_SQR
+                && targetLinearVelocity.sqrMagnitude > NetworkRigidbodyMath.STATIC_BREAKAWAY_TARGET_SPEED_SQR)
             {
                 SetLinearVelocity(rb, targetLinearVelocity);
                 velocity = targetLinearVelocity;
@@ -291,3 +305,4 @@ namespace PurrNet
         }
     }
 }
+#endif

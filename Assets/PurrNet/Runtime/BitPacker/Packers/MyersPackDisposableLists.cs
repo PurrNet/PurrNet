@@ -52,7 +52,7 @@ namespace PurrNet.Packing
         [UsedByIL]
         public static void ReadDisposableDeltaList<T>(BitPacker packer, DisposableList<T> old, ref DisposableList<T> value)
         {
-            if (!DeltaReadingScope.Continue(packer, old, ref value))
+            if (!DeltaReadingScope.ContinueDisposable(packer, old, ref value))
                 return;
 
             if (!packer.ReadBit())
@@ -61,46 +61,71 @@ namespace PurrNet.Packing
                 return;
             }
 
-            if (value.isDisposed)
-            {
-                value = DisposableList<T>.Create();
-            }
-            else if (!old.isDisposed && old.rawList == value.rawList)
-            {
-                value = DisposableList<T>.Create();
-            }
-
-            if (!old.isDisposed)
-            {
-                value.Clear();
-                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                {
-                    for (int i = 0; i < old.Count; i++)
-                        value.Add(PurrCopy<T>.Copy(old[i]));
-                }
-                else value.AddRange(old);
-            }
-
             var changes = DisposableList<DiffOp<T>>.Create();
-            while (true)
+            try
             {
-                var operation = Packer<DiffOp<T>>.Read(packer);
-                if (operation.type == OperationType.End)
+                long length = old.isDisposed ? (value.isDisposed ? 0 : value.Count) : old.Count;
+                int peak = DeserializationLimits.ValidateCollectionLength<T>(length);
+                long offset = 0;
+                long decodedValues = 0;
+                while (true)
                 {
-                    operation.Dispose();
-                    break;
+                    var operation = Packer<DiffOp<T>>.Read(packer);
+                    if (operation.type == OperationType.End)
+                    {
+                        operation.Dispose();
+                        break;
+                    }
+                    try
+                    {
+                        DeserializationLimits.ValidateCollectionLength<DiffOp<T>>((long)changes.Count + 1);
+                        int added = operation.values.isDisposed ? 0 : operation.values.Count;
+                        decodedValues += added;
+                        DeserializationLimits.ValidateCollectionLength<T>(decodedValues);
+                        DeserializationLimits.ValidateDeltaOperation<T>(operation.type, operation.index,
+                            operation.length, added, ref length, ref offset);
+                        if (length > peak)
+                            peak = (int)length;
+                        changes.Add(operation);
+                    }
+                    catch
+                    {
+                        operation.Dispose();
+                        throw;
+                    }
                 }
-                changes.Add(operation);
-            }
 
-            if (changes.Count > 0)
+                if (value.isDisposed)
+                {
+                    value = DisposableList<T>.Create(peak);
+                }
+                else if (!old.isDisposed && (old.rawList == value.rawList || value.rawList.Capacity < peak))
+                {
+                    if (old.rawList != value.rawList)
+                        value.Dispose();
+                    value = DisposableList<T>.Create(peak);
+                }
+
+                if (!old.isDisposed)
+                {
+                    value.Clear();
+                    if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                    {
+                        for (int i = 0; i < old.Count; i++)
+                            value.Add(PurrCopy<T>.Copy(old[i]));
+                    }
+                    else value.AddRange(old);
+                }
+
+                if (changes.Count > 0)
+                    MyersDiff.Apply(value, changes);
+            }
+            finally
             {
-                MyersDiff.Apply(value, changes);
                 for (var i = 0; i < changes.Count; i++)
                     changes[i].Dispose();
+                changes.Dispose();
             }
-
-            changes.Dispose();
         }
     }
 }

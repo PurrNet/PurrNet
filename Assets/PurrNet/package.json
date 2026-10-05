@@ -1,12 +1,13 @@
 {
   "name": "dev.purrnet.purrnet",
-  "version": "1.23.0",
+  "version": "1.24.0-beta.31",
   "author": {
     "name": "PurrNet Team",
     "url": "https://purrnet.dev/"
   },
   "description": "A unity networking framework",
   "displayName": "PurrNet",
+  "unity": "2022.3",
   "documentationUrl": "https://purrnet.dev/docs",
   "changelogUrl": "https://github.com/PurrNet/PurrNet/blob/dev/Assets/PurrNet/CHANGELOG.md",
   "hideInEditor": false,

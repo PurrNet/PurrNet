@@ -60,4 +60,37 @@ namespace PurrNet
                 scale.z != 0f ? value.z / scale.z : value.z);
         }
     }
+
+    internal static class NetworkRigidbodyMath
+    {
+        internal const float STATIC_BREAKAWAY_BODY_SPEED_SQR = 0.0004f;
+        internal const float STATIC_BREAKAWAY_TARGET_SPEED_SQR = 0.01f;
+
+        internal static Quaternion NormalizeQuaternion(Quaternion q)
+        {
+            float dot = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+            if (dot < 0.0001f)
+                return Quaternion.identity;
+            float inv = 1f / Mathf.Sqrt(dot);
+            return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
+        }
+
+        internal static float StableSpringFrequency(float frequency)
+        {
+            if (frequency <= 0f)
+                return 0f;
+
+            var delta = Time.fixedDeltaTime;
+            if (delta <= 0f)
+                return frequency;
+
+            return Mathf.Min(frequency, 0.5f / delta);
+        }
+
+        internal static float ClampSpringAcceleration(float acceleration, float frequency)
+        {
+            var maxAcceleration = frequency * frequency * Mathf.PI;
+            return Mathf.Clamp(acceleration, -maxAcceleration, maxAcceleration);
+        }
+    }
 }

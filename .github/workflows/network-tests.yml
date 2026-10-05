@@ -227,6 +227,15 @@ jobs:
                 FAIL=1
               fi
             done
+
+            # Warned scenarios pass; surface one annotation per scenario so they can be judged.
+            jq -rn '
+              [inputs as $arr | input_filename as $f | $arr[] | select(.result.warning == true)
+                | {name, proc: ($f | split("/") | last | sub("\\.json$"; "")), msg: (.result.message // "")}]
+              | group_by(.name)[]
+              | "::warning title=\(.[0].name) warned on \(length) process(es)::"
+                + ([.[] | "\(.proc): \(.msg)"] | join(" || ") | gsub("%"; "%25") | gsub("[\\r\\n]+"; " "))
+            ' "$RESULTS_DIR"/*.json || true
           fi
 
           # Some fatal networking/Unity failures can leave JSON looking incomplete or stale.
@@ -269,23 +278,28 @@ jobs:
               if . < 1000 then "\(((. * 10) | floor) / 10)ms"
               else "\(((. * 100) / 1000 | floor) / 100)s" end;
             def statusIcon:
-              if . then ":white_check_mark:" else ":x:" end;
+              if .success | not then ":x:" elif .warning == true then ":warning:" else ":white_check_mark:" end;
           '
 
           total=0
           passed=0
+          warned=0
           for f in "${files[@]}"; do
             count=$(jq 'length' "$f")
             pass=$(jq '[.[] | select(.result.success == true)] | length' "$f")
+            warn=$(jq '[.[] | select(.result.success == true and .result.warning == true)] | length' "$f")
             total=$((total + count))
             passed=$((passed + pass))
+            warned=$((warned + warn))
           done
           failed=$((total - passed))
 
           {
             echo "## Network Test Results — ${MODE} mode"
             echo ""
-            if [ "$failed" -eq 0 ]; then
+            if [ "$failed" -eq 0 ] && [ "$warned" -gt 0 ]; then
+              echo "### :warning: All scenarios passed (${passed}/${total}), ${warned} with warnings"
+            elif [ "$failed" -eq 0 ]; then
               echo "### :white_check_mark: All scenarios passed (${passed}/${total})"
             else
               echo "### :x: ${failed} failure(s) — ${passed}/${total} passed"
@@ -296,10 +310,11 @@ jobs:
               proc=$(basename "$f" .json)
               pcount=$(jq 'length' "$f")
               ppass=$(jq '[.[] | select(.result.success == true)] | length' "$f")
+              pwarn=$(jq '[.[] | select(.result.success == true and .result.warning == true)] | length' "$f")
               pfail=$((pcount - ppass))
 
-              # Client tables get loud with N near-identical rows; only show failed scenarios
-              # for clients. The server/host file always renders in full so it's clear which
+              # Client tables get loud with N near-identical rows; only show failed or warned
+              # scenarios for clients. The server/host file always renders in full so it's clear which
               # scenarios actually ran and how the authoritative side viewed each one.
               case "$proc" in
                 client-*) is_client=1 ;;
@@ -307,14 +322,14 @@ jobs:
               esac
 
               if [ "$is_client" -eq 1 ]; then
-                if [ "$pfail" -eq 0 ]; then
+                if [ "$pfail" -eq 0 ] && [ "$pwarn" -eq 0 ]; then
                   echo "#### \`${proc}\` — ${ppass}/${pcount} passed :white_check_mark:"
                   echo ""
                   echo "_All scenarios passed; rows omitted._"
                   echo ""
                   continue
                 fi
-                echo "#### \`${proc}\` — ${pfail} failed (${ppass}/${pcount} passed)"
+                echo "#### \`${proc}\` — ${pfail} failed, ${pwarn} warned (${ppass}/${pcount} passed)"
               else
                 echo "#### \`${proc}\` — ${ppass}/${pcount} passed"
               fi
@@ -324,12 +339,12 @@ jobs:
 
               FILTER='to_entries[]'
               if [ "$is_client" -eq 1 ]; then
-                FILTER='to_entries[] | select(.value.result.success == false)'
+                FILTER='to_entries[] | select(.value.result.success == false or .value.result.warning == true)'
               fi
 
               jq -r "$JQ_LIB"'
                 '"$FILTER"' |
-                "| \(.key) | \(.value.name // "?") | \(.value.result.success | statusIcon) | \(.value.durationInMs | humanDuration) | \(.value.dataSent | humanBytes) | \(.value.dataReceived | humanBytes) | \((.value.result.message // "") | gsub("\\|"; "&#124;") | gsub("[\\r\\n]+"; " ")) |"
+                "| \(.key) | \(.value.name // "?") | \(.value.result | statusIcon) | \(.value.durationInMs | humanDuration) | \(.value.dataSent | humanBytes) | \(.value.dataReceived | humanBytes) | \((.value.result.message // "") | gsub("\\|"; "&#124;") | gsub("[\\r\\n]+"; " ")) |"
               ' "$f"
               echo ""
             done

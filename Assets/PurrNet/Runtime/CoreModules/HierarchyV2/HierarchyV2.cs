@@ -36,6 +36,9 @@ namespace PurrNet.Modules
         private readonly HierarchyPool _prefabsPool;
 
         private readonly List<NetworkIdentity> _spawnedIdentities = new();
+        private readonly Dictionary<NetworkIdentity, int> _spawnedIdentityIndices = new(ReferenceIdentityComparer.instance);
+        private int _spawnedIdentityHoles;
+        const int MIN_SPAWNED_HOLES_TO_COMPACT = 32;
         private readonly Dictionary<NetworkID, NetworkIdentity> _spawnedIdentitiesMap = new();
 
         private ulong _nextId;
@@ -163,6 +166,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
+                if (identity is null)
+                    continue;
+
                 if (identity.id.HasValue && identity.id.Value.id.value >= _nextId)
                     _nextId = identity.id.Value.id.value + 1;
 
@@ -175,6 +181,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
+                if (identity is null)
+                    continue;
+
                 var clientId = identity.GetNetworkID(false);
                 if (clientId.HasValue)
                     identity.SetID(clientId.Value);
@@ -194,6 +203,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
+                if (identity is null)
+                    continue;
+
                 var prevOwner = identity.internalOwnerServer;
                 identity.SetIdentity(_manager, this, _sceneId, _asServer, false);
                 identity.internalOwnerServer = prevOwner;
@@ -213,6 +225,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
+                if (identity is null)
+                    continue;
+
                 identity.TriggerPromoteToServer();
             }
         }
@@ -492,6 +507,9 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var nid = _spawnedIdentities[i];
+                if (nid is null)
+                    continue;
+
                 var root = nid.GetRootIdentity();
 
                 if (!root)
@@ -636,7 +654,7 @@ namespace PurrNet.Modules
                 var nt = identity.GetComponent<NetworkTransform>();
                 if (nt) nt.StartIgnoringParentChanges();
 
-                var nrb = identity.GetComponent<NetworkRigidbody>();
+                var nrb = identity.GetComponent<NetworkRigidbodyBase>();
                 if (nrb) nrb.StartIgnoringParentChanges();
 
                 if (parent)
@@ -1205,7 +1223,7 @@ namespace PurrNet.Modules
                     try
                     {
                         CancelPendingAsyncSpawnRoot(nid);
-                        Despawn(nid.gameObject, true, true);
+                        Despawn(nid.gameObject, true, true, packet.destroyAsync, UnityProxy.DEFAULT_DESTROY_ASYNC_MS);
                     }
                     catch (Exception e)
                     {
@@ -1649,7 +1667,7 @@ namespace PurrNet.Modules
                     _triggerLateObserverAdded.RemoveAt(i);
             }
 
-            _spawnedIdentities.Remove(identity);
+            RemoveSpawnedIdentity(identity);
             if (!identity.id.HasValue ||
                 !_spawnedIdentitiesMap.TryGetValue(identity.id.Value, out var registered) ||
                 !ReferenceEquals(registered, identity))
@@ -2135,7 +2153,7 @@ namespace PurrNet.Modules
             }
 
             CancelPendingAsyncSpawnRoot(identity);
-            Despawn(identity.gameObject, true, true);
+            Despawn(identity.gameObject, true, true, data.destroyAsync, UnityProxy.DEFAULT_DESTROY_ASYNC_MS);
         }
 
         private bool ConsumePendingLocalDespawnEcho(NetworkID identityId)
@@ -2626,6 +2644,18 @@ namespace PurrNet.Modules
         static readonly ProfilerMarker _visibilityLostMarker = new ProfilerMarker("PurrNet.Hierarchy.VisibilityLost");
         static readonly ProfilerMarker _flushSpawnMarker = new ProfilerMarker("PurrNet.Hierarchy.FlushSpawn");
         static readonly ProfilerMarker _lateObserversMarker = new ProfilerMarker("PurrNet.Hierarchy.LateObservers");
+        static readonly ProfilerMarker _asyncInstantiateCompletedMarker = new ProfilerMarker("PurrNet.Hierarchy.AsyncInstantiateCompleted");
+        static readonly ProfilerMarker _asyncInstantiateSetupPrefabMarker = new ProfilerMarker("PurrNet.Hierarchy.AsyncInstantiate.SetupPrefab");
+        static readonly ProfilerMarker _asyncInstantiateValidateShapeMarker = new ProfilerMarker("PurrNet.Hierarchy.AsyncInstantiate.ValidateShape");
+        static readonly ProfilerMarker _internalSpawnMarker = new ProfilerMarker("PurrNet.Hierarchy.InternalSpawn");
+        static readonly ProfilerMarker _setupIdentitiesMarker = new ProfilerMarker("PurrNet.Hierarchy.SetupIdentities");
+        static readonly ProfilerMarker _despawnCollectMarker = new ProfilerMarker("PurrNet.Despawn.Collect");
+        static readonly ProfilerMarker _despawnPendingSpawnsMarker = new ProfilerMarker("PurrNet.Despawn.PendingSpawns");
+        static readonly ProfilerMarker _despawnClearVisibilityMarker = new ProfilerMarker("PurrNet.Despawn.ClearVisibility");
+        static readonly ProfilerMarker _despawnEventsMarker = new ProfilerMarker("PurrNet.Despawn.Events");
+        static readonly ProfilerMarker _despawnFlushMarker = new ProfilerMarker("PurrNet.Despawn.Flush");
+        static readonly ProfilerMarker _despawnUnregisterMarker = new ProfilerMarker("PurrNet.Despawn.Unregister");
+        static readonly ProfilerMarker _despawnPutBackInPoolMarker = new ProfilerMarker("PurrNet.Despawn.PutBackInPool");
 
         private bool TryGetPrototypeCached(Transform scope, PlayerID player, List<NetworkIdentity> children,
             out GameObjectPrototype prototype)
@@ -2838,7 +2868,8 @@ namespace PurrNet.Modules
             var packet = new DespawnPacket
             {
                 sceneId = _sceneId,
-                parentId = identityId
+                parentId = identityId,
+                destroyAsync = _despawnDestroyAsync
             };
 
             if (batched)
@@ -3009,6 +3040,7 @@ namespace PurrNet.Modules
 #if PURRNET_UNITY_INSTANTIATE_ASYNC
         private void OnAsyncInstantiateCompleted(UnityEngine.Object original, UnityEngine.Object instance)
         {
+            using var completionScope = _asyncInstantiateCompletedMarker.Auto();
             var obj = GetAsyncGameObject(instance);
             var prefab = GetAsyncGameObject(original);
 
@@ -3031,16 +3063,22 @@ namespace PurrNet.Modules
             var identities = ListPool<NetworkIdentity>.Instantiate();
             try
             {
-                obj.GetComponentsInChildren(true, identities);
-                NetworkManager.SetupPrefabInfo(obj, data.prefabId, false, identities);
+                using (_asyncInstantiateSetupPrefabMarker.Auto())
+                {
+                    obj.GetComponentsInChildren(true, identities);
+                    NetworkManager.SetupPrefabInfo(obj, data.prefabId, false, identities);
+                }
 
                 if (!ShouldAutoSpawn(obj, true))
                     return;
 
-                if (!HasMatchingAsyncNetworkShape(data.prefab, obj, identities, out var mismatch))
+                using (_asyncInstantiateValidateShapeMarker.Auto())
                 {
-                    ReportAsyncShapeMismatch(data.prefab, obj, mismatch);
-                    return;
+                    if (!HasMatchingAsyncNetworkShape(data.prefab, obj, identities, out var mismatch))
+                    {
+                        ReportAsyncShapeMismatch(data.prefab, obj, mismatch);
+                        return;
+                    }
                 }
             }
             finally
@@ -3064,6 +3102,7 @@ namespace PurrNet.Modules
 
         internal void InternalSpawn(GameObject gameObject, bool instantiateRemotelyAsync = false)
         {
+            using var spawnScope = _internalSpawnMarker.Auto();
             if (!isReadyToSpawn)
             {
                 PurrLogger.LogError("Failed to spawn object. Hierarchy module is not ready.\n" +
@@ -3081,7 +3120,7 @@ namespace PurrNet.Modules
                 return;
             }
 
-            if (id.isSpawned)
+            if (id.isSpawned || id.isDestroyingAsync)
                 return;
 
             if (!id.isSetup)
@@ -3116,7 +3155,8 @@ namespace PurrNet.Modules
             onPreSpawn?.Invoke(gameObject, false);
 
             var baseNid = new NetworkID(_nextId++, scope);
-            SetupIdsLocally(id, ref baseNid);
+            using (_setupIdentitiesMarker.Auto())
+                SetupIdsLocally(id, ref baseNid);
             ApplyParentChange(id, id.parent, id.invertedPathToNearestParentArray, false, applyToTransform: false);
 
             if (!_asServer)
@@ -3222,8 +3262,17 @@ namespace PurrNet.Modules
 
         public void Despawn(GameObject gameObject, bool bypassPermissions = false, bool bypassBroadcast = false)
         {
+            Despawn(gameObject, bypassPermissions, bypassBroadcast, false, 0f);
+        }
+
+        private bool _despawnDestroyAsync;
+
+        internal void Despawn(GameObject gameObject, bool bypassPermissions, bool bypassBroadcast, bool destroyAsync,
+            float msPerFrame)
+        {
             var children = ListPool<NetworkIdentity>.Instantiate();
-            GetComponentsInChildren(gameObject, children);
+            using (_despawnCollectMarker.Auto())
+                GetComponentsInChildren(gameObject, children);
 
             if (children.Count == 0)
             {
@@ -3265,22 +3314,35 @@ namespace PurrNet.Modules
             bool isHost = IsServerHost();
 
             // Try to despawn the object properly if despawn was on the same tick (by first calling OnSpawned)
-            for (var i = 0; i < c; i++)
-                CompletePendingSpawnsFor(children[i], isHost);
+            using (_despawnPendingSpawnsMarker.Auto())
+            {
+                for (var i = 0; i < c; i++)
+                    CompletePendingSpawnsFor(children[i], isHost);
+            }
+
+            bool wasDestroyAsync = _despawnDestroyAsync;
+            _despawnDestroyAsync = destroyAsync;
 
             if (_asServer)
             {
-                _visibility.ClearVisibilityForGameObject(children[0]);
+                using (_despawnClearVisibilityMarker.Auto())
+                    _visibility.ClearVisibilityForGameObject(children[0]);
 
-                for (var i = 0; i < c; i++)
+                using (_despawnEventsMarker.Auto())
                 {
-                    var child = children[i];
+                    for (var i = 0; i < c; i++)
+                    {
+                        var child = children[i];
 
-                    TriggerDespawnEvent(child, child.shouldBePooled);
+                        TriggerDespawnEvent(child, child.shouldBePooled);
+                    }
                 }
 
-                _manager.FlushBatchedRPCs();
-                FlushSpawnPackets();
+                using (_despawnFlushMarker.Auto())
+                {
+                    _manager.FlushBatchedRPCs();
+                    FlushSpawnPackets();
+                }
             }
             else if (!bypassBroadcast)
             {
@@ -3305,18 +3367,24 @@ namespace PurrNet.Modules
                 }
             }
 
-            for (var i = 0; i < c; i++)
+            _despawnDestroyAsync = wasDestroyAsync;
+
+            using (_despawnUnregisterMarker.Auto())
             {
-                var child = children[i];
+                for (var i = 0; i < c; i++)
+                {
+                    var child = children[i];
 
-                UnregisterIdentity(child);
+                    UnregisterIdentity(child);
 
-                if (child.shouldBePooled)
-                    child.ResetIdentity();
+                    if (child.shouldBePooled)
+                        child.ResetIdentity();
+                }
             }
 
             var pair = new PoolPair(_scenePool, _prefabsPool);
-            HierarchyPool.PutBackInPool(pair, gameObject);
+            using (_despawnPutBackInPoolMarker.Auto())
+                HierarchyPool.PutBackInPool(pair, gameObject, false, destroyAsync, msPerFrame);
 
             ListPool<NetworkIdentity>.Destroy(children);
         }
@@ -3363,6 +3431,21 @@ namespace PurrNet.Modules
             if (_asServer)
                 return new NetworkID(_nextId++, default);
             return new NetworkID(_nextId++, _playersManager.localPlayerId ?? default);
+        }
+
+        /// <summary>
+        /// Reserves <paramref name="count"/> consecutive network IDs and returns the first one.
+        /// The others are <c>new NetworkID(first, offset)</c> for offsets below <paramref name="count"/>.
+        /// </summary>
+        [PublicAPI]
+        public NetworkID ReserveNetworkIDs(int count)
+        {
+            if (count <= 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            var first = ReserveNetworkID();
+            _nextId += (ulong)(count - 1);
+            return first;
         }
 
         private void SpawnSceneObject(List<NetworkIdentity> children)
@@ -3450,7 +3533,7 @@ namespace PurrNet.Modules
 
             for (var i = 0; i < da.Count; i++)
             {
-                if (!da[i].parentId.Equals(db[i].parentId))
+                if (!da[i].parentId.Equals(db[i].parentId) || da[i].destroyAsync != db[i].destroyAsync)
                     return false;
             }
 
@@ -3745,6 +3828,8 @@ namespace PurrNet.Modules
             for (var i = 0; i < _spawnedIdentities.Count; i++)
             {
                 var identity = _spawnedIdentities[i];
+                if (identity is null)
+                    continue;
 
                 if (!identity.isSpawned)
                     continue;
@@ -3975,27 +4060,6 @@ namespace PurrNet.Modules
             return true;
         }
 
-        /// <summary>
-        /// Sibling-index paths cannot distinguish two same-type siblings that swapped places in
-        /// Awake: positionally the shapes are identical, but network ids would silently cross-map
-        /// between the sender and every receiver. Transform names along the path catch that case
-        /// whenever the siblings are distinguishable at all.
-        /// </summary>
-        private static bool HaveMatchingNamePath(string[] a, string[] b)
-        {
-            int aLength = a?.Length ?? 0;
-            int bLength = b?.Length ?? 0;
-            if (aLength != bLength)
-                return false;
-
-            for (var i = 0; i < aLength; i++)
-            {
-                if (!string.Equals(a![i], b![i], StringComparison.Ordinal))
-                    return false;
-            }
-            return true;
-        }
-
         private readonly struct AsyncNetworkShapeEntry
         {
             public readonly Type type;
@@ -4035,30 +4099,76 @@ namespace PurrNet.Modules
             List<NetworkIdentity> instanceIdentities, out string mismatch)
         {
             var expected = GetPrefabAsyncNetworkShape(prefab);
-            var actual = new List<AsyncNetworkShapeEntry>();
-            CaptureAsyncNetworkShape(instance, instanceIdentities, actual);
-
-            if (expected.Count != actual.Count)
+            int actualCount = 0;
+            if (instance)
             {
-                mismatch = $"expected {expected.Count} NetworkIdentity components, but the result has {actual.Count}";
+                for (var i = 0; i < instanceIdentities.Count; i++)
+                {
+                    if (instanceIdentities[i])
+                        ++actualCount;
+                }
+            }
+
+            if (expected.Count != actualCount)
+            {
+                mismatch = $"expected {expected.Count} NetworkIdentity components, but the result has {actualCount}";
                 return false;
             }
 
-            for (var i = 0; i < expected.Count; i++)
+            if (actualCount == 0)
             {
-                var a = expected[i];
-                var b = actual[i];
-                if (a.type != b.type || a.componentIndex != b.componentIndex ||
-                    !HaveMatchingPath(a.transformPath, b.transformPath) ||
-                    !HaveMatchingNamePath(a.namePath, b.namePath))
+                mismatch = null;
+                return true;
+            }
+
+            var root = instance.transform;
+            Transform runTransform = null;
+            int runStart = 0;
+            int shapeIndex = 0;
+
+            for (var i = 0; i < instanceIdentities.Count; i++)
+            {
+                var identity = instanceIdentities[i];
+                if (!identity)
+                    continue;
+
+                var trs = identity.transform;
+                bool startsRun = !ReferenceEquals(trs, runTransform);
+                if (startsRun)
                 {
-                    mismatch = $"NetworkIdentity component {i} changed type, component order, transform path, or name";
+                    runTransform = trs;
+                    runStart = i;
+                }
+
+                var entry = expected[shapeIndex];
+                if (entry.type != identity.GetType() || entry.componentIndex != i - runStart ||
+                    (startsRun && !HasMatchingAsyncTransformPath(root, trs, entry)))
+                {
+                    mismatch = $"NetworkIdentity component {shapeIndex} changed type, component order, transform path, or name";
                     return false;
                 }
+
+                ++shapeIndex;
             }
 
             mismatch = null;
             return true;
+        }
+
+        private static bool HasMatchingAsyncTransformPath(Transform root, Transform current,
+            AsyncNetworkShapeEntry expected)
+        {
+            for (var i = expected.transformPath.Length - 1; i >= 0; i--)
+            {
+                if (!current || current == root ||
+                    current.GetSiblingIndex() != expected.transformPath[i] ||
+                    !string.Equals(current.name, expected.namePath[i], StringComparison.Ordinal))
+                    return false;
+
+                current = current.parent;
+            }
+
+            return current == root;
         }
 
         private static void CaptureAsyncNetworkShape(GameObject root, List<AsyncNetworkShapeEntry> result)
@@ -4287,7 +4397,7 @@ namespace PurrNet.Modules
         [PublicAPI]
         public void ManualEarlySpawn(NetworkIdentity identity, NetworkID id, BitData customData = default)
         {
-            _spawnedIdentities.Add(identity);
+            AddSpawnedIdentity(identity);
             _spawnedIdentitiesMap.Add(id, identity);
 
             bool isHost = IsServerHost();
@@ -4313,14 +4423,20 @@ namespace PurrNet.Modules
         /// </summary>
         public void ManualDespawn(NetworkIdentity identity)
         {
-            if (!_asServer)
+            if (_asServer)
+            {
+                var observersCopy = ListPool<PlayerID>.Instantiate();
+                observersCopy.AddRange(identity.observers);
+                for (var i = 0; i < observersCopy.Count; i++)
+                    ManualRemoveObserver(identity, observersCopy[i]);
+                ListPool<PlayerID>.Destroy(observersCopy);
+            }
+            else if (!identity.IsSpawned(false))
+            {
+                // Clients mirror server-driven manual spawns; an identity the client never
+                // spawned has nothing to tear down.
                 return;
-
-            var observersCopy = ListPool<PlayerID>.Instantiate();
-            observersCopy.AddRange(identity.observers);
-            for (var i = 0; i < observersCopy.Count; i++)
-                ManualRemoveObserver(identity, observersCopy[i]);
-            ListPool<PlayerID>.Destroy(observersCopy);
+            }
 
             TriggerDespawnEvent(identity);
             UnregisterIdentity(identity);
@@ -4445,7 +4561,7 @@ namespace PurrNet.Modules
         {
             if (identity && identity.id.HasValue)
             {
-                _spawnedIdentities.Add(identity);
+                AddSpawnedIdentity(identity);
                 _spawnedIdentitiesMap.Add(identity.id.Value, identity);
 
                 if (triggerEarlySpawn)
@@ -4475,14 +4591,60 @@ namespace PurrNet.Modules
             identity.TriggerDespawnEvent(_asServer, preserveModules);
         }
 
+        static readonly ProfilerMarker UnregisterCallbacksMarker = new("PurrNet.Despawn.Unregister.Callbacks");
+        sealed class ReferenceIdentityComparer : IEqualityComparer<NetworkIdentity>
+        {
+            public static readonly ReferenceIdentityComparer instance = new();
+            public bool Equals(NetworkIdentity x, NetworkIdentity y) => ReferenceEquals(x, y);
+            public int GetHashCode(NetworkIdentity obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+        }
+
+        private void AddSpawnedIdentity(NetworkIdentity identity)
+        {
+            if (_spawnedIdentityIndices.TryAdd(identity, _spawnedIdentities.Count))
+                _spawnedIdentities.Add(identity);
+        }
+
+        private void RemoveSpawnedIdentity(NetworkIdentity identity)
+        {
+            if (!_spawnedIdentityIndices.Remove(identity, out var index))
+                return;
+
+            _spawnedIdentities[index] = null;
+
+            if (++_spawnedIdentityHoles >= MIN_SPAWNED_HOLES_TO_COMPACT &&
+                _spawnedIdentityHoles * 2 > _spawnedIdentities.Count)
+                CompactSpawnedIdentities();
+        }
+
+        private void CompactSpawnedIdentities()
+        {
+            int count = _spawnedIdentities.Count;
+            int write = 0;
+
+            for (var read = 0; read < count; read++)
+            {
+                var identity = _spawnedIdentities[read];
+                if (identity is null)
+                    continue;
+
+                _spawnedIdentities[write] = identity;
+                _spawnedIdentityIndices[identity] = write++;
+            }
+
+            _spawnedIdentities.RemoveRange(write, count - write);
+            _spawnedIdentityHoles = 0;
+        }
+
         private void UnregisterIdentity(NetworkIdentity identity)
         {
             if (identity.id.HasValue)
             {
                 RemoveFailedAsyncObserverRoots(identity.id.Value);
-                _spawnedIdentities.Remove(identity);
+                RemoveSpawnedIdentity(identity);
                 _spawnedIdentitiesMap.Remove(identity.id.Value);
-                onIdentityRemoved?.Invoke(identity);
+                using (UnregisterCallbacksMarker.Auto())
+                    onIdentityRemoved?.Invoke(identity);
             }
         }
 
@@ -4528,7 +4690,7 @@ namespace PurrNet.Modules
                             new DespawnPacket { sceneId = _sceneId, parentId = nid.Value });
                 }
 
-                _spawnedIdentities.Remove(identity);
+                RemoveSpawnedIdentity(identity);
                 _spawnedIdentitiesMap.Remove(nid.Value);
                 onIdentityRemoved?.Invoke(identity);
                 return;
@@ -4606,7 +4768,7 @@ namespace PurrNet.Modules
             ListPool<NetworkIdentity>.Destroy(destroyed);
             RemoveFailedAsyncObserverRoots(nid.Value);
 
-            _spawnedIdentities.Remove(identity);
+            RemoveSpawnedIdentity(identity);
             _spawnedIdentitiesMap.Remove(nid.Value);
             onIdentityRemoved?.Invoke(identity);
         }

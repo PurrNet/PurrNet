@@ -12,6 +12,8 @@ namespace LiteNetLib
         private long _bytesSent;
         private long _bytesReceived;
         private long _packetLoss;
+        private long _repairsSent;
+        private long _packetsRepaired;
 
         /// <summary>
         /// Total number of packets sent.
@@ -39,6 +41,16 @@ namespace LiteNetLib
         public long PacketLoss => Interlocked.Read(ref _packetLoss);
 
         /// <summary>
+        /// Repair packets sent to cover reliable packets lost on the way.
+        /// </summary>
+        public long RepairsSent => Interlocked.Read(ref _repairsSent);
+
+        /// <summary>
+        /// Reliable packets rebuilt from repairs instead of waiting for a resend.
+        /// </summary>
+        public long PacketsRepaired => Interlocked.Read(ref _packetsRepaired);
+
+        /// <summary>
         /// Percentage of sent packets that were lost. 
         /// Calculated as (PacketLoss * 100) / PacketsSent.
         /// </summary>
@@ -62,6 +74,8 @@ namespace LiteNetLib
             Interlocked.Exchange(ref _bytesSent, 0);
             Interlocked.Exchange(ref _bytesReceived, 0);
             Interlocked.Exchange(ref _packetLoss, 0);
+            Interlocked.Exchange(ref _repairsSent, 0);
+            Interlocked.Exchange(ref _packetsRepaired, 0);
         }
 
         /// <summary>
@@ -104,6 +118,18 @@ namespace LiteNetLib
             Interlocked.Add(ref _packetLoss, packetLoss);
 
         /// <summary>
+        /// Increments the count of repair packets sent by one.
+        /// </summary>
+        public void IncrementRepairsSent() =>
+            Interlocked.Increment(ref _repairsSent);
+
+        /// <summary>
+        /// Increments the count of reliable packets rebuilt from repairs by one.
+        /// </summary>
+        public void IncrementPacketsRepaired() =>
+            Interlocked.Increment(ref _packetsRepaired);
+
+        /// <summary>
         /// Returns a string representation of the current network statistics.
         /// </summary>
         /// <returns>A formatted string containing bytes received/sent, packets received/sent, and loss information.</returns>
@@ -111,13 +137,15 @@ namespace LiteNetLib
         {
             return
                 string.Format(
-                    "BytesReceived: {0}\nPacketsReceived: {1}\nBytesSent: {2}\nPacketsSent: {3}\nPacketLoss: {4}\nPacketLossPercent: {5}\n",
+                    "BytesReceived: {0}\nPacketsReceived: {1}\nBytesSent: {2}\nPacketsSent: {3}\nPacketLoss: {4}\nPacketLossPercent: {5}\nRepairsSent: {6}\nPacketsRepaired: {7}\n",
                     BytesReceived,
                     PacketsReceived,
                     BytesSent,
                     PacketsSent,
                     PacketLoss,
-                    PacketLossPercent);
+                    PacketLossPercent,
+                    RepairsSent,
+                    PacketsRepaired);
         }
     }
 }

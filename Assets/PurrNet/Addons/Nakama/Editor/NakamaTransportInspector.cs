@@ -6,8 +6,11 @@ using UnityEngine;
 namespace PurrNet.Nakama.Editor
 {
     [CustomEditor(typeof(NakamaTransport), true)]
-    public class NakamaTransportInspector : UnityEditor.Editor
+    public class NakamaTransportInspector : OptionalInspector
     {
+        protected override bool editorAttributesPropertiesEnabled =>
+            target is GenericTransport transport && transport.isSupported;
+
         public override void OnInspectorGUI()
         {
             var generic = (GenericTransport)target;
@@ -47,11 +50,12 @@ namespace PurrNet.Nakama.Editor
                 generic.transport.onConnectionState += OnDirty;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             var generic = (NakamaTransport)target;
             if (generic && generic.transform != null)
                 generic.transport.onConnectionState -= OnDirty;
+            base.OnDisable();
         }
 
         private void OnDirty(ConnectionState state, bool asServer)

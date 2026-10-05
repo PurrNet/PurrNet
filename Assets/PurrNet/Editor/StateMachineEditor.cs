@@ -22,6 +22,13 @@ namespace PurrNet.StateMachine.InspectorEditor
 
         public override void OnInspectorGUI()
         {
+            DrawInspectorExtras();
+        }
+
+        protected override string[] editorAttributesExcludedProperties => new[] { "_ownerAuth", "_states" };
+
+        protected override void DrawInspectorExtras()
+        {
             serializedObject.Update();
 
             EditorGUI.BeginChangeCheck();

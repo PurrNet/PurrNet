@@ -87,6 +87,11 @@ namespace PurrNet.Packing
                 return;
             }
 
+            long length = old.IsCreated ? old.Length : 0;
+            DeserializationLimits.ValidateCollectionLength<T>(length);
+            long offset = 0;
+            long decodedValues = 0;
+
             if (!value.IsCreated)
                 value = new NativeList<T>(0, PackNativeCollections.ReadAllocator);
             else
@@ -110,18 +115,37 @@ namespace PurrNet.Packing
                         operation.Dispose();
                         break;
                     }
-                    changes.Add(operation);
+                    try
+                    {
+                        DeserializationLimits.ValidateCollectionLength<DiffOpNative<T>>((long)changes.Length + 1);
+                        int added = operation.values.IsCreated ? operation.values.Length : 0;
+                        decodedValues += added;
+                        DeserializationLimits.ValidateCollectionLength<T>(decodedValues);
+                        DeserializationLimits.ValidateDeltaOperation<T>(operation.type, operation.index,
+                            operation.length, added, ref length, ref offset);
+                        changes.Add(operation);
+                    }
+                    catch
+                    {
+                        operation.Dispose();
+                        throw;
+                    }
                 }
 
                 if (changes.Length > 0)
-                {
                     MyersDiffNative.Apply(value, changes);
-                    for (int i = 0; i < changes.Length; i++)
-                        changes[i].Dispose();
-                }
+            }
+            catch
+            {
+                if (value.IsCreated)
+                    value.Dispose();
+                value = default;
+                throw;
             }
             finally
             {
+                for (int i = 0; i < changes.Length; i++)
+                    changes[i].Dispose();
                 changes.Dispose();
             }
         }
@@ -133,7 +157,7 @@ namespace PurrNet.Packing
             if (a.Length != b.Length) return false;
             for (int i = 0; i < a.Length; i++)
             {
-                if (!PurrEquality<T>.Default.Equals(a[i], b[i]))
+                if (!PurrEquality<T>.Equals(a[i], b[i]))
                     return false;
             }
             return true;

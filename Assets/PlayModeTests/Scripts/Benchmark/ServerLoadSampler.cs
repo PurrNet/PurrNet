@@ -108,7 +108,14 @@ public class ServerLoadSampler
         }
         catch
         {
-            return 0;
+            try
+            {
+                return System.Diagnostics.Process.GetCurrentProcess().TotalProcessorTime.TotalSeconds;
+            }
+            catch
+            {
+                return 0;
+            }
         }
     }
 

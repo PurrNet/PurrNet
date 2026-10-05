@@ -6,6 +6,87 @@ namespace PurrNet.Codegen
 {
     public static class TypeExtensions
     {
+        public static bool IsKnownUnmanaged(this TypeReference type)
+        {
+            return IsKnownUnmanaged(type, new HashSet<TypeDefinition>(), false);
+        }
+
+        private static bool IsKnownUnmanaged(TypeReference type, HashSet<TypeDefinition> activeTypes,
+            bool isField)
+        {
+            if (type == null)
+                return false;
+
+            if (type.IsPointer || type.IsFunctionPointer)
+                return isField;
+
+            if (type is TypeSpecification || type.IsGenericParameter || type.HasGenericParameters ||
+                type.ContainsGenericParameter)
+                return false;
+
+            if (type.FullName is "System.TypedReference" or "System.ArgIterator" or "System.RuntimeArgumentHandle")
+                return false;
+
+            switch (type.MetadataType)
+            {
+                case MetadataType.Boolean:
+                case MetadataType.Char:
+                case MetadataType.SByte:
+                case MetadataType.Byte:
+                case MetadataType.Int16:
+                case MetadataType.UInt16:
+                case MetadataType.Int32:
+                case MetadataType.UInt32:
+                case MetadataType.Int64:
+                case MetadataType.UInt64:
+                case MetadataType.Single:
+                case MetadataType.Double:
+                case MetadataType.IntPtr:
+                case MetadataType.UIntPtr:
+                    return true;
+                case MetadataType.Void:
+                case MetadataType.TypedByReference:
+                    return false;
+            }
+
+            TypeDefinition definition;
+            try
+            {
+                definition = type.Resolve();
+            }
+            catch (AssemblyResolutionException)
+            {
+                return false;
+            }
+
+            if (definition == null || !definition.IsValueType || definition.HasGenericParameters)
+                return false;
+
+            foreach (var attribute in definition.CustomAttributes)
+            {
+                if (attribute.AttributeType.FullName == "System.Runtime.CompilerServices.IsByRefLikeAttribute")
+                    return false;
+            }
+
+            if (!activeTypes.Add(definition))
+                return false;
+
+            try
+            {
+                foreach (var field in definition.Fields)
+                {
+                    if (!field.IsStatic && !IsKnownUnmanaged(field.FieldType, activeTypes, true))
+                        return false;
+                }
+
+                return true;
+            }
+            finally
+            {
+                activeTypes.Remove(definition);
+            }
+        }
+
         public static bool IsUnmanaged(this TypeDefinition typeDef)
         {
             if (!typeDef.IsValueType)

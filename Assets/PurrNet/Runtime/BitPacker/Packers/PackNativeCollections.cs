@@ -58,14 +58,23 @@ namespace PurrNet.Packing
 
             Size length = default;
             Packer<Size>.Read(packer, ref length);
-            int len = (int)length.value;
+            int len = DeserializationLimits.ValidateCollectionLength<T>(length.value);
             value = new NativeArray<T>(len, ReadAllocator);
 
-            for (int i = 0; i < len; i++)
+            try
             {
-                T item = default;
-                Packer<T>.Read(packer, ref item);
-                value[i] = item;
+                for (int i = 0; i < len; i++)
+                {
+                    T item = default;
+                    Packer<T>.Read(packer, ref item);
+                    value[i] = item;
+                }
+            }
+            catch
+            {
+                value.Dispose();
+                value = default;
+                throw;
             }
         }
 
@@ -159,14 +168,23 @@ namespace PurrNet.Packing
 
             Size length = default;
             Packer<Size>.Read(packer, ref length);
-            int len = (int)length.value;
-            value = new NativeList<T>(len, ReadAllocator);
+            int len = DeserializationLimits.ValidateCollectionLength<T>(length.value);
+            value = new NativeList<T>(DeserializationLimits.ClampCapacity(packer, len), ReadAllocator);
 
-            for (int i = 0; i < len; i++)
+            try
             {
-                T item = default;
-                Packer<T>.Read(packer, ref item);
-                value.Add(item);
+                for (int i = 0; i < len; i++)
+                {
+                    T item = default;
+                    Packer<T>.Read(packer, ref item);
+                    value.Add(item);
+                }
+            }
+            catch
+            {
+                value.Dispose();
+                value = default;
+                throw;
             }
         }
     }

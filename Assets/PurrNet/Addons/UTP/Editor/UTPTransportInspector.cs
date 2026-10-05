@@ -20,8 +20,11 @@ namespace PurrNet.UTP.Editor
     /// and displaying runtime connection status.
     /// </summary>
     [CustomEditor(typeof(UTPTransport), true)]
-    public class UTPTransportInspector : UnityEditor.Editor
+    public class UTPTransportInspector : OptionalInspector
     {
+        protected override bool editorAttributesPropertiesEnabled =>
+            target is GenericTransport transport && transport.isSupported;
+
         public override void OnInspectorGUI()
         {
             var generic = (GenericTransport)target;
@@ -113,11 +116,12 @@ namespace PurrNet.UTP.Editor
                 generic.transport.onConnectionState += OnDirty;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             var generic = (UTPTransport)target;
             if (generic && generic.transport != null)
                 generic.transport.onConnectionState -= OnDirty;
+            base.OnDisable();
         }
 
         private void OnDirty(ConnectionState state, bool asServer)

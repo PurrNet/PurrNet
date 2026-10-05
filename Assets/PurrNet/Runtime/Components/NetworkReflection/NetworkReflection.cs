@@ -26,7 +26,7 @@ namespace PurrNet
         [SerializeField, HideInInspector]
         private bool _ownerAuth = true;
 
-        private ReflectedValue[] _reflectedValues;
+        [System.NonSerialized] private ReflectedValue[] _reflectedValues;
 
         /// <summary>
         /// The type of the tracked behaviour

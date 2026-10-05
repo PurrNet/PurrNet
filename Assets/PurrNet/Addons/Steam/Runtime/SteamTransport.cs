@@ -27,6 +27,36 @@ namespace PurrNet.Steam
         [Header("Client Settings")] [SerializeField]
         private string _address = "127.0.0.1";
 
+        [Header("Send Settings (Per Connection)")]
+        [SerializeField, Min(1), InspectorName("Send Rate (KiB/s)")]
+        [Tooltip("Per-connection Steam send rate in KiB/s. Must be positive. Applies on the next connect or listen.")]
+        private int _sendRateKiBPerSecond = SteamSendSettings.DefaultRateKiBPerSecond;
+
+        [SerializeField, Min(SteamSendSettings.MinBufferSizeKiB), InspectorName("Send Buffer Size (KiB)")]
+        [Tooltip("Per-connection Steam send buffer in KiB. Minimum 16 KiB to fit a reliable packet. " +
+                 "Applies on the next connect or listen.")]
+        private int _sendBufferSizeKiB = SteamSendSettings.DefaultBufferSizeKiB;
+
+        public int sendRateKiBPerSecond
+        {
+            get => _sendRateKiBPerSecond;
+            set
+            {
+                SteamSendSettings.ToBytes(value, nameof(sendRateKiBPerSecond));
+                _sendRateKiBPerSecond = value;
+            }
+        }
+
+        public int sendBufferSizeKiB
+        {
+            get => _sendBufferSizeKiB;
+            set
+            {
+                SteamSendSettings.BufferSizeToBytes(value, nameof(sendBufferSizeKiB));
+                _sendBufferSizeKiB = value;
+            }
+        }
+
         public ushort serverPort
         {
             get => _serverPort;
@@ -67,12 +97,19 @@ namespace PurrNet.Steam
             return _client?.GetRoundTripTime() ?? -1;
         }
 
+        public SteamSendStatistics GetSendStatistics(Connection conn, bool asServer)
+        {
+            return asServer
+                ? _server?.GetSendStatistics(conn.connectionId) ?? default
+                : _client?.sendStatistics ?? default;
+        }
+
         public int GetMTU(Connection target, Channel channel, bool asServer)
         {
             return channel switch
             {
                 Channel.Unreliable => 1024,
-                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => 8192 * 2,
+                Channel.UnreliableSequenced or Channel.ReliableUnordered or Channel.ReliableOrdered => SteamSendSettings.ReliableMessageSizeBytes,
                 _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
             };
         }
@@ -91,7 +128,7 @@ namespace PurrNet.Steam
 
         private PurrConnectionState _listenerState = PurrConnectionState.Disconnected;
 
-        public PurrNet.Transports.ConnectionState listenerState
+        public ConnectionState listenerState
         {
             get => _listenerState;
             private set
@@ -106,7 +143,7 @@ namespace PurrNet.Steam
 
         private PurrConnectionState _clientState = PurrConnectionState.Disconnected;
 
-        public PurrNet.Transports.ConnectionState clientState
+        public ConnectionState clientState
         {
             get => _clientState;
             private set
@@ -142,6 +179,7 @@ namespace PurrNet.Steam
 
         public void Listen(ushort port)
         {
+            var sendSettings = new SteamSendSettings(_sendRateKiBPerSecond, _sendBufferSizeKiB);
             if (_server != null)
                 StopListening();
 
@@ -151,8 +189,8 @@ namespace PurrNet.Steam
             _connections.Clear();
 
             if (_peerToPeer)
-                _server.ListenP2P(_dedicatedServer);
-            else _server.Listen(port, _dedicatedServer);
+                _server.ListenP2P(_dedicatedServer, sendSettings);
+            else _server.Listen(port, _dedicatedServer, sendSettings);
 
             if (_server.listening)
             {
@@ -199,6 +237,7 @@ namespace PurrNet.Steam
 
         public void Connect(string ip, ushort port)
         {
+            var sendSettings = new SteamSendSettings(_sendRateKiBPerSecond, _sendBufferSizeKiB);
             if (_client != null)
                 Disconnect();
 
@@ -207,8 +246,8 @@ namespace PurrNet.Steam
             _client.onDataReceived += OnClientDataReceived;
 
             _connectClientCoroutine = StartCoroutine(_peerToPeer
-                ? _client.ConnectP2P(ip, _dedicatedServer)
-                : _client.Connect(ip, port, _dedicatedServer));
+                ? _client.ConnectP2P(ip, _dedicatedServer, sendSettings)
+                : _client.Connect(ip, port, _dedicatedServer, sendSettings));
         }
 
         private void OnClientDataReceived(ByteData data)
@@ -263,8 +302,8 @@ namespace PurrNet.Steam
             if (!target.isValid)
                 return;
 
-            _server.SendToConnection(target.connectionId, data, method);
-            RaiseDataSent(target, data, true);
+            if (_server.TrySendToConnection(target.connectionId, data, method))
+                RaiseDataSent(target, data, true);
         }
 
         public void SendToServer(ByteData data, Channel method = Channel.ReliableOrdered)
@@ -272,8 +311,8 @@ namespace PurrNet.Steam
             if (_client == null)
                 return;
 
-            _client.Send(data, method);
-            RaiseDataSent(default, data, false);
+            if (_client.TrySend(data, method))
+                RaiseDataSent(default, data, false);
         }
 
         public void CloseConnection(Connection conn)
@@ -315,7 +354,7 @@ namespace PurrNet.Steam
             _client.SendMessages();
             return true;
         }
-        
+
         public ulong GetSteamID(Connection conn)
         {
             return _server?.GetSteamID(conn.connectionId) ?? 0;

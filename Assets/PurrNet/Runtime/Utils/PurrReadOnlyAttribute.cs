@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 #endif
 
 namespace PurrNet.Utils
@@ -13,6 +15,20 @@ namespace PurrNet.Utils
     [CustomPropertyDrawer(typeof(SyncTimer))]
     public class SyncTimerDrawer : PropertyDrawer
     {
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            var label = new Label();
+            var state = property.FindPropertyRelative("_state");
+            var remaining = property.FindPropertyRelative("_remaining");
+            void Refresh()
+            {
+                label.text = $"{property.displayName}: {(TimerState)state.enumValueIndex} ({remaining.floatValue:0.00})";
+            }
+            Refresh();
+            label.schedule.Execute(Refresh).Every(100);
+            return label;
+        }
+
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             var state = property.FindPropertyRelative("_state");
@@ -29,6 +45,16 @@ namespace PurrNet.Utils
     [CustomPropertyDrawer(typeof(PurrReadOnlyAttribute))]
     public class PurrReadOnlyDrawer : PropertyDrawer
     {
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            var root = new VisualElement();
+            var field = new PropertyField(property);
+            field.BindProperty(property.serializedObject);
+            root.Add(field);
+            root.SetEnabled(false);
+            return root;
+        }
+
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             var old = GUI.enabled;

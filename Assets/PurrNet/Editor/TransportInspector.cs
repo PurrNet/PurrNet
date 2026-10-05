@@ -5,7 +5,7 @@ using UnityEngine;
 namespace PurrNet.Editor
 {
     [CustomEditor(typeof(GenericTransport), true)]
-    public class TransportInspector : UnityEditor.Editor
+    public class TransportInspector : OptionalInspector
     {
         public static void DrawLed(ConnectionState? state)
         {
@@ -67,11 +67,12 @@ namespace PurrNet.Editor
                 generic.transport.onConnectionState += OnDirty;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             var generic = (GenericTransport)target;
             if (generic && generic.transform != null)
                 generic.transport.onConnectionState -= OnDirty;
+            base.OnDisable();
         }
 
         private void OnDirty(ConnectionState state, bool asServer)

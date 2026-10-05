@@ -37,7 +37,7 @@ namespace PurrNet.Editor
         protected virtual void OnEnable()
 #endif
         {
-#if TRI_INSPECTOR_PACKAGE
+#if TRI_INSPECTOR_PACKAGE || ODIN_INSPECTOR
             base.OnEnable();
 #endif
             try
@@ -100,7 +100,40 @@ namespace PurrNet.Editor
 
         public override VisualElement CreateInspectorGUI()
         {
-            return null;
+            var root = OptionalInspectorIntegration.CreateInspectorGUI(this, editorAttributesExcludedProperties);
+            if (root == null)
+                return null;
+
+            var extras = new IMGUIContainer(() =>
+            {
+                if (!target)
+                    return;
+                serializedObject.UpdateIfRequiredOrScript();
+                DrawInspectorExtras();
+                serializedObject.ApplyModifiedProperties();
+            });
+            root.Add(extras);
+            extras.schedule.Execute(extras.MarkDirtyRepaint).Every(100);
+            return root;
+        }
+
+        protected virtual string[] editorAttributesExcludedProperties => null;
+
+#if TRI_INSPECTOR_PACKAGE || ODIN_INSPECTOR
+        protected override void OnDisable()
+#else
+        protected virtual void OnDisable()
+#endif
+        {
+            OptionalInspectorIntegration.OnDisable(this);
+#if TRI_INSPECTOR_PACKAGE || ODIN_INSPECTOR
+            base.OnDisable();
+#endif
+        }
+
+        protected virtual void OnSceneGUI()
+        {
+            OptionalInspectorIntegration.OnSceneGUI(this);
         }
 
         public override void OnInspectorGUI()
@@ -112,12 +145,6 @@ namespace PurrNet.Editor
                 DrawDefaultInspector();
                 return;
             }
-
-            bool hasNetworkManagerAsChild = identity.GetComponentInChildren<NetworkManager>();
-
-            if (hasNetworkManagerAsChild)
-                EditorGUILayout.HelpBox("NetworkIdentity is a child of a NetworkManager. This is not supported.",
-                    MessageType.Error);
 
             try
             {
@@ -132,22 +159,25 @@ namespace PurrNet.Editor
                 DrawDefaultInspectorFallback();
             }
 
+            DrawInspectorExtras();
+
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        protected virtual void DrawInspectorExtras()
+        {
+            var identity = target as NetworkIdentity;
+            if (!identity)
+                return;
+
+            if (identity.GetComponentInChildren<NetworkManager>())
+                EditorGUILayout.HelpBox("NetworkIdentity is a child of a NetworkManager. This is not supported.",
+                    MessageType.Error);
+
             DrawIdentityInspector();
             GUI.enabled = true;
             DrawPurrButtons(identity);
             DrawContributors();
-
-            serializedObject.ApplyModifiedProperties();
-
-            /*if (!string.IsNullOrEmpty(_docsUrl))
-            {
-                _helpIcon ??= Resources.Load("purricon") as Texture2D;
-                GUILayout.BeginHorizontal();
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button(new GUIContent(" Open Docs", _helpIcon), GUILayout.ExpandWidth(false), GUILayout.Height(20)))
-                    Application.OpenURL("https://purrnet.dev/docs/" + _docsUrl);
-                GUILayout.EndHorizontal();
-            }*/
         }
 
         private void DrawContributors()

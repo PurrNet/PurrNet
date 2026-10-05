@@ -6,5 +6,6 @@ namespace PurrNet.Modules
     {
         public SceneID sceneId;
         public NetworkID parentId;
+        public bool destroyAsync;
     }
 }

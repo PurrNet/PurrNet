@@ -8,12 +8,29 @@ namespace PurrNet.Packing
         {
             if (!packer.ReadBit())
             {
-                if (newVal is IDisposable disposable)
+                if (IsDisposable<T>.value && newVal is IDisposable disposable)
                     disposable.Dispose();
                 newVal = Packer.Copy(old);
                 return false;
             }
             return true;
         }
+
+        public static bool ContinueDisposable<T>(BitPacker packer, T old, ref T newVal) where T : IDisposable
+        {
+            if (!packer.ReadBit())
+            {
+                if (typeof(T).IsValueType || newVal != null)
+                    newVal.Dispose();
+                newVal = Packer.Copy(old);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    internal static class IsDisposable<T>
+    {
+        public static readonly bool value = typeof(IDisposable).IsAssignableFrom(typeof(T));
     }
 }

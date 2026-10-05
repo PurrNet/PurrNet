@@ -80,12 +80,7 @@ namespace PurrNet.Pooling
         [Obsolete("Use DisposableList<T>.Create instead")]
         public DisposableList(int capacity)
         {
-            var newList = ListPool<T>.Instantiate();
-
-            if (newList.Capacity < capacity)
-                newList.Capacity = capacity;
-
-            _list = newList;
+            _list = ListPool<T>.Instantiate(capacity);
             _isAllocated = true;
             _shouldDispose = true;
             _lease = DisposableLeasePool.Rent(out _leaseVersion);
@@ -94,12 +89,7 @@ namespace PurrNet.Pooling
         public static DisposableList<T> Create(int capacity)
         {
             var val = new DisposableList<T>();
-            var newList = ListPool<T>.Instantiate();
-
-            if (newList.Capacity < capacity)
-                newList.Capacity = capacity;
-
-            val._list = newList;
+            val._list = ListPool<T>.Instantiate(capacity);
             val._isAllocated = true;
             val._shouldDispose = true;
             val._lease = DisposableLeasePool.Rent(out val._leaseVersion);
@@ -109,13 +99,8 @@ namespace PurrNet.Pooling
         public static DisposableList<T> Create(DisposableList<T> copyFrom)
         {
             var val = new DisposableList<T>();
-            val._list = ListPool<T>.Instantiate();
-
             int count = copyFrom.Count;
-            int targetCapacity = count + Math.Max(count >> 2, 8);
-
-            if (val._list.Capacity < targetCapacity)
-                val._list.Capacity = targetCapacity;
+            val._list = ListPool<T>.Instantiate(count + Math.Max(count >> 2, 8));
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
@@ -130,13 +115,8 @@ namespace PurrNet.Pooling
         public static DisposableList<T> Create(IList<T> copyFrom)
         {
             var val = new DisposableList<T>();
-            val._list = ListPool<T>.Instantiate();
-
             int count = copyFrom.Count;
-            int targetCapacity = count + Math.Max(count >> 2, 8);
-
-            if (val._list.Capacity < targetCapacity)
-                val._list.Capacity = targetCapacity;
+            val._list = ListPool<T>.Instantiate(count + Math.Max(count >> 2, 8));
 
             int c = copyFrom.Count;
             for (var i = 0; i < c; ++i)
@@ -183,6 +163,13 @@ namespace PurrNet.Pooling
             if (isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
             foreach (var item in collection)
                 _list.Add(item);
+            NotifyUsage();
+        }
+
+        public void AddRange(DisposableList<T> collection)
+        {
+            if (isDisposed || collection.isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
+            _list.AddRange(collection._list);
             NotifyUsage();
         }
 
@@ -356,6 +343,13 @@ namespace PurrNet.Pooling
                 throw new IndexOutOfRangeException($"Index {opIndex} is out of range for list of size {_list.Count}.");
 
             _list.RemoveRange(opIndex, opLength);
+        }
+
+        public void InsertRange(int index, DisposableList<T> values)
+        {
+            if (isDisposed || values.isDisposed) throw new ObjectDisposedException(nameof(DisposableList<T>));
+            NotifyUsage();
+            _list.InsertRange(index, values._list);
         }
 
         public void InsertRange(int index, IEnumerable<T> values)

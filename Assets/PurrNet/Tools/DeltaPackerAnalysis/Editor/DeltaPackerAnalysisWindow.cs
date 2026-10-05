@@ -386,7 +386,7 @@ namespace PurrNet.DeltaPackerAnalysis.Editor
                             return;
                         }
 
-                        packer.ResetPositionAndMode(true);
+                        packer.ResetPositionAndMode(false);
                         var result = new TypeResult { TypeName = entry.DisplayName };
 
                         try
@@ -453,7 +453,7 @@ namespace PurrNet.DeltaPackerAnalysis.Editor
                         {
                             packer.ResetPosition();
                             DeltaPacker.Write(packer, entry.Type, entry.OldValue, entry.NewValue);
-                            packer.ResetPositionAndMode(false);
+                            packer.ResetPositionAndMode(true);
 
                             int writeIterations = BenchmarkIterations;
                             var sw = Stopwatch.StartNew();

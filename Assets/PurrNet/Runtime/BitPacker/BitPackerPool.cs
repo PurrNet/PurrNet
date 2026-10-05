@@ -14,7 +14,7 @@ namespace PurrNet.Packing
 
         static BitPacker Factory() => new BitPacker();
 
-        static void Reset(BitPacker list) => list.ResetPosition();
+        static void Reset(BitPacker list) => list.ResetForPool();
 
         private BitPackerPool() : base(Factory, Reset) {}
 

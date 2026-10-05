@@ -57,7 +57,7 @@ openupm add dev.purrnet.purrnet
 
 You can also grab it from the [Asset Store](https://assetstore.unity.com/packages/tools/network/purrnet-297320), though those versions lag behind.
 
-Coming from another solution? We have [migration guides](https://purrnet.dev/docs).
+Coming from another solution? We have [migration guides](https://purrnet.dev/docs/getting-started/converting-to-purrnet).
 
 ## Why PurrNet
 
@@ -69,7 +69,7 @@ Coming from another solution? We have [migration guides](https://purrnet.dev/doc
 | **Zero-ceremony RPCs**       | Mark a method with an attribute. Static, generic, awaitable and coroutine RPCs all supported.               |
 | **Network Rules**            | Per-object policy for who may spawn, despawn, own, observe and call. Server-strict or client-convenient, your call, no code changes. |
 | **Network Modules**          | Compose networked behaviour out of nestable, reusable, generic modules. Every built-in feature is one.      |
-| **Client-side prediction**   | [PurrDiction](https://purrnet.dev/docs) gives you rollback prediction with optional determinism.            |
+| **Client-side prediction**   | [PurrDiction](https://purrnet.dev/docs/client-side-prediction) gives you rollback prediction with optional determinism.            |
 | **Reconnection built in**    | Cookie-based identity so players come back to their own state instead of a fresh spawn.                    |
 | **Real serialization**       | Compile-time generated packers, delta compression, and a hand-drivable `BitPacker` when you want the bytes. |
 | **Cross-platform**           | Desktop, mobile, WebGL and consoles.                                                                       |

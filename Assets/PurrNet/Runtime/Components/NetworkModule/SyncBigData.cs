@@ -51,6 +51,7 @@ namespace PurrNet
 
         public override bool ownerOnly => _ownerOnly;
         [SerializeField, Min(1)] private int _maxKBPerSec;
+        [SerializeField, Min(1)] private int _maxSizeMB;
 
         private List<BigDataState> _pending = new ();
 
@@ -85,6 +86,7 @@ namespace PurrNet
         private const int PART_SIZE = 768;
         private const float FIRST_PART_RESEND_INTERVAL = 1f;
         private const int MAX_PENDING_REQUESTS = 512;
+        private const int DEFAULT_MAX_SIZE_MB = 512;
 
         private int _totalParts;
 
@@ -94,6 +96,18 @@ namespace PurrNet
             set => _maxKBPerSec = Mathf.Max(1, value);
         }
 
+        /// <summary>
+        /// Largest data this module will send or accept, in megabytes.
+        /// Applies to both the compressed transfer and the uncompressed result.
+        /// </summary>
+        public int maxSizeMB
+        {
+            get => _maxSizeMB > 0 ? _maxSizeMB : DEFAULT_MAX_SIZE_MB;
+            set => _maxSizeMB = Mathf.Max(1, value);
+        }
+
+        private long maxSizeBytes => maxSizeMB * 1024L * 1024L;
+
         private float partsPerSecond => maxKBPerSec * 1000f / PART_SIZE;
 
         public SyncBigData(bool ownerAuth = false, int maxKBPerSec = 15, bool ownerOnly = false)
@@ -101,6 +115,7 @@ namespace PurrNet
             _ownerAuth = ownerAuth;
             _ownerOnly = ownerOnly;
             _maxKBPerSec = Mathf.Max(1, maxKBPerSec);
+            _maxSizeMB = DEFAULT_MAX_SIZE_MB;
         }
 
         public override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
@@ -136,6 +151,13 @@ namespace PurrNet
                 PurrLogger.LogError(
                     $"Invalid permissions when setting `<b>{GetType().Name} {name}</b>` on `{parent.name}`." +
                     $"\n{GetPermissionErrorDetails(_ownerAuth, this)}", parent);
+                return;
+            }
+
+            if (data.Length > maxSizeBytes)
+            {
+                PurrLogger.LogError(
+                    $"Data of {data.Length} bytes exceeds the {maxSizeMB} MB limit of `<b>{GetType().Name} {name}</b>`.", parent);
                 return;
             }
 
@@ -483,7 +505,9 @@ namespace PurrNet
             if (!_ownerAuth || !owner.HasValue)
                 return;
 
-            HandleFirstPart(tid, data, totalParts, totalLength);
+            if (!HandleFirstPart(tid, data, totalParts, totalLength))
+                return;
+
             ConfirmFirstPartWithOwner(owner.Value);
             ReQueueEveryone();
         }
@@ -491,16 +515,23 @@ namespace PurrNet
         [TargetRpc]
         private void SendFirstPart(PlayerID player, PackedUInt tid, ByteData data, int totalParts, int totalLength)
         {
-            HandleFirstPart(tid, data, totalParts, totalLength);
-            ConfirmFirstPart();
+            if (HandleFirstPart(tid, data, totalParts, totalLength))
+                ConfirmFirstPart();
         }
 
-        private void HandleFirstPart(PackedUInt tid, ByteData data, int totalParts, int totalLength)
+        private bool HandleFirstPart(PackedUInt tid, ByteData data, int totalParts, int totalLength)
         {
+            if (totalLength < 0 || totalLength > maxSizeBytes)
+            {
+                PurrLogger.LogError(
+                    $"Rejected {totalLength} bytes for `<b>{GetType().Name} {name}</b>`, the limit is {maxSizeMB} MB.", parent);
+                return false;
+            }
+
             if (_receivingState.id == tid && !_receivingState.confirmedParts.isDisposed)
             {
                 InsertConfirmedPart(data, 0);
-                return;
+                return true;
             }
 
             if (!_receivingState.confirmedParts.isDisposed)
@@ -514,6 +545,7 @@ namespace PurrNet
                 confirmedParts = DisposableList<int>.Create()
             };
 
+            _nextId = tid;
             _totalParts = totalParts;
 
             if (_compressedData == null)
@@ -522,6 +554,7 @@ namespace PurrNet
                 Array.Resize(ref _compressedData, totalLength);
 
             InsertConfirmedPart(data, 0);
+            return true;
         }
 
         [ServerRpc(channel: Channel.Unreliable, mtuExceeded: MTUBehaviour.Fragment)]
@@ -573,8 +606,19 @@ namespace PurrNet
 
             if (syncStatus.isDone)
             {
-                _uncompressedData = LZ4Pickler.Unpickle(_compressedData);
-                OnDataReady();
+                int uncompressedLength = LZ4Pickler.UnpickledSize(_compressedData);
+                if (uncompressedLength > maxSizeBytes)
+                {
+                    PurrLogger.LogError(
+                        $"Rejected {uncompressedLength} bytes for `<b>{GetType().Name} {name}</b>`, the limit is {maxSizeMB} MB.", parent);
+                    _receivingState.confirmedParts.Dispose();
+                    syncStatus = default;
+                }
+                else
+                {
+                    _uncompressedData = LZ4Pickler.Unpickle(_compressedData);
+                    OnDataReady();
+                }
             }
             onSyncStatusChanged?.Invoke(syncStatus);
         }

@@ -21,6 +21,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.Raycast(ray.origin, ray.direction, maxDistance, contactFilter, raycastHits);
             int colliderCount = _colliders2D.Count;
 
@@ -61,6 +62,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.CircleCast(ray.origin, radius, ray.direction, maxDistance, contactFilter,
                 raycastHits);
             int colliderCount = _colliders2D.Count;
@@ -99,6 +101,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.BoxCast(ray.origin, size, angle, ray.direction, maxDistance, contactFilter,
                 raycastHits);
             int colliderCount = _colliders2D.Count;
@@ -138,6 +141,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.CapsuleCast(ray.origin, size, capsuleDirection, angle, ray.direction,
                 maxDistance, contactFilter, raycastHits);
             int colliderCount = _colliders2D.Count;
@@ -177,6 +181,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.OverlapCircle(origin, radius, contactFilter, hits);
             int colliderCount = _colliders2D.Count;
 
@@ -208,6 +213,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.OverlapBox(origin, size, angle, contactFilter, hits);
             int colliderCount = _colliders2D.Count;
 
@@ -240,6 +246,7 @@ namespace PurrNet.Modules
             if (!_physicsScene2D.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms2D();
             int hitCount = _physicsScene2D.OverlapCapsule(origin, size, capsuleDirection, angle, contactFilter, hits);
             int colliderCount = _colliders2D.Count;
 

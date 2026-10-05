@@ -564,7 +564,7 @@ namespace LiteNetLib
             {
                 if (expandedPacket != null)
                     PoolRecycle(expandedPacket);
-                return 0; // Simulate successful send to avoid triggering error handling
+                return length; // Simulate successful send; 0 reads as a socket failure and stops MTU discovery
             }
 
             if (HandleSimulateOutboundLatency(message, start, length, remoteEndPoint))

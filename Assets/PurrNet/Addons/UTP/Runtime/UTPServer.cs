@@ -106,7 +106,7 @@ namespace PurrNet.UTP
             }
         }
 
-        private readonly Queue<PendingFragmentSend> _pendingFragmentSends = new Queue<PendingFragmentSend>();
+        private readonly Dictionary<int, Queue<PendingFragmentSend>> _pendingFragmentSends = new Dictionary<int, Queue<PendingFragmentSend>>();
 #endif
 
 #pragma warning disable CS0067 // Event is never used
@@ -530,7 +530,7 @@ namespace PurrNet.UTP
                 if (packet == null)
                     continue;
 
-                _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), sentMessage.channel));
+                GetPendingSends(connId).Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), sentMessage.channel));
                 enqueuedCount++;
             }
 
@@ -677,6 +677,20 @@ namespace PurrNet.UTP
                 return;
             }
 
+            if (channel is Channel.ReliableOrdered or Channel.ReliableUnordered)
+            {
+                var pendingSends = GetPendingSends(connId);
+
+                if (pendingSends.Count > 0 || !SendSinglePacketToConnectionWithValidation(conn, data, channel))
+                {
+                    byte[] packet = new byte[data.length];
+                    Buffer.BlockCopy(data.data, data.offset, packet, 0, data.length);
+                    pendingSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packet.Length), channel));
+                }
+
+                return;
+            }
+
             SendSinglePacketToConnection(conn, data, channel);
 #endif
         }
@@ -761,7 +775,7 @@ namespace PurrNet.UTP
                 Buffer.BlockCopy(data.data, data.offset + offset, packet, FRAGMENT_DATA_HEADER_SIZE, payloadSize);
                 sentPackets[i] = packet;
 
-                _pendingFragmentSends.Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packetSize), channel));
+                GetPendingSends(connId).Enqueue(new PendingFragmentSend(connId, conn, new ByteData(packet, 0, packetSize), channel));
             }
 
             var key = new FragmentKey(connId, fragmentId);
@@ -802,8 +816,7 @@ namespace PurrNet.UTP
                             writer.WriteBytes(span);
                         }
                     }
-                    _driver.EndSend(writer);
-                    return true;
+                    return _driver.EndSend(writer) >= 0;
                 }
                 else
                 {
@@ -837,40 +850,33 @@ namespace PurrNet.UTP
             if (!_driver.IsCreated)
                 return;
 
-            int sends = 0;
-            while (sends < MAX_FRAGMENT_SENDS_PER_UPDATE && _pendingFragmentSends.Count > 0)
+            foreach (var pendingSends in _pendingFragmentSends.Values)
             {
-                var pending = _pendingFragmentSends.Peek();
-
-                if (!_connectionById.TryGetValue(pending.connectionId, out var activeConn) || activeConn != pending.connection)
+                int sends = 0;
+                while (sends < MAX_FRAGMENT_SENDS_PER_UPDATE && pendingSends.Count > 0)
                 {
-                    _pendingFragmentSends.Dequeue();
-                    continue;
+                    var pending = pendingSends.Peek();
+
+                    if (!SendSinglePacketToConnectionWithValidation(pending.connection, pending.data, pending.channel))
+                        break;
+
+                    pendingSends.Dequeue();
+                    sends++;
                 }
-
-                if (!SendSinglePacketToConnectionWithValidation(pending.connection, pending.data, pending.channel))
-                    break;
-
-                _pendingFragmentSends.Dequeue();
-                sends++;
             }
+        }
+
+        private Queue<PendingFragmentSend> GetPendingSends(int connId)
+        {
+            if (!_pendingFragmentSends.TryGetValue(connId, out var pendingSends))
+                _pendingFragmentSends[connId] = pendingSends = new Queue<PendingFragmentSend>();
+
+            return pendingSends;
         }
 
         private void RemovePendingFragmentsForConnection(int connId)
         {
-            if (_pendingFragmentSends.Count == 0)
-                return;
-
-            var remaining = new Queue<PendingFragmentSend>();
-            while (_pendingFragmentSends.Count > 0)
-            {
-                var pending = _pendingFragmentSends.Dequeue();
-                if (pending.connectionId != connId)
-                    remaining.Enqueue(pending);
-            }
-
-            while (remaining.Count > 0)
-                _pendingFragmentSends.Enqueue(remaining.Dequeue());
+            _pendingFragmentSends.Remove(connId);
         }
 
         private void ClearPendingFragments()

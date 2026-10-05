@@ -81,6 +81,10 @@ namespace PurrNet
         [Tooltip("Number of target ticks per second.")] [SerializeField]
         private int _tickRate = 20;
 
+        [Tooltip("Maximum normal tick callbacks per frame during catch-up. Reliable tick callbacks still run for every tick.")]
+        [SerializeField, Min(1)]
+        private int _maxTicksPerFrame = TickManager.defaultMaxTicksPerFrame;
+
         [Tooltip("What to do when a packet exceeds the MTU on an unreliable channel.")]
         [SerializeField]
         private MTUExceededBehaviour _mtuExceededBehaviour = MTUExceededBehaviour.Fragment;
@@ -140,6 +144,31 @@ namespace PurrNet
                 }
 
                 _tickRate = value;
+            }
+        }
+
+        /// <summary>
+        /// Maximum normal tick callbacks per frame during catch-up. Reliable ticks are unaffected.
+        /// Must be configured before starting the client or server.
+        /// </summary>
+        public int maxTicksPerFrame
+        {
+            get => _maxTicksPerFrame;
+            set
+            {
+                if (value < 1)
+                {
+                    PurrLogger.LogError("Failed to update max ticks per frame since it must be greater than zero.");
+                    return;
+                }
+
+                if (_serverTickManager != null || _clientTickManager != null)
+                {
+                    PurrLogger.LogError("Failed to update max ticks per frame since a tick manager is already running.");
+                    return;
+                }
+
+                _maxTicksPerFrame = value;
             }
         }
 
@@ -1180,7 +1209,7 @@ namespace PurrNet
             }
 
             var connBroadcaster = new BroadcastModule(this, asServer);
-            var tickManager = new TickManager(_tickRate, this, connBroadcaster, asServer);
+            var tickManager = new TickManager(_tickRate, this, connBroadcaster, asServer, _maxTicksPerFrame);
 
             if (asServer)
             {

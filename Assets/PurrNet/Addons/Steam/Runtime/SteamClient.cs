@@ -27,6 +27,9 @@ namespace PurrNet.Steam
         private CSteamID _hostSteamID;
         private HSteamNetConnection _connection;
         private bool _isDedicated;
+        private SteamSendQueue _sendQueue;
+        private bool _sendLimitWarningLogged;
+        private bool _pendingDisconnect;
         static byte[] buffer = new byte[1024];
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
 #endif
@@ -70,7 +73,24 @@ namespace PurrNet.Steam
 #endif
         }
 
+        public SteamSendStatistics sendStatistics
+        {
+            get
+            {
+#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+                return _sendQueue?.statistics ?? default;
+#else
+                return default;
+#endif
+            }
+        }
+
         public IEnumerator Connect(string address, ushort port, bool dedicated = false)
+        {
+            return Connect(address, port, dedicated, SteamSendSettings.defaults);
+        }
+
+        internal IEnumerator Connect(string address, ushort port, bool dedicated, SteamSendSettings sendSettings)
         {
             yield return null;
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
@@ -80,15 +100,21 @@ namespace PurrNet.Steam
             addr.Clear();
             addr.SetIPv4(address.GetIPv4(), port);
 
+            var options = sendSettings.CreateOptions();
             _connection = _isDedicated ?
-                SteamGameServerNetworkingSockets.ConnectByIPAddress(ref addr, 0, null) :
-                SteamNetworkingSockets.ConnectByIPAddress(ref addr, 0, null);
+                SteamGameServerNetworkingSockets.ConnectByIPAddress(ref addr, options.Length, options) :
+                SteamNetworkingSockets.ConnectByIPAddress(ref addr, options.Length, options);
 
             PostConnect();
 #endif
         }
 
         public IEnumerator ConnectP2P(string steamId, bool dedicated = false)
+        {
+            return ConnectP2P(steamId, dedicated, SteamSendSettings.defaults);
+        }
+
+        internal IEnumerator ConnectP2P(string steamId, bool dedicated, SteamSendSettings sendSettings)
         {
             yield return null;
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
@@ -111,9 +137,10 @@ namespace PurrNet.Steam
             var networkIdentity = new SteamNetworkingIdentity();
             networkIdentity.SetSteamID(_hostSteamID);
 
+            var options = sendSettings.CreateOptions();
             _connection = _isDedicated ?
-                SteamGameServerNetworkingSockets.ConnectP2P(ref networkIdentity, 0, 0, null) :
-                SteamNetworkingSockets.ConnectP2P(ref networkIdentity, 0, 0, null);
+                SteamGameServerNetworkingSockets.ConnectP2P(ref networkIdentity, 0, options.Length, options) :
+                SteamNetworkingSockets.ConnectP2P(ref networkIdentity, 0, options.Length, options);
 
             PostConnect();
 #endif
@@ -121,51 +148,80 @@ namespace PurrNet.Steam
 
         public void Send(ByteData data, Channel channel)
         {
+            TrySend(data, channel);
+        }
+
+        internal bool TrySend(ByteData data, Channel channel)
+        {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
             if (_connection == HSteamNetConnection.Invalid)
-                return;
+                return false;
 
-            MakeSureBufferCanFit(data.length);
-
-            var pinnedArray = GCHandle.Alloc(data.data, GCHandleType.Pinned);
-            var ptr = pinnedArray.AddrOfPinnedObject() + data.offset;
-
-            byte sendFlag = channel switch {
-                Channel.Unreliable => Constants.k_nSteamNetworkingSend_Unreliable,
-                Channel.UnreliableSequenced => Constants.k_nSteamNetworkingSend_Reliable,
-                Channel.ReliableOrdered => Constants.k_nSteamNetworkingSend_Reliable,
-                Channel.ReliableUnordered => Constants.k_nSteamNetworkingSend_Reliable,
-                _ => 0
-            };
-
+            string failure;
             try
             {
-                if (_isDedicated)
-                    SteamGameServerNetworkingSockets.SendMessageToConnection(_connection, ptr, (uint)data.length,
-                        sendFlag, out _);
-                else
-                    SteamNetworkingSockets.SendMessageToConnection(_connection, ptr, (uint)data.length, sendFlag,
-                        out _);
+                _sendQueue ??= new SteamSendQueue(SendNative, () => UnityEngine.Time.realtimeSinceStartupAsDouble);
+                bool healthy = _sendQueue.Send(data, channel, out var accepted);
+                if (!_sendLimitWarningLogged && _sendQueue.statistics.lastSendResult == (int)EResult.k_EResultLimitExceeded)
+                {
+                    _sendLimitWarningLogged = true;
+                    try
+                    {
+                        PurrLogger.LogWarning($"Steam send buffer limit reached for client connection {_connection}. " +
+                            "Reliable messages retry in order; unreliable sends may be refused. " +
+                            "Check outgoing traffic and configured Steam send limits. This warning is logged once per connection.");
+                    }
+                    catch { }
+                }
+                if (healthy)
+                    return accepted;
+                failure = _sendQueue.failureReason;
             }
             catch (Exception e)
             {
-                PurrLogger.LogException(e);
+                failure = $"Steam send failed: {e.Message}";
             }
+            FailSend(failure);
 #endif
+            return false;
         }
 
         public void SendMessages()
         {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
-            if (_isDedicated)
-                SteamGameServerNetworkingSockets.FlushMessagesOnConnection(_connection);
-            else SteamNetworkingSockets.FlushMessagesOnConnection(_connection);
+            if (_connection == HSteamNetConnection.Invalid)
+                return;
+            string failure;
+            try
+            {
+                if (_sendQueue != null && !_sendQueue.Pump())
+                {
+                    failure = _sendQueue.failureReason;
+                }
+                else
+                {
+                    if (_isDedicated)
+                        SteamGameServerNetworkingSockets.FlushMessagesOnConnection(_connection);
+                    else SteamNetworkingSockets.FlushMessagesOnConnection(_connection);
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                failure = $"Steam send failed: {e.Message}";
+            }
+            FailSend(failure);
 #endif
         }
 
         public void ReceiveMessages()
         {
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+            if (_pendingDisconnect)
+                CompleteDisconnect();
+            if (_connection == HSteamNetConnection.Invalid)
+                return;
+            var connection = _connection;
             int receivedCount = _isDedicated ?
                 SteamGameServerNetworkingSockets.ReceiveMessagesOnConnection(_connection, _messages, MAX_MESSAGES) :
                 SteamNetworkingSockets.ReceiveMessagesOnConnection(_connection, _messages, MAX_MESSAGES);
@@ -173,20 +229,47 @@ namespace PurrNet.Steam
             for (int j = 0; j < receivedCount; j++)
             {
                 var ptr = _messages[j];
-                var data = Marshal.PtrToStructure<SteamNetworkingMessage_t>(ptr);
+                if (_connection != connection)
+                {
+                    SteamNetworkingMessage_t.Release(ptr);
+                    continue;
+                }
 
-                int packetLength = data.m_cbSize;
-                MakeSureBufferCanFit(packetLength);
-
-                Marshal.Copy(data.m_pData, buffer, 0, packetLength);
-                var byteData = new ByteData(buffer, 0, packetLength);
-
-                SteamNetworkingMessage_t.Release(ptr);
-                onDataReceived?.Invoke(byteData);
+                try
+                {
+                    var data = Marshal.PtrToStructure<SteamNetworkingMessage_t>(ptr);
+                    int packetLength = data.m_cbSize;
+                    MakeSureBufferCanFit(packetLength);
+                    Marshal.Copy(data.m_pData, buffer, 0, packetLength);
+                    SteamNetworkingMessage_t.Release(ptr);
+                    ptr = IntPtr.Zero;
+                    onDataReceived?.Invoke(new ByteData(buffer, 0, packetLength));
+                }
+                catch
+                {
+                    if (ptr != IntPtr.Zero)
+                        SteamNetworkingMessage_t.Release(ptr);
+                    for (var remaining = j + 1; remaining < receivedCount; remaining++)
+                        SteamNetworkingMessage_t.Release(_messages[remaining]);
+                    throw;
+                }
             }
 #endif
         }
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+
+        private EResult SendNative(IntPtr data, uint length, int flags)
+        {
+            return _isDedicated
+                ? SteamGameServerNetworkingSockets.SendMessageToConnection(_connection, data, length, flags, out _)
+                : SteamNetworkingSockets.SendMessageToConnection(_connection, data, length, flags, out _);
+        }
+
+        private void FailSend(string reason)
+        {
+            PurrLogger.LogError($"Disconnecting Steam client: {reason}");
+            Disconnect(reason, true);
+        }
 
         private static void MakeSureBufferCanFit(int packetLength)
         {
@@ -196,6 +279,9 @@ namespace PurrNet.Steam
 
         private void PostConnect()
         {
+            _pendingDisconnect = false;
+            _sendLimitWarningLogged = false;
+            _sendQueue = null;
             if (_connection == HSteamNetConnection.Invalid)
             {
                 connectionState = PurrConnectionState.Disconnecting;
@@ -205,8 +291,9 @@ namespace PurrNet.Steam
             }
 
             connectionState = PurrConnectionState.Connecting;
-            _onLocalConnectionState =
- Callback<SteamNetConnectionStatusChangedCallback_t>.Create(OnLocalConnectionState);
+            _onLocalConnectionState = _isDedicated
+                ? Callback<SteamNetConnectionStatusChangedCallback_t>.CreateGameServer(OnLocalConnectionState)
+                : Callback<SteamNetConnectionStatusChangedCallback_t>.Create(OnLocalConnectionState);
         }
 
         private void OnLocalConnectionState(SteamNetConnectionStatusChangedCallback_t param)
@@ -224,33 +311,42 @@ namespace PurrNet.Steam
                     break;
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
-                    connectionState = PurrConnectionState.Disconnecting;
-                    connectionState = PurrConnectionState.Disconnected;
+                    Disconnect();
                     break;
             }
         }
 
-        void Disconnect()
+        void Disconnect(string reason = null, bool deferNotification = false)
         {
+            _sendQueue?.Clear();
             if (_connection != HSteamNetConnection.Invalid)
             {
-                if (connectionState != PurrConnectionState.Disconnected)
-                    connectionState = PurrConnectionState.Disconnecting;
-
+                var connection = _connection;
+                _connection = HSteamNetConnection.Invalid;
                 try
                 {
                     if (_isDedicated)
-                        SteamGameServerNetworkingSockets.CloseConnection(_connection, 0, null, false);
-                    else SteamNetworkingSockets.CloseConnection(_connection, 0, null, false);
+                        SteamGameServerNetworkingSockets.CloseConnection(connection, 0, reason, false);
+                    else SteamNetworkingSockets.CloseConnection(connection, 0, reason, false);
                 }
                 catch
                 {
                     // ignored
                 }
 
-                connectionState = PurrConnectionState.Disconnected;
-                _connection = HSteamNetConnection.Invalid;
+                _pendingDisconnect = true;
             }
+            // Defer callbacks until receive/update so send callers can finish iterating players.
+            if (_pendingDisconnect && !deferNotification)
+                CompleteDisconnect();
+        }
+
+        private void CompleteDisconnect()
+        {
+            _pendingDisconnect = false;
+            if (connectionState != PurrConnectionState.Disconnected)
+                connectionState = PurrConnectionState.Disconnecting;
+            connectionState = PurrConnectionState.Disconnected;
         }
 #endif
 

@@ -4,8 +4,12 @@ using UnityEngine;
 namespace PurrNet.Editor
 {
     [CustomEditor(typeof(RawNetManager), true)]
-    public class RawNetManagerInspector : UnityEditor.Editor
+    public class RawNetManagerInspector : OptionalInspector
     {
+        private static readonly string[] _editorAttributesExcludedProperties = { "m_Script" };
+
+        protected override string[] editorAttributesExcludedProperties => _editorAttributesExcludedProperties;
+
         private SerializedProperty _scriptProp;
 
         private void OnEnable()
@@ -34,7 +38,8 @@ namespace PurrNet.Editor
             NetworkManagerInspector.DrawHeaderSection(_networkManager, _scriptProp);
             if (Application.isPlaying)
                 NetworkManagerInspector.RenderStartStopButtons(_networkManager);
-            DoDrawDefaultInspector(serializedObject);
+            if (!drawingEditorAttributesExtras)
+                DoDrawDefaultInspector(serializedObject);
         }
     }
 }

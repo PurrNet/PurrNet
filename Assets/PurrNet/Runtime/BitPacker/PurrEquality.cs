@@ -23,7 +23,7 @@ namespace PurrNet.Packing
                     if (x is null) return y is null;
                     if (y is null) return false;
                 }
-                return x.PurrEquals(y);
+                return x!.PurrEquals(y);
             }
 
             public int GetHashCode(D obj) => EqualityComparer<D>.Default.GetHashCode(obj);

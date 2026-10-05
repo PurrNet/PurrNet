@@ -37,13 +37,23 @@ namespace PurrNet.Packing
 
             Size length = default;
             Packer<Size>.Read(packer, ref length);
-            value = DisposableList<T>.Create(length);
+            DeserializationLimits.ValidateCollectionLength<T>(length.value);
+            value = DisposableList<T>.Create(DeserializationLimits.ClampCapacity(packer, length));
 
-            for (int i = 0; i < length; i++)
+            try
             {
-                T item = default;
-                Packer<T>.Read(packer, ref item);
-                value.Add(item);
+                for (int i = 0; i < length; i++)
+                {
+                    T item = default;
+                    Packer<T>.Read(packer, ref item);
+                    value.Add(item);
+                }
+            }
+            catch
+            {
+                value.Dispose();
+                value = default;
+                throw;
             }
         }
 
@@ -105,8 +115,9 @@ namespace PurrNet.Packing
                 return;
             }
 
+            DeserializationLimits.ValidateCollectionLength<T>(count.value);
             if (value.isDisposed)
-                value = DisposableList<T>.Create(count.value);
+                value = DisposableList<T>.Create(DeserializationLimits.ClampCapacity(packer, count.value));
             else value.Clear();
 
             T oldNewValue = default;

@@ -29,6 +29,306 @@ public class BitPackerEdgeCaseTests
         _packer?.Dispose();
     }
 
+    [Test]
+    public void Wrapper_LogicalSliceSurvivesReadResetsAndViews()
+    {
+        var buffer = new byte[32];
+        Array.Fill(buffer, (byte)0xFF);
+        buffer[2] = 0xA5;
+        buffer[3] = 0x5A;
+        _packer.MakeWrapper(new ByteData(buffer, 2, 2));
+
+        Assert.That(_packer.isReading, Is.True);
+        Assert.That(_packer.positionInBits, Is.EqualTo(16));
+        Assert.That(_packer.length, Is.EqualTo(2));
+        Assert.That(_packer.remainingBits, Is.EqualTo(16));
+        Assert.That(_packer.remainingBytes, Is.EqualTo(2));
+        Assert.That(_packer.ReadBit(), Is.True);
+        Assert.That(_packer.remainingBits, Is.EqualTo(15));
+        Assert.That(_packer.remainingBytes, Is.EqualTo(1));
+
+        _packer.ResetPosition();
+        Assert.That(_packer.ReadBits(8), Is.EqualTo(0xA5UL));
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.ReadBits(16), Is.EqualTo(0x5AA5UL));
+        Assert.That(_packer.remainingBits, Is.Zero);
+        Assert.That(_packer.length, Is.EqualTo(2));
+
+        var bytes = _packer.ToByteData();
+        Assert.That(bytes.offset, Is.EqualTo(2));
+        CollectionAssert.AreEqual(new byte[] { 0xA5, 0x5A }, bytes.span.ToArray());
+        Assert.That(_packer.AsSegment().Offset, Is.EqualTo(2));
+        Assert.That(_packer.AsSegment().Count, Is.EqualTo(2));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+        Assert.That(_packer.positionInBits, Is.EqualTo(32));
+    }
+
+    [Test]
+    public void Wrapper_AllPublicReadsRejectStaleTailWithoutMovingCursor()
+    {
+        var buffer = new byte[64];
+        Array.Fill(buffer, (byte)0xFF);
+        _packer.MakeWrapper(new ByteData(buffer, 3, 1));
+        _packer.ReadBits(7);
+        int before = _packer.positionInBits;
+
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(2));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBitsWithoutChecks(2));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBytes(new byte[1]));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.EnsureBitsExist(2));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.AdvanceBits(2));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.GetMemory(1));
+        Assert.Throws<IndexOutOfRangeException>(() => { _packer.GetSpan(1); });
+        Assert.That(_packer.positionInBits, Is.EqualTo(before));
+        Assert.That(_packer.ReadBit(), Is.True);
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+    }
+
+    [Test]
+    public void Wrapper_PaddingAllocationDoesNotExtendReadableData()
+    {
+        _packer.MakeWrapper(new ByteData(new byte[1], 0, 1));
+        _packer.AdvanceBytes(1);
+        _packer.EnsurePadding();
+
+        Assert.That(_packer.buffer.Length, Is.GreaterThan(1));
+        Assert.That(_packer.remainingBits, Is.Zero);
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(1));
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.remainingBits, Is.EqualTo(8));
+    }
+
+    [Test]
+    public void Wrapper_EmptySliceAllowsZeroReadsOnly()
+    {
+        _packer.MakeWrapper(new ByteData(new byte[16], 5, 0));
+        Assert.That(_packer.ReadBits(0), Is.Zero);
+        Assert.That(_packer.ReadBitsWithoutChecks(0), Is.Zero);
+        _packer.ReadBytes(Span<byte>.Empty);
+        Assert.That(_packer.GetMemory(0).Length, Is.Zero);
+        Assert.That(_packer.positionInBits, Is.EqualTo(40));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+
+        _packer.MakeWrapper(default);
+        Assert.That(_packer.ReadBits(0), Is.Zero);
+        Assert.That(_packer.buffer, Is.Empty);
+    }
+
+    [Test]
+    public void Wrapper_RejectsInvalidSlicesBeforeReplacingData()
+    {
+        _packer.MakeWrapper(new ByteData(new byte[8], 1, 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _packer.MakeWrapper(new ByteData(new byte[8], -1, 1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _packer.MakeWrapper(new ByteData(new byte[8], 9, 0)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _packer.MakeWrapper(new ByteData(new byte[8], 1, -1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _packer.MakeWrapper(new ByteData(new byte[8], 1, int.MaxValue)));
+        Assert.That(_packer.positionInBits, Is.EqualTo(8));
+        Assert.That(_packer.remainingBits, Is.EqualTo(16));
+    }
+
+    [Test]
+    public void Wrapper_SeekAndSkipValidateSliceAndArithmetic()
+    {
+        _packer.MakeWrapper(new ByteData(new byte[32], 2, 2));
+        int before = _packer.positionInBits;
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.SetBitPosition(0));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.SetBitPosition(33));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.SkipBits(int.MaxValue));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.SkipBits(int.MinValue));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.SkipBytes(int.MaxValue));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.SkipBytes(uint.MaxValue));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.EnsureBitsExist(int.MaxValue));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _packer.AdvanceBytes(int.MaxValue));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _packer.AdvanceBits(-1));
+        Assert.That(_packer.positionInBits, Is.EqualTo(before));
+        _packer.SkipBytes(2);
+        _packer.SkipBytes(-1);
+        Assert.That(_packer.remainingBits, Is.EqualTo(8));
+    }
+
+    [Test]
+    public void Writer_ResetDropsPriorMessageAndKeepsFinalBytePadding()
+    {
+        _packer.WriteBytes(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
+        _packer.ResetPositionAndMode(false);
+        _packer.WriteBits(5, 3);
+        _packer.ResetPositionAndMode(true);
+
+        Assert.That(_packer.length, Is.EqualTo(1));
+        Assert.That(_packer.remainingBits, Is.EqualTo(8));
+        Assert.That(_packer.ReadBits(3), Is.EqualTo(5UL));
+        Assert.That(_packer.remainingBits, Is.EqualTo(5));
+        _packer.ReadBits(5);
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+    }
+
+    [Test]
+    public void Writer_BufferReservationRequiresAdvanceToBecomeReadable()
+    {
+        var span = _packer.GetSpan(2);
+        span[0] = 0xA5;
+        span[1] = 0x5A;
+        Assert.That(_packer.remainingBits, Is.Zero);
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+        _packer.AdvanceBytes(2);
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.ReadBits(16), Is.EqualTo(0x5AA5UL));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBits(1));
+    }
+
+    [Test]
+    public void Writer_ReadScopePreservesHighWaterAndModeChangesDoNotExpandIt()
+    {
+        _packer.WriteBits(0xA5, 8);
+        using (new BitData(_packer).AutoScope())
+        {
+            Assert.That(_packer.isWriting, Is.True);
+            Assert.That(_packer.ReadBits(8), Is.EqualTo(0xA5UL));
+            Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+        }
+        _packer.SetBitPosition(0);
+        _packer.WriteBits(5, 3);
+        _packer.ResetMode(true);
+        Assert.That(_packer.remainingBits, Is.EqualTo(5));
+        _packer.SkipBits(5);
+        _packer.ResetMode(false);
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+    }
+
+    [Test]
+    public void Pool_ReusedWriterDoesNotExposePreviousMessage()
+    {
+        var previous = BitPackerPool.Get();
+        previous.WriteBytes(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
+        previous.ResetPositionAndMode(true);
+        previous.Dispose();
+
+        using var next = BitPackerPool.Get(true);
+        Assert.That(next, Is.SameAs(previous));
+        Assert.That(next.remainingBits, Is.Zero);
+        Assert.Throws<IndexOutOfRangeException>(() => next.ReadBit());
+        next.ResetPositionAndMode(false);
+        next.WriteBits(0xA5, 8);
+        next.ResetPositionAndMode(true);
+        Assert.That(next.ReadBits(8), Is.EqualTo(0xA5UL));
+        Assert.Throws<IndexOutOfRangeException>(() => next.ReadBits(8));
+    }
+
+    [Test]
+    public void Pool_ReusedWrapperDoesNotExposeLongerMessageTail()
+    {
+        var buffer = new byte[32];
+        Array.Fill(buffer, (byte)0xFF);
+        var previous = BitPackerPool.Get(new ByteData(buffer, 2, 20));
+        previous.Dispose();
+
+        using var next = BitPackerPool.Get(new ByteData(buffer, 2, 1));
+        Assert.That(next, Is.SameAs(previous));
+        Assert.That(next.ReadBits(8), Is.EqualTo(0xFFUL));
+        Assert.Throws<IndexOutOfRangeException>(() => next.ReadBitsWithoutChecks(8));
+    }
+
+    [Test]
+    public void Duplicate_CopiesLogicalSliceAndPreservesBoundWithZeroCursor()
+    {
+        _packer.MakeWrapper(new ByteData(new byte[] { 0xFF, 0xA5, 0x5A, 0xFF }, 1, 2));
+        _packer.ReadBits(8);
+        using var duplicate = _packer.Duplicate();
+
+        Assert.That(duplicate.positionInBits, Is.Zero);
+        Assert.That(duplicate.remainingBits, Is.EqualTo(16));
+        Assert.That(duplicate.ReadBits(16), Is.EqualTo(0x5AA5UL));
+        Assert.Throws<IndexOutOfRangeException>(() => duplicate.ReadBits(1));
+        duplicate.ResetPositionAndMode(true);
+        Assert.That(duplicate.remainingBits, Is.EqualTo(16));
+    }
+
+    [TestCase(0)]
+    [TestCase(3)]
+    public void Copy_RejectsReadModeSourceBeyondLogicalEnd(int destinationOffset)
+    {
+        using var source = BitPackerPool.Get(new ByteData(new byte[64], 2, 1));
+        _packer.AdvanceBits(destinationOffset);
+        int before = _packer.positionInBits;
+
+        Assert.Throws<IndexOutOfRangeException>(() =>
+            _packer.WriteBitDataWithoutConsumingIt(new BitData(source, 16, 9)));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.WriteBits(source, 9));
+        Assert.That(_packer.positionInBits, Is.EqualTo(before));
+        Assert.That(source.positionInBits, Is.EqualTo(16));
+    }
+
+    [Test]
+    public void Copy_ConvenienceMethodUsesWrapperLogicalOrigin()
+    {
+        using var source = BitPackerPool.Get(new ByteData(new byte[] { 0xFF, 0xA5, 0x5A, 0xFF }, 1, 2));
+        source.ReadBit();
+        int sourcePosition = source.positionInBits;
+        _packer.WriteBit(true);
+        _packer.WriteBitsWithoutConsumingIt(source, 16);
+
+        Assert.That(source.positionInBits, Is.EqualTo(sourcePosition));
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.ReadBit(), Is.True);
+        Assert.That(_packer.ReadBits(16), Is.EqualTo(0x5AA5UL));
+    }
+
+    [Test]
+    public void Wrapper_UnalignedReadBytesRejectsTruncatedLogicalPayload()
+    {
+        _packer.MakeWrapper(new ByteData(new byte[64], 2, 9));
+        _packer.ReadBit();
+        var bytes = new byte[8];
+        _packer.ReadBytes(bytes);
+        Assert.That(_packer.remainingBits, Is.EqualTo(7));
+        int before = _packer.positionInBits;
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBytes(new byte[1]));
+        Assert.That(_packer.positionInBits, Is.EqualTo(before));
+    }
+
+    [Test]
+    public void BufferWriter_AdvanceCommitsBoundsAndRejectsOverflow()
+    {
+        var writer = new BitPackerWrapper(_packer);
+        writer.GetSpan(1)[0] = 0xA5;
+        writer.Advance(1);
+        Assert.Throws<ArgumentOutOfRangeException>(() => writer.Advance(int.MaxValue));
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.ReadBits(8), Is.EqualTo(0xA5UL));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.ReadBit());
+    }
+
+    [Test]
+    public void Wrapper_InBoundsWritesWorkWithoutPhysicalPadding()
+    {
+        var buffer = new byte[1];
+        _packer.MakeWrapper(new ByteData(buffer, 0, 1));
+        _packer.WriteBitsWithoutChecks(5, 3);
+        _packer.WriteBits(0x1F, 5);
+        Assert.That(buffer[0], Is.EqualTo(0xFD));
+        Assert.Throws<IndexOutOfRangeException>(() => _packer.WriteBit(true));
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.ReadBits(8), Is.EqualTo(0xFDUL));
+    }
+
+    [Test]
+    public void Wrapper_UnalignedCopyWorksWithoutPhysicalPadding()
+    {
+        var bytes = new byte[] { 0xA5, 1, 2, 3, 4, 5, 6, 7, 8, 0x5A };
+        using var source = BitPackerPool.Get();
+        source.WriteBytes(bytes);
+        _packer.MakeWrapper(new ByteData(new byte[11], 0, 11));
+        _packer.AdvanceBit();
+        _packer.WriteBitsWithoutConsumingIt(source, 80);
+
+        _packer.ResetPositionAndMode(true);
+        Assert.That(_packer.ReadBit(), Is.False);
+        var actual = new byte[10];
+        _packer.ReadBytes(actual);
+        CollectionAssert.AreEqual(bytes, actual);
+        Assert.That(_packer.remainingBits, Is.EqualTo(7));
+    }
+
     /// <summary>
     /// Reading 56 bits with only 7 bytes in buffer: the ulong read needs 8 bytes.
     /// Without the read-path fix this can read 1 byte OOB. With fix we throw.
@@ -731,7 +1031,7 @@ public class BitPackerEdgeCaseTests
     }
 
     [Test]
-    public void FragmentationLayer_PerSenderBudget_RejectionReportedOncePerMessage()
+    public void FragmentationLayer_PerSenderBudget_SequencedRejectionReportedOncePerMessage()
     {
         using var sender = new FragmentationLayer();
         using var receiver = new FragmentationLayer();
@@ -743,7 +1043,7 @@ public class BitPackerEdgeCaseTests
         {
             var fragments = new List<byte[]>();
             sender.Send(new ByteData(payload, 0, payload.Length), 24, fragment => Capture(fragment, fragments));
-            Assert.IsFalse(receiver.Receive(3, 0, false,
+            Assert.IsFalse(receiver.Receive(3, (byte)message, true,
                 new ByteData(fragments[0], 0, fragments[0].Length), out _));
         }
 
@@ -756,7 +1056,7 @@ public class BitPackerEdgeCaseTests
 
         for (int i = 0; i < rejectedFragments.Count; i++)
         {
-            Assert.IsFalse(receiver.Receive(3, 0, false,
+            Assert.IsFalse(receiver.Receive(3, 99, true,
                 new ByteData(rejectedFragments[i], 0, rejectedFragments[i].Length), out _));
         }
 

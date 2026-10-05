@@ -18,6 +18,7 @@ namespace PurrNet.Modules
         {
             if (!_physicsScene.IsValid())
                 return 0;
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.SphereCast(ray.origin, radius, ray.direction, raycastHits, maxDistance, layerMask, queryTriggers);
             int colliderCount = _colliders3D.Count;
 
@@ -71,6 +72,7 @@ namespace PurrNet.Modules
             if (!_physicsScene.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.BoxCast(ray.origin, halfExtents, ray.direction, raycastHits, orientation, maxDistance, layerMask, queryTriggers);
             int colliderCount = _colliders3D.Count;
 
@@ -121,6 +123,7 @@ namespace PurrNet.Modules
             if (!_physicsScene.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.CapsuleCast(point1, point2, radius, direction, raycastHits, maxDistance, layerMask, queryTriggers);
             int colliderCount = _colliders3D.Count;
 
@@ -173,6 +176,7 @@ namespace PurrNet.Modules
             if (!_physicsScene.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.OverlapSphere(origin, radius, hits, layerMask, queryTriggers);
             int colliderCount = _colliders3D.Count;
 
@@ -211,6 +215,7 @@ namespace PurrNet.Modules
             if (!_physicsScene.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.OverlapBox(origin, halfExtents, hits, orientation, layerMask, queryTriggers);
             int colliderCount = _colliders3D.Count;
 
@@ -248,6 +253,7 @@ namespace PurrNet.Modules
             if (!_physicsScene.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.OverlapCapsule(point1, point2, radius, hits, layerMask, queryTriggers);
             int colliderCount = _colliders3D.Count;
 
@@ -288,6 +294,7 @@ namespace PurrNet.Modules
             if (!_physicsScene.IsValid())
                 return 0;
 
+            SyncPhysicsTransforms3D();
             int hitCount = _physicsScene.Raycast(ray.origin, ray.direction, raycastHits, maxDistance, layerMask,
                 queryTriggers);
             int colliderCount = _colliders3D.Count;

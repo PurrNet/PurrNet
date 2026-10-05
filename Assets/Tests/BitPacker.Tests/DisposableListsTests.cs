@@ -210,4 +210,88 @@ public class DisposableListsTests
         for (int i = 0; i < 5; i++)
             Assert.AreEqual(i * 2, readList[i], $"Read list item {i} should be equal to {@new[i]}");
     }
+
+    [Test]
+    public void AddRangeFromDisposableListAppendsItsItems()
+    {
+        var target = DisposableList<int>.Create(new[] { 1, 2 });
+        var source = DisposableList<int>.Create(new[] { 3, 4 });
+
+        target.AddRange(source);
+
+        CollectionAssert.AreEqual(new[] { 1, 2, 3, 4 }, target);
+        CollectionAssert.AreEqual(new[] { 3, 4 }, source);
+        target.Dispose();
+        source.Dispose();
+    }
+
+    [Test]
+    public void AddRangeFromItselfAppendsItsOriginalItems()
+    {
+        var list = DisposableList<int>.Create(new[] { 1, 2 });
+
+        list.AddRange(list);
+
+        CollectionAssert.AreEqual(new[] { 1, 2, 1, 2 }, list);
+        list.Dispose();
+    }
+
+    [Test]
+    public void InsertRangeFromDisposableListInsertsAtTheIndex()
+    {
+        var target = DisposableList<int>.Create(new[] { 1, 4 });
+        var source = DisposableList<int>.Create(new[] { 2, 3 });
+
+        target.InsertRange(1, source);
+
+        CollectionAssert.AreEqual(new[] { 1, 2, 3, 4 }, target);
+        target.Dispose();
+        source.Dispose();
+    }
+
+    [Test]
+    public void RangeOverloadsRejectADisposedSource()
+    {
+        var target = DisposableList<int>.Create(new[] { 1 });
+        var source = DisposableList<int>.Create(new[] { 2 });
+        source.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => target.AddRange(source));
+        Assert.Throws<ObjectDisposedException>(() => target.InsertRange(0, source));
+        CollectionAssert.AreEqual(new[] { 1 }, target);
+        target.Dispose();
+    }
+
+    [Test]
+    public void ContinueDisposableReplacesAnUnchangedValueWithACopyOfTheBaseline()
+    {
+        var old = DisposableList<int>.Create(new[] { 5, 6 });
+        var value = DisposableList<int>.Create(new[] { 9 });
+        var previous = value;
+
+        packer.WriteBit(false);
+        packer.ResetPositionAndMode(true);
+
+        Assert.IsFalse(DeltaReadingScope.ContinueDisposable(packer, old, ref value));
+        Assert.IsTrue(previous.isDisposed, "the overwritten value must be disposed");
+        CollectionAssert.AreEqual(new[] { 5, 6 }, value);
+        Assert.AreNotSame(old.list, value.list, "the baseline must be copied, not shared");
+        old.Dispose();
+        value.Dispose();
+    }
+
+    [Test]
+    public void ContinueDisposableLeavesAChangedValueToTheReader()
+    {
+        var old = DisposableList<int>.Create(new[] { 5 });
+        var value = DisposableList<int>.Create(new[] { 9 });
+
+        packer.WriteBit(true);
+        packer.ResetPositionAndMode(true);
+
+        Assert.IsTrue(DeltaReadingScope.ContinueDisposable(packer, old, ref value));
+        CollectionAssert.AreEqual(new[] { 9 }, value);
+        old.Dispose();
+        value.Dispose();
+    }
 }

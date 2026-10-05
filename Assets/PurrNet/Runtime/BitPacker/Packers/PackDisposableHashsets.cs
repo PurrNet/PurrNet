@@ -78,6 +78,7 @@ namespace PurrNet.Packing
                 return;
             }
 
+            DeserializationLimits.ValidateCollectionLength<T>(newCount.value);
             if (value.isDisposed || value.set == null)
                 value = DisposableHashSet<T>.Create();
             else value.Clear();
@@ -86,23 +87,29 @@ namespace PurrNet.Packing
                 return;
 
             DisposableList<T> oldItemsList = default;
+            DisposableList<T> itemsList = default;
 
-            if (oldCount.value >= 0)
+            try
             {
-                oldItemsList = DisposableList<T>.Create(oldCount.value);
-                foreach (var item in oldValue)
-                    oldItemsList.Add(item);
+                if (oldCount.value >= 0)
+                {
+                    oldItemsList = DisposableList<T>.Create(oldCount.value);
+                    foreach (var item in oldValue)
+                        oldItemsList.Add(item);
+                }
+
+                itemsList = DisposableList<T>.Create(newCount.value);
+
+                DeltaPacker<DisposableList<T>>.Read(packer, oldItemsList, ref itemsList);
+
+                for (int i = 0; i < itemsList.Count; i++)
+                    value.Add(itemsList[i]);
             }
-
-            var itemsList = DisposableList<T>.Create(newCount.value);
-
-            DeltaPacker<DisposableList<T>>.Read(packer, oldItemsList, ref itemsList);
-
-            for (int i = 0; i < itemsList.Count; i++)
-                value.Add(itemsList[i]);
-
-            oldItemsList.Dispose();
-            itemsList.Dispose();
+            finally
+            {
+                oldItemsList.Dispose();
+                itemsList.Dispose();
+            }
         }
     }
 }

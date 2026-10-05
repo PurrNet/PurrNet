@@ -2,6 +2,7 @@ using UnityEngine;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using System;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using PurrNet.Packing;
 using PurrNet.Transports;
@@ -51,7 +52,15 @@ namespace PurrNet
             get => _value;
             set
             {
-                if (PurrEquality<T>.Default.Equals(value, _value))
+                ulong? hash = null;
+
+                if (_hashValue)
+                {
+                    _valueHash ??= HashValue(_value);
+                    hash = HashValue(value);
+                }
+
+                if (hash == _valueHash && PurrEquality<T>.Default.Equals(value, _value))
                     return;
 
                 if (isSpawned && !isControllingSyncVar)
@@ -68,6 +77,7 @@ namespace PurrNet
 
                 var oldValue = _value;
                 _value = value;
+                _valueHash = hash;
                 _ignoreServerUpdates = true;
 
                 SetDirty();
@@ -86,6 +96,7 @@ namespace PurrNet
             _id = 0;
             _ignoreServerUpdates = false;
             _value = _initialValue;
+            _valueHash = null;
         }
 
         public override void OnOwnerDisconnected(PlayerID ownerId)
@@ -142,6 +153,7 @@ namespace PurrNet
         public override void OnInitializeModules()
         {
             InvalidateIsController();
+            UpdateValueHash();
         }
 
         public override void OnEarlySpawn()
@@ -297,6 +309,23 @@ namespace PurrNet
         [SerializeField, HideInInspector]
         private T _initialValue;
 
+        private static readonly bool _hashValue = RuntimeHelpers.IsReferenceOrContainsReferences<T>() && typeof(T) != typeof(string);
+
+        private ulong? _valueHash;
+
+        private static ulong HashValue(T value)
+        {
+            using var packer = BitPackerPool.Get();
+            Packer<T>.Write(packer, value);
+            return packer.GetDeterministicHash64();
+        }
+
+        private void UpdateValueHash()
+        {
+            if (_hashValue)
+                _valueHash = HashValue(_value);
+        }
+
         public SyncVar(T initialValue = default, float sendIntervalInSeconds = 0f, bool ownerAuth = false, bool ownerOnly = false)
         {
             _initialValue = initialValue;
@@ -329,6 +358,7 @@ namespace PurrNet
             if (!Packer.Transform(ref _value, newValue))
                 return;
 
+            UpdateValueHash();
             TriggerEvents(oldValue);
         }
 
@@ -394,6 +424,7 @@ namespace PurrNet
             if (!Packer.Transform(ref _value, newValue))
                 return;
 
+            UpdateValueHash();
             TriggerEvents(oldValue);
         }
 

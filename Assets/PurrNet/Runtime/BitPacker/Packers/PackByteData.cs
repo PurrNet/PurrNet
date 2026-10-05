@@ -25,7 +25,8 @@ namespace PurrNet.Packing
                 return;
             }
 
-            byte[] buffer = new byte[length];
+            int byteLength = DeserializationLimits.ValidateByteLength(packer, length.value);
+            byte[] buffer = new byte[byteLength];
             packer.ReadBytes(buffer);
             data = new ByteData(buffer, 0, (int)length.value);
         }
@@ -47,13 +48,15 @@ namespace PurrNet.Packing
         {
             Size length = default;
             Packer<Size>.Read(packer, ref length);
+            int byteLength = DeserializationLimits.ValidateByteLength(packer, length.value);
 
             if (data == null)
                 data = BitPackerPool.Get();
             else data.ResetPositionAndMode(false);
 
-            var dest = data.GetSpan(length);
+            var dest = data.GetSpan(byteLength);
             packer.ReadBytes(dest);
+            data.AdvanceBytes(byteLength);
             data.ResetPositionAndMode(true);
         }
 
@@ -68,11 +71,13 @@ namespace PurrNet.Packing
         {
             Size length = default;
             Packer<Size>.Read(packer, ref length);
+            int byteLength = DeserializationLimits.ValidateByteLength(packer, length.value);
 
             var dataPacker = BitPackerPool.Get();
-            var span = dataPacker.GetSpan(length);
+            var span = dataPacker.GetSpan(byteLength);
             packer.ReadBytes(span);
-            dataPacker.ResetPosition();
+            dataPacker.AdvanceBytes(byteLength);
+            dataPacker.ResetPositionAndMode(true);
 
             data = new BitPackerWithLength(length, dataPacker);
         }
@@ -89,7 +94,7 @@ namespace PurrNet.Packing
         {
             Size length = default;
             Packer<Size>.Read(packer, ref length);
-            int lengthInt = (int)length.value;
+            int lengthInt = DeserializationLimits.ValidateBitLength(packer, length.value);
             int origin = packer.AdvanceBits(lengthInt);
             data = new BitData(packer, origin, lengthInt);
             packer.EnsurePadding();

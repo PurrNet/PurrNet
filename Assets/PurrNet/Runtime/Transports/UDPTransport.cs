@@ -184,6 +184,9 @@ namespace PurrNet.Transports
                 AutoRecycle = true,
                 UseNativeSockets = _useNativeSockets,
                 EnableStatistics = false,
+                // LiteNetLib made path MTU discovery opt-in; without it every connection stays at 1024 bytes.
+                MtuDiscovery = true,
+                ReliableRepairs = true,
                 DisconnectTimeout = Mathf.RoundToInt(_timeoutInSeconds * 1000)
             };
 
@@ -194,6 +197,9 @@ namespace PurrNet.Transports
                 AutoRecycle = true,
                 UseNativeSockets = _useNativeSockets,
                 EnableStatistics = false,
+                // LiteNetLib made path MTU discovery opt-in; without it every connection stays at 1024 bytes.
+                MtuDiscovery = true,
+                ReliableRepairs = true,
                 DisconnectTimeout = Mathf.RoundToInt(_timeoutInSeconds * 1000)
             };
 

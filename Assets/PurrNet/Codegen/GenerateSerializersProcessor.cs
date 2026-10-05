@@ -989,6 +989,9 @@ namespace PurrNet.Codegen
         {
             var fieldType = field.FieldType;
 
+            while (fieldType is IModifierType modifierType)
+                fieldType = modifierType.ElementType;
+
             if (declaringType is GenericInstanceType genericDeclaringType)
             {
                 return SubstituteDeclaringTypeGenerics(fieldType, genericDeclaringType);

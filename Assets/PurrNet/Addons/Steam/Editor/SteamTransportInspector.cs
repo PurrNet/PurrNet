@@ -22,8 +22,11 @@ using UnityEngine;
 namespace PurrNet.Steam.Editor
 {
     [CustomEditor(typeof(SteamTransport), true)]
-    public class SteamTransportInspector : UnityEditor.Editor
+    public class SteamTransportInspector : OptionalInspector
     {
+        protected override bool editorAttributesPropertiesEnabled =>
+            target is GenericTransport transport && transport.isSupported;
+
         public override void OnInspectorGUI()
         {
             var generic = (GenericTransport)target;
@@ -112,11 +115,12 @@ namespace PurrNet.Steam.Editor
                 generic.transport.onConnectionState += OnDirty;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             var generic = (SteamTransport)target;
             if (generic && generic.transform != null)
                 generic.transport.onConnectionState -= OnDirty;
+            base.OnDisable();
         }
 
         private void OnDirty(PurrConnectionState state, bool asServer)

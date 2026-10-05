@@ -42,6 +42,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
+            DeserializationLimits.ValidateCollectionLength<System.Collections.Generic.KeyValuePair<K, V>>(length);
             if (value.isDisposed || value.dictionary == null)
                 value = DisposableDictionary<K, V>.Create();
             else value.Clear();
@@ -157,6 +158,7 @@ namespace PurrNet.Packing
                 return;
             }
 
+            DeserializationLimits.ValidateCollectionLength<System.Collections.Generic.KeyValuePair<TKey, TValue>>(newCount.value);
             if (value.isDisposed || value.dictionary == null)
                 value = DisposableDictionary<TKey, TValue>.Create();
             else value.Clear();
@@ -168,34 +170,41 @@ namespace PurrNet.Packing
 
             DisposableList<TKey> oldKeysList = default;
             DisposableList<TValue> oldValuesList = default;
+            DisposableList<TKey> keysList = default;
+            DisposableList<TValue> valuesList = default;
 
-            if (oldCount.value >= 0)
+            try
             {
-                oldKeysList = DisposableList<TKey>.Create(oldCount.value);
-                oldValuesList = DisposableList<TValue>.Create(oldCount.value);
-
-                foreach (var (key, val) in oldvalue)
+                if (oldCount.value >= 0)
                 {
-                    oldKeysList.Add(PurrCopy<TKey>.Copy(key));
-                    oldValuesList.Add(PurrCopy<TValue>.Copy(val));
+                    oldKeysList = DisposableList<TKey>.Create(oldCount.value);
+                    oldValuesList = DisposableList<TValue>.Create(oldCount.value);
+
+                    foreach (var (key, val) in oldvalue)
+                    {
+                        oldKeysList.Add(PurrCopy<TKey>.Copy(key));
+                        oldValuesList.Add(PurrCopy<TValue>.Copy(val));
+                    }
                 }
+
+                keysList = DisposableList<TKey>.Create(newCount.value);
+                valuesList = DisposableList<TValue>.Create(newCount.value);
+
+                DeltaPacker<DisposableList<TKey>>.Read(packer, oldKeysList, ref keysList);
+                DeltaPacker<DisposableList<TValue>>.Read(packer, oldValuesList, ref valuesList);
+                if (keysList.Count != valuesList.Count)
+                    throw new System.Runtime.Serialization.SerializationException("Dictionary delta counts do not match.");
+
+                for (int i = 0; i < keysList.Count; i++)
+                    value.Add(keysList[i], valuesList[i]);
             }
-
-            var keysList = DisposableList<TKey>.Create(newCount.value);
-            var valuesList = DisposableList<TValue>.Create(newCount.value);
-
-            DeltaPacker<DisposableList<TKey>>.Read(packer, oldKeysList, ref keysList);
-            //packer.ReadDisposableDeltaList(oldKeysList, ref keysList);
-            DeltaPacker<DisposableList<TValue>>.Read(packer, oldValuesList, ref valuesList);
-            //packer.ReadDisposableDeltaList(oldValuesList, ref valuesList);
-
-            for (int i = 0; i < newCount.value; i++)
-                value.Add(keysList[i], valuesList[i]);
-
-            oldKeysList.Dispose();
-            oldValuesList.Dispose();
-            keysList.Dispose();
-            valuesList.Dispose();
+            finally
+            {
+                oldKeysList.Dispose();
+                oldValuesList.Dispose();
+                keysList.Dispose();
+                valuesList.Dispose();
+            }
         }
     }
 }

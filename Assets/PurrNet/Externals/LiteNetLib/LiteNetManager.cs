@@ -242,6 +242,14 @@ namespace LiteNetLib
         public bool MtuDiscovery = false;
 
         /// <summary>
+        /// Offers reliable repairs when connecting and accepts them from peers that offer them. A
+        /// connection that both ends agree on marks resends and adds repair packets to its reliable
+        /// channels, so a lost packet is rebuilt without waiting for a resend. Peers running stock
+        /// LiteNetLib never offer or accept, so connections to them keep the stock wire format.
+        /// </summary>
+        public bool ReliableRepairs = false;
+
+        /// <summary>
         /// First peer. Useful for Client mode
         /// </summary>
         public LiteNetPeer FirstPeer => _headPeer;

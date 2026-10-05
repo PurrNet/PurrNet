@@ -200,14 +200,23 @@ namespace PurrNet.Packing
             if (!hasValue)
                 return;
 
-            int length = Packer<Size>.Read(packer);
+            int length = DeserializationLimits.ValidateCollectionLength<T>(Packer<Size>.Read(packer).value);
             value = DisposableArray<T>.Create(length);
 
-            for (int i = 0; i < length; i++)
+            try
             {
-                T item = default;
-                Packer<T>.Read(packer, ref item);
-                value[i] = item;
+                for (int i = 0; i < length; i++)
+                {
+                    T item = default;
+                    Packer<T>.Read(packer, ref item);
+                    value[i] = item;
+                }
+            }
+            catch
+            {
+                value.Dispose();
+                value = default;
+                throw;
             }
         }
 
@@ -243,6 +252,7 @@ namespace PurrNet.Packing
             long length = default;
 
             packer.ReadInteger(ref length, 31);
+            DeserializationLimits.ValidateCollectionLength<T>(length);
             value = DisposableHashSet<T>.Create((int)length);
 
             for (int i = 0; i < length; i++)
@@ -285,6 +295,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
+            DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
                 value = new Queue<T>((int)length);
             else value.Clear();
@@ -329,6 +340,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
+            DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
                 value = new Stack<T>((int)length);
             else value.Clear();
@@ -376,6 +388,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
+            DeserializationLimits.ValidateCollectionLength<KeyValuePair<K, V>>(length);
             if (value == null)
                 value = new Dictionary<K, V>((int)length);
             else value.Clear();
@@ -464,6 +477,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
+            DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
                 value = new HashSet<T>((int)length);
             else value.Clear();
@@ -517,6 +531,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
 
+            DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
                 value = new List<T>((int)length);
             else value.Clear();
@@ -551,6 +566,7 @@ namespace PurrNet.Packing
                 return;
             }
 
+            DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
                 value = new T[length];
             else if (value.Length != length)

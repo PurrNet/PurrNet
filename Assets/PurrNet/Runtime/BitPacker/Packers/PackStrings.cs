@@ -60,6 +60,7 @@ namespace PurrNet.Packing
                 return;
             }
 
+            DeserializationLimits.ValidateByteLength(packer, strLen);
             var chars = ArrayPool<char>.Shared.Rent(strLen);
             try
             {

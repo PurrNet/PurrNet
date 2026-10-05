@@ -1874,7 +1874,7 @@ namespace PurrNet.Modules
             for (var i = 0; i < _networkTransforms.Count; i++)
             {
                 var nt = _networkTransforms[i];
-                if (!IsLive(nt))
+                if (!IsLive(nt) || !nt.needsAdaptiveRender)
                     continue;
 
                 ushort vouchedTick = 0;
@@ -1919,8 +1919,7 @@ namespace PurrNet.Modules
                 if (nt.IsControlling(localPlayer, _asServer))
                 {
                     uint previousRevision = nt.capturedRevision;
-                    nt.GatherState();
-                    nt.CaptureUnreliableState(_currentTick);
+                    nt.GatherAndCapture(_currentTick);
 
                     if (nt.capturedRevision != previousRevision && nt.id.HasValue)
                         _changedTransforms.Add(nt);
@@ -1949,15 +1948,6 @@ namespace PurrNet.Modules
             }
 
             FlushAcks();
-
-            // Preserve the public legacy HasChanges/Delta* contract. This mirrors the old
-            // module's save point without participating in the new per-peer baselines.
-            for (var i = 0; i < ntCount; i++)
-            {
-                var nt = _networkTransforms[i];
-                if (nt.IsControlling(localPlayer, _asServer))
-                    nt.DeltaSave();
-            }
         }
     }
 }

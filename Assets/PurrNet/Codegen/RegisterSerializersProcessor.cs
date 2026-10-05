@@ -117,6 +117,7 @@ namespace PurrNet.Codegen
             switch (typeRef)
             {
                 case null: return;
+                case GenericParameter: return;
                 case GenericInstanceType git:
                     EnsureCoreClrAccessible(git.ElementType, module);
                     foreach (var arg in git.GenericArguments)
@@ -128,12 +129,72 @@ namespace PurrNet.Codegen
             }
 
             var resolved = typeRef.Resolve();
+            bool hasNestedDeclaringChain = resolved?.IsNested == true;
 
-            while (resolved != null && resolved.IsNested && resolved.Module == module)
+            while (resolved != null && resolved.Module == module)
             {
+                if (!resolved.IsNested)
+                {
+                    if (hasNestedDeclaringChain)
+                        resolved.IsPublic = true;
+                    break;
+                }
+
                 if (!resolved.IsNestedPublic)
                     resolved.IsNestedPublic = true;
                 resolved = resolved.DeclaringType?.Resolve();
+            }
+        }
+
+        public static void EnsureNetworkModuleFieldTypesAccessible(TypeReference typeRef, ModuleDefinition module)
+        {
+            if (typeRef == null || typeRef is GenericParameter)
+                return;
+
+            EnsureCoreClrAccessible(typeRef, module);
+            var resolved = typeRef.Resolve();
+            if (resolved == null || resolved.Module != module)
+                return;
+
+            var visited = new HashSet<TypeDefinition>();
+            foreach (var field in resolved.Fields)
+            {
+                if (field.FieldType.ContainsGenericParameter)
+                    EnsureFieldTypesAccessible(field.FieldType, module, visited);
+            }
+        }
+
+        private static void EnsureFieldTypesAccessible(TypeReference typeRef, ModuleDefinition module,
+            HashSet<TypeDefinition> visited)
+        {
+            switch (typeRef)
+            {
+                case null: return;
+                case GenericParameter: return;
+                case GenericInstanceType generic:
+                    EnsureFieldTypesAccessible(generic.ElementType, module, visited);
+                    foreach (var argument in generic.GenericArguments)
+                        EnsureFieldTypesAccessible(argument, module, visited);
+                    return;
+                case TypeSpecification specification:
+                    EnsureFieldTypesAccessible(specification.ElementType, module, visited);
+                    return;
+            }
+
+            var resolved = typeRef.Resolve();
+            if (resolved == null || resolved.Module != module || !visited.Add(resolved))
+                return;
+
+            if (resolved.IsNested)
+                EnsureCoreClrAccessible(resolved, module);
+            else
+                resolved.IsPublic = true;
+
+            bool isNetworkModule = PostProcessor.InheritsFrom(resolved, typeof(NetworkModule).FullName);
+            foreach (var field in resolved.Fields)
+            {
+                if (!isNetworkModule || field.FieldType.ContainsGenericParameter)
+                    EnsureFieldTypesAccessible(field.FieldType, module, visited);
             }
         }
 

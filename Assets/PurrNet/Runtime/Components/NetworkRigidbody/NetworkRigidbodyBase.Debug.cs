@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    public partial class NetworkRigidbody
+    public abstract partial class NetworkRigidbodyBase
     {
         [Header("Debug")]
         [SerializeField] private bool _debugGizmos;
@@ -13,13 +13,13 @@ namespace PurrNet
 
         private void OnDrawGizmos()
         {
-            if (!_debugGizmos || _rigidbody == null)
+            if (!_debugGizmos || !hasBody)
                 return;
 
             bool amIController = isSpawned && IsController(_ownerAuth);
 
             Gizmos.color = amIController ? Color.green : Color.cyan;
-            Gizmos.DrawWireSphere(_rigidbody.position, 0.2f);
+            Gizmos.DrawWireSphere(bodyPosition, 0.2f);
 
             if (!amIController && isSpawned)
             {
@@ -32,7 +32,7 @@ namespace PurrNet
                     Gizmos.DrawWireSphere(rawPosition, 0.1f);
 
                 Gizmos.color = Color.red;
-                Gizmos.DrawLine(_rigidbody.position, worldTargetPos);
+                Gizmos.DrawLine(bodyPosition, worldTargetPos);
 
                 Gizmos.color = new Color(1f, 0.5f, 0f);
                 Gizmos.matrix = Matrix4x4.TRS(worldTargetPos, NormalizeQuaternion(worldTargetRot), Vector3.one * 0.3f);
@@ -41,12 +41,12 @@ namespace PurrNet
             }
 
             Gizmos.color = Color.blue;
-            Gizmos.DrawRay(_rigidbody.position, GetLinearVelocity() * 0.5f);
+            Gizmos.DrawRay(bodyPosition, GetLinearVelocity() * 0.5f);
         }
 
         private void OnDrawGizmosSelected()
         {
-            if (_rigidbody == null || !isSpawned || IsController(_ownerAuth))
+            if (!hasBody || !isSpawned || IsController(_ownerAuth))
                 return;
 
             if (!TryToWorldPosition(_prePredictionTarget, _targetParent, _targetPositionFrame, out var worldPrePred) ||
@@ -79,14 +79,14 @@ namespace PurrNet
 
         private void DrawDebugGUI()
         {
-            if (!_debugGizmos || !isSpawned || _rigidbody == null)
+            if (!_debugGizmos || !isSpawned || !hasBody)
                 return;
 
             Camera cam = Camera.main;
             if (cam == null)
                 return;
 
-            Vector3 worldPos = _rigidbody.position + Vector3.up * _debugTextOffset;
+            Vector3 worldPos = bodyPosition + Vector3.up * _debugTextOffset;
             Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
 
             if (screenPos.z < 0)
@@ -97,7 +97,7 @@ namespace PurrNet
             bool amIController = IsController(_ownerAuth);
             bool targetAvailable = TryToWorldPosition(_targetPosition, _targetParent, _targetPositionFrame, out var worldTargetPos);
             float posError = targetAvailable ? GetPositionError(worldTargetPos) : 0f;
-            float rotError = targetAvailable ? Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(ToWorldRotation(_targetRotation, _targetParent))) : 0f;
+            float rotError = targetAvailable ? Quaternion.Angle(bodyRotation, NormalizeQuaternion(ToWorldRotation(_targetRotation, _targetParent))) : 0f;
             float velocityMagnitude = GetLinearVelocity().magnitude;
 
             double bufferSpan = 0;
@@ -121,7 +121,7 @@ namespace PurrNet
                 : syncParentInstance ? $"Parent->{syncParentInstance.name}"
                 : _space == RigidbodyTransformSpace.Local ? "Local" : "World";
 
-            string info = $"<b>NetworkRigidbody</b>\n" +
+            string info = $"<b>{GetType().Name}</b>\n" +
                           $"Server: {isServer} | Controller: {amIController}\n" +
                           $"OwnerAuth: {_ownerAuth}\n" +
                           $"Owner: {(owner.HasValue ? owner.Value.ToString() : "none")}\n" +

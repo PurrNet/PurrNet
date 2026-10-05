@@ -73,8 +73,9 @@ namespace PurrNet
 
         private void OnRawDataReceived(Connection conn, uint hash, BitPacker data)
         {
-            if (!_playersManager.TryGetPlayer(conn, out var player))
-                player = default;
+            var player = PlayerID.Server;
+            if (_asServer && !_playersManager.TryGetAuthenticatedPlayer(conn, out player))
+                return;
 
             var bitpos = data.positionInBits;
             if (_actions.TryGetValue(hash, out var actions))

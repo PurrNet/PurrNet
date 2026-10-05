@@ -266,9 +266,12 @@ namespace PurrNet.UTP
                 return;
             }
 
+            bool reliable = channel is Channel.ReliableOrdered or Channel.ReliableUnordered;
+            bool ordered = channel is Channel.ReliableOrdered or Channel.UnreliableSequenced;
+
             // If there are pending fragments queued and this is an ordered channel, enqueue this packet
             // to preserve ordering instead of sending it immediately
-            if (_pendingFragmentSends.Count > 0 && (channel == Channel.ReliableOrdered || channel == Channel.UnreliableSequenced))
+            if ((ordered && _pendingFragmentSends.Count > 0) || (reliable && !SendSinglePacketWithValidation(data, channel)))
             {
                 byte[] packet = new byte[data.length];
                 Buffer.BlockCopy(data.data, data.offset, packet, 0, data.length);
@@ -276,7 +279,8 @@ namespace PurrNet.UTP
                 return;
             }
 
-            SendSinglePacket(data, channel);
+            if (!reliable)
+                SendSinglePacket(data, channel);
 #endif
         }
 
@@ -395,8 +399,7 @@ namespace PurrNet.UTP
                             writer.WriteBytes(span);
                         }
                     }
-                    _driver.EndSend(writer);
-                    return true;
+                    return _driver.EndSend(writer) >= 0;
                 }
                 else
                 {

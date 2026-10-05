@@ -14,19 +14,17 @@ namespace PurrNet.Packing
 
         public void Advance(int count)
         {
-            packer.AdvanceBits(count * 8);
+            packer.AdvanceBytes(count);
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)
         {
-            packer.EnsureBitsExist(sizeHint * 8);
-            return new Memory<byte>(packer.buffer, packer.positionInBytes, sizeHint);
+            return packer.GetMemory(sizeHint);
         }
 
         public Span<byte> GetSpan(int sizeHint = 0)
         {
-            packer.EnsureBitsExist(sizeHint * 8);
-            return new Span<byte>(packer.buffer, packer.positionInBytes, sizeHint);
+            return packer.GetSpan(sizeHint);
         }
 
         public void Dispose()

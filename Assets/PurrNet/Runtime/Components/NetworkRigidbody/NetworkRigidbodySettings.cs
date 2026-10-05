@@ -1,3 +1,4 @@
+#if UNITY_PHYSICS_3D
 using System;
 using UnityEngine;
 
@@ -93,14 +94,7 @@ namespace PurrNet
                 ctx.useKinematicRotation);
         }
 
-        protected static Quaternion NormalizeQuaternion(Quaternion q)
-        {
-            float dot = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
-            if (dot < 0.0001f)
-                return Quaternion.identity;
-            float inv = 1f / Mathf.Sqrt(dot);
-            return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
-        }
+        protected static Quaternion NormalizeQuaternion(Quaternion q) => NetworkRigidbodyMath.NormalizeQuaternion(q);
 
         protected static Vector3 GetLinearVelocity(Rigidbody rb)
         {
@@ -170,3 +164,4 @@ namespace PurrNet
         protected abstract T CreateTyped(NetworkRigidbody networkRigidbody);
     }
 }
+#endif

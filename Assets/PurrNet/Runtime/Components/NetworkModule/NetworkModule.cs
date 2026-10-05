@@ -52,7 +52,7 @@ namespace PurrNet
         /// </summary>
         public virtual bool ownerOnly => false;
 
-        private List<PlayerID> _ownerOnlyObservers;
+        [System.NonSerialized] private List<PlayerID> _ownerOnlyObservers;
 
         /// <summary>
         /// The observers this module is allowed to send to.

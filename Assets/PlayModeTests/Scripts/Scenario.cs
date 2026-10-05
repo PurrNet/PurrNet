@@ -26,7 +26,15 @@ public abstract class Scenario : MonoBehaviour
             var (cr, sr) = await UniTask.WhenAll(clientTask, serverTask);
 
             if (cr.success && sr.success)
+            {
+                if (cr.warning && sr.warning)
+                    return ScenarioResult.Warn($"client: {cr.message} | server: {sr.message}");
+                if (cr.warning)
+                    return ScenarioResult.Warn($"client: {cr.message}");
+                if (sr.warning)
+                    return ScenarioResult.Warn($"server: {sr.message}");
                 return ScenarioResult.Ok();
+            }
             if (!cr.success && !sr.success)
                 return ScenarioResult.Fail($"client: {cr.message} | server: {sr.message}");
             if (!cr.success)

@@ -9,7 +9,7 @@ namespace PurrNet
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static bool __bypassMethodDispatch;
 
-        private ReflectedMethod[] _reflectedMethods;
+        [System.NonSerialized] private ReflectedMethod[] _reflectedMethods;
         private FieldInfo _backReferenceField;
 
         void InitMethodTracking()

@@ -11,7 +11,6 @@ namespace PurrNet.Packing
             if (y is null) return false;
             if (x.Count != y.Count) return false;
 
-            var equality = PurrEquality<T>.Default;
             using var xEnumerator = x.GetEnumerator();
             using var yEnumerator = y.GetEnumerator();
 
@@ -19,7 +18,7 @@ namespace PurrNet.Packing
             {
                 if (!yEnumerator.MoveNext())
                     return false;
-                if (!equality.Equals(xEnumerator.Current, yEnumerator.Current))
+                if (!PurrEquality<T>.Equals(xEnumerator.Current, yEnumerator.Current))
                     return false;
             }
 

@@ -20,7 +20,7 @@ namespace PurrNet
         // actions themselves until the animator can apply them
         readonly List<NetAnimatorRPC> _pendingTriggerActions = new List<NetAnimatorRPC>();
 
-        private AnimatorControllerParameter[] _cachedParameters;
+        [System.NonSerialized] private AnimatorControllerParameter[] _cachedParameters;
         private RuntimeAnimatorController _cachedController;
         private readonly Dictionary<int, int> _paramIndexByHash = new Dictionary<int, int>();
 

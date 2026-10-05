@@ -235,6 +235,12 @@ namespace PurrNet.Packing
             return PurrEquality<T>.Default.Equals(a, b);
         }
 
+        [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool AreEqualUnmanagedRef<T>(ref T a, ref T b) where T : unmanaged
+        {
+            return PurrEquality<T>.MemEquals(ref a, ref b);
+        }
+
         static readonly Dictionary<Type, MethodInfo> _writeExactMethods = new Dictionary<Type, MethodInfo>();
         static readonly Dictionary<Type, MethodInfo> _writeWrappedMethods = new Dictionary<Type, MethodInfo>();
         static readonly Dictionary<Type, MethodInfo> _readExactMethods = new Dictionary<Type, MethodInfo>();

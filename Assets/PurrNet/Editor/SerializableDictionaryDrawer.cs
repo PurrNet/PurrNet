@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 namespace PurrNet.Editor
 {
@@ -12,6 +14,70 @@ namespace PurrNet.Editor
         private const float BottomPadding = 8f;
         private const float ColumnHeaderHeight = 18f;
         private bool _foldout = true;
+
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            var foldout = new Foldout { text = property.displayName, value = _foldout };
+            foldout.RegisterValueChangedCallback(evt =>
+            {
+                if (evt.target == foldout)
+                    _foldout = evt.newValue;
+            });
+
+            var header = new VisualElement();
+            header.style.flexDirection = FlexDirection.Row;
+            var keyHeader = new Label("Key");
+            var valueHeader = new Label("Value");
+            keyHeader.style.flexGrow = valueHeader.style.flexGrow = 1;
+            keyHeader.style.flexBasis = valueHeader.style.flexBasis = 0;
+            header.Add(keyHeader);
+            header.Add(valueHeader);
+            foldout.Add(header);
+
+            var rows = new VisualElement();
+            foldout.Add(rows);
+            var keys = property.FindPropertyRelative("keys");
+            var values = property.FindPropertyRelative("values");
+            var stringKeys = property.FindPropertyRelative("stringKeys");
+            var stringValues = property.FindPropertyRelative("stringValues");
+            int displayedCount = -1;
+            bool displayedSerializableKeys = false;
+
+            void RefreshRows()
+            {
+                bool useSerializableKeys = keys != null && keys.arraySize > 0;
+                var displayKeys = useSerializableKeys ? keys : stringKeys;
+                var displayValues = useSerializableKeys ? values : stringValues;
+                int count = Mathf.Min(displayKeys?.arraySize ?? 0, displayValues?.arraySize ?? 0);
+                if (count == displayedCount && useSerializableKeys == displayedSerializableKeys)
+                    return;
+
+                displayedCount = count;
+                displayedSerializableKeys = useSerializableKeys;
+                rows.Unbind();
+                rows.Clear();
+                for (int i = 0; i < count; i++)
+                {
+                    var row = new VisualElement();
+                    row.style.flexDirection = FlexDirection.Row;
+                    var keyProperty = displayKeys.GetArrayElementAtIndex(i);
+                    var valueProperty = displayValues.GetArrayElementAtIndex(i);
+                    var key = AlchemyIntegration.CreatePropertyGUI(keyProperty, string.Empty) ?? new PropertyField(keyProperty, string.Empty);
+                    var value = AlchemyIntegration.CreatePropertyGUI(valueProperty, string.Empty) ?? new PropertyField(valueProperty, string.Empty);
+                    key.style.flexGrow = value.style.flexGrow = 1;
+                    key.style.flexBasis = value.style.flexBasis = 0;
+                    row.Add(key);
+                    row.Add(value);
+                    row.SetEnabled(false);
+                    rows.Add(row);
+                }
+                rows.Bind(property.serializedObject);
+            }
+
+            RefreshRows();
+            rows.schedule.Execute(RefreshRows).Every(100);
+            return foldout;
+        }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {

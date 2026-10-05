@@ -5,8 +5,13 @@ using UnityEngine;
 namespace PurrNet.Editor
 {
     [CustomEditor(typeof(CompositeTransport), true)]
-    public class CompositeInspector : UnityEditor.Editor
+    public class CompositeInspector : OptionalInspector
     {
+        private static readonly string[] _editorAttributesExcludedProperties =
+            { "_transports", "_ensureAllServersStart" };
+
+        protected override string[] editorAttributesExcludedProperties => _editorAttributesExcludedProperties;
+
         private SerializedProperty _ensureAllServersStart;
         private SerializedProperty _transportArray;
 

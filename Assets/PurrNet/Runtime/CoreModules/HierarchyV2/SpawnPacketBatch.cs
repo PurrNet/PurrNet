@@ -43,6 +43,7 @@ namespace PurrNet.Modules
 
             PackedInt spawnCount = default;
             Packer<PackedInt>.Read(packer, ref spawnCount);
+            DeserializationLimits.ValidateCollectionLength<SpawnPacket>(spawnCount.value);
 
             SpawnPacket spawn = default;
 
@@ -60,6 +61,7 @@ namespace PurrNet.Modules
 
             PackedInt despawnCount = default;
             Packer<PackedInt>.Read(packer, ref despawnCount);
+            DeserializationLimits.ValidateCollectionLength<DespawnPacket>(despawnCount.value);
 
             DespawnPacket despawn = default;
 

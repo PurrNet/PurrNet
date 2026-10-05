@@ -3,9 +3,9 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    public partial class NetworkRigidbody
+    public abstract partial class NetworkRigidbodyBase
     {
-        internal AppliedForce EncodeForceAtPosition(Vector3 force, Vector3 worldPosition, ForceMode mode)
+        internal AppliedForce EncodeForceAtPosition(Vector3 force, Vector3 worldPosition, NetworkForceMode mode)
         {
             var data = new AppliedForce { force = force, mode = mode };
             if (_positionTransform != null)

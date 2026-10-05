@@ -52,6 +52,8 @@ namespace PurrNet.Transports
         [SerializeField, HideInInspector] private string _roomName;
         [SerializeField, HideInInspector] private string _region = "eu-central";
         [SerializeField, HideInInspector] private string _host;
+        private string _relayRoomName;
+        [NonSerialized] private string _projectKeyOverride;
 
         [Header("Shared Settings")]
         [Tooltip("The amount of time in seconds before socket is disconnected due to no data being received.")]
@@ -90,6 +92,48 @@ namespace PurrNet.Transports
             get => _roomName;
             set => _roomName = value;
         }
+
+        /// <summary>
+        /// The project key sent to the relay balancer. By default this is the project linked through
+        /// PurrServices (Tools → PurrNet → PurrServices), the same project-wide setting every other
+        /// PurrNet service uses: the Player Builds profile, or the Unity Editor override while it is
+        /// enabled in the editor. Setting this property overrides it for this transport at runtime.
+        /// Empty means the anonymous development relay, which must not be used in production.
+        /// </summary>
+        public string projectKey
+        {
+            get => string.IsNullOrWhiteSpace(_projectKeyOverride) ? PurrServicesProjectLink.projectKey : _projectKeyOverride;
+            set => _projectKeyOverride = value;
+        }
+
+        /// <summary>True when rooms will be opened under a PurrNet project rather than the anonymous relay.</summary>
+        public bool hasProjectKey => !string.IsNullOrWhiteSpace(projectKey);
+
+        /// <summary>The relay-side name of the current room (namespaced when a project key is set).</summary>
+        public string relayRoomName => string.IsNullOrEmpty(_relayRoomName) ? _roomName : _relayRoomName;
+
+        /// <summary>
+        /// The project's relay budget (players and traffic, used and allowed) as the
+        /// balancer last reported it when this transport opened or joined a room.
+        /// Null on the anonymous relay and before the first answer. Also set when
+        /// the balancer refuses a room for being over a cap.
+        /// </summary>
+        public RelayUsage relayUsage { get; private set; }
+
+        private void NoteRelayUsage(RelayUsage usage)
+        {
+            if (usage == null || !usage.isValid) return;
+            relayUsage = usage;
+            var players = usage.players;
+            var traffic = usage.traffic;
+            if (traffic.allowedBytes > 0 && traffic.usedBytes >= traffic.allowedBytes * 0.8)
+                PurrLogger.LogError($"[PurrTransport] Relay traffic for {traffic.month} is at {usage}. Past the allowance, rooms and joins are refused until next month.");
+            else if (players.allowed > 0 && players.used >= players.allowed * 0.8)
+                PurrLogger.LogWarning($"[PurrTransport] Relay players near the project's limit: {usage}.");
+        }
+
+        private static string RelayNameOf(string returned, string requested) =>
+            string.IsNullOrEmpty(returned) ? requested : returned;
 
         /// <summary>Attempt a direct connection when both players enable it. Configure before connecting.</summary>
         public bool attemptDirectConnection
@@ -319,7 +363,7 @@ namespace PurrNet.Transports
         {
             if (!string.IsNullOrEmpty(_roomName))
             {
-                var (checkedRoom, roomExists) = await WithDeadline(PurrTransportUtils.RoomExistsAsync(_masterServer, _roomName), timeoutSeconds);
+                var (checkedRoom, roomExists) = await WithDeadline(PurrTransportUtils.RoomExistsAsync(_masterServer, _roomName, projectKey), timeoutSeconds);
 
                 if (checkedRoom && roomExists)
                     return await ProbeConnection(address, port, useAddress, timeoutSeconds, token);
@@ -598,6 +642,7 @@ namespace PurrNet.Transports
                 AutoRecycle = true,
                 EnableStatistics = false,
                 IPv6Enabled = false,
+                ReliableRepairs = true,
                 DisconnectTimeout = Mathf.RoundToInt(_timeoutInSeconds * 1000)
             };
 
@@ -608,6 +653,7 @@ namespace PurrNet.Transports
                 AutoRecycle = true,
                 EnableStatistics = false,
                 IPv6Enabled = false,
+                ReliableRepairs = true,
                 DisconnectTimeout = Mathf.RoundToInt(_timeoutInSeconds * 1000)
             };
 
@@ -998,7 +1044,7 @@ namespace PurrNet.Transports
         {
             var authenticate = new ClientAuthenticate()
             {
-                roomName = _roomName,
+                roomName = relayRoomName,
                 clientSecret = _hostJoinInfo.secret,
                 webRtcP2P = webRtcP2PAvailable && hostUsesWebRtc
             };
@@ -1026,7 +1072,7 @@ namespace PurrNet.Transports
 
             var authenticate = new ClientAuthenticate()
             {
-                roomName = _roomName,
+                roomName = relayRoomName,
                 clientSecret = _hostJoinInfo.secret,
                 nat = serverNatEnabled,
                 webRtcP2P = webRtcP2PAvailable
@@ -1042,7 +1088,7 @@ namespace PurrNet.Transports
         {
             var authenticate = new ClientAuthenticate()
             {
-                roomName = _roomName,
+                roomName = relayRoomName,
                 clientSecret = _clientJoinInfo.secret,
                 webRtcP2P = webRtcP2PAvailable && clientUsesWebRtc
             };
@@ -1057,7 +1103,7 @@ namespace PurrNet.Transports
         {
             var authenticate = new ClientAuthenticate
             {
-                roomName = _roomName,
+                roomName = relayRoomName,
                 clientSecret = _clientJoinInfo.secret,
                 nat = clientNatEnabled,
                 webRtcP2P = webRtcP2PAvailable
@@ -1138,6 +1184,8 @@ namespace PurrNet.Transports
 
                         SetServer(_preparedHostMigrationServer);
                         _hostJoinInfo = _preparedHostMigrationJoinInfo;
+                        _relayRoomName = RelayNameOf(_hostJoinInfo.roomName, _roomName);
+                        NoteRelayUsage(_hostJoinInfo.usage);
                     }
                     else
                     {
@@ -1151,7 +1199,9 @@ namespace PurrNet.Transports
                         if (token.IsCancellationRequested)
                             return;
 
-                        _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token);
+                        _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token, projectKey);
+                        _relayRoomName = RelayNameOf(_hostJoinInfo.roomName, _roomName);
+                        NoteRelayUsage(_hostJoinInfo.usage);
                     }
 
                     if (token.IsCancellationRequested)
@@ -1186,6 +1236,12 @@ namespace PurrNet.Transports
                 }
                 catch (OperationCanceledException)
                 {
+                }
+                catch (RelayRefusedException e)
+                {
+                    StopListening();
+                    if (e.usage != null && e.usage.isValid) relayUsage = e.usage;
+                    PurrLogger.LogError(e.Message);
                 }
                 catch (Exception e)
                 {
@@ -1295,7 +1351,9 @@ namespace PurrNet.Transports
 
                 AddCancellation(token, false);
 
-                _clientJoinInfo = await PurrTransportUtils.Join(_masterServer, _roomName, token);
+                _clientJoinInfo = await PurrTransportUtils.Join(_masterServer, _roomName, token, projectKey);
+                _relayRoomName = RelayNameOf(_clientJoinInfo.roomName, _roomName);
+                NoteRelayUsage(_clientJoinInfo.usage);
 
                 if (token.IsCancellationRequested)
                     return;

@@ -1902,12 +1902,16 @@ namespace PurrNet.Codegen
             }
         }
 
-        private static void StripBody(MethodDefinition method, string methodName, PurrNetSettings settings, StripCodeModeOverride overrideMode)
+        private static void StripBody(MethodDefinition method, string methodName, PurrNetSettings settings, StripCodeModeOverride overrideMode,
+            bool preserveMethod = false)
         {
             var mode = GetMode(settings, overrideMode);
 
             if (mode == StripCodeMode.DoNotStrip)
                 return;
+
+            if (preserveMethod && mode == StripCodeMode.StripAll)
+                mode = StripCodeMode.ReplaceWithEmptyMethod;
 
             var il = method.Body.GetILProcessor();
             method.Body.ExceptionHandlers.Clear();
@@ -2802,7 +2806,7 @@ namespace PurrNet.Codegen
             {
                 if (settings.stripServerCode && methodRpc.Signature is { runLocally: false, type: RPCType.ServerRPC })
                 {
-                    StripBody(method, methodRpc.ogName, settings, methodRpc.Signature.stripCodeMode);
+                    StripBody(method, methodRpc.ogName, settings, methodRpc.Signature.stripCodeMode, preserveMethod: true);
                     FixShortFormJumps(method);
                 }
             }
@@ -4000,6 +4004,9 @@ namespace PurrNet.Codegen
                     return null!;
                 }
 
+                GenerateDeltaSerializersProcessor.inlinedDeltaReadMethods?.Clear();
+                GenerateDeltaSerializersProcessor.inlinedDeltaWriteMethods?.Clear();
+
                 PurrNetSettings settings;
                 using (profile?.Measure(IlppProfile.Phase.SettingsRead))
                     settings = PurrNetSettings.GetOrCreateSettings();
@@ -4156,6 +4163,9 @@ namespace PurrNet.Codegen
                             type.FullName == idFullName || InheritsFrom(type, idFullName);
                         bool inheritsFromNetworkClass =
                             type.FullName == classFullName || InheritsFrom(type, classFullName);
+
+                        if (inheritsFromNetworkClass && type.HasGenericParameters)
+                            RegisterSerializersProcessor.EnsureNetworkModuleFieldTypesAccessible(type, module);
 
                         using var _rpcMethods = DisposableList<RPCMethod>.Create(32);
 
@@ -4449,7 +4459,7 @@ namespace PurrNet.Codegen
         {
             void PatchTypeRef(TypeReference typeRef)
             {
-                if (typeRef == null) return;
+                if (typeRef == null || typeRef is GenericParameter) return;
                 if (typeRef is GenericInstanceType genType)
                 {
                     PatchTypeRef(genType.ElementType);

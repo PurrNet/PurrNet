@@ -129,12 +129,15 @@ namespace PurrNet.Modules
         private uint _syncedTick;
         private float _lastSyncTime = -99;
         private double _lastTickTime;
-        private const int MaxTickPerFrame = 5;
+        public const int defaultMaxTicksPerFrame = 5;
+        private readonly int _maxTicksPerFrame;
 
         private readonly BroadcastModule _broadcaster;
 
-        public TickManager(int tickRate, INetworkManager nm, BroadcastModule broadcaster, bool asServer)
+        public TickManager(int tickRate, INetworkManager nm, BroadcastModule broadcaster, bool asServer,
+            int maxTicksPerFrame = defaultMaxTicksPerFrame)
         {
+            _maxTicksPerFrame = Math.Max(1, maxTicksPerFrame);
             _asServer = asServer;
             _identityTicks = new PurrAction<NetworkIdentity>(
                 asServer ? static identity => identity.ServerTick() : static identity => identity.ClientTick(), 256);
@@ -209,7 +212,7 @@ namespace PurrNet.Modules
                 localTick++;
                 floatingPoint = 0;
 
-                bool triggerNormalTicks = ticksHandled < MaxTickPerFrame;
+                bool triggerNormalTicks = ticksHandled < _maxTicksPerFrame;
 
                 if (triggerNormalTicks)
                     onPreTick?.Invoke();

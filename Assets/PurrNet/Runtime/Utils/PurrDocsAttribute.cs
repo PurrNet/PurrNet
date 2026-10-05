@@ -1,6 +1,10 @@
 using System;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_EDITOR
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
+#endif
 
 namespace PurrNet.Utils
 {
@@ -21,6 +25,24 @@ namespace PurrNet.Utils
     {
         private const float IconWidth = 20f;
         private static GUIContent iconContent;
+
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            var button = new Button(() =>
+            {
+                if (attribute is PurrDocsAttribute helpLink)
+                    Application.OpenURL("https://purrnet.dev/docs/" + helpLink.url);
+            }) { text = "?", tooltip = "Open documentation" };
+            button.style.width = IconWidth;
+            row.Add(button);
+            var field = new PropertyField(property);
+            field.style.flexGrow = 1;
+            field.BindProperty(property.serializedObject);
+            row.Add(field);
+            return row;
+        }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {

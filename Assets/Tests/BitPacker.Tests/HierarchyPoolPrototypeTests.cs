@@ -475,6 +475,100 @@ public class HierarchyPoolPrototypeTests
         }
     }
 
+    [Test]
+    public void WalkThePathKeepsSiblingsWhenIntermediateIsMissing()
+    {
+        var parent = new GameObject("Parent");
+        var items = new Transform[4];
+        try
+        {
+            parent.AddComponent<NetworkIdentity>();
+            for (int i = 0; i < items.Length; i++)
+            {
+                items[i] = new GameObject("Item" + i).AddComponent<NetworkIdentity>().transform;
+                HierarchyPool.WalkThePath(parent.transform, items[i], new[] { i, 0 }, false);
+            }
+
+            CollectionAssert.AreEqual(items, ChildrenOf(parent.transform));
+        }
+        finally
+        {
+            Object.DestroyImmediate(parent);
+            foreach (var item in items)
+            {
+                if (item)
+                    Object.DestroyImmediate(item.gameObject);
+            }
+        }
+    }
+
+    [Test]
+    public void WalkThePathAppendsWithoutShiftingExistingChildrenWhenIntermediateIsMissing()
+    {
+        var parent = new GameObject("Parent");
+        var items = new Transform[3];
+        try
+        {
+            parent.AddComponent<NetworkIdentity>();
+            var model = new GameObject("Model").transform;
+            model.SetParent(parent.transform, false);
+            for (int i = 0; i < items.Length; i++)
+            {
+                items[i] = new GameObject("Item" + i).AddComponent<NetworkIdentity>().transform;
+                HierarchyPool.WalkThePath(parent.transform, items[i], new[] { i, 1 }, false);
+            }
+
+            CollectionAssert.AreEqual(new[] { model, items[0], items[1], items[2] }, ChildrenOf(parent.transform));
+            Assert.That(model.childCount, Is.Zero);
+        }
+        finally
+        {
+            Object.DestroyImmediate(parent);
+            foreach (var item in items)
+            {
+                if (item)
+                    Object.DestroyImmediate(item.gameObject);
+            }
+        }
+    }
+
+    [Test]
+    public void WalkThePathFollowsExistingIntermediatesToTheTargetIndex()
+    {
+        var parent = new GameObject("Parent");
+        var instance = new GameObject("Instance").AddComponent<NetworkIdentity>().transform;
+        try
+        {
+            parent.AddComponent<NetworkIdentity>();
+            AddChild(parent, "NetworkChild");
+            var wrapper = new GameObject("Wrapper").transform;
+            wrapper.SetParent(parent.transform, false);
+            new GameObject("Inner0").transform.SetParent(wrapper, false);
+            var inner1 = new GameObject("Inner1").transform;
+            inner1.SetParent(wrapper, false);
+            var existing = new GameObject("Existing").transform;
+            existing.SetParent(inner1, false);
+
+            HierarchyPool.WalkThePath(parent.transform, instance, new[] { 0, 1, 1 }, false);
+
+            CollectionAssert.AreEqual(new[] { instance, existing }, ChildrenOf(inner1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(parent);
+            if (instance)
+                Object.DestroyImmediate(instance.gameObject);
+        }
+    }
+
+    private static Transform[] ChildrenOf(Transform parent)
+    {
+        var children = new Transform[parent.childCount];
+        for (int i = 0; i < children.Length; i++)
+            children[i] = parent.GetChild(i);
+        return children;
+    }
+
     private static GameObject CreateRootWithNestedChildren(string name)
     {
         var root = new GameObject(name);

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace PurrNet
 {
     /// <summary>
-    /// Pluggable origin converter for <see cref="NetworkRigidbody"/>.
+    /// Pluggable origin converter for <see cref="NetworkRigidbodyBase"/> (NetworkRigidbody and NetworkRigidbody2D).
     ///
     /// In an origin-shifted world each peer runs with a different local Unity
     /// origin, so a raw <see cref="Vector3"/> position is meaningless on another
@@ -20,9 +20,9 @@ namespace PurrNet
     /// offset and every buffered snapshot stays correct.
     ///
     /// Resolution order on spawn (first non-null wins):
-    /// 1. Runtime override set via <see cref="NetworkRigidbody.SetPositionTransform"/>.
+    /// 1. Runtime override set via <see cref="NetworkRigidbodyBase.SetPositionTransform"/>.
     /// 2. Sibling component implementing this interface on the same GameObject.
-    /// 3. Static fallback at <see cref="NetworkRigidbody.defaultPositionTransform"/>.
+    /// 3. Static fallback at <see cref="NetworkRigidbodyBase.defaultPositionTransform"/>.
     ///
     /// When none is installed, positions travel on the wire as the legacy
     /// quantized <c>CompressedVector3</c> in this peer's own Unity world space
@@ -36,7 +36,7 @@ namespace PurrNet
         /// peer's Unity world space) into the shared peer-agnostic absolute frame
         /// that travels on the wire — e.g. add this peer's origin offset.
         /// </summary>
-        double3 ToAbsolute(NetworkRigidbody self, Vector3 localWorldPos);
+        double3 ToAbsolute(NetworkRigidbodyBase self, Vector3 localWorldPos);
 
         /// <summary>
         /// Receiver side. Convert <paramref name="absolutePosition"/> (a position in
@@ -44,6 +44,6 @@ namespace PurrNet
         /// space — e.g. subtract this peer's origin offset. Must be the inverse of
         /// <see cref="ToAbsolute"/> for the current origin.
         /// </summary>
-        Vector3 ToLocal(NetworkRigidbody self, double3 absolutePosition);
+        Vector3 ToLocal(NetworkRigidbodyBase self, double3 absolutePosition);
     }
 }

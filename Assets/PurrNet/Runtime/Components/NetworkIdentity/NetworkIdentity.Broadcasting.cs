@@ -638,6 +638,19 @@ namespace PurrNet
                 return false;
             }
 
+            if (!networkManager)
+            {
+                if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })
+                {
+                    PurrLogger.LogError(
+                        $"Trying to send RPC `{signature.rpcName}` from `{GetType().Name}` whose NetworkManager was destroyed.\n" +
+                        "This object is left over from a previous session; something (e.g. an event subscription) still references it.");
+                }
+                module = null;
+                _validatingRPCMarker.End();
+                return false;
+            }
+
             if (!networkManager.TryGetRpcModule(networkManager.isServer, out module))
             {
                 if (signature is { runLocally: false, channel: Channel.ReliableOrdered or Channel.ReliableUnordered })

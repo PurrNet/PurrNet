@@ -17,8 +17,8 @@ public class NetworkRigidbodyPositionFrameTests
     private sealed class OriginTransform : INetworkRigidbodyPositionTransform
     {
         public double3 offset = new double3(10000, 0, 0);
-        public double3 ToAbsolute(NetworkRigidbody self, Vector3 position) => offset + new double3(position.x, position.y, position.z);
-        public Vector3 ToLocal(NetworkRigidbody self, double3 position)
+        public double3 ToAbsolute(NetworkRigidbodyBase self, Vector3 position) => offset + new double3(position.x, position.y, position.z);
+        public Vector3 ToLocal(NetworkRigidbodyBase self, double3 position)
         {
             var local = position - offset;
             return new Vector3((float)local.x, (float)local.y, (float)local.z);
@@ -212,13 +212,13 @@ public class NetworkRigidbodyPositionFrameTests
         Assert.That(Vector3.Distance(expected, actual), Is.LessThan(0.0001f),
             "Allow float rounding when decoding CompressedVector3.");
     }
-    private T Field<T>(string name) => (T)typeof(NetworkRigidbody).GetField(name, PrivateInstance)!.GetValue(_networkBody);
-    private object Invoke(string name, params object[] args) => typeof(NetworkRigidbody).GetMethod(name, PrivateInstance)!.Invoke(_networkBody, args);
+    private T Field<T>(string name) => (T)typeof(NetworkRigidbodyBase).GetField(name, PrivateInstance)!.GetValue(_networkBody);
+    private object Invoke(string name, params object[] args) => typeof(NetworkRigidbodyBase).GetMethod(name, PrivateInstance)!.Invoke(_networkBody, args);
 
     private void ReceiveRpc(string name, RigidbodyStateData state)
     {
         // Exercise the actual receiver body after IL postprocessing, bypassing the send wrapper.
-        var receiver = typeof(NetworkRigidbody).GetMethods(PrivateInstance | BindingFlags.Public)
+        var receiver = typeof(NetworkRigidbodyBase).GetMethods(PrivateInstance | BindingFlags.Public)
             .Single(method => method.Name.StartsWith(name + "_Original_", System.StringComparison.Ordinal));
         if (name == "Teleport")
         {

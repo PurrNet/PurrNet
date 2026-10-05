@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace PurrNet
 {
-    public partial class NetworkRigidbody
+    public abstract partial class NetworkRigidbodyBase
     {
         private const float HalfVectorMax = 65504f;
         private const float HalfVectorWarningThreshold = HalfVectorMax * 0.5f;
@@ -23,20 +23,20 @@ namespace PurrNet
 
         private bool IsCurrentRigidbodyStateFinite()
         {
-            return IsFinite(_rigidbody.position)
-                   && IsFinite(_rigidbody.rotation)
+            return IsFinite(bodyPosition)
+                   && IsFinite(bodyRotation)
                    && IsFinite(GetLinearVelocity())
-                   && IsFinite(_rigidbody.angularVelocity);
+                   && IsFinite(bodyAngularVelocity);
         }
 
         private bool ValidateLocalStateForSync(string source)
         {
             var parentIdentity = GetSyncParentIdentity(out var isSoftParent);
             var parent = parentIdentity ? parentIdentity.transform : null;
-            var localPosition = _rigidbody.position;
-            var localRotation = _rigidbody.rotation;
+            var localPosition = bodyPosition;
+            var localRotation = bodyRotation;
             var localLinearVelocity = GetLinearVelocity();
-            var localAngularVelocity = _rigidbody.angularVelocity;
+            var localAngularVelocity = bodyAngularVelocity;
             var syncPosition = ReadSyncPosition(parent);
             var syncRotation = ReadRotation(parent);
             var syncLinearVelocity = ReadLinearVelocity(parent);
@@ -60,7 +60,7 @@ namespace PurrNet
                         ? "velocity exceeds HalfVector3 range"
                         : "state contains NaN or Infinity";
                     PurrLogger.LogError(
-                        $"Rejected NetworkRigidbody state before sync because {reason}.\n" +
+                        $"Rejected {GetType().Name} state before sync because {reason}.\n" +
                         $"source={source} {GetNetworkContext(parentIdentity, isSoftParent)}\n" +
                         $"local: pos={localPosition} rot={localRotation} velocity={localLinearVelocity} angularVelocity={localAngularVelocity}\n" +
                         $"sync: pos={syncPosition} rot={syncRotation} velocity={syncLinearVelocity} angularVelocity={syncAngularVelocity}\n" +
@@ -78,7 +78,7 @@ namespace PurrNet
             if (largePackedVelocity && !_largePackedVelocityReported)
             {
                 PurrLogger.LogWarning(
-                    $"NetworkRigidbody velocity is approaching HalfVector3 range.\n" +
+                    $"{GetType().Name} velocity is approaching HalfVector3 range.\n" +
                     $"source={source} {GetNetworkContext(parentIdentity, isSoftParent)}\n" +
                     $"local: pos={localPosition} velocity={localLinearVelocity} angularVelocity={localAngularVelocity}\n" +
                     $"sync: pos={syncPosition} velocity={syncLinearVelocity} angularVelocity={syncAngularVelocity}\n" +
@@ -134,7 +134,7 @@ namespace PurrNet
             {
                 string direction = incoming ? "incoming" : "outgoing";
                 PurrLogger.LogError(
-                    $"Rejected {direction} NetworkRigidbody state because it contains invalid data.\n" +
+                    $"Rejected {direction} {GetType().Name} state because it contains invalid data.\n" +
                     $"source={source} {GetNetworkContext(data.parent, data.isSoftParent)}\n" +
                     $"frame={data.positionFrame} position={syncPosition} rotation={rotation} velocity={linearVelocity} angularVelocity={angularVelocity} senderTime={data.time:F6}\n" +
                     GetCurrentRigidbodyState(), this);
@@ -166,15 +166,15 @@ namespace PurrNet
                          && IsFinite(worldTargetRotation)
                          && IsFinite(worldTargetLinearVelocity)
                          && IsFinite(worldTargetAngularVelocity)
-                         && IsFinite(_rigidbody.position)
-                         && IsFinite(_rigidbody.rotation)
+                         && IsFinite(bodyPosition)
+                         && IsFinite(bodyRotation)
                          && IsFinite(GetLinearVelocity())
-                         && IsFinite(_rigidbody.angularVelocity);
+                         && IsFinite(bodyAngularVelocity);
 
             if (valid)
             {
                 positionError = GetPositionError(worldTargetPosition);
-                rotationError = Quaternion.Angle(_rigidbody.rotation, NormalizeQuaternion(worldTargetRotation));
+                rotationError = Quaternion.Angle(bodyRotation, NormalizeQuaternion(worldTargetRotation));
                 valid = IsFinite(positionError) && IsFinite(rotationError);
             }
 
@@ -187,7 +187,7 @@ namespace PurrNet
             if (!_invalidCorrectionStateReported)
             {
                 PurrLogger.LogError(
-                    $"Rejected NetworkRigidbody correction because its state contains NaN or Infinity.\n" +
+                    $"Rejected {GetType().Name} correction because its state contains NaN or Infinity.\n" +
                     $"{GetNetworkContext(_targetParent ? _targetParent.GetComponent<NetworkIdentity>() : null, _softParent != null)}\n" +
                     $"target sync: pos={_targetPosition} rot={_targetRotation} velocity={_targetLinearVelocity} angularVelocity={_targetAngularVelocity}\n" +
                     $"target world: pos={worldTargetPosition} rot={worldTargetRotation} velocity={worldTargetLinearVelocity} angularVelocity={worldTargetAngularVelocity}\n" +
@@ -233,10 +233,10 @@ namespace PurrNet
 
         private string GetCurrentRigidbodyState()
         {
-            if (!_rigidbody)
+            if (!hasBody)
                 return "rigidbody=<null>";
 
-            return $"rigidbody: pos={_rigidbody.position} rot={_rigidbody.rotation} velocity={GetLinearVelocity()} angularVelocity={_rigidbody.angularVelocity} kinematic={_rigidbody.isKinematic} sleeping={_rigidbody.IsSleeping()}";
+            return $"rigidbody: pos={bodyPosition} rot={bodyRotation} velocity={GetLinearVelocity()} angularVelocity={bodyAngularVelocity} kinematic={bodyIsKinematic} sleeping={bodyIsSleeping}";
         }
 
         private string GetPreviousControllerSample()

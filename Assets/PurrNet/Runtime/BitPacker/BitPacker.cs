@@ -23,21 +23,33 @@ namespace PurrNet.Packing
         public bool isWrapper { get; private set; }
 
         private int _positionInBits;
+        private int _readStartInBits;
+        private int _readEndInBits;
+        private const int MAX_BIT_POSITION = int.MaxValue & ~7;
 
         public int positionInBits
         {
             get => _positionInBits;
         }
 
-        public int positionInBytes => (_positionInBits + 7) >> 3;
+        public int positionInBytes => BytesForBits(_positionInBits);
+
+        /// <summary>
+        /// Bits left in the logical data, including padding in its final byte.
+        /// Buffer capacity and the cursor's absolute byte offset are excluded.
+        /// </summary>
+        public int remainingBits => Math.Max(0, _readEndInBits - _positionInBits);
+
+        /// <summary>Complete bytes readable from the current, possibly unaligned, cursor.</summary>
+        public int remainingBytes => remainingBits >> 3;
 
         public int length
         {
             get
             {
-                if (isWrapper)
-                    return _buffer.Length;
-                return positionInBytes;
+                if (isWrapper || _isReading)
+                    return BytesForBits(Math.Max(_readEndInBits, _positionInBits) - _readStartInBits);
+                return positionInBytes - (_readStartInBits >> 3);
             }
         }
 
@@ -90,8 +102,7 @@ namespace PurrNet.Packing
 
         public void AdvanceBytes(int count)
         {
-            EnsureBitsExist(count * 8);
-            _positionInBits += count * 8;
+            AdvanceBits(BitsForBytes(count));
         }
 
         [UsedByIL, MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -121,18 +132,18 @@ namespace PurrNet.Packing
 
         public Memory<byte> GetMemory(int sizeHint = 0)
         {
-            EnsureBitsExist(sizeHint * 8);
+            EnsureBitsExist(positionInBytes << 3, BitsForBytes(sizeHint));
             return new Memory<byte>(_buffer, positionInBytes, sizeHint);
         }
 
         public ArraySegment<byte> AsSegment()
         {
-            return new ArraySegment<byte>(_buffer, 0, length);
+            return new ArraySegment<byte>(_buffer, _readStartInBits >> 3, length);
         }
 
         public Span<byte> GetSpan(int sizeHint = 0)
         {
-            EnsureBitsExist(sizeHint * 8);
+            EnsureBitsExist(positionInBytes << 3, BitsForBytes(sizeHint));
             return new Span<byte>(_buffer, positionInBytes, sizeHint);
         }
 
@@ -143,8 +154,18 @@ namespace PurrNet.Packing
 
         public void MakeWrapper(ByteData data)
         {
-            _buffer = data.data;
-            _positionInBits = data.offset * 8;
+            var source = data.data ?? Array.Empty<byte>();
+            if (data.offset < 0 || data.offset > source.Length)
+                throw new ArgumentOutOfRangeException(nameof(data), "Invalid byte offset.");
+            if (data.length < 0 || data.length > source.Length - data.offset ||
+                (long)data.offset + data.length > (MAX_BIT_POSITION >> 3))
+                throw new ArgumentOutOfRangeException(nameof(data), "Invalid byte length.");
+
+            _buffer = source;
+            _readStartInBits = data.offset << 3;
+            _readEndInBits = (data.offset + data.length) << 3;
+            _positionInBits = _readStartInBits;
+            _isReading = true;
             isWrapper = true;
         }
 
@@ -156,44 +177,59 @@ namespace PurrNet.Packing
 
         public ByteData ToByteData()
         {
-            return new ByteData(_buffer, 0, length);
+            return new ByteData(_buffer, _readStartInBits >> 3, length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPosition()
         {
-            _positionInBits = 0;
+            _positionInBits = _readStartInBits;
+            if (!_isReading)
+                _readEndInBits = _readStartInBits;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetMode(bool readMode)
         {
+            RecordWrittenPosition();
             _isReading = readMode;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBitPosition(int bitPosition)
         {
+            EnsureBitsExist(bitPosition, 0);
+            RecordWrittenPosition();
             _positionInBits = bitPosition;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SkipBytes(int skip)
         {
-            _positionInBits += skip * 8;
+            SetPositionAfterSkip((long)skip * 8);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SkipBytes(uint skip)
         {
-            _positionInBits += (int)skip * 8;
+            SetPositionAfterSkip((long)skip * 8);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetPositionAndMode(bool readMode)
         {
+            ResetMode(readMode);
+            ResetPosition();
+        }
+
+        internal void ResetForPool()
+        {
             _positionInBits = 0;
-            _isReading = readMode;
+            _readStartInBits = 0;
+            _readEndInBits = 0;
+            _isReading = false;
+            if (isWrapper)
+                _buffer = Array.Empty<byte>();
         }
 
         public void EnsurePadding()
@@ -213,40 +249,70 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureBitsExist(int bits)
         {
-            int targetPos = _positionInBits + bits;
-            int requiredBytes = (targetPos + 7) >> 3;
-
-            if (_isReading)
-            {
-                if (requiredBytes > _buffer.Length)
-                    throw new IndexOutOfRangeException($"Not enough bits in the buffer. | {targetPos} > {_buffer.Length << 3}");
-                return;
-            }
-
-            requiredBytes += 8;
-            if (requiredBytes > _buffer.Length)
-            {
-                int newSize = Math.Max(_buffer.Length * 2, requiredBytes);
-                Array.Resize(ref _buffer, newSize);
-            }
+            EnsureBitsExist(_positionInBits, bits);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureBitsExist(int positionInBits, int bits)
         {
-            int targetPos = positionInBits + bits;
-            int bufferBitSize = _buffer.Length * 8;
-
-            if (targetPos > bufferBitSize)
+            if (_isReading)
             {
-                if (_isReading)
-                    throw new IndexOutOfRangeException("Not enough bits in the buffer. | " + targetPos + " > " +
-                                                       bufferBitSize);
+                EnsureReadableBits(positionInBits, bits);
+                return;
+            }
 
-                int requiredBytes = ((targetPos + 7) >> 3) + 8;
-                int newSize = Math.Max(_buffer.Length * 2, requiredBytes);
+            if (bits < 0)
+                throw new ArgumentOutOfRangeException(nameof(bits));
+            if (positionInBits < _readStartInBits || (long)positionInBits + bits > MAX_BIT_POSITION)
+                throw new ArgumentOutOfRangeException(nameof(positionInBits));
+
+            int requiredBytes = BytesForBits(positionInBits + bits) + 8;
+            if (requiredBytes > _buffer.Length)
+            {
+                int newSize = (int)Math.Max(Math.Min((long)_buffer.Length * 2, int.MaxValue), requiredBytes);
                 Array.Resize(ref _buffer, newSize);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureReadableBits(int positionInBits, int bits)
+        {
+            if (bits < 0)
+                throw new ArgumentOutOfRangeException(nameof(bits));
+            if (positionInBits < _readStartInBits || positionInBits > _readEndInBits ||
+                bits > _readEndInBits - positionInBits)
+                throw new IndexOutOfRangeException("Not enough bits in the logical data.");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RecordWrittenPosition()
+        {
+            RecordWrittenEnd(_positionInBits);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RecordWrittenEnd(int bitPosition)
+        {
+            if (!_isReading)
+                _readEndInBits = Math.Max(_readEndInBits, BytesForBits(bitPosition) << 3);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int BytesForBits(int bits) => (bits >> 3) + ((bits & 7) == 0 ? 0 : 1);
+
+        private static int BitsForBytes(int bytes)
+        {
+            if ((uint)bytes > (MAX_BIT_POSITION >> 3))
+                throw new ArgumentOutOfRangeException(nameof(bytes));
+            return bytes << 3;
+        }
+
+        private void SetPositionAfterSkip(long bits)
+        {
+            long position = _positionInBits + bits;
+            if (position < _readStartInBits || position > MAX_BIT_POSITION)
+                throw new IndexOutOfRangeException("Bit position is outside the logical data.");
+            SetBitPosition((int)position);
         }
 
         [UsedByIL]
@@ -315,7 +381,7 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteBitsWithoutConsumingIt(BitPacker packer, int bits)
         {
-            CopyBitsWithoutConsuming(packer, 0, bits);
+            CopyBitsWithoutConsuming(packer, packer._readStartInBits, bits);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -325,7 +391,8 @@ namespace PurrNet.Packing
                 return;
 
             EnsureBitsExist(bits);
-            CopyBitsFromValidatedSource(packer, 0, bits);
+            packer.EnsureBitsExist(packer._readStartInBits, bits);
+            CopyBitsFromValidatedSource(packer, packer._readStartInBits, bits);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -353,14 +420,14 @@ namespace PurrNet.Packing
 
                 byte remainingBits = (byte)(bits & 7);
                 if (remainingBits != 0)
-                    WriteBitsWithoutChecks(other._buffer[(bitOrigin >> 3) + fullBytes], remainingBits);
+                    WriteBitsCore(other._buffer[(bitOrigin >> 3) + fullBytes], remainingBits);
                 return;
             }
 
             bool hasIndependentByteAlignedSource = (bitOrigin & 7) == 0 && !ReferenceEquals(_buffer, other._buffer);
             if (hasIndependentByteAlignedSource)
             {
-                if (bits >= 80)
+                if (bits >= 80 && !_isReading)
                 {
                     CopyByteAlignedSourceToUnalignedDestination(other, bitOrigin >> 3, bits);
                     return;
@@ -371,9 +438,9 @@ namespace PurrNet.Packing
                 int chunks = bits >> 6;
                 byte excess = (byte)(bits & 63);
                 for (int i = 0; i < chunks; i++)
-                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(64), 64);
+                    WriteBitsCore(other.ReadBitsCore(64), 64);
                 if (excess != 0)
-                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(excess), excess);
+                    WriteBitsCore(other.ReadBitsCore(excess), excess);
                 other._positionInBits = sourcePosition;
                 return;
             }
@@ -387,9 +454,9 @@ namespace PurrNet.Packing
                 byte excess = (byte)(bits & 63);
 
                 for (int i = 0; i < chunks; i++)
-                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(64), 64);
+                    WriteBitsCore(other.ReadBitsCore(64), 64);
                 if (excess != 0)
-                    WriteBitsWithoutChecks(other.ReadBitsWithoutChecks(excess), excess);
+                    WriteBitsCore(other.ReadBitsCore(excess), excess);
             }
             finally
             {
@@ -473,20 +540,23 @@ namespace PurrNet.Packing
         public void WriteBits(BitPacker packer, int bits)
         {
             EnsureBitsExist(bits);
+            packer.EnsureBitsExist(bits);
 
             int chunks = bits / 64;
             byte excess = (byte)(bits % 64);
 
             for (int i = 0; i < chunks; i++)
-                WriteBitsWithoutChecks(packer.ReadBits(64), 64);
+                WriteBitsCore(packer.ReadBitsCore(64), 64);
             if (excess != 0)
-                WriteBitsWithoutChecks(packer.ReadBits(excess), excess);
+                WriteBitsCore(packer.ReadBitsCore(excess), excess);
         }
 
         public void WriteBits(ulong data, byte bits)
         {
+            ValidateBitCount(bits);
             EnsureBitsExist(bits);
-            WriteBitsWithoutChecks(data, bits);
+            if (bits != 0)
+                WriteBitsCore(data, bits);
         }
 
         public bool WriteBit(bool data)
@@ -509,6 +579,7 @@ namespace PurrNet.Packing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe bool ReadBit()
         {
+            EnsureReadableBits(_positionInBits, 1);
             fixed (byte* b = &_buffer[_positionInBits >> 3])
             {
                 bool result = (*b & (1 << (_positionInBits & 7))) != 0;
@@ -518,10 +589,23 @@ namespace PurrNet.Packing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void WriteBitsWithoutChecks(ulong data, byte bits)
+        public void WriteBitsWithoutChecks(ulong data, byte bits)
+        {
+            WriteBitsCore(data, bits);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void WriteBitsCore(ulong data, byte bits)
         {
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
+
+            if (_buffer.Length - bytePos < 9)
+            {
+                WriteBitsAtWithoutChecks(_positionInBits, data, bits);
+                _positionInBits += bits;
+                return;
+            }
 
             fixed (byte* b = &_buffer[bytePos])
             {
@@ -557,12 +641,25 @@ namespace PurrNet.Packing
 
         public ulong ReadBits(byte bits)
         {
-            EnsureBitsExist(bits);
-            return ReadBitsWithoutChecks(bits);
+            EnsureReadableBits(_positionInBits, bits);
+            ValidateBitCount(bits);
+            return bits == 0 ? 0 : ReadBitsCore(bits);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe ulong ReadBitsWithoutChecks(byte bits)
+        public ulong ReadBitsWithoutChecks(byte bits)
+        {
+            return ReadBits(bits);
+        }
+
+        private static void ValidateBitCount(byte bits)
+        {
+            if (bits > 64)
+                throw new ArgumentOutOfRangeException(nameof(bits), "Cannot read or write more than 64 bits at a time.");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe ulong ReadBitsCore(byte bits)
         {
             int bytePos = _positionInBits >> 3;
             int bitOffset = _positionInBits & 7;
@@ -611,12 +708,13 @@ namespace PurrNet.Packing
         public void ReadBytes(Span<byte> destination)
         {
             int count = destination.Length;
-            EnsureBitsExist(count << 3);
+            int bits = BitsForBytes(count);
+            EnsureReadableBits(_positionInBits, bits);
 
             if ((_positionInBits & 7) == 0)
             {
                 _buffer.AsSpan(_positionInBits >> 3, count).CopyTo(destination);
-                _positionInBits += count << 3;
+                _positionInBits += bits;
                 return;
             }
 
@@ -627,7 +725,7 @@ namespace PurrNet.Packing
             // Process full 64-bit chunks
             for (int i = 0; i < fullChunks; i++)
             {
-                ulong longValue = ReadBitsWithoutChecks(64);
+                ulong longValue = ReadBitsCore(64);
 
                 // Write back as little-endian
                 BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(index, 8), longValue);
@@ -637,7 +735,7 @@ namespace PurrNet.Packing
             // Process remaining excess bytes
             for (int i = 0; i < excess; i++)
             {
-                destination[index++] = (byte)ReadBitsWithoutChecks(8);
+                destination[index++] = (byte)ReadBitsCore(8);
             }
         }
 
@@ -649,12 +747,13 @@ namespace PurrNet.Packing
         public void WriteBytes(ReadOnlySpan<byte> bytes)
         {
             int count = bytes.Length;
-            EnsureBitsExist(count << 3);
+            int bits = BitsForBytes(count);
+            EnsureBitsExist(bits);
 
             if ((_positionInBits & 7) == 0)
             {
                 bytes.CopyTo(_buffer.AsSpan(_positionInBits >> 3, count));
-                _positionInBits += count << 3;
+                _positionInBits += bits;
                 return;
             }
 
@@ -666,18 +765,18 @@ namespace PurrNet.Packing
             for (int i = 0; i < fullChunks; i++)
             {
                 ulong longValue = BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(index, 8));
-                WriteBitsWithoutChecks(longValue, 64);
+                WriteBitsCore(longValue, 64);
                 index += 8;
             }
 
             // Process remaining excess bytes
             for (int i = 0; i < excess; i++)
-                WriteBitsWithoutChecks(bytes[index++], 8);
+                WriteBitsCore(bytes[index++], 8);
         }
 
         public void SkipBits(int skip)
         {
-            _positionInBits += skip;
+            SetPositionAfterSkip(skip);
         }
 
         public void WriteString(Encoding encoding, string value)
@@ -689,7 +788,7 @@ namespace PurrNet.Packing
 
             // Encode string into a temporary buffer
             int byteCount = encoding.GetByteCount(value);
-            EnsureBitsExist(1 + 31 + byteCount * 8);
+            EnsureBitsExist(checked(32 + BitsForBytes(byteCount)));
 
             // Write length (31 bits)
             WriteBits((ulong)byteCount, 31);
@@ -719,6 +818,7 @@ namespace PurrNet.Packing
 
             // Length
             int len = (int)ReadBits(31);
+            DeserializationLimits.ValidateByteLength(this, len);
 
             byte[] rented = null;
             Span<byte> temp = len <= 256
@@ -745,18 +845,21 @@ namespace PurrNet.Packing
         [UsedByIL]
         public void ResetFlagAtAndMovePosition(int positionInBits)
         {
+            EnsureBitsExist(positionInBits, 1);
             var byteIdx = positionInBits >> 3;
             int bitOffset = positionInBits & 7;
 
             ref var currentByte = ref _buffer[byteIdx];
             currentByte &= (byte)~(1 << bitOffset);
 
+            RecordWrittenPosition();
             _positionInBits = positionInBits + 1;
         }
 
         [UsedByIL]
         public void WriteAt(int positionInBits, bool data)
         {
+            EnsureBitsExist(positionInBits, 1);
             var byteIdx = positionInBits >> 3;
             int bitOffset = positionInBits & 7;
 
@@ -765,12 +868,15 @@ namespace PurrNet.Packing
             if (data)
                 currentByte |= (byte)(1 << bitOffset);
             else currentByte &= (byte)~(1 << bitOffset);
+            RecordWrittenEnd(positionInBits + 1);
         }
 
         public void WriteBitsAt(int positionInBits, ulong data, byte bits)
         {
+            ValidateBitCount(bits);
             EnsureBitsExist(positionInBits, bits);
             WriteBitsAtWithoutChecks(positionInBits, data, bits);
+            RecordWrittenEnd(positionInBits + bits);
         }
 
         void WriteBitsAtWithoutChecks(int positionInBits, ulong data, byte bits)
@@ -801,8 +907,10 @@ namespace PurrNet.Packing
         {
             var newPacker = BitPackerPool.Get();
             int len = length;
-            newPacker.EnsureBitsExist(len * 8);
-            Array.Copy(_buffer, newPacker.buffer, len);
+            int bits = BitsForBytes(len);
+            newPacker.EnsureBitsExist(bits);
+            Array.Copy(_buffer, _readStartInBits >> 3, newPacker.buffer, 0, len);
+            newPacker._readEndInBits = bits;
             // newPacker._positionInBits = _positionInBits; // this is intentionally not copied
             return newPacker;
         }

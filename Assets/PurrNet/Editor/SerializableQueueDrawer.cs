@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 namespace PurrNet.Editor
 {
@@ -12,6 +14,49 @@ namespace PurrNet.Editor
         private const float BottomPadding = 8f;
         private const float ColumnHeaderHeight = 18f;
         private bool _foldout = true;
+
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            var foldout = new Foldout { text = property.displayName, value = _foldout };
+            foldout.RegisterValueChangedCallback(evt =>
+            {
+                if (evt.target == foldout)
+                    _foldout = evt.newValue;
+            });
+
+            var rows = new VisualElement();
+            foldout.Add(rows);
+            var values = property.FindPropertyRelative("_values");
+            var stringValues = property.FindPropertyRelative("_stringValues");
+            int displayedCount = -1;
+            bool displayedSerializableValues = false;
+
+            void RefreshRows()
+            {
+                bool useSerializableValues = values != null && values.arraySize > 0;
+                var displayValues = useSerializableValues ? values : stringValues;
+                int count = displayValues?.arraySize ?? 0;
+                if (count == displayedCount && useSerializableValues == displayedSerializableValues)
+                    return;
+
+                displayedCount = count;
+                displayedSerializableValues = useSerializableValues;
+                rows.Unbind();
+                rows.Clear();
+                for (int i = 0; i < count; i++)
+                {
+                    var elementProperty = displayValues.GetArrayElementAtIndex(i);
+                    var field = AlchemyIntegration.CreatePropertyGUI(elementProperty, string.Empty) ?? new PropertyField(elementProperty, string.Empty);
+                    field.SetEnabled(false);
+                    rows.Add(field);
+                }
+                rows.Bind(property.serializedObject);
+            }
+
+            RefreshRows();
+            rows.schedule.Execute(RefreshRows).Every(100);
+            return foldout;
+        }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {

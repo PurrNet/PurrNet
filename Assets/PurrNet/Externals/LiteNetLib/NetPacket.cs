@@ -24,6 +24,7 @@ namespace LiteNetLib
         InvalidProtocol,
         NatMessage,
         Empty,
+        Repair,
         Total
     }
 
@@ -42,6 +43,7 @@ namespace LiteNetLib
                     case PacketProperty.Channeled:
                     case PacketProperty.Ack:
                     case PacketProperty.ReliableMerged:
+                    case PacketProperty.Repair:
                         HeaderSizes[i] = NetConstants.ChanneledHeaderSize;
                         break;
                     case PacketProperty.Ping:

@@ -11,7 +11,7 @@ namespace PurrNet.Pooling
         private readonly Func<T> _factory;
         private readonly Action<T> _reset;
 
-        [UsedImplicitly] public int count => _pool.Count;
+        [UsedImplicitly] public virtual int count => _pool.Count;
 
         public GenericPool(Func<T> factory, Action<T> reset)
         {
@@ -20,13 +20,13 @@ namespace PurrNet.Pooling
         }
 
         [UsedImplicitly]
-        public T Allocate()
+        public virtual T Allocate()
         {
             return _pool.Count > 0 ? _pool.Pop() : _factory();
         }
 
         [UsedImplicitly]
-        public void Delete(T obj)
+        public virtual void Delete(T obj)
         {
             _reset(obj);
             _pool.Push(obj);

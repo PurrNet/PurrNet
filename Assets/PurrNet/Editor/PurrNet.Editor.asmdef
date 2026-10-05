@@ -26,6 +26,16 @@
     "defineConstraints": [],
     "versionDefines": [
         {
+            "name": "com.v0lt.editor-attributes",
+            "expression": "",
+            "define": "EDITOR_ATTRIBUTES_PACKAGE"
+        },
+        {
+            "name": "com.annulusgames.alchemy",
+            "expression": "2.1.0",
+            "define": "ALCHEMY_PACKAGE"
+        },
+        {
             "name": "com.codewriter.triinspector",
             "expression": "",
             "define": "TRI_INSPECTOR_PACKAGE"

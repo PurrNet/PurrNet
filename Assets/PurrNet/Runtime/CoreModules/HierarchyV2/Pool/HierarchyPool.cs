@@ -34,6 +34,8 @@ namespace PurrNet.Modules
 
     public class HierarchyPool
     {
+        private static readonly Unity.Profiling.ProfilerMarker BuildMarker = new("PurrNet.Pool.BuildPrototype");
+        private static readonly Unity.Profiling.ProfilerMarker WarmupMarker = new("PurrNet.Pool.Warmup");
         private readonly Dictionary<PrefabPieceID, Queue<GameObject>> _pool = new();
         private readonly HashSet<GameObject> _pooledObjects = new();
         private readonly Dictionary<PrefabPieceID, Queue<GameObject>> _activeScenePieces = new();
@@ -150,6 +152,7 @@ namespace PurrNet.Modules
 
         private void Warmup(PrefabData prefabData)
         {
+            using var sample = WarmupMarker.Auto();
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab, _parent);
             NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled || _forceWarmupPieces);
 
@@ -164,17 +167,27 @@ namespace PurrNet.Modules
 
         public static void PutBackInPool(PoolPair pool, GameObject target, bool tagName = false)
         {
+            PutBackInPool(pool, target, tagName, false, 0f);
+        }
+
+        internal static void PutBackInPool(PoolPair pool, GameObject target, bool tagName, bool destroyAsync,
+            float msPerFrame)
+        {
             var rootId = target.GetComponent<NetworkIdentity>();
             bool shouldDestroyGo = !rootId || !rootId.shouldBePooled;
 
             if (rootId)
             {
                 var safeParent = rootId.transform.parent;
-                PutBackInPoolFromNid(pool, rootId, safeParent, tagName);
+                PutBackInPoolFromNid(pool, rootId, safeParent, tagName, destroyAsync, msPerFrame);
             }
 
-            if (shouldDestroyGo)
-                UnityProxy.DestroyDirectly(target);
+            if (!shouldDestroyGo)
+                return;
+
+            if (destroyAsync)
+                AsyncDestroyer.Enqueue(target, msPerFrame);
+            else UnityProxy.DestroyDirectly(target);
         }
 
         static void QueueVirtualNodesFromLeafToRoot(NetworkIdentity root, HashSet<NetworkIdentity> properNids)
@@ -226,7 +239,7 @@ namespace PurrNet.Modules
 
         static void PutBackInPoolFromNid(PoolPair pool, NetworkIdentity root, Transform safeParent,
             // ReSharper disable once UnusedParameter.Local
-            bool tagName = false)
+            bool tagName = false, bool destroyAsync = false, float msPerFrame = 0f)
         {
             var toDestroy = ListPool<GameObject>.Instantiate();
             var virtualNodes = HashSetPool<NetworkIdentity>.Instantiate();
@@ -276,11 +289,19 @@ namespace PurrNet.Modules
                 pair.Enqueue(child.gameObject, queue);
             }
 
+            if (destroyAsync && root && !root.shouldBePooled)
+                AsyncDestroyer.Enqueue(root.gameObject, msPerFrame);
+
             // destroy the objects that shouldn't be pooled
             for (var i = 0; i < toDestroy.Count; i++)
             {
                 var id = toDestroy[i];
-                if (id) UnityProxy.DestroyDirectly(id);
+                if (!id)
+                    continue;
+
+                if (destroyAsync)
+                    AsyncDestroyer.Enqueue(id, msPerFrame);
+                else UnityProxy.DestroyDirectly(id);
             }
 
             ListPool<GameObject>.Destroy(toDestroy);
@@ -948,6 +969,7 @@ namespace PurrNet.Modules
         public static bool TryBuildPrototype(PoolPair pair, GameObjectPrototype prototype,
             List<NetworkIdentity> createdNids, out GameObject result, out bool shouldBeActive)
         {
+            using var sample = BuildMarker.Auto();
             try
             {
                 if (prototype.framework.Count == 0)
@@ -1070,10 +1092,11 @@ namespace PurrNet.Modules
             {
                 var siblingIndex = inversedPath[i];
 
-                if (parent.childCount <= siblingIndex)
+                if (parent.childCount <= siblingIndex || parent.GetChild(siblingIndex).TryGetComponent<NetworkIdentity>(out _))
                 {
                     PurrLogger.LogWarning($"Parent {parent} doesn't have child with index {siblingIndex}");
-                    break;
+                    instance.SetParent(parent, worldPositionStays);
+                    return;
                 }
 
                 var sibling = parent.GetChild(siblingIndex);
