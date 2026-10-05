@@ -1,3 +1,57 @@
+# [1.24.0](https://github.com/PurrNet/PurrNet/compare/v1.23.0...v1.24.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* allow to sync transform from the rollback module ([d32329d](https://github.com/PurrNet/PurrNet/commit/d32329dfec7f562f06e335e31a13d6e375e118d0))
+* allow users to manually input api key to login ([ed43ed3](https://github.com/PurrNet/PurrNet/commit/ed43ed3207cca1b3ff2e4de6a9b7fb93df6d2a7b))
+* clear error instead of NRE when sending RPCs from an identity left ([b83be04](https://github.com/PurrNet/PurrNet/commit/b83be04d016c857d24e25f3e95943992a9a9f00e))
+* clear old state to avoid stale data ([3a57e0b](https://github.com/PurrNet/PurrNet/commit/3a57e0b3d10ea031bd16644371fce03ccab3e175))
+* codegen bug on IL2CPP ([b7f8192](https://github.com/PurrNet/PurrNet/commit/b7f8192708c9d0a8381986a95d7afb4c09129c0c))
+* despawn and async destroy optimizations ([bba8b17](https://github.com/PurrNet/PurrNet/commit/bba8b179e9452da75440d38e7ae3eb19a7929dfb))
+* Domain reload issue ([5ea6fba](https://github.com/PurrNet/PurrNet/commit/5ea6fbae378a544ad134ea2bdb6ea65a457aa430))
+* don't trust senderId from client for RPC authorization ([073c051](https://github.com/PurrNet/PurrNet/commit/073c051451865b0066f5b0813970ecb6d6e8177c))
+* dont rely on auto sync here ([3b23e6e](https://github.com/PurrNet/PurrNet/commit/3b23e6ecebb24708b996e4b1e5f00f1855769501))
+* DontDestroyOnLoad scene invalid on second play session with domain ([21e4058](https://github.com/PurrNet/PurrNet/commit/21e405814ea927adcb3c509c2e7b6c518055980f))
+* Enforce receive timeout on WebGL clients ([5c683e3](https://github.com/PurrNet/PurrNet/commit/5c683e390b965176be62f4188b4c79be6babf406))
+* equality wasn't bit accurate, for example Vector3 uses a distance check; this broke PurrDiction under specific situations with determinism ([0a07e80](https://github.com/PurrNet/PurrNet/commit/0a07e803875e47b7a102034d914415fe0ad016b7))
+* finalize timeouts promptly and preserve disconnect reas ([3360e60](https://github.com/PurrNet/PurrNet/commit/3360e60b56530a12f2b86f35d72edabe770cbf0b))
+* fragmentation layer, resist incomplete-fragment spam and ordinary ([99d3d3d](https://github.com/PurrNet/PurrNet/commit/99d3d3d6c411946d0c27f7a532452385f455efb7))
+* IL code gen on CoreCLR ([42eff6f](https://github.com/PurrNet/PurrNet/commit/42eff6f3206c4a8593c716017a405f29e694f2ec))
+* implement missing timeout setting in WebTransport ([0bcc193](https://github.com/PurrNet/PurrNet/commit/0bcc19341a482be1fd4e256b94efa4e1a8b12014))
+* LiteNetLib reliable messages robustness ([d5d5c12](https://github.com/PurrNet/PurrNet/commit/d5d5c12aa1f654c99fc1e3ef4f8e1b74eb0617ef))
+* Network Rigidbody buffer buildup ([74f322b](https://github.com/PurrNet/PurrNet/commit/74f322baa396fd17f696342d6b4b65aa0eb5aac1))
+* NetworkRigidbody no longer snaps back to states captured before a teleport ([f7a3f79](https://github.com/PurrNet/PurrNet/commit/f7a3f79176c2a1208047594fbff17daf625b7819))
+* parent traversal could walk the path on newly spawned networked prefabs causing them to nest weirdly ([e1c15d8](https://github.com/PurrNet/PurrNet/commit/e1c15d883b34e898e7a132c9772c5db5a4e0d30b))
+* reserve id blocks and allow client-side manual despawn ([ddddc45](https://github.com/PurrNet/PurrNet/commit/ddddc4574d7db81bb29c79c9595b20243954f7e0))
+* scrub forged senderId from packet ([e8b21e7](https://github.com/PurrNet/PurrNet/commit/e8b21e7a9bba8f404ad6610dc9cee0417dd2c3cf))
+* security patches ([49d7d7f](https://github.com/PurrNet/PurrNet/commit/49d7d7f6b68bcc5b18a4092d6bfd0e299c6b59ae))
+* SteamTransport improvements ([94a020f](https://github.com/PurrNet/PurrNet/commit/94a020ff6c0caf90bedfecbcc65359fd6bffe1a5))
+* strip all compiler errors and some more profiler markers ([f30c0df](https://github.com/PurrNet/PurrNet/commit/f30c0df9156d0bdcb2fcfa28d711b543c6e8ed40))
+* syncbigdata bug ([96f5ecd](https://github.com/PurrNet/PurrNet/commit/96f5ecdb23f207b4c7752cf39947389637486920))
+* SyncBigData bug ([7ecf113](https://github.com/PurrNet/PurrNet/commit/7ecf113f6341feef55b26b5ae953964857d0adf3))
+* SyncVar class value comparison ([5ba7b78](https://github.com/PurrNet/PurrNet/commit/5ba7b78a9a1300cc4e852b2272c2fc3fbed7d36c))
+* UTP silently dropping reliable packets when the send window is full ([fcaaae9](https://github.com/PurrNet/PurrNet/commit/fcaaae9d8c444905a74ddbbff2c34d9078947baa))
+
+
+### Features
+
+* EditorAttributes compatibility ([66ae01c](https://github.com/PurrNet/PurrNet/commit/66ae01c882a5b34f24ec31f2d5759dce8548e746))
+* heartbeat support for web transport ([5c87442](https://github.com/PurrNet/PurrNet/commit/5c87442e70ff788373f8115152c8682dc0dcb1d8))
+* include Alchemy support (editor attributes sort of thing) ([b40657b](https://github.com/PurrNet/PurrNet/commit/b40657bb2e43f0c7c3a0785fe563381f39c1af78))
+* introduce a deffer Destroy (despawn) method for big instances ([6db0b88](https://github.com/PurrNet/PurrNet/commit/6db0b8891d8685f42cf59c96b512b43b87a4cef3))
+* Network Rigidbody 2D base ([cdc23f7](https://github.com/PurrNet/PurrNet/commit/cdc23f7891fd272309a82b1826188809f864d9f5))
+* PurrTransport project relay for production ([73c8466](https://github.com/PurrNet/PurrNet/commit/73c8466c4df3ca255b2571ae101f4eccf015c78a))
+
+
+### Performance Improvements
+
+* async destroy ([5e8a30b](https://github.com/PurrNet/PurrNet/commit/5e8a30bc2fa7474a20b5337ea2a87c8e24895fb4))
+* ListPool and MyersPacking GC improvements ([731e77c](https://github.com/PurrNet/PurrNet/commit/731e77cd74b9e3362208b9c6b32ebb59cf4783c4))
+* NetworkTransform idle cost is measured around 10x lower ([563ba91](https://github.com/PurrNet/PurrNet/commit/563ba912390dd4912208dbdd551d35499fc2c8a0))
+* RLE compressed ownership change packing ([1127ec3](https://github.com/PurrNet/PurrNet/commit/1127ec36e0b03c167489347a00ad54e2fb061240))
+* stop boxing DisposableList in delta packing ([51d6abd](https://github.com/PurrNet/PurrNet/commit/51d6abde0d532ab818cbc357d6646a319af0789f))
+
 # [1.24.0-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.24.0-beta.30...v1.24.0-beta.31) (2026-10-05)
 
 
