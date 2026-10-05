@@ -4,5 +4,6 @@ var classPurrNet_1_1SyncBigData =
     [ "OnObserverRemoved", "classPurrNet_1_1SyncBigData.html#a57cf3b6cd5ed192cf9e65cff334b068b", null ],
     [ "OnTick", "classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8", null ],
     [ "isDataReady", "classPurrNet_1_1SyncBigData.html#a0eaa7e9f15b41a69274cc2fe5bc2c878", null ],
+    [ "maxSizeMB", "classPurrNet_1_1SyncBigData.html#af26c903bc4492c2dc760f7249a71ce8b", null ],
     [ "progress", "classPurrNet_1_1SyncBigData.html#a25d43321e68e2df834090dc1303ca2f5", null ]
 ];
