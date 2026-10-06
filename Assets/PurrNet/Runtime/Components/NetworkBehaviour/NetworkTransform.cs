@@ -2036,6 +2036,13 @@ namespace PurrNet
                 scaleDelta += _corrScaleOffset * _corrWeight;
             }
 
+            if (posDelta.sqrMagnitude > MAX_SEAM_DISTANCE * MAX_SEAM_DISTANCE)
+            {
+                _hasCorrOffset = false;
+                _hasCorrPrevTarget = false;
+                return;
+            }
+
             _corrPosOffset = posDelta;
             _corrRotOffset = rotDelta;
             _corrScaleOffset = scaleDelta;

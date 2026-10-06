@@ -5,6 +5,7 @@ using NUnit.Framework;
 using PurrNet;
 using PurrNet.Modules;
 using PurrNet.Packing;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class NetworkTransformProtocolTests
@@ -753,6 +754,96 @@ public class NetworkTransformProtocolTests
         }
     }
 
+    [TestCase(false, false)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    [TestCase(true, true)]
+    public void SavedPositionTeleportConvergesWithoutObserverComponentToggle(bool teleportAbsolute, bool absoluteFrame)
+    {
+        var go = new GameObject(nameof(SavedPositionTeleportConvergesWithoutObserverComponentToggle));
+
+        try
+        {
+            var nt = CreateAdaptivePositionObserver(go, absoluteFrame);
+            var spawn = PositionState(Vector3.zero, absoluteFrame);
+            var saved = PositionState(new Vector3(500f, 0f, 0f), absoluteFrame);
+            byte generation = teleportAbsolute ? (byte)2 : (byte)1;
+
+            Assert.That(nt.TryApplyUnreliableState(spawn, 1, 1, 100, null, true), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(saved, generation, 2, 101, null, teleportAbsolute), Is.True);
+
+            if (teleportAbsolute || absoluteFrame)
+            {
+                // Absolute packets/frames can start correcting before the stationary confirmation arrives.
+                Assert.That(nt.TryTickAdaptiveRender(101, 102, true, out _), Is.True);
+            }
+
+            // An ordinary transform teleport is followed by the sender's stationary sample.
+            // Receiving both before the next render must not extrapolate the teleport as motion.
+            Assert.That(nt.TryApplyUnreliableState(saved, generation, 3, 102, null, false), Is.True);
+
+            var rendered = spawn;
+            bool receivedRenderedPose = false;
+            for (uint tick = 102; tick <= 132; tick++)
+            {
+                if (nt.TryTickAdaptiveRender(tick, (ushort)(tick + 1), true, out var sample))
+                {
+                    rendered = sample;
+                    receivedRenderedPose = true;
+                }
+            }
+
+            Assert.That(receivedRenderedPose, Is.True,
+                "The observer must render the stationary sample after the teleport.");
+            var renderedPosition = PositionOf(rendered);
+            Assert.That(Vector3.Distance(renderedPosition, new Vector3(500f, 0f, 0f)), Is.LessThan(1f),
+                "The observer should reach the saved position without disabling and re-enabling NetworkTransform.");
+        }
+        finally
+        {
+            if (go.TryGetComponent<NetworkTransform>(out var nt))
+                InvokePrivate(nt, "ReleaseUnreliableHistory");
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SmallAbsolutePositionSeamStillBlendsAndConverges(bool absoluteFrame)
+    {
+        var go = new GameObject(nameof(SmallAbsolutePositionSeamStillBlendsAndConverges));
+
+        try
+        {
+            var nt = CreateAdaptivePositionObserver(go, absoluteFrame);
+            var spawn = PositionState(Vector3.zero, absoluteFrame);
+            var corrected = PositionState(new Vector3(0.25f, 0f, 0f), absoluteFrame);
+
+            Assert.That(nt.TryApplyUnreliableState(spawn, 1, 1, 100, null, true), Is.True);
+            Assert.That(nt.TryApplyUnreliableState(corrected, 1, 2, 101, null, true), Is.True);
+            Assert.That(nt.TryTickAdaptiveRender(101, 102, true, out var first), Is.True);
+
+            var firstPosition = PositionOf(first);
+            Assert.That(firstPosition.x, Is.GreaterThan(0f).And.LessThan(0.25f),
+                "A small correction should retain the existing smooth handoff behavior.");
+
+            var rendered = first;
+            for (uint tick = 102; tick <= 161; tick++)
+            {
+                if (nt.TryTickAdaptiveRender(tick, (ushort)(tick + 1), true, out var sample))
+                    rendered = sample;
+            }
+
+            Assert.That(PositionOf(rendered).x, Is.EqualTo(0.25f).Within(0.01f));
+        }
+        finally
+        {
+            if (go.TryGetComponent<NetworkTransform>(out var nt))
+                InvokePrivate(nt, "ReleaseUnreliableHistory");
+            Object.DestroyImmediate(go);
+        }
+    }
+
     [Test]
     public void AbsoluteStateOmitsDisabledFieldsAndFrame()
     {
@@ -941,6 +1032,50 @@ public class NetworkTransformProtocolTests
         SetField(target, "_syncPosition", SyncMode.No);
         SetField(target, "_syncRotation", SyncMode.No);
         SetField(target, "_syncScale", false);
+    }
+
+    private static NetworkTransform CreateAdaptivePositionObserver(GameObject go, bool absoluteFrame)
+    {
+        var nt = go.AddComponent<NetworkTransform>();
+        SetField(nt, "_syncPosition", SyncMode.World);
+        SetField(nt, "_syncRotation", SyncMode.No);
+        SetField(nt, "_syncScale", false);
+        SetField(nt, "_position", new Interpolated<Vector3WithParent>(Vector3WithParent.Lerp,
+            1f / 30f, new Vector3WithParent(null, false, Vector3.zero)));
+        if (absoluteFrame)
+            nt.SetPositionTransform(new IdentityPositionTransform());
+        nt.SetSyncStrategy(null);
+        return nt;
+    }
+
+    private static NetworkTransformState PositionState(Vector3 position, bool absoluteFrame)
+    {
+        var state = LinearState(position);
+        if (absoluteFrame)
+        {
+            state.data.position = null;
+            state.data.absolutePosition = new double3(position.x, position.y, position.z);
+        }
+        return state;
+    }
+
+    private static Vector3 PositionOf(NetworkTransformState state)
+    {
+        if (state.data.absolutePosition.HasValue)
+        {
+            var position = state.data.absolutePosition.Value;
+            return new Vector3((float)position.x, (float)position.y, (float)position.z);
+        }
+        return state.data.position!.Value;
+    }
+
+    private sealed class IdentityPositionTransform : INetworkTransformPositionTransform
+    {
+        public double3 ToAbsolute(NetworkTransform self, Vector3 localWorldPos) =>
+            new double3(localWorldPos.x, localWorldPos.y, localWorldPos.z);
+
+        public Vector3 ToLocal(NetworkTransform self, double3 absolutePosition) =>
+            new Vector3((float)absolutePosition.x, (float)absolutePosition.y, (float)absolutePosition.z);
     }
 
     private static object InvokePrivate(NetworkTransform target, string name, params object[] args)
