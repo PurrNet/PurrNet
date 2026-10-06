@@ -1,3 +1,10 @@
+## [1.24.1](https://github.com/PurrNet/PurrNet/compare/v1.24.0...v1.24.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* adaptive sync big deltas not being corrected properly ([273fc70](https://github.com/PurrNet/PurrNet/commit/273fc70a67440df7849a2e91db5f120e59b11f8e))
+
 ## [1.24.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.24.0...v1.24.1-beta.1) (2026-10-06)
 
 
