@@ -1,3 +1,10 @@
+## [1.24.2-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.24.1...v1.24.2-beta.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* visibility edge cases with stacked identities, hidden parents and ([960be3d](https://github.com/PurrNet/PurrNet/commit/960be3d013f9a97426be23452699569d6a14b803))
+
 ## [1.24.1](https://github.com/PurrNet/PurrNet/compare/v1.24.0...v1.24.1) (2026-10-06)
 
 
