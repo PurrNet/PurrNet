@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Collections;
 using PurrNet.Logging;
@@ -130,6 +131,12 @@ namespace PurrNet
         /// </summary>
         public void SetVisibilityRules(NetworkVisibilityRuleSet rules)
         {
+            if (rules && !rules.isInitialized && networkManager)
+            {
+                rules = Instantiate(rules);
+                rules.Setup(networkManager);
+            }
+
             _visitiblityRules = rules;
         }
 
@@ -261,6 +268,28 @@ namespace PurrNet
         internal bool TryRemoveObserver(PlayerID player)
         {
             return _observers.Remove(player) || TryRemovePendingObserver(player);
+        }
+
+        /// <summary>
+        /// Marks a player that still has this GameObject through a sibling identity after this one
+        /// stopped observing them, so the removal isn't reported a second time when the object goes.
+        /// </summary>
+        internal void SetMutedObserver(PlayerID player, bool muted)
+        {
+            if (!muted)
+            {
+                _mutedObservers?.Remove(player);
+                return;
+            }
+
+            _mutedObservers ??= new List<PlayerID>();
+            if (!_mutedObservers.Contains(player))
+                _mutedObservers.Add(player);
+        }
+
+        internal bool TryRemoveMutedObserver(PlayerID player)
+        {
+            return _mutedObservers != null && _mutedObservers.Remove(player);
         }
 
         internal bool TryMoveObserverToPending(PlayerID player)

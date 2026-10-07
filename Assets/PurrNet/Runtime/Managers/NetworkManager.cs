@@ -950,6 +950,14 @@ namespace PurrNet
         /// <param name="rule">The rule to add.</param>
         public void AddVisibilityRule(NetworkManager manager, INetworkVisibilityRule rule)
         {
+            if (!_visibilityRules)
+            {
+                PurrLogger.LogError(
+                    "Can't add a visibility rule because this NetworkManager has no Visibility Rules assigned. " +
+                    "Assign a rule set in the inspector first.", this);
+                return;
+            }
+
             _visibilityRules.AddRule(manager, rule);
         }
 
@@ -959,7 +967,8 @@ namespace PurrNet
         /// <param name="rule">The rule to remove.</param>
         public void RemoveVisibilityRule(INetworkVisibilityRule rule)
         {
-            _visibilityRules.RemoveRule(rule);
+            if (_visibilityRules)
+                _visibilityRules.RemoveRule(rule);
         }
 
         /// <summary>

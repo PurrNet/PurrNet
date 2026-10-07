@@ -361,6 +361,7 @@ namespace PurrNet.Modules
 #endif
             _visibility.visibilityChanged += OnVisibilityChanged;
             _visibility.visibilityCleared += OnVisibilityCleared;
+            _visibility.observerChanged += OnObserverChanged;
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
@@ -398,6 +399,7 @@ namespace PurrNet.Modules
 #endif
             _visibility.visibilityChanged -= OnVisibilityChanged;
             _visibility.visibilityCleared -= OnVisibilityCleared;
+            _visibility.observerChanged -= OnObserverChanged;
             _scenePlayers.onPrePlayerLoadedScene -= OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene -= OnPlayerUnloadedScene;
             _playersManager.onLocalPlayerReceivedID -= OnPlayerReceivedID;
@@ -776,6 +778,18 @@ namespace PurrNet.Modules
             if (oldParent && oldParent != closestNid)
                 oldParent.RemoveDirectChild(first);
 
+            if (_asServer && _scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
+            {
+                for (var i = 0; i < players.Count; i++)
+                {
+                    var player = players[i];
+                    _visibility.RefreshVisibilityForGameObject(player, first, closestNid);
+                }
+
+                _manager.FlushBatchedRPCs();
+                FlushSpawnPackets();
+            }
+
             if (identity.id.HasValue)
             {
                 var packet = new ChangeParentPacket
@@ -791,18 +805,6 @@ namespace PurrNet.Modules
                 if (_asServer)
                     _playersManager.Send(identity.observers, packet);
                 else _playersManager.SendToServer(packet);
-            }
-
-            if (_asServer && _scenePlayers.TryGetPlayersInScene(_sceneId, out var players))
-            {
-                for (var i = 0; i < players.Count; i++)
-                {
-                    var player = players[i];
-                    _visibility.RefreshVisibilityForGameObject(player, first, closestNid);
-                }
-
-                _manager.FlushBatchedRPCs();
-                FlushSpawnPackets();
             }
         }
 
@@ -2752,6 +2754,21 @@ namespace PurrNet.Modules
             }
         }
 
+        private void OnObserverChanged(PlayerID player, NetworkIdentity identity, bool isObserver)
+        {
+            if (isObserver)
+            {
+                onObserverAdded?.Invoke(player, identity);
+                identity.TriggerOnPreObserverAdded(player, false);
+                _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = identity, isSpawner = false });
+                return;
+            }
+
+            ClearPendingLateObserverAdded(player, identity);
+            identity.TriggerOnObserverRemoved(player);
+            onObserverRemoved?.Invoke(player, identity);
+        }
+
         private void OnVisibilityCleared(Transform scope, HashSet<PlayerID> players)
         {
             if (!scope.TryGetComponent<NetworkIdentity>(out var identity))
@@ -2773,6 +2790,8 @@ namespace PurrNet.Modules
                 for (var i = 0; i < children.Count; i++)
                 {
                     var child = children[i];
+                    if (child.TryRemoveMutedObserver(player))
+                        continue;
                     ClearPendingLateObserverAdded(player, child);
                     child.TriggerOnObserverRemoved(player);
                     onObserverRemoved?.Invoke(player, child);
@@ -2798,7 +2817,7 @@ namespace PurrNet.Modules
             {
                 var child = children[i];
 
-                if (unconfirmed.Contains(child))
+                if (child.TryRemoveMutedObserver(player) || unconfirmed.Contains(child))
                     continue;
 
                 ClearPendingLateObserverAdded(player, child);
