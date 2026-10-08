@@ -1,3 +1,10 @@
+## [1.24.2-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.24.2-beta.1...v1.24.2-beta.2) (2026-10-08)
+
+
+### Performance Improvements
+
+* ClientDeltaTracker boxing (GC) ([6772cae](https://github.com/PurrNet/PurrNet/commit/6772cae823011cc2d2644daf909abf5b3d8883ec))
+
 ## [1.24.2-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.24.1...v1.24.2-beta.1) (2026-10-07)
 
 
