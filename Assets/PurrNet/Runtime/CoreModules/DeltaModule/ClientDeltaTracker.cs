@@ -34,6 +34,10 @@ namespace PurrNet.Modules
     {
         const int MAX_HISTORY_SIZE = 64;
 
+        private static readonly bool canContainDisposable =
+            !typeof(T).IsValueType ||
+            typeof(IDisposable).IsAssignableFrom(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T));
+
         private struct Entry
         {
             public uint key;
@@ -118,7 +122,7 @@ namespace PurrNet.Modules
 
             for (int i = 0; i < removeUpTo; i++)
             {
-                if (_history[i].value is IDisposable disposable)
+                if (canContainDisposable && _history[i].value is IDisposable disposable)
                     disposable.Dispose();
             }
 
@@ -137,7 +141,7 @@ namespace PurrNet.Modules
             {
                 for (int i = 0; i < _history.Count; i++)
                 {
-                    if (_history[i].value is IDisposable disposable)
+                    if (canContainDisposable && _history[i].value is IDisposable disposable)
                         disposable.Dispose();
                 }
 
@@ -147,7 +151,7 @@ namespace PurrNet.Modules
 
             for (int i = 0; i < removeUpTo; i++)
             {
-                if (_history[i].value is IDisposable disposable)
+                if (canContainDisposable && _history[i].value is IDisposable disposable)
                     disposable.Dispose();
             }
 
@@ -167,7 +171,7 @@ namespace PurrNet.Modules
                 int c = _history.Count;
                 for (int i = 0; i < c; i++)
                 {
-                    if (_history[i].value is IDisposable disposable)
+                    if (canContainDisposable && _history[i].value is IDisposable disposable)
                         disposable.Dispose();
                 }
 
@@ -219,7 +223,7 @@ namespace PurrNet.Modules
             if (index < _history.Count && _history[index].key == id)
             {
                 var old = _history[index];
-                if (old.value is IDisposable disposable)
+                if (canContainDisposable && old.value is IDisposable disposable)
                     disposable.Dispose();
                 _history[index] = new Entry { key = id, value = Packer.Copy(newValue), enterTime = Time.unscaledTime };
             }
