@@ -2408,6 +2408,11 @@ namespace PurrNet
 
         internal void GatherAndCapture(ushort tick)
         {
+            // A reparent applied by HierarchyV2 inside the tick only invalidates the pose, so the frame
+            // refreshed below would otherwise be paired with a position still expressed in the old frame.
+            if (!_hasRawPose)
+                RefreshLatestData();
+
             RefreshLatestFrame();
 
             if (_hasCapturedState && !_latestDirty)
