@@ -39,6 +39,12 @@ namespace PurrNet.Steam
 #pragma warning restore CS0067 // Event is never used
         public event Action<PurrNet.Transports.ConnectionState> onConnectionState;
 
+        /// <summary>
+        /// Why the last connection ended: ServerRequest when the host closed it, Timeout when Steam detected a problem,
+        /// ClientRequest when this client closed it. Valid when connectionState becomes Disconnected.
+        /// </summary>
+        public DisconnectReason disconnectReason { get; private set; } = DisconnectReason.ClientRequest;
+
         private PurrConnectionState _state = PurrConnectionState.Disconnected;
 
         public PurrNet.Transports.ConnectionState connectionState
@@ -268,11 +274,12 @@ namespace PurrNet.Steam
         private void FailSend(string reason)
         {
             var status = SteamConnectionStatus.Describe(_connection, _isDedicated, out bool peerGone);
-            if (peerGone || _sendQueue != null && _sendQueue.peerClosed)
+            bool closedByHost = peerGone || _sendQueue != null && _sendQueue.peerClosed;
+            if (closedByHost)
                 PurrLogger.Log($"Disconnecting Steam client: {reason} ({status})");
             else
                 PurrLogger.LogError($"Disconnecting Steam client: {reason} ({status})");
-            Disconnect(reason, true);
+            Disconnect(reason, true, closedByHost ? DisconnectReason.ServerRequest : DisconnectReason.Timeout);
         }
 
         private static void MakeSureBufferCanFit(int packetLength)
@@ -283,6 +290,7 @@ namespace PurrNet.Steam
 
         private void PostConnect()
         {
+            disconnectReason = DisconnectReason.ClientRequest;
             _pendingDisconnect = false;
             _sendLimitWarningLogged = false;
             _sendQueue = null;
@@ -314,17 +322,22 @@ namespace PurrNet.Steam
                     connectionState = PurrConnectionState.Connected;
                     break;
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+                    Disconnect(why: DisconnectReason.Timeout);
+                    break;
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
-                    Disconnect();
+                    Disconnect(why: DisconnectReason.ServerRequest);
                     break;
             }
         }
 
-        void Disconnect(string reason = null, bool deferNotification = false)
+        void Disconnect(string reason = null, bool deferNotification = false,
+            DisconnectReason why = DisconnectReason.ClientRequest)
         {
             _sendQueue?.Clear();
             if (_connection != HSteamNetConnection.Invalid)
             {
+                // Only the call that closes the live handle decides the reason; a later Stop() keeps it.
+                disconnectReason = why;
                 var connection = _connection;
                 _connection = HSteamNetConnection.Invalid;
                 try
