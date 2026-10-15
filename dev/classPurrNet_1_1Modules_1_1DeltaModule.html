@@ -163,6 +163,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Disable</b> (bool asS
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a8460861ac153bdc0cdbac87d65254213"><td class="memItemLeft" align="right" valign="top"><a id="a8460861ac153bdc0cdbac87d65254213" name="a8460861ac153bdc0cdbac87d65254213"></a>
+static bool&#160;</td><td class="memItemRight" valign="bottom"><b>RejectLastRead&lt; T &gt;</b> ()</td></tr>
+<tr class="memdesc:a8460861ac153bdc0cdbac87d65254213"><td class="mdescLeft">&#160;</td><td class="mdescRight">Discards the value most recently delta-decoded for <em>T</em>  and makes its sender re-encode from scratch. Call it from an RPC body whose delta-packed argument failed validation: a corrupt baseline otherwise keeps decoding into the same invalid value for as long as the sender considers it acknowledged.  <br /></td></tr>
+<tr class="separator:a8460861ac153bdc0cdbac87d65254213"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af52739dd4372442191caa5517276f722"><td class="memItemLeft" align="right" valign="top">static uint&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Modules_1_1DeltaModule.html#af52739dd4372442191caa5517276f722">GetKeyHash&lt; T &gt;</a> (T key)</td></tr>
 <tr class="separator:af52739dd4372442191caa5517276f722"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
