@@ -131,6 +131,7 @@ var annotated_dup =
         [ "PackedUInt", "structPurrNet_1_1Packing_1_1PackedUInt.html", null ],
         [ "PackedULong", "structPurrNet_1_1Packing_1_1PackedULong.html", null ],
         [ "PackedUShort", "structPurrNet_1_1Packing_1_1PackedUShort.html", null ],
+        [ "PackerRegistrationEntry", "structPurrNet_1_1Packing_1_1PackerRegistrationEntry.html", null ],
         [ "QuaternionEqualityComparer", "structPurrNet_1_1Packing_1_1QuaternionEqualityComparer.html", null ],
         [ "RegisterPackersAttribute", "classPurrNet_1_1Packing_1_1RegisterPackersAttribute.html", "classPurrNet_1_1Packing_1_1RegisterPackersAttribute" ],
         [ "Size", "structPurrNet_1_1Packing_1_1Size.html", null ]
@@ -293,6 +294,7 @@ var annotated_dup =
       [ "OwnershipComponentToggle", "structPurrNet_1_1OwnershipComponentToggle.html", null ],
       [ "OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],
       [ "OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
+      [ "PackerDependenciesAttribute", "classPurrNet_1_1PackerDependenciesAttribute.html", null ],
       [ "PlayerID", "structPurrNet_1_1PlayerID.html", null ],
       [ "PlayerIdentity", "classPurrNet_1_1PlayerIdentity.html", "classPurrNet_1_1PlayerIdentity" ],
       [ "PlayersBroadcaster", "classPurrNet_1_1PlayersBroadcaster.html", null ],

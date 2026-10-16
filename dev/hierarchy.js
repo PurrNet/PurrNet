@@ -9,6 +9,7 @@ var hierarchy =
       [ "PurrNet.DontDeltaCompressAttribute", "classPurrNet_1_1DontDeltaCompressAttribute.html", null ],
       [ "PurrNet.DontPackAttribute", "classPurrNet_1_1DontPackAttribute.html", null ],
       [ "PurrNet.LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
+      [ "PurrNet.PackerDependenciesAttribute", "classPurrNet_1_1PackerDependenciesAttribute.html", null ],
       [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ],
       [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ]
     ] ],
@@ -504,6 +505,7 @@ var hierarchy =
     [ "PurrNet.OwnershipComponentToggle", "structPurrNet_1_1OwnershipComponentToggle.html", null ],
     [ "PurrNet.OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],
     [ "PurrNet.OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
+    [ "PurrNet.Packing.PackerRegistrationEntry", "structPurrNet_1_1Packing_1_1PackerRegistrationEntry.html", null ],
     [ "PurrNet.Transports.PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
     [ "PurrNet.Modules.PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
     [ "PurrNet.Transports.PingResult", "structPurrNet_1_1Transports_1_1PingResult.html", null ],
