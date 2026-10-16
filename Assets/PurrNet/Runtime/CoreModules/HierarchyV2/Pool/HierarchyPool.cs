@@ -148,7 +148,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private void Warmup(PrefabData prefabData)
+        public void Warmup(PrefabData prefabData)
         {
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab, _parent);
             NetworkManager.SetupPrefabInfo(copy, prefabData.prefabId, prefabData.pooled || _forceWarmupPieces);
