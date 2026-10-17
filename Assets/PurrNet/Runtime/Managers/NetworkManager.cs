@@ -1856,6 +1856,40 @@ namespace PurrNet
                 _transportLayer.SendMessages(sendDelta);
         }
 
+        private void RunPendingCleanup()
+        {
+            if (_isCleaningClient)
+            {
+                if (_preserveClientStateForHostMigration || isPromotingToServer || isTranferingToNewServer)
+                {
+                    _isCleaningClient = false;
+                }
+                else if (_clientModules.Cleanup())
+                {
+                    _clientModules.UnregisterModules();
+                    CleanupClientModules();
+                    TriggerUnsubscribeEvents(false);
+                    _isCleaningClient = false;
+                }
+            }
+
+            if (_isCleaningServer)
+            {
+                if (isPromotingToServer)
+                {
+                    _isCleaningServer = false;
+                }
+                else if (_serverModules.Cleanup())
+                {
+                    _isServerTicking = false;
+                    _serverModules.UnregisterModules();
+                    CleanupServerModules();
+                    TriggerUnsubscribeEvents(true);
+                    _isCleaningServer = false;
+                }
+            }
+        }
+
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
@@ -1918,36 +1952,7 @@ namespace PurrNet
 
             SendMessagesNow(delta);
 
-            if (_isCleaningClient)
-            {
-                if (_preserveClientStateForHostMigration || isPromotingToServer || isTranferingToNewServer)
-                {
-                    _isCleaningClient = false;
-                }
-                else if (_clientModules.Cleanup())
-                {
-                    _clientModules.UnregisterModules();
-                    CleanupClientModules();
-                    TriggerUnsubscribeEvents(false);
-                    _isCleaningClient = false;
-                }
-            }
-
-            if (_isCleaningServer)
-            {
-                if (isPromotingToServer)
-                {
-                    _isCleaningServer = false;
-                }
-                else if (_serverModules.Cleanup())
-                {
-                    _isServerTicking = false;
-                    _serverModules.UnregisterModules();
-                    CleanupServerModules();
-                    TriggerUnsubscribeEvents(true);
-                    _isCleaningServer = false;
-                }
-            }
+            RunPendingCleanup();
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             Statistics.MarkEndOfSampling();
@@ -2090,6 +2095,41 @@ namespace PurrNet
         public bool isPromotingToServer { get; private set; }
 
         /// <summary>
+        /// Seconds PromoteToServer or TransferToNewServer keeps retrying before it gives up (stops the client and the
+        /// server, as on an exception). 0, the default, retries until it succeeds or CancelHostMigration is called.
+        /// </summary>
+        public float hostMigrationTimeout { get; set; }
+
+        private bool _cancelHostMigration;
+
+        /// <summary>
+        /// Stops a PromoteToServer or TransferToNewServer that is still waiting or retrying, for example when the new
+        /// host never comes up. The client and the server are stopped, as on an exception. Does nothing otherwise.
+        /// </summary>
+        public void CancelHostMigration()
+        {
+            if (isPromotingToServer || isTranferingToNewServer)
+                _cancelHostMigration = true;
+        }
+
+        private bool ShouldAbortHostMigration(double startedAt, string operation)
+        {
+            if (_cancelHostMigration)
+            {
+                PurrLogger.LogWarning($"{operation} cancelled.");
+                return true;
+            }
+
+            if (hostMigrationTimeout > 0 && Time.unscaledTimeAsDouble - startedAt > hostMigrationTimeout)
+            {
+                PurrLogger.LogWarning($"{operation} gave up after {hostMigrationTimeout:0.#} seconds.");
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Keeps the current client modules alive while an external host migration system
         /// prepares transport state before calling PromoteToServer or TransferToNewServer.
         /// </summary>
@@ -2132,19 +2172,35 @@ namespace PurrNet
                 }
 
                 isPromotingToServer = true;
+                _cancelHostMigration = false;
                 _preserveClientStateForHostMigration = false;
+                var startedAt = Time.unscaledTimeAsDouble;
 
                 StopServer();
                 StopClient();
 
                 while (clientState != ConnectionState.Disconnected ||
                        serverState != ConnectionState.Disconnected)
+                {
+                    if (ShouldAbortHostMigration(startedAt, nameof(PromoteToServer)))
+                    {
+                        await AbortHostMigrationAsync();
+                        return;
+                    }
+
                     await UnityLatestUpdate.Yield();
+                }
 
                 StartServer();
 
                 while (serverState != ConnectionState.Connected)
                 {
+                    if (ShouldAbortHostMigration(startedAt, nameof(PromoteToServer)))
+                    {
+                        await AbortHostMigrationAsync();
+                        return;
+                    }
+
                     var nextRetryAt = Time.unscaledTimeAsDouble + PromoteToServerStartRetryIntervalSeconds;
                     while (serverState != ConnectionState.Connected && Time.unscaledTimeAsDouble < nextRetryAt)
                         await UnityLatestUpdate.Yield();
@@ -2164,9 +2220,7 @@ namespace PurrNet
             catch (Exception e)
             {
                 PurrLogger.LogException(e);
-                isPromotingToServer = false;
-                StopClient();
-                StopServer();
+                await AbortHostMigrationAsync();
             }
             finally
             {
@@ -2175,6 +2229,26 @@ namespace PurrNet
         }
 
         public bool isTranferingToNewServer { get; private set; }
+
+        private async System.Threading.Tasks.Task AbortHostMigrationAsync()
+        {
+            _cancelHostMigration = false;
+            isPromotingToServer = false;
+            isTranferingToNewServer = false;
+            StopClient();
+            StopServer();
+
+            // Nothing ticks once both are down, and the tick is what finishes a stop's cleanup: a server whose listen
+            // socket never opened would stay Disconnecting for good, and StartServer would refuse to run again.
+            var giveUpAt = Time.unscaledTimeAsDouble + 5d;
+            while ((_isCleaningClient || _isCleaningServer) && Time.unscaledTimeAsDouble < giveUpAt)
+            {
+                RunPendingCleanup();
+                if (!_isCleaningClient && !_isCleaningServer)
+                    break;
+                await UnityLatestUpdate.Yield();
+            }
+        }
 
         private const float TransferToNewServerConnectRetryIntervalSeconds = 2f;
 
@@ -2193,14 +2267,24 @@ namespace PurrNet
                     return;
 
                 isTranferingToNewServer = true;
+                _cancelHostMigration = false;
                 _preserveClientStateForHostMigration = false;
+                var startedAt = Time.unscaledTimeAsDouble;
 
                 StopClient();
                 StopServer();
 
                 while (clientState != ConnectionState.Disconnected ||
                        serverState != ConnectionState.Disconnected)
+                {
+                    if (ShouldAbortHostMigration(startedAt, nameof(TransferToNewServer)))
+                    {
+                        await AbortHostMigrationAsync();
+                        return;
+                    }
+
                     await UnityLatestUpdate.Yield();
+                }
 
                 StartClient();
 
@@ -2208,11 +2292,17 @@ namespace PurrNet
                 {
                     var nextRetryAt = Time.unscaledTimeAsDouble + TransferToNewServerConnectRetryIntervalSeconds;
                     while ((clientState != ConnectionState.Connected || !isLocalPlayerReady) &&
-                           Time.unscaledTimeAsDouble < nextRetryAt)
+                           Time.unscaledTimeAsDouble < nextRetryAt && !_cancelHostMigration)
                         await UnityLatestUpdate.Yield();
 
                     if (clientState == ConnectionState.Connected && isLocalPlayerReady)
                         break;
+
+                    if (ShouldAbortHostMigration(startedAt, nameof(TransferToNewServer)))
+                    {
+                        await AbortHostMigrationAsync();
+                        return;
+                    }
 
                     _transport.StopClientInternalOnly();
                     _isCleaningClient = false;
@@ -2228,9 +2318,7 @@ namespace PurrNet
             catch (Exception e)
             {
                 PurrLogger.LogException(e);
-                isTranferingToNewServer = false;
-                StopClient();
-                StopServer();
+                await AbortHostMigrationAsync();
             }
             finally
             {
