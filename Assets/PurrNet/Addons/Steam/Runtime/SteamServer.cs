@@ -39,7 +39,8 @@ namespace PurrNet.Steam
             new Dictionary<HSteamNetConnection, SteamSendQueue>();
         private readonly List<HSteamNetConnection> _flushConnections = new List<HSteamNetConnection>();
         private readonly List<HSteamNetConnection> _receiveConnections = new List<HSteamNetConnection>();
-        private readonly Queue<int> _pendingDisconnects = new Queue<int>();
+        private readonly Queue<(int id, DisconnectReason reason)> _pendingDisconnects =
+            new Queue<(int id, DisconnectReason reason)>();
         private readonly HashSet<HSteamNetConnection> _sendLimitWarnings = new HashSet<HSteamNetConnection>();
 
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
@@ -48,6 +49,12 @@ namespace PurrNet.Steam
 #pragma warning disable CS0067 // Event is never used
         public event Action<int> onRemoteConnected;
         public event Action<int> onRemoteDisconnected;
+
+        /// <summary>
+        /// Raised with onRemoteDisconnected, with why: ClientRequest when the client closed the connection, Timeout when
+        /// Steam detected a problem, ServerRequest when this server kicked or closed it.
+        /// </summary>
+        public event Action<int, DisconnectReason> onRemoteDisconnectedWithReason;
         public event Action<int, ByteData> onDataReceived;
 #pragma warning restore CS0067 // Event is never used
 
@@ -160,8 +167,8 @@ namespace PurrNet.Steam
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
             while (_pendingDisconnects.Count > 0)
             {
-                var disconnectedId = _pendingDisconnects.Dequeue();
-                NotifyDisconnected(disconnectedId);
+                var disconnected = _pendingDisconnects.Dequeue();
+                NotifyDisconnected(disconnected.id, disconnected.reason);
             }
 
             _receiveConnections.Clear();
@@ -215,7 +222,7 @@ namespace PurrNet.Steam
             if (!_connectionById.TryGetValue(id, out var conn))
                 return;
 
-            CloseConnection(conn, null, true);
+            CloseConnection(conn, null, true, DisconnectReason.ServerRequest);
 #endif
         }
         
@@ -353,14 +360,16 @@ namespace PurrNet.Steam
         private void FailSend(HSteamNetConnection conn, string reason)
         {
             var status = SteamConnectionStatus.Describe(conn, _isDedicated, out bool peerGone);
-            if (peerGone || _sendQueues.TryGetValue(conn, out var queue) && queue.peerClosed)
+            bool closedByClient = peerGone || _sendQueues.TryGetValue(conn, out var queue) && queue.peerClosed;
+            if (closedByClient)
                 PurrLogger.Log($"Disconnecting Steam connection {conn}: {reason} ({status})");
             else
                 PurrLogger.LogError($"Disconnecting Steam connection {conn}: {reason} ({status})");
-            CloseConnection(conn, reason, true);
+            CloseConnection(conn, reason, true, closedByClient ? DisconnectReason.ClientRequest : DisconnectReason.Timeout);
         }
 
-        private void CloseConnection(HSteamNetConnection conn, string reason = null, bool deferNotification = false)
+        private void CloseConnection(HSteamNetConnection conn, string reason = null, bool deferNotification = false,
+            DisconnectReason why = DisconnectReason.ServerRequest)
         {
             try
             {
@@ -375,7 +384,7 @@ namespace PurrNet.Steam
             finally
             {
                 // Steam does not post a local state callback when we explicitly close a handle.
-                RemoveConnection(conn, deferNotification);
+                RemoveConnection(conn, deferNotification, why);
             }
         }
 
@@ -392,7 +401,7 @@ namespace PurrNet.Steam
             onRemoteConnected?.Invoke(id);
         }
 
-        private void RemoveConnection(HSteamNetConnection connection, bool deferNotification)
+        private void RemoveConnection(HSteamNetConnection connection, bool deferNotification, DisconnectReason why)
         {
             _sendLimitWarnings.Remove(connection);
             if (_sendQueues.Remove(connection, out var queue))
@@ -401,18 +410,19 @@ namespace PurrNet.Steam
             {
                 _connectionById.Remove(_id);
                 if (deferNotification)
-                    _pendingDisconnects.Enqueue(_id);
+                    _pendingDisconnects.Enqueue((_id, why));
                 else
-                    NotifyDisconnected(_id);
+                    NotifyDisconnected(_id, why);
             }
         }
 
-        private void NotifyDisconnected(int connectionId)
+        private void NotifyDisconnected(int connectionId, DisconnectReason why)
         {
             try
             {
                 // Disconnect handlers may still need the Steam identity for cleanup.
                 onRemoteDisconnected?.Invoke(connectionId);
+                onRemoteDisconnectedWithReason?.Invoke(connectionId, why);
             }
             finally
             {
@@ -445,9 +455,13 @@ namespace PurrNet.Steam
                     break;
                 }
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+                {
+                    CloseConnection(args.m_hConn, why: DisconnectReason.Timeout);
+                    break;
+                }
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
                 {
-                    CloseConnection(args.m_hConn);
+                    CloseConnection(args.m_hConn, why: DisconnectReason.ClientRequest);
                     break;
                 }
             }
