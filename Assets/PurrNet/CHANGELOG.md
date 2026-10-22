@@ -1,3 +1,10 @@
+# [1.25.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.8...v1.25.0-beta.9) (2026-10-22)
+
+
+### Bug Fixes
+
+* RPCs on unity native events; pakcing Transform ([d73decc](https://github.com/PurrNet/PurrNet/commit/d73decce3ef7f3f2efd70f289052c8b818c9029c))
+
 # [1.25.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.7...v1.25.0-beta.8) (2026-10-20)
 
 
