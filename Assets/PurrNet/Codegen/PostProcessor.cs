@@ -111,6 +111,38 @@ namespace PurrNet.Codegen
             }
         }
 
+        // MonoBehaviour messages Unity invokes by name. An RPC attribute on one turns Unity's own call into a send
+        // on every peer (every frame for the update loops), and with runLocally the body also runs on the caller.
+        static readonly HashSet<string> _unityMessages = new()
+        {
+            "Awake", "Start", "Update", "LateUpdate", "FixedUpdate", "OnEnable", "OnDisable", "OnDestroy",
+            "OnGUI", "OnValidate", "Reset", "OnApplicationFocus", "OnApplicationPause", "OnApplicationQuit",
+            "OnTriggerEnter", "OnTriggerStay", "OnTriggerExit", "OnTriggerEnter2D", "OnTriggerStay2D", "OnTriggerExit2D",
+            "OnCollisionEnter", "OnCollisionStay", "OnCollisionExit",
+            "OnCollisionEnter2D", "OnCollisionStay2D", "OnCollisionExit2D",
+            "OnControllerColliderHit", "OnParticleCollision", "OnParticleTrigger", "OnJointBreak", "OnJointBreak2D",
+            "OnBecameVisible", "OnBecameInvisible", "OnWillRenderObject", "OnRenderObject",
+            "OnPreCull", "OnPreRender", "OnPostRender", "OnRenderImage",
+            "OnAnimatorMove", "OnAnimatorIK", "OnDrawGizmos", "OnDrawGizmosSelected",
+            "OnMouseDown", "OnMouseDrag", "OnMouseEnter", "OnMouseExit", "OnMouseOver", "OnMouseUp", "OnMouseUpAsButton",
+            "OnTransformParentChanged", "OnTransformChildrenChanged", "OnRectTransformDimensionsChange",
+            "OnCanvasGroupChanged", "OnAudioFilterRead"
+        };
+
+        private static bool WarnIfUnityMessageRpc(MethodDefinition method, RPCSignature signature,
+            ICollection<DiagnosticMessage> messages)
+        {
+            if (signature.isStatic || !_unityMessages.Contains(method.Name))
+                return false;
+
+            string local = signature.runLocally ? " and runLocally also runs its body on the caller" : string.Empty;
+            Warning(messages,
+                $"RPC '{method.Name}' is a Unity message: Unity calls it on every peer, so each call sends the RPC{local}. " +
+                $"Keep '{method.Name}' a plain method and call a separate RPC from it.",
+                method);
+            return true;
+        }
+
         private static RPCSignature? GetMethodRPCType(MethodDefinition method, ICollection<DiagnosticMessage> messages)
         {
             RPCSignature data = default;
@@ -4218,6 +4250,9 @@ namespace PurrNet.Codegen
                                         method);
                                     continue;
                                 }
+
+                                if (inheritsFromNetworkIdentity)
+                                    WarnIfUnityMessageRpc(method, rpcType.Value, messages);
 
                                 _rpcMethods.Add(new RPCMethod
                                 {
