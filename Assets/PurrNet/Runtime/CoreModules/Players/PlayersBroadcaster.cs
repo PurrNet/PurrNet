@@ -37,6 +37,7 @@ namespace PurrNet
         }
     }
 
+    [PackerDependencies]
     public class PlayersBroadcaster : INetworkModule, IPlayerBroadcaster, IPromoteToServerModule
     {
         private readonly BroadcastModule _broadcastModule;

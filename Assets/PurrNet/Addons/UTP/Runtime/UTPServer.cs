@@ -969,6 +969,7 @@ namespace PurrNet.UTP
 
             try
             {
+                _driver.ScheduleUpdate().Complete();
                 _driver.Dispose();
             }
             catch

@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class AddressablesSyncModule : INetworkModule
     {
         public delegate void OnClientAddressableLoadStateChanged(PlayerID player, string guid, bool loaded);

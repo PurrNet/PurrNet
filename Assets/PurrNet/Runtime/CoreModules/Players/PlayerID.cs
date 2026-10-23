@@ -1,10 +1,12 @@
 using System;
+using System.Runtime.InteropServices;
 using PurrNet.Modules;
 using PurrNet.Packing;
 
 namespace PurrNet
 {
     [Serializable]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public readonly struct PlayerID : IPackedAuto, IEquatable<PlayerID>
     {
         [UsedByIL]

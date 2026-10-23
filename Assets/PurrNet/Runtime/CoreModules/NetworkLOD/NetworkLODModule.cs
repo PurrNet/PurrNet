@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class NetworkLODModule : INetworkModule, IPromoteToServerModule
     {
         private readonly List<NetworkLOD> _lods = new List<NetworkLOD>();

@@ -5,8 +5,15 @@ namespace PurrNet.Modules
 {
     public partial class RollbackModule
     {
-        static readonly RaycastHit[] _raycastHits = new RaycastHit[1024];
-        static readonly Collider[] _colliderHits = new Collider[1024];
+        private static class QueryBuffers3D
+        {
+            internal static readonly RaycastHit[] hits = new RaycastHit[1024];
+            internal static readonly Collider[] colliders = new Collider[1024];
+            static QueryBuffers3D() { }
+        }
+
+        static RaycastHit[] _raycastHits => QueryBuffers3D.hits;
+        static Collider[] _colliderHits => QueryBuffers3D.colliders;
 
         /// <summary>
         /// Performs a sphere overlap check at the given position with the given radius.

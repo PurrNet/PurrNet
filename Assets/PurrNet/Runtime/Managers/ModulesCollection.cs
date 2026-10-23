@@ -57,7 +57,8 @@ namespace PurrNet
 
         public bool TryGetModule<T>(out T module) where T : INetworkModule
         {
-            if (_modulesMap != null && _modulesMap.TryGetValue(typeof(T), out var moduleResult) && moduleResult is T castedMod)
+            if (_modulesMap != null && _modulesMap.Count > 0 &&
+                _modulesMap.TryGetValue(typeof(T), out var moduleResult) && moduleResult is T castedMod)
             {
                 module = castedMod;
                 return true;

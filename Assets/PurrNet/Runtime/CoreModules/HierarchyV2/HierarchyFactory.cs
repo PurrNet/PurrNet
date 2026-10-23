@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class HierarchyFactory : INetworkModule, IFixedUpdate, IPreFixedUpdate, ICleanup, IPromoteToServerModule, ITransferToNewServer
     {
         readonly ScenesModule _scenes;

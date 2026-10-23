@@ -313,6 +313,9 @@ namespace PurrNet.Pooling
             if (Count != other.Count)
                 return false;
 
+            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return Count == 0 || PurrEquality<T>.MemEquals(ref array[0], ref other.array[0], Count);
+
             for (int i = 0; i < Count; i++)
             {
                 if (!Packer.AreEqualRef(ref array[i], ref other.array[i]))

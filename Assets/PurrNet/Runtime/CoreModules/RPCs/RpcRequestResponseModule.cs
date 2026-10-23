@@ -122,6 +122,7 @@ namespace PurrNet.Modules
         public RpcRejection rejection;
     }
 
+    [PackerDependencies]
     public class RpcRequestResponseModule : INetworkModule, IFixedUpdate, IPromoteToServerModule
     {
         private readonly NetworkManager _manager;

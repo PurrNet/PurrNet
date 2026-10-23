@@ -49,6 +49,7 @@ namespace PurrNet.Modules
 
     public delegate void OnSceneVisibilityEvent(SceneID scene, bool isVisible, bool asServer);
 
+    [PackerDependencies]
     public partial class ScenesModule : INetworkModule, IFixedUpdate, ICleanup, IConnectionStateListener, ITransferToNewServer, IPromoteToServerModule
     {
         private static readonly Dictionary<int, uint> _buildIndexToHash = new Dictionary<int, uint>();

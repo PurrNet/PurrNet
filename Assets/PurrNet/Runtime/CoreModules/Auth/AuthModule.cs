@@ -19,6 +19,7 @@ namespace PurrNet.Modules
         public float addedTimeStamp;
     }
 
+    [PackerDependencies]
     public class AuthModule : INetworkModule, IConnectionListener, IFixedUpdate, IPromoteToServerModule
     {
         private const float FALLBACK_DENIAL_TIMEOUT = 5f;

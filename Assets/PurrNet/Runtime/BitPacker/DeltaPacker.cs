@@ -7,8 +7,8 @@ namespace PurrNet.Packing
 {
     public static class DeltaPacker
     {
-        static readonly Dictionary<Type, MethodInfo> _writeMethods = new Dictionary<Type, MethodInfo>();
-        static readonly Dictionary<Type, MethodInfo> _readMethods = new Dictionary<Type, MethodInfo>();
+        static readonly Dictionary<Type, object> _writeMethods = new Dictionary<Type, object>();
+        static readonly Dictionary<Type, object> _readMethods = new Dictionary<Type, object>();
 
         public static void RegisterWriter(Type type, MethodInfo method)
         {
@@ -16,6 +16,16 @@ namespace PurrNet.Packing
         }
 
         public static void RegisterReader(Type type, MethodInfo method)
+        {
+            _readMethods.TryAdd(type, method);
+        }
+
+        internal static void RegisterWriterDelegate(Type type, Delegate method)
+        {
+            _writeMethods.TryAdd(type, method);
+        }
+
+        internal static void RegisterReaderDelegate(Type type, Delegate method)
         {
             _readMethods.TryAdd(type, method);
         }
@@ -56,7 +66,7 @@ namespace PurrNet.Packing
                 _args[0] = packer;
                 _args[1] = oldValue;
                 _args[2] = newValue;
-                var res = method.Invoke(null, _args);
+                var res = Packer.ResolveMethod(method).Invoke(null, _args);
                 if (res is bool result)
                 {
                     return result;
@@ -85,7 +95,7 @@ namespace PurrNet.Packing
                 _args[0] = packer;
                 _args[1] = oldValue;
                 _args[2] = newValue;
-                method.Invoke(null, _args);
+                Packer.ResolveMethod(method).Invoke(null, _args);
                 newValue = _args[2];
             }
             catch (Exception e)

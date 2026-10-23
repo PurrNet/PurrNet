@@ -39,7 +39,7 @@ namespace PurrNet.Packing
                 return;
 
             _hasWriter = true;
-            DeltaPacker.RegisterWriter(typeof(T), write.Method);
+            DeltaPacker.RegisterWriterDelegate(typeof(T), write);
             WriteFunc = write;
             NativeDeltaPacker<T>.RegisterWriter(write);
         }
@@ -50,7 +50,7 @@ namespace PurrNet.Packing
                 return;
 
             _hasReader = true;
-            DeltaPacker.RegisterReader(typeof(T), read.Method);
+            DeltaPacker.RegisterReaderDelegate(typeof(T), read);
             ReadFunc = read;
             NativeDeltaPacker<T>.RegisterReader(read);
         }

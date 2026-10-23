@@ -7,13 +7,26 @@ namespace LiteNetLib
         private NetPacket _poolHead;
         private int _poolCount;
         private readonly object _poolLock = new object();
+        private readonly NetPacket[] _largePoolHeads = new NetPacket[6];
+        private int _largePoolCount;
+        private int _largePoolBytes;
+        private const int LargePoolByteLimit = 256 * 1024;
 
         /// <summary>
         /// Maximum packet pool size (increase if you have tons of packets sending)
         /// </summary>
         public int PacketPoolSize = 1000;
 
-        public int PoolCount => _poolCount;
+        public int PoolCount => _poolCount + _largePoolCount;
+
+        private static int LargePacketBucket(int size, out int capacity)
+        {
+            capacity = 2048;
+            for (int bucket = 0; bucket < 6; bucket++, capacity *= 2)
+                if (size <= capacity)
+                    return bucket;
+            return -1;
+        }
         
         private NetPacket PoolGetWithData(PacketProperty property, byte[] data, int start, int length)
         {
@@ -42,7 +55,25 @@ namespace LiteNetLib
         internal NetPacket PoolGetPacket(int size)
         {
             if (size > NetConstants.MaxPacketSize)
-                return new NetPacket(size);
+            {
+                int bucket = LargePacketBucket(size, out int capacity);
+                if (bucket < 0 || PacketPoolSize <= 0)
+                    return new NetPacket(size);
+                lock (_poolLock)
+                {
+                    var large = _largePoolHeads[bucket];
+                    if (large != null)
+                    {
+                        _largePoolHeads[bucket] = large.Next;
+                        large.Next = null;
+                        _largePoolCount--;
+                        _largePoolBytes -= large.RawData.Length;
+                        large.Size = size;
+                        return large;
+                    }
+                }
+                return new NetPacket(capacity) { Size = size };
+            }
 
             NetPacket packet;
             lock (_poolLock)
@@ -63,9 +94,24 @@ namespace LiteNetLib
 
         internal void PoolRecycle(NetPacket packet)
         {
-            if (packet.RawData.Length > NetConstants.MaxPacketSize || _poolCount >= PacketPoolSize)
+            if (packet.RawData.Length > NetConstants.MaxPacketSize)
             {
-                //Don't pool big packets. Save memory
+                int bucket = LargePacketBucket(packet.RawData.Length, out int capacity);
+                // Keep only size-class buffers. Arbitrary and very large messages stay unpooled.
+                if (bucket < 0 || capacity != packet.RawData.Length)
+                    return;
+                lock (_poolLock)
+                {
+                    if (_poolCount + _largePoolCount >= PacketPoolSize ||
+                        _largePoolBytes + capacity > LargePoolByteLimit)
+                        return;
+                    packet.RawData[0] = 0;
+                    packet.UserData = null;
+                    packet.Next = _largePoolHeads[bucket];
+                    _largePoolHeads[bucket] = packet;
+                    _largePoolCount++;
+                    _largePoolBytes += capacity;
+                }
                 return;
             }
             
@@ -73,6 +119,8 @@ namespace LiteNetLib
             packet.RawData[0] = 0;
             lock (_poolLock)
             {
+                if (_poolCount + _largePoolCount >= PacketPoolSize)
+                    return;
                 packet.Next = _poolHead;
                 _poolHead = packet;
                 _poolCount++;

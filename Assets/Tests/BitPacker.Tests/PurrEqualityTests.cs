@@ -215,6 +215,40 @@ public class PurrEqualityTests
         }
     }
 
+    [Test]
+    public void CollectionEquality_UnmanagedCollectionsCompareOnlyTheirElements()
+    {
+        PackCollections.RegisterArray<int>();
+        PackCollections.RegisterList<int>();
+
+        var left = new List<int>(16) { 1, 2, 3, 4, 9 };
+        left.RemoveAt(4);
+        var right = new List<int>(64) { 1, 2, 3, 4 };
+        Assert.IsTrue(Packer.AreEqual(left, right), "List ignores stale capacity");
+        Assert.IsTrue(Packer.AreEqual(new List<int>(), new List<int>(8)), "Empty lists");
+
+        using var leftList = DisposableList<int>.Create(left);
+        using var rightList = DisposableList<int>.Create(right);
+        Assert.IsTrue(leftList.Equals(rightList), "DisposableList");
+
+        using var leftArray = DisposableArray<int>.Create(4);
+        using var rightArray = DisposableArray<int>.Create(4);
+        for (int i = 0; i < 4; i++)
+        {
+            leftArray.array[i] = left[i];
+            rightArray.array[i] = right[i];
+        }
+        Assert.IsTrue(leftArray.Equals(rightArray), "DisposableArray");
+
+        right[3] = 5;
+        rightList.list[3] = 5;
+        rightArray.array[3] = 5;
+        Assert.IsFalse(Packer.AreEqual(left, right), "List last element");
+        Assert.IsFalse(leftList.Equals(rightList), "DisposableList last element");
+        Assert.IsFalse(leftArray.Equals(rightArray), "DisposableArray last element");
+        Assert.IsFalse(Packer.AreEqual(new[] { 1, 2, 3, 4 }, new[] { 1, 2, 3, 5 }), "Array last element");
+    }
+
     private static void AssertCollectionEquality<T>(T left, T right, bool expected)
     {
         PackCollections.RegisterArray<T>();

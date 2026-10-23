@@ -150,7 +150,7 @@ namespace PurrNet.Modules
             }
         }
 
-        private void Warmup(PrefabData prefabData)
+        public void Warmup(PrefabData prefabData)
         {
             using var sample = WarmupMarker.Auto();
             var copy = UnityProxy.InstantiateDirectly(prefabData.prefab, _parent);

@@ -318,7 +318,6 @@ namespace PurrNet
 
         private bool _sentLastTick;
 
-        [SerializeField, HideInInspector]
         private T _initialValue;
 
         private static readonly bool _hashValue = RuntimeHelpers.IsReferenceOrContainsReferences<T>() && typeof(T) != typeof(string);

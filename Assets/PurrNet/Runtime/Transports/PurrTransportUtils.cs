@@ -9,9 +9,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 #endif
 using System.Diagnostics;
-#if !UNITY_WEBGL || UNITY_EDITOR
-using System.Net.Http;
-#else
+#if UNITY_WEBGL && !UNITY_EDITOR
 using System.Runtime.InteropServices;
 #endif
 
@@ -278,51 +276,24 @@ namespace PurrNet.Transports
         public static async Task<float> PingRelayAsync(RelayServer server)
         {
             var url = $"{server.apiEndpoint}/ping";
-#if !UNITY_WEBGL || UNITY_EDITOR
-            return await HttpRoundTripMilliseconds(url);
-#else
             await ActualPing(url);
             var first = await ActualPing(url);
             var second = await ActualPing(url);
             return Math.Min(first, second) * 1000f;
-#endif
         }
-
-#if !UNITY_WEBGL || UNITY_EDITOR
-        private static readonly HttpClient _pingClient = new() { Timeout = TimeSpan.FromSeconds(5) };
-
-        private static async Task<float> HttpRoundTripMilliseconds(string url)
-        {
-            return await Task.Run(async () =>
-            {
-                await TimedGet(url).ConfigureAwait(false); // warm-up: DNS + TLS
-                var first = await TimedGet(url).ConfigureAwait(false);
-                var second = await TimedGet(url).ConfigureAwait(false);
-                return Math.Min(first, second);
-            }).ConfigureAwait(false);
-        }
-
-        private static async Task<float> TimedGet(string url)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
-            var watch = Stopwatch.StartNew();
-            using var response = await _pingClient.SendAsync(request, HttpCompletionOption.ResponseContentRead).ConfigureAwait(false);
-            watch.Stop();
-            response.EnsureSuccessStatusCode();
-            return (float)watch.Elapsed.TotalMilliseconds;
-        }
-#endif
 
         private static async Task<float> ActualPing(string url)
         {
 #if UNITY_WEB
-            var request = UnityWebRequest.Get(url);
+            using var request = UnityWebRequest.Get(url);
+            request.timeout = 5;
             request.SetRequestHeader("Cache-Control", "no-cache");
             request.useHttpContinue = false;
             var watch = Stopwatch.StartNew();
             await request.SendWebRequest();
             watch.Stop();
+            if (request.result != UnityWebRequest.Result.Success)
+                throw new Exception($"Failed to ping relay '{url}': {request.error} (HTTP {request.responseCode}).");
             return (float)watch.Elapsed.TotalSeconds;
 #else
             throw new NotSupportedException("You need the `com.unity.modules.unitywebrequest` package to use this.");

@@ -934,7 +934,10 @@ namespace PurrNet.UTP
             Disconnect();
 
             if (_driver.IsCreated)
+            {
+                _driver.ScheduleUpdate().Complete();
                 _driver.Dispose();
+            }
 #endif
         }
     }

@@ -362,6 +362,8 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldftn, writeMethod);
                 il.Emit(OpCodes.Newobj, delegateConstructorRef);
 
+                EmitNativeRegistration(il, module, writeType.type, writeMethod, writeType.isDelta, true);
+
                 var write = genPackerType.GetMethod("RegisterWriter", false).Import(module);
                 var genericWrite = new MethodReference("RegisterWriter", module.TypeSystem.Void, genPackerType)
                 {
@@ -459,6 +461,8 @@ namespace PurrNet.Codegen
                 il.Emit(OpCodes.Ldftn, readMethod); // Load the method pointer
                 il.Emit(OpCodes.Newobj, delegateConstructorRef); // Create the delegate instance
 
+                EmitNativeRegistration(il, module, typeArgument, readMethod, readType.isDelta, false);
+
                 var read = genPackerType.GetMethod("RegisterReader", false).Import(module);
                 var genericread = new MethodReference("RegisterReader", module.TypeSystem.Void, genPackerType)
                 {
@@ -505,6 +509,32 @@ namespace PurrNet.Codegen
                 EquatableHelpers.InjectRegistration(type, actualType, il);
 
             il.Emit(OpCodes.Ret);
+        }
+
+        static void EmitNativeRegistration(ILProcessor il, ModuleDefinition module, TypeReference valueType,
+            MethodReference codec, bool delta, bool writing)
+        {
+            var nativeType = module.GetTypeDefinition(delta ? typeof(NativeDeltaPacker<>) : typeof(NativePacker<>))
+                .Import(module);
+            var instance = new GenericInstanceType(nativeType);
+            instance.GenericArguments.Add(valueType.Import(module));
+            string name = writing ? "RegisterGeneratedWriter" : "RegisterGeneratedReader";
+            var definition = instance.GetMethod(name, false).Import(module);
+            var registration = new MethodReference(name, module.TypeSystem.Void, instance)
+            {
+                HasThis = definition.HasThis,
+                ExplicitThis = definition.ExplicitThis,
+                CallingConvention = definition.CallingConvention
+            };
+            foreach (var parameter in definition.Parameters)
+                registration.Parameters.Add(new ParameterDefinition(parameter.Name, parameter.Attributes,
+                    parameter.ParameterType));
+
+            // Preserve the delegate for normal registration and any managed-value fallback.
+            // The native first-registration guard also preserves earlier custom callbacks.
+            il.Emit(OpCodes.Dup);
+            il.Emit(OpCodes.Ldftn, codec);
+            il.Emit(OpCodes.Call, registration);
         }
     }
 }

@@ -8,6 +8,7 @@ using PurrNet.Utils;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class BroadcastModule : INetworkModule, IDataListener, IConnectionListener, IFixedUpdate,
         IPromoteToServerModule
     {
