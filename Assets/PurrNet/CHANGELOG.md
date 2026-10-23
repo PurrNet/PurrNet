@@ -1,3 +1,10 @@
+# [1.25.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.9...v1.25.0-beta.10) (2026-10-23)
+
+
+### Bug Fixes
+
+* authentication registration and character controller sync ([57b443c](https://github.com/PurrNet/PurrNet/commit/57b443cf2edd6afc3ff0affcd08e00f14ebf8cdf))
+
 # [1.25.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.8...v1.25.0-beta.9) (2026-10-22)
 
 
