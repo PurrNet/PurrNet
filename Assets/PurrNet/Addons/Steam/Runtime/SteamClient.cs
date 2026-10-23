@@ -32,7 +32,20 @@ namespace PurrNet.Steam
         private bool _pendingDisconnect;
         static byte[] buffer = new byte[1024];
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
+        private readonly ISteamSockets _socketsOverride;
+
+        private ISteamSockets sockets => _socketsOverride ?? SteamSockets.For(_isDedicated);
+
+        /// <summary>
+        /// Runs the client against a stand-in for Steam's networking calls (tests).
+        /// </summary>
+        internal SteamClient(ISteamSockets sockets)
+        {
+            _socketsOverride = sockets;
+        }
 #endif
+
+        public SteamClient() { }
 
 #pragma warning disable CS0067 // Event is never used
         public event Action<ByteData> onDataReceived;
@@ -40,8 +53,8 @@ namespace PurrNet.Steam
         public event Action<PurrNet.Transports.ConnectionState> onConnectionState;
 
         /// <summary>
-        /// Why the last connection ended: ServerRequest when the host closed it, Timeout when Steam detected a problem,
-        /// ClientRequest when this client closed it. Valid when connectionState becomes Disconnected.
+        /// Why the last connection ended: ServerRequest when Steam reports the host closed it, Timeout when the connection
+        /// was lost, ClientRequest when this client closed it. Valid when connectionState becomes Disconnected.
         /// </summary>
         public DisconnectReason disconnectReason { get; private set; } = DisconnectReason.ClientRequest;
 
@@ -107,11 +120,9 @@ namespace PurrNet.Steam
             addr.SetIPv4(address.GetIPv4(), port);
 
             var options = sendSettings.CreateOptions();
-            _connection = _isDedicated ?
+            Open(_isDedicated ?
                 SteamGameServerNetworkingSockets.ConnectByIPAddress(ref addr, options.Length, options) :
-                SteamNetworkingSockets.ConnectByIPAddress(ref addr, options.Length, options);
-
-            PostConnect();
+                SteamNetworkingSockets.ConnectByIPAddress(ref addr, options.Length, options));
 #endif
         }
 
@@ -144,11 +155,9 @@ namespace PurrNet.Steam
             networkIdentity.SetSteamID(_hostSteamID);
 
             var options = sendSettings.CreateOptions();
-            _connection = _isDedicated ?
+            Open(_isDedicated ?
                 SteamGameServerNetworkingSockets.ConnectP2P(ref networkIdentity, 0, options.Length, options) :
-                SteamNetworkingSockets.ConnectP2P(ref networkIdentity, 0, options.Length, options);
-
-            PostConnect();
+                SteamNetworkingSockets.ConnectP2P(ref networkIdentity, 0, options.Length, options));
 #endif
         }
 
@@ -266,26 +275,29 @@ namespace PurrNet.Steam
 
         private EResult SendNative(IntPtr data, uint length, int flags)
         {
-            return _isDedicated
-                ? SteamGameServerNetworkingSockets.SendMessageToConnection(_connection, data, length, flags, out _)
-                : SteamNetworkingSockets.SendMessageToConnection(_connection, data, length, flags, out _);
+            return sockets.SendMessageToConnection(_connection, data, length, flags);
         }
 
         private void FailSend(string reason)
         {
-            var status = SteamConnectionStatus.Describe(_connection, _isDedicated, out bool peerGone);
-            bool closedByHost = peerGone || _sendQueue != null && _sendQueue.peerClosed;
-            if (closedByHost)
+            var status = SteamConnectionStatus.Describe(sockets, _connection, out bool peerGone, out var state);
+            if (peerGone || _sendQueue != null && _sendQueue.peerClosed)
                 PurrLogger.Log($"Disconnecting Steam client: {reason} ({status})");
             else
                 PurrLogger.LogError($"Disconnecting Steam client: {reason} ({status})");
-            Disconnect(reason, true, closedByHost ? DisconnectReason.ServerRequest : DisconnectReason.Timeout);
+            Disconnect(reason, true, SteamConnectionStatus.SendFailureReason(state, DisconnectReason.ServerRequest));
         }
 
         private static void MakeSureBufferCanFit(int packetLength)
         {
             if (buffer.Length < packetLength)
                 Array.Resize(ref buffer, packetLength);
+        }
+
+        internal void Open(HSteamNetConnection connection)
+        {
+            _connection = connection;
+            PostConnect();
         }
 
         private void PostConnect()
@@ -308,7 +320,7 @@ namespace PurrNet.Steam
                 : Callback<SteamNetConnectionStatusChangedCallback_t>.Create(OnLocalConnectionState);
         }
 
-        private void OnLocalConnectionState(SteamNetConnectionStatusChangedCallback_t param)
+        internal void OnLocalConnectionState(SteamNetConnectionStatusChangedCallback_t param)
         {
             if (param.m_hConn != _connection)
                 return;
@@ -342,9 +354,7 @@ namespace PurrNet.Steam
                 _connection = HSteamNetConnection.Invalid;
                 try
                 {
-                    if (_isDedicated)
-                        SteamGameServerNetworkingSockets.CloseConnection(connection, 0, reason, false);
-                    else SteamNetworkingSockets.CloseConnection(connection, 0, reason, false);
+                    sockets.CloseConnection(connection, reason);
                 }
                 catch
                 {

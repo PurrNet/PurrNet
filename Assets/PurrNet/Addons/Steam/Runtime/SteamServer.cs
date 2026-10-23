@@ -44,15 +44,28 @@ namespace PurrNet.Steam
         private readonly HashSet<HSteamNetConnection> _sendLimitWarnings = new HashSet<HSteamNetConnection>();
 
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
+        private readonly ISteamSockets _socketsOverride;
+
+        private ISteamSockets sockets => _socketsOverride ?? SteamSockets.For(_isDedicated);
+
+        /// <summary>
+        /// Runs the server against a stand-in for Steam's networking calls (tests).
+        /// </summary>
+        internal SteamServer(ISteamSockets sockets)
+        {
+            _socketsOverride = sockets;
+        }
 #endif
+
+        public SteamServer() { }
 
 #pragma warning disable CS0067 // Event is never used
         public event Action<int> onRemoteConnected;
         public event Action<int> onRemoteDisconnected;
 
         /// <summary>
-        /// Raised with onRemoteDisconnected, with why: ClientRequest when the client closed the connection, Timeout when
-        /// Steam detected a problem, ServerRequest when this server kicked or closed it.
+        /// Raised with onRemoteDisconnected, with why: ClientRequest when Steam reports the client closed the connection,
+        /// Timeout when the connection was lost, ServerRequest when this server kicked or closed it.
         /// </summary>
         public event Action<int, DisconnectReason> onRemoteDisconnectedWithReason;
         public event Action<int, ByteData> onDataReceived;
@@ -328,9 +341,7 @@ namespace PurrNet.Steam
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
         private EResult SendNative(HSteamNetConnection conn, IntPtr data, uint length, int flags)
         {
-            return _isDedicated
-                ? SteamGameServerNetworkingSockets.SendMessageToConnection(conn, data, length, flags, out _)
-                : SteamNetworkingSockets.SendMessageToConnection(conn, data, length, flags, out _);
+            return sockets.SendMessageToConnection(conn, data, length, flags);
         }
 
         private void FlushNativeConnection(HSteamNetConnection conn)
@@ -359,13 +370,12 @@ namespace PurrNet.Steam
 
         private void FailSend(HSteamNetConnection conn, string reason)
         {
-            var status = SteamConnectionStatus.Describe(conn, _isDedicated, out bool peerGone);
-            bool closedByClient = peerGone || _sendQueues.TryGetValue(conn, out var queue) && queue.peerClosed;
-            if (closedByClient)
+            var status = SteamConnectionStatus.Describe(sockets, conn, out bool peerGone, out var state);
+            if (peerGone || _sendQueues.TryGetValue(conn, out var queue) && queue.peerClosed)
                 PurrLogger.Log($"Disconnecting Steam connection {conn}: {reason} ({status})");
             else
                 PurrLogger.LogError($"Disconnecting Steam connection {conn}: {reason} ({status})");
-            CloseConnection(conn, reason, true, closedByClient ? DisconnectReason.ClientRequest : DisconnectReason.Timeout);
+            CloseConnection(conn, reason, true, SteamConnectionStatus.SendFailureReason(state, DisconnectReason.ClientRequest));
         }
 
         private void CloseConnection(HSteamNetConnection conn, string reason = null, bool deferNotification = false,
@@ -373,9 +383,7 @@ namespace PurrNet.Steam
         {
             try
             {
-                if (_isDedicated)
-                    SteamGameServerNetworkingSockets.CloseConnection(conn, 0, reason, false);
-                else SteamNetworkingSockets.CloseConnection(conn, 0, reason, false);
+                sockets.CloseConnection(conn, reason);
             }
             catch
             {
@@ -390,7 +398,7 @@ namespace PurrNet.Steam
 
         private int _nextConnectionId;
 
-        private void AddConnection(HSteamNetConnection connection, ulong steamId)
+        internal void AddConnection(HSteamNetConnection connection, ulong steamId)
         {
             int id = _nextConnectionId++;
             _connections.Add(connection);
@@ -430,7 +438,7 @@ namespace PurrNet.Steam
             }
         }
 
-        private void OnRemoteConnectionState(SteamNetConnectionStatusChangedCallback_t args)
+        internal void OnRemoteConnectionState(SteamNetConnectionStatusChangedCallback_t args)
         {
             if (args.m_info.m_hListenSocket != _listenSocket)
                 return;
@@ -481,10 +489,7 @@ namespace PurrNet.Steam
             {
                 try
                 {
-                    var conn = _connections[o];
-                    if (_isDedicated)
-                         SteamGameServerNetworkingSockets.CloseConnection(conn, 0, null, false);
-                    else SteamNetworkingSockets.CloseConnection(conn, 0, null, false);
+                    sockets.CloseConnection(_connections[o], null);
                 }
                 catch
                 {

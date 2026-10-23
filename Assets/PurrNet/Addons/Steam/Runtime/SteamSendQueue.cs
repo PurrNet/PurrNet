@@ -50,7 +50,8 @@ namespace PurrNet.Steam
         public SteamSendStatistics statistics => _statistics;
 
         /// <summary>
-        /// True when the last failed send was refused because Steam had already closed the connection.
+        /// True when the last failed send was refused with k_EResultNoConnection: Steam no longer has the connection
+        /// open. It does not say which side closed it.
         /// </summary>
         public bool peerClosed => _statistics.lastSendResult == (int)EResult.k_EResultNoConnection;
 
@@ -200,17 +201,30 @@ namespace PurrNet.Steam
 
     internal static class SteamConnectionStatus
     {
-        internal static string Describe(HSteamNetConnection conn, bool dedicated, out bool peerGone)
+        /// <summary>
+        /// The reason to report when a failed send closes a connection. Only a status that already reads ClosedByPeer
+        /// shows the other side chose to leave. A send can see a local problem before Steam posts the status callback,
+        /// and neither a k_EResultNoConnection send nor a failed status lookup says who closed the connection, so
+        /// anything else is a Timeout. Closing the handle drops the callback that would have said more.
+        /// </summary>
+        internal static DisconnectReason SendFailureReason(ESteamNetworkingConnectionState state,
+            DisconnectReason peerRequest)
+        {
+            return state == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer
+                ? peerRequest
+                : DisconnectReason.Timeout;
+        }
+
+        internal static string Describe(ISteamSockets sockets, HSteamNetConnection conn, out bool peerGone,
+            out ESteamNetworkingConnectionState state)
         {
             peerGone = false;
+            state = ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None;
             var status = new SteamNetConnectionRealTimeStatus_t();
-            var lanes = new SteamNetConnectionRealTimeLaneStatus_t();
             EResult result;
             try
             {
-                result = dedicated
-                    ? SteamGameServerNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes)
-                    : SteamNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes);
+                result = sockets.GetConnectionRealTimeStatus(conn, ref status);
             }
             catch (Exception e)
             {
@@ -223,6 +237,7 @@ namespace PurrNet.Steam
                 return $"status unavailable ({result})";
             }
 
+            state = status.m_eState;
             peerGone = status.m_eState != ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected;
             return $"state {status.m_eState}, ping {status.m_nPing} ms, quality local {status.m_flConnectionQualityLocal:0.##} remote {status.m_flConnectionQualityRemote:0.##}, " +
                    $"out {status.m_flOutBytesPerSec / 1024f:0.#} KiB/s, in {status.m_flInBytesPerSec / 1024f:0.#} KiB/s, rate {status.m_nSendRateBytesPerSecond / 1024} KiB/s, " +

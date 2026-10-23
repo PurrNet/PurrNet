@@ -1,0 +1,16 @@
+{
+    "name": "PurrNet.Steam.Tests",
+    "rootNamespace": "PurrNet.Steam.Tests",
+    "references": ["PurrNet.Runtime", "PurrNet.Steam.Runtime", "com.rlabrecque.steamworks.net", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": ["nunit.framework.dll"],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS", "STEAMWORKS_NET_PACKAGE"],
+    "versionDefines": [
+        { "name": "com.rlabrecque.steamworks.net", "expression": "2024", "define": "STEAMWORKS_NET_PACKAGE" }
+    ],
+    "noEngineReferences": false
+}
