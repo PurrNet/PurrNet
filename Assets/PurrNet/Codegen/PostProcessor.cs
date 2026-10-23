@@ -12,6 +12,7 @@ using JetBrains.Annotations;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using PurrNet.Editor;
+using PurrNet.Authentication;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -4164,7 +4165,7 @@ namespace PurrNet.Codegen
                                 foreach (var field in customAttribute.ConstructorArguments)
                                 {
                                     if (field.Value is TypeReference tref)
-                                        typesToGenerateSerializer.Add(tref);
+                                        typesToGenerateSerializer.Add(ImportAttributeType(tref, module));
                                 }
                             }
                         }
@@ -5526,8 +5527,32 @@ namespace PurrNet.Codegen
             }
         }
 
+        private static TypeReference ImportAttributeType(TypeReference type, ModuleDefinition module)
+        {
+            // A System.Type stored in an attribute does not carry CLI value-type flags.
+            // Import definitions rather than those unresolved references, including arguments
+            // of a closed generic, or generated delegates can contain invalid class/struct IL.
+            if (type is GenericInstanceType generic)
+            {
+                var closed = new GenericInstanceType(module.ImportReference(generic.ElementType.Resolve()));
+                foreach (var argument in generic.GenericArguments)
+                    closed.GenericArguments.Add(ImportAttributeType(argument, module));
+                return closed;
+            }
+
+            if (type is ArrayType array)
+                return new ArrayType(ImportAttributeType(array.ElementType, module), array.Rank);
+
+            return module.ImportReference(type.Resolve());
+        }
+
         public static bool IsTypeInOwnModule(TypeReference typeReference, ModuleDefinition ownModule)
         {
+            // Custom authenticators close this runtime-owned envelope over game payloads.
+            // Its codec must be generated in the assembly requesting that closed variant.
+            if (IsGeneric(typeReference, typeof(AuthenticationRequest<>)))
+                return true;
+
             if (IsGeneric(typeReference, typeof(Dictionary<,>)))
                 return true;
 

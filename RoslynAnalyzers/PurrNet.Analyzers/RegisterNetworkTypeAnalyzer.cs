@@ -11,6 +11,7 @@ namespace PurrNet.Analyzers
         // Mirrors PostProcessor.IsTypeInOwnModule / HandledGenericTypes: these containers are
         // registered by any assembly using them, regardless of where they are declared.
         private static readonly ImmutableHashSet<string> CrossAssemblyContainers = ImmutableHashSet.Create(
+            "PurrNet.Authentication.AuthenticationRequest`1",
             "System.Collections.Generic.List`1",
             "System.Collections.Generic.Dictionary`2",
             "System.Collections.Generic.HashSet`1",
