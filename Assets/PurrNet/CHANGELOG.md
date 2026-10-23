@@ -1,3 +1,10 @@
+# [1.25.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.10...v1.25.0-beta.11) (2026-10-23)
+
+
+### Bug Fixes
+
+* stop the host from overwriting client animator state ([8336757](https://github.com/PurrNet/PurrNet/commit/8336757633e8e7d3bfb6d5f9b836323faa5d1964))
+
 # [1.25.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.9...v1.25.0-beta.10) (2026-10-23)
 
 
