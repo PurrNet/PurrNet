@@ -3,6 +3,7 @@ using PurrNet.Logging;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class NetworkTransformFactory : INetworkModule, IPostBatch, IPromoteToServerModule
     {
         readonly ScenesModule _scenes;

@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public partial class RollbackModule : INetworkModule
     {
         readonly TickManager _tickManager;

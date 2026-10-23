@@ -13,6 +13,7 @@ using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IFlushImmediateRPCs, IPromoteToServerModule, ITransferToNewServer
     {
         public delegate void RPCPreProcessDelegate(RPCSignature signature, ref BitPacker packer);
@@ -972,6 +973,7 @@ namespace PurrNet.Modules
             if (rpcHandlerPtr != null)
             {
                 using (data.data.AutoScope())
+                using (BeginPostProcessScope())
                 {
                     try
                     {
@@ -1019,6 +1021,7 @@ namespace PurrNet.Modules
                 else
                 {
                     using (packet.data.AutoScope())
+                    using (BeginPostProcessScope())
                     {
                         try
                         {
@@ -1140,6 +1143,7 @@ namespace PurrNet.Modules
                 }
 
                 using (packet.data.AutoScope())
+                using (BeginPostProcessScope())
                 {
                     try
                     {
@@ -1202,13 +1206,13 @@ namespace PurrNet.Modules
             if (hasCustomPostProcessor || hasCompression)
             {
                 // We copy and leave the original data intact, so that the user can modify it freely.
-                var dataCopy = BitPackerPool.Get();
+                var dataCopy = RentPostProcessPacker();
                 dataCopy.WriteBitDataWithoutConsumingIt(data);
                 data = new BitData(dataCopy);
 
                 if (hasCompression)
                 {
-                    var newPacker = BitPackerPool.Get();
+                    var newPacker = RentPostProcessPacker();
                     newPacker.UnpickleFrom(dataCopy);
                     newPacker.ResetPositionAndMode(true);
                     data = new BitData(newPacker);
@@ -1216,6 +1220,50 @@ namespace PurrNet.Modules
 
                 if (hasCustomPostProcessor)
                     onPostProcessRpc.Invoke(info, ref data);
+            }
+        }
+
+        [ThreadStatic] private static List<BitPacker> _postProcessPackers;
+        [ThreadStatic] private static int _postProcessScopeDepth;
+
+        // The packet owns its original stream. Post-processing owns only its rentals,
+        // which must survive argument decoding and the callback, including nested RPCs.
+        internal static PostProcessScope BeginPostProcessScope()
+            => new PostProcessScope(_postProcessPackers?.Count ?? 0);
+
+        private static BitPacker RentPostProcessPacker()
+        {
+            var packer = BitPackerPool.Get();
+            if (_postProcessScopeDepth > 0)
+                (_postProcessPackers ??= new List<BitPacker>(4)).Add(packer);
+            return packer;
+        }
+
+        internal readonly struct PostProcessScope : IDisposable
+        {
+            private readonly int _first;
+            private readonly bool _active;
+
+            internal PostProcessScope(int first)
+            {
+                _first = first;
+                _active = true;
+                _postProcessScopeDepth++;
+            }
+
+            public void Dispose()
+            {
+                if (!_active) return;
+                if (_postProcessPackers != null)
+                {
+                    for (int i = _postProcessPackers.Count - 1; i >= _first; i--)
+                    {
+                        var packer = _postProcessPackers[i];
+                        _postProcessPackers.RemoveAt(i);
+                        packer.Dispose();
+                    }
+                }
+                _postProcessScopeDepth--;
             }
         }
 

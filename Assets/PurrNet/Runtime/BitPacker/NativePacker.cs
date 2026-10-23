@@ -59,6 +59,15 @@ namespace PurrNet.Packing
 #endif
         }
 
+        // Codegen supplies the matching static method pointer without runtime reflection.
+        [UsedByIL]
+        public static unsafe void RegisterGeneratedWriter(WriteFunc<T> write, IntPtr pointer)
+        {
+            if (_hasWriter || RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return;
+            RegisterWriterWithPointer((delegate*<BitPacker, T, void>)(void*)pointer);
+        }
+
         static unsafe void RegisterWriterWithPointer(delegate*<BitPacker, T, void> ptr)
         {
             if (_hasWriter)
@@ -88,6 +97,14 @@ namespace PurrNet.Packing
                 RegisterReaderWithPointer(&ReadDelegateFallback);
             }
 #endif
+        }
+
+        [UsedByIL]
+        public static unsafe void RegisterGeneratedReader(ReadFunc<T> read, IntPtr pointer)
+        {
+            if (_hasReader || RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return;
+            RegisterReaderWithPointer((delegate*<BitPacker, ref T, void>)(void*)pointer);
         }
 
         static unsafe void RegisterReaderWithPointer(delegate*<BitPacker, ref T, void> ptr)

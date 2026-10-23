@@ -13,6 +13,7 @@ namespace PurrNet
     public delegate void NidParentChanged(NetworkIdentity oldParent, NetworkIdentity newParent);
 
     [DefaultExecutionOrder(-1000)]
+    [PackerDependencies(typeof(NetworkID), typeof(SceneID))]
     public partial class NetworkIdentity : MonoBehaviour
     {
         [SerializeField, HideInInspector] private bool _isSetup;
@@ -409,6 +410,7 @@ namespace PurrNet
         /// </summary>
         public PlayerID? localPlayer
         {
+            [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
             get
             {
                 if (_localPlayer.HasValue)

@@ -35,6 +35,7 @@ namespace PurrNet.Modules
         public List<CookiePair> cookies;
     }
 
+    [PackerDependencies]
     public class CookiesModule : INetworkModule, IPromoteToServerModule
     {
         private const string SAVE_KEY = "rabsi_cookies";

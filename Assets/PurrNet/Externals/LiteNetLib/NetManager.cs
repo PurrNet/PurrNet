@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using LiteNetLib.Layers;
 using LiteNetLib.Utils;
 
@@ -15,6 +16,20 @@ namespace LiteNetLib
         private readonly INetEventListener _netEventListener;
         private byte _channelsCount = 1;
         private readonly ConcurrentDictionary<IPEndPoint, NtpRequest> _ntpRequests = new ConcurrentDictionary<IPEndPoint, NtpRequest>();
+        // ConcurrentDictionary's Count and IsEmpty take every lock; every received packet checks this instead.
+        private int _ntpRequestCount;
+
+        private void AddNtpRequest(IPEndPoint endPoint)
+        {
+            if (_ntpRequests.TryAdd(endPoint, new NtpRequest(endPoint)))
+                Interlocked.Increment(ref _ntpRequestCount);
+        }
+
+        private void RemoveNtpRequest(IPEndPoint endPoint)
+        {
+            if (_ntpRequests.TryRemove(endPoint, out _))
+                Interlocked.Decrement(ref _ntpRequestCount);
+        }
 
         /// <summary>
         /// QoS channel count per message type (value must be between 1 and 64 channels)
@@ -67,7 +82,7 @@ namespace LiteNetLib
         /// </summary>
         /// <param name="endPoint">NTP Server address.</param>
         public void CreateNtpRequest(IPEndPoint endPoint) =>
-            _ntpRequests.TryAdd(endPoint, new NtpRequest(endPoint));
+            AddNtpRequest(endPoint);
 
         /// <summary>
         /// Create the requests for NTP server
@@ -77,7 +92,7 @@ namespace LiteNetLib
         public void CreateNtpRequest(string ntpServerAddress, int port)
         {
             var endPoint = NetUtils.MakeEndPoint(ntpServerAddress, port);
-            _ntpRequests.TryAdd(endPoint, new NtpRequest(endPoint));
+            AddNtpRequest(endPoint);
         }
 
         /// <summary>
@@ -87,12 +102,12 @@ namespace LiteNetLib
         public void CreateNtpRequest(string ntpServerAddress)
         {
             var endPoint = NetUtils.MakeEndPoint(ntpServerAddress, NtpRequest.DefaultPort);
-            _ntpRequests.TryAdd(endPoint, new NtpRequest(endPoint));
+            AddNtpRequest(endPoint);
         }
 
         internal override bool CustomMessageHandle(NetPacket packet, IPEndPoint remoteEndPoint)
         {
-            if (_ntpRequests.Count > 0 && _ntpRequests.TryGetValue(remoteEndPoint, out _))
+            if (Volatile.Read(ref _ntpRequestCount) > 0 && _ntpRequests.TryGetValue(remoteEndPoint, out _))
             {
                 if (packet.Size < 48)
                 {
@@ -115,7 +130,7 @@ namespace LiteNetLib
 
                 if (ntpPacket != null)
                 {
-                    _ntpRequests.TryRemove(remoteEndPoint, out _);
+                    RemoveNtpRequest(remoteEndPoint);
                     _netEventListener.OnNtpResponse(ntpPacket);
                 }
                 return true;
@@ -206,7 +221,7 @@ namespace LiteNetLib
 
         protected override void ProcessNtpRequests(float elapsedMilliseconds)
         {
-            if (_ntpRequests.IsEmpty)
+            if (Volatile.Read(ref _ntpRequestCount) == 0)
                 return;
 
             List<IPEndPoint> requestsToRemove = null;
@@ -224,7 +239,7 @@ namespace LiteNetLib
             if (requestsToRemove != null)
             {
                 foreach (var ipEndPoint in requestsToRemove)
-                    _ntpRequests.TryRemove(ipEndPoint, out _);
+                    RemoveNtpRequest(ipEndPoint);
             }
         }
 

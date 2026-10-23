@@ -9,6 +9,7 @@ using UnityEngine.Playables;
 namespace PurrNet
 {
     [AddComponentMenu("PurrNet/Network Animator")]
+    [PackerDependencies(typeof(NetworkID), typeof(SceneID))]
     public sealed partial class NetworkAnimator : NetworkIdentity
     {
 #if UNITY_ANIMATION

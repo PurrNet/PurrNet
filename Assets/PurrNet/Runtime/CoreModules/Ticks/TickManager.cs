@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class TickManager : INetworkModule, IUpdate, IPromoteToServerModule
     {
         /// <summary>

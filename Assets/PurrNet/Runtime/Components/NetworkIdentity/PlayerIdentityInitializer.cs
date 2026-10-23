@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using PurrNet.Utils;
 using UnityEngine;
 
 namespace PurrNet
@@ -16,15 +17,19 @@ namespace PurrNet
         {
             var genericTypeDefinition = typeof(PlayerIdentity<>);
 
-            var allDerivedTypes = AppDomain.CurrentDomain.GetAssemblies()
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var candidates = AssemblyDependencyScope.Find(assemblies, genericTypeDefinition.Assembly);
+            var allDerivedTypes = assemblies
                 .Where(a => 
+                    candidates.Contains(a) &&
                     !a.FullName.StartsWith("Unity.") && 
                     !a.FullName.StartsWith("Microsoft."))
                 .SelectMany(a => 
                 {
                     try
                     {
-                        return a.GetTypes();
+                        return DerivedTypeDiscovery.ReadIndex(a, DerivedTypeDiscovery.PlayerIdentityIndexTypeName) ??
+                               a.GetTypes();
                     }
                     catch (ReflectionTypeLoadException ex)
                     {

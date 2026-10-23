@@ -11,12 +11,14 @@ namespace PurrNet
         private const float HalfVectorWarningThreshold = HalfVectorMax * 0.5f;
 
         /// <summary>
-        /// Incoming snapshots whose linear speed (units per second) exceeds this are rejected as corrupt.
+        /// Incoming snapshots whose linear speed (units per second) exceeds this are rejected as corrupt;
+        /// a local velocity above it is synced as zero.
         /// </summary>
         public static float maxPlausibleLinearSpeed = 10000f;
 
         /// <summary>
-        /// Incoming snapshots whose angular speed exceeds this are rejected as corrupt (radians per second in 3D, degrees per second in 2D).
+        /// Incoming snapshots whose angular speed exceeds this are rejected as corrupt (radians per second in 3D, degrees per second in 2D);
+        /// a local angular velocity above it is synced as zero.
         /// </summary>
         public static float maxPlausibleAngularSpeed = 10000f;
 
@@ -283,6 +285,11 @@ namespace PurrNet
             return frame == RigidbodyPositionFrame.ParentLocal
                    || frame == RigidbodyPositionFrame.Absolute
                    || frame == RigidbodyPositionFrame.World;
+        }
+
+        private static Vector3 PlausibleOrZero(Vector3 velocity, float maxSpeed)
+        {
+            return velocity.sqrMagnitude > maxSpeed * maxSpeed ? Vector3.zero : velocity;
         }
 
         private static bool IsHalfPackable(Vector3 value)

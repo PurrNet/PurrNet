@@ -25,6 +25,60 @@ public class UnityTypePackingTests
         packer?.Dispose();
     }
 
+    [TestCase(0ul, false)]
+    [TestCase(0ul, true)]
+    [TestCase(127ul, false)]
+    [TestCase(128ul, true)]
+    [TestCase(ulong.MaxValue, false)]
+    [TestCase(ulong.MaxValue, true)]
+    public void PlayerId_ManagedAndNativeWireMatchIdAndBotFlag(ulong id, bool isBot)
+    {
+        var value = new PlayerID(id, isBot);
+        using var expected = BitPackerPool.Get();
+        using var native = BitPackerPool.Get();
+        Packer<PackedULong>.Write(expected, id);
+        Packer<bool>.Write(expected, isBot);
+        Packer<PlayerID>.Write(packer, value);
+        NativePacker<PlayerID>.Write(native, value);
+        Assert.That(packer.positionInBits, Is.EqualTo(expected.positionInBits));
+        Assert.That(native.positionInBits, Is.EqualTo(expected.positionInBits));
+        var expectedBits = new BitData(expected, 0, expected.positionInBits);
+        Assert.That(new BitData(packer, 0, packer.positionInBits).Equals(expectedBits), Is.True);
+        Assert.That(new BitData(native, 0, native.positionInBits).Equals(expectedBits), Is.True);
+        packer.ResetPositionAndMode(true);
+        native.ResetPositionAndMode(true);
+        var managedValue = Packer<PlayerID>.Read(packer);
+        PlayerID nativeValue = default;
+        NativePacker<PlayerID>.Read(native, ref nativeValue);
+        Assert.That(managedValue.id.value, Is.EqualTo(id));
+        Assert.That(managedValue.isBot, Is.EqualTo(isBot));
+        Assert.That(nativeValue.id.value, Is.EqualTo(id));
+        Assert.That(nativeValue.isBot, Is.EqualTo(isBot));
+    }
+
+    [Test]
+    public void PlayerId_PackedValuesPreserveNativeArrayStride()
+    {
+        var expected = new PlayerID[16];
+        for (int i = 0; i < expected.Length; i++)
+            expected[i] = new PlayerID(ulong.MaxValue - (ulong)i, (i & 1) != 0);
+        using var values = new Unity.Collections.NativeArray<PlayerID>(expected, Unity.Collections.Allocator.Temp);
+        for (int i = 0; i < values.Length; i++)
+        {
+            Assert.That(values[i].id.value, Is.EqualTo(expected[i].id.value));
+            Assert.That(values[i].isBot, Is.EqualTo(expected[i].isBot));
+            NativePacker<PlayerID>.Write(packer, values[i]);
+        }
+        packer.ResetPositionAndMode(true);
+        for (int i = 0; i < values.Length; i++)
+        {
+            PlayerID value = default;
+            NativePacker<PlayerID>.Read(packer, ref value);
+            Assert.That(value.id.value, Is.EqualTo(expected[i].id.value));
+            Assert.That(value.isBot, Is.EqualTo(expected[i].isBot));
+        }
+    }
+
     // ───────────────────────────────────────────────
     //  Vector2
     // ───────────────────────────────────────────────

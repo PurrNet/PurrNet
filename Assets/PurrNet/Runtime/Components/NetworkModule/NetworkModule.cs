@@ -11,6 +11,7 @@ using PurrNet.Profiler;
 namespace PurrNet
 {
     [Serializable]
+    [PackerDependencies(typeof(NetworkIdentity), typeof(byte))]
     public class NetworkModule
     {
         public NetworkIdentity parent { get; private set; }

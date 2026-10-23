@@ -12,6 +12,7 @@ using JetBrains.Annotations;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using PurrNet.Editor;
+using PurrNet.Authentication;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -109,6 +110,38 @@ namespace PurrNet.Codegen
             {
                 return false;
             }
+        }
+
+        // MonoBehaviour messages Unity invokes by name. An RPC attribute on one turns Unity's own call into a send
+        // on every peer (every frame for the update loops), and with runLocally the body also runs on the caller.
+        static readonly HashSet<string> _unityMessages = new()
+        {
+            "Awake", "Start", "Update", "LateUpdate", "FixedUpdate", "OnEnable", "OnDisable", "OnDestroy",
+            "OnGUI", "OnValidate", "Reset", "OnApplicationFocus", "OnApplicationPause", "OnApplicationQuit",
+            "OnTriggerEnter", "OnTriggerStay", "OnTriggerExit", "OnTriggerEnter2D", "OnTriggerStay2D", "OnTriggerExit2D",
+            "OnCollisionEnter", "OnCollisionStay", "OnCollisionExit",
+            "OnCollisionEnter2D", "OnCollisionStay2D", "OnCollisionExit2D",
+            "OnControllerColliderHit", "OnParticleCollision", "OnParticleTrigger", "OnJointBreak", "OnJointBreak2D",
+            "OnBecameVisible", "OnBecameInvisible", "OnWillRenderObject", "OnRenderObject",
+            "OnPreCull", "OnPreRender", "OnPostRender", "OnRenderImage",
+            "OnAnimatorMove", "OnAnimatorIK", "OnDrawGizmos", "OnDrawGizmosSelected",
+            "OnMouseDown", "OnMouseDrag", "OnMouseEnter", "OnMouseExit", "OnMouseOver", "OnMouseUp", "OnMouseUpAsButton",
+            "OnTransformParentChanged", "OnTransformChildrenChanged", "OnRectTransformDimensionsChange",
+            "OnCanvasGroupChanged", "OnAudioFilterRead"
+        };
+
+        private static bool WarnIfUnityMessageRpc(MethodDefinition method, RPCSignature signature,
+            ICollection<DiagnosticMessage> messages)
+        {
+            if (signature.isStatic || !_unityMessages.Contains(method.Name))
+                return false;
+
+            string local = signature.runLocally ? " and runLocally also runs its body on the caller" : string.Empty;
+            Warning(messages,
+                $"RPC '{method.Name}' is a Unity message: Unity calls it on every peer, so each call sends the RPC{local}. " +
+                $"Keep '{method.Name}' a plain method and call a separate RPC from it.",
+                method);
+            return true;
         }
 
         private static RPCSignature? GetMethodRPCType(MethodDefinition method, ICollection<DiagnosticMessage> messages)
@@ -4132,7 +4165,7 @@ namespace PurrNet.Codegen
                                 foreach (var field in customAttribute.ConstructorArguments)
                                 {
                                     if (field.Value is TypeReference tref)
-                                        typesToGenerateSerializer.Add(tref);
+                                        typesToGenerateSerializer.Add(ImportAttributeType(tref, module));
                                 }
                             }
                         }
@@ -4218,6 +4251,9 @@ namespace PurrNet.Codegen
                                         method);
                                     continue;
                                 }
+
+                                if (inheritsFromNetworkIdentity)
+                                    WarnIfUnityMessageRpc(method, rpcType.Value, messages);
 
                                 _rpcMethods.Add(new RPCMethod
                                 {
@@ -4362,6 +4398,11 @@ namespace PurrNet.Codegen
                         GenerateSerializersProcessor.HandleType(true, assemblyDefinition, typeRef, visitedTypes,
                             typesToIgnoreForSerialization, typesToIgnoreForDelta);
                 }
+
+                if (HasPurrNetAsReference(compiledAssembly.Name, assemblyDefinition.MainModule))
+                    GenerateDerivedTypeIndex.Generate(assemblyDefinition, typeof(PlayerIdentity<>),
+                        DerivedTypeDiscovery.PlayerIdentityIndexTypeName);
+                GenerateRegistrationIndex.Generate(assemblyDefinition);
 
                 var pe = new MemoryStream();
                 var pdb = new MemoryStream();
@@ -4987,10 +5028,31 @@ namespace PurrNet.Codegen
         {
             List<TypeReference> concreteFields = new List<TypeReference>();
 
+            var definition = typeReference.Resolve();
+            var dependencies = definition?.CustomAttributes.FirstOrDefault(attribute =>
+                attribute.AttributeType.FullName == typeof(PackerDependenciesAttribute).FullName);
+            if (dependencies != null)
+            {
+                if (typeReference is ArrayType array)
+                {
+                    concreteFields.Add(array.ElementType);
+                    return concreteFields;
+                }
+                if (typeReference is GenericInstanceType declaredGeneric)
+                    concreteFields.AddRange(declaredGeneric.GenericArguments);
+                if (dependencies.ConstructorArguments.Count > 0 &&
+                    dependencies.ConstructorArguments[0].Value is CustomAttributeArgument[] declared)
+                {
+                    foreach (var dependency in declared)
+                        if (dependency.Value is TypeReference type) concreteFields.Add(type);
+                }
+                return concreteFields;
+            }
+
             if (typeReference is GenericInstanceType genericInstance)
             {
                 // Resolve the type definition
-                TypeDefinition typeDef = typeReference.Resolve();
+                TypeDefinition typeDef = definition;
                 if (typeDef == null)
                 {
                     throw new InvalidOperationException($"Could not resolve type: {typeReference.FullName}");
@@ -5017,7 +5079,7 @@ namespace PurrNet.Codegen
             }
             else
             {
-                TypeDefinition typeDef = typeReference.Resolve();
+                TypeDefinition typeDef = definition;
 
                 if (typeDef != null)
                 {
@@ -5465,8 +5527,32 @@ namespace PurrNet.Codegen
             }
         }
 
+        private static TypeReference ImportAttributeType(TypeReference type, ModuleDefinition module)
+        {
+            // A System.Type stored in an attribute does not carry CLI value-type flags.
+            // Import definitions rather than those unresolved references, including arguments
+            // of a closed generic, or generated delegates can contain invalid class/struct IL.
+            if (type is GenericInstanceType generic)
+            {
+                var closed = new GenericInstanceType(module.ImportReference(generic.ElementType.Resolve()));
+                foreach (var argument in generic.GenericArguments)
+                    closed.GenericArguments.Add(ImportAttributeType(argument, module));
+                return closed;
+            }
+
+            if (type is ArrayType array)
+                return new ArrayType(ImportAttributeType(array.ElementType, module), array.Rank);
+
+            return module.ImportReference(type.Resolve());
+        }
+
         public static bool IsTypeInOwnModule(TypeReference typeReference, ModuleDefinition ownModule)
         {
+            // Custom authenticators close this runtime-owned envelope over game payloads.
+            // Its codec must be generated in the assembly requesting that closed variant.
+            if (IsGeneric(typeReference, typeof(AuthenticationRequest<>)))
+                return true;
+
             if (IsGeneric(typeReference, typeof(Dictionary<,>)))
                 return true;
 

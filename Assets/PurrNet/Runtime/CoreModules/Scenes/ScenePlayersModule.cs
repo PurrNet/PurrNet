@@ -10,6 +10,7 @@ namespace PurrNet.Modules
 
     public delegate void OnPlayerSceneEvent(PlayerID player, SceneID scene, bool asServer);
 
+    [PackerDependencies]
     public class ScenePlayersModule : INetworkModule, IPromoteToServerModule
     {
         private readonly Dictionary<SceneID, List<PlayerID>> _scenePlayers = new ();

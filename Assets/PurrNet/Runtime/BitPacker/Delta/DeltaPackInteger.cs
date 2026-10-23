@@ -6,22 +6,105 @@ namespace PurrNet.Packing
     {
         static readonly byte[] buckets8 = { 2, 4, 6, 8 };
         static readonly byte[] buckets16 = { 4, 8, 12, 16 };
-        static readonly byte[] buckets32 = { 4, 8, 16, 32 };
         static readonly byte[] buckets64 = { 4, 8, 24, 64 };
 
-        static void WriteDiff(BitPacker packer, ulong zigzag, byte[] buckets)
+        static void WriteChangedDiff(BitPacker packer, ulong zigzag, byte[] buckets)
         {
             int bits = 64 - PackingIntegers.CountLeadingZeroBits(zigzag);
             int selector = 0;
             while (bits > buckets[selector]) selector++;
-            packer.WriteBits((ulong)selector, 2);
-            packer.WriteBits(zigzag, buckets[selector]);
+            ulong prefix = 1UL | ((ulong)selector << 1);
+            byte payloadBits = buckets[selector];
+            if (payloadBits == 64)
+            {
+                packer.WriteBits((zigzag << 3) | prefix, 64);
+                packer.WriteBits(zigzag >> 61, 3);
+            }
+            else
+                packer.WriteBits((zigzag << 3) | prefix, (byte)(payloadBits + 3));
+        }
+
+        // The 32-bit widths 4, 8, 16 and 32 as constants: every 32-bit field of every delta-packed struct
+        // comes through here, and the table lookup and its search cost more than the write.
+        // The packer is not the first parameter, or codegen would take this for the ulong serializer.
+        static void WriteChangedDiff32(ulong zigzag, BitPacker packer)
+        {
+            int bits = 64 - PackingIntegers.CountLeadingZeroBits(zigzag);
+            ulong selector;
+            byte payloadBits;
+            if (bits <= 4) { selector = 0; payloadBits = 4; }
+            else if (bits <= 8) { selector = 1; payloadBits = 8; }
+            else if (bits <= 16) { selector = 2; payloadBits = 16; }
+            else { selector = 3; payloadBits = 32; }
+            packer.WriteBits((zigzag << 3) | 1UL | (selector << 1), (byte)(payloadBits + 3));
+        }
+
+        static int Bucket32(int selector) => selector switch { 0 => 4, 1 => 8, 2 => 16, _ => 32 };
+
+        static bool ReadChangedDiff32(out ulong diff, BitPacker packer)
+        {
+            const int widestBits = 3 + 32;
+            if (packer.HasReadableBits(widestBits))
+            {
+                ulong word = packer.PeekBitsWithoutChecks(widestBits);
+                if ((word & 1) == 0)
+                {
+                    packer.SkipBitsWithoutChecks(1);
+                    diff = 0;
+                    return false;
+                }
+
+                int payloadBits = Bucket32((int)(word >> 1) & 3);
+                diff = (word >> 3) & ((1UL << payloadBits) - 1);
+                packer.SkipBitsWithoutChecks(3 + payloadBits);
+                return true;
+            }
+
+            if (!packer.ReadBit())
+            {
+                diff = 0;
+                return false;
+            }
+
+            diff = packer.ReadBits((byte)Bucket32((int)packer.ReadBits(2)));
+            return true;
         }
 
         static ulong ReadDiff(BitPacker packer, byte[] buckets)
         {
             int selector = (int)packer.ReadBits(2);
             return packer.ReadBits(buckets[selector]);
+        }
+
+        // Reads the changed flag, bucket selector and payload with one buffer access when the
+        // widest encoding fits in a word; otherwise falls back to reading them one by one.
+        static bool ReadChangedDiff(byte[] buckets, BitPacker packer, out ulong diff)
+        {
+            int widestBits = 3 + buckets[3];
+            if (widestBits <= 64 && packer.HasReadableBits(widestBits))
+            {
+                ulong word = packer.PeekBitsWithoutChecks((byte)widestBits);
+                if ((word & 1) == 0)
+                {
+                    packer.SkipBitsWithoutChecks(1);
+                    diff = 0;
+                    return false;
+                }
+
+                int payloadBits = buckets[(int)(word >> 1) & 3];
+                diff = (word >> 3) & ((1UL << payloadBits) - 1);
+                packer.SkipBitsWithoutChecks(3 + payloadBits);
+                return true;
+            }
+
+            if (!packer.ReadBit())
+            {
+                diff = 0;
+                return false;
+            }
+
+            diff = ReadDiff(packer, buckets);
+            return true;
         }
 
         [UsedByIL]
@@ -48,17 +131,16 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode((sbyte)(newvalue - oldvalue)), buckets8);
+            WriteChangedDiff(packer, PackingIntegers.ZigzagEncode((sbyte)(newvalue - oldvalue)), buckets8);
             return true;
         }
 
         [UsedByIL]
         public static void ReadInt8(BitPacker packer, sbyte oldvalue, ref sbyte value)
         {
-            if (packer.ReadBit())
+            if (ReadChangedDiff(buckets8, packer, out ulong zigzag))
             {
-                sbyte diff = PackingIntegers.ZigzagDecode((byte)ReadDiff(packer, buckets8));
+                sbyte diff = PackingIntegers.ZigzagDecode((byte)zigzag);
                 value = (sbyte)(oldvalue + diff);
             }
             else value = oldvalue;
@@ -73,17 +155,16 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode((sbyte)(newvalue - oldvalue)), buckets8);
+            WriteChangedDiff(packer, PackingIntegers.ZigzagEncode((sbyte)(newvalue - oldvalue)), buckets8);
             return true;
         }
 
         [UsedByIL]
         public static void ReadUInt8(BitPacker packer, byte oldvalue, ref byte value)
         {
-            if (packer.ReadBit())
+            if (ReadChangedDiff(buckets8, packer, out ulong zigzag))
             {
-                sbyte diff = PackingIntegers.ZigzagDecode((byte)ReadDiff(packer, buckets8));
+                sbyte diff = PackingIntegers.ZigzagDecode((byte)zigzag);
                 value = (byte)(oldvalue + diff);
             }
             else value = oldvalue;
@@ -98,17 +179,16 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode((short)(newvalue - oldvalue)), buckets16);
+            WriteChangedDiff(packer, PackingIntegers.ZigzagEncode((short)(newvalue - oldvalue)), buckets16);
             return true;
         }
 
         [UsedByIL]
         public static void ReadInt16(BitPacker packer, short oldvalue, ref short value)
         {
-            if (packer.ReadBit())
+            if (ReadChangedDiff(buckets16, packer, out ulong zigzag))
             {
-                short diff = PackingIntegers.ZigzagDecode((ushort)ReadDiff(packer, buckets16));
+                short diff = PackingIntegers.ZigzagDecode((ushort)zigzag);
                 value = (short)(oldvalue + diff);
             }
             else value = oldvalue;
@@ -123,17 +203,16 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode((short)(newvalue - oldvalue)), buckets16);
+            WriteChangedDiff(packer, PackingIntegers.ZigzagEncode((short)(newvalue - oldvalue)), buckets16);
             return true;
         }
 
         [UsedByIL]
         public static void ReadUInt16(BitPacker packer, ushort oldvalue, ref ushort value)
         {
-            if (packer.ReadBit())
+            if (ReadChangedDiff(buckets16, packer, out ulong zigzag))
             {
-                short diff = PackingIntegers.ZigzagDecode((ushort)ReadDiff(packer, buckets16));
+                short diff = PackingIntegers.ZigzagDecode((ushort)zigzag);
                 value = (ushort)(oldvalue + diff);
             }
             else value = oldvalue;
@@ -148,17 +227,16 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode(newvalue - oldvalue), buckets32);
+            WriteChangedDiff32(PackingIntegers.ZigzagEncode(newvalue - oldvalue), packer);
             return true;
         }
 
         [UsedByIL]
         public static void ReadInt32(BitPacker packer, int oldvalue, ref int value)
         {
-            if (packer.ReadBit())
+            if (ReadChangedDiff32(out ulong zigzag, packer))
             {
-                int diff = PackingIntegers.ZigzagDecode((uint)ReadDiff(packer, buckets32));
+                int diff = PackingIntegers.ZigzagDecode((uint)zigzag);
                 value = oldvalue + diff;
             }
             else value = oldvalue;
@@ -173,17 +251,16 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode((int)(newvalue - oldvalue)), buckets32);
+            WriteChangedDiff32(PackingIntegers.ZigzagEncode((int)(newvalue - oldvalue)), packer);
             return true;
         }
 
         [UsedByIL]
         public static void ReadUInt32(BitPacker packer, uint oldvalue, ref uint value)
         {
-            if (packer.ReadBit())
+            if (ReadChangedDiff32(out ulong zigzag, packer))
             {
-                int diff = PackingIntegers.ZigzagDecode((uint)ReadDiff(packer, buckets32));
+                int diff = PackingIntegers.ZigzagDecode((uint)zigzag);
                 value = (uint)(oldvalue + diff);
             }
             else value = oldvalue;
@@ -198,8 +275,7 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode(newvalue - oldvalue), buckets64);
+            WriteChangedDiff(packer, PackingIntegers.ZigzagEncode(newvalue - oldvalue), buckets64);
             return true;
         }
 
@@ -223,8 +299,7 @@ namespace PurrNet.Packing
                 return false;
             }
 
-            packer.WriteBit(true);
-            WriteDiff(packer, PackingIntegers.ZigzagEncode((long)(newvalue - oldvalue)), buckets64);
+            WriteChangedDiff(packer, PackingIntegers.ZigzagEncode((long)(newvalue - oldvalue)), buckets64);
             return true;
         }
 

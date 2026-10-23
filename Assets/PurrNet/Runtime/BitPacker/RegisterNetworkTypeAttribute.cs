@@ -4,6 +4,17 @@ using UnityEngine.Scripting;
 
 namespace PurrNet
 {
+    /// <summary>
+    /// Lists the dependencies of an existing custom or reference codec instead of
+    /// discovering them from implementation fields. This does not change the codec,
+    /// generic payload discovery or RPC discovery, and is not inherited by subclasses.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
+    public sealed class PackerDependenciesAttribute : Attribute
+    {
+        public PackerDependenciesAttribute(params Type[] dependencies) { }
+    }
+
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true), Preserve]
     public class RegisterNetworkTypeAttribute : PreserveAttribute
     {

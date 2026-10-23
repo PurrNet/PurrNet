@@ -65,7 +65,7 @@ namespace PurrNet.Packing
             bool isStructOrSealed = typeof(T).IsValueType || typeof(T).IsSealed;
             WriteFunc = !isStructOrSealed ? WriteClass : DirectWrite;
 
-            Packer.RegisterWriter(typeof(T), DirectWrite.Method, WriteFunc.Method);
+            Packer.RegisterWriterDelegates(typeof(T), DirectWrite, WriteFunc);
             NativePacker<T>.RegisterWriter(a);
         }
 
@@ -84,7 +84,7 @@ namespace PurrNet.Packing
             bool isStructOrSealed = typeof(T).IsValueType || typeof(T).IsSealed;
             ReadFunc = !isStructOrSealed ? ReadClass : DirectRead;
 
-            Packer.RegisterReader(typeof(T), DirectRead.Method, ReadFunc.Method);
+            Packer.RegisterReaderDelegates(typeof(T), DirectRead, ReadFunc);
             NativePacker<T>.RegisterReader(b);
         }
 
@@ -241,10 +241,10 @@ namespace PurrNet.Packing
             return PurrEquality<T>.MemEquals(ref a, ref b);
         }
 
-        static readonly Dictionary<Type, MethodInfo> _writeExactMethods = new Dictionary<Type, MethodInfo>();
-        static readonly Dictionary<Type, MethodInfo> _writeWrappedMethods = new Dictionary<Type, MethodInfo>();
-        static readonly Dictionary<Type, MethodInfo> _readExactMethods = new Dictionary<Type, MethodInfo>();
-        static readonly Dictionary<Type, MethodInfo> _readWrappedMethods = new Dictionary<Type, MethodInfo>();
+        static readonly Dictionary<Type, object> _writeExactMethods = new Dictionary<Type, object>();
+        static readonly Dictionary<Type, object> _writeWrappedMethods = new Dictionary<Type, object>();
+        static readonly Dictionary<Type, object> _readExactMethods = new Dictionary<Type, object>();
+        static readonly Dictionary<Type, object> _readWrappedMethods = new Dictionary<Type, object>();
 
         public static void RegisterWriter(Type type, MethodInfo exact, MethodInfo wrapper)
         {
@@ -256,6 +256,25 @@ namespace PurrNet.Packing
         {
             _readWrappedMethods.TryAdd(type, wrapper);
             _readExactMethods.TryAdd(type, exact);
+        }
+
+        // Keep existing codec delegates here. Creating reflection metadata is only necessary
+        // for the by-Type API; generated and generic codecs never invoke these methods.
+        internal static void RegisterWriterDelegates(Type type, Delegate exact, Delegate wrapper)
+        {
+            _writeWrappedMethods.TryAdd(type, wrapper);
+            _writeExactMethods.TryAdd(type, exact);
+        }
+
+        internal static void RegisterReaderDelegates(Type type, Delegate exact, Delegate wrapper)
+        {
+            _readWrappedMethods.TryAdd(type, wrapper);
+            _readExactMethods.TryAdd(type, exact);
+        }
+
+        internal static MethodInfo ResolveMethod(object codec)
+        {
+            return codec is Delegate callback ? callback.Method : (MethodInfo)codec;
         }
 
         public static void FallbackWriter<T>(BitPacker packer, T value)
@@ -365,7 +384,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
@@ -389,7 +408,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
@@ -413,7 +432,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
@@ -437,7 +456,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 PreciseArrayPool<object>.Return(args);
             }
             catch (Exception e)
@@ -459,7 +478,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 value = args[1];
                 PreciseArrayPool<object>.Return(args);
             }
@@ -482,7 +501,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 value = args[1];
                 PreciseArrayPool<object>.Return(args);
             }
@@ -505,7 +524,7 @@ namespace PurrNet.Packing
                 var args = PreciseArrayPool<object>.Rent(2);
                 args[0] = packer;
                 args[1] = value;
-                method.Invoke(null, args);
+                ResolveMethod(method).Invoke(null, args);
                 value = args[1];
                 PreciseArrayPool<object>.Return(args);
             }

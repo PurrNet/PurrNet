@@ -4481,6 +4481,21 @@ namespace PurrNet.Modules
         }
 
         /// <summary>
+        /// For manual spawning on clients that already know the owner of what they spawn.
+        /// Call it between <see cref="ManualEarlySpawn"/> and <see cref="ManualFinalizeSpawn(NetworkIdentity)"/>
+        /// so spawn callbacks see the owner, as they do for regular spawns. It only changes this
+        /// client's view; ownership updates from the server keep applying. Servers use GiveOwnership.
+        /// </summary>
+        public void ManualSetOwner(NetworkIdentity identity, PlayerID? owner)
+        {
+            if (_asServer)
+                return;
+
+            if (_manager.TryGetModule<GlobalOwnershipModule>(false, out var ownership))
+                ownership.ApplyManualOwner(identity, owner);
+        }
+
+        /// <summary>
         /// Once the identity is created, you should call this method to refresh visibility for all players in the scene.
         /// This will send visibility updates to all players in the scene.
         /// </summary>

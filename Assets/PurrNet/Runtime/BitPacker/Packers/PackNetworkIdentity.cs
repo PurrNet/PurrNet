@@ -1,9 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using PurrNet.Pooling;
+using PurrNet.Utils;
 using UnityEngine;
+#if UNITY_6000_3_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace PurrNet
 {
@@ -126,28 +133,41 @@ namespace PurrNet
 
             if (!parent || !parent.isSpawned || !parent.id.HasValue)
             {
-                packer.WriteBit(true);
-                packer.WriteBit(false);
+                var manager = NetworkManager.main;
 
-                if (NetworkManager.main == null || !NetworkManager.main.prefabResolver.TryGetPrefabData(trs.gameObject, out var data))
+                if (manager != null && manager.prefabResolver.TryGetPrefabData(trs.gameObject, out var data))
                 {
                     packer.WriteBit(true);
-                    if (NetworkManager.main != null && NetworkManager.main.networkAssetResolver.TryGetId(trs, out _))
-                    {
-                        packer.WriteBit(true);
-                        Packer.WriteAsNetworkAsset(packer, trs);
-                    }
-                    else if (NetworkManager.main != null && NetworkManager.main.networkAssetResolver.TryGetId(trs.gameObject, out _))
-                    {
-                        packer.WriteBit(false);
-                        Packer.WriteAsNetworkAsset(packer, trs.gameObject);
-                    }
-
+                    packer.WriteBit(false);
+                    packer.WriteBit(false);
+                    Packer<PrefabID>.Write(packer, data.prefabId);
                     return;
                 }
 
+                if (manager != null && manager.networkAssetResolver.TryGetId(trs, out _))
+                {
+                    packer.WriteBit(true);
+                    packer.WriteBit(false);
+                    packer.WriteBit(true);
+                    packer.WriteBit(true);
+                    Packer.WriteAsNetworkAsset(packer, trs);
+                    return;
+                }
+
+                if (manager != null && manager.networkAssetResolver.TryGetId(trs.gameObject, out _))
+                {
+                    packer.WriteBit(true);
+                    packer.WriteBit(false);
+                    packer.WriteBit(true);
+                    packer.WriteBit(false);
+                    Packer.WriteAsNetworkAsset(packer, trs.gameObject);
+                    return;
+                }
+
+                // Nothing on the other side can resolve it; the reader expects a reference after the header,
+                // so anything but the null encoding would shift every field written after this one.
+                WarnUnresolvable(trs);
                 packer.WriteBit(false);
-                Packer<PrefabID>.Write(packer, data.prefabId);
                 return;
             }
 
@@ -158,6 +178,19 @@ namespace PurrNet
             Packer<SceneID>.Write(packer, parent.sceneId);
             Packer<NetworkID>.Write(packer, parent.id.Value);
             Packer<DisposableList<int>>.Write(packer, invPath);
+        }
+
+        static readonly HashSet<ObjectId> _warnedUnresolvable = new();
+
+        static void WarnUnresolvable(Transform trs)
+        {
+            if (!_warnedUnresolvable.Add(PurrObjectId.Of(trs)))
+                return;
+
+            PurrLogger.LogWarning(
+                $"'{trs.name}' is not under a spawned NetworkIdentity, a registered network prefab or a network asset, " +
+                "so it is packed as null. Keep references to plain scene or child objects as component fields " +
+                "instead of in networked or predicted data.", trs);
         }
 
         [UsedByIL]
