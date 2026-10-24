@@ -1,3 +1,10 @@
+# [1.25.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.12...v1.25.0-beta.13) (2026-10-24)
+
+
+### Bug Fixes
+
+* package manager light mode editor; indicator of relevant plan for ([f2f2d9b](https://github.com/PurrNet/PurrNet/commit/f2f2d9bef5eb6ac3c5aefc492484f822f09d4bc7))
+
 # [1.25.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.11...v1.25.0-beta.12) (2026-10-24)
 
 
