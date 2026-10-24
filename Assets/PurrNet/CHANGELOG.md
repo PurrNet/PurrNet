@@ -1,3 +1,11 @@
+# [1.25.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.11...v1.25.0-beta.12) (2026-10-24)
+
+
+### Bug Fixes
+
+* give editor clones their own persistent cookies ([1a3204a](https://github.com/PurrNet/PurrNet/commit/1a3204ad4a1cf3793bbb195ab043b7903bd275d3))
+* stop PlayModePatch from leaking editor load contexts on CoreCLR ([6b68e16](https://github.com/PurrNet/PurrNet/commit/6b68e16ad3de17813685af37c560f0a5443941da))
+
 # [1.25.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.10...v1.25.0-beta.11) (2026-10-23)
 
 
