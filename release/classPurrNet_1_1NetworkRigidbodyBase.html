@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1NetworkRigidbodyBase.h
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
@@ -369,6 +370,17 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasRemoveOwnershipAut
 <tr class="memitem:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">OnTick</a> (float delta)</td></tr>
 <tr class="memdesc:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Similar to FixedUpdate but tailored for networked objects and it's tick system.   <a href="interfacePurrNet_1_1ITick.html#ab7dd1e1daa082b614c6cf45ad77e271b">More...</a><br /></td></tr>
 <tr class="separator:ab7dd1e1daa082b614c6cf45ad77e271b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:ab21c35beb3aa8f5fa3820b1a2b95eb00"><td class="memItemLeft" align="right" valign="top"><a id="ab21c35beb3aa8f5fa3820b1a2b95eb00" name="ab21c35beb3aa8f5fa3820b1a2b95eb00"></a>
+static float&#160;</td><td class="memItemRight" valign="bottom"><b>maxPlausibleLinearSpeed</b> = 10000f</td></tr>
+<tr class="memdesc:ab21c35beb3aa8f5fa3820b1a2b95eb00"><td class="mdescLeft">&#160;</td><td class="mdescRight">Incoming snapshots whose linear speed (units per second) exceeds this are rejected as corrupt; a local velocity above it is synced as zero.  <br /></td></tr>
+<tr class="separator:ab21c35beb3aa8f5fa3820b1a2b95eb00"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9787d407c08b4cbd77e6168ce9922fb8"><td class="memItemLeft" align="right" valign="top"><a id="a9787d407c08b4cbd77e6168ce9922fb8" name="a9787d407c08b4cbd77e6168ce9922fb8"></a>
+static float&#160;</td><td class="memItemRight" valign="bottom"><b>maxPlausibleAngularSpeed</b> = 10000f</td></tr>
+<tr class="memdesc:a9787d407c08b4cbd77e6168ce9922fb8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Incoming snapshots whose angular speed exceeds this are rejected as corrupt (radians per second in 3D, degrees per second in 2D); a local angular velocity above it is synced as zero.  <br /></td></tr>
+<tr class="separator:a9787d407c08b4cbd77e6168ce9922fb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>

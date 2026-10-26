@@ -108,6 +108,7 @@ var namespacePurrNet =
     [ "OwnershipComponentToggle", "structPurrNet_1_1OwnershipComponentToggle.html", null ],
     [ "OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],
     [ "OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
+    [ "PackerDependenciesAttribute", "classPurrNet_1_1PackerDependenciesAttribute.html", null ],
     [ "PlayerID", "structPurrNet_1_1PlayerID.html", null ],
     [ "PlayerIdentity", "classPurrNet_1_1PlayerIdentity.html", "classPurrNet_1_1PlayerIdentity" ],
     [ "PlayersBroadcaster", "classPurrNet_1_1PlayersBroadcaster.html", null ],
