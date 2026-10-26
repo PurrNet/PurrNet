@@ -170,21 +170,29 @@ namespace PurrNet.Packing
         public static void Write(BitPacker packer, PackedULong value)
         {
             ulong uvalue = value.value;
-            while (true)
+            if (uvalue < 0x80UL)
             {
-                ulong chunk = uvalue & 0x7FUL;
-                uvalue >>= 7;
-
-                if (uvalue == 0)
-                {
-                    packer.WriteBits(chunk, 7);
-                    packer.WriteBits(0, 1);
-                    break;
-                }
-
-                packer.WriteBits(chunk, 7);
-                packer.WriteBits(1, 1);
+                packer.WriteBits(uvalue, 8);
+                return;
             }
+
+            // Assemble up to eight wire bytes before touching the backing buffer.
+            // A 64-bit value needs at most two further bytes after this block.
+            do
+            {
+                ulong encoded = 0;
+                byte bits = 0;
+                do
+                {
+                    ulong chunk = uvalue & 0x7FUL;
+                    uvalue >>= 7;
+                    if (uvalue != 0) chunk |= 0x80UL;
+                    encoded |= chunk << bits;
+                    bits += 8;
+                } while (uvalue != 0 && bits < 64);
+
+                packer.WriteBits(encoded, bits);
+            } while (uvalue != 0);
         }
 
         [UsedByIL]
@@ -195,9 +203,9 @@ namespace PurrNet.Packing
 
             while (shift < 64)
             {
-                ulong chunk = packer.ReadBits(7);
-                bool cont = packer.ReadBits(1) == 1;
-                result |= chunk << shift;
+                ulong chunk = packer.ReadBits(8);
+                bool cont = (chunk & 0x80UL) != 0;
+                result |= (chunk & 0x7FUL) << shift;
                 shift += 7;
 
                 if (!cont) break;

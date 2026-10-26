@@ -1,4 +1,5 @@
 using PurrNet.Logging;
+using PurrNet.Modules;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -8,6 +9,18 @@ namespace PurrNet
     {
         private const float HalfVectorMax = 65504f;
         private const float HalfVectorWarningThreshold = HalfVectorMax * 0.5f;
+
+        /// <summary>
+        /// Incoming snapshots whose linear speed (units per second) exceeds this are rejected as corrupt;
+        /// a local velocity above it is synced as zero.
+        /// </summary>
+        public static float maxPlausibleLinearSpeed = 10000f;
+
+        /// <summary>
+        /// Incoming snapshots whose angular speed exceeds this are rejected as corrupt (radians per second in 3D, degrees per second in 2D);
+        /// a local angular velocity above it is synced as zero.
+        /// </summary>
+        public static float maxPlausibleAngularSpeed = 10000f;
 
         private bool _invalidOutboundStateReported;
         private bool _invalidInboundStateReported;
@@ -29,8 +42,11 @@ namespace PurrNet
                    && IsFinite(bodyAngularVelocity);
         }
 
-        private bool ValidateLocalStateForSync(string source)
+        private bool ValidateLocalStateForSync(string source) => ValidateLocalStateForSync(source, out _);
+
+        private bool ValidateLocalStateForSync(string source, out bool zeroVelocities)
         {
+            zeroVelocities = false;
             var parentIdentity = GetSyncParentIdentity(out var isSoftParent);
             var parent = parentIdentity ? parentIdentity.transform : null;
             var localPosition = bodyPosition;
@@ -51,6 +67,12 @@ namespace PurrNet
                           && IsFinite(syncLinearVelocity)
                           && IsFinite(syncAngularVelocity);
             bool packable = IsHalfPackable(syncLinearVelocity) && IsHalfPackable(syncAngularVelocity);
+
+            if (finite && !packable && bodyIsKinematic)
+            {
+                zeroVelocities = true;
+                packable = true;
+            }
 
             if (!finite || !packable)
             {
@@ -119,6 +141,10 @@ namespace PurrNet
                          && IsFinite(linearVelocity)
                          && IsFinite(angularVelocity)
                          && IsFinite(data.time);
+            bool plausible = !valid || !incoming
+                             || (linearVelocity.sqrMagnitude <= maxPlausibleLinearSpeed * maxPlausibleLinearSpeed
+                                 && angularVelocity.sqrMagnitude <= maxPlausibleAngularSpeed * maxPlausibleAngularSpeed);
+            valid &= plausible;
 
             if (valid)
             {
@@ -129,15 +155,22 @@ namespace PurrNet
                 return true;
             }
 
+            bool resynced = incoming && DeltaModule.RejectLastRead<RigidbodyStateData>();
             bool reported = incoming ? _invalidInboundStateReported : _invalidOutboundStateReported;
             if (!reported)
             {
                 string direction = incoming ? "incoming" : "outgoing";
-                PurrLogger.LogError(
-                    $"Rejected {direction} {GetType().Name} state because it contains invalid data.\n" +
+                string message =
+                    $"Rejected {direction} {GetType().Name} state because it contains {(plausible ? "invalid data" : "implausible velocities (corrupt snapshot)")}" +
+                    $"{(resynced ? "; discarded its delta baseline and requested a full resync" : "")}.\n" +
                     $"source={source} {GetNetworkContext(data.parent, data.isSoftParent)}\n" +
                     $"frame={data.positionFrame} position={syncPosition} rotation={rotation} velocity={linearVelocity} angularVelocity={angularVelocity} senderTime={data.time:F6}\n" +
-                    GetCurrentRigidbodyState(), this);
+                    GetCurrentRigidbodyState();
+
+                if (resynced)
+                    PurrLogger.Log(message, this);
+                else
+                    PurrLogger.LogError(message, this);
             }
 
             if (incoming)
@@ -252,6 +285,11 @@ namespace PurrNet
             return frame == RigidbodyPositionFrame.ParentLocal
                    || frame == RigidbodyPositionFrame.Absolute
                    || frame == RigidbodyPositionFrame.World;
+        }
+
+        private static Vector3 PlausibleOrZero(Vector3 velocity, float maxSpeed)
+        {
+            return velocity.sqrMagnitude > maxSpeed * maxSpeed ? Vector3.zero : velocity;
         }
 
         private static bool IsHalfPackable(Vector3 value)

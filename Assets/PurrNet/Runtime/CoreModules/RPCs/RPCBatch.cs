@@ -133,6 +133,21 @@ namespace PurrNet.Modules
         /// </summary>
         internal Action onImmediateAutoFlush;
 
+        internal delegate void LocalBatchDelivery(Size count, BitData payload, bool immediate);
+
+        internal Func<PlayerID, bool> isLocalClient;
+        internal LocalBatchDelivery deliverLocally;
+
+        private struct LocalBatch
+        {
+            public Size count;
+            public BitData payload;
+        }
+
+        private readonly List<LocalBatch> _localPending = new List<LocalBatch>();
+        private readonly List<LocalBatch> _localDelivering = new List<LocalBatch>();
+        private bool _deliveringLocally;
+
         public RPCBatch(PlayersManager playersManager, RPCReceivedDelegate callback, bool subscribeToReceives = true,
             bool sendAsImmediate = false)
         {
@@ -207,6 +222,48 @@ namespace PurrNet.Modules
                 _batchIndexMap.Clear();
                 _nextStateVersion = 0;
             }
+
+            DeliverLocalBatches();
+        }
+
+        private void DeliverLocalBatches()
+        {
+            // A delivered RPC may flush again (a despawn, say); the outer loop picks up what it adds.
+            if (_deliveringLocally)
+                return;
+
+            _deliveringLocally = true;
+            try
+            {
+                while (_localPending.Count > 0)
+                {
+                    _localDelivering.AddRange(_localPending);
+                    _localPending.Clear();
+
+                    for (int i = 0; i < _localDelivering.Count; i++)
+                    {
+                        var local = _localDelivering[i];
+                        try
+                        {
+                            deliverLocally?.Invoke(local.count, local.payload, _sendAsImmediate);
+                        }
+                        catch (Exception e)
+                        {
+                            PurrLogger.LogException(e);
+                        }
+                        finally
+                        {
+                            local.payload.Dispose();
+                        }
+                    }
+
+                    _localDelivering.Clear();
+                }
+            }
+            finally
+            {
+                _deliveringLocally = false;
+            }
         }
 
         public void FlushChannel(Channel channel)
@@ -239,6 +296,8 @@ namespace PurrNet.Modules
 
                 _batchCount = writeIdx;
             }
+
+            DeliverLocalBatches();
         }
 
         private void SendBatch(ref PendingBatchedData batch)
@@ -253,6 +312,15 @@ namespace PurrNet.Modules
         private void Send(PlayerID player, Size count, BitData payload, Channel channel,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            if (deliverLocally != null && isLocalClient != null && isLocalClient(player))
+            {
+                // The pending buffer is reused right after this call, so the local copy owns its bits.
+                var copy = payload.Duplicate();
+                copy.packer?.ResetMode(true);
+                _localPending.Add(new LocalBatch { count = count, payload = copy });
+                return;
+            }
+
             if (_sendAsImmediate)
             {
                 var immediate = new ImmediateRPCBatchPacket
@@ -726,6 +794,10 @@ namespace PurrNet.Modules
             _batchCount = 0;
             _batchIndexMap.Clear();
             _nextStateVersion = 0;
+
+            for (int i = 0; i < _localPending.Count; i++)
+                _localPending[i].payload.Dispose();
+            _localPending.Clear();
         }
     }
 }

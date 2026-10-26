@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace PurrNet.Packing
 {
@@ -12,6 +13,9 @@ namespace PurrNet.Packing
             if (x.Length != y.Length) return false;
 
             int count = x.Length;
+
+            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                return count == 0 || PurrEquality<T>.MemEquals(ref x[0], ref y[0], count);
 
             if (typeof(T).IsValueType)
             {

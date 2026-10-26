@@ -10,7 +10,13 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
+    "defineConstraints": ["PURRNET_UNITY_UGUI"],
+    "versionDefines": [
+        {
+            "name": "com.unity.ugui",
+            "expression": "",
+            "define": "PURRNET_UNITY_UGUI"
+        }
+    ],
     "noEngineReferences": false
 }

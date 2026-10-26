@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using PurrNet.Pooling;
 using Unity.Profiling;
 using UnityEngine;
@@ -25,6 +26,14 @@ namespace PurrNet.Modules
 
         public event VisibilityCleared visibilityCleared;
 
+        public delegate void ObserverChanged(PlayerID player, NetworkIdentity identity, bool isObserver);
+
+        /// <summary>
+        /// Raised when a single identity gains or loses an observer while its GameObject stays
+        /// visible to that player through a sibling identity.
+        /// </summary>
+        public event ObserverChanged observerChanged;
+
         public VisilityV2(NetworkManager manager)
         {
             _manager = manager;
@@ -41,10 +50,13 @@ namespace PurrNet.Modules
             NetworkIdentity parent = null)
         {
             using var marker = _refreshMarker.Auto();
-            if (!identity)
+            if (!identity || identity.isManualSpawn)
                 return;
 
-            bool isParentVisible = !parent || parent.IsObserverOrPending(player);
+            if (!parent)
+                parent = identity.parent;
+
+            bool isParentVisible = !parent || !parent.isSpawned || HasObserver(parent, player);
             var frame = EvaluateNode(player, identity, _defaultRuleSet, isParentVisible, false);
             if (frame.childCount == 0)
             {
@@ -112,12 +124,24 @@ namespace PurrNet.Modules
             };
         }
 
+        private static bool HasObserver(NetworkIdentity identity, PlayerID player)
+        {
+            var identities = identity.siblingIdentities;
+            for (var i = 0; i < identities.Length; i++)
+            {
+                if (identities[i] && identities[i].IsObserverOrPending(player))
+                    return true;
+            }
+
+            return false;
+        }
+
         private static bool TryGetNextChild(ref VisibilityFrame frame, out NetworkIdentity child)
         {
             while (frame.nextChild < frame.childCount && frame.nextChild < frame.children.Count)
             {
                 child = frame.children[frame.nextChild++];
-                if (child)
+                if (child && !child.isManualSpawn)
                     return true;
             }
 
@@ -284,12 +308,13 @@ namespace PurrNet.Modules
             if (!isParentVisible)
             {
                 for (var i = 0; i < identities.Length; i++)
-                    if (identities[i])
-                        identities[i].TryRemoveObserver(player);
+                    if (identities[i] && identities[i].TryRemoveObserver(player))
+                        fullyChanged = true;
                 return false;
             }
 
             bool isAnyVisible = false;
+            Span<sbyte> changes = stackalloc sbyte[identities.Length];
 
             for (var i = 0; i < identities.Length; i++)
             {
@@ -301,14 +326,14 @@ namespace PurrNet.Modules
                 {
                     isAnyVisible = true;
                     if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        fullyChanged = true;
+                        changes[i] = 1;
                     continue;
                 }
 
                 if (identity.blacklist.Contains(player))
                 {
                     if (identity.TryRemoveObserver(player))
-                        fullyChanged = true;
+                        changes[i] = -1;
                     continue;
                 }
 
@@ -321,7 +346,7 @@ namespace PurrNet.Modules
                 {
                     isAnyVisible = true;
                     if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        fullyChanged = true;
+                        changes[i] = 1;
                     continue;
                 }
 
@@ -329,21 +354,53 @@ namespace PurrNet.Modules
                 {
                     isAnyVisible = true;
                     if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        fullyChanged = true;
+                        changes[i] = 1;
                     continue;
                 }
 
                 if (!r.CanSee(player, identity))
                 {
                     if (identity.TryRemoveObserver(player))
-                        fullyChanged = true;
+                        changes[i] = -1;
                 }
                 else
                 {
                     isAnyVisible = true;
                     if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        fullyChanged = true;
+                        changes[i] = 1;
                 }
+            }
+
+            bool added = false;
+            bool removed = false;
+
+            for (var i = 0; i < changes.Length; i++)
+            {
+                added |= changes[i] > 0;
+                removed |= changes[i] < 0;
+            }
+
+            if (!added && !removed)
+                return isAnyVisible;
+
+            bool stayedVisible = added && removed;
+
+            for (var i = 0; !stayedVisible && i < changes.Length; i++)
+                stayedVisible = changes[i] == 0 && identities[i] && identities[i].IsObserverOrPending(player);
+
+            if (!stayedVisible)
+            {
+                fullyChanged = true;
+                return isAnyVisible;
+            }
+
+            for (var i = 0; i < changes.Length; i++)
+            {
+                if (changes[i] == 0)
+                    continue;
+
+                identities[i].SetMutedObserver(player, changes[i] < 0);
+                observerChanged?.Invoke(player, identities[i], changes[i] > 0);
             }
 
             return isAnyVisible;

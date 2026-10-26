@@ -4,6 +4,7 @@ using UnityEngine.Scripting;
 namespace PurrNet.Packing
 {
     [AttributeUsage(AttributeTargets.Method)]
+    [RequireAttributeUsages]
     public class RegisterPackersAttribute : PreserveAttribute
     {
         public readonly int priority;

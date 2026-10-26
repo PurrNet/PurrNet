@@ -35,6 +35,13 @@ namespace PurrNet.Modules
         public PackedUInt upToId;
     }
 
+    internal struct DeltaBaselineMissing : IPackedAuto
+    {
+        public PackedUInt keyType;
+        public PackedUInt keyHash;
+        public PackedUInt valueId;
+    }
+
     public interface IStableHashable
     {
         uint GetStableHash();

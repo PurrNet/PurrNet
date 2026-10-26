@@ -13,6 +13,7 @@ using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class RPCModule : INetworkModule, IBatch, IFlushBatchedRPCs, IFlushImmediateRPCs, IPromoteToServerModule, ITransferToNewServer
     {
         public delegate void RPCPreProcessDelegate(RPCSignature signature, ref BitPacker packer);
@@ -83,6 +84,7 @@ namespace PurrNet.Modules
             _unionBatch.Clear();
             _immediateBatch.Clear();
             _immediateContentFlushed = false;
+            RouteHostClientBatchesLocally();
         }
 
         public void PostPromoteToServerModule() { }
@@ -111,8 +113,34 @@ namespace PurrNet.Modules
                 sendAsImmediate: true);
             _immediateBatch.onImmediateAutoFlush = MarkImmediateContentPending;
 
+            if (asServer)
+                RouteHostClientBatchesLocally();
+
             _playersManager.RegisterImmediateType<ImmediateRPCBatchPacket>();
             _playersManager.Subscribe<ImmediateRPCBatchPacket>(OnImmediateBatchReceived);
+        }
+
+        private void RouteHostClientBatchesLocally()
+        {
+            _unionBatch.isLocalClient = IsHostClient;
+            _unionBatch.deliverLocally = DeliverToHostClient;
+            _immediateBatch.isLocalClient = IsHostClient;
+            _immediateBatch.deliverLocally = DeliverToHostClient;
+        }
+
+        private bool IsHostClient(PlayerID player) => _manager.isHost && _manager.localPlayer == player;
+
+        // Server side of a host: the host's client shares the server's identities, so its RPCs are
+        // handed over at flush time, in the order they were queued, like a remote client's stream.
+        // Through the transport they would land after anything the server despawned meanwhile.
+        private void DeliverToHostClient(Size count, BitData payload, bool immediate)
+        {
+            if (!_manager.TryGetRpcModule(false, out var hostClient) || hostClient == this)
+                return;
+
+            if (immediate)
+                hostClient.OnImmediateBatchReceived(PlayerID.Server, new ImmediateRPCBatchPacket { count = count, data = payload }, false);
+            else hostClient._unionBatch.ProcessReceivedBatch(PlayerID.Server, count, payload, false);
         }
 
         private bool _receivingImmediateLane;
@@ -945,6 +973,7 @@ namespace PurrNet.Modules
             if (rpcHandlerPtr != null)
             {
                 using (data.data.AutoScope())
+                using (BeginPostProcessScope())
                 {
                     try
                     {
@@ -992,6 +1021,7 @@ namespace PurrNet.Modules
                 else
                 {
                     using (packet.data.AutoScope())
+                    using (BeginPostProcessScope())
                     {
                         try
                         {
@@ -1113,6 +1143,7 @@ namespace PurrNet.Modules
                 }
 
                 using (packet.data.AutoScope())
+                using (BeginPostProcessScope())
                 {
                     try
                     {
@@ -1175,13 +1206,13 @@ namespace PurrNet.Modules
             if (hasCustomPostProcessor || hasCompression)
             {
                 // We copy and leave the original data intact, so that the user can modify it freely.
-                var dataCopy = BitPackerPool.Get();
+                var dataCopy = RentPostProcessPacker();
                 dataCopy.WriteBitDataWithoutConsumingIt(data);
                 data = new BitData(dataCopy);
 
                 if (hasCompression)
                 {
-                    var newPacker = BitPackerPool.Get();
+                    var newPacker = RentPostProcessPacker();
                     newPacker.UnpickleFrom(dataCopy);
                     newPacker.ResetPositionAndMode(true);
                     data = new BitData(newPacker);
@@ -1189,6 +1220,50 @@ namespace PurrNet.Modules
 
                 if (hasCustomPostProcessor)
                     onPostProcessRpc.Invoke(info, ref data);
+            }
+        }
+
+        [ThreadStatic] private static List<BitPacker> _postProcessPackers;
+        [ThreadStatic] private static int _postProcessScopeDepth;
+
+        // The packet owns its original stream. Post-processing owns only its rentals,
+        // which must survive argument decoding and the callback, including nested RPCs.
+        internal static PostProcessScope BeginPostProcessScope()
+            => new PostProcessScope(_postProcessPackers?.Count ?? 0);
+
+        private static BitPacker RentPostProcessPacker()
+        {
+            var packer = BitPackerPool.Get();
+            if (_postProcessScopeDepth > 0)
+                (_postProcessPackers ??= new List<BitPacker>(4)).Add(packer);
+            return packer;
+        }
+
+        internal readonly struct PostProcessScope : IDisposable
+        {
+            private readonly int _first;
+            private readonly bool _active;
+
+            internal PostProcessScope(int first)
+            {
+                _first = first;
+                _active = true;
+                _postProcessScopeDepth++;
+            }
+
+            public void Dispose()
+            {
+                if (!_active) return;
+                if (_postProcessPackers != null)
+                {
+                    for (int i = _postProcessPackers.Count - 1; i >= _first; i--)
+                    {
+                        var packer = _postProcessPackers[i];
+                        _postProcessPackers.RemoveAt(i);
+                        packer.Dispose();
+                    }
+                }
+                _postProcessScopeDepth--;
             }
         }
 

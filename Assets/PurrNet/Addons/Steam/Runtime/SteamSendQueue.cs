@@ -21,6 +21,7 @@ namespace PurrNet.Steam
         internal const int MaxQueuedBytes = 1024 * 1024;
         internal const int MaxQueuedMessages = 1024;
         internal const double MaxQueueAgeSeconds = 10;
+        internal const double MaxCountedCheckGapSeconds = 0.5;
 
         internal delegate EResult NativeSend(IntPtr data, uint length, int flags);
 
@@ -28,6 +29,9 @@ namespace PurrNet.Steam
         private readonly Func<double> _clock;
         private readonly Queue<PendingMessage> _pending = new Queue<PendingMessage>();
         private SteamSendStatistics _statistics;
+        private double _blockedSeconds;
+        private double _longestCheckGap;
+        private double _lastCheckAt;
 
         private readonly struct PendingMessage
         {
@@ -44,6 +48,11 @@ namespace PurrNet.Steam
         public string failureReason { get; private set; }
 
         public SteamSendStatistics statistics => _statistics;
+
+        /// <summary>
+        /// True when the last failed send was refused because Steam had already closed the connection.
+        /// </summary>
+        public bool peerClosed => _statistics.lastSendResult == (int)EResult.k_EResultNoConnection;
 
         public SteamSendQueue(NativeSend send, Func<double> clock)
         {
@@ -152,8 +161,25 @@ namespace PurrNet.Steam
         {
             if (failureReason != null)
                 return false;
-            if (_pending.Count > 0 && _clock() - _pending.Peek().queuedAt >= MaxQueueAgeSeconds)
-                return Fail("Steam did not accept a queued reliable message within 10 seconds.");
+
+            double now = _clock();
+            if (_pending.Count == 0)
+            {
+                _blockedSeconds = 0;
+                _longestCheckGap = 0;
+                _lastCheckAt = now;
+                return true;
+            }
+
+            double gap = now - _lastCheckAt;
+            _lastCheckAt = now;
+            if (gap > _longestCheckGap)
+                _longestCheckGap = gap;
+            _blockedSeconds += Math.Min(gap, MaxCountedCheckGapSeconds);
+
+            if (_blockedSeconds >= MaxQueueAgeSeconds)
+                return Fail($"Steam did not accept a queued reliable message within {MaxQueueAgeSeconds:0} seconds of sending " +
+                            $"(oldest queued {now - _pending.Peek().queuedAt:0.#} s ago, longest gap between sends {_longestCheckGap:0.##} s).");
             return true;
         }
 
@@ -169,6 +195,38 @@ namespace PurrNet.Steam
             _pending.Clear();
             _statistics.queuedReliableBytes = 0;
             _statistics.queuedReliableMessages = 0;
+        }
+    }
+
+    internal static class SteamConnectionStatus
+    {
+        internal static string Describe(HSteamNetConnection conn, bool dedicated, out bool peerGone)
+        {
+            peerGone = false;
+            var status = new SteamNetConnectionRealTimeStatus_t();
+            var lanes = new SteamNetConnectionRealTimeLaneStatus_t();
+            EResult result;
+            try
+            {
+                result = dedicated
+                    ? SteamGameServerNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes)
+                    : SteamNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes);
+            }
+            catch (Exception e)
+            {
+                return $"status unavailable ({e.Message})";
+            }
+
+            if (result != EResult.k_EResultOK)
+            {
+                peerGone = true;
+                return $"status unavailable ({result})";
+            }
+
+            peerGone = status.m_eState != ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected;
+            return $"state {status.m_eState}, ping {status.m_nPing} ms, quality local {status.m_flConnectionQualityLocal:0.##} remote {status.m_flConnectionQualityRemote:0.##}, " +
+                   $"out {status.m_flOutBytesPerSec / 1024f:0.#} KiB/s, in {status.m_flInBytesPerSec / 1024f:0.#} KiB/s, rate {status.m_nSendRateBytesPerSecond / 1024} KiB/s, " +
+                   $"pending reliable {status.m_cbPendingReliable} B, unacked reliable {status.m_cbSentUnackedReliable} B";
         }
     }
 }

@@ -24,6 +24,7 @@ namespace PurrNet
 
     [DefaultExecutionOrder(-999)]
     [AddComponentMenu("PurrNet/Network Manager")]
+    [PackerDependencies]
     public sealed partial class NetworkManager : MonoBehaviour, IRegisterModules, INetworkManager
     {
         /// <summary>
@@ -675,6 +676,24 @@ namespace PurrNet
                 if (!ReferencesAssembly(assembly, attrAssemblyName))
                     continue;
 
+                var registrationIndex = assembly.GetType(PackerRegistrationEntry.IndexTypeName, false);
+                if (registrationIndex != null)
+                {
+                    var getRegistrations = registrationIndex.GetMethod(PackerRegistrationEntry.IndexMethodName,
+                        BindingFlags.Public | BindingFlags.Static);
+                    var entries = (PackerRegistrationEntry[])getRegistrations.Invoke(null, null);
+                    for (int i = 0; i < entries.Length; i++)
+                    {
+                        var entry = entries[i];
+                        methodsToCall.Add(new TypeRegistrer
+                        {
+                            method = (MethodInfo)MethodBase.GetMethodFromHandle(entry.method, entry.declaringType),
+                            priority = entry.priority
+                        });
+                    }
+                    continue;
+                }
+
                 Type[] types;
 
                 try
@@ -950,6 +969,14 @@ namespace PurrNet
         /// <param name="rule">The rule to add.</param>
         public void AddVisibilityRule(NetworkManager manager, INetworkVisibilityRule rule)
         {
+            if (!_visibilityRules)
+            {
+                PurrLogger.LogError(
+                    "Can't add a visibility rule because this NetworkManager has no Visibility Rules assigned. " +
+                    "Assign a rule set in the inspector first.", this);
+                return;
+            }
+
             _visibilityRules.AddRule(manager, rule);
         }
 
@@ -959,7 +986,8 @@ namespace PurrNet
         /// <param name="rule">The rule to remove.</param>
         public void RemoveVisibilityRule(INetworkVisibilityRule rule)
         {
-            _visibilityRules.RemoveRule(rule);
+            if (_visibilityRules)
+                _visibilityRules.RemoveRule(rule);
         }
 
         /// <summary>

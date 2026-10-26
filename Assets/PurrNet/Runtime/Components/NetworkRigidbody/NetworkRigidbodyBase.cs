@@ -670,8 +670,10 @@ namespace PurrNet
             if (!hasBody)
                 return;
 
-            if (!ValidateLocalStateForSync("state send"))
+            if (!ValidateLocalStateForSync("state send", out bool kinematicTeleport))
                 return;
+
+            zeroVelocities |= kinematicTeleport;
 
             var parentIdentity = GetSyncParentIdentity(out var isSoft);
             var parentTrs = parentIdentity ? parentIdentity.transform : null;
@@ -1815,14 +1817,14 @@ namespace PurrNet
                 return Vector3.zero;
             var v = GetLinearVelocity();
             if (!parent)
-                return v;
+                return PlausibleOrZero(v, maxPlausibleLinearSpeed);
 
             GetParentPose(parent, out _, out var parentRotation);
-            return NetworkRigidbodyFrameMath.ToParentLinearVelocity(
+            return PlausibleOrZero(NetworkRigidbodyFrameMath.ToParentLinearVelocity(
                 v,
                 GetParentPointVelocity(parent, bodyPosition),
                 parentRotation,
-                parent.lossyScale);
+                parent.lossyScale), maxPlausibleLinearSpeed);
         }
 
         private Vector3 ReadAngularVelocity(Transform parent)
@@ -1831,12 +1833,12 @@ namespace PurrNet
                 return Vector3.zero;
             var v = bodyAngularVelocity;
             if (!parent)
-                return v;
+                return PlausibleOrZero(v, maxPlausibleAngularSpeed);
 
-            return NetworkRigidbodyFrameMath.ToParentAngularVelocity(
+            return PlausibleOrZero(NetworkRigidbodyFrameMath.ToParentAngularVelocity(
                 v,
                 GetParentAngularVelocity(parent),
-                ParentRotation(parent));
+                ParentRotation(parent)), maxPlausibleAngularSpeed);
         }
 
         /// <summary>

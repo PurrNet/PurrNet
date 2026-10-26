@@ -6,10 +6,20 @@ namespace PurrNet.Modules
 {
     public partial class RollbackModule
     {
-        static readonly RaycastHit2D[] _raycastHits2D = new RaycastHit2D[1024];
-        static readonly RaycastHit2D[] _raycastHits2DCache = new RaycastHit2D[1024];
-        static readonly Collider2D[] _colliderHits2D = new Collider2D[1024];
-        static readonly Collider2D[] _collider2DCache = new Collider2D[1024];
+        // Registering a network manager must not allocate query scratch for unused physics.
+        private static class QueryBuffers2D
+        {
+            internal static readonly RaycastHit2D[] hits = new RaycastHit2D[1024];
+            internal static readonly RaycastHit2D[] cachedHits = new RaycastHit2D[1024];
+            internal static readonly Collider2D[] colliders = new Collider2D[1024];
+            internal static readonly Collider2D[] cachedColliders = new Collider2D[1024];
+            static QueryBuffers2D() { }
+        }
+
+        static RaycastHit2D[] _raycastHits2D => QueryBuffers2D.hits;
+        static RaycastHit2D[] _raycastHits2DCache => QueryBuffers2D.cachedHits;
+        static Collider2D[] _colliderHits2D => QueryBuffers2D.colliders;
+        static Collider2D[] _collider2DCache => QueryBuffers2D.cachedColliders;
 
         /// <summary>
         /// Casts a ray, from point origin, in direction direction, of length maxDistance, against all colliders in the scene.

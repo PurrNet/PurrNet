@@ -35,13 +35,10 @@ namespace PurrNet.Editor
         {
             _nextSearchTime = 0;
 
-            _topViewType = AppDomain.CurrentDomain.GetAssemblies()
 #if UNITY_6000_3_OR_NEWER
-                .FirstOrDefault(a => a.GetName().Name == "UnityEditor")
-                ?.GetType("Unity.Multiplayer.PlayMode.Editor.TopView");
+            _topViewType = Type.GetType("Unity.Multiplayer.PlayMode.Editor.TopView, UnityEditor");
 #else
-                .FirstOrDefault(a => a.GetName().Name == "Unity.Multiplayer.Playmode.Workflow.Editor")
-                ?.GetType("Unity.Multiplayer.Playmode.Workflow.Editor.TopView");
+            _topViewType = Type.GetType("Unity.Multiplayer.Playmode.Workflow.Editor.TopView, Unity.Multiplayer.Playmode.Workflow.Editor");
 #endif
 
             _hostViewType = typeof(EditorWindow).Assembly.GetType("UnityEditor.HostView");

@@ -3,6 +3,7 @@ using PurrNet.Logging;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public abstract class SceneScopedFactory<T> : INetworkModule where T : INetworkModule
     {
         protected readonly ScenesModule scenes;

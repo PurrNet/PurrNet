@@ -236,9 +236,10 @@ public class TestBitData
     {
         using var source = BitPackerPool.Get();
         using var destination = BitPackerPool.Get();
-        var lengths = new[] { 1, 5, 8, 9, 63, 64, 65, 79, 80, 81, 127, 128, 129, 197 };
+        var lengths = new[] { 1, 5, 8, 9, 63, 64, 65, 79, 80, 81, 127, 128, 129, 197,
+            1023, 1024, 1025, 8191, 8192, 8193, 16377 };
 
-        for (int i = 0; i < 32; i++)
+        for (int i = 0; i < 2048; i++)
             source.WriteBits((ulong)(byte)(i * 37 + 11), 8);
         int sourcePosition = source.positionInBits;
 

@@ -46,6 +46,7 @@ namespace PurrNet.Modules
         }
     }
 
+    [PackerDependencies]
     public class GlobalOwnershipModule : INetworkModule, IFixedUpdate, IPreFixedUpdate, IPromoteToServerModule
     {
         readonly PlayersManager _playersManager;
@@ -660,6 +661,33 @@ namespace PurrNet.Modules
 
             ListPool<OwnershipCallback>.Destroy(callbacks);
             ListPool<NetworkIdentity>.Destroy(affectedIds);
+        }
+
+        /// <summary>
+        /// Client side of a manual spawn: records the owner locally without asking the server, so
+        /// the spawn callbacks already see it. Ownership the server sent for this identity before it
+        /// existed here is dropped; the server sends its current state once this player observes it.
+        /// </summary>
+        internal void ApplyManualOwner(NetworkIdentity identity, PlayerID? player)
+        {
+            if (_asServer || !identity || !identity.id.HasValue)
+                return;
+
+            if (!_sceneOwnerships.TryGetValue(identity.sceneId, out var module))
+                return;
+
+            RemovePendingOwnership(identity.sceneId, identity.id.Value);
+
+            var oldOwner = identity.GetOwner(false);
+            if (oldOwner == player)
+                return;
+
+            bool changed = player.HasValue
+                ? module.GiveOwnership(identity, player.Value)
+                : module.RemoveOwnership(identity);
+
+            if (changed)
+                identity.TriggerOnOwnerChanged(oldOwner, player, false, player.HasValue);
         }
 
         /// <summary>

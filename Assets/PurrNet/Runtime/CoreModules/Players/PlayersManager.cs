@@ -73,6 +73,7 @@ namespace PurrNet.Modules
 
     public delegate void OnPlayerEvent(PlayerID player);
 
+    [PackerDependencies]
     public class PlayersManager : INetworkModule, IConnectionListener, IConnectionStateListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
     {
         private readonly AuthModule _authModule;

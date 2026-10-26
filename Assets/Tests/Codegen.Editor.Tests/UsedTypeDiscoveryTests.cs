@@ -135,6 +135,50 @@ namespace PurrNet.Codegen.Tests
         }
 
         [Test]
+        public void ExplicitCodecDependenciesDoNotHideNetworkModulePayloads()
+        {
+            var constructor = typeof(PackerDependenciesAttribute).GetConstructor(new[] { typeof(Type[]) });
+            var attribute = new CustomAttribute(_module.ImportReference(constructor));
+            attribute.ConstructorArguments.Add(new CustomAttributeArgument(_module.ImportReference(typeof(Type[])),
+                Array.Empty<CustomAttributeArgument>()));
+            _holder.CustomAttributes.Add(attribute);
+            var cell = GenericType("NetworkCell");
+            cell.BaseType = _networkModule;
+            var closedCell = Close(cell, _module.TypeSystem.String);
+            _holder.Fields.Add(new FieldDefinition("State", FieldAttributes.Private, closedCell));
+            AssertTypes(Discover(), closedCell, _module.TypeSystem.String);
+        }
+
+        [Test]
+        public void CoreServiceDependenciesKeepSubscribedMessageFieldsWithoutServiceCaches()
+        {
+            var constructor = typeof(PackerDependenciesAttribute).GetConstructor(new[] { typeof(Type[]) });
+            var attribute = new CustomAttribute(_module.ImportReference(constructor));
+            attribute.ConstructorArguments.Add(new CustomAttributeArgument(_module.ImportReference(typeof(Type[])),
+                Array.Empty<CustomAttributeArgument>()));
+            _holder.CustomAttributes.Add(attribute);
+            _holder.Interfaces.Add(new InterfaceImplementation(_module.ImportReference(typeof(INetworkModule))));
+            var cache = AddType("Tests", "ServiceCache");
+            _holder.Fields.Add(new FieldDefinition("Cache", FieldAttributes.Private, cache));
+            var payload = AddType("Tests", "SubscribedMessage");
+            var nested = AddType("Tests", "MessageField");
+            payload.Fields.Add(new FieldDefinition("Value", FieldAttributes.Public, nested));
+            var broadcaster = _module.Types.Single(t => t.FullName == typeof(BroadcastModule).FullName);
+            var subscribe = AddMethod(broadcaster, "Subscribe");
+            subscribe.GenericParameters.Add(new GenericParameter("T", subscribe));
+            var call = new GenericInstanceMethod(subscribe);
+            call.GenericArguments.Add(payload);
+            Call(call);
+
+            var discovered = Discover();
+            discovered.Add(_holder);
+            var processor = typeof(RegisterSerializersProcessor).Assembly.GetType("PurrNet.Codegen.PostProcessor");
+            processor.GetMethod("ExpandNested", BindingFlags.NonPublic | BindingFlags.Static)
+                .Invoke(null, new object[] { _module.Assembly, discovered });
+            AssertTypes(discovered, _holder, payload, nested);
+        }
+
+        [Test]
         public void OrdinaryCallsAndNongenericFieldsDoNotResolveUnrelatedDependencies()
         {
             var unrelated = new CountingMethodReference("Ordinary", _module.TypeSystem.Void, _holder,

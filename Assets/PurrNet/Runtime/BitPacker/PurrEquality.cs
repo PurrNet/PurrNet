@@ -54,6 +54,16 @@ namespace PurrNet.Packing
             ) == 0;
         }
 
+        /// <summary>
+        /// Bitwise comparison of <paramref name="count"/> consecutive elements, for T without references.
+        /// </summary>
+        internal static unsafe bool MemEquals(ref T a, ref T b, int count)
+        {
+            fixed (byte* pa = &Unsafe.As<T, byte>(ref a))
+            fixed (byte* pb = &Unsafe.As<T, byte>(ref b))
+                return UnsafeUtility.MemCmp(pa, pb, (long)count * Unsafe.SizeOf<T>()) == 0;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining), UsedByIL]
         public static bool Equals(T a, T b)
         {

@@ -13,6 +13,7 @@ namespace PurrNet
     public delegate void NidParentChanged(NetworkIdentity oldParent, NetworkIdentity newParent);
 
     [DefaultExecutionOrder(-1000)]
+    [PackerDependencies(typeof(NetworkID), typeof(SceneID))]
     public partial class NetworkIdentity : MonoBehaviour
     {
         [SerializeField, HideInInspector] private bool _isSetup;
@@ -409,6 +410,7 @@ namespace PurrNet
         /// </summary>
         public PlayerID? localPlayer
         {
+            [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
             get
             {
                 if (_localPlayer.HasValue)
@@ -433,6 +435,7 @@ namespace PurrNet
 
         private readonly List<PlayerID> _observers = new List<PlayerID>(4);
         [System.NonSerialized] private List<PlayerID> _pendingObservers;
+        [System.NonSerialized] private List<PlayerID> _mutedObservers;
 
         public IReadOnlyList<PlayerID> observers => _observers;
 
@@ -1024,7 +1027,6 @@ namespace PurrNet
             _modules.Clear();
             _externalModulesView.Clear();
             _tickables.Clear();
-            _visitiblityRules = null;
             _spawnedCount = 0;
             _onSpawnedQueue?.Clear();
             _serverSceneEvents = null;
@@ -1040,6 +1042,7 @@ namespace PurrNet
             _whitelist.Clear();
             _blacklist.Clear();
             _whiteBlackDirtyPlayers.Clear();
+            _mutedObservers?.Clear();
         }
 
         private void OnChildDespawned(NetworkIdentity networkIdentity)

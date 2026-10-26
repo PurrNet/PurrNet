@@ -476,28 +476,25 @@ namespace PurrNet.Packing
             fixed (byte* source = &other._buffer[sourceByteOrigin])
             fixed (byte* destination = &_buffer[_positionInBits >> 3])
             {
+                // Keep overflow in a register instead of storing a byte that the
+                // next iteration immediately reloads as part of a larger word.
+                ulong carry = (ulong)(*destination & overflowMask);
                 for (int i = 0; i < chunks; i++)
                 {
                     byte* destinationChunk = destination + (i << 3);
                     ulong value = *(ulong*)(source + (i << 3));
-                    ulong existing = *(ulong*)destinationChunk;
 #if PURR_ENDIAN
                     if (!BitConverter.IsLittleEndian)
-                    {
                         value = BinaryPrimitives.ReverseEndianness(value);
-                        existing = BinaryPrimitives.ReverseEndianness(existing);
-                    }
 #endif
-                    ulong result = (existing & preservedLowBits) | (value << destinationBitOffset);
+                    ulong result = carry | (value << destinationBitOffset);
 #if PURR_ENDIAN
                     if (!BitConverter.IsLittleEndian)
                         result = BinaryPrimitives.ReverseEndianness(result);
 #endif
                     *(ulong*)destinationChunk = result;
 
-                    byte highData = (byte)(value >> (64 - destinationBitOffset));
-                    byte* overflowByte = destinationChunk + 8;
-                    *overflowByte = (byte)((*overflowByte & ~overflowMask) | (highData & overflowMask));
+                    carry = value >> (64 - destinationBitOffset);
                 }
 
                 if (excess != 0)
@@ -516,7 +513,8 @@ namespace PurrNet.Packing
                     if (!BitConverter.IsLittleEndian)
                         existing = BinaryPrimitives.ReverseEndianness(existing);
 #endif
-                    ulong result = (existing & ~writeMask) | ((value & dataMask) << destinationBitOffset);
+                    ulong result = (existing & ~(writeMask | preservedLowBits)) |
+                                   carry | ((value & dataMask) << destinationBitOffset);
 #if PURR_ENDIAN
                     if (!BitConverter.IsLittleEndian)
                         result = BinaryPrimitives.ReverseEndianness(result);
@@ -531,6 +529,11 @@ namespace PurrNet.Packing
                         byte* overflowByte = destinationChunk + 8;
                         *overflowByte = (byte)((*overflowByte & ~highMask) | (highData & highMask));
                     }
+                }
+                else
+                {
+                    byte* overflowByte = destination + (chunks << 3);
+                    *overflowByte = (byte)((*overflowByte & ~overflowMask) | (byte)carry);
                 }
             }
 
@@ -575,6 +578,27 @@ namespace PurrNet.Packing
             _positionInBits++;
             return data;
         }
+
+        /// <summary>
+        /// True when a reader can take <paramref name="bits"/> more bits without running past the
+        /// logical data, the same bound <see cref="EnsureBitsExist(int)"/> enforces for reads.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool HasReadableBits(int bits) =>
+            _isReading && bits >= 0 && _positionInBits >= _readStartInBits && _positionInBits <= _readEndInBits &&
+            bits <= _readEndInBits - _positionInBits;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ulong PeekBitsWithoutChecks(byte bits)
+        {
+            int position = _positionInBits;
+            ulong value = ReadBitsWithoutChecks(bits);
+            _positionInBits = position;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void SkipBitsWithoutChecks(int bits) => _positionInBits += bits;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe bool ReadBit()

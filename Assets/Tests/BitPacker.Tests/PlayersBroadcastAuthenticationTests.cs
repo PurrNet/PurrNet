@@ -223,6 +223,47 @@ public class PlayersBroadcastAuthenticationTests
         Assert.That(received, Is.EqualTo(new[] { (player, 4, true) }));
     }
 
+    static string GetPersistentClientCookie(string cloneId)
+    {
+        CookiesModule.cloneId = cloneId;
+        var cookies = new CookiesModule(CookieScope.StorePersistently, false);
+        cookies.Enable(false);
+        var cookie = cookies.GetOrSet(AuthModule.CONNECTION_COOKIE_KEY, System.Guid.NewGuid().ToString());
+        cookies.Disable(false);
+        return cookie;
+    }
+
+    [Test]
+    public void PersistentCookies_EditorClonesGetDistinctPlayers()
+    {
+        var originalCloneId = CookiesModule.cloneId;
+        var cloneA = "purrnet-test-clone-a-" + System.Guid.NewGuid();
+        var cloneB = "purrnet-test-clone-b-" + System.Guid.NewGuid();
+        try
+        {
+            var cookieA = GetPersistentClientCookie(cloneA);
+            var cookieB = GetPersistentClientCookie(cloneB);
+            Assert.That(cookieB, Is.Not.EqualTo(cookieA));
+            Assert.That(GetPersistentClientCookie(cloneA), Is.EqualTo(cookieA));
+
+            var server = CreateRole(true);
+            var connectionA = new Connection(42);
+            var connectionB = new Connection(43);
+            server.Authenticate(connectionA, cookieA);
+            server.Authenticate(connectionB, cookieB);
+
+            Assert.That(server.players.TryGetPlayer(connectionA, out var playerA), Is.True);
+            Assert.That(server.players.TryGetPlayer(connectionB, out var playerB), Is.True);
+            Assert.That(playerB, Is.Not.EqualTo(playerA));
+        }
+        finally
+        {
+            CookiesModule.cloneId = originalCloneId;
+            PlayerPrefs.DeleteKey("rabsi_cookies_False_" + cloneA);
+            PlayerPrefs.DeleteKey("rabsi_cookies_False_" + cloneB);
+        }
+    }
+
     [Test]
     public void ServerShutdown_RemovesAuthenticatedConnectionMapping()
     {

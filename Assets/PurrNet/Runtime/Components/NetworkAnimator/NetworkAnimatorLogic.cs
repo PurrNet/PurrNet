@@ -20,8 +20,13 @@ namespace PurrNet
 
         protected override void OnObserverAdded(PlayerID player, bool isSpawner)
         {
-            if (isSpawner)
+            // The host shares the server animator, so its snapshot could overwrite newer owner updates.
+            var isLocalHost = isServer && networkManager.localPlayer == player;
+
+            if (isSpawner || isLocalHost)
+            {
                 return;
+            }
 
             using var data = NetAnimatorActionBatch.CreateReconcile(
                 _dontSyncHashes, _animator, false, _boolValues, _floatValues, _intValues);

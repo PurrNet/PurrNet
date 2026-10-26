@@ -258,7 +258,8 @@ namespace PurrNet
                 velocity = targetLinearVelocity;
             }
 
-            var positionalPull = (targetPosition - rb.position) * (w * w * ratio);
+            var displacement = Vector3.ClampMagnitude(targetPosition - rb.position, NetworkRigidbodyMath.MaxSpringDisplacement(range));
+            var positionalPull = displacement * (w * w * ratio);
             var velocityDamping = (targetLinearVelocity - velocity) * (2f * w);
             var dragCompensation = velocity * drag;
 

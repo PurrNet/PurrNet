@@ -6,6 +6,7 @@ using Unity.Profiling;
 
 namespace PurrNet.Modules
 {
+    [PackerDependencies]
     public class NetworkTransformModule : INetworkModule, IPromoteToServerModule
     {
         public static long entriesWrittenCount;

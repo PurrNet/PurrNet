@@ -65,6 +65,9 @@ namespace PurrNet
     {
         internal const float STATIC_BREAKAWAY_BODY_SPEED_SQR = 0.0004f;
         internal const float STATIC_BREAKAWAY_TARGET_SPEED_SQR = 0.01f;
+        internal const float MAX_SPRING_DISPLACEMENT = 10f;
+
+        internal static float MaxSpringDisplacement(float correctionRange) => Mathf.Max(correctionRange, MAX_SPRING_DISPLACEMENT);
 
         internal static Quaternion NormalizeQuaternion(Quaternion q)
         {

@@ -14,6 +14,7 @@ using UnityEngine.Serialization;
 namespace PurrNet
 {
     [AddComponentMenu("PurrNet/Network Transform")]
+    [PackerDependencies(typeof(NetworkID), typeof(SceneID))]
     public sealed class NetworkTransform : NetworkIdentity, INetworkTransform
     {
         public static INetworkTransformPositionTransform defaultPositionTransform { get; set; }
@@ -45,7 +46,7 @@ namespace PurrNet
         [Tooltip("The maximum amount of buffered ticks to store.\nThis is used for interpolation.")]
         [SerializeField, PurrLock, Min(1)] private int _maxBufferSize = 2;
 #if UNITY_PHYSICS_3D
-        [Tooltip("Will enforce the character controller getting enabled and disabled when attempting to sync the transform - CAUTION - Physics events can/will be called multiple times")]
+        [Tooltip("Applies received movement through an active Character Controller while preserving trigger contacts. The received pose remains authoritative if collisions or Min Move Distance prevent reaching it.")]
         [SerializeField]
         private bool _characterControllerPatch;
 #endif
@@ -365,6 +366,8 @@ namespace PurrNet
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
         private Transform _networkPosePositionParent;
         private Vector3 _networkPosePositionAnchor;
+        private bool _hasNetworkPoseAbsolute;
+        private double3 _networkPoseAbsolute;
         private Transform _networkPoseRotationParent;
         private Quaternion _networkPoseRotationAnchor;
 #endif
@@ -1112,10 +1115,20 @@ namespace PurrNet
             _networkPosePositionAnchor = nparent
                 ? nparent.InverseTransformPoint(worldPosition)
                 : worldPosition;
+            _hasNetworkPoseAbsolute = false;
+        }
+
+        private void CaptureNetworkPosePosition(in Vector3WithParent sample)
+        {
+            CaptureNetworkPosePosition(sample.position);
+            _hasNetworkPoseAbsolute = sample.TryGetAbsolute(out _networkPoseAbsolute);
         }
 
         private Vector3 ResolveNetworkPosePosition()
         {
+            if (_hasNetworkPoseAbsolute && TryResolvePositionTransform(out var positionTrs))
+                return positionTrs.ToLocal(this, _networkPoseAbsolute);
+
             var nparent = _networkPosePositionParent;
             return _syncPosition == SyncMode.Local && nparent && _trs.parent == nparent
                 ? nparent.TransformPoint(_networkPosePositionAnchor)
@@ -1204,10 +1217,6 @@ namespace PurrNet
         {
 #if UNITY_PHYSICS_3D
             bool hasRigidbody = _hasRigidbody && _rb;
-            bool disableController = !hasRigidbody && _controller && _controller.enabled;
-
-            if (disableController && _characterControllerPatch)
-                _controller.enabled = false;
 #endif
 #if UNITY_PHYSICS_2D
             bool hasRigidbody2D = _hasRigidbody2D && _rb2d;
@@ -1220,7 +1229,8 @@ namespace PurrNet
 
             if (syncPosition)
             {
-                worldPos = _position.Advance(Time.unscaledDeltaTime).position;
+                var positionSample = _position.Advance(Time.unscaledDeltaTime);
+                worldPos = positionSample.position;
 #if UNITY_PHYSICS_3D
                 if (hasRigidbody)
                 {
@@ -1240,7 +1250,7 @@ namespace PurrNet
                     (_trs.position - worldPos).sqrMagnitude > POSE_VECTOR_EPSILON_SQR;
                 position = worldPos;
 #if UNITY_PHYSICS_3D || UNITY_PHYSICS_2D
-                CaptureNetworkPosePosition(worldPos);
+                CaptureNetworkPosePosition(in positionSample);
 #endif
             }
 
@@ -1270,6 +1280,20 @@ namespace PurrNet
 #endif
             }
 
+#if UNITY_PHYSICS_3D
+            bool syncController = !hasRigidbody && _characterControllerPatch &&
+                                  _controller && _controller.enabled && _controller.gameObject.activeInHierarchy;
+            if (syncController && applyTransformPosition)
+            {
+                // Toggling enabled recreates the controller and its trigger contacts every
+                // frame, including while standing still. Move keeps those contacts alive.
+                _controller.Move(worldPos - _trs.position);
+                applyTransformPosition =
+                    (_trs.position - worldPos).sqrMagnitude > POSE_VECTOR_EPSILON_SQR;
+            }
+            bool correctControllerPose = syncController && applyTransformPosition;
+#endif
+
             switch (applyTransformPosition)
             {
                 case true when applyTransformRotation:
@@ -1297,8 +1321,11 @@ namespace PurrNet
             }
 
 #if UNITY_PHYSICS_3D
-            if (disableController && _characterControllerPatch)
-                _controller.enabled = true;
+            // An observer must still reach the received pose when Move clips against local
+            // geometry or ignores a small delta. Sync its corrected transform without
+            // disabling the controller or changing its collision/movement configuration.
+            if (correctControllerPose)
+                Physics.SyncTransforms();
 #endif
         }
 
@@ -2395,6 +2422,11 @@ namespace PurrNet
 
         internal void GatherAndCapture(ushort tick)
         {
+            // A reparent applied by HierarchyV2 inside the tick only invalidates the pose, so the frame
+            // refreshed below would otherwise be paired with a position still expressed in the old frame.
+            if (!_hasRawPose)
+                RefreshLatestData();
+
             RefreshLatestFrame();
 
             if (_hasCapturedState && !_latestDirty)

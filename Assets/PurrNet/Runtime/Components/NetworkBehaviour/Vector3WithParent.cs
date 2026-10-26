@@ -38,6 +38,12 @@ namespace PurrNet
             this.position = posTransform.ToLocal(self, absolutePosition);
         }
 
+        internal bool TryGetAbsolute(out double3 absolutePosition)
+        {
+            absolutePosition = value;
+            return isAbsolute;
+        }
+
         Vector3 ResolveWorld()
         {
             if (isAbsolute)

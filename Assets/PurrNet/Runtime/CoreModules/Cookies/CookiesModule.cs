@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
 using JetBrains.Annotations;
+using PurrNet.Utils;
 using UnityEngine;
 
 namespace PurrNet.Modules
@@ -35,9 +37,12 @@ namespace PurrNet.Modules
         public List<CookiePair> cookies;
     }
 
+    [PackerDependencies]
     public class CookiesModule : INetworkModule, IPromoteToServerModule
     {
         private const string SAVE_KEY = "rabsi_cookies";
+
+        internal static string cloneId = ApplicationContext.isClone ? Directory.GetCurrentDirectory() : null;
 
         readonly List<CookiePair> _cookies = new List<CookiePair>();
         readonly CookieScope _scope;
@@ -165,9 +170,14 @@ namespace PurrNet.Modules
             });
         }
 
+        static string GetSaveKey(bool asServer)
+        {
+            return cloneId == null ? $"{SAVE_KEY}_{asServer}" : $"{SAVE_KEY}_{asServer}_{cloneId}";
+        }
+
         void Save(bool asServer)
         {
-            var saveKey = $"{SAVE_KEY}_{asServer}";
+            var saveKey = GetSaveKey(asServer);
 
             switch (_scope)
             {
@@ -194,7 +204,7 @@ namespace PurrNet.Modules
         [CanBeNull]
         string LoadData(bool asServer)
         {
-            var saveKey = $"{SAVE_KEY}_{asServer}";
+            var saveKey = GetSaveKey(asServer);
             return _scope switch
             {
                 CookieScope.LiveWithProcess => ProcessPrefs.Get(saveKey, null),

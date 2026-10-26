@@ -448,6 +448,10 @@ namespace PurrNet.UTP
             _client.Stop();
             _client = null;
 
+            if (clientState is ConnectionState.Connecting or ConnectionState.Connected)
+                clientState = ConnectionState.Disconnecting;
+            clientState = ConnectionState.Disconnected;
+
             // LogTransportTrace("Disconnect completed");
         }
 

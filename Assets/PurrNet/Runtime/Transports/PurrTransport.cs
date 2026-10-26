@@ -718,6 +718,8 @@ namespace PurrNet.Transports
         /// <summary>Whether the local client's connection to the relay uses WebRTC.</summary>
         public bool clientUsesWebRtc => _client?.isWebRtc == true;
         private HostJoinInfo _hostJoinInfo;
+        private string _hostJoinKey;
+        private string hostJoinKey => $"{_host}|{_roomName}|{projectKey}";
         readonly TcpConfig _tcpConfig = new(noDelay: true, sendTimeout: 0, receiveTimeout: 0);
 
         protected override void StartServerInternal()
@@ -1199,10 +1201,17 @@ namespace PurrNet.Transports
                         if (token.IsCancellationRequested)
                             return;
 
-                        _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token, projectKey);
+                        if (_hostJoinKey != hostJoinKey ||
+                            !await PurrTransportUtils.RoomExistsAsync(_masterServer, _roomName, projectKey))
+                        {
+                            _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token, projectKey);
+                            NoteRelayUsage(_hostJoinInfo.usage);
+                        }
+
                         _relayRoomName = RelayNameOf(_hostJoinInfo.roomName, _roomName);
-                        NoteRelayUsage(_hostJoinInfo.usage);
                     }
+
+                    _hostJoinKey = hostJoinKey;
 
                     if (token.IsCancellationRequested)
                         return;

@@ -49,16 +49,19 @@ namespace PurrNet.Editor
         private readonly List<(string name, int startIndex, int count)> _categories = new();
         private readonly Dictionary<string, int> _categoryUpdateCounts = new();
 
-        private static readonly Color _headerBg = new Color(0.17f, 0.17f, 0.17f, 1f);
-        private static readonly Color _accentColor = new Color(0.4f, 0.7f, 1f, 1f);
-        private static readonly Color _installedColor = new Color(0.4f, 0.8f, 0.4f, 1f);
-        private static readonly Color _updateColor = new Color(1f, 0.76f, 0.28f, 1f);
-        private static readonly Color _frozenColor = new Color(0.95f, 0.5f, 0.5f, 1f);
-        private static readonly Color _separatorColor = new Color(0.13f, 0.13f, 0.13f, 1f);
-        private static readonly Color _listBg = new Color(0.2f, 0.2f, 0.2f, 1f);
-        private static readonly Color _selectedBg = new Color(0.17f, 0.36f, 0.53f, 1f);
-        private static readonly Color _hoverBg = new Color(0.26f, 0.26f, 0.26f, 1f);
-        private static readonly Color _noAccessColor = new Color(0.95f, 0.45f, 0.45f, 1f);
+        private static Color ThemeColor(Color dark, Color light) => EditorGUIUtility.isProSkin ? dark : light;
+        private static Color ButtonTint(Color color) => EditorGUIUtility.isProSkin ? color : Color.Lerp(color, Color.white, 0.65f);
+
+        private static Color _headerBg => ThemeColor(new Color(0.17f, 0.17f, 0.17f), new Color(0.8f, 0.8f, 0.8f));
+        private static Color _accentColor => ThemeColor(new Color(0.4f, 0.7f, 1f), new Color(0.05f, 0.32f, 0.6f));
+        private static Color _installedColor => ThemeColor(new Color(0.4f, 0.8f, 0.4f), new Color(0.15f, 0.4f, 0.18f));
+        private static Color _updateColor => ThemeColor(new Color(1f, 0.76f, 0.28f), new Color(0.5f, 0.32f, 0.02f));
+        private static Color _frozenColor => ThemeColor(new Color(0.95f, 0.5f, 0.5f), new Color(0.65f, 0.2f, 0.2f));
+        private static Color _separatorColor => ThemeColor(new Color(0.13f, 0.13f, 0.13f), new Color(0.62f, 0.62f, 0.62f));
+        private static Color _listBg => ThemeColor(new Color(0.2f, 0.2f, 0.2f), new Color(0.84f, 0.84f, 0.84f));
+        private static Color _selectedBg => ThemeColor(new Color(0.17f, 0.36f, 0.53f), new Color(0.66f, 0.79f, 0.9f));
+        private static Color _hoverBg => ThemeColor(new Color(0.26f, 0.26f, 0.26f), new Color(0.77f, 0.8f, 0.83f));
+        private static Color _mutedText => ThemeColor(new Color(0.7f, 0.7f, 0.7f), new Color(0.3f, 0.3f, 0.3f));
         private static readonly Dictionary<string, Color> _tierColors = new()
         {
             { "house-cat", new Color(0.4f, 0.7f, 1f, 1f) },
@@ -66,14 +69,18 @@ namespace PurrNet.Editor
             { "studio", new Color(0.85f, 0.65f, 0.3f, 1f) },
             { "admin", new Color(1f, 0.35f, 0.5f, 1f) },
         };
-        private static readonly Color _categoryBg = new Color(0.16f, 0.16f, 0.16f, 1f);
-        private static readonly Color _selectedAccent = new Color(0.35f, 0.65f, 0.95f, 1f);
+        private static Color _categoryBg => ThemeColor(new Color(0.16f, 0.16f, 0.16f), new Color(0.76f, 0.76f, 0.76f));
+        private static Color _selectedAccent => _accentColor;
 
         [NonSerialized] private GUIStyle _descStyle;
         [NonSerialized] private GUIStyle _badgeStyle;
         [NonSerialized] private GUIStyle _smallLabelStyle;
         [NonSerialized] private GUIStyle _listItemStyle;
         [NonSerialized] private GUIStyle _listItemDetailStyle;
+        [NonSerialized] private GUIStyle _selectedListItemDetailStyle;
+        [NonSerialized] private GUIStyle _membershipStyle;
+        [NonSerialized] private Texture _lockIcon;
+        [NonSerialized] private bool _stylesUseProSkin;
         [NonSerialized] private GUIStyle _earlyAccessListStyle;
         [NonSerialized] private GUIStyle _categoryStyle;
         [NonSerialized] private GUIStyle _categoryUpdateStyle;
@@ -233,19 +240,41 @@ namespace PurrNet.Editor
             }
         }
 
+        private static string GetAccessRequirement(PackageInfo package)
+        {
+            if (package.RequiredTier == "admin")
+                return "Available to administrators only.";
+
+            var tierName = FormatTierName(package.RequiredTier);
+            return string.IsNullOrEmpty(tierName)
+                ? "Sign in or visit the package page for access details."
+                : $"Requires {tierName} membership.";
+        }
+
+        private static string GetPackageWebsiteUrl(PackageInfo package)
+        {
+            return string.IsNullOrEmpty(package.Slug)
+                ? "https://purrnet.dev/packages"
+                : PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug);
+        }
+
         private void InitStyles()
         {
             _searchField ??= new SearchField();
 
             if (_detailTitleStyle != null && _listItemDetailStyle != null &&
-                _releaseNotesStyle != null && _categoryUpdateStyle != null)
+                _releaseNotesStyle != null && _categoryUpdateStyle != null && _membershipStyle != null &&
+                _stylesUseProSkin == EditorGUIUtility.isProSkin)
                 return;
+
+            _stylesUseProSkin = EditorGUIUtility.isProSkin;
+            _lockIcon = EditorGUIUtility.IconContent("LockIcon-On").image;
 
             _descStyle = new GUIStyle(EditorStyles.label)
             {
                 wordWrap = true,
                 fontSize = 11,
-                normal = { textColor = new Color(0.78f, 0.78f, 0.78f, 1f) }
+                normal = { textColor = ThemeColor(new Color(0.78f, 0.78f, 0.78f), new Color(0.23f, 0.23f, 0.23f)) }
             };
 
             _badgeStyle = new GUIStyle(EditorStyles.miniLabel)
@@ -259,7 +288,7 @@ namespace PurrNet.Editor
 
             _smallLabelStyle = new GUIStyle(EditorStyles.miniLabel)
             {
-                normal = { textColor = new Color(0.7f, 0.7f, 0.7f, 1f) }
+                normal = { textColor = _mutedText }
             };
 
             _listItemStyle = new GUIStyle(EditorStyles.label)
@@ -276,7 +305,7 @@ namespace PurrNet.Editor
                 padding = new RectOffset(0, 6, 0, 0),
                 margin = new RectOffset(0, 0, 0, 0),
                 alignment = TextAnchor.MiddleRight,
-                normal = { textColor = new Color(0.6f, 0.6f, 0.6f, 1f) }
+                normal = { textColor = _mutedText }
             };
 
             _earlyAccessListStyle = new GUIStyle(_listItemDetailStyle)
@@ -286,13 +315,24 @@ namespace PurrNet.Editor
                 normal = { textColor = _updateColor }
             };
 
+            _selectedListItemDetailStyle = new GUIStyle(_listItemDetailStyle)
+            {
+                normal = { textColor = ThemeColor(new Color(0.85f, 0.85f, 0.85f), new Color(0.25f, 0.25f, 0.25f)) }
+            };
+
+            _membershipStyle = new GUIStyle(EditorStyles.wordWrappedLabel)
+            {
+                fontSize = 11,
+                margin = new RectOffset(4, 4, 4, 4)
+            };
+
             _categoryStyle = new GUIStyle(EditorStyles.foldout)
             {
                 fontSize = 9,
                 fontStyle = FontStyle.Bold,
                 padding = new RectOffset(14, 4, 3, 3),
                 margin = new RectOffset(0, 0, 0, 0),
-                normal = { textColor = new Color(0.48f, 0.48f, 0.48f, 1f) }
+                normal = { textColor = _mutedText }
             };
 
             _categoryUpdateStyle = new GUIStyle(EditorStyles.miniLabel)
@@ -311,7 +351,7 @@ namespace PurrNet.Editor
                 margin = new RectOffset(0, 0, 0, 4)
             };
 
-            var notesColor = new Color(0.75f, 0.75f, 0.75f, 1f);
+            var notesColor = ThemeColor(new Color(0.75f, 0.75f, 0.75f), new Color(0.23f, 0.23f, 0.23f));
             _releaseNotesStyle = new GUIStyle(EditorStyles.label)
             {
                 wordWrap = true,
@@ -503,10 +543,10 @@ namespace PurrNet.Editor
                     var updateLabel = _isUpdatingAll ? BusyLabel("Updating") : $"Update All ({_updatableCount})";
                     var updateRect = new Rect(profileAnchor.xMax - profileWidth - 104, headerRect.y + 10, 100, 22);
                     GUI.enabled = !_isLoading && !_isUpdatingAll && !HasActivePackageOperation();
-                    GUI.color = _updateColor;
+                    GUI.backgroundColor = ButtonTint(_updateColor);
                     if (GUI.Button(updateRect, updateLabel))
                         UpdateAllPackages();
-                    GUI.color = Color.white;
+                    GUI.backgroundColor = Color.white;
                     GUI.enabled = true;
                 }
             }
@@ -979,6 +1019,8 @@ namespace PurrNet.Editor
             Color tierColor = default;
             bool hasTierColor = !string.IsNullOrEmpty(package.RequiredTier)
                                 && _tierColors.TryGetValue(package.RequiredTier, out tierColor);
+            if (hasTierColor && !EditorGUIUtility.isProSkin)
+                tierColor = Color.Lerp(tierColor, Color.black, 0.25f);
             if (isSelected)
             {
                 EditorGUI.DrawRect(itemRect, _selectedBg);
@@ -1005,7 +1047,7 @@ namespace PurrNet.Editor
             bool showEarlyAccess = package.IsEarlyAccess && package.HasAccess;
             string info;
             if (!package.HasAccess)
-                info = "No access";
+                info = FormatTierName(package.RequiredTier) ?? "Locked";
             else if (showEarlyAccess)
                 info = "EARLY ACCESS";
             else if (package.IsExternal && isGitInstall)
@@ -1020,15 +1062,28 @@ namespace PurrNet.Editor
                 info = "";
 
             // Measure right-side text width
-            var infoStyle = showEarlyAccess ? _earlyAccessListStyle : _listItemDetailStyle;
+            var infoStyle = showEarlyAccess ? _earlyAccessListStyle
+                : isSelected ? _selectedListItemDetailStyle : _listItemDetailStyle;
             float infoWidth = string.IsNullOrEmpty(info) ? 0 : infoStyle.CalcSize(new GUIContent(info)).x + 4;
 
+            // Keep the membership visible when it fits; compact rows retain the full requirement in a tooltip.
+            if (!package.HasAccess)
+            {
+                infoWidth += 18f;
+                float minNameWidth = Mathf.Min(_listItemStyle.CalcSize(new GUIContent(package.DisplayName)).x, 120f);
+                if (itemRect.width - infoWidth < minNameWidth)
+                {
+                    info = string.Empty;
+                    infoWidth = 22f;
+                }
+            }
+
             // Status dot
-            bool showDot = hasUpdate || hasGitUpdate || isInstalled;
+            bool showDot = package.HasAccess && (hasUpdate || hasGitUpdate || isInstalled);
             float dotSpace = showDot ? 12 : 0;
 
             // Name (left) — drawn as pure text, no event handling
-            float nameWidth = itemRect.width - infoWidth - dotSpace;
+            float nameWidth = Mathf.Max(0f, itemRect.width - infoWidth - dotSpace);
             var nameRect = new Rect(itemRect.x, itemRect.y, nameWidth, itemRect.height);
             if (Event.current.type == EventType.Repaint)
                 _listItemStyle.Draw(nameRect, package.DisplayName, false, false, false, false);
@@ -1042,24 +1097,22 @@ namespace PurrNet.Editor
                 EditorGUI.DrawRect(dotRect, dotColor);
             }
 
-            // Info text (right-aligned) — drawn as pure text, no event handling
-            if (infoWidth > 0 && Event.current.type == EventType.Repaint)
+            if (!package.HasAccess)
             {
                 var infoRect = new Rect(itemRect.xMax - infoWidth, itemRect.y, infoWidth, itemRect.height);
-                if (!package.HasAccess)
-                {
-                    var noAccessStyle = new GUIStyle(_listItemDetailStyle)
-                    {
-                        fontSize = 10,
-                        fontStyle = FontStyle.Bold,
-                        normal = { textColor = _noAccessColor }
-                    };
-                    noAccessStyle.Draw(infoRect, info, false, false, false, false);
-                }
-                else
-                {
-                    infoStyle.Draw(infoRect, info, false, false, false, false);
-                }
+                var iconRect = new Rect(infoRect.x + 2f, itemRect.y + (itemRect.height - 12f) / 2f, 12f, 12f);
+                var previousColor = GUI.color;
+                GUI.color = infoStyle.normal.textColor;
+                GUI.DrawTexture(iconRect, _lockIcon, ScaleMode.ScaleToFit);
+                GUI.color = previousColor;
+                GUI.Label(new Rect(infoRect.x + 18f, infoRect.y, infoRect.width - 18f, infoRect.height),
+                    info, infoStyle);
+                GUI.Label(itemRect, new GUIContent(string.Empty, $"{package.DisplayName}: {GetAccessRequirement(package)}"));
+            }
+            else if (infoWidth > 0 && Event.current.type == EventType.Repaint)
+            {
+                var infoRect = new Rect(itemRect.xMax - infoWidth, itemRect.y, infoWidth, itemRect.height);
+                infoStyle.Draw(infoRect, info, false, false, false, false);
             }
 
             // Click to select — at the end so nothing above can interfere
@@ -1080,9 +1133,9 @@ namespace PurrNet.Editor
                 Repaint();
         }
 
-        private static readonly Color _studiosAccent = new Color(0.85f, 0.65f, 0.3f, 1f);
-        private static readonly Color _studiosBg = new Color(0.85f, 0.65f, 0.3f, 0.06f);
-        private static readonly Color _studiosHoverBg = new Color(0.85f, 0.65f, 0.3f, 0.12f);
+        private static Color _studiosAccent => ThemeColor(new Color(0.85f, 0.65f, 0.3f), new Color(0.5f, 0.35f, 0.1f));
+        private static Color _studiosBg => new Color(_studiosAccent.r, _studiosAccent.g, _studiosAccent.b, 0.06f);
+        private static Color _studiosHoverBg => new Color(_studiosAccent.r, _studiosAccent.g, _studiosAccent.b, 0.12f);
 
         private void DrawStudiosListItem(Rect itemRect)
         {
@@ -1154,13 +1207,13 @@ namespace PurrNet.Editor
             EditorGUILayout.Space(12);
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(8);
-            GUI.color = _accentColor;
+            GUI.backgroundColor = ButtonTint(_accentColor);
             if (GUILayout.Button("Learn More", GUILayout.Height(28)))
                 Application.OpenURL("https://purrnet.dev/studios");
             GUILayout.Space(4);
             if (GUILayout.Button("Contact Us", GUILayout.Height(28)))
                 Application.OpenURL("mailto:martin@pebblesgames.com");
-            GUI.color = Color.white;
+            GUI.backgroundColor = Color.white;
             GUILayout.Space(8);
             EditorGUILayout.EndHorizontal();
 
@@ -1317,7 +1370,8 @@ namespace PurrNet.Editor
 
             string tierName = FormatTierName(package.RequiredTier);
             if (!string.IsNullOrEmpty(tierName))
-                GUILayout.Label($"Tier: {tierName}", _smallLabelStyle);
+                EditorGUILayout.LabelField(package.RequiredTier == "admin" ? tierName : $"Membership: {tierName}",
+                    _membershipStyle);
 
             if (package.IsUserEditable)
                 GUILayout.Label("Uses Unity's interactive importer under Assets; update this package individually",
@@ -1325,7 +1379,7 @@ namespace PurrNet.Editor
 
             if (!string.IsNullOrEmpty(package.Slug))
             {
-                string packageUrl = PackageWebsiteBaseUrl + Uri.EscapeDataString(package.Slug);
+                string packageUrl = GetPackageWebsiteUrl(package);
                 if (GUILayout.Button(packageUrl, EditorStyles.linkLabel, GUILayout.ExpandWidth(false)))
                     Application.OpenURL(packageUrl);
                 EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
@@ -1369,26 +1423,36 @@ namespace PurrNet.Editor
                     : "Your access to this package is limited. Resubscribe to unlock the latest versions.";
                 EditorGUILayout.HelpBox(frozenMsg, MessageType.Warning);
 
-                GUI.color = _accentColor;
+                GUI.backgroundColor = ButtonTint(_accentColor);
                 if (GUILayout.Button("Resubscribe", GUILayout.Height(24)))
                     Application.OpenURL("https://purrnet.dev");
-                GUI.color = Color.white;
+                GUI.backgroundColor = Color.white;
 
                 EditorGUILayout.EndVertical();
                 GUILayout.Space(8);
                 EditorGUILayout.EndHorizontal();
             }
 
-            // No access
+            // Membership requirement
             if (!package.HasAccess)
             {
                 EditorGUILayout.Space(12);
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(8);
-                GUI.color = _accentColor;
-                if (GUILayout.Button("Get Access", GUILayout.Height(28)))
-                    Application.OpenURL("https://purrnet.dev/membership");
-                GUI.color = Color.white;
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label(_lockIcon, GUILayout.Width(16), GUILayout.Height(22));
+                EditorGUILayout.LabelField(GetAccessRequirement(package), _membershipStyle);
+                EditorGUILayout.EndHorizontal();
+
+                bool isMembership = !string.IsNullOrEmpty(tierName) && package.RequiredTier != "admin";
+                string accessLabel = package.RequiredTier == "studio" ? "View Studio Plans"
+                    : isMembership ? "View Memberships" : "View Package";
+                string accessUrl = package.RequiredTier == "studio" ? "https://purrnet.dev/studios"
+                    : isMembership ? "https://purrnet.dev/pricing" : GetPackageWebsiteUrl(package);
+                if (GUILayout.Button(accessLabel, GUILayout.Height(26)))
+                    Application.OpenURL(accessUrl);
+                EditorGUILayout.EndVertical();
                 GUILayout.Space(8);
                 EditorGUILayout.EndHorizontal();
 
@@ -1397,12 +1461,12 @@ namespace PurrNet.Editor
                     EditorGUILayout.Space(8);
                     EditorGUILayout.BeginHorizontal();
                     GUILayout.Space(8);
-                    GUI.color = _frozenColor;
+                    GUI.backgroundColor = ButtonTint(_frozenColor);
                     GUI.enabled = CanStartPackageOperation();
                     if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
                         RemovePackage(package);
                     GUI.enabled = true;
-                    GUI.color = Color.white;
+                    GUI.backgroundColor = Color.white;
                     GUILayout.Space(8);
                     EditorGUILayout.EndHorizontal();
                 }
@@ -1472,12 +1536,12 @@ namespace PurrNet.Editor
             if (isInstalled)
             {
                 EditorGUILayout.Space(8);
-                GUI.color = _frozenColor;
+                GUI.backgroundColor = ButtonTint(_frozenColor);
                 GUI.enabled = CanStartPackageOperation();
                 if (GUILayout.Button("Remove Package", GUILayout.Height(24)))
                     RemovePackage(package);
                 GUI.enabled = true;
-                GUI.color = Color.white;
+                GUI.backgroundColor = Color.white;
             }
 
             EditorGUILayout.EndVertical();
@@ -1577,8 +1641,8 @@ namespace PurrNet.Editor
                 }
                 else if (!dependency.HasAccess)
                 {
-                    status = "No access";
-                    statusColor = _noAccessColor;
+                    status = FormatTierName(dependency.RequiredTier) ?? "Locked";
+                    statusColor = _listItemDetailStyle.normal.textColor;
                 }
                 else
                 {
@@ -1595,7 +1659,12 @@ namespace PurrNet.Editor
                     fontStyle = FontStyle.Bold,
                     normal = { textColor = statusColor }
                 };
-                GUILayout.Label(status, statusStyle, GUILayout.ExpandWidth(false));
+                bool isLockedDependency = dependency != null && !dependency.HasAccess
+                    && !PurrPackageManagerInstaller.IsInstalled(dependency);
+                var statusContent = isLockedDependency
+                    ? new GUIContent(status, _lockIcon, GetAccessRequirement(dependency))
+                    : new GUIContent(status);
+                GUILayout.Label(statusContent, statusStyle, GUILayout.ExpandWidth(false));
                 EditorGUILayout.EndHorizontal();
             }
 
@@ -1671,10 +1740,10 @@ namespace PurrNet.Editor
                     : importLabel;
 
             GUI.enabled = !isSelectedInstalled && !isActive && CanStartPackageOperation();
-            GUI.color = color;
+            GUI.backgroundColor = ButtonTint(color);
             if (GUILayout.Button(buttonLabel, GUILayout.Width(66), GUILayout.Height(20)))
                 InstallPackage(package, selected, operationKey);
-            GUI.color = Color.white;
+            GUI.backgroundColor = Color.white;
             GUI.enabled = true;
 
             EditorGUILayout.EndHorizontal();
@@ -1701,7 +1770,7 @@ namespace PurrNet.Editor
             }
             else
             {
-                GUI.color = buttonColor;
+                GUI.backgroundColor = ButtonTint(buttonColor);
                 string label;
                 string activeLabel;
                 if (!isInstalled)
@@ -1727,7 +1796,7 @@ namespace PurrNet.Editor
                 if (GUILayout.Button(isActive ? BusyLabel(activeLabel) : label, GUILayout.Height(26)))
                     InstallPackage(package, version, operationKey);
                 GUI.enabled = true;
-                GUI.color = Color.white;
+                GUI.backgroundColor = Color.white;
             }
         }
 
@@ -1755,12 +1824,12 @@ namespace PurrNet.Editor
                 {
                     var operationKey = GetPackageOperationKey(package, channelLabel);
                     bool isActive = IsPackageOperationActive(operationKey);
-                    GUI.color = _updateColor;
+                    GUI.backgroundColor = ButtonTint(_updateColor);
                     GUI.enabled = !isActive && CanStartPackageOperation();
                     if (GUILayout.Button(isActive ? BusyLabel("Updating") : $"Update {channelLabel}", GUILayout.Height(26)))
                         InstallExternalPackage(package, gitUrl, operationKey);
                     GUI.enabled = true;
-                    GUI.color = Color.white;
+                    GUI.backgroundColor = Color.white;
                 }
                 else
                 {
@@ -1776,12 +1845,12 @@ namespace PurrNet.Editor
             bool isExternalActive = IsPackageOperationActive(externalOperationKey);
             var externalLabel = isInstalled ? $"Switch to {channelLabel}" : $"Install {channelLabel}";
             var externalBusyLabel = isInstalled ? "Switching" : "Installing";
-            GUI.color = buttonColor;
+            GUI.backgroundColor = ButtonTint(buttonColor);
             GUI.enabled = !isExternalActive && CanStartPackageOperation();
             if (GUILayout.Button(isExternalActive ? BusyLabel(externalBusyLabel) : externalLabel, GUILayout.Height(26)))
                 InstallExternalPackage(package, gitUrl, externalOperationKey);
             GUI.enabled = true;
-            GUI.color = Color.white;
+            GUI.backgroundColor = Color.white;
         }
 
         // Markdown→rich-text is regex-heavy and the detail panel re-renders every OnGUI repaint;
@@ -1816,10 +1885,8 @@ namespace PurrNet.Editor
             var rect = GUILayoutUtility.GetRect(new GUIContent(text), _badgeStyle);
             rect.height = 18;
             EditorGUI.DrawRect(rect, new Color(color.r, color.g, color.b, 0.25f));
-            var prevColor = GUI.color;
-            GUI.color = color;
+            _badgeStyle.normal.textColor = color;
             GUI.Label(rect, text, _badgeStyle);
-            GUI.color = prevColor;
         }
 
         private void DrawSeparator()
@@ -1835,7 +1902,7 @@ namespace PurrNet.Editor
             // Draw grip dots in the center to hint it's draggable
             float centerX = rect.x + rect.width / 2f;
             float centerY = rect.y + rect.height / 2f;
-            var dotColor = new Color(0.35f, 0.35f, 0.35f, 1f);
+            var dotColor = ThemeColor(new Color(0.35f, 0.35f, 0.35f), new Color(0.45f, 0.45f, 0.45f));
             for (int i = -2; i <= 2; i++)
             {
                 var dotRect = new Rect(centerX - 1, centerY + i * 5, 2, 2);
@@ -2009,10 +2076,11 @@ namespace PurrNet.Editor
         private static string ProcessInline(string text)
         {
             // Links [text](url) → colored text
-            text = Regex.Replace(text, @"\[([^\]]+)\]\([^\)]+\)", "<color=#66aaff>$1</color>");
+            text = Regex.Replace(text, @"\[([^\]]+)\]\([^\)]+\)", $"<color=#{ColorUtility.ToHtmlStringRGB(_accentColor)}>$1</color>");
 
             // Inline code `text`
-            text = Regex.Replace(text, @"`([^`]+)`", "<color=#88cccc>$1</color>");
+            var codeColor = ThemeColor(new Color(0.53f, 0.8f, 0.8f), new Color(0.13f, 0.36f, 0.36f));
+            text = Regex.Replace(text, @"`([^`]+)`", $"<color=#{ColorUtility.ToHtmlStringRGB(codeColor)}>$1</color>");
 
             // Bold **text** or __text__
             text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<b>$1</b>");
