@@ -1,3 +1,70 @@
+# [1.25.0](https://github.com/PurrNet/PurrNet/compare/v1.24.1...v1.25.0) (2026-10-26)
+
+
+### Bug Fixes
+
+* allow manual spawners to include an owner from the get-go ([6eb3b7c](https://github.com/PurrNet/PurrNet/commit/6eb3b7cd3bbc785955baa638b56d2625ef01fa30))
+* authentication registration and character controller sync ([57b443c](https://github.com/PurrNet/PurrNet/commit/57b443cf2edd6afc3ff0affcd08e00f14ebf8cdf))
+* code stripping issue ([59eae08](https://github.com/PurrNet/PurrNet/commit/59eae08d83c58b56a3df68d6067ddd389d71b3bf))
+* CompositeTransport keeps connections and UTPTransport can't start a ([4695d9d](https://github.com/PurrNet/PurrNet/commit/4695d9d8461c5dd3149246aa60b520392720d561))
+* deliver host client RPCs in-process so they arrive before a despawn ([0f45d19](https://github.com/PurrNet/PurrNet/commit/0f45d192fec649ecaa39d77aec66a2437fea06bb))
+* Delta memory key and baseline decode ([4e2786c](https://github.com/PurrNet/PurrNet/commit/4e2786c9fe1d9f870089ce0431011c6829e7494b))
+* **delta:** harden baseline resync and restore delta compression ([09e41d8](https://github.com/PurrNet/PurrNet/commit/09e41d84e36f4efffe10f403e9e85d1a5131ad7a))
+* **delta:** receiver rejects deltas against a missing baseline and requests a full resync (DeltaBaselineMissing), ack floor; reset prevType on ack-batch MTU split; regression tests ([e1ddc8c](https://github.com/PurrNet/PurrNet/commit/e1ddc8cfb7bf3d46920104d4fa68f8d28d23069b))
+* find best region flaky API ([05e10d8](https://github.com/PurrNet/PurrNet/commit/05e10d82865b7ad1ad4c1903f7a39c41e2c8ce57))
+* give editor clones their own persistent cookies ([1a3204a](https://github.com/PurrNet/PurrNet/commit/1a3204ad4a1cf3793bbb195ab043b7903bd275d3))
+* listen on the relay again after the host's link drops ([6600f0c](https://github.com/PurrNet/PurrNet/commit/6600f0cc86499d1993c0f808c477ae52b3b3958a))
+* mark dep of unity UI ([5f46872](https://github.com/PurrNet/PurrNet/commit/5f46872d799932c8a67e24e5f89bbd50c95cfc5c))
+* Network rigidbody math safety ([3a10b12](https://github.com/PurrNet/PurrNet/commit/3a10b12e962568cedcc41bb2305ada349a8a845c))
+* Network Rigidbody safety ([0c5da80](https://github.com/PurrNet/PurrNet/commit/0c5da808a5336651c05ec44ade7a98de4e1bef57))
+* NT absolute position memory ([1b43675](https://github.com/PurrNet/PurrNet/commit/1b43675b795ceb1724fb9a656fe6b2a0ecafa204))
+* package manager light mode editor; indicator of relevant plan for ([f2f2d9b](https://github.com/PurrNet/PurrNet/commit/f2f2d9bef5eb6ac3c5aefc492484f822f09d4bc7))
+* Quiter steam failures ([d6bd5e9](https://github.com/PurrNet/PurrNet/commit/d6bd5e92a3bc017b0a3aafbae2c732fdf41fa95c))
+* refresh NetworkTransform pose before capture after an in-tick reparent ([#333](https://github.com/PurrNet/PurrNet/issues/333)) ([992383a](https://github.com/PurrNet/PurrNet/commit/992383a44b939f5b13599ebc7eb2ed729c4cdf42))
+* RPCs on unity native events; pakcing Transform ([d73decc](https://github.com/PurrNet/PurrNet/commit/d73decce3ef7f3f2efd70f289052c8b818c9029c))
+* Steam connection logging improvements ([0d8ae53](https://github.com/PurrNet/PurrNet/commit/0d8ae53d03cabb99576568690c2f6456cd0f981d))
+* Steam queue drain fix ([366bbde](https://github.com/PurrNet/PurrNet/commit/366bbdee2b2d13de98d6efb4fe132ec9a5a7b7d5))
+* stop PlayModePatch from leaking editor load contexts on CoreCLR ([6b68e16](https://github.com/PurrNet/PurrNet/commit/6b68e16ad3de17813685af37c560f0a5443941da))
+* stop SyncVar ticking once the connection is gone ([e92a261](https://github.com/PurrNet/PurrNet/commit/e92a261acc1a78331d3505bb7a2f3f91107dbc83))
+* stop the host from overwriting client animator state ([8336757](https://github.com/PurrNet/PurrNet/commit/8336757633e8e7d3bfb6d5f9b836323faa5d1964))
+* SyncVar<T> class values not editable in inspector ([1b9554e](https://github.com/PurrNet/PurrNet/commit/1b9554e6957dbac91445c15e1f816f02488a8285))
+* visibility edge cases with stacked identities, hidden parents and ([960be3d](https://github.com/PurrNet/PurrNet/commit/960be3d013f9a97426be23452699569d6a14b803))
+
+
+### Features
+
+* expose HierarchyPool.Warmup(PrefabData) for on-demand warmup ([1803bbf](https://github.com/PurrNet/PurrNet/commit/1803bbf12a1c4c721031bc2b52ed65c857d6eb5c))
+
+
+### Performance Improvements
+
+* allocate rollback query buffers on demand ([af34fe8](https://github.com/PurrNet/PurrNet/commit/af34fe88477127d73d1d96b8f4786472148fdddb))
+* avoid empty ownership module lookups ([82b2112](https://github.com/PurrNet/PurrNet/commit/82b21124a4cfb4e6b14cd770ba01f2aa1bac6189))
+* batch packed integer buffer writes ([e5cb6eb](https://github.com/PurrNet/PurrNet/commit/e5cb6ebdc1bdad42a32f9faae8bc07b62583425b))
+* carry overflow across unaligned copy chunks ([fd4b1fb](https://github.com/PurrNet/PurrNet/commit/fd4b1fbed03c30b764312cc30be546736db9f4c6))
+* check pending NTP requests without locking every packet ([5e5de22](https://github.com/PurrNet/PurrNet/commit/5e5de22c7520d46e2830898bcc8279f10d155107))
+* ClientDeltaTracker boxing (GC) ([6772cae](https://github.com/PurrNet/PurrNet/commit/6772cae823011cc2d2644daf909abf5b3d8883ec))
+* compare unmanaged collections in one memcmp ([80caeb3](https://github.com/PurrNet/PurrNet/commit/80caeb30d045ed539793edcba1692da93c417311))
+* defer codec reflection metadata ([757ebb7](https://github.com/PurrNet/PurrNet/commit/757ebb7e479acf666ccf2dabec1dd3ba2e140c82))
+* encode 32-bit integer deltas with constant bucket widths ([e10133b](https://github.com/PurrNet/PurrNet/commit/e10133b11fe007fd428b2d56a9cfab1aa320e822))
+* exclude core services from codec discovery ([b45d1eb](https://github.com/PurrNet/PurrNet/commit/b45d1eb5a5d8b887701d1479a92f5a3ac4e5910f))
+* fuse integer delta buffer writes ([4cd8ce2](https://github.com/PurrNet/PurrNet/commit/4cd8ce23f1d1463145575aa3951c43a0dc1aec22))
+* generate player identity discovery lists ([9a96888](https://github.com/PurrNet/PurrNet/commit/9a968880b37619f91654398c2b1ccf8791a908ee))
+* identify generated native writers for record reuse ([1d9edfc](https://github.com/PurrNet/PurrNet/commit/1d9edfc4f655b9cfb74819a92699408c9d22b53d))
+* index codec registration methods ([03c2593](https://github.com/PurrNet/PurrNet/commit/03c2593c9509f962433f67db493a3c0cfd4a6266))
+* keep bit checks small enough to inline ([60dd809](https://github.com/PurrNet/PurrNet/commit/60dd8098a356c93881c8acf78a466e8a4a4c1f37))
+* keep the 32-bit delta helpers out of serializer discovery ([9b74959](https://github.com/PurrNet/PurrNet/commit/9b74959ef994d05aaf68c161f5913b68ccfa1cb7))
+* limit reference codec dependency discovery ([cd11a76](https://github.com/PurrNet/PurrNet/commit/cd11a763a76efd04049fe5d38ca810a8c617dfd2))
+* pack varint data and continuation bits together ([fa4264d](https://github.com/PurrNet/PurrNet/commit/fa4264d497d16cd7605519ac4ec20d7e8bc2ec49))
+* read delta integers with one buffer access ([a342321](https://github.com/PurrNet/PurrNet/commit/a3423217b7d89b8ce26b4ee696e800eb499fc57e))
+* recycle RPC post-processing buffers ([9ccb70c](https://github.com/PurrNet/PurrNet/commit/9ccb70c684c8e46c9348a89b617f1101ec916bd2))
+* register generated native codec pointers ([f49328a](https://github.com/PurrNet/PurrNet/commit/f49328a8d1e2d4411e8b0742fe3b189ab907d14d))
+* remove player identity padding ([3ae5ff7](https://github.com/PurrNet/PurrNet/commit/3ae5ff7e1bf1251840bf9b54a785455385fbdf02))
+* remove unused native writer classification ([882892a](https://github.com/PurrNet/PurrNet/commit/882892a8e0fcf576ce8120c53ba9148b08e04955))
+* reuse bounded fragment reassembly buffers ([fcb82d6](https://github.com/PurrNet/PurrNet/commit/fcb82d6e3b2628d69077f3af15ad8cbee6e61a03))
+* scope identity discovery to dependent assemblies ([0a65ee0](https://github.com/PurrNet/PurrNet/commit/0a65ee0f6d89620d0103d5894fbf4177c56738ec))
+* trim component reference codec dependencies ([b83e524](https://github.com/PurrNet/PurrNet/commit/b83e52443d38325d6dbdcaa396c16af1edade6cd))
+
 # [1.25.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.25.0-beta.12...v1.25.0-beta.13) (2026-10-24)
 
 
