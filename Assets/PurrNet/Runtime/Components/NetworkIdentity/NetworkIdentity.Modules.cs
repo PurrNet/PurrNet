@@ -53,7 +53,7 @@ namespace PurrNet
             }
 
             module = _modules[moduleId];
-            return true;
+            return module != null;
         }
 
         private void RegisterEvents()
