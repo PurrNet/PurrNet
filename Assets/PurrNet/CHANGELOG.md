@@ -1,3 +1,10 @@
+## [1.25.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.25.0...v1.25.1-beta.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* ensure module is value before returning true ([64b6c9f](https://github.com/PurrNet/PurrNet/commit/64b6c9fed84394c2940a0cac42b986723caaec67))
+
 # [1.25.0](https://github.com/PurrNet/PurrNet/compare/v1.24.1...v1.25.0) (2026-10-26)
 
 
