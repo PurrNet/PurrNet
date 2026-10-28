@@ -1025,6 +1025,7 @@ namespace PurrNet
             _cachedHasConnectedOwner = false;
             _moduleId = 0;
             _modules.Clear();
+            _nullModules?.Clear();
             _externalModulesView.Clear();
             _tickables.Clear();
             _spawnedCount = 0;
@@ -1079,6 +1080,7 @@ namespace PurrNet
             if (!wasAlreadySpawned)
             {
                 _modules.Clear();
+                _nullModules?.Clear();
                 _externalModulesView.Clear();
                 _moduleId = 0;
 
@@ -1581,6 +1583,7 @@ namespace PurrNet
             {
                 _externalModulesView.Clear();
                 _modules.Clear();
+                _nullModules?.Clear();
             }
         }
 

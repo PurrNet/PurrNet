@@ -11,6 +11,7 @@ namespace PurrNet
 
         private readonly List<NetworkModule> _externalModulesView = new List<NetworkModule>();
         private readonly List<NetworkModule> _modules = new List<NetworkModule>();
+        private Dictionary<int, string> _nullModules;
 
         private byte _moduleId;
 
@@ -25,6 +26,7 @@ namespace PurrNet
 
             if (module == null)
             {
+                (_nullModules ??= new Dictionary<int, string>())[_moduleId] = $"{type} {moduleName}";
                 ++_moduleId;
                 _modules.Add(null);
 
@@ -54,6 +56,21 @@ namespace PurrNet
 
             module = _modules[moduleId];
             return module != null;
+        }
+
+        internal string DescribeMissingModule(int moduleId, bool asServer)
+        {
+            var side = asServer ? "server" : "client";
+
+            if (_nullModules != null && _nullModules.TryGetValue(moduleId, out var nullModule))
+            {
+                return $"Module <i>{nullModule}</i> (id {moduleId}) on '{name}' ({GetType().Name}) is null on the {side}, " +
+                       "but the other side has it and sent it an RPC. Network modules must exist on both sides before spawn: " +
+                       "initialize it in its field declaration, in Awake, or by overriding OnInitializeModules.";
+            }
+
+            return $"Module id {moduleId} doesn't exist on '{name}' ({GetType().Name}) on the {side}, which only has {_modules.Count} modules. " +
+                   "The server and client registered different modules for this object; make sure both sides use the same prefab and scripts.";
         }
 
         private void RegisterEvents()

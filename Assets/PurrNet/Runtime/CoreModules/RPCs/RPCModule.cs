@@ -1016,7 +1016,8 @@ namespace PurrNet.Modules
                 if (!identity.TryGetModule(packet.header.childId, out var networkClass))
                 {
                     PurrLogger.LogError(
-                        $"Can't find child with id {packet.header.childId} (rpcId={packet.header.rpcId}) in identity {identity.GetType().Name}.", identity);
+                        $"Dropped RPC (rpcId={packet.header.rpcId}) sent by {info.sender}. " +
+                        identity.DescribeMissingModule(packet.header.childId, asServer), identity);
                 }
                 else
                 {
