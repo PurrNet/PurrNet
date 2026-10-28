@@ -1,3 +1,10 @@
+## [1.25.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.1...v1.25.1-beta.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* clearer missing module errors ([892eec1](https://github.com/PurrNet/PurrNet/commit/892eec1d4846488e046cca6a483f04e23d831156))
+
 ## [1.25.1-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.25.0...v1.25.1-beta.1) (2026-10-28)
 
 
