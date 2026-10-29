@@ -204,7 +204,7 @@ namespace PurrNet.Steam
 
             _server.onDataReceived += OnServerData;
             _server.onRemoteConnected += OnRemoteConnected;
-            _server.onRemoteDisconnected += OnRemoteDisconnected;
+            _server.onRemoteDisconnectedWithReason += OnRemoteDisconnected;
         }
 
         private void OnRemoteConnected(int obj)
@@ -213,10 +213,10 @@ namespace PurrNet.Steam
             onConnected?.Invoke(new Connection(obj), true);
         }
 
-        private void OnRemoteDisconnected(int obj)
+        private void OnRemoteDisconnected(int obj, DisconnectReason reason)
         {
             _connections.Remove(new Connection(obj));
-            onDisconnected?.Invoke(new Connection(obj), DisconnectReason.ClientRequest, true);
+            onDisconnected?.Invoke(new Connection(obj), reason, true);
         }
 
         private void OnServerData(int conn, ByteData data)
@@ -261,7 +261,7 @@ namespace PurrNet.Steam
                 onConnected?.Invoke(new Connection(0), false);
 
             if (state == PurrConnectionState.Disconnected)
-                onDisconnected?.Invoke(new Connection(0), DisconnectReason.ClientRequest, false);
+                onDisconnected?.Invoke(new Connection(0), _client?.disconnectReason ?? DisconnectReason.ClientRequest, false);
 
             clientState = state;
         }

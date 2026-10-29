@@ -39,15 +39,35 @@ namespace PurrNet.Steam
             new Dictionary<HSteamNetConnection, SteamSendQueue>();
         private readonly List<HSteamNetConnection> _flushConnections = new List<HSteamNetConnection>();
         private readonly List<HSteamNetConnection> _receiveConnections = new List<HSteamNetConnection>();
-        private readonly Queue<int> _pendingDisconnects = new Queue<int>();
+        private readonly Queue<(int id, DisconnectReason reason)> _pendingDisconnects =
+            new Queue<(int id, DisconnectReason reason)>();
         private readonly HashSet<HSteamNetConnection> _sendLimitWarnings = new HashSet<HSteamNetConnection>();
 
         readonly IntPtr[] _messages = new IntPtr[MAX_MESSAGES];
+        private readonly ISteamSockets _socketsOverride;
+
+        private ISteamSockets sockets => _socketsOverride ?? SteamSockets.For(_isDedicated);
+
+        /// <summary>
+        /// Runs the server against a stand-in for Steam's networking calls (tests).
+        /// </summary>
+        internal SteamServer(ISteamSockets sockets)
+        {
+            _socketsOverride = sockets;
+        }
 #endif
+
+        public SteamServer() { }
 
 #pragma warning disable CS0067 // Event is never used
         public event Action<int> onRemoteConnected;
         public event Action<int> onRemoteDisconnected;
+
+        /// <summary>
+        /// Raised with onRemoteDisconnected, with why: ClientRequest when Steam reports the client closed the connection,
+        /// Timeout when the connection was lost, ServerRequest when this server kicked or closed it.
+        /// </summary>
+        public event Action<int, DisconnectReason> onRemoteDisconnectedWithReason;
         public event Action<int, ByteData> onDataReceived;
 #pragma warning restore CS0067 // Event is never used
 
@@ -160,8 +180,8 @@ namespace PurrNet.Steam
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
             while (_pendingDisconnects.Count > 0)
             {
-                var disconnectedId = _pendingDisconnects.Dequeue();
-                NotifyDisconnected(disconnectedId);
+                var disconnected = _pendingDisconnects.Dequeue();
+                NotifyDisconnected(disconnected.id, disconnected.reason);
             }
 
             _receiveConnections.Clear();
@@ -215,7 +235,7 @@ namespace PurrNet.Steam
             if (!_connectionById.TryGetValue(id, out var conn))
                 return;
 
-            CloseConnection(conn, null, true);
+            CloseConnection(conn, null, true, DisconnectReason.ServerRequest);
 #endif
         }
         
@@ -321,9 +341,7 @@ namespace PurrNet.Steam
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
         private EResult SendNative(HSteamNetConnection conn, IntPtr data, uint length, int flags)
         {
-            return _isDedicated
-                ? SteamGameServerNetworkingSockets.SendMessageToConnection(conn, data, length, flags, out _)
-                : SteamNetworkingSockets.SendMessageToConnection(conn, data, length, flags, out _);
+            return sockets.SendMessageToConnection(conn, data, length, flags);
         }
 
         private void FlushNativeConnection(HSteamNetConnection conn)
@@ -352,21 +370,20 @@ namespace PurrNet.Steam
 
         private void FailSend(HSteamNetConnection conn, string reason)
         {
-            var status = SteamConnectionStatus.Describe(conn, _isDedicated, out bool peerGone);
+            var status = SteamConnectionStatus.Describe(sockets, conn, out bool peerGone, out var state);
             if (peerGone || _sendQueues.TryGetValue(conn, out var queue) && queue.peerClosed)
                 PurrLogger.Log($"Disconnecting Steam connection {conn}: {reason} ({status})");
             else
                 PurrLogger.LogError($"Disconnecting Steam connection {conn}: {reason} ({status})");
-            CloseConnection(conn, reason, true);
+            CloseConnection(conn, reason, true, SteamConnectionStatus.SendFailureReason(state, DisconnectReason.ClientRequest));
         }
 
-        private void CloseConnection(HSteamNetConnection conn, string reason = null, bool deferNotification = false)
+        private void CloseConnection(HSteamNetConnection conn, string reason = null, bool deferNotification = false,
+            DisconnectReason why = DisconnectReason.ServerRequest)
         {
             try
             {
-                if (_isDedicated)
-                    SteamGameServerNetworkingSockets.CloseConnection(conn, 0, reason, false);
-                else SteamNetworkingSockets.CloseConnection(conn, 0, reason, false);
+                sockets.CloseConnection(conn, reason);
             }
             catch
             {
@@ -375,13 +392,13 @@ namespace PurrNet.Steam
             finally
             {
                 // Steam does not post a local state callback when we explicitly close a handle.
-                RemoveConnection(conn, deferNotification);
+                RemoveConnection(conn, deferNotification, why);
             }
         }
 
         private int _nextConnectionId;
 
-        private void AddConnection(HSteamNetConnection connection, ulong steamId)
+        internal void AddConnection(HSteamNetConnection connection, ulong steamId)
         {
             int id = _nextConnectionId++;
             _connections.Add(connection);
@@ -392,7 +409,7 @@ namespace PurrNet.Steam
             onRemoteConnected?.Invoke(id);
         }
 
-        private void RemoveConnection(HSteamNetConnection connection, bool deferNotification)
+        private void RemoveConnection(HSteamNetConnection connection, bool deferNotification, DisconnectReason why)
         {
             _sendLimitWarnings.Remove(connection);
             if (_sendQueues.Remove(connection, out var queue))
@@ -401,18 +418,19 @@ namespace PurrNet.Steam
             {
                 _connectionById.Remove(_id);
                 if (deferNotification)
-                    _pendingDisconnects.Enqueue(_id);
+                    _pendingDisconnects.Enqueue((_id, why));
                 else
-                    NotifyDisconnected(_id);
+                    NotifyDisconnected(_id, why);
             }
         }
 
-        private void NotifyDisconnected(int connectionId)
+        private void NotifyDisconnected(int connectionId, DisconnectReason why)
         {
             try
             {
                 // Disconnect handlers may still need the Steam identity for cleanup.
                 onRemoteDisconnected?.Invoke(connectionId);
+                onRemoteDisconnectedWithReason?.Invoke(connectionId, why);
             }
             finally
             {
@@ -420,7 +438,7 @@ namespace PurrNet.Steam
             }
         }
 
-        private void OnRemoteConnectionState(SteamNetConnectionStatusChangedCallback_t args)
+        internal void OnRemoteConnectionState(SteamNetConnectionStatusChangedCallback_t args)
         {
             if (args.m_info.m_hListenSocket != _listenSocket)
                 return;
@@ -445,9 +463,13 @@ namespace PurrNet.Steam
                     break;
                 }
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+                {
+                    CloseConnection(args.m_hConn, why: DisconnectReason.Timeout);
+                    break;
+                }
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
                 {
-                    CloseConnection(args.m_hConn);
+                    CloseConnection(args.m_hConn, why: DisconnectReason.ClientRequest);
                     break;
                 }
             }
@@ -467,10 +489,7 @@ namespace PurrNet.Steam
             {
                 try
                 {
-                    var conn = _connections[o];
-                    if (_isDedicated)
-                         SteamGameServerNetworkingSockets.CloseConnection(conn, 0, null, false);
-                    else SteamNetworkingSockets.CloseConnection(conn, 0, null, false);
+                    sockets.CloseConnection(_connections[o], null);
                 }
                 catch
                 {
