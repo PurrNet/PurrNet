@@ -795,7 +795,11 @@ namespace PurrNet
         private void OnApplicationQuit()
         {
             if (_patchLingeringProcessBug)
+#if ENABLE_CORECLR
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
+#else
                 Environment.FailFast("Applying patch for lingering process bug.");
+#endif
         }
 #endif
 
