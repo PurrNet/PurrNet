@@ -1,3 +1,10 @@
+## [1.25.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.2...v1.25.1-beta.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* avoid crash on quit with lingering process patch on CoreCLR ([b87d1b3](https://github.com/PurrNet/PurrNet/commit/b87d1b316267c3e3f25f46bc2b9190b328ec0bdb))
+
 ## [1.25.1-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.1...v1.25.1-beta.2) (2026-10-28)
 
 
