@@ -57,9 +57,21 @@ namespace PurrNet
         public IReadOnlyList<Entry> entries => _entries;
 
         /// <summary>
-        /// Number of registered entries.
+        /// Number of registered entries, including those from linked AddressableNetworkPrefabs.
         /// </summary>
-        public int count => _entries.Count;
+        public int count => CountEntries(this, new HashSet<AddressableNetworkPrefabs>());
+
+        private static int CountEntries(AddressableNetworkPrefabs provider, HashSet<AddressableNetworkPrefabs> visited)
+        {
+            if (!provider || !visited.Add(provider)) return 0;
+
+            int total = provider._entries.Count;
+            if (provider.linkedAddressablePrefabs == null) return total;
+
+            for (int i = 0; i < provider.linkedAddressablePrefabs.Count; i++)
+                total += CountEntries(provider.linkedAddressablePrefabs[i], visited);
+            return total;
+        }
 
         public bool preloadAtStartup
         {
