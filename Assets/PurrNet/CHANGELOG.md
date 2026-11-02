@@ -1,3 +1,10 @@
+## [1.25.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.3...v1.25.1-beta.4) (2026-11-02)
+
+
+### Bug Fixes
+
+* register addressable prefabs from linked lists when the main list is empty ([6b68952](https://github.com/PurrNet/PurrNet/commit/6b6895254ce552175b67be36b819efbd52bfe32d))
+
 ## [1.25.1-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.2...v1.25.1-beta.3) (2026-10-29)
 
 
