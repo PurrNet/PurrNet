@@ -1,3 +1,10 @@
+## [1.25.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.4...v1.25.1-beta.5) (2026-11-02)
+
+
+### Bug Fixes
+
+* if spawn packet fails to send kick players isntead of allowing them ([2d824d0](https://github.com/PurrNet/PurrNet/commit/2d824d07ee80345cf0199f4799527659babc9238))
+
 ## [1.25.1-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.3...v1.25.1-beta.4) (2026-11-02)
 
 
