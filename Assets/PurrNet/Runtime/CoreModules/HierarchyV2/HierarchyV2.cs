@@ -3561,6 +3561,16 @@ namespace PurrNet.Modules
 
         private readonly List<(PlayerID first, List<PlayerID> members)> _batchGroups = new();
 
+        /// <summary>
+        /// Players whose spawn batch could not be sent (e.g. larger than the transport can fragment).
+        /// They never received those spawns and nothing resends them, so they are out of sync for
+        /// good: they get no further spawn batches and are kicked at the end of
+        /// <see cref="PostNetworkMessages"/>. Kicking inside the flush would re-enter spawn and
+        /// visibility code from whatever user call triggered it.
+        /// </summary>
+        private readonly HashSet<PlayerID> _spawnFlushFailedPlayers = new();
+        private readonly List<PlayerID> _spawnFlushFailedScratch = new();
+
         private void FlushSpawnPackets()
         {
             using var _ = _flushSpawnMarker.Auto();
@@ -3570,48 +3580,66 @@ namespace PurrNet.Modules
             if (_spawnPackets.Count == 0)
                 return;
 
-            foreach (var (player, batch) in _spawnPackets)
+            // Whatever happens below, the queued batches must be released and cleared. Leaving them
+            // queued after a failed send makes every later flush fail again with a bigger batch.
+            try
             {
-                if (player.isServer)
-                    continue;
-
-                bool grouped = false;
-                for (var g = 0; g < _batchGroups.Count && !grouped; g++)
+                foreach (var (player, batch) in _spawnPackets)
                 {
-                    var group = _batchGroups[g];
-                    if (SameBatch(_spawnPackets[group.first], batch))
+                    if (player.isServer || _spawnFlushFailedPlayers.Contains(player))
+                        continue;
+
+                    bool grouped = false;
+                    for (var g = 0; g < _batchGroups.Count && !grouped; g++)
                     {
-                        group.members.Add(player);
-                        grouped = true;
+                        var group = _batchGroups[g];
+                        if (SameBatch(_spawnPackets[group.first], batch))
+                        {
+                            group.members.Add(player);
+                            grouped = true;
+                        }
+                    }
+
+                    if (!grouped)
+                    {
+                        var members = ListPool<PlayerID>.Instantiate();
+                        members.Add(player);
+                        _batchGroups.Add((player, members));
                     }
                 }
 
-                if (!grouped)
+                for (var g = 0; g < _batchGroups.Count; g++)
                 {
-                    var members = ListPool<PlayerID>.Instantiate();
-                    members.Add(player);
-                    _batchGroups.Add((player, members));
+                    var (first, members) = _batchGroups[g];
+                    var batch = _spawnPackets[first];
+                    try
+                    {
+                        if (members.Count == 1)
+                            _playersManager.Send(first, batch);
+                        else
+                            _playersManager.Send(members, batch);
+                    }
+                    catch (Exception e)
+                    {
+                        // Swallowed on purpose: the exception would otherwise abort the host code
+                        // that triggered this flush (a spawn, despawn or parent change) half-way.
+                        // For a group send the exception does not say which members got the batch,
+                        // so the whole group is treated as failed.
+                        for (var m = 0; m < members.Count; m++)
+                            _spawnFlushFailedPlayers.Add(members[m]);
+
+                        PurrLogger.LogError(
+                            $"Failed to send spawn batch ({batch.spawnPackets.Count} spawns, {batch.despawnPackets.Count} despawns) " +
+                            $"in scene {_sceneId} to {string.Join(", ", members)}. " +
+                            $"These players are missing objects and will be kicked. Error: {e.Message}");
+                    }
                 }
-            }
 
-            for (var g = 0; g < _batchGroups.Count; g++)
-            {
-                var (first, members) = _batchGroups[g];
-                var batch = _spawnPackets[first];
-                if (members.Count == 1)
-                    _playersManager.Send(first, batch);
-                else
-                    _playersManager.Send(members, batch);
-                ListPool<PlayerID>.Destroy(members);
-            }
-
-            _batchGroups.Clear();
-
-            foreach (var (player, batch) in _spawnPackets)
-            {
-                using (batch)
+                foreach (var (player, batch) in _spawnPackets)
                 {
                     int count = batch.spawnPackets.Count;
+                    bool failed = _spawnFlushFailedPlayers.Contains(player);
+
                     if (player.isServer)
                     {
                         _playersManager.SendToServer(batch);
@@ -3622,11 +3650,12 @@ namespace PurrNet.Modules
                         {
                             var packet = batch.spawnPackets[i];
 
+                            // Marked sent even on failure so ExpireTimedOutAsyncObservers can clean it up.
                             if (packet.isAsync &&
                                 _pendingAsyncObservers.TryGetValue(packet.packetIdx, out var pendingAsync))
                                 pendingAsync.sent = true;
 
-                            if (_asServer && packet.isAsync)
+                            if (failed || (_asServer && packet.isAsync))
                                 continue;
 
                             if (packet.localcache != null)
@@ -3651,6 +3680,9 @@ namespace PurrNet.Modules
                         }
                     }
 
+                    if (failed)
+                        continue;
+
                     for (var i = 0; i < count; i++)
                     {
                         var packet = batch.spawnPackets[i];
@@ -3659,8 +3691,58 @@ namespace PurrNet.Modules
                     }
                 }
             }
+            finally
+            {
+                for (var g = 0; g < _batchGroups.Count; g++)
+                    ListPool<PlayerID>.Destroy(_batchGroups[g].members);
+                _batchGroups.Clear();
 
-            _spawnPackets.Clear();
+                foreach (var pair in _spawnPackets)
+                {
+                    try
+                    {
+                        pair.Value.Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        PurrLogger.LogException(e);
+                    }
+                }
+
+                _spawnPackets.Clear();
+            }
+        }
+
+        private void KickPlayersWithFailedSpawnFlush()
+        {
+            if (_spawnFlushFailedPlayers.Count == 0)
+                return;
+
+            _spawnFlushFailedScratch.Clear();
+            _spawnFlushFailedScratch.AddRange(_spawnFlushFailedPlayers);
+            _spawnFlushFailedPlayers.Clear();
+
+            for (var i = 0; i < _spawnFlushFailedScratch.Count; i++)
+            {
+                var player = _spawnFlushFailedScratch[i];
+
+                // Another scene's hierarchy may have kicked them already this frame.
+                if (!_asServer || !_playersManager.IsPlayerConnected(player))
+                    continue;
+
+                PurrLogger.LogError($"Kicking {player}: a spawn batch could not be sent to them, so their world is out of sync.");
+
+                try
+                {
+                    _playersManager.KickPlayer(player);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogException(e);
+                }
+            }
+
+            _spawnFlushFailedScratch.Clear();
         }
 
         public void PreNetworkMessages()
@@ -3681,6 +3763,7 @@ namespace PurrNet.Modules
             onPreFinishSpawn?.Invoke(_sceneId);
             SendDelayedCompleteSpawns();
             SpawnDelayedIdentities();
+            KickPlayersWithFailedSpawnFlush();
         }
 
         private void TriggerSpawnSentEvents()
