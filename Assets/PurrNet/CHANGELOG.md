@@ -1,3 +1,10 @@
+# [1.26.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.5...v1.26.0-beta.1) (2026-11-02)
+
+
+### Features
+
+* "client only builds" that strips some server only code from ([07479b1](https://github.com/PurrNet/PurrNet/commit/07479b12490920d62b9b69c755f2111e59cdc9a2))
+
 ## [1.25.1-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.4...v1.25.1-beta.5) (2026-11-02)
 
 
