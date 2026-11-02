@@ -11,7 +11,8 @@ var hierarchy =
       [ "PurrNet.LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
       [ "PurrNet.PackerDependenciesAttribute", "classPurrNet_1_1PackerDependenciesAttribute.html", null ],
       [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ],
-      [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ]
+      [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
+      [ "PurrNet.StripInClientOnlyBuildAttribute", "classPurrNet_1_1StripInClientOnlyBuildAttribute.html", null ]
     ] ],
     [ "PurrNet.AudioSourceState", "structPurrNet_1_1AudioSourceState.html", null ],
     [ "PurrNet.Authentication.AuthenticationBehaviour< string >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", [

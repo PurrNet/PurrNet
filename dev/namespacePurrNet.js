@@ -160,6 +160,7 @@ var namespacePurrNet =
     [ "StaticRPCPacket", "structPurrNet_1_1StaticRPCPacket.html", null ],
     [ "StatisticsManager", "classPurrNet_1_1StatisticsManager.html", "classPurrNet_1_1StatisticsManager" ],
     [ "StringUTF8", "structPurrNet_1_1StringUTF8.html", null ],
+    [ "StripInClientOnlyBuildAttribute", "classPurrNet_1_1StripInClientOnlyBuildAttribute.html", null ],
     [ "SyncArray", "classPurrNet_1_1SyncArray.html", "classPurrNet_1_1SyncArray" ],
     [ "SyncArrayChange", "structPurrNet_1_1SyncArrayChange.html", null ],
     [ "SyncAsset", "classPurrNet_1_1SyncAsset.html", null ],
