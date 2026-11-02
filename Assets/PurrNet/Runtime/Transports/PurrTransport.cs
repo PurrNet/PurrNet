@@ -722,6 +722,7 @@ namespace PurrNet.Transports
         private string hostJoinKey => $"{_host}|{_roomName}|{projectKey}";
         readonly TcpConfig _tcpConfig = new(noDelay: true, sendTimeout: 0, receiveTimeout: 0);
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Listen(0);
@@ -1158,6 +1159,7 @@ namespace PurrNet.Transports
             Disconnect();
         }
 
+        [StripInClientOnlyBuild]
         public async void Listen(ushort port)
         {
             try

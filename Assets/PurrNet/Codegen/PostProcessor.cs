@@ -4045,6 +4045,7 @@ namespace PurrNet.Codegen
                     settings = PurrNetSettings.GetOrCreateSettings();
                 bool isEditor = false;
                 bool isServerBuild = false;
+                bool isClientOnlyBuild = false;
 
                 foreach (var define in compiledAssembly.Defines)
                 {
@@ -4056,11 +4057,17 @@ namespace PurrNet.Codegen
                         case "UNITY_SERVER":
                             isServerBuild = true;
                             break;
+                        case ClientOnlyBuildsDefine:
+                            isClientOnlyBuild = true;
+                            break;
                     }
                 }
 
                 if (isEditor)
                     isServerBuild = true;
+
+                if (isServerBuild)
+                    isClientOnlyBuild = false;
 
                 var visitedTypes = new HashSet<string>(128);
                 var typesToGenerateSerializer = new HashSet<TypeReference>(128, TypeReferenceEqualityComparer.Default);
@@ -4112,6 +4119,9 @@ namespace PurrNet.Codegen
 
                         if (types[t].FullName == typeof(PurrMetadata).FullName)
                             BakePurrVersion.Process(types[t], isEditor, messages);
+
+                        if (isClientOnlyBuild)
+                            StripClientOnlyBuildMethods(types[t]);
 
                         if (types[t].HasInterfaces)
                         {
@@ -4621,6 +4631,43 @@ namespace PurrNet.Codegen
             }
 
             return hasPurrNetAsReference;
+        }
+
+        private const string ClientOnlyBuildsDefine = "PURRNET_CLIENT_ONLY_BUILDS";
+
+        private static void StripClientOnlyBuildMethods(TypeDefinition type)
+        {
+            foreach (var method in type.Methods)
+            {
+                if (!method.HasBody || !HasAttribute(method.CustomAttributes, typeof(StripInClientOnlyBuildAttribute).FullName))
+                    continue;
+
+                for (var i = method.CustomAttributes.Count - 1; i >= 0; i--)
+                {
+                    var name = method.CustomAttributes[i].AttributeType.FullName;
+                    if (name is "System.Runtime.CompilerServices.AsyncStateMachineAttribute" or
+                        "System.Runtime.CompilerServices.IteratorStateMachineAttribute" or
+                        "System.Diagnostics.DebuggerStepThroughAttribute")
+                        method.CustomAttributes.RemoveAt(i);
+                }
+
+                var il = method.Body.GetILProcessor();
+                method.Body.ExceptionHandlers.Clear();
+                method.Body.Variables.Clear();
+                il.Clear();
+                AppendStripAction(method, method.Name, StripCodeMode.ReplaceWithLogError, il, "stripped from client only builds");
+            }
+        }
+
+        private static bool HasAttribute(Mono.Collections.Generic.Collection<CustomAttribute> attributes, string fullName)
+        {
+            foreach (var attribute in attributes)
+            {
+                if (attribute.AttributeType.FullName == fullName)
+                    return true;
+            }
+
+            return false;
         }
 
         private static void ProcessServerOnlyMethods(MethodDefinition method, PurrNetSettings settings, bool serverBuild, bool isEditor)

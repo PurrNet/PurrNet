@@ -211,6 +211,7 @@ namespace PurrNet.Transports
             onDataSent?.Invoke(conn, data, asServer);
         }
 
+        [StripInClientOnlyBuild]
         private void ConstructServer()
         {
             CleanupServer();
@@ -366,6 +367,7 @@ namespace PurrNet.Transports
             OnClientDisconnected();
         }
 
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             if (listenerState is ConnectionState.Connected or ConnectionState.Connecting)
@@ -381,6 +383,7 @@ namespace PurrNet.Transports
             TriggerConnectionStateEvent(true);
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Listen(_serverPort);

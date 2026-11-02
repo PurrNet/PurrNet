@@ -171,12 +171,14 @@ namespace PurrNet.Steam
             Connect(_address, _serverPort);
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             SetTelemetryAppId();
             Listen(_serverPort);
         }
 
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             var sendSettings = new SteamSendSettings(_sendRateKiBPerSecond, _sendBufferSizeKiB);

@@ -275,6 +275,7 @@ namespace PurrNet.Transports
             else request.Reject();
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Listen(_serverPort);
@@ -403,6 +404,7 @@ namespace PurrNet.Transports
             TriggerConnectionStateEvent(false);
         }
 
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             NetDebug.Logger = this;

@@ -2080,6 +2080,7 @@ namespace PurrNet
         /// Starts the server.
         /// This will start the transport server.
         /// </summary>
+        [StripInClientOnlyBuild]
         public void StartServer()
         {
             if (!_transport)
@@ -2121,7 +2122,7 @@ namespace PurrNet
         /// Great for host migration.
         /// It's your responsibility to prepare the transport for this transition.
         /// </summary>
-        [ContextMenu("Promote To Server"), PurrContextButton]
+        [ContextMenu("Promote To Server"), PurrContextButton, StripInClientOnlyBuild]
         public async void PromoteToServer()
         {
             try
@@ -2256,6 +2257,7 @@ namespace PurrNet
         /// Internal method to register the server modules.
         /// Avoid calling this method directly if you're not sure what you're doing.
         /// </summary>
+        [StripInClientOnlyBuild]
         public void InternalRegisterServerModules()
         {
             if (!_ready)
