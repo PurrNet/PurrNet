@@ -1,3 +1,10 @@
+# [1.26.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.1...v1.26.0-beta.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* let callers capture rollback colliders at a chosen tick and interpolate across one-sided history gaps ([517fc65](https://github.com/PurrNet/PurrNet/commit/517fc65ec7029b83b472006e9ce55e08ed33711a))
+
 # [1.26.0-beta.1](https://github.com/PurrNet/PurrNet/compare/v1.25.1-beta.5...v1.26.0-beta.1) (2026-11-02)
 
 
