@@ -53,12 +53,12 @@ var NAVTREEINDEX =
 "annotated.html",
 "classPurrNet_1_1Modules_1_1ScenesModule.html#a1215f60100c74fcdece44773048d1984",
 "classPurrNet_1_1NetworkIdentity.html#aab36179b19e9a1ca89b4b0a05da42f12",
-"classPurrNet_1_1NetworkManager.html#afc15714a9369b85685709e6c6f77eab0",
-"classPurrNet_1_1Packing_1_1BitPacker.html#a6a894ab1e3c847d5d788fe73721f432c",
-"classPurrNet_1_1SyncBigData.html#a25d43321e68e2df834090dc1303ca2f5",
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a755807cd87236f10f56fe6554343f8b2",
-"interfacePurrNet_1_1Transports_1_1IConnectable.html",
-"structPurrNet_1_1Packing_1_1Half.html#a56b8b965490a529a81e4c8e934a24dff"
+"classPurrNet_1_1NetworkManager.html#af6802f1e3fe00948968199a1aae6c3cc",
+"classPurrNet_1_1Packing_1_1BitPacker.html#a0695b4b7100fa3a6752d727d35953e73",
+"classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8",
+"classPurrNet_1_1Transports_1_1PurrTransport.html#a5bf95d839dc60b37fec0e3342992b63a",
+"interfacePurrNet_1_1Packing_1_1IStandaloneSerializable.html",
+"structPurrNet_1_1Packing_1_1Half.html#a289e1a385610686b5c892eef510574d8"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

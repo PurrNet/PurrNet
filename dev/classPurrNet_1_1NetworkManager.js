@@ -1,6 +1,7 @@
 var classPurrNet_1_1NetworkManager =
 [
     [ "AddVisibilityRule", "classPurrNet_1_1NetworkManager.html#a1448bafa6c3157b487667ff30a125668", null ],
+    [ "CancelHostMigration", "classPurrNet_1_1NetworkManager.html#a6cd6ba4a2b8f14c96b7807edf5533d25", null ],
     [ "EnumerateAllPlayerOwnedIds", "classPurrNet_1_1NetworkManager.html#a61d62e262d8195f7786a2a76bfc29bc9", null ],
     [ "GetAllPlayerOwnedIds", "classPurrNet_1_1NetworkManager.html#a6b9c91925340f5f473bb23fcba4ce183", null ],
     [ "GetAllPlayerOwnedIds", "classPurrNet_1_1NetworkManager.html#af8473a2c0ef652f32a53fe633aa09559", null ],
@@ -46,6 +47,7 @@ var classPurrNet_1_1NetworkManager =
     [ "clientState", "classPurrNet_1_1NetworkManager.html#a20f3ee5a2f36a4c1e58a02eac015d4e7", null ],
     [ "clientToServerConn", "classPurrNet_1_1NetworkManager.html#a9c80a6e87b8482c29074affab43e774f", null ],
     [ "cookieScope", "classPurrNet_1_1NetworkManager.html#acb61530123b279cdc3eae54c4d2e4494", null ],
+    [ "hostMigrationTimeout", "classPurrNet_1_1NetworkManager.html#a2fa2c221a4ccb4d9b718c5ea9fe4b11a", null ],
     [ "isClient", "classPurrNet_1_1NetworkManager.html#a1e3fc40f350807cb829bc78913adcf7d", null ],
     [ "isClientOnly", "classPurrNet_1_1NetworkManager.html#ac4bb8f81df5ca4660124a06be41a73fc", null ],
     [ "isHost", "classPurrNet_1_1NetworkManager.html#a016732b943d777e1468854b90508b7ac", null ],

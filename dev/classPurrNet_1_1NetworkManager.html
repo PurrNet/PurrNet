@@ -235,6 +235,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushBatchedRPCs</b> 
 <tr class="memitem:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a4c7989fcb2cf8be4d07c0aecd0798ee3">StartServer</a> ()</td></tr>
 <tr class="memdesc:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts the server. This will start the transport server.   <a href="classPurrNet_1_1NetworkManager.html#a4c7989fcb2cf8be4d07c0aecd0798ee3">More...</a><br /></td></tr>
 <tr class="separator:a4c7989fcb2cf8be4d07c0aecd0798ee3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6cd6ba4a2b8f14c96b7807edf5533d25"><td class="memItemLeft" align="right" valign="top"><a id="a6cd6ba4a2b8f14c96b7807edf5533d25" name="a6cd6ba4a2b8f14c96b7807edf5533d25"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>CancelHostMigration</b> ()</td></tr>
+<tr class="memdesc:a6cd6ba4a2b8f14c96b7807edf5533d25"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops a PromoteToServer or TransferToNewServer that is still waiting or retrying, for example when the new host never comes up. The client and the server are stopped, as on an exception. Does nothing otherwise.  <br /></td></tr>
+<tr class="separator:a6cd6ba4a2b8f14c96b7807edf5533d25"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0adbbe233c319c0198849edadedf3b29"><td class="memItemLeft" align="right" valign="top"><a id="a0adbbe233c319c0198849edadedf3b29" name="a0adbbe233c319c0198849edadedf3b29"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>PreserveClientStateForHostMigration</b> ()</td></tr>
 <tr class="memdesc:a0adbbe233c319c0198849edadedf3b29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keeps the current client modules alive while an external host migration system prepares transport state before calling PromoteToServer or TransferToNewServer.  <br /></td></tr>
@@ -537,6 +541,10 @@ static bool&#160;</td><td class="memItemRight" valign="bottom"><b>areFlagsDisabl
 <tr class="separator:a4e17f1e452cf7b765624f84f93467831"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5fdbdb3aa9ff7b2c398c5dd761ecb456"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a5fdbdb3aa9ff7b2c398c5dd761ecb456">isPromotingToServer</a><code> [get]</code></td></tr>
 <tr class="separator:a5fdbdb3aa9ff7b2c398c5dd761ecb456"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2fa2c221a4ccb4d9b718c5ea9fe4b11a"><td class="memItemLeft" align="right" valign="top"><a id="a2fa2c221a4ccb4d9b718c5ea9fe4b11a" name="a2fa2c221a4ccb4d9b718c5ea9fe4b11a"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>hostMigrationTimeout</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:a2fa2c221a4ccb4d9b718c5ea9fe4b11a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Seconds PromoteToServer or TransferToNewServer keeps retrying before it gives up (stops the client and the server, as on an exception). 0, the default, retries until it succeeds or CancelHostMigration is called.  <br /></td></tr>
+<tr class="separator:a2fa2c221a4ccb4d9b718c5ea9fe4b11a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a820a53874cce6b4b3bf3e07cd4cb24a7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a820a53874cce6b4b3bf3e07cd4cb24a7">isTranferingToNewServer</a><code> [get]</code></td></tr>
 <tr class="separator:a820a53874cce6b4b3bf3e07cd4cb24a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_interfacePurrNet_1_1IRegisterModules"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1IRegisterModules')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a></td></tr>

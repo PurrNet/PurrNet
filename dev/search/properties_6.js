@@ -7,6 +7,7 @@ var searchData=
   ['hassyncstrategy_4',['hasSyncStrategy',['../classPurrNet_1_1NetworkTransform.html#a04cf05293af9b2b88c43d57f858b0fd2',1,'PurrNet::NetworkTransform']]],
   ['hostconnectionprotocol_5',['hostConnectionProtocol',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a5309ed8104536227fd533d88e1313782',1,'PurrNet::Transports::PurrTransport']]],
   ['hostlinkdescription_6',['hostLinkDescription',['../classPurrNet_1_1Transports_1_1PurrTransport.html#ac028086c22f5dd8adaed9c8bb9f3b3c8',1,'PurrNet::Transports::PurrTransport']]],
-  ['hostrelayroundtriptime_7',['hostRelayRoundTripTime',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a83744f36d9067b63a463048692a16994',1,'PurrNet::Transports::PurrTransport']]],
-  ['hostuseswebrtc_8',['hostUsesWebRtc',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a0e02385dd506d2bd419bb8c1d065f4b8',1,'PurrNet::Transports::PurrTransport']]]
+  ['hostmigrationtimeout_7',['hostMigrationTimeout',['../classPurrNet_1_1NetworkManager.html#a2fa2c221a4ccb4d9b718c5ea9fe4b11a',1,'PurrNet::NetworkManager']]],
+  ['hostrelayroundtriptime_8',['hostRelayRoundTripTime',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a83744f36d9067b63a463048692a16994',1,'PurrNet::Transports::PurrTransport']]],
+  ['hostuseswebrtc_9',['hostUsesWebRtc',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a0e02385dd506d2bd419bb8c1d065f4b8',1,'PurrNet::Transports::PurrTransport']]]
 ];
