@@ -1,3 +1,11 @@
+# [1.26.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.3...v1.26.0-beta.4) (2026-11-03)
+
+
+### Bug Fixes
+
+* host migration can be cancelled or time-limited, and leaves the manager reusable ([#331](https://github.com/PurrNet/PurrNet/issues/331)) ([5eb20ab](https://github.com/PurrNet/PurrNet/commit/5eb20ab830b856137213367d675cd4b48eb95034))
+* Steam transport reports the real disconnect reason ([#332](https://github.com/PurrNet/PurrNet/issues/332)) ([bbed550](https://github.com/PurrNet/PurrNet/commit/bbed5509062e1be2a52a6d54b0107729e390bfc2))
+
 # [1.26.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.2...v1.26.0-beta.3) (2026-11-03)
 
 
