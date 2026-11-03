@@ -1,3 +1,10 @@
+# [1.26.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.4...v1.26.0-beta.5) (2026-11-03)
+
+
+### Bug Fixes
+
+* clean up leftover modules when a host migration is aborted ([36aca40](https://github.com/PurrNet/PurrNet/commit/36aca40d32c1638bceed1e142bc0e428c56790c1))
+
 # [1.26.0-beta.4](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.3...v1.26.0-beta.4) (2026-11-03)
 
 
