@@ -420,7 +420,7 @@ namespace PurrNet.Packing
             if (!areEqual)
                 WriteList(packer, newvalue);
 
-            return areEqual;
+            return !areEqual;
         }
 
         private static void ReadDeltaArray<T>(BitPacker packer, T[] oldvalue, ref T[] value)
