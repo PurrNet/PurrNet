@@ -1,3 +1,10 @@
+# [1.26.0-beta.3](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.2...v1.26.0-beta.3) (2026-11-03)
+
+
+### Bug Fixes
+
+* WriteDeltaList reports changed when the list changed ([#340](https://github.com/PurrNet/PurrNet/issues/340)) ([3f0304e](https://github.com/PurrNet/PurrNet/commit/3f0304e6e9c50538066a9e119ed9a95922ba7cdb))
+
 # [1.26.0-beta.2](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.1...v1.26.0-beta.2) (2026-11-03)
 
 
