@@ -32,6 +32,66 @@ public sealed class RollbackQueryBufferTests
     }
 #endif
 
+#if UNITY_PHYSICS_3D
+    [Test]
+    public void CaptureRecordsTheGivenTicks()
+    {
+        var target = new GameObject("Rollback capture target");
+        try
+        {
+            var collider = target.AddComponent<BoxCollider>();
+            var module = new RollbackModule(new TickManager(64, null, null, true), target.scene);
+            module.Register(collider, 5f);
+
+            target.transform.position = new Vector3(1f, 0f, 0f);
+            Assert.That(module.Capture(10, collider), Is.True);
+            target.transform.position = new Vector3(3f, 0f, 0f);
+            Assert.That(module.Capture(12, collider), Is.True);
+            target.transform.position = new Vector3(9f, 0f, 0f);
+
+            Assert.That(module.TryGetColliderState(10, collider, out var exact), Is.True);
+            Assert.That(exact.position.x, Is.EqualTo(1f).Within(1e-5));
+            Assert.That(module.TryGetColliderState(11, collider, out var middle), Is.True);
+            Assert.That(middle.position.x, Is.EqualTo(2f).Within(1e-5));
+
+            var untracked = target.AddComponent<SphereCollider>();
+            Assert.That(module.Capture(13, untracked), Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(target);
+        }
+    }
+
+    [Test]
+    public void SamplingInterpolatesAcrossAOneSidedGap()
+    {
+        var target = new GameObject("Rollback gap target");
+        try
+        {
+            var collider = target.AddComponent<BoxCollider>();
+            var module = new RollbackModule(new TickManager(64, null, null, true), target.scene);
+            module.Register(collider, 5f);
+
+            target.transform.position = Vector3.zero;
+            module.Capture(20, collider);
+            target.transform.position = new Vector3(4f, 0f, 0f);
+            module.Capture(22, collider);
+
+            // Tick 21 is missing: 20.5 has only its floor, 21.5 only its ceiling. Neither may snap
+            // to the one neighbour that exists.
+            Assert.That(module.TryGetColliderState(20.5, collider, out var early), Is.True);
+            Assert.That(early.position.x, Is.EqualTo(1f).Within(1e-5));
+            Assert.That(module.TryGetColliderState(21.5, collider, out var late), Is.True);
+            Assert.That(late.position.x, Is.EqualTo(3f).Within(1e-5));
+        }
+        finally
+        {
+            Object.DestroyImmediate(target);
+        }
+    }
+#endif
+
 #if UNITY_PHYSICS_2D
     [Test]
     public void FirstAndRepeated2DQueriesFindTheSameCollider()
