@@ -8,7 +8,7 @@
     "overrideReferences": true,
     "precompiledReferences": ["nunit.framework.dll"],
     "autoReferenced": false,
-    "defineConstraints": ["UNITY_INCLUDE_TESTS", "STEAMWORKS_NET_PACKAGE"],
+    "defineConstraints": ["UNITY_INCLUDE_TESTS", "STEAMWORKS_NET_PACKAGE || STEAMWORKS_NET"],
     "versionDefines": [
         { "name": "com.rlabrecque.steamworks.net", "expression": "2024", "define": "STEAMWORKS_NET_PACKAGE" }
     ],

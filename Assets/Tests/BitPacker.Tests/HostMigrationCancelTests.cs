@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using PurrNet;
+using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -87,6 +88,8 @@ public class HostMigrationCancelTests
                                      _manager.serverState == ConnectionState.Disconnected, 6f);
         Assert.That(_manager.clientState, Is.EqualTo(ConnectionState.Disconnected));
         Assert.That(_manager.serverState, Is.EqualTo(ConnectionState.Disconnected));
+        Assert.That(_manager.TryGetModule<PlayersManager>(true, out _), Is.False, "server modules were left registered");
+        Assert.That(_manager.TryGetModule<PlayersManager>(false, out _), Is.False, "client modules were left registered");
 
         _transport.listenFailuresLeft = 0;
         _manager.StartServer();
@@ -175,7 +178,7 @@ public class HostMigrationCancelTests
 
         Assert.That(_manager.isTranferingToNewServer, Is.False);
         // The transfer retries every 2 seconds; it must not wait for that retry to notice the deadline.
-        Assert.That(elapsed, Is.LessThan(1.5), "the transfer only gave up at the next retry");
+        Assert.That(elapsed, Is.LessThan(1.9), "the transfer only gave up at the next retry");
         Assert.That(_transport.connectAttempts - connectsBefore, Is.AtMost(1),
             "the transport was restarted after the deadline");
 

@@ -2281,16 +2281,26 @@ namespace PurrNet
             StopClient();
             StopServer();
 
+            if (clientState == ConnectionState.Disconnected && _clientModules.hasModules)
+                _isCleaningClient = true;
+            if (serverState == ConnectionState.Disconnected && _serverModules.hasModules)
+                _isCleaningServer = true;
+
             // Nothing ticks once both are down, and the tick is what finishes a stop's cleanup: a server whose listen
             // socket never opened would stay Disconnecting for good, and StartServer would refuse to run again. A
             // transport can also finish disconnecting some frames later, which starts another cleanup, so this waits
             // for the transport as well.
             var giveUpAt = Time.unscaledTimeAsDouble + 5d;
-            while (Time.unscaledTimeAsDouble < giveUpAt)
+            while (true)
             {
                 RunPendingCleanup();
-                if (IsClientAndServerDisconnected())
+                if (IsClientAndServerDisconnected() && !_isCleaningClient && !_isCleaningServer)
                     break;
+                if (Time.unscaledTimeAsDouble >= giveUpAt)
+                {
+                    PurrLogger.LogWarning("Host migration abort timed out waiting for the transport to disconnect.");
+                    break;
+                }
                 await UnityLatestUpdate.Yield();
             }
         }
