@@ -1,3 +1,16 @@
+# [1.26.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.5...v1.26.0-beta.6) (2026-11-04)
+
+
+### Bug Fixes
+
+* mark the host loaded when added to an already loaded private scene ([61790ff](https://github.com/PurrNet/PurrNet/commit/61790ffe589295dbb632184020afd322ae079bc6))
+
+
+### Features
+
+* host migration reports disconnect reasons, keeps client state on failed attempts, tracks the returning roster, exposes peer routes and relay claims ([69e0409](https://github.com/PurrNet/PurrNet/commit/69e0409295d4dcb7cd89c78de5d8a19aa733c958))
+* packers for Unity.Mathematics vector and quaternion types ([2571164](https://github.com/PurrNet/PurrNet/commit/25711645d9616fef2e5d85bddf482909484d3d25))
+
 # [1.26.0-beta.5](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.4...v1.26.0-beta.5) (2026-11-03)
 
 
