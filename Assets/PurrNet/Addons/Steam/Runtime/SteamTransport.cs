@@ -16,7 +16,7 @@ namespace PurrNet.Steam
 {
     [DefaultExecutionOrder(-100)]
     [AddComponentMenu("PurrNet/Transport/Steam Transport")]
-    public partial class SteamTransport : GenericTransport, ITransport
+    public partial class SteamTransport : GenericTransport, ITransport, IHostMigrationPeerEndpointTransport
     {
         [Header("Server Settings")] [SerializeField]
         private ushort _serverPort = 5003;
@@ -360,6 +360,45 @@ namespace PurrNet.Steam
         public ulong GetSteamID(Connection conn)
         {
             return _server?.GetSteamID(conn.connectionId) ?? 0;
+        }
+
+        // Peer-to-peer peers are addressed by SteamID; the socket mode has no route other peers could use.
+        public bool supportsPeerHostMigration => _peerToPeer;
+
+        public bool TryGetPeerMigrationEndpoint(Connection connection, out PeerMigrationEndpoint endpoint)
+        {
+            var steamId = _peerToPeer ? GetSteamID(connection) : 0;
+            if (steamId == 0)
+            {
+                endpoint = default;
+                return false;
+            }
+
+            endpoint = new PeerMigrationEndpoint(steamId.ToString());
+            return true;
+        }
+
+        public bool TryPreparePeerMigrationEndpoint(PeerMigrationEndpoint endpoint, bool isPromotion, out string failure)
+        {
+            failure = null;
+            if (!_peerToPeer)
+            {
+                failure = "SteamTransport host migration needs peer-to-peer mode.";
+                return false;
+            }
+
+            // A promoted peer listens on its own SteamID.
+            if (isPromotion)
+                return true;
+
+            if (!endpoint.isValid || !ulong.TryParse(endpoint.address, out _))
+            {
+                failure = $"'{endpoint.address}' is not a SteamID.";
+                return false;
+            }
+
+            _address = endpoint.address;
+            return true;
         }
 
 #if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS

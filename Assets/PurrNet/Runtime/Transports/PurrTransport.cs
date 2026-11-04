@@ -239,6 +239,118 @@ namespace PurrNet.Transports
             _hasPreparedHostMigration = true;
         }
 
+        /// <summary>True when a host migration claim is waiting for the next StartServer.</summary>
+        public bool hasPreparedHostMigration => _hasPreparedHostMigration;
+
+        /// <summary>Drops a prepared host migration that will not be used.</summary>
+        public void CancelPreparedHostMigration()
+        {
+            _hasPreparedHostMigration = false;
+        }
+
+        // The secret this peer joined the room with; the relay accepts it as proof of membership for a claim.
+        private string currentRoomSecret =>
+            !string.IsNullOrEmpty(_clientJoinInfo.secret) ? _clientJoinInfo.secret : _hostJoinInfo.secret;
+
+        private int? _migrationGeneration;
+
+        /// <summary>
+        /// The room's host migration generation as last seen when joining or claiming, or null when the relay does
+        /// not report one. <see cref="ClaimHostMigrationAsync"/> passes it on by default, so a claim fails if
+        /// someone else claimed the room in between.
+        /// </summary>
+        public int? migrationGeneration => _migrationGeneration;
+
+        /// <summary>
+        /// True once the relay of this room reported a migration generation, which relays with the host-connected
+        /// claim guard and /migration/authorize do. Older relays still allow a lost-host claim but cannot
+        /// authorize a handoff.
+        /// </summary>
+        public bool relaySupportsHandoffAuthorization => _migrationGeneration.HasValue;
+
+        /// <summary>Formats a player for the relay's promoted player field: the raw numeric id.</summary>
+        public static string RelayPlayerId(PlayerID player) => player.id.value.ToString();
+
+        /// <summary>
+        /// Graceful handoff over the relay, on the current host: authorizes <paramref name="nominatedPlayer"/> to
+        /// claim the room while this host is still connected. Send the returned authorization to that player, who
+        /// passes it to <see cref="ClaimHostMigrationAsync"/>. It works once and expires after about a minute.
+        /// </summary>
+        public async Task<string> AuthorizeHostMigrationAsync(PlayerID nominatedPlayer,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(_hostJoinInfo.secret))
+                throw new InvalidOperationException("Only the host of a relay room can authorize a handoff.");
+
+            try
+            {
+                var authorized = await PurrTransportUtils.AuthorizeMigration(_masterServer, relayRoomName,
+                    _hostJoinInfo.secret, RelayPlayerId(nominatedPlayer), cancellationToken);
+                _migrationGeneration = authorized.generation;
+                return authorized.authorization;
+            }
+            catch (RelayMigrationRejectedException rejected) when (rejected.generation.HasValue)
+            {
+                _migrationGeneration = rejected.generation;
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Reads the room's migration state from the relay, including the <see cref="MigrationJoinInfo.generation"/>
+        /// to pass to <see cref="ClaimHostMigrationAsync"/>.
+        /// </summary>
+        public Task<MigrationJoinInfo> GetHostMigrationStateAsync()
+        {
+            return PurrTransportUtils.GetMigrationState(_masterServer, relayRoomName);
+        }
+
+        /// <summary>
+        /// Host migration over the relay: claims the room so this peer becomes its host, and prepares the next
+        /// StartServer (NetworkManager.PromoteToServer) to take it over. Call it on the elected client only, while
+        /// it still knows the room it joined. Every room secret rotates; the other clients reconnect with
+        /// NetworkManager.TransferToNewServer, which fetches fresh join details.
+        /// <para>Without <paramref name="authorization"/> the claim only succeeds once the old host is gone (a lost
+        /// host); a graceful handoff passes the authorization from <see cref="AuthorizeHostMigrationAsync"/>.
+        /// <paramref name="expectedGeneration"/> defaults to <see cref="migrationGeneration"/>, so the claim fails if
+        /// someone else claimed first. Refusals throw <see cref="RelayMigrationRejectedException"/>.</para>
+        /// </summary>
+        public async Task<MigrationJoinInfo> ClaimHostMigrationAsync(PlayerID promotedPlayer, int? expectedGeneration = null,
+            string authorization = null, CancellationToken cancellationToken = default)
+        {
+            var secret = string.IsNullOrEmpty(authorization) ? currentRoomSecret : authorization;
+            if (string.IsNullOrEmpty(secret))
+                throw new InvalidOperationException("This PurrTransport never joined a relay room, so it cannot claim one.");
+
+            var roomName = _roomName;
+            MigrationJoinInfo claimed;
+            try
+            {
+                claimed = await PurrTransportUtils.ClaimMigration(_masterServer, relayRoomName, secret,
+                    RelayPlayerId(promotedPlayer), expectedGeneration ?? _migrationGeneration, cancellationToken);
+            }
+            catch (RelayMigrationRejectedException rejected) when (rejected.generation.HasValue)
+            {
+                // A refusal still tells the current generation, so a retry fences against the right one.
+                _migrationGeneration = rejected.generation;
+                throw;
+            }
+            _migrationGeneration = claimed.generation;
+
+            PrepareHostMigration(
+                new RelayServer { host = string.IsNullOrEmpty(claimed.host) ? _host : claimed.host, region = _region },
+                new HostJoinInfo
+                {
+                    ssl = claimed.ssl,
+                    secret = claimed.secret,
+                    port = claimed.port,
+                    roomName = string.IsNullOrEmpty(claimed.roomName) ? relayRoomName : claimed.roomName,
+                    udpPortV2 = claimed.udpPortV2
+                },
+                roomName);
+            return claimed;
+        }
+
         public bool hasRegionAndHost => !string.IsNullOrEmpty(_region) && !string.IsNullOrEmpty(_host);
 
         public NetworkSimulation networkSimulation
@@ -1207,6 +1319,9 @@ namespace PurrNet.Transports
                             !await PurrTransportUtils.RoomExistsAsync(_masterServer, _roomName, projectKey))
                         {
                             _hostJoinInfo = await PurrTransportUtils.Alloc(_masterServer, _region, _roomName, token, projectKey);
+                            _migrationGeneration = _hostJoinInfo.hasMigrationGeneration
+                                ? _hostJoinInfo.migrationGeneration
+                                : null;
                             NoteRelayUsage(_hostJoinInfo.usage);
                         }
 
@@ -1363,6 +1478,7 @@ namespace PurrNet.Transports
                 AddCancellation(token, false);
 
                 _clientJoinInfo = await PurrTransportUtils.Join(_masterServer, _roomName, token, projectKey);
+                _migrationGeneration = _clientJoinInfo.hasMigrationGeneration ? _clientJoinInfo.migrationGeneration : null;
                 _relayRoomName = RelayNameOf(_clientJoinInfo.roomName, _roomName);
                 NoteRelayUsage(_clientJoinInfo.usage);
 

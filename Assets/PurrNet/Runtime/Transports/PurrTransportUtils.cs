@@ -87,6 +87,31 @@ namespace PurrNet.Transports
         [Obsolete]
         public int udpPort;
         public int udpPortV2;
+        /// <summary>The room's host migration generation; see <see cref="hasMigrationGeneration"/>.</summary>
+        public int migrationGeneration;
+        /// <summary>False for relays that do not report a generation.</summary>
+        [NonSerialized] public bool hasMigrationGeneration;
+    }
+
+    /// <summary>
+    /// The relay refused a host migration request for a reason the caller can act on. Known codes:
+    /// <c>host_connected</c> (a claim without authorization while the host is still connected; for a lost host the
+    /// relay has not noticed yet), <c>generation_mismatch</c> (someone else claimed first), <c>invalid_secret</c>
+    /// (not a secret of the room, or an authorization that was used, expired or issued for another player) and
+    /// <c>invalid_host_secret</c>.
+    /// </summary>
+    public sealed class RelayMigrationRejectedException : Exception
+    {
+        public readonly string code;
+
+        /// <summary>The room's migration generation when the relay refused, when it reported one.</summary>
+        public readonly int? generation;
+
+        public RelayMigrationRejectedException(string code, string message, int? generation = null) : base(message)
+        {
+            this.code = code;
+            this.generation = generation;
+        }
     }
 
     [UsedImplicitly]
@@ -105,6 +130,28 @@ namespace PurrNet.Transports
         [Obsolete]
         public int udpPort;
         public int udpPortV2;
+        /// <summary>The room's host migration generation; see <see cref="hasMigrationGeneration"/>.</summary>
+        public int migrationGeneration;
+        /// <summary>False for relays that do not report a generation.</summary>
+        [NonSerialized] public bool hasMigrationGeneration;
+    }
+
+    /// <summary>A relay room's host migration state, as the relay reports it.</summary>
+    [UsedImplicitly]
+    [Serializable]
+    public struct MigrationJoinInfo
+    {
+        public bool ssl;
+        /// <summary>The host secret after a claim; the client secret when read with the current state.</summary>
+        public string secret;
+        public string host;
+        public int port;
+        public int udpPortV2;
+        public string roomName;
+        /// <summary>Increases with every claim; pass the value you saw to make a claim fail if someone else claimed first.</summary>
+        public int generation;
+        public string fencingToken;
+        public string promotedPlayerId;
     }
 
     public static class PurrTransportUtils
@@ -227,8 +274,112 @@ namespace PurrNet.Transports
 
             var text = response.webRequest.downloadHandler.text;
             var res = JsonUtility.FromJson<ClientJoinInfo>(text);
+            res.hasMigrationGeneration = text.Contains("\"migrationGeneration\"");
             return res;
 #else
+            throw new NotSupportedException("You need the `com.unity.modules.unitywebrequest` package to use this.");
+#endif
+        }
+
+        /// <summary>
+        /// Claims a relay room whose host is gone: the claimer becomes its host. Every secret of the room rotates, so
+        /// the other clients rejoin with fresh join details. Fails when <paramref name="expectedGeneration"/> is
+        /// given and another client claimed first.
+        /// </summary>
+        internal static Task<MigrationJoinInfo> ClaimMigration(string server, string relayRoomName, string claimSecret,
+            string promotedPlayerId, int? expectedGeneration, CancellationToken cancellationToken = default)
+        {
+            return MigrationRequest<MigrationJoinInfo>(server, "migration/claim", relayRoomName, claimSecret, null,
+                promotedPlayerId, expectedGeneration, cancellationToken);
+        }
+
+        /// <summary>Reads a relay room's migration state.</summary>
+        internal static Task<MigrationJoinInfo> GetMigrationState(string server, string relayRoomName)
+        {
+            return MigrationRequest<MigrationJoinInfo>(server, "migration/current", relayRoomName, null, null, null, null);
+        }
+
+        [Serializable]
+        internal struct MigrationAuthorization
+        {
+            public string authorization;
+            public int generation;
+            public int expiresInSeconds;
+        }
+
+        /// <summary>
+        /// The room's host lets <paramref name="promotedPlayerId"/> claim the room once while the host is still
+        /// connected (a graceful handoff). Relays without host migration support reject it.
+        /// </summary>
+        internal static Task<MigrationAuthorization> AuthorizeMigration(string server, string relayRoomName,
+            string hostSecret, string promotedPlayerId, CancellationToken cancellationToken = default)
+        {
+            return MigrationRequest<MigrationAuthorization>(server, "migration/authorize", relayRoomName, null, hostSecret,
+                promotedPlayerId, null, cancellationToken);
+        }
+
+        [Serializable]
+        private class MigrationErrorBody
+        {
+            public string error;
+            public string code;
+            public int generation;
+        }
+
+        private static Exception MigrationFailure(string path, string text)
+        {
+            if (!string.IsNullOrEmpty(text) && text.TrimStart().StartsWith("{"))
+            {
+                try
+                {
+                    var body = JsonUtility.FromJson<MigrationErrorBody>(text);
+                    if (body != null && !string.IsNullOrEmpty(body.code))
+                        return new RelayMigrationRejectedException(body.code, body.error ?? body.code,
+                            text.Contains("\"generation\"") ? body.generation : (int?)null);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            return BalancerFailure($"Relay {path} failed", text);
+        }
+
+        private static async Task<T> MigrationRequest<T>(string server, string path, string relayRoomName,
+            string claimSecret, string hostSecret, string promotedPlayerId, int? expectedGeneration,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+#if UNITY_WEB
+            if (!server.EndsWith("/"))
+                server += "/";
+
+            var request = UnityWebRequest.Get($"{server}{path}");
+            request.useHttpContinue = false;
+            request.SetRequestHeader("Cache-Control", "no-cache");
+            request.SetRequestHeader("name", relayRoomName);
+            if (!string.IsNullOrEmpty(claimSecret))
+                request.SetRequestHeader("migration_secret", claimSecret);
+            if (!string.IsNullOrEmpty(hostSecret))
+                request.SetRequestHeader("host_secret", hostSecret);
+            if (!string.IsNullOrEmpty(promotedPlayerId))
+                request.SetRequestHeader("promoted_player_id", promotedPlayerId);
+            if (expectedGeneration.HasValue)
+                request.SetRequestHeader("expected_generation", expectedGeneration.Value.ToString());
+
+            // Aborting only stops waiting: a request the relay already received still takes effect there.
+            UnityWebRequestAsyncOperation response;
+            using (cancellationToken.Register(() => request.Abort()))
+                response = await request.SendWebRequest();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (response.webRequest.result != UnityWebRequest.Result.Success)
+                throw MigrationFailure(path, response.webRequest.downloadHandler.text);
+
+            return JsonUtility.FromJson<T>(response.webRequest.downloadHandler.text);
+#else
+            await Task.CompletedTask;
             throw new NotSupportedException("You need the `com.unity.modules.unitywebrequest` package to use this.");
 #endif
         }
@@ -258,6 +409,7 @@ namespace PurrNet.Transports
 
             var text = response.webRequest.downloadHandler.text;
             var res = JsonUtility.FromJson<HostJoinInfo>(text);
+            res.hasMigrationGeneration = text.Contains("\"migrationGeneration\"");
             return res;
 #else
             throw new NotSupportedException("You need the `com.unity.modules.unitywebrequest` package to use this.");

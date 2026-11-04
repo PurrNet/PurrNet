@@ -418,7 +418,13 @@ namespace PurrNet
                 _transport.externalPump = null;
         }
 
-        private bool IsProbeEvent(bool asServer) => !asServer && _transport && _transport.isPinging;
+        private bool IsProbeEvent(bool asServer) =>
+            asServer ? _probingPromotionListen : _transport && _transport.isPinging;
+
+        // A promotion opens its listen socket before the client modules move to the server: until the transport
+        // reports Connected its server events stay inside PurrNet, so a socket that never opens leaves the client
+        // state untouched.
+        private bool _probingPromotionListen;
 
         /// <summary>
         /// Whether the server should automatically start.
@@ -1127,6 +1133,9 @@ namespace PurrNet
         {
             onPlayerJoined?.Invoke(player, isReconnect, asServer);
 
+            if (asServer)
+                NoteHostMigrationPlayerJoined(player);
+
             if (!asServer && !_telemetrySentClient)
             {
                 _telemetrySentClient = true;
@@ -1236,7 +1245,9 @@ namespace PurrNet
                     RegisterPromotedServerModules(modules);
                     return;
                 case false when isTranferingToNewServer && modules.hasModules:
-                    modules.TransferToNewServer();
+                    // Applied once the new server accepts the connection, so an attempt that never connects
+                    // leaves the old session's state in place.
+                    _transferResetPending = true;
                     return;
             }
 
@@ -2229,7 +2240,11 @@ namespace PurrNet
 
             // After the flag is cleared, since RunPendingCleanup keeps the modules while a promotion is running.
             if (!promoted)
+            {
+                ClearHostMigrationRoster();
                 await AbortHostMigrationAsync();
+                _probingPromotionListen = false;
+            }
         }
 
         private async System.Threading.Tasks.Task<bool> PromoteToServerAsync()
@@ -2237,13 +2252,21 @@ namespace PurrNet
             _preserveClientStateForHostMigration = false;
             var run = new HostMigrationRun(nameof(PromoteToServer), Time.unscaledTimeAsDouble, _hostMigrationCancels);
 
+            // The old session's players, while this client still sees them.
+            CaptureHostMigrationRoster(isLocalPlayerReady ? localPlayer : (PlayerID?)null);
+
             StopServer();
             StopClient();
 
             if (!await WaitForHostMigration(run, IsClientAndServerDisconnected))
                 return false;
 
-            StartServer();
+            // Listen first; the client modules move to the server once the socket is up (OnConnectionState). On
+            // failure the probe stays on until the abort has stopped the socket, so its events never reach the
+            // server modules that were never registered.
+            _probingPromotionListen = true;
+            _lastSendTime = 0d;
+            _transport.StartServerInternalOnly();
 
             while (true)
             {
@@ -2258,10 +2281,21 @@ namespace PurrNet
                     _transport.StartServerInternalOnly();
             }
 
+            // A transport that reports Connected outside its state event never ended the probe.
+            if (_probingPromotionListen)
+            {
+                _probingPromotionListen = false;
+                InternalRegisterServerModules();
+                OnConnectionState(ConnectionState.Connecting, true);
+                OnConnectionState(ConnectionState.Connected, true);
+            }
+
             _serverModules.PostPromoteToServer();
 
             _isCleaningClient = false;
             isPromotingToServer = false;
+
+            StartHostMigrationRoster();
 
             if (_networkRules && _networkRules.ShouldMigrateAsHost())
                 StartClient();
@@ -2276,12 +2310,20 @@ namespace PurrNet
             return clientState == ConnectionState.Disconnected && serverState == ConnectionState.Disconnected;
         }
 
+        private bool _transferResetPending;
+
         private async System.Threading.Tasks.Task AbortHostMigrationAsync()
         {
             StopClient();
             StopServer();
 
-            if (clientState == ConnectionState.Disconnected && _clientModules.hasModules)
+            // The client modules are still the old session's (a promotion moves them only once it listens, a
+            // transfer resets them only once it connects), so they can wait for another attempt.
+            bool keepClient = keepClientStateOnFailedHostMigration && _clientModules.hasModules;
+            if (keepClient)
+                _preserveClientStateForHostMigration = true;
+
+            if (!keepClient && clientState == ConnectionState.Disconnected && _clientModules.hasModules)
                 _isCleaningClient = true;
             if (serverState == ConnectionState.Disconnected && _serverModules.hasModules)
                 _isCleaningServer = true;
@@ -2337,7 +2379,10 @@ namespace PurrNet
             }
 
             if (!transferred)
+            {
+                _transferResetPending = false;
                 await AbortHostMigrationAsync();
+            }
         }
 
         private async System.Threading.Tasks.Task<bool> TransferToNewServerAsync()
@@ -2362,13 +2407,21 @@ namespace PurrNet
                 if (IsTransferredToNewServer())
                     break;
 
+                _clientStopRequested = true;
                 _transport.StopClientInternalOnly();
                 _isCleaningClient = false;
 
                 if (!await WaitForHostMigration(run, IsTransportClientDisconnected))
                     return false;
 
+                _clientStopRequested = false;
                 _transport.StartClientInternalOnly();
+            }
+
+            if (_transferResetPending)
+            {
+                _transferResetPending = false;
+                _clientModules.TransferToNewServer();
             }
 
             _clientModules.PostTransferToNewServer();
@@ -2533,6 +2586,7 @@ namespace PurrNet
                 yield return null;
             
             _lastSendTime = 0d;
+            _clientStopRequested = false;
             _transport.StartClient(this);
         }
 
@@ -2565,6 +2619,7 @@ namespace PurrNet
                 _clientBroadcast?.DrainDeferred();
                 clientToServerConn = null;
                 _clientModules.OnLostConnection(conn, false);
+                RaiseClientDisconnected(conn, reason);
             }
 #if UNITY_EDITOR
             if (isOffline && networkRules && _stopPlayingOnDisconnect)
@@ -2584,8 +2639,26 @@ namespace PurrNet
 
         private void OnConnectionState(ConnectionState state, bool asServer)
         {
+            if (asServer && _probingPromotionListen)
+            {
+                if (state != ConnectionState.Connected)
+                    return;
+
+                // The socket is up: move the client modules over and let them see the start as usual.
+                _probingPromotionListen = false;
+                InternalRegisterServerModules();
+                OnConnectionState(ConnectionState.Connecting, true);
+            }
+
             if (IsProbeEvent(asServer))
                 return;
+
+            if (!asServer && state == ConnectionState.Connected && _transferResetPending)
+            {
+                // Reached the new server: drop the old session's client state before any of its data arrives.
+                _transferResetPending = false;
+                _clientModules.TransferToNewServer();
+            }
 
             if (asServer)
             {
@@ -2646,6 +2719,8 @@ namespace PurrNet
         /// </summary>
         public void StopClient()
         {
+            _clientStopRequested = true;
+
             if (_clientCoroutine != null)
             {
                 StopCoroutine(_clientCoroutine);

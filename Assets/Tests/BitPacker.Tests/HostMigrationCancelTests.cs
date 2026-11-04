@@ -242,6 +242,7 @@ public class HostMigrationCancelTests
 public class HostMigrationTestTransport : GenericTransport, ITransport
 {
     public int listenFailuresLeft;
+    public bool listenThrows;
     public bool clientConnects = true;
     public float disconnectSeconds;
 
@@ -275,6 +276,9 @@ public class HostMigrationTestTransport : GenericTransport, ITransport
     {
         listenAttempts++;
         SetListenerState(ConnectionState.Connecting);
+
+        if (listenThrows)
+            throw new InvalidOperationException("listen failed");
 
         if (listenFailuresLeft > 0)
         {
@@ -315,6 +319,17 @@ public class HostMigrationTestTransport : GenericTransport, ITransport
     {
         if (_disconnectAt >= 0 && Time.unscaledTimeAsDouble >= _disconnectAt)
             FinishDisconnect();
+    }
+
+    /// <summary>The server end drops the client, as a lost host does.</summary>
+    public void DropFromServer()
+    {
+        if (!_connected)
+            return;
+
+        _connected = false;
+        SetClientState(ConnectionState.Disconnected);
+        onDisconnected?.Invoke(ServerConnection, DisconnectReason.Timeout, false);
     }
 
     void FinishDisconnect()

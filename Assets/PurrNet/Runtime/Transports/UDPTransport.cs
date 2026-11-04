@@ -8,7 +8,7 @@ namespace PurrNet.Transports
 {
     [AddComponentMenu("PurrNet/Transport/UDP Transport")]
     [DefaultExecutionOrder(-100)]
-    public partial class UDPTransport : GenericTransport, ITransport, INetLogger
+    public partial class UDPTransport : GenericTransport, ITransport, INetLogger, IHostMigrationPeerEndpointTransport
     {
         [SerializeField] private AutomaticCloudSetups _automaticCloudSetups;
 
@@ -286,6 +286,43 @@ namespace PurrNet.Transports
             Connect(_address, _serverPort);
         }
 
+        public bool supportsPeerHostMigration => true;
+
+        public bool TryGetPeerMigrationEndpoint(Connection connection, out PeerMigrationEndpoint endpoint)
+        {
+            // Every peer listens on the configured port once it hosts.
+            if (_connectionToPeer.TryGetValue(connection, out var peer) && peer != null)
+            {
+                endpoint = new PeerMigrationEndpoint(peer.Address.ToString(), _serverPort);
+                return true;
+            }
+
+            endpoint = default;
+            return false;
+        }
+
+        public bool TryPreparePeerMigrationEndpoint(PeerMigrationEndpoint endpoint, bool isPromotion, out string failure)
+        {
+            failure = null;
+            if (isPromotion)
+            {
+                if (endpoint.port != 0)
+                    _serverPort = endpoint.port;
+                return true;
+            }
+
+            if (!endpoint.isValid)
+            {
+                failure = "No address for the new host.";
+                return false;
+            }
+
+            _address = endpoint.address;
+            if (endpoint.port != 0)
+                _serverPort = endpoint.port;
+            return true;
+        }
+
         private void OnClientDisconnected(NetPeer peer, DisconnectInfo disconnectinfo)
         {
             clientState = ConnectionState.Disconnected;
@@ -294,6 +331,11 @@ namespace PurrNet.Transports
             {
                 LiteNetLib.DisconnectReason.Timeout => DisconnectReason.Timeout,
                 LiteNetLib.DisconnectReason.RemoteConnectionClose => DisconnectReason.ServerRequest,
+                LiteNetLib.DisconnectReason.ConnectionRejected => DisconnectReason.ServerRequest,
+                LiteNetLib.DisconnectReason.ConnectionFailed or
+                    LiteNetLib.DisconnectReason.HostUnreachable or
+                    LiteNetLib.DisconnectReason.NetworkUnreachable or
+                    LiteNetLib.DisconnectReason.UnknownHost => DisconnectReason.ConnectionFailed,
                 _ => DisconnectReason.ClientRequest
             };
 
