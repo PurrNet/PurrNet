@@ -94,6 +94,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Transports_1_1PurrTran
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
@@ -134,6 +135,21 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetServer</b> (<a cla
 <tr class="memitem:a8c2cdd14cb5916fdee731ed0bf07d3cb"><td class="memItemLeft" align="right" valign="top"><a id="a8c2cdd14cb5916fdee731ed0bf07d3cb" name="a8c2cdd14cb5916fdee731ed0bf07d3cb"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>PrepareHostMigration</b> (<a class="el" href="structPurrNet_1_1Transports_1_1RelayServer.html">RelayServer</a> server, <a class="el" href="structPurrNet_1_1Transports_1_1HostJoinInfo.html">HostJoinInfo</a> joinInfo, string roomName=null)</td></tr>
 <tr class="separator:a8c2cdd14cb5916fdee731ed0bf07d3cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb3afbe6955b367580874cd9e744fd61"><td class="memItemLeft" align="right" valign="top"><a id="abb3afbe6955b367580874cd9e744fd61" name="abb3afbe6955b367580874cd9e744fd61"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>CancelPreparedHostMigration</b> ()</td></tr>
+<tr class="memdesc:abb3afbe6955b367580874cd9e744fd61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Drops a prepared host migration that will not be used. <br /></td></tr>
+<tr class="separator:abb3afbe6955b367580874cd9e744fd61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a73095519a66f08dc42f7ddc454a28fe7"><td class="memItemLeft" align="right" valign="top"><a id="a73095519a66f08dc42f7ddc454a28fe7" name="a73095519a66f08dc42f7ddc454a28fe7"></a>
+async Task&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>AuthorizeHostMigrationAsync</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> nominatedPlayer, CancellationToken cancellationToken=default)</td></tr>
+<tr class="memdesc:a73095519a66f08dc42f7ddc454a28fe7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Graceful handoff over the relay, on the current host: authorizes <em>nominatedPlayer</em>  to claim the room while this host is still connected. Send the returned authorization to that player, who passes it to <a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce" title="Host migration over the relay: claims the room so this peer becomes its host, and prepares the next S...">ClaimHostMigrationAsync</a>. It works once and expires after about a minute.  <br /></td></tr>
+<tr class="separator:a73095519a66f08dc42f7ddc454a28fe7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a542d8c84d0b8188d5966e70cd33262a3"><td class="memItemLeft" align="right" valign="top"><a id="a542d8c84d0b8188d5966e70cd33262a3" name="a542d8c84d0b8188d5966e70cd33262a3"></a>
+Task&lt; <a class="el" href="structPurrNet_1_1Transports_1_1MigrationJoinInfo.html">MigrationJoinInfo</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GetHostMigrationStateAsync</b> ()</td></tr>
+<tr class="memdesc:a542d8c84d0b8188d5966e70cd33262a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads the room's migration state from the relay, including the <a class="el" href="structPurrNet_1_1Transports_1_1MigrationJoinInfo.html#afa07c835607b6b98f0c1a872b6213352" title="Increases with every claim; pass the value you saw to make a claim fail if someone else claimed first...">MigrationJoinInfo.generation</a> to pass to <a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce" title="Host migration over the relay: claims the room so this peer becomes its host, and prepares the next S...">ClaimHostMigrationAsync</a>.  <br /></td></tr>
+<tr class="separator:a542d8c84d0b8188d5966e70cd33262a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a07a04f4efbc439f56648f7d5af2fddce"><td class="memItemLeft" align="right" valign="top">async Task&lt; <a class="el" href="structPurrNet_1_1Transports_1_1MigrationJoinInfo.html">MigrationJoinInfo</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce">ClaimHostMigrationAsync</a> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> promotedPlayer, int? expectedGeneration=null, string authorization=null, CancellationToken cancellationToken=default)</td></tr>
+<tr class="memdesc:a07a04f4efbc439f56648f7d5af2fddce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Host migration over the relay: claims the room so this peer becomes its host, and prepares the next StartServer (<a class="el" href="classPurrNet_1_1NetworkManager.html#a483e37b314094bd8cd3e93b679a4d19d" title="Transitions the current NetworkManager instance into acting as a server. This method is used to promo...">NetworkManager.PromoteToServer</a>) to take it over. Call it on the elected client only, while it still knows the room it joined. Every room secret rotates; the other clients reconnect with <a class="el" href="classPurrNet_1_1NetworkManager.html#aa9a8feabf3ab6efcde2989b11611bc26" title="Transfers the current connection to a new server. This operation is asynchronous and is typically use...">NetworkManager.TransferToNewServer</a>, which fetches fresh join details.  <a href="classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce">More...</a><br /></td></tr>
+<tr class="separator:a07a04f4efbc439f56648f7d5af2fddce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abf7ac230ca71787d2ceb59b89d4f165a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#abf7ac230ca71787d2ceb59b89d4f165a">SupportsChannel</a> (Channel channel)</td></tr>
 <tr class="separator:abf7ac230ca71787d2ceb59b89d4f165a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aec42f838e005770b2a25ba87674350ad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#aec42f838e005770b2a25ba87674350ad">GetMTU</a> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> target, Channel channel, bool asServer)</td></tr>
@@ -274,6 +290,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Connect</b> (string i
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Disconnect</b> ()</td></tr>
 <tr class="separator:abfbd3c6264242944c44f35aff4df6efb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a930a2b9bff247a1c319334043ef378c3"><td class="memItemLeft" align="right" valign="top"><a id="a930a2b9bff247a1c319334043ef378c3" name="a930a2b9bff247a1c319334043ef378c3"></a>
+static string&#160;</td><td class="memItemRight" valign="bottom"><b>RelayPlayerId</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:a930a2b9bff247a1c319334043ef378c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Formats a player for the relay's promoted player field: the raw numeric id. <br /></td></tr>
+<tr class="separator:a930a2b9bff247a1c319334043ef378c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:a7d3471c46b45ed73ba31bfc43e427b94"><td class="memItemLeft" align="right" valign="top">override async Task&lt; <a class="el" href="structPurrNet_1_1Transports_1_1PingResult.html">PingResult</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a7d3471c46b45ed73ba31bfc43e427b94">PingInternal</a> (string address, ushort port, bool useAddress, float timeoutSeconds, CancellationToken token)</td></tr>
@@ -362,6 +385,18 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>p2pConnectionCount</b>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>p2pHostEndpoint</b><code> [get]</code></td></tr>
 <tr class="memdesc:a6b359d220a83037363b8914f15949953"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remote endpoint of a native UDP P2P link to the host, or null for other routes. <br /></td></tr>
 <tr class="separator:a6b359d220a83037363b8914f15949953"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab58fd3913495afec53582a06086fd108"><td class="memItemLeft" align="right" valign="top"><a id="ab58fd3913495afec53582a06086fd108" name="ab58fd3913495afec53582a06086fd108"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasPreparedHostMigration</b><code> [get]</code></td></tr>
+<tr class="memdesc:ab58fd3913495afec53582a06086fd108"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when a host migration claim is waiting for the next StartServer. <br /></td></tr>
+<tr class="separator:ab58fd3913495afec53582a06086fd108"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3c2a3240f6e662adc6c57631395073a8"><td class="memItemLeft" align="right" valign="top"><a id="a3c2a3240f6e662adc6c57631395073a8" name="a3c2a3240f6e662adc6c57631395073a8"></a>
+int?&#160;</td><td class="memItemRight" valign="bottom"><b>migrationGeneration</b><code> [get]</code></td></tr>
+<tr class="memdesc:a3c2a3240f6e662adc6c57631395073a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">The room's host migration generation as last seen when joining or claiming, or null when the relay does not report one. <a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce" title="Host migration over the relay: claims the room so this peer becomes its host, and prepares the next S...">ClaimHostMigrationAsync</a> passes it on by default, so a claim fails if someone else claimed the room in between.  <br /></td></tr>
+<tr class="separator:a3c2a3240f6e662adc6c57631395073a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a44cd611ce8ab37015990f61e8360f7d8"><td class="memItemLeft" align="right" valign="top"><a id="a44cd611ce8ab37015990f61e8360f7d8" name="a44cd611ce8ab37015990f61e8360f7d8"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>relaySupportsHandoffAuthorization</b><code> [get]</code></td></tr>
+<tr class="memdesc:a44cd611ce8ab37015990f61e8360f7d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">True once the relay of this room reported a migration generation, which relays with the host-connected claim guard and /migration/authorize do. Older relays still allow a lost-host claim but cannot authorize a handoff.  <br /></td></tr>
+<tr class="separator:a44cd611ce8ab37015990f61e8360f7d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c2e8caf9e42196d01011c3da71fb363"><td class="memItemLeft" align="right" valign="top"><a id="a8c2e8caf9e42196d01011c3da71fb363" name="a8c2e8caf9e42196d01011c3da71fb363"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasRegionAndHost</b><code> [get]</code></td></tr>
 <tr class="separator:a8c2e8caf9e42196d01011c3da71fb363"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -509,6 +544,49 @@ const float&#160;</td><td class="memItemRight" valign="bottom"><b>DEFAULT_PING_T
 <tr class="separator:ab68f96cda8cac5947d1bff88cfcc5314 inherit pub_static_attribs_classPurrNet_1_1Transports_1_1GenericTransport"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a07a04f4efbc439f56648f7d5af2fddce" name="a07a04f4efbc439f56648f7d5af2fddce"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a07a04f4efbc439f56648f7d5af2fddce">&#9670;&#160;</a></span>ClaimHostMigrationAsync()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">async Task&lt; <a class="el" href="structPurrNet_1_1Transports_1_1MigrationJoinInfo.html">MigrationJoinInfo</a> &gt; PurrNet.Transports.PurrTransport.ClaimHostMigrationAsync </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a>&#160;</td>
+          <td class="paramname"><em>promotedPlayer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int?&#160;</td>
+          <td class="paramname"><em>expectedGeneration</em> = <code>null</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">string&#160;</td>
+          <td class="paramname"><em>authorization</em> = <code>null</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">CancellationToken&#160;</td>
+          <td class="paramname"><em>cancellationToken</em> = <code>default</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Host migration over the relay: claims the room so this peer becomes its host, and prepares the next StartServer (<a class="el" href="classPurrNet_1_1NetworkManager.html#a483e37b314094bd8cd3e93b679a4d19d" title="Transitions the current NetworkManager instance into acting as a server. This method is used to promo...">NetworkManager.PromoteToServer</a>) to take it over. Call it on the elected client only, while it still knows the room it joined. Every room secret rotates; the other clients reconnect with <a class="el" href="classPurrNet_1_1NetworkManager.html#aa9a8feabf3ab6efcde2989b11611bc26" title="Transfers the current connection to a new server. This operation is asynchronous and is typically use...">NetworkManager.TransferToNewServer</a>, which fetches fresh join details. </p>
+<p >Without <em>authorization</em>  the claim only succeeds once the old host is gone (a lost host); a graceful handoff passes the authorization from <a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a73095519a66f08dc42f7ddc454a28fe7" title="Graceful handoff over the relay, on the current host: authorizes nominatedPlayer  to claim the room w...">AuthorizeHostMigrationAsync</a>. <em>expectedGeneration</em>  defaults to <a class="el" href="classPurrNet_1_1Transports_1_1PurrTransport.html#a3c2a3240f6e662adc6c57631395073a8" title="The room&#39;s host migration generation as last seen when joining or claiming, or null when the relay do...">migrationGeneration</a>, so the claim fails if someone else claimed first. Refusals throw <a class="el" href="classPurrNet_1_1Transports_1_1RelayMigrationRejectedException.html" title="The relay refused a host migration request for a reason the caller can act on. Known codes: host_conn...">RelayMigrationRejectedException</a>.</p>
+
+</div>
+</div>
 <a id="aedea6dfd41ac805efab4405ca6369073" name="aedea6dfd41ac805efab4405ca6369073"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aedea6dfd41ac805efab4405ca6369073">&#9670;&#160;</a></span>CloseConnection()</h2>
 

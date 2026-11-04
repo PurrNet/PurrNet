@@ -41,7 +41,7 @@ var NAVTREE =
         [ "Functions", "functions_func.html", "functions_func" ],
         [ "Variables", "functions_vars.html", null ],
         [ "Enumerations", "functions_enum.html", null ],
-        [ "Properties", "functions_prop.html", null ],
+        [ "Properties", "functions_prop.html", "functions_prop" ],
         [ "Events", "functions_evnt.html", null ]
       ] ]
     ] ]
@@ -53,12 +53,13 @@ var NAVTREEINDEX =
 "annotated.html",
 "classPurrNet_1_1Modules_1_1ScenesModule.html#a1215f60100c74fcdece44773048d1984",
 "classPurrNet_1_1NetworkIdentity.html#aab36179b19e9a1ca89b4b0a05da42f12",
-"classPurrNet_1_1NetworkManager.html#af6802f1e3fe00948968199a1aae6c3cc",
-"classPurrNet_1_1Packing_1_1BitPacker.html#a0695b4b7100fa3a6752d727d35953e73",
-"classPurrNet_1_1SyncBigData.html#a00249c72c97dd6d805a39359852a4da8",
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a5bf95d839dc60b37fec0e3342992b63a",
-"interfacePurrNet_1_1Packing_1_1IStandaloneSerializable.html",
-"structPurrNet_1_1Packing_1_1Half.html#a289e1a385610686b5c892eef510574d8"
+"classPurrNet_1_1NetworkManager.html#ade74bc978c78289bc862e41c865009ad",
+"classPurrNet_1_1NetworkVisibilityRule.html",
+"classPurrNet_1_1StatisticsManager.html",
+"classPurrNet_1_1Transports_1_1PurrTransport.html#a0e02385dd506d2bd419bb8c1d065f4b8",
+"interfacePurrNet_1_1INetworkTransform.html#aff00a94b3ce0f2a6380231b83a4206c6",
+"structPurrNet_1_1Modules_1_1SceneState.html#abec0619094f4777df3f2c4f953391260",
+"structPurrNet_1_1StringUTF8.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

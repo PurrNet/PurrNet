@@ -9,12 +9,13 @@ var searchData=
   ['isculled_6',['IsCulled',['../classPurrNet_1_1NetworkLOD.html#af59273e163855e43b1664789d8581bb9',1,'PurrNet::NetworkLOD']]],
   ['iscurrentstate_7',['IsCurrentState',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#abac2079b9b1f736538a96850059b4292',1,'PurrNet::StateMachine::StateMachine']]],
   ['iscurrentstate_3c_20t_20_3e_8',['IsCurrentState&lt; T &gt;',['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a371f1e2e294d99b87429b6c78d0aa73a',1,'PurrNet.StateMachine.StateMachine.IsCurrentState&lt; T &gt;()'],['../classPurrNet_1_1StateMachine_1_1StateMachine.html#a8bf5b7be2c600925d9deb94b6c293f96',1,'PurrNet.StateMachine.StateMachine.IsCurrentState&lt; T &gt;(out T stateInstance)']]],
-  ['isinfinity_9',['IsInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a28cb3567de30fed8793a9b022eabbd7c',1,'PurrNet::Packing::Half']]],
-  ['islocalplayer_10',['IsLocalPlayer',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afe101ad40f446b3ca844682ee7baaac7',1,'PurrNet.Modules.PlayersManager.IsLocalPlayer(PlayerID playerId)'],['../classPurrNet_1_1Modules_1_1PlayersManager.html#a08f16fae644beb8d10c32de627a03483',1,'PurrNet.Modules.PlayersManager.IsLocalPlayer(PlayerID? playerId)']]],
-  ['isnan_11',['IsNaN',['../structPurrNet_1_1Packing_1_1Half.html#ae222339b7a414b6d90016cd86ab51795',1,'PurrNet::Packing::Half']]],
-  ['isnegativeinfinity_12',['IsNegativeInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a4ae1ed12086abd9ea761f8a66245479b',1,'PurrNet::Packing::Half']]],
-  ['isplayerconnected_13',['IsPlayerConnected',['../classPurrNet_1_1Modules_1_1PlayersManager.html#aa88b95630da4bddad8470a70663a8298',1,'PurrNet::Modules::PlayersManager']]],
-  ['ispositiveinfinity_14',['IsPositiveInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a9877f2dfa73d016205ed1e9eaa885445',1,'PurrNet::Packing::Half']]],
-  ['issceneloaded_15',['IsSceneLoaded',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a56b451ee775be978df48abfaaa6fc8e8',1,'PurrNet::Modules::ScenesModule']]],
-  ['isvalidplayer_16',['IsValidPlayer',['../classPurrNet_1_1Modules_1_1PlayersManager.html#ae94d297aa01363f548623bba619bacd9',1,'PurrNet.Modules.PlayersManager.IsValidPlayer(PlayerID playerId)'],['../classPurrNet_1_1Modules_1_1PlayersManager.html#afd5f5b8b2c8dbaee43f39265540dd846',1,'PurrNet.Modules.PlayersManager.IsValidPlayer(PlayerID? playerId)']]]
+  ['ishostmigrationplayerpending_9',['IsHostMigrationPlayerPending',['../classPurrNet_1_1NetworkManager.html#ace75df41406c5836c6b5714417411c88',1,'PurrNet::NetworkManager']]],
+  ['isinfinity_10',['IsInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a28cb3567de30fed8793a9b022eabbd7c',1,'PurrNet::Packing::Half']]],
+  ['islocalplayer_11',['IsLocalPlayer',['../classPurrNet_1_1Modules_1_1PlayersManager.html#afe101ad40f446b3ca844682ee7baaac7',1,'PurrNet.Modules.PlayersManager.IsLocalPlayer(PlayerID playerId)'],['../classPurrNet_1_1Modules_1_1PlayersManager.html#a08f16fae644beb8d10c32de627a03483',1,'PurrNet.Modules.PlayersManager.IsLocalPlayer(PlayerID? playerId)']]],
+  ['isnan_12',['IsNaN',['../structPurrNet_1_1Packing_1_1Half.html#ae222339b7a414b6d90016cd86ab51795',1,'PurrNet::Packing::Half']]],
+  ['isnegativeinfinity_13',['IsNegativeInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a4ae1ed12086abd9ea761f8a66245479b',1,'PurrNet::Packing::Half']]],
+  ['isplayerconnected_14',['IsPlayerConnected',['../classPurrNet_1_1Modules_1_1PlayersManager.html#aa88b95630da4bddad8470a70663a8298',1,'PurrNet::Modules::PlayersManager']]],
+  ['ispositiveinfinity_15',['IsPositiveInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a9877f2dfa73d016205ed1e9eaa885445',1,'PurrNet::Packing::Half']]],
+  ['issceneloaded_16',['IsSceneLoaded',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a56b451ee775be978df48abfaaa6fc8e8',1,'PurrNet::Modules::ScenesModule']]],
+  ['isvalidplayer_17',['IsValidPlayer',['../classPurrNet_1_1Modules_1_1PlayersManager.html#ae94d297aa01363f548623bba619bacd9',1,'PurrNet.Modules.PlayersManager.IsValidPlayer(PlayerID playerId)'],['../classPurrNet_1_1Modules_1_1PlayersManager.html#afd5f5b8b2c8dbaee43f39265540dd846',1,'PurrNet.Modules.PlayersManager.IsValidPlayer(PlayerID? playerId)']]]
 ];

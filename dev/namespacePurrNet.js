@@ -21,6 +21,7 @@ var namespacePurrNet =
     [ "BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ],
     [ "ChildRPCPacket", "structPurrNet_1_1ChildRPCPacket.html", null ],
     [ "ClientAttribute", "classPurrNet_1_1ClientAttribute.html", null ],
+    [ "ClientDisconnectInfo", "structPurrNet_1_1ClientDisconnectInfo.html", "structPurrNet_1_1ClientDisconnectInfo" ],
     [ "ColliderRollback", "classPurrNet_1_1ColliderRollback.html", null ],
     [ "CompositePrefabProvider", "classPurrNet_1_1CompositePrefabProvider.html", "classPurrNet_1_1CompositePrefabProvider" ],
     [ "DistanceRule", "classPurrNet_1_1DistanceRule.html", "classPurrNet_1_1DistanceRule" ],

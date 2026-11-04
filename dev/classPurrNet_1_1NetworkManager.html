@@ -299,6 +299,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>GetMTU</b> (<a class="
 <tr class="memitem:a11a2402a672dc812e8ccc29ab6cbb663"><td class="memItemLeft" align="right" valign="top"><a id="a11a2402a672dc812e8ccc29ab6cbb663" name="a11a2402a672dc812e8ccc29ab6cbb663"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetRpcModule</b> (bool asServer, out <a class="el" href="classPurrNet_1_1Modules_1_1RPCModule.html">RPCModule</a> module)</td></tr>
 <tr class="separator:a11a2402a672dc812e8ccc29ab6cbb663"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace75df41406c5836c6b5714417411c88"><td class="memItemLeft" align="right" valign="top"><a id="ace75df41406c5836c6b5714417411c88" name="ace75df41406c5836c6b5714417411c88"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsHostMigrationPlayerPending</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:ace75df41406c5836c6b5714417411c88"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when <em>player</em>  is from the old session and has not reconnected to this promoted host yet. <br /></td></tr>
+<tr class="separator:ace75df41406c5836c6b5714417411c88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4eac34c83302d1d4e123f2e0affd89c1"><td class="memItemLeft" align="right" valign="top"><a id="a4eac34c83302d1d4e123f2e0affd89c1" name="a4eac34c83302d1d4e123f2e0affd89c1"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>ConfirmHostMigrationPlayerDeparture</b> (<a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player)</td></tr>
+<tr class="memdesc:a4eac34c83302d1d4e123f2e0affd89c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops waiting for <em>player</em>  on a promoted host, for example when the lobby says they left. Returns false when the player was not pending.  <br /></td></tr>
+<tr class="separator:a4eac34c83302d1d4e123f2e0affd89c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba7803b7cf79d55bcf9f0c754c29b980"><td class="memItemLeft" align="right" valign="top"><a id="aba7803b7cf79d55bcf9f0c754c29b980" name="aba7803b7cf79d55bcf9f0c754c29b980"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RegisterModules</b> (<a class="el" href="structPurrNet_1_1ModulesCollection.html">ModulesCollection</a> modules, bool asServer)</td></tr>
 <tr class="separator:aba7803b7cf79d55bcf9f0c754c29b980"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -547,6 +555,26 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>hostMigrationTimeout
 <tr class="separator:a2fa2c221a4ccb4d9b718c5ea9fe4b11a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a820a53874cce6b4b3bf3e07cd4cb24a7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1NetworkManager.html#a820a53874cce6b4b3bf3e07cd4cb24a7">isTranferingToNewServer</a><code> [get]</code></td></tr>
 <tr class="separator:a820a53874cce6b4b3bf3e07cd4cb24a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af696e98597fe4c7268c601e6b89a82cd"><td class="memItemLeft" align="right" valign="top"><a id="af696e98597fe4c7268c601e6b89a82cd" name="af696e98597fe4c7268c601e6b89a82cd"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>keepClientStateOnFailedHostMigration</b><code> [get, set]</code></td></tr>
+<tr class="memdesc:af696e98597fe4c7268c601e6b89a82cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">When true, a PromoteToServer or TransferToNewServer that gives up (time limit, CancelHostMigration, or an error) keeps the client state preserved as if <a class="el" href="classPurrNet_1_1NetworkManager.html#a0adbbe233c319c0198849edadedf3b29" title="Keeps the current client modules alive while an external host migration system prepares transport sta...">PreserveClientStateForHostMigration</a> had been called again, so another attempt can start from the same world. Call <a class="el" href="classPurrNet_1_1NetworkManager.html#a861564130a928f1adaaacabcf232fa58" title="Releases a pending host migration preservation request when migration preparation fails.">ReleaseClientStateForHostMigration</a> to give up for good. False, the default, cleans the client up after a failed attempt.  <br /></td></tr>
+<tr class="separator:af696e98597fe4c7268c601e6b89a82cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1c8e0de609a0b6d6f78cb91ca341845"><td class="memItemLeft" align="right" valign="top"><a id="ae1c8e0de609a0b6d6f78cb91ca341845" name="ae1c8e0de609a0b6d6f78cb91ca341845"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isClientStatePreservedForHostMigration</b><code> [get]</code></td></tr>
+<tr class="memdesc:ae1c8e0de609a0b6d6f78cb91ca341845"><td class="mdescLeft">&#160;</td><td class="mdescRight">True while client state is kept for a host migration that has not started or completed. <br /></td></tr>
+<tr class="separator:ae1c8e0de609a0b6d6f78cb91ca341845"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae86f49791771fb5770c3b7f6d1da518"><td class="memItemLeft" align="right" valign="top"><a id="aae86f49791771fb5770c3b7f6d1da518" name="aae86f49791771fb5770c3b7f6d1da518"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>hostMigrationRejoinTimeout</b> = 30f<code> [get, set]</code></td></tr>
+<tr class="memdesc:aae86f49791771fb5770c3b7f6d1da518"><td class="mdescLeft">&#160;</td><td class="mdescRight">On a promoted host: how long players from the old session have to reconnect before they count as departed, in seconds. 0 waits until each is confirmed with <a class="el" href="classPurrNet_1_1NetworkManager.html#a4eac34c83302d1d4e123f2e0affd89c1" title="Stops waiting for player  on a promoted host, for example when the lobby says they left....">ConfirmHostMigrationPlayerDeparture</a>. Defaults to 30.  <br /></td></tr>
+<tr class="separator:aae86f49791771fb5770c3b7f6d1da518"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ade74bc978c78289bc862e41c865009ad"><td class="memItemLeft" align="right" valign="top"><a id="ade74bc978c78289bc862e41c865009ad" name="ade74bc978c78289bc862e41c865009ad"></a>
+IReadOnlyList&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>hostMigrationPendingPlayers</b><code> [get]</code></td></tr>
+<tr class="memdesc:ade74bc978c78289bc862e41c865009ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">On a promoted host: players from the old session that have not reconnected yet, the promoted player's own client included when it migrates as host. Empty once the roster settled, and on every other peer. A listen host's own player is in it too, since a client cannot tell which player hosted: a migration system that knows the old host is gone confirms it with <a class="el" href="classPurrNet_1_1NetworkManager.html#a4eac34c83302d1d4e123f2e0affd89c1" title="Stops waiting for player  on a promoted host, for example when the lobby says they left....">ConfirmHostMigrationPlayerDeparture</a>.  <br /></td></tr>
+<tr class="separator:ade74bc978c78289bc862e41c865009ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ec3b77aa860e7cf4b11ca2b06f6e3fa"><td class="memItemLeft" align="right" valign="top"><a id="a0ec3b77aa860e7cf4b11ca2b06f6e3fa" name="a0ec3b77aa860e7cf4b11ca2b06f6e3fa"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>isHostMigrationRosterPending</b><code> [get]</code></td></tr>
+<tr class="memdesc:a0ec3b77aa860e7cf4b11ca2b06f6e3fa"><td class="mdescLeft">&#160;</td><td class="mdescRight">True on a promoted host while some players from the old session have not reconnected or departed. <br /></td></tr>
+<tr class="separator:a0ec3b77aa860e7cf4b11ca2b06f6e3fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header properties_interfacePurrNet_1_1IRegisterModules"><td colspan="2" onclick="javascript:toggleInherit('properties_interfacePurrNet_1_1IRegisterModules')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="interfacePurrNet_1_1IRegisterModules.html">PurrNet.IRegisterModules</a></td></tr>
 <tr class="memitem:a0120d2226dc90b416623d295fa2cd687 inherit properties_interfacePurrNet_1_1IRegisterModules"><td class="memItemLeft" align="right" valign="top"><a id="a0120d2226dc90b416623d295fa2cd687" name="a0120d2226dc90b416623d295fa2cd687"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isPromotingToServer</b><code> [get]</code></td></tr>
@@ -655,6 +683,22 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlayerLeftScene</b></td></tr>
 <tr class="memdesc:ab53dc4f390ac43fcd52db1d21d0a6fc2"><td class="mdescLeft">&#160;</td><td class="mdescRight">This event is triggered when a player leaves the scene. This might not be triggered if the network rules keep the player in the scene. In that case, you want to use onPlayerUnloadedScene.  <br /></td></tr>
 <tr class="separator:ab53dc4f390ac43fcd52db1d21d0a6fc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac3752f42db28211315c427a31ae2b324"><td class="memItemLeft" align="right" valign="top"><a id="ac3752f42db28211315c427a31ae2b324" name="ac3752f42db28211315c427a31ae2b324"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html">ClientDisconnectInfo</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onClientDisconnected</b></td></tr>
+<tr class="memdesc:ac3752f42db28211315c427a31ae2b324"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fires when the client connection ends, with whether this process asked for it. A lost host shows up here with <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#a3dcc36b1dec762f8b669a27f13959760" title="True when this process asked for the disconnect (StopClient, or a promotion or transfer that restarte...">ClientDisconnectInfo.wasLocalRequest</a> false.  <br /></td></tr>
+<tr class="separator:ac3752f42db28211315c427a31ae2b324"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a64f99b50b498ccb894be892d2b18a0dd"><td class="memItemLeft" align="right" valign="top"><a id="a64f99b50b498ccb894be892d2b18a0dd" name="a64f99b50b498ccb894be892d2b18a0dd"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onHostMigrationPlayerReturned</b></td></tr>
+<tr class="memdesc:a64f99b50b498ccb894be892d2b18a0dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">On a promoted host: a player from the old session reconnected. Fires after the player joined event.  <br /></td></tr>
+<tr class="separator:a64f99b50b498ccb894be892d2b18a0dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af25dd77a3c4371df0ded691ad7797029"><td class="memItemLeft" align="right" valign="top"><a id="af25dd77a3c4371df0ded691ad7797029" name="af25dd77a3c4371df0ded691ad7797029"></a>
+Action&lt; <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onHostMigrationPlayerDeparted</b></td></tr>
+<tr class="memdesc:af25dd77a3c4371df0ded691ad7797029"><td class="mdescLeft">&#160;</td><td class="mdescRight">On a promoted host: a player from the old session will not be waited for any longer, because the rejoin timeout passed or <a class="el" href="classPurrNet_1_1NetworkManager.html#a4eac34c83302d1d4e123f2e0affd89c1" title="Stops waiting for player  on a promoted host, for example when the lobby says they left....">ConfirmHostMigrationPlayerDeparture</a> was called.  <br /></td></tr>
+<tr class="separator:af25dd77a3c4371df0ded691ad7797029"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0f92795099d54bf528e0115781e691a7"><td class="memItemLeft" align="right" valign="top"><a id="a0f92795099d54bf528e0115781e691a7" name="a0f92795099d54bf528e0115781e691a7"></a>
+Action&#160;</td><td class="memItemRight" valign="bottom"><b>onHostMigrationRosterSettled</b></td></tr>
+<tr class="memdesc:a0f92795099d54bf528e0115781e691a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">On a promoted host: every player from the old session has returned or departed. Also fires right after the promotion when nobody else was in the session.  <br /></td></tr>
+<tr class="separator:a0f92795099d54bf528e0115781e691a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="a1448bafa6c3157b487667ff30a125668" name="a1448bafa6c3157b487667ff30a125668"></a>
@@ -2422,6 +2466,7 @@ OnPlayerSceneEvent&#160;</td><td class="memItemRight" valign="bottom"><b>onPlaye
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>Assets/PurrNet/Runtime/Managers/NetworkManager.Broadcasting.cs</li>
 <li>Assets/PurrNet/Runtime/Managers/NetworkManager.cs</li>
+<li>Assets/PurrNet/Runtime/Managers/NetworkManager.HostMigration.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

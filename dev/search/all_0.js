@@ -34,5 +34,6 @@ var searchData=
   ['authenticationresponse_31',['AuthenticationResponse',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html',1,'PurrNet::Authentication']]],
   ['authmodule_32',['AuthModule',['../classPurrNet_1_1Modules_1_1AuthModule.html',1,'PurrNet::Modules']]],
   ['authorityepoch_33',['authorityEpoch',['../structPurrNet_1_1RigidbodyStateData.html#a0b0fb2a41475fa8750eac38077c0f8e6',1,'PurrNet::RigidbodyStateData']]],
-  ['automaticcloudsetups_34',['AutomaticCloudSetups',['../classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html',1,'PurrNet::Transports']]]
+  ['authorizehostmigrationasync_34',['AuthorizeHostMigrationAsync',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a73095519a66f08dc42f7ddc454a28fe7',1,'PurrNet::Transports::PurrTransport']]],
+  ['automaticcloudsetups_35',['AutomaticCloudSetups',['../classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html',1,'PurrNet::Transports']]]
 ];
