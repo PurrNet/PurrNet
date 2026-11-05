@@ -1,3 +1,10 @@
+# [1.26.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.6...v1.26.0-beta.7) (2026-11-05)
+
+
+### Bug Fixes
+
+* Delta compression baseline ID ([01e4660](https://github.com/PurrNet/PurrNet/commit/01e466031a8a1dbef834ff3146c226b2caad159f))
+
 # [1.26.0-beta.6](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.5...v1.26.0-beta.6) (2026-11-04)
 
 
