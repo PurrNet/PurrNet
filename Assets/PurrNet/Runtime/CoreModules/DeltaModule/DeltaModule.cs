@@ -193,17 +193,22 @@ namespace PurrNet.Modules
 
             public override void ResetAck(int playerSlot, uint missingId)
             {
-                if (missingId == 0 || playerSlot >= _ackedLength || _acked[playerSlot] != missingId)
+                if (missingId == 0 || playerSlot >= _ackedLength)
                     return;
 
-                if (missingId > _ackFloor[playerSlot])
-                    _ackFloor[playerSlot] = missingId;
+                uint generated = _nextId - 1;
+                uint bounded = missingId < generated ? missingId : generated;
+                if (bounded > _ackFloor[playerSlot])
+                    _ackFloor[playerSlot] = bounded;
 
-                // An unchanged full resend must have a fresh ID: the ACK floor also
-                // rejects delayed ACKs for the missing head. A newer head is already safe.
-                _refreshHead |= headId == missingId;
+                _refreshHead |= headId != 0 && headId <= _ackFloor[playerSlot];
+
+                uint acked = _acked[playerSlot];
+                if (acked == 0 || acked > missingId)
+                    return;
+
                 _acked[playerSlot] = 0;
-                if (missingId == _minAcked)
+                if (acked == _minAcked)
                     _minAckedValid = false;
             }
 
@@ -504,23 +509,18 @@ namespace PurrNet.Modules
             using var _ = _writeReliableMarker.Auto();
             var hash = GetKeyHash(key);
             var tracker = GetOrCreateTracker<T>(player, hash, true);
+            tracker.reliableStream = true;
 
             T oldValue = default;
+            uint baselineId = 0;
 
-            int id = tracker.GetLastMatch();
-
-            if (id >= 0)
+            if (tracker.TryGetLast(out var lastKey, out var confirmedValue))
             {
-                if (tracker.TryGetValueAtIndex(id, out var confirmedValue))
-                {
-                    oldValue = Packer.Copy(confirmedValue);
-                }
-                else
-                {
-                    PurrLogger.LogError($"Confirmed value not found for key {hash} and {id} and player {player}");
-                    oldValue = default;
-                }
+                baselineId = lastKey;
+                oldValue = Packer.Copy(confirmedValue);
             }
+
+            Packer<PackedUInt>.Write(packer, baselineId);
 
             var pos = packer.positionInBits;
             packer.WriteBit(false);
@@ -531,14 +531,19 @@ namespace PurrNet.Modules
 
             if (changed)
             {
-                tracker.Set(newValue);
+                uint newId = tracker.GenerateId();
+                DeltaPacker<PackedUInt>.Write(packer, baselineId, newId);
+                tracker.SetReliable(newId, newValue, true);
                 if (oldValue is IDisposable disposable)
                     disposable.Dispose();
             }
             else
             {
-                tracker.SetWithoutCopy(oldValue);
                 packer.SetBitPosition(pos + 1);
+                if (baselineId != 0)
+                    tracker.SetReliable(baselineId, oldValue, false);
+                else if (oldValue is IDisposable disposable)
+                    disposable.Dispose();
             }
 
             return changed;
@@ -549,21 +554,18 @@ namespace PurrNet.Modules
             using var _ = _writeReliableMarker.Auto();
             var hash = GetKeyHash(key);
             var tracker = GetOrCreateTracker<T>(player, hash, true);
+            tracker.reliableStream = true;
 
             T oldValue = default;
+            uint baselineId = 0;
 
-            int id = tracker.GetLastMatch();
-
-            if (id >= 0)
+            if (tracker.TryGetLast(out var lastKey, out var confirmedValue))
             {
-                if (tracker.TryGetValueAtIndex(id, out var confirmedValue))
-                    oldValue = confirmedValue;
-                else
-                {
-                    PurrLogger.LogError($"Confirmed value not found for key {hash} and {id} and player {player}");
-                    oldValue = default;
-                }
+                baselineId = lastKey;
+                oldValue = confirmedValue;
             }
+
+            Packer<PackedUInt>.Write(packer, baselineId);
 
             var pos = packer.positionInBits;
             packer.WriteBit(false);
@@ -573,7 +575,9 @@ namespace PurrNet.Modules
 
             if (changed)
             {
-                tracker.Set(newValue);
+                uint newId = tracker.GenerateId();
+                DeltaPacker<PackedUInt>.Write(packer, baselineId, newId);
+                tracker.SetReliable(newId, newValue, true);
             }
             else
             {
@@ -699,57 +703,97 @@ namespace PurrNet.Modules
 
         public void ReadReliable<Key, T>(BitPacker packer, Key key, ref T newValue) where Key : struct, IStableHashable
         {
-            using var _ = _readReliableMarker.Auto();
-            var player = _players?.localPlayerId ?? default;
-
-            var keyHash = GetKeyHash(key);
-            var tracker = GetOrCreateTracker<T>(player, keyHash, false);
-
-            bool changed = false;
-
-            Packer<bool>.Read(packer, ref changed);
-
-            if (changed)
-            {
-                DeltaPacker<T>.Read(packer, tracker.GetLastValue(), ref newValue);
-                tracker.Set(newValue);
-            }
-            else
-            {
-                newValue = Packer.Copy(tracker.GetLastValue());
-            }
+            ReadReliable(packer, key, default, ref newValue);
         }
 
-        public void ReadReliableWithModifier<Key, T>(BitPacker packer, Key key, ref T newValue, ValueModifier<T> modifier) where Key : struct, IStableHashable
+        public void ReadReliable<Key, T>(BitPacker packer, Key key, PlayerID sender, ref T newValue) where Key : struct, IStableHashable
         {
             using var _ = _readReliableMarker.Auto();
             var player = _players?.localPlayerId ?? default;
 
             var keyHash = GetKeyHash(key);
             var tracker = GetOrCreateTracker<T>(player, keyHash, false);
+            LastRead<T>.Clear(this);
 
-            bool changed = false;
-
-            Packer<bool>.Read(packer, ref changed);
+            T oldValue = ReadReliableBaseline<T>(packer, tracker, sender, keyHash, out var baselineId, out bool changed);
 
             if (changed)
             {
-                var oldValue = Packer.Copy(tracker.GetLastValue());
-
-                modifier(ref oldValue);
+                PackedUInt newId = default;
                 DeltaPacker<T>.Read(packer, oldValue, ref newValue);
-                tracker.Set(newValue);
+                DeltaPacker<PackedUInt>.Read(packer, baselineId, ref newId);
+                tracker.SetReliable(newId, newValue, true);
+                LastRead<T>.Record(this, sender, keyHash, baselineId, newId, true);
+            }
+            else if (baselineId != 0)
+            {
+                newValue = Packer.Copy(oldValue);
+                LastRead<T>.Record(this, sender, keyHash, baselineId, 0, true);
+            }
+            else
+            {
+                newValue = default;
+                tracker.CleanupUpTo(uint.MaxValue);
+            }
+        }
+
+        public void ReadReliableWithModifier<Key, T>(BitPacker packer, Key key, ref T newValue, ValueModifier<T> modifier) where Key : struct, IStableHashable
+        {
+            ReadReliableWithModifier(packer, key, default, ref newValue, modifier);
+        }
+
+        public void ReadReliableWithModifier<Key, T>(BitPacker packer, Key key, PlayerID sender, ref T newValue, ValueModifier<T> modifier) where Key : struct, IStableHashable
+        {
+            using var _ = _readReliableMarker.Auto();
+            var player = _players?.localPlayerId ?? default;
+
+            var keyHash = GetKeyHash(key);
+            var tracker = GetOrCreateTracker<T>(player, keyHash, false);
+            LastRead<T>.Clear(this);
+
+            T baseline = ReadReliableBaseline<T>(packer, tracker, sender, keyHash, out var baselineId, out bool changed);
+            var oldValue = Packer.Copy(baseline);
+            modifier(ref oldValue);
+
+            if (changed)
+            {
+                PackedUInt newId = default;
+                DeltaPacker<T>.Read(packer, oldValue, ref newValue);
+                DeltaPacker<PackedUInt>.Read(packer, baselineId, ref newId);
+                tracker.SetReliable(newId, newValue, true);
+                LastRead<T>.Record(this, sender, keyHash, baselineId, newId, true);
 
                 if (oldValue is IDisposable disposable)
                     disposable.Dispose();
             }
             else
             {
-                var oldValue = Packer.Copy(tracker.GetLastValue());
-                modifier(ref oldValue);
                 newValue = oldValue;
-                tracker.Set(oldValue);
+                if (baselineId != 0)
+                {
+                    tracker.SetReliable(baselineId, oldValue, true);
+                    LastRead<T>.Record(this, sender, keyHash, baselineId, 0, true);
+                }
+                else tracker.CleanupUpTo(uint.MaxValue);
             }
+        }
+
+        private T ReadReliableBaseline<T>(BitPacker packer, ClientDeltaTracker<T> tracker, PlayerID sender,
+            uint keyHash, out PackedUInt baselineId, out bool changed)
+        {
+            baselineId = default;
+            changed = false;
+            Packer<PackedUInt>.Read(packer, ref baselineId);
+            Packer<bool>.Read(packer, ref changed);
+
+            if (baselineId == 0)
+                return default;
+
+            if (tracker.TryGetLast(out var lastKey, out var value) && lastKey == baselineId)
+                return value;
+
+            SendBaselineMissing(sender, Hasher.GetStableHashU32<T>(), keyHash, baselineId);
+            throw BypassLoggingException.instance;
         }
 
         public void Read<Key, T>(BitPacker packer, Key key, PlayerID sender, ref T newValue, ref PackedUInt cachedKey) where Key : struct, IStableHashable
@@ -769,6 +813,7 @@ namespace PurrNet.Modules
             using var _ = _readMarker.Auto();
             var player = _players?.localPlayerId ?? default;
             var tracker = GetOrCreateTracker<T>(player, precomputedHash, false);
+            LastRead<T>.Clear(this);
 
             PackedUInt lastConfirmedId = default;
             DeltaPacker<PackedUInt>.Read(packer, cachedKey, ref lastConfirmedId);
@@ -792,6 +837,8 @@ namespace PurrNet.Modules
                 cachedKey = valueId;
 
                 tracker.Set(valueId, newValue);
+                if (valueId > tracker.highestReceivedId)
+                    tracker.highestReceivedId = valueId;
                 if (lastConfirmedId == 0)
                     tracker.awaitingResync = false;
 
@@ -803,12 +850,12 @@ namespace PurrNet.Modules
                 };
 
                 Batch(sender, data);
-                LastRead<T>.Record(this, sender, precomputedHash, lastConfirmedId, valueId);
+                LastRead<T>.Record(this, sender, precomputedHash, lastConfirmedId, valueId, false);
             }
             else if (lastConfirmedId != 0)
             {
                 newValue = Packer.Copy(oldValue);
-                LastRead<T>.Record(this, sender, precomputedHash, lastConfirmedId, 0);
+                LastRead<T>.Record(this, sender, precomputedHash, lastConfirmedId, 0, false);
             }
             else newValue = default;
         }
@@ -820,18 +867,26 @@ namespace PurrNet.Modules
             public static uint keyHash;
             public static uint baselineId;
             public static uint valueId;
+            public static bool reliable;
             public static int frame;
             public static uint rejectedKeyHash;
             public static uint rejectedBaselineId;
             public static uint rejectedValueId;
 
-            public static void Record(DeltaModule owner, PlayerID from, uint hash, uint baseline, uint value)
+            public static void Clear(DeltaModule owner)
+            {
+                if (module == owner)
+                    module = null;
+            }
+
+            public static void Record(DeltaModule owner, PlayerID from, uint hash, uint baseline, uint value, bool isReliable)
             {
                 module = owner;
                 sender = from;
                 keyHash = hash;
                 baselineId = baseline;
                 valueId = value;
+                reliable = isReliable;
                 frame = Time.frameCount;
             }
         }
@@ -858,7 +913,11 @@ namespace PurrNet.Modules
             LastRead<T>.rejectedKeyHash = LastRead<T>.keyHash;
             LastRead<T>.rejectedBaselineId = LastRead<T>.baselineId;
             LastRead<T>.rejectedValueId = LastRead<T>.valueId;
-            owner.RejectRead<T>(LastRead<T>.sender, LastRead<T>.keyHash, LastRead<T>.baselineId, LastRead<T>.valueId);
+
+            if (LastRead<T>.reliable)
+                owner.RejectReliableRead<T>(LastRead<T>.sender, LastRead<T>.keyHash, LastRead<T>.baselineId, LastRead<T>.valueId);
+            else
+                owner.RejectRead<T>(LastRead<T>.sender, LastRead<T>.keyHash, LastRead<T>.baselineId, LastRead<T>.valueId);
             return true;
         }
 
@@ -868,17 +927,31 @@ namespace PurrNet.Modules
             var player = _players?.localPlayerId ?? default;
             var tracker = GetOrCreateTracker<T>(player, precomputedHash, false);
 
+            uint watermark = tracker.highestReceivedId;
+            if (valueId > watermark) watermark = valueId;
+            if (baselineId > watermark) watermark = baselineId;
+
             tracker.CleanupUpTo(uint.MaxValue);
             tracker.awaitingResync = true;
+            if (watermark > tracker.resyncFloor)
+                tracker.resyncFloor = watermark;
 
             if (valueId != 0)
-            {
                 WithdrawAcknowledge(sender, keyType, precomputedHash, valueId);
-                SendBaselineMissing(sender, keyType, precomputedHash, valueId);
-            }
 
-            if (baselineId != 0)
-                SendBaselineMissing(sender, keyType, precomputedHash, baselineId);
+            if (watermark != 0)
+                SendBaselineMissing(sender, keyType, precomputedHash, watermark);
+        }
+
+        private void RejectReliableRead<T>(PlayerID sender, uint precomputedHash, uint baselineId, uint valueId)
+        {
+            var player = _players?.localPlayerId ?? default;
+            var tracker = GetOrCreateTracker<T>(player, precomputedHash, false);
+            tracker.CleanupUpTo(uint.MaxValue);
+
+            uint latest = valueId != 0 ? valueId : baselineId;
+            if (latest != 0)
+                SendBaselineMissing(sender, Hasher.GetStableHashU32<T>(), precomputedHash, latest);
         }
 
         private void WithdrawAcknowledge(PlayerID sender, uint keyType, uint keyHash, uint valueId)
@@ -905,6 +978,9 @@ namespace PurrNet.Modules
 
         private void SendBaselineMissing(PlayerID sender, uint keyType, uint keyHash, uint missingId)
         {
+#if UNITY_INCLUDE_TESTS
+            sentBaselineMissingForTests.Add(missingId);
+#endif
             if (_broadcaster == null)
                 return;
 
@@ -923,27 +999,14 @@ namespace PurrNet.Modules
         private void RejectMissingBaseline<T>(ClientDeltaTracker tracker, PlayerID sender, uint precomputedHash,
             uint missingId, PlayerID player)
         {
-            if (!tracker.awaitingResync && tracker.reportedMissingId != missingId)
+            if (!tracker.awaitingResync && missingId > tracker.resyncFloor && tracker.reportedMissingId != missingId)
             {
                 tracker.reportedMissingId = missingId;
                 PurrLogger.LogError(
                     $"Delta baseline {missingId} missing for key {precomputedHash} and player {player}; value dropped, requested a full resync from {sender}");
             }
 
-            var nack = new DeltaBaselineMissing
-            {
-                keyType = Hasher.GetStableHashU32<T>(),
-                keyHash = precomputedHash,
-                valueId = missingId
-            };
-
-            if (_broadcaster != null)
-            {
-                if (_asServer)
-                    _broadcaster.Send(sender, nack, Channel.ReliableUnordered);
-                else _broadcaster.SendToServer(nack, Channel.ReliableUnordered);
-            }
-
+            SendBaselineMissing(sender, Hasher.GetStableHashU32<T>(), precomputedHash, missingId);
             throw BypassLoggingException.instance;
         }
 
@@ -991,6 +1054,8 @@ namespace PurrNet.Modules
         }
 
 #if UNITY_INCLUDE_TESTS
+        internal readonly List<uint> sentBaselineMissingForTests = new();
+
         internal void ConfirmDeliveryForTests<T>(PlayerID player, uint keyHash, PackedUInt valueId)
         {
             var key = new KeyHash(typeof(T), keyHash);

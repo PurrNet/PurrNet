@@ -532,6 +532,154 @@ public class DeltaModuleBaselineResyncTests
             Assert.That(Wire<Vector3>.PeekBaseline(packet), Is.GreaterThan(0u), $"ACK for key {key} was corrupted by the MTU split");
         }
     }
+
+    struct ReliableTestKey : IStableHashable
+    {
+        public uint value;
+        public uint GetStableHash() => value;
+    }
+
+    static BitPacker WriteReliable<T>(DeltaModule sender, PlayerID target, ReliableTestKey key, T value)
+    {
+        var packer = BitPackerPool.Get();
+        sender.WriteReliable(packer, target, key, value);
+        packer.ResetPositionAndMode(true);
+        return packer;
+    }
+
+    static T ReadReliable<T>(DeltaModule receiver, BitPacker packer, ReliableTestKey key)
+    {
+        T value = default;
+        receiver.ReadReliable(packer, key, PlayerID.Server, ref value);
+        return value;
+    }
+
+    static uint PeekReliableBaseline(BitPacker packer)
+    {
+        int pos = packer.positionInBits;
+        PackedUInt baseline = default;
+        Packer<PackedUInt>.Read(packer, ref baseline);
+        packer.SetBitPosition(pos);
+        return baseline.value;
+    }
+
+    [Test]
+    public void Reliable_MissedMessage_IsDetected_AndResyncsWithFullWrite()
+    {
+        var sender = new DeltaModule(null, null);
+        var receiver = new DeltaModule(null, null);
+        var target = Player(2);
+        var key = new ReliableTestKey { value = 9001 };
+
+        using (var first = WriteReliable(sender, target, key, "settled at A"))
+            Assert.That(ReadReliable<string>(receiver, first, key), Is.EqualTo("settled at A"));
+
+        using (WriteReliable(sender, target, key, "settled at B")) { }
+
+        uint missing;
+        using (var third = WriteReliable(sender, target, key, "settled at C"))
+        {
+            missing = PeekReliableBaseline(third);
+            Assert.That(missing, Is.Not.Zero);
+            receiver.sentBaselineMissingForTests.Clear();
+            Assert.Throws<BypassLoggingException>(() => ReadReliable<string>(receiver, third, key),
+                "A reliable delta built on a message this peer never decoded must be dropped, not decoded against the wrong base");
+            Assert.That(receiver.sentBaselineMissingForTests, Is.EqualTo(new[] { missing }));
+        }
+
+        uint keyHash = DeltaModule.GetKeyHash(key);
+        sender.ReportMissingBaselineForTests<string>(target, keyHash, missing);
+
+        using (var stale = WriteReliable(sender, target, key, "settled at D"))
+        {
+            Assert.That(PeekReliableBaseline(stale), Is.Zero, "After a reliable report the next write must be a full write");
+            Assert.That(ReadReliable<string>(receiver, stale, key), Is.EqualTo("settled at D"));
+        }
+
+        sender.ReportMissingBaselineForTests<string>(target, keyHash, missing);
+        using (var next = WriteReliable(sender, target, key, "settled at E"))
+        {
+            Assert.That(PeekReliableBaseline(next), Is.Not.Zero, "A late report from before the reset must not force another full write");
+            Assert.That(ReadReliable<string>(receiver, next, key), Is.EqualTo("settled at E"));
+        }
+    }
+
+    [Test]
+    public void Reliable_InOrderStream_StillDeltaCompresses()
+    {
+        var sender = new DeltaModule(null, null);
+        var receiver = new DeltaModule(null, null);
+        var key = new ReliableTestKey { value = 9002 };
+
+        for (int i = 0; i < 5; i++)
+        {
+            using var packet = WriteReliable(sender, Player(2), key, "state " + i);
+            if (i > 0)
+                Assert.That(PeekReliableBaseline(packet), Is.Not.Zero);
+            Assert.That(ReadReliable<string>(receiver, packet, key), Is.EqualTo("state " + i));
+        }
+
+        using var unchanged = WriteReliable(sender, Player(2), key, "state 4");
+        Assert.That(ReadReliable<string>(receiver, unchanged, key), Is.EqualTo("state 4"));
+    }
+
+    [Test]
+    public void RejectLastRead_AfterReliableRead_DoesNotWipeAnotherKey()
+    {
+        var unrelated = new Wire<string>();
+        unrelated.Deliver("healthy A");
+        unrelated.Deliver("healthy B");
+
+        var reliableSender = new DeltaModule(null, null);
+        var key = new ReliableTestKey { value = 9003 };
+        using (var reliable = WriteReliable(reliableSender, Player(2), key, "rejected settle state"))
+            ReadReliable<string>(unrelated.receiver, reliable, key);
+
+        unrelated.receiver.sentBaselineMissingForTests.Clear();
+        Assert.That(DeltaModule.RejectLastRead<string>(), Is.True);
+        Assert.That(unrelated.receiver.sentBaselineMissingForTests, Is.EqualTo(new[] { 1u }),
+            "The reliable stream that failed validation is the one to resync");
+
+        using var next = unrelated.Write("healthy C");
+        Assert.That(unrelated.Read(next), Is.EqualTo("healthy C"), "The unreliable key must keep its baselines");
+    }
+
+    [Test]
+    public void RejectRead_InFlightAckForWipedBaseline_DoesNotReviveIt()
+    {
+        var wire = new Wire<string>();
+        wire.Deliver("one");
+        uint acked = wire.lastReceivedId;
+        wire.Deliver("two", false);
+        uint inFlight = wire.lastReceivedId;
+
+        using (var rejected = wire.Write("three"))
+        {
+            Assert.That(Wire<string>.PeekBaseline(rejected), Is.EqualTo(acked));
+            wire.PeekValueId(rejected);
+            wire.Read(rejected);
+        }
+
+        wire.receiver.sentBaselineMissingForTests.Clear();
+        Assert.That(DeltaModule.RejectLastRead<string>(), Is.True);
+        Assert.That(wire.receiver.sentBaselineMissingForTests, Is.Not.Empty);
+
+        foreach (var reported in wire.receiver.sentBaselineMissingForTests)
+            wire.sender.ReportMissingBaselineForTests<string>(wire.target, KeyHash, reported);
+
+        using (var full = wire.Write("four"))
+        {
+            Assert.That(Wire<string>.PeekBaseline(full), Is.Zero);
+            wire.PeekValueId(full);
+            Assert.That(wire.Read(full), Is.EqualTo("four"));
+        }
+
+        wire.sender.ConfirmDeliveryForTests<string>(wire.target, KeyHash, new PackedUInt(inFlight));
+        using var next = wire.Write("five");
+        Assert.That(Wire<string>.PeekBaseline(next), Is.Not.EqualTo(inFlight),
+            "A late ACK for a baseline the receiver wiped must be ignored");
+        Assert.That(wire.Read(next), Is.EqualTo("five"));
+    }
 }
 
 public class DeltaResyncTestTransport : LocalTransport, ITransport

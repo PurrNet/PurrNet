@@ -10,9 +10,16 @@ namespace PurrNet.Modules
         protected uint mostRecentId;
         private uint nextId = 1;
         private uint _ackFloor;
+        private uint _reliableResetFloor;
 
         public uint reportedMissingId;
         public bool awaitingResync;
+
+        public uint highestReceivedId;
+
+        public uint resyncFloor;
+
+        public bool reliableStream;
 
         public uint GenerateId()
         {
@@ -36,15 +43,31 @@ namespace PurrNet.Modules
                 mostRecentId = dataValueId.value;
         }
 
+        protected abstract void ClearHistory();
+
         public void ResetBaseline(uint missingId)
         {
-            if (missingId == 0 || mostRecentId != missingId)
+            if (missingId == 0)
                 return;
 
-            mostRecentId = 0;
+            uint generated = nextId - 1;
 
-            if (missingId > _ackFloor)
-                _ackFloor = missingId;
+            if (reliableStream)
+            {
+                if (missingId <= _reliableResetFloor)
+                    return;
+
+                _reliableResetFloor = generated;
+                ClearHistory();
+                return;
+            }
+
+            uint bounded = missingId < generated ? missingId : generated;
+            if (bounded > _ackFloor)
+                _ackFloor = bounded;
+
+            if (mostRecentId != 0 && mostRecentId <= missingId)
+                mostRecentId = 0;
         }
     }
 
@@ -195,6 +218,38 @@ namespace PurrNet.Modules
 
                 _history.Clear();
             }
+        }
+
+        protected override void ClearHistory()
+        {
+            for (int i = 0; i < _history.Count; i++)
+            {
+                if (canContainDisposable && _history[i].value is IDisposable disposable)
+                    disposable.Dispose();
+            }
+
+            _history.Clear();
+        }
+
+        public bool TryGetLast(out uint key, out T value)
+        {
+            if (_history.Count == 0)
+            {
+                key = 0;
+                value = default;
+                return false;
+            }
+
+            var last = _history[^1];
+            key = last.key;
+            value = last.value;
+            return true;
+        }
+
+        public void SetReliable(uint id, T value, bool copy)
+        {
+            ClearHistory();
+            _history.Add(new Entry { key = id, value = copy ? Packer.Copy(value) : value, enterTime = Time.unscaledTime });
         }
 
         public bool TryGetValueAtIndex(int id, out T o)

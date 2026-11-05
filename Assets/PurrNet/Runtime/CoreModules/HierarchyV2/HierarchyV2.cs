@@ -1211,27 +1211,42 @@ namespace PurrNet.Modules
 
         private void ProcessBufferedDespawnsFor(GameObjectPrototype prototype)
         {
+            List<DespawnPacket> matched = null;
+
             for (int i = _pendingDespawns.Count - 1; i >= 0; i--)
             {
                 var (_, packet, _) = _pendingDespawns[i];
 
                 for (int j = 0; j < prototype.framework.Count; j++)
                 {
-                    var piece = prototype.framework[j];
-                    if (piece.id != packet.parentId || !TryGetIdentity(piece.id, out var nid) || !nid)
+                    if (prototype.framework[j].id != packet.parentId)
                         continue;
 
                     _pendingDespawns.RemoveAt(i);
-                    try
-                    {
-                        CancelPendingAsyncSpawnRoot(nid);
-                        Despawn(nid.gameObject, true, true, packet.destroyAsync, UnityProxy.DEFAULT_DESTROY_ASYNC_MS);
-                    }
-                    catch (Exception e)
-                    {
-                        PurrLogger.LogError($"ProcessBufferedDespawnsFor: exception despawning {nid.gameObject.name}: {e.Message}\n{e.StackTrace}");
-                    }
-                    return;
+                    matched ??= new List<DespawnPacket>();
+                    matched.Add(packet);
+                    break;
+                }
+            }
+
+            if (matched == null)
+                return;
+
+            for (int i = matched.Count - 1; i >= 0; i--)
+            {
+                var packet = matched[i];
+
+                if (!TryGetIdentity(packet.parentId, out var nid) || !nid)
+                    continue;
+
+                try
+                {
+                    CancelPendingAsyncSpawnRoot(nid);
+                    Despawn(nid.gameObject, true, true, packet.destroyAsync, UnityProxy.DEFAULT_DESTROY_ASYNC_MS);
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogError($"ProcessBufferedDespawnsFor: exception despawning {nid.gameObject.name}: {e.Message}\n{e.StackTrace}");
                 }
             }
         }
