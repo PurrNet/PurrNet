@@ -176,6 +176,16 @@ namespace PurrNet.Modules
             _pool.Push(write);
         }
 
+        public bool ContentEquals(NTLastAdaptiveWrite other)
+        {
+            return tick == other.tick && prevTick == other.prevTick && prevPrevTick == other.prevPrevTick &&
+                   revision == other.revision && refreshInterval == other.refreshInterval &&
+                   hasPrev == other.hasPrev && hasPrevPrev == other.hasPrevPrev &&
+                   restConfirmed == other.restConfirmed && redundancy == other.redundancy &&
+                   state.Equals(other.state) && prevState.Equals(other.prevState) &&
+                   prevPrevState.Equals(other.prevPrevState);
+        }
+
         public void CopyFrom(NTLastAdaptiveWrite other)
         {
             tick = other.tick;
@@ -290,6 +300,20 @@ namespace PurrNet.Modules
         public readonly List<NTDeferredAnchor> deferredAnchors = new();
         // Smoothed ticks between sending an anchor packet and its ack arriving.
         public float anchorAckLag;
+
+        // Follower state (see NetworkTransformModule): while leader is set, this stream's
+        // per-transform arrays are stale and the leader's are authoritative.
+        public NTUnreliableSendStream leader;
+        public readonly List<NTUnreliableSendStream> followers = new();
+        public ushort followRetryTick;
+        public ushort lastSendTick;
+        public bool hasSent;
+        // This tick's packets, as indices into the module's share records.
+        public readonly List<int> tickPackets = new();
+        public bool tickFresh;
+        public bool tickMixed;
+        public bool tickShareable;
+        public NTUnreliableSendStream tickOrigin;
 
         public void ReleaseDeferred()
         {

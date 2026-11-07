@@ -29,6 +29,7 @@ namespace PurrNet.Modules
         private readonly Stack<int> _freeIndices = new();
         private readonly List<NetworkTransform> _changedTransforms = new();
         private readonly Dictionary<PlayerID, NTUnreliableSendStream> _sendStreams = new();
+        private readonly Dictionary<NTUnreliableSendStream, PlayerID> _streamPlayers = new();
         private readonly Dictionary<PlayerID, NTUnreliableRecvStream> _recvStreams = new();
         private readonly ScenePlayersModule _scenePlayers;
         private readonly PlayersBroadcaster _broadcaster;
@@ -96,6 +97,7 @@ namespace PurrNet.Modules
             foreach (var stream in _recvStreams.Values)
                 NTUnreliable.Release(stream.ring);
             _sendStreams.Clear();
+            _streamPlayers.Clear();
             _recvStreams.Clear();
         }
 
@@ -112,8 +114,12 @@ namespace PurrNet.Modules
                 return;
             }
 
+            if (_sendStreams.TryGetValue(player, out var leaving))
+                Detach(leaving);
+
             if (_sendStreams.Remove(player, out var send))
             {
+                _streamPlayers.Remove(send);
                 NTUnreliable.Release(send.ring);
                 send.ReleaseAdaptive();
                 send.ReleaseDeferred();
@@ -147,6 +153,7 @@ namespace PurrNet.Modules
                 stream = new NTUnreliableSendStream { asServer = _asServer };
                 stream.EnsureBaselineCapacity(_byIndex.Count);
                 _sendStreams.Add(player, stream);
+                _streamPlayers[stream] = player;
             }
 
             return stream;
@@ -605,6 +612,10 @@ namespace PurrNet.Modules
                 return;
             }
 
+            // First-baseline adoption is per-peer state: split the peer from its leader or followers.
+            if (slot.entries is not NTSharedEntries { hasAbsolute: false })
+                Detach(stream);
+
             AdoptEntries(stream, slot.entries, slot.order, slot.anchor, ref completed);
             slot.entries = null;
         }
@@ -674,7 +685,7 @@ namespace PurrNet.Modules
                 // revision, so skip the registration/generation work entirely.
                 int index = nt.GetNTIndex(stream.asServer);
                 ref var currentBaseline = ref stream.baselines[index];
-                if (currentBaseline.has && order <= currentBaseline.order)
+                if (currentBaseline.has && (short)(entry.tick - currentBaseline.tick) <= 0)
                     continue;
 
                 // Only anchor packets move an established baseline, even when an off-anchor packet
@@ -753,6 +764,7 @@ namespace PurrNet.Modules
             var key = asServer ? player : PlayerID.Server;
             if (_sendStreams.TryGetValue(key, out var stream))
             {
+                Detach(stream);
                 ClearBaseline(stream, data.id);
                 ClearAdaptive(stream, data.id);
                 stream.nackFloor[data.id] = stream.nextOrder;
@@ -848,7 +860,7 @@ namespace PurrNet.Modules
 
             foreach (var (player, stream) in _sendStreams)
             {
-                if (!stream.pendingInitialized)
+                if (!stream.pendingInitialized || stream.leader != null)
                     continue;
 
                 // Binary insertion is cheaper for tiny changesets. Larger changesets are
@@ -1247,7 +1259,7 @@ namespace PurrNet.Modules
         private static class NTDiag
         {
             public static long noHead, budget, tooShort, mode, tickNear, tickFar, gen, write, velocity, other, firstEntry;
-            public static long abs, delta, late, onTime;
+            public static long abs, delta, late, onTime, followed, materialized, followers;
             public static float lagMin, lagMed, lagMax;
             public static bool outer;
 
@@ -1278,7 +1290,7 @@ namespace PurrNet.Modules
 
             public static string Line(int delay)
             {
-                return $"[NTDIAG] delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
+                return $"[NTDIAG] followers={followers} followed={followed} materialized={materialized} delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
                        $"abs={abs} delta={delta} noHead={noHead} budget={budget} short={tooShort} first={firstEntry} mode={mode} " +
                        $"tickNear={tickNear} tickFar={tickFar} gen={gen} write={write} vel={velocity} other={other}";
             }
@@ -1309,6 +1321,8 @@ namespace PurrNet.Modules
             public NTShareKey[] keys = new NTShareKey[64];
             public BitPacker packet;
             public List<NTUnreliableEntry> entries;
+            public NTUnreliableSendStream origin;
+            public int index;
             public readonly List<(int index, NTLastAdaptiveWrite write)> adaptive = new();
         }
 
@@ -1473,6 +1487,10 @@ namespace PurrNet.Modules
 
             int index = _sharePacketCount++;
             var record = _sharePackets[index];
+            record.origin = stream;
+            record.index = index;
+            stream.tickPackets.Add(index);
+            stream.tickFresh = true;
             int keyCount = end - start;
             record.budgetBits = stream.budgetBits;
             record.keyCount = keyCount;
@@ -1508,6 +1526,7 @@ namespace PurrNet.Modules
                 record.packet = null;
                 NTSharedEntries.Release(record.entries);
                 record.entries = null;
+                record.origin = null;
                 record.adaptive.Clear();
             }
 
@@ -1631,6 +1650,206 @@ namespace PurrNet.Modules
             return i;
         }
 
+        // ---- Followers --------------------------------------------------------------------
+        // A peer whose whole send state equals another peer's (baselines, adaptive history,
+        // pending set, deferred anchors) follows it: it keeps no per-transform state of its own
+        // and resends the leader's packets each tick under its own seq/ack window. Anything that
+        // would make the two differ first copies the leader's state back into the follower.
+
+        private const int FOLLOW_RETRY_TICKS = 32;
+
+        private void Detach(NTUnreliableSendStream stream)
+        {
+            if (stream.leader != null)
+                MaterializeFollower(stream);
+
+            for (int i = stream.followers.Count - 1; i >= 0; i--)
+                MaterializeFollower(stream.followers[i]);
+        }
+
+        private void DetachAll()
+        {
+            foreach (var stream in _sendStreams.Values)
+            {
+                if (stream.leader != null)
+                    MaterializeFollower(stream);
+            }
+        }
+
+        private void MaterializeFollower(NTUnreliableSendStream follower)
+        {
+            var leader = follower.leader;
+            leader.followers.Remove(follower);
+            follower.leader = null;
+            NTDiag.materialized++;
+
+            follower.EnsureBaselineCapacity(leader.baselines.Length);
+            int n = leader.baselines.Length;
+            System.Array.Copy(leader.baselines, follower.baselines, n);
+            System.Array.Copy(leader.pendingByIndex, follower.pendingByIndex, n);
+            for (int i = n; i < follower.baselines.Length; i++)
+            {
+                follower.baselines[i] = default;
+                follower.pendingByIndex[i] = false;
+            }
+
+            for (int i = 0; i < follower.adaptiveByIndex.Length; i++)
+                follower.SetAdaptiveAt(i, i < n ? leader.adaptiveByIndex[i] : null);
+
+            follower.pending.Clear();
+            follower.pending.AddRange(leader.pending);
+            follower.pendingInitialized = leader.pendingInitialized;
+            follower.followRetryTick = (ushort)(_currentTick + FOLLOW_RETRY_TICKS);
+        }
+
+        // Membership changes are identical for a follower and its leader unless the peers see the
+        // transform differently (ownership, visibility); then the follower must split first.
+        private bool KeepsFollowing(NetworkTransform nt, PlayerID player, PlayerID leaderPlayer,
+            PlayerID localPlayer)
+        {
+            return IsSendCandidate(nt, player, localPlayer) == IsSendCandidate(nt, leaderPlayer, localPlayer);
+        }
+
+        private static bool CanShareState(NTUnreliableSendStream stream)
+        {
+            return stream.nackFloor.Count == 0 && stream.generationOverrides.Count == 0 && stream.pendingInitialized;
+        }
+
+        private void TryFollow(NTUnreliableSendStream stream)
+        {
+            var leader = stream.tickOrigin;
+            if (leader == null || leader == stream || stream.tickFresh || stream.tickMixed || !stream.tickShareable ||
+                stream.leader != null || stream.followers.Count > 0 || leader.leader != null ||
+                !leader.tickShareable || stream.budgetBits != leader.budgetBits ||
+                (short)(_currentTick - stream.followRetryTick) < 0 || !CanShareState(stream) || !CanShareState(leader))
+                return;
+
+            if (!SameSendState(stream, leader))
+            {
+                stream.followRetryTick = (ushort)(_currentTick + FOLLOW_RETRY_TICKS);
+                return;
+            }
+
+            stream.leader = leader;
+            leader.followers.Add(stream);
+            NTDiag.followed++;
+        }
+
+        private static bool SameSendState(NTUnreliableSendStream a, NTUnreliableSendStream b)
+        {
+            if (a.pending.Count != b.pending.Count || a.deferredAnchors.Count != b.deferredAnchors.Count)
+                return false;
+
+            for (int i = 0; i < a.pending.Count; i++)
+            {
+                if (!ReferenceEquals(a.pending[i], b.pending[i]))
+                    return false;
+            }
+
+            for (int i = 0; i < a.deferredAnchors.Count; i++)
+            {
+                if (!ReferenceEquals(a.deferredAnchors[i].entries, b.deferredAnchors[i].entries) ||
+                    a.deferredAnchors[i].tick != b.deferredAnchors[i].tick)
+                    return false;
+            }
+
+            int n = System.Math.Max(a.baselines.Length, b.baselines.Length);
+            for (int i = 0; i < n; i++)
+            {
+                var x = i < a.baselines.Length ? a.baselines[i] : default;
+                var y = i < b.baselines.Length ? b.baselines[i] : default;
+                if (x.has != y.has)
+                    return false;
+                if (x.has && (x.tick != y.tick || x.gen != y.gen || x.genEpoch != y.genEpoch ||
+                              x.revision != y.revision || !VelocityEquals(x.velocity, y.velocity) ||
+                              !x.state.Equals(y.state)))
+                    return false;
+
+                bool px = i < a.pendingByIndex.Length && a.pendingByIndex[i];
+                bool py = i < b.pendingByIndex.Length && b.pendingByIndex[i];
+                if (px != py)
+                    return false;
+
+                var wx = i < a.adaptiveByIndex.Length ? a.adaptiveByIndex[i] : null;
+                var wy = i < b.adaptiveByIndex.Length ? b.adaptiveByIndex[i] : null;
+                if (!ReferenceEquals(wx, wy) && (wx == null || wy == null || !wx.ContentEquals(wy)))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool VelocityEquals(in NetworkTransformVelocity a, in NetworkTransformVelocity b)
+        {
+            return a.posX == b.posX && a.posY == b.posY && a.posZ == b.posZ &&
+                   a.rotX == b.rotX && a.rotY == b.rotY && a.rotZ == b.rotZ && a.rotW == b.rotW &&
+                   a.scaleX == b.scaleX && a.scaleY == b.scaleY && a.scaleZ == b.scaleZ;
+        }
+
+        // A follower keeps following only if exactly the same anchors become due for it as for its
+        // leader this tick; it then drops them, since the leader's adoption already covers it.
+        private bool SameDueAnchors(NTUnreliableSendStream follower, NTUnreliableSendStream leader)
+        {
+            int f = 0;
+            int l = 0;
+            while (true)
+            {
+                while (f < follower.deferredAnchors.Count &&
+                       (short)(_currentTick - follower.deferredAnchors[f].tick) < _anchorAdoptDelay)
+                    f++;
+                while (l < leader.deferredAnchors.Count &&
+                       (short)(_currentTick - leader.deferredAnchors[l].tick) < _anchorAdoptDelay)
+                    l++;
+
+                bool fe = f >= follower.deferredAnchors.Count;
+                bool le = l >= leader.deferredAnchors.Count;
+                if (fe || le)
+                    return fe && le;
+
+                if (!ReferenceEquals(follower.deferredAnchors[f].entries, leader.deferredAnchors[l].entries))
+                    return false;
+
+                f++;
+                l++;
+            }
+        }
+
+        private void DropDueAnchors(NTUnreliableSendStream stream)
+        {
+            var deferred = stream.deferredAnchors;
+            int writeIndex = 0;
+            for (int i = 0; i < deferred.Count; i++)
+            {
+                var anchor = deferred[i];
+                if ((short)(_currentTick - anchor.tick) < _anchorAdoptDelay)
+                {
+                    deferred[writeIndex++] = anchor;
+                    continue;
+                }
+
+                NTSharedEntries.Release(anchor.entries);
+            }
+
+            deferred.RemoveRange(writeIndex, deferred.Count - writeIndex);
+        }
+
+        private void ReplayLeader(PlayerID player, NTUnreliableSendStream stream)
+        {
+            DropDueAnchors(stream);
+            stream.tickPackets.Clear();
+            stream.lastSendTick = _currentTick;
+            stream.hasSent = true;
+
+            var leader = stream.leader;
+            for (int i = 0; i < leader.tickPackets.Count; i++)
+            {
+                var record = _sharePackets[leader.tickPackets[i]];
+                entriesWrittenCount += record.entries.Count;
+                sharedPacketCount++;
+                CommitPacket(player, stream, record.packet, record.entries);
+            }
+        }
+
         private readonly List<float> _ackLags = new();
 
         // Anchors are adopted once most peers' acks have arrived (90th percentile of their recent
@@ -1651,7 +1870,9 @@ namespace PurrNet.Modules
             _ackLags.Sort();
             float median = _ackLags[(_ackLags.Count - 1) / 2];
             float lag = System.Math.Min(_ackLags[_ackLags.Count - 1], median * 2f + 1f);
-            _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(lag), 1, NTUnreliable.ANCHOR_REFRESH_AGE);
+            // One tick of margin: an ack landing right at the boundary must not split peers that
+            // share a state into "due" and "not yet due".
+            _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(lag) + 1, 2, NTUnreliable.ANCHOR_REFRESH_AGE);
             NTDiag.lagMin = _ackLags[0];
             NTDiag.lagMed = median;
             NTDiag.lagMax = _ackLags[_ackLags.Count - 1];
@@ -1660,6 +1881,14 @@ namespace PurrNet.Modules
         private void SendStatesShared(PlayerID player, PlayerID localPlayer)
         {
             var stream = PrepareSendStream(player, localPlayer);
+            stream.lastSendTick = _currentTick;
+            stream.hasSent = true;
+            stream.tickPackets.Clear();
+            stream.tickFresh = false;
+            stream.tickMixed = false;
+            stream.tickOrigin = null;
+            stream.tickShareable = true;
+
             AdoptDeferredAnchors(stream);
             if (stream.pending.Count == 0)
                 return;
@@ -1673,6 +1902,8 @@ namespace PurrNet.Modules
 
             if (!shareable)
             {
+                stream.tickShareable = false;
+                Detach(stream);
                 if (stream.pending.Count > 0)
                     SendUnreliableStates(player, stream);
                 return;
@@ -1687,6 +1918,11 @@ namespace PurrNet.Modules
                 if (record != null)
                 {
                     ReplaySharePacket(player, stream, record);
+                    stream.tickPackets.Add(record.index);
+                    if (stream.tickOrigin == null)
+                        stream.tickOrigin = record.origin;
+                    else if (stream.tickOrigin != record.origin)
+                        stream.tickMixed = true;
                     i += record.keyCount;
                     continue;
                 }
@@ -1847,15 +2083,39 @@ namespace PurrNet.Modules
                 return;
 
             var localPlayer = GetLocalPlayer();
+            SplitDivergingFollowers(networkTransform, localPlayer);
             foreach (var (player, stream) in _sendStreams)
             {
-                if (!stream.pendingInitialized)
+                if (!stream.pendingInitialized || stream.leader != null)
                     continue;
 
                 if (IsSendCandidate(networkTransform, player, localPlayer))
                     AddPending(stream, networkTransform);
             }
         }
+
+        private void SplitDivergingFollowers(NetworkTransform nt, PlayerID localPlayer)
+        {
+            foreach (var (player, stream) in _sendStreams)
+            {
+                if (stream.leader == null)
+                    continue;
+
+                if (!_streamPlayers.TryGetValue(stream.leader, out var leaderPlayer) ||
+                    !KeepsFollowing(nt, player, leaderPlayer, localPlayer))
+                    _splitScratch.Add(stream);
+            }
+
+            for (int i = 0; i < _splitScratch.Count; i++)
+            {
+                if (_splitScratch[i].leader != null)
+                    MaterializeFollower(_splitScratch[i]);
+            }
+
+            _splitScratch.Clear();
+        }
+
+        private readonly List<NTUnreliableSendStream> _splitScratch = new();
 
         private void AddTrs(NetworkTransform networkTransform)
         {
@@ -1894,6 +2154,13 @@ namespace PurrNet.Modules
             {
                 foreach (var stream in _sendStreams.Values)
                 {
+                    PurgeRing(stream.ring, nid);
+                    PurgeDeferred(stream, nid);
+
+                    // Followers share the leader's per-transform state, which is cleared below.
+                    if (stream.leader != null)
+                        continue;
+
                     if (wasRegistered && index < stream.baselines.Length)
                     {
                         stream.baselines[index] = default;
@@ -1902,8 +2169,6 @@ namespace PurrNet.Modules
                     stream.nackFloor.Remove(nid);
                     stream.generationOverrides.Remove(nid);
                     RemovePending(stream, nid);
-                    PurgeRing(stream.ring, nid);
-                    PurgeDeferred(stream, nid);
                 }
 
                 foreach (var stream in _recvStreams.Values)
@@ -1958,6 +2223,7 @@ namespace PurrNet.Modules
             if (!_sendStreams.TryGetValue(player, out var stream))
                 return;
 
+            Detach(stream);
             ClearBaseline(stream, nid);
             ClearAdaptive(stream, nid);
             stream.nackFloor.Remove(nid);
@@ -1974,6 +2240,7 @@ namespace PurrNet.Modules
 
         internal void PrepareTargetedReset(PlayerID target, NetworkID nid, byte gen, uint genEpoch)
         {
+            DetachAll();
             foreach (var (player, stream) in _sendStreams)
             {
                 if (player == target)
@@ -1992,11 +2259,14 @@ namespace PurrNet.Modules
             bool hasTransform = TryGetRegisteredTransform(nid, out var nt);
             var localPlayer = hasTransform ? GetLocalPlayer() : default;
 
+            if (hasTransform)
+                SplitDivergingFollowers(nt, localPlayer);
+
             foreach (var (player, stream) in _sendStreams)
             {
                 stream.generationOverrides.Remove(nid);
 
-                if (!hasTransform || !stream.pendingInitialized)
+                if (!hasTransform || !stream.pendingInitialized || stream.leader != null)
                     continue;
 
                 if (IsSendCandidate(nt, player, localPlayer))
@@ -2185,13 +2455,54 @@ namespace PurrNet.Modules
             }
             else if (_scenePlayers.TryGetPlayersInScene(_scene, out var players))
             {
+                // Followers whose due anchors differ from their leader's split off before the
+                // leader adopts, so they copy the pre-adoption state.
+                foreach (var stream in _sendStreams.Values)
+                {
+                    if (stream.leader != null && !SameDueAnchors(stream, stream.leader))
+                        MaterializeFollower(stream);
+                }
+
                 for (var i = 0; i < players.Count; i++)
                 {
                     var player = players[i];
                     if (player == localPlayer)
                         continue;
 
-                    SendStatesShared(player, localPlayer);
+                    if (!_sendStreams.TryGetValue(player, out var stream) || stream.leader == null)
+                        SendStatesShared(player, localPlayer);
+                }
+
+                for (var i = 0; i < players.Count; i++)
+                {
+                    var player = players[i];
+                    if (player == localPlayer || !_sendStreams.TryGetValue(player, out var stream))
+                        continue;
+
+                    if (stream.leader == null)
+                    {
+                        // Split from its leader during this tick's sends: send on its own.
+                        if (!stream.hasSent || stream.lastSendTick != _currentTick)
+                            SendStatesShared(player, localPlayer);
+                        continue;
+                    }
+
+                    if (stream.leader.tickShareable && stream.leader.hasSent &&
+                        stream.leader.lastSendTick == _currentTick)
+                    {
+                        ReplayLeader(player, stream);
+                    }
+                    else
+                    {
+                        MaterializeFollower(stream);
+                        SendStatesShared(player, localPlayer);
+                    }
+                }
+
+                foreach (var stream in _sendStreams.Values)
+                {
+                    if (stream.leader == null)
+                        TryFollow(stream);
                 }
 
                 ReleaseShareGroups();
@@ -2200,7 +2511,15 @@ namespace PurrNet.Modules
             FlushAcks();
 
             if (_asServer && _sendStreams.Count > 0 && _currentTick % 150 == 0)
+            {
+                NTDiag.followers = 0;
+                foreach (var stream in _sendStreams.Values)
+                {
+                    if (stream.leader != null)
+                        NTDiag.followers++;
+                }
                 UnityEngine.Debug.Log(NTDiag.Line(_anchorAdoptDelay));
+            }
         }
     }
 }
