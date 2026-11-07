@@ -334,6 +334,16 @@ namespace PurrNet.Modules
         }
     }
 
+    internal struct NTUnknownEntry
+    {
+        public NetworkID nid;
+        public ushort tick;
+        public byte gen;
+        public long order;
+        // An absolute entry's body, kept so the transform can take it once it is spawned.
+        public BitPacker body;
+    }
+
     internal struct NTDeferredAnchor
     {
         public List<NTUnreliableEntry> entries;
@@ -414,6 +424,8 @@ namespace PurrNet.Modules
         public bool vouchedValid;
         // Last NACK tick per transform that was not spawned here yet.
         public readonly Dictionary<NetworkID, ushort> unknownNacks = new();
+        // Entries of this tick whose transform was not spawned yet when they arrived.
+        public readonly List<NTUnknownEntry> unknownEntries = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 

@@ -457,12 +457,31 @@ namespace PurrNet.Modules
                             missed.unreliableRecvHistory?.Invalidate(data.tick);
                             SendNack(sender, lastNid);
                         }
-                        else if (ShouldNackUnknown(stream, lastNid, data.tick))
+                        else
                         {
-                            // Not spawned here yet: its spawn carries the state, and once it exists
-                            // a failed baseline lookup NACKs it. Repeating this every tick for a
-                            // whole batch of pending spawns only floods the sender.
-                            SendNack(sender, lastNid);
+                            // Not spawned here yet. The reliable spawn usually lands in the same
+                            // tick, so decide at the end of it; keep an absolute's bits so the
+                            // transform can still take it (and its baseline) once it exists.
+                            BitPacker body = null;
+                            if (isAbsolute)
+                            {
+                                body = BitPackerPool.Get();
+                                for (int left = bodyEnd - packet.positionInBits; left > 0;)
+                                {
+                                    int n = left > 64 ? 64 : left;
+                                    body.WriteBits(packet.ReadBits((byte)n), (byte)n);
+                                    left -= n;
+                                }
+                            }
+
+                            stream.unknownEntries.Add(new NTUnknownEntry
+                            {
+                                nid = lastNid,
+                                tick = data.tick,
+                                gen = gen,
+                                order = packetOrder,
+                                body = body
+                            });
                         }
                     }
 
@@ -947,6 +966,8 @@ namespace PurrNet.Modules
         {
             foreach (var (sender, stream) in _recvStreams)
             {
+                FlushUnknownNacks(sender, stream);
+
                 if (!stream.ackDirty)
                     continue;
 
@@ -954,6 +975,62 @@ namespace PurrNet.Modules
                     continue;
 
                 SendStandaloneAck(sender, stream);
+            }
+        }
+
+        // Entries for transforms that were still unknown when their packet arrived. Spawned by
+        // now: nothing to do, the spawn's state stands and a later undecodable delta NACKs it.
+        // Still unknown: NACK, at most once per interval per transform, so a batch of pending
+        // spawns does not flood the sender every tick.
+        private void FlushUnknownNacks(PlayerID sender, NTUnreliableRecvStream stream)
+        {
+            var unknown = stream.unknownEntries;
+            if (unknown.Count == 0)
+                return;
+
+            for (int i = 0; i < unknown.Count; i++)
+            {
+                var entry = unknown[i];
+                bool known = _factory.TryGetIdentity(_scene, entry.nid, out var identity) &&
+                             identity is NetworkTransform;
+
+                if (known && (entry.body == null || TryApplyLateAbsolute((NetworkTransform)identity, entry)))
+                {
+                    entry.body?.Dispose();
+                    continue;
+                }
+
+                entry.body?.Dispose();
+                if (known ? true : ShouldNackUnknown(stream, entry.nid, entry.tick))
+                    SendNack(sender, entry.nid);
+            }
+
+            unknown.Clear();
+        }
+
+        private bool TryApplyLateAbsolute(NetworkTransform nt, in NTUnknownEntry entry)
+        {
+            try
+            {
+                entry.body.ResetPositionAndMode(true);
+                var state = nt.ReadAbsoluteState(entry.body);
+
+                NetworkIdentity frameParent = null;
+                if (state.frame == NetworkTransformFrame.LocalIdentity)
+                    _factory.TryGetIdentity(_scene, state.parentId, out frameParent);
+
+                if (!nt.TryApplyUnreliableState(state, entry.gen, entry.order, entry.tick, frameParent, true))
+                    return false;
+
+                var history = nt.unreliableRecvHistory ??= new NTRecvHistory();
+                history.Store(entry.tick, state, default, entry.gen);
+                return true;
+            }
+            catch (System.Exception exception) when (exception is System.IndexOutOfRangeException or
+                                                      System.ArgumentOutOfRangeException or
+                                                      System.OverflowException)
+            {
+                return false;
             }
         }
 
