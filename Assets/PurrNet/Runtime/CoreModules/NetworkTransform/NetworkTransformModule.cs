@@ -448,8 +448,17 @@ namespace PurrNet.Modules
                     if (!recorded)
                     {
                         if (identity is NetworkTransform missed)
+                        {
                             missed.unreliableRecvHistory?.Invalidate(data.tick);
-                        SendNack(sender, lastNid);
+                            SendNack(sender, lastNid);
+                        }
+                        else if (ShouldNackUnknown(stream, lastNid, data.tick))
+                        {
+                            // Not spawned here yet: its spawn carries the state, and once it exists
+                            // a failed baseline lookup NACKs it. Repeating this every tick for a
+                            // whole batch of pending spawns only floods the sender.
+                            SendNack(sender, lastNid);
+                        }
                     }
 
                     packet.SetBitPosition(bodyEnd);
@@ -504,6 +513,21 @@ namespace PurrNet.Modules
 
         // Mid-receive acks only guard the selective-ACK window. Everything else waits for the end
         // of the tick so a sender tick is acknowledged as a whole and peers adopt anchors together.
+        private const int UNKNOWN_NACK_INTERVAL_TICKS = 30;
+
+        private static bool ShouldNackUnknown(NTUnreliableRecvStream stream, NetworkID nid, ushort tick)
+        {
+            var nacked = stream.unknownNacks;
+            if (nacked.TryGetValue(nid, out var last) && (short)(tick - last) < UNKNOWN_NACK_INTERVAL_TICKS &&
+                (short)(tick - last) >= 0)
+                return false;
+
+            if (nacked.Count >= 8192)
+                nacked.Clear();
+            nacked[nid] = tick;
+            return true;
+        }
+
         internal static bool ShouldFlushAckAfterPacket(NTUnreliableRecvStream stream)
         {
             return stream.ackDirty && stream.packetsSinceAck >= NTUnreliable.ACK_WINDOW;

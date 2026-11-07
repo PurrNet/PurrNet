@@ -407,6 +407,8 @@ namespace PurrNet.Modules
         public bool hasFrozenDev;
         public ushort vouchedTick;
         public bool vouchedValid;
+        // Last NACK tick per transform that was not spawned here yet.
+        public readonly Dictionary<NetworkID, ushort> unknownNacks = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 
