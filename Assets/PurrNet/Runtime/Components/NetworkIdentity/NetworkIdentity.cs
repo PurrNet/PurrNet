@@ -305,7 +305,7 @@ namespace PurrNet
 
         public bool isClient => isSpawned && networkManager.isClient;
 
-        public bool isClientAndObserving => isClient && _observers.Contains(localPlayerForced);
+        public bool isClientAndObserving => isClient && _observerSet.Contains(localPlayerForced);
 
         public bool isHost => isSpawned && networkManager.isHost;
 
@@ -434,6 +434,9 @@ namespace PurrNet
         public PlayerID localPlayerForced => localPlayer ?? default;
 
         private readonly List<PlayerID> _observers = new List<PlayerID>(4);
+
+        // Mirrors _observers for membership checks, which run once per observer of every spawn.
+        private readonly HashSet<PlayerID> _observerSet = new HashSet<PlayerID>();
         [System.NonSerialized] private List<PlayerID> _pendingObservers;
         [System.NonSerialized] private List<PlayerID> _mutedObservers;
 
@@ -446,10 +449,10 @@ namespace PurrNet
 
         internal bool pendingObserverStorageAllocated => _pendingObservers != null;
 
-        public bool IsObserver(PlayerID player) => _observers.Contains(player);
+        public bool IsObserver(PlayerID player) => _observerSet.Contains(player);
 
         internal bool IsObserverOrPending(PlayerID player) =>
-            _observers.Contains(player) || _pendingObservers?.Contains(player) == true;
+            _observerSet.Contains(player) || _pendingObservers?.Contains(player) == true;
 
         private void ReleasePendingObserversIfEmpty()
         {
@@ -1899,6 +1902,7 @@ namespace PurrNet
         internal void ClearObservers()
         {
             _observers.Clear();
+            _observerSet.Clear();
             ReleasePendingObservers();
         }
 
