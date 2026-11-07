@@ -85,6 +85,7 @@ namespace PurrNet.Modules
     internal sealed class NTSharedEntries : List<NTUnreliableEntry>
     {
         public int refs;
+        public bool hasAbsolute;
 
         private static readonly Stack<NTSharedEntries> _pool = new();
 
@@ -108,6 +109,7 @@ namespace PurrNet.Modules
                 return;
 
             shared.refs = 0;
+            shared.hasAbsolute = false;
             shared.Clear();
             _pool.Push(shared);
         }
@@ -285,6 +287,57 @@ namespace PurrNet.Modules
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 
+    // Receive-side baseline history, one state per sender tick. Entries name their baseline by
+    // tick distance, so every peer that acknowledged the same tick decodes the same bytes.
+    internal sealed class NTRecvHistory
+    {
+        private readonly ushort[] _ticks = new ushort[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly bool[] _valid = new bool[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly NetworkTransformState[] _states = new NetworkTransformState[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly NetworkTransformVelocity[] _velocities = new NetworkTransformVelocity[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly byte[] _gens = new byte[NTUnreliable.MAX_BASELINE_AGE];
+
+        public void Store(ushort tick, in NetworkTransformState state, in NetworkTransformVelocity velocity, byte gen)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            _ticks[i] = tick;
+            _valid[i] = true;
+            _states[i] = state;
+            _velocities[i] = velocity;
+            _gens[i] = gen;
+        }
+
+        public void Invalidate(ushort tick)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            if (_ticks[i] == tick)
+                _valid[i] = false;
+        }
+
+        public bool TryGet(ushort tick, out NetworkTransformState state, out NetworkTransformVelocity velocity,
+            out byte gen)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            if (!_valid[i] || _ticks[i] != tick)
+            {
+                state = default;
+                velocity = default;
+                gen = default;
+                return false;
+            }
+
+            state = _states[i];
+            velocity = _velocities[i];
+            gen = _gens[i];
+            return true;
+        }
+
+        public void Clear()
+        {
+            System.Array.Clear(_valid, 0, _valid.Length);
+        }
+    }
+
     internal class NTUnreliableRecvStream
     {
         public bool ackInit;
@@ -292,6 +345,7 @@ namespace PurrNet.Modules
         public long latestOrder;
         public uint ackBits;
         public bool ackDirty;
+        public bool anchorUnacked;
         public byte ackDelayTicks;
         public byte packetsSinceAck;
         public bool offsetInit;
@@ -308,17 +362,19 @@ namespace PurrNet.Modules
 
     internal static class NTUnreliable
     {
-        public const int DISTANCE_BITS = 8;
-        public const int RING_SIZE = 1 << DISTANCE_BITS;
-        // A baseline remains usable for the full receive history. Prediction has a smaller bound:
+        public const int RING_SIZE = 256;
+        // Entries reference their baseline by sender tick distance (1..MAX_BASELINE_AGE - 1), and
+        // receivers keep one state per tick for MAX_BASELINE_AGE ticks. Prediction has a smaller bound:
         // beyond it, rotation extrapolation can overflow NormalizedFloat's delta prefix budget, so
         // both peers deterministically encode against the raw baseline instead.
-        public const int MAX_BASELINE_AGE = RING_SIZE;
+        public const int DISTANCE_BITS = 6;
+        public const int MAX_BASELINE_AGE = 1 << DISTANCE_BITS;
         public const int MAX_PREDICTED_BASELINE_AGE = 48;
         // Low-volume streams do not need an application-level ACK every network tick. High-volume
         // streams flush before the 32-packet selective-ACK window can leave a permanent blind spot.
         public const int ACK_INTERVAL_TICKS = 4;
         public const int ACK_PACKET_THRESHOLD = 24;
+        public const int ACK_WINDOW = 32;
 
         /// <summary>
         /// Packets sent on ticks that are a multiple of this become the only ones that move a

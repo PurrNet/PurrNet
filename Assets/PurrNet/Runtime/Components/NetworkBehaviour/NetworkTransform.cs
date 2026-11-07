@@ -1498,6 +1498,8 @@ namespace PurrNet
 
         internal NTEncodeCache unreliableEncodeCache;
 
+        internal NTRecvHistory unreliableRecvHistory;
+
         internal int ntIndex = -1;
 
         internal NetworkID ntNid;
