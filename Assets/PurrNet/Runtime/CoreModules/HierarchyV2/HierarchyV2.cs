@@ -2861,7 +2861,8 @@ namespace PurrNet.Modules
 
                 if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
                 {
-                    _manager.FlushBatchedRPCs();
+                    if (_manager.HasPendingBatchedRPCs())
+                        _manager.FlushBatchedRPCs();
                     SendDespawnPacket(player, identity, true);
                 }
                 return;
@@ -2901,7 +2902,8 @@ namespace PurrNet.Modules
 
             if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
             {
-                _manager.FlushBatchedRPCs();
+                if (_manager.HasPendingBatchedRPCs())
+                    _manager.FlushBatchedRPCs();
                 bool identityCovered = false;
                 for (var i = 0; i < cancelledRoots.Count; i++)
                 {
@@ -2986,9 +2988,32 @@ namespace PurrNet.Modules
 
         private readonly Dictionary<NetworkID, ulong> _spawnIdxByRoot = new();
 
+        private readonly HashSet<NetworkID> _despawnedSinceFlush = new();
+
+        // Batches carry all spawns before all despawns, so an id despawned earlier in this
+        // flush window must be sent before it is spawned again.
+        private void FlushIfRespawningDespawnedId(List<NetworkIdentity> spawned)
+        {
+            if (_despawnedSinceFlush.Count == 0)
+                return;
+
+            for (var i = 0; i < spawned.Count; i++)
+            {
+                var id = spawned[i] ? spawned[i].id : null;
+                if (id.HasValue && _despawnedSinceFlush.Contains(id.Value))
+                {
+                    FlushSpawnPackets();
+                    return;
+                }
+            }
+        }
+
         private SpawnID SendSpawnPacket(PlayerID player, GameObjectPrototype prototype,
             List<NetworkIdentity> spawned, bool batched, bool isAsync = false)
         {
+            if (batched && _asServer)
+                FlushIfRespawningDespawnedId(spawned);
+
             ulong idx;
             if (batched && _asServer && spawned.Count > 0 && spawned[0] && spawned[0].id.HasValue)
             {
@@ -3420,8 +3445,21 @@ namespace PurrNet.Modules
 
                 using (_despawnFlushMarker.Auto())
                 {
-                    _manager.FlushBatchedRPCs();
-                    FlushSpawnPackets();
+                    // RPCs already queued for these identities must reach observers before the
+                    // despawn. Without any, the despawn rides in this tick's spawn batch, unless
+                    // one of its ids is spawned again first (see SendSpawnPacket).
+                    for (var i = 0; i < c; i++)
+                    {
+                        var despawnedId = children[i].id;
+                        if (despawnedId.HasValue)
+                            _despawnedSinceFlush.Add(despawnedId.Value);
+                    }
+
+                    if (_manager.HasPendingBatchedRPCs())
+                    {
+                        _manager.FlushBatchedRPCs();
+                        FlushSpawnPackets();
+                    }
                 }
             }
             else if (!bypassBroadcast)
@@ -3636,6 +3674,7 @@ namespace PurrNet.Modules
         {
             using var _ = _flushSpawnMarker.Auto();
             _spawnIdxByRoot.Clear();
+            _despawnedSinceFlush.Clear();
             ClearPrototypeCache();
 
             if (_spawnPackets.Count == 0)

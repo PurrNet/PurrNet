@@ -1376,6 +1376,9 @@ namespace PurrNet.Modules
             BatchNetworkMessages();
         }
 
+        internal bool hasPendingBatchedRPCs =>
+            (_unionBatch != null && _unionBatch.hasPending) || (_immediateBatch != null && _immediateBatch.hasPending);
+
         /// <summary>
         /// Signals that immediate content was handed to the transport outside the
         /// immediate batch, so the next <see cref="FlushImmediateRPCs"/> still forces a send.
