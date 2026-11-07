@@ -334,16 +334,19 @@ namespace PurrNet.Modules
         }
     }
 
-    internal struct NTUnknownEntry
+    internal sealed class NTUnknownWait
     {
-        public NetworkID nid;
-        public ushort tick;
+        public bool hasAbsolute;
+        public ushort absoluteTick;
         public byte gen;
         public long order;
-        // Flushes this entry has waited through.
-        public int age;
-        // An absolute entry's body, kept so the transform can take it once it is spawned.
+        // The newest absolute's body, kept so the transform can take it once it is spawned.
         public BitPacker body;
+        public bool hasDelta;
+        public ushort deltaTick;
+        // Arrived since the last flush (spawns are created after it), and flushes without news.
+        public bool fresh;
+        public int idle;
     }
 
     internal struct NTDeferredAnchor
@@ -424,12 +427,8 @@ namespace PurrNet.Modules
         public bool hasFrozenDev;
         public ushort vouchedTick;
         public bool vouchedValid;
-        // Last NACK tick per transform that was not spawned here yet.
-        public readonly Dictionary<NetworkID, ushort> unknownNacks = new();
-        // Entries whose transform was not spawned yet when they arrived: newly arrived ones, and
-        // the ones still waiting for their spawn.
-        public readonly List<NTUnknownEntry> unknownEntries = new();
-        public readonly List<NTUnknownEntry> unknownPending = new();
+        // Transforms that entries arrived for before they were spawned here.
+        public readonly Dictionary<NetworkID, NTUnknownWait> unknownWaiting = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 

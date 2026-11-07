@@ -476,29 +476,11 @@ namespace PurrNet.Modules
                         }
                         else
                         {
-                            // Not spawned here yet. The reliable spawn usually lands in the same
-                            // tick, so decide at the end of it; keep an absolute's bits so the
-                            // transform can still take it (and its baseline) once it exists.
-                            BitPacker body = null;
-                            if (isAbsolute)
-                            {
-                                body = BitPackerPool.Get();
-                                for (int left = bodyEnd - packet.positionInBits; left > 0;)
-                                {
-                                    int n = left > 64 ? 64 : left;
-                                    body.WriteBits(packet.ReadBits((byte)n), (byte)n);
-                                    left -= n;
-                                }
-                            }
-
-                            stream.unknownEntries.Add(new NTUnknownEntry
-                            {
-                                nid = lastNid,
-                                tick = data.tick,
-                                gen = gen,
-                                order = packetOrder,
-                                body = body
-                            });
+                            // Not spawned here yet: reliable spawns can trail this stream. Keep the
+                            // newest absolute (so the transform can take it once it exists) and
+                            // the newest delta it misses.
+                            RememberUnknown(stream, packet, bodyEnd, lastNid, isAbsolute, gen, packetOrder,
+                                data.tick);
                         }
                     }
 
@@ -554,20 +536,6 @@ namespace PurrNet.Modules
 
         // Mid-receive acks only guard the selective-ACK window. Everything else waits for the end
         // of the tick so a sender tick is acknowledged as a whole and peers adopt anchors together.
-        internal const int UNKNOWN_NACK_INTERVAL_TICKS = 30;
-
-        internal static bool ShouldNackUnknown(NTUnreliableRecvStream stream, NetworkID nid, ushort tick)
-        {
-            var nacked = stream.unknownNacks;
-            if (nacked.TryGetValue(nid, out var last) && (short)(tick - last) < UNKNOWN_NACK_INTERVAL_TICKS &&
-                (short)(tick - last) >= 0)
-                return false;
-
-            if (nacked.Count >= 8192)
-                nacked.Clear();
-            nacked[nid] = tick;
-            return true;
-        }
 
         internal static bool ShouldFlushAckAfterPacket(NTUnreliableRecvStream stream)
         {
@@ -995,74 +963,98 @@ namespace PurrNet.Modules
             }
         }
 
-        internal const int UNKNOWN_WAIT_FLUSHES = 30;
-        private readonly Dictionary<NetworkID, ushort> _lateApplied = new();
-        private readonly Dictionary<NetworkID, ushort> _lateMissed = new();
+        // A transform that never appears (despawned before it was spawned here) is forgotten
+        // after this many flushes without news; the sender has stopped writing it by then.
+        internal const int UNKNOWN_IDLE_FLUSHES = 900;
+        private readonly List<NetworkID> _unknownKeys = new();
 
-        // Entries for transforms that were not spawned yet when their packet arrived. Reliable
-        // spawns can trail the unreliable stream by a few ticks, so entries wait until the
-        // transform exists (up to UNKNOWN_WAIT_FLUSHES flushes; never decided in the tick they
-        // arrived, since spawns are created after this flush). Once it exists, absolutes are
-        // applied and recorded; it is NACKed only if it missed an update newer than any of them.
-        // Never spawned: NACK, at most once per interval per transform.
-        private void FlushUnknownNacks(PlayerID sender, NTUnreliableRecvStream stream)
+        private static void RememberUnknown(NTUnreliableRecvStream stream, BitPacker packet, int bodyEnd,
+            NetworkID nid, bool isAbsolute, byte gen, long order, ushort tick)
         {
-            var waiting = stream.unknownPending;
-            var arrived = stream.unknownEntries;
-            if (arrived.Count > 0)
+            if (!stream.unknownWaiting.TryGetValue(nid, out var wait))
             {
-                waiting.AddRange(arrived);
-                arrived.Clear();
+                wait = new NTUnknownWait();
+                stream.unknownWaiting.Add(nid, wait);
             }
 
+            wait.fresh = true;
+            wait.idle = 0;
+
+            if (!isAbsolute)
+            {
+                if (!wait.hasDelta || (short)(tick - wait.deltaTick) > 0)
+                {
+                    wait.hasDelta = true;
+                    wait.deltaTick = tick;
+                }
+
+                return;
+            }
+
+            if (wait.hasAbsolute && (short)(tick - wait.absoluteTick) <= 0)
+                return;
+
+            var body = wait.body ??= BitPackerPool.Get();
+            body.ResetPositionAndMode(false);
+            for (int left = bodyEnd - packet.positionInBits; left > 0;)
+            {
+                int n = left > 64 ? 64 : left;
+                body.WriteBits(packet.ReadBits((byte)n), (byte)n);
+                left -= n;
+            }
+
+            wait.hasAbsolute = true;
+            wait.absoluteTick = tick;
+            wait.gen = gen;
+            wait.order = order;
+        }
+
+        // Transforms that were not spawned yet when entries for them arrived. Once one exists, its
+        // newest absolute is applied and recorded; it is NACKed only if that failed or it missed
+        // a newer delta. Undecided in the tick the entries arrived, since spawns are created
+        // after this flush.
+        private void FlushUnknownNacks(PlayerID sender, NTUnreliableRecvStream stream)
+        {
+            var waiting = stream.unknownWaiting;
             if (waiting.Count == 0)
                 return;
 
-            _lateApplied.Clear();
-            _lateMissed.Clear();
-            int write = 0;
+            _unknownKeys.Clear();
+            foreach (var key in waiting.Keys)
+                _unknownKeys.Add(key);
 
-            for (int i = 0; i < waiting.Count; i++)
+            for (int i = 0; i < _unknownKeys.Count; i++)
             {
-                var entry = waiting[i];
-                if (entry.age == 0)
+                var nid = _unknownKeys[i];
+                var wait = waiting[nid];
+
+                if (_factory.TryGetIdentity(_scene, nid, out var identity) && identity is NetworkTransform nt)
                 {
-                    entry.age = 1;
-                    waiting[write++] = entry;
+                    bool applied = wait.hasAbsolute && TryApplyLateAbsolute(nt, wait);
+                    bool missedNewer = wait.hasDelta && (!wait.hasAbsolute || (short)(wait.deltaTick - wait.absoluteTick) > 0);
+                    if ((wait.hasAbsolute && !applied) || missedNewer)
+                        SendNack(sender, nid);
+
+                    wait.body?.Dispose();
+                    waiting.Remove(nid);
                     continue;
                 }
 
-                if (_factory.TryGetIdentity(_scene, entry.nid, out var identity) && identity is NetworkTransform nt)
+                if (wait.fresh)
                 {
-                    bool applied = entry.body != null && TryApplyLateAbsolute(nt, entry);
-                    entry.body?.Dispose();
-                    var target = applied ? _lateApplied : _lateMissed;
-                    if (!target.TryGetValue(entry.nid, out var newest) || (short)(entry.tick - newest) > 0)
-                        target[entry.nid] = entry.tick;
+                    wait.fresh = false;
                     continue;
                 }
 
-                if (++entry.age > UNKNOWN_WAIT_FLUSHES)
+                if (++wait.idle > UNKNOWN_IDLE_FLUSHES)
                 {
-                    entry.body?.Dispose();
-                    if (ShouldNackUnknown(stream, entry.nid, entry.tick))
-                        SendNack(sender, entry.nid);
-                    continue;
+                    wait.body?.Dispose();
+                    waiting.Remove(nid);
                 }
-
-                waiting[write++] = entry;
-            }
-
-            waiting.RemoveRange(write, waiting.Count - write);
-
-            foreach (var (nid, missed) in _lateMissed)
-            {
-                if (!_lateApplied.TryGetValue(nid, out var applied) || (short)(missed - applied) > 0)
-                    SendNack(sender, nid);
             }
         }
 
-        private bool TryApplyLateAbsolute(NetworkTransform nt, in NTUnknownEntry entry)
+        private bool TryApplyLateAbsolute(NetworkTransform nt, NTUnknownWait entry)
         {
             try
             {
@@ -1073,11 +1065,11 @@ namespace PurrNet.Modules
                 if (state.frame == NetworkTransformFrame.LocalIdentity)
                     _factory.TryGetIdentity(_scene, state.parentId, out frameParent);
 
-                if (!nt.TryApplyUnreliableState(state, entry.gen, entry.order, entry.tick, frameParent, true))
+                if (!nt.TryApplyUnreliableState(state, entry.gen, entry.order, entry.absoluteTick, frameParent, true))
                     return false;
 
                 var history = nt.unreliableRecvHistory ??= new NTRecvHistory();
-                history.Store(entry.tick, state, default, entry.gen);
+                history.Store(entry.absoluteTick, state, default, entry.gen);
                 return true;
             }
             catch (System.Exception exception) when (exception is System.IndexOutOfRangeException or
