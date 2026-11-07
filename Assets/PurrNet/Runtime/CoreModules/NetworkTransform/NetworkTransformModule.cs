@@ -978,34 +978,71 @@ namespace PurrNet.Modules
             }
         }
 
-        // Entries for transforms that were still unknown when their packet arrived. Spawned by
-        // now: nothing to do, the spawn's state stands and a later undecodable delta NACKs it.
-        // Still unknown: NACK, at most once per interval per transform, so a batch of pending
-        // spawns does not flood the sender every tick.
+        internal const int UNKNOWN_WAIT_FLUSHES = 30;
+        private readonly Dictionary<NetworkID, ushort> _lateApplied = new();
+        private readonly Dictionary<NetworkID, ushort> _lateMissed = new();
+
+        // Entries for transforms that were not spawned yet when their packet arrived. Reliable
+        // spawns can trail the unreliable stream by a few ticks, so entries wait until the
+        // transform exists (up to UNKNOWN_WAIT_FLUSHES flushes; never decided in the tick they
+        // arrived, since spawns are created after this flush). Once it exists, absolutes are
+        // applied and recorded; it is NACKed only if it missed an update newer than any of them.
+        // Never spawned: NACK, at most once per interval per transform.
         private void FlushUnknownNacks(PlayerID sender, NTUnreliableRecvStream stream)
         {
-            var unknown = stream.unknownEntries;
-            if (unknown.Count == 0)
+            var waiting = stream.unknownPending;
+            var arrived = stream.unknownEntries;
+            if (arrived.Count > 0)
+            {
+                waiting.AddRange(arrived);
+                arrived.Clear();
+            }
+
+            if (waiting.Count == 0)
                 return;
 
-            for (int i = 0; i < unknown.Count; i++)
-            {
-                var entry = unknown[i];
-                bool known = _factory.TryGetIdentity(_scene, entry.nid, out var identity) &&
-                             identity is NetworkTransform;
+            _lateApplied.Clear();
+            _lateMissed.Clear();
+            int write = 0;
 
-                if (known && (entry.body == null || TryApplyLateAbsolute((NetworkTransform)identity, entry)))
+            for (int i = 0; i < waiting.Count; i++)
+            {
+                var entry = waiting[i];
+                if (entry.age == 0)
                 {
-                    entry.body?.Dispose();
+                    entry.age = 1;
+                    waiting[write++] = entry;
                     continue;
                 }
 
-                entry.body?.Dispose();
-                if (known ? true : ShouldNackUnknown(stream, entry.nid, entry.tick))
-                    SendNack(sender, entry.nid);
+                if (_factory.TryGetIdentity(_scene, entry.nid, out var identity) && identity is NetworkTransform nt)
+                {
+                    bool applied = entry.body != null && TryApplyLateAbsolute(nt, entry);
+                    entry.body?.Dispose();
+                    var target = applied ? _lateApplied : _lateMissed;
+                    if (!target.TryGetValue(entry.nid, out var newest) || (short)(entry.tick - newest) > 0)
+                        target[entry.nid] = entry.tick;
+                    continue;
+                }
+
+                if (++entry.age > UNKNOWN_WAIT_FLUSHES)
+                {
+                    entry.body?.Dispose();
+                    if (ShouldNackUnknown(stream, entry.nid, entry.tick))
+                        SendNack(sender, entry.nid);
+                    continue;
+                }
+
+                waiting[write++] = entry;
             }
 
-            unknown.Clear();
+            waiting.RemoveRange(write, waiting.Count - write);
+
+            foreach (var (nid, missed) in _lateMissed)
+            {
+                if (!_lateApplied.TryGetValue(nid, out var applied) || (short)(missed - applied) > 0)
+                    SendNack(sender, nid);
+            }
         }
 
         private bool TryApplyLateAbsolute(NetworkTransform nt, in NTUnknownEntry entry)

@@ -340,6 +340,8 @@ namespace PurrNet.Modules
         public ushort tick;
         public byte gen;
         public long order;
+        // Flushes this entry has waited through.
+        public int age;
         // An absolute entry's body, kept so the transform can take it once it is spawned.
         public BitPacker body;
     }
@@ -424,8 +426,10 @@ namespace PurrNet.Modules
         public bool vouchedValid;
         // Last NACK tick per transform that was not spawned here yet.
         public readonly Dictionary<NetworkID, ushort> unknownNacks = new();
-        // Entries of this tick whose transform was not spawned yet when they arrived.
+        // Entries whose transform was not spawned yet when they arrived: newly arrived ones, and
+        // the ones still waiting for their spawn.
         public readonly List<NTUnknownEntry> unknownEntries = new();
+        public readonly List<NTUnknownEntry> unknownPending = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 
