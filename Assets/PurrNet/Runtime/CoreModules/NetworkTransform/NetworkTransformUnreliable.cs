@@ -214,6 +214,8 @@ namespace PurrNet.Modules
         public bool used;
         public bool acked;
         public bool anchor;
+        // Server fan-out: adopted at the common tick before its ack arrived.
+        public bool optimistic;
         public ushort seq;
         public ushort tick;
         public uint order;
@@ -296,10 +298,14 @@ namespace PurrNet.Modules
         // unaffected peers remain on their existing wire generation until the next global reset.
         public readonly Dictionary<NetworkID, NTUnreliableGeneration> generationOverrides = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
-        // Acknowledged anchor packets waiting for their common adoption tick, oldest order first.
+        // Sent anchor packets waiting for their common adoption tick, oldest first.
         public readonly List<NTDeferredAnchor> deferredAnchors = new();
         // Smoothed ticks between sending an anchor packet and its ack arriving.
         public float anchorAckLag;
+        // Latest acknowledgement window, used to tell lost anchors from late ones.
+        public bool hasAckWindow;
+        public ushort lastAckSeq;
+        public uint lastAckBits;
 
         // Follower state (see NetworkTransformModule): while leader is set, this stream's
         // per-transform arrays are stale and the leader's are authoritative.
@@ -327,6 +333,7 @@ namespace PurrNet.Modules
     {
         public List<NTUnreliableEntry> entries;
         public uint order;
+        public ushort seq;
         public ushort tick;
     }
 

@@ -531,6 +531,13 @@ namespace PurrNet.Modules
 
         internal void ProcessAck(NTUnreliableSendStream stream, ushort seq, uint ackBits)
         {
+            if (!stream.hasAckWindow || (short)(seq - stream.lastAckSeq) >= 0)
+            {
+                stream.hasAckWindow = true;
+                stream.lastAckSeq = seq;
+                stream.lastAckBits = ackBits;
+            }
+
             using var _ = _processAckMarker.Auto();
             List<int> completed = null;
 
@@ -605,12 +612,12 @@ namespace PurrNet.Modules
                     ? lag
                     : stream.anchorAckLag + (lag - stream.anchorAckLag) * 0.05f;
 
-                InsertDeferredAnchor(stream, new NTDeferredAnchor
-                {
-                    entries = slot.entries,
-                    order = slot.order,
-                    tick = slot.tick
-                });
+                // Adopted before its ack arrived: the ack now confirms delivery, so transforms
+                // whose final state it carried can complete.
+                if (slot.optimistic)
+                    CompleteAdopted(stream, slot.entries, ref completed);
+
+                NTSharedEntries.Release(slot.entries);
                 slot.entries = null;
                 return;
             }
@@ -622,17 +629,8 @@ namespace PurrNet.Modules
                 Detach(stream);
             }
 
-            AdoptEntries(stream, slot.entries, slot.order, slot.anchor, ref completed);
+            AdoptEntries(stream, slot.entries, slot.order, slot.anchor, true, ref completed);
             slot.entries = null;
-        }
-
-        private static void InsertDeferredAnchor(NTUnreliableSendStream stream, NTDeferredAnchor anchor)
-        {
-            var deferred = stream.deferredAnchors;
-            int at = deferred.Count;
-            while (at > 0 && deferred[at - 1].order > anchor.order)
-                at--;
-            deferred.Insert(at, anchor);
         }
 
         private void AdoptDeferredAnchors(NTUnreliableSendStream stream)
@@ -655,7 +653,21 @@ namespace PurrNet.Modules
                         continue;
                     }
 
-                    AdoptEntries(stream, anchor.entries, anchor.order, true, ref completed);
+                    switch (DecideAnchor(stream, anchor))
+                    {
+                        case NTAnchorDecision.Lost:
+                            NTDiag.lost++;
+                            NTSharedEntries.Release(anchor.entries);
+                            break;
+                        case NTAnchorDecision.Acked:
+                            AdoptEntries(stream, anchor.entries, anchor.order, true, true, ref completed);
+                            break;
+                        default:
+                            NTDiag.optimistic++;
+                            stream.ring[anchor.seq % NTUnreliable.RING_SIZE].optimistic = true;
+                            AdoptEntries(stream, anchor.entries, anchor.order, true, false, ref completed);
+                            break;
+                    }
                 }
 
                 deferred.RemoveRange(writeIndex, deferred.Count - writeIndex);
@@ -670,8 +682,105 @@ namespace PurrNet.Modules
             }
         }
 
-        private void AdoptEntries(NTUnreliableSendStream stream, List<NTUnreliableEntry> list, uint order, bool anchor,
+        private enum NTAnchorDecision : byte
+        {
+            Lost,
+            Acked,
+            Optimistic
+        }
+
+        // Every peer adopts an anchor on the same tick unless its ack window already shows the
+        // packet as lost. A peer that turns out not to have it fails the tick lookup and NACKs,
+        // which resets that transform to an absolute; only real acks complete transforms.
+        private static NTAnchorDecision DecideAnchor(NTUnreliableSendStream stream, in NTDeferredAnchor anchor)
+        {
+            ref var slot = ref stream.ring[anchor.seq % NTUnreliable.RING_SIZE];
+            if (!slot.used || slot.seq != anchor.seq)
+                return NTAnchorDecision.Lost;
+
+            if (slot.acked)
+                return NTAnchorDecision.Acked;
+
+            if (!stream.hasAckWindow)
+                return NTAnchorDecision.Optimistic;
+
+            int d = (short)(stream.lastAckSeq - anchor.seq);
+            if (d <= 0)
+                return NTAnchorDecision.Optimistic;
+            if (d > 32)
+                return NTAnchorDecision.Lost;
+
+            return (stream.lastAckBits & (1u << (d - 1))) == 0 ? NTAnchorDecision.Lost : NTAnchorDecision.Acked;
+        }
+
+        private static bool CanComplete(NTUnreliableSendStream state, in NTUnreliableEntry entry, NetworkTransform nt,
+            int index)
+        {
+            bool restSettled = !nt.hasSyncStrategy ||
+                               state.adaptiveByIndex[index] is not { } lastWrite ||
+                               (lastWrite.restConfirmed && lastWrite.redundancy == 0);
+            return entry.genEpoch == nt.sendGenEpoch && entry.revision == nt.capturedRevision && restSettled;
+        }
+
+        // Completes transforms whose optimistically adopted baseline is the acknowledged entry.
+        private void CompleteAdopted(NTUnreliableSendStream stream, List<NTUnreliableEntry> list,
             ref List<int> completed)
+        {
+            if (list == null)
+                return;
+
+            var state = stream.leader ?? stream;
+            int start = completed?.Count ?? 0;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                var entry = list[i];
+                var nt = entry.transform;
+                if (!IsLive(nt) || !nt.ntNid.Equals(entry.nid))
+                    continue;
+
+                int index = nt.GetNTIndex(stream.asServer);
+                if (index < 0 || index >= state.baselines.Length)
+                    continue;
+
+                ref var baseline = ref state.baselines[index];
+                if (!baseline.has || baseline.tick != entry.tick || baseline.revision != entry.revision ||
+                    !state.pendingByIndex[index] || !CanComplete(state, entry, nt, index))
+                    continue;
+
+                completed ??= ListPool<int>.Instantiate();
+                completed.Add(index);
+            }
+
+            // Removing pending transforms is per-peer state.
+            if (completed != null && completed.Count > start)
+            {
+                NTDiag.reason = 10;
+                Detach(stream);
+            }
+        }
+
+        // Whether adopting these entries with completion would change the pending set.
+        private static bool AnyCompletes(NTUnreliableSendStream state, List<NTUnreliableEntry> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                var entry = list[i];
+                var nt = entry.transform;
+                if (nt is null || nt.GetNTIndex(state.asServer) < 0 || !nt.ntNid.Equals(entry.nid))
+                    continue;
+
+                int index = nt.GetNTIndex(state.asServer);
+                if (index < state.pendingByIndex.Length && state.pendingByIndex[index] &&
+                    CanComplete(state, entry, nt, index))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void AdoptEntries(NTUnreliableSendStream stream, List<NTUnreliableEntry> list, uint order, bool anchor,
+            bool allowComplete, ref List<int> completed)
         {
             // Off-anchor packets only establish first baselines, and those entries are absolute.
             int count = anchor || list is not NTSharedEntries { hasAbsolute: false } ? list.Count : 0;
@@ -728,7 +837,7 @@ namespace PurrNet.Modules
                 currentBaseline.revision = entry.revision;
                 currentBaseline.order = order;
 
-                if (completes)
+                if (completes && allowComplete)
                 {
                     completed ??= ListPool<int>.Instantiate();
                     completed.Add(index);
@@ -1242,6 +1351,19 @@ namespace PurrNet.Modules
                 tick = _currentTick,
                 entries = pending
             };
+
+            if (slot.anchor && stream.asServer)
+            {
+                NTSharedEntries.Retain(pending);
+                stream.deferredAnchors.Add(new NTDeferredAnchor
+                {
+                    entries = pending,
+                    order = stream.nextOrder,
+                    seq = seq,
+                    tick = _currentTick
+                });
+            }
+
             stream.nextSeq += 1;
             stream.nextOrder += 1;
 
@@ -1266,7 +1388,7 @@ namespace PurrNet.Modules
         private static class NTDiag
         {
             public static long noHead, budget, tooShort, mode, tickNear, tickFar, gen, write, velocity, other, firstEntry;
-            public static long abs, delta, late, onTime, followed, materialized, followers;
+            public static long abs, delta, late, onTime, followed, materialized, followers, optimistic, lost, rComplete;
             public static long rUnload, rFirst, rNack, rUnshare, rSplit, rInvalidate, rTargeted, rDue, rLeaderGone, rRetryFail;
             public static int reason;
             public static float lagMin, lagMed, lagMax;
@@ -1300,7 +1422,7 @@ namespace PurrNet.Modules
             public static string Line(int delay)
             {
                 return $"[NTDIAG] followers={followers} followed={followed} materialized={materialized} " +
-                       $"why(unload/first/nack/unshare/split/invalidate/targeted/due/leaderGone)={rUnload}/{rFirst}/{rNack}/{rUnshare}/{rSplit}/{rInvalidate}/{rTargeted}/{rDue}/{rLeaderGone} followFail={rRetryFail} delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
+                       $"why(unload/first/nack/unshare/split/invalidate/targeted/due/leaderGone)={rUnload}/{rFirst}/{rNack}/{rUnshare}/{rSplit}/{rInvalidate}/{rTargeted}/{rDue}/{rLeaderGone} followFail={rRetryFail} complete={rComplete} optimistic={optimistic} lost={lost} delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
                        $"abs={abs} delta={delta} noHead={noHead} budget={budget} short={tooShort} first={firstEntry} mode={mode} " +
                        $"tickNear={tickNear} tickFar={tickFar} gen={gen} write={write} vel={velocity} other={other}";
             }
@@ -1723,6 +1845,7 @@ namespace PurrNet.Modules
                 case 7: NTDiag.rTargeted++; break;
                 case 8: NTDiag.rDue++; break;
                 case 9: NTDiag.rLeaderGone++; break;
+                case 10: NTDiag.rComplete++; break;
             }
             NTDiag.reason = 0;
 
@@ -1850,7 +1973,15 @@ namespace PurrNet.Modules
                 if (fe || le)
                     return fe && le;
 
-                if (!ReferenceEquals(follower.deferredAnchors[f].entries, leader.deferredAnchors[l].entries))
+                var fa = follower.deferredAnchors[f];
+                var la = leader.deferredAnchors[l];
+                if (!ReferenceEquals(fa.entries, la.entries))
+                    return false;
+
+                var fd = DecideAnchor(follower, fa);
+                var ld = DecideAnchor(leader, la);
+                if (fd != ld && (fd == NTAnchorDecision.Lost || ld == NTAnchorDecision.Lost ||
+                                 AnyCompletes(leader, la.entries)))
                     return false;
 
                 f++;
@@ -1870,6 +2001,9 @@ namespace PurrNet.Modules
                     deferred[writeIndex++] = anchor;
                     continue;
                 }
+
+                if (DecideAnchor(stream, anchor) == NTAnchorDecision.Optimistic)
+                    stream.ring[anchor.seq % NTUnreliable.RING_SIZE].optimistic = true;
 
                 NTSharedEntries.Release(anchor.entries);
             }
@@ -1913,7 +2047,7 @@ namespace PurrNet.Modules
 
             _ackLags.Sort();
             float median = _ackLags[(_ackLags.Count - 1) / 2];
-            float lag = System.Math.Min(_ackLags[_ackLags.Count - 1], median * 2f + 1f);
+            float lag = median;
             // One tick of margin: an ack landing right at the boundary must not split peers that
             // share a state into "due" and "not yet due".
             _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(lag) + 1, 2, NTUnreliable.ANCHOR_REFRESH_AGE);
