@@ -680,7 +680,9 @@ public class NetworkTransformProtocolTests
             module.PrepareTargetedReset(target, nid, 1, 1);
 
             Assert.That(targetStream.baselines[nt.ntIndex].has, Is.False);
-            Assert.That(targetStream.ring[0].entries, Is.Empty);
+            module.ProcessAck(targetStream, 0, 0);
+            Assert.That(targetStream.baselines[nt.ntIndex].has, Is.False,
+                "a late ack of a packet sent before the reset must not resurrect the baseline");
             Assert.That(targetStream.generationOverrides.ContainsKey(nid), Is.False);
             Assert.That(otherStream.baselines[nt.ntIndex].has, Is.True);
             Assert.That(otherStream.baselines[nt.ntIndex].gen, Is.EqualTo(1));
@@ -950,7 +952,8 @@ public class NetworkTransformProtocolTests
                 gen = nt.sendGen,
                 genEpoch = nt.sendGenEpoch,
                 revision = nt.capturedRevision,
-                transform = nt
+                transform = nt,
+                life = nt.ntLife
             });
             NTSharedEntries.Retain(shared);
             NTSharedEntries.Retain(shared);

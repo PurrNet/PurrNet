@@ -80,6 +80,8 @@ namespace PurrNet.Modules
         public uint revision;
         // Send-side only: the transform that wrote this entry, so ack adoption skips the registry search.
         public NetworkTransform transform;
+        // Send-side only: the transform's registration count when this entry was written.
+        public uint life;
     }
 
     internal sealed class NTSharedEntries : List<NTUnreliableEntry>
@@ -126,6 +128,10 @@ namespace PurrNet.Modules
         public uint revision;
         // Monotonic packet order — ushort seq wraps, so age math uses this instead.
         public uint order;
+        // Set when the baseline was dropped (NACK, observer change): only entries sent after
+        // floorTick may establish a new one, so a late ack cannot resurrect the dropped state.
+        public bool hasFloor;
+        public ushort floorTick;
     }
 
     internal enum NTWriteResult
@@ -232,9 +238,6 @@ namespace PurrNet.Modules
         // revision remain here, avoiding a full visible-transform scan every tick.
         public bool pendingInitialized;
         public readonly List<NetworkTransform> pending = new();
-        // NACK barrier: only packets written AFTER the NACK may re-establish a baseline,
-        // else the ack covering the NACKed packet resurrects the phantom (acks are cumulative).
-        public readonly Dictionary<NetworkID, uint> nackFloor = new();
         public NTBaselineSlot[] baselines = System.Array.Empty<NTBaselineSlot>();
         public bool[] pendingByIndex = System.Array.Empty<bool>();
         public bool[] ackCompleted = System.Array.Empty<bool>();
@@ -316,6 +319,8 @@ namespace PurrNet.Modules
         public bool hasSent;
         // This tick's packets, as indices into the module's share records.
         public readonly List<int> tickPackets = new();
+        // Transforms invalidated since the last send pass (followers and leaders with followers).
+        public readonly List<NetworkID> tickInvalidations = new();
         public bool tickFresh;
         public bool tickMixed;
         public bool tickShareable;

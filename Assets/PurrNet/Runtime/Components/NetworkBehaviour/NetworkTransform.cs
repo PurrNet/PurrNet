@@ -1506,6 +1506,9 @@ namespace PurrNet
 
         internal bool ntRegistered;
 
+        // Bumped on every registration so in-flight entries of a previous one are ignored.
+        internal uint ntLife;
+
         internal int ntServerIndex = -1;
 
         internal int GetNTIndex(bool asServer) => asServer ? ntServerIndex : ntIndex;

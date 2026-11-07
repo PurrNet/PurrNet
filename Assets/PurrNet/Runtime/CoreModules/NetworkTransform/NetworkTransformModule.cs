@@ -130,6 +130,8 @@ namespace PurrNet.Modules
 
         private bool IsLive(NetworkTransform nt) => nt is not null && nt.GetNTIndex(_asServer) >= 0;
 
+        // Clears the baseline and bars every entry sent up to now from becoming one again:
+        // a late ack of an earlier packet must not resurrect the state that was just dropped.
         private void ClearBaseline(NTUnreliableSendStream stream, NetworkID nid)
         {
             if (!TryGetRegisteredTransform(nid, out var nt))
@@ -137,7 +139,13 @@ namespace PurrNet.Modules
 
             int index = nt.GetNTIndex(_asServer);
             if (index >= 0 && index < stream.baselines.Length)
-                stream.baselines[index] = default;
+            {
+                stream.baselines[index] = new NTBaselineSlot
+                {
+                    hasFloor = true,
+                    floorTick = _currentTick
+                };
+            }
         }
 
         private void ClearAdaptive(NTUnreliableSendStream stream, NetworkID nid)
@@ -751,7 +759,7 @@ namespace PurrNet.Modules
             {
                 var entry = list[i];
                 var nt = entry.transform;
-                if (!IsLive(nt) || !nt.ntNid.Equals(entry.nid))
+                if (!IsLive(nt) || !nt.ntNid.Equals(entry.nid) || entry.life != nt.ntLife)
                     continue;
 
                 int index = nt.GetNTIndex(stream.asServer);
@@ -807,6 +815,11 @@ namespace PurrNet.Modules
                         continue;
                 }
 
+                // Entries of an earlier registration (pooled respawn, or another instance under
+                // the same id) never become baselines of the current one.
+                if (entry.transform is not null && (!ReferenceEquals(entry.transform, nt) || entry.life != nt.ntLife))
+                    continue;
+
                 // ACK slots are processed newest-first. Once a newer state for this transform was
                 // adopted, older retransmissions cannot improve its baseline or complete a newer
                 // revision, so skip the registration/generation work entirely.
@@ -836,14 +849,11 @@ namespace PurrNet.Modules
                 bool completes = entry.genEpoch == expectedEpoch && entry.revision == nt.capturedRevision &&
                                  restSettled;
 
-                if (stream.nackFloor.Count > 0 && stream.nackFloor.TryGetValue(entry.nid, out var floor))
-                {
-                    if (order < floor)
-                        continue;
-                    stream.nackFloor.Remove(entry.nid);
-                }
+                if (currentBaseline.hasFloor && (short)(entry.tick - currentBaseline.floorTick) <= 0)
+                    continue;
 
                 currentBaseline.has = true;
+                currentBaseline.hasFloor = false;
                 currentBaseline.state = entry.state;
                 currentBaseline.velocity = entry.velocity;
                 currentBaseline.tick = entry.tick;
@@ -897,7 +907,6 @@ namespace PurrNet.Modules
                 Detach(stream);
                 ClearBaseline(stream, data.id);
                 ClearAdaptive(stream, data.id);
-                stream.nackFloor[data.id] = stream.nextOrder;
 
                 if (stream.pendingInitialized && TryGetRegisteredTransform(data.id, out var nt))
                 {
@@ -1718,6 +1727,7 @@ namespace PurrNet.Modules
                     gen = wireGen,
                     genEpoch = wireGenEpoch,
                     revision = nt.capturedRevision,
+                    life = nt.ntLife,
                     transform = nt
                 });
 
@@ -1817,7 +1827,7 @@ namespace PurrNet.Modules
 
         private static bool CanShareState(NTUnreliableSendStream stream)
         {
-            return stream.nackFloor.Count == 0 && stream.generationOverrides.Count == 0 && stream.pendingInitialized;
+            return stream.generationOverrides.Count == 0 && stream.pendingInitialized;
         }
 
         private void TryFollow(NTUnreliableSendStream stream)
@@ -1862,7 +1872,7 @@ namespace PurrNet.Modules
             {
                 var x = i < a.baselines.Length ? a.baselines[i] : default;
                 var y = i < b.baselines.Length ? b.baselines[i] : default;
-                if (x.has != y.has)
+                if (x.has != y.has || x.hasFloor != y.hasFloor || (x.hasFloor && x.floorTick != y.floorTick))
                     return false;
                 if (x.has && (x.tick != y.tick || x.gen != y.gen || x.genEpoch != y.genEpoch ||
                               x.revision != y.revision || !VelocityEquals(x.velocity, y.velocity) ||
@@ -2138,6 +2148,7 @@ namespace PurrNet.Modules
                     gen = wireGen,
                     genEpoch = wireGenEpoch,
                     revision = nt.capturedRevision,
+                    life = nt.ntLife,
                     transform = nt
                 });
 
@@ -2183,6 +2194,7 @@ namespace PurrNet.Modules
                 networkTransform.SetNTIndex(_asServer, index);
                 networkTransform.ntNid = networkTransform.id.Value;
                 networkTransform.ntRegistered = true;
+                networkTransform.ntLife++;
             }
 
             if (_sendStreams.Count == 0)
@@ -2258,11 +2270,10 @@ namespace PurrNet.Modules
 
             if (wasRegistered || networkTransform.id.HasValue)
             {
+                // Entries still in flight carry the registration's life, so their acks are
+                // ignored after this; no need to scan every stream's send history here.
                 foreach (var stream in _sendStreams.Values)
                 {
-                    PurgeRing(stream.ring, nid);
-                    PurgeDeferred(stream, nid);
-
                     // Followers share the leader's per-transform state, which is cleared below.
                     if (stream.leader != null)
                         continue;
@@ -2272,13 +2283,9 @@ namespace PurrNet.Modules
                         stream.baselines[index] = default;
                         stream.SetAdaptiveAt(index, null);
                     }
-                    stream.nackFloor.Remove(nid);
                     stream.generationOverrides.Remove(nid);
                     RemovePending(stream, nid);
                 }
-
-                foreach (var stream in _recvStreams.Values)
-                    PurgeRing(stream.ring, nid);
             }
 
             if (wasRegistered)
@@ -2329,19 +2336,74 @@ namespace PurrNet.Modules
             if (!_sendStreams.TryGetValue(player, out var stream))
                 return;
 
-            Detach(stream);
+            // Observer changes usually hit every peer alike (spawn, despawn). A follower records
+            // its invalidations and only splits off if they differ from its leader's this tick.
+            if (stream.leader != null)
+            {
+                stream.tickInvalidations.Add(nid);
+                return;
+            }
+
+            if (stream.followers.Count > 0)
+                stream.tickInvalidations.Add(nid);
+
+            ApplyInvalidation(player, stream, nid, enqueue);
+        }
+
+        private void ApplyInvalidation(PlayerID player, NTUnreliableSendStream stream, NetworkID nid, bool enqueue)
+        {
             ClearBaseline(stream, nid);
             ClearAdaptive(stream, nid);
-            stream.nackFloor.Remove(nid);
             stream.generationOverrides.Remove(nid);
-            PurgeRing(stream.ring, nid);
-            PurgeDeferred(stream, nid);
 
             if (enqueue && stream.pendingInitialized && TryGetRegisteredTransform(nid, out var nt) &&
                 IsSendCandidate(nt, player, GetLocalPlayer()))
                 AddPending(stream, nt);
             else
                 RemovePending(stream, nid);
+        }
+
+        // Followers whose invalidations differ from their leader's copy the leader's state and
+        // then re-apply every transform either of them touched for themselves: over-invalidating
+        // costs an absolute, under-invalidating would keep sending a transform it can't see.
+        private void ReconcileInvalidations()
+        {
+            foreach (var (player, stream) in _sendStreams)
+            {
+                var leader = stream.leader;
+                if (leader == null || SameInvalidations(stream.tickInvalidations, leader.tickInvalidations))
+                    continue;
+
+                MaterializeFollower(stream);
+                for (int i = 0; i < leader.tickInvalidations.Count; i++)
+                    ReapplyMembership(player, stream, leader.tickInvalidations[i]);
+                for (int i = 0; i < stream.tickInvalidations.Count; i++)
+                    ReapplyMembership(player, stream, stream.tickInvalidations[i]);
+            }
+
+            foreach (var stream in _sendStreams.Values)
+                stream.tickInvalidations.Clear();
+        }
+
+        private void ReapplyMembership(PlayerID player, NTUnreliableSendStream stream, NetworkID nid)
+        {
+            bool candidate = TryGetRegisteredTransform(nid, out var nt) &&
+                             IsSendCandidate(nt, player, GetLocalPlayer());
+            ApplyInvalidation(player, stream, nid, candidate);
+        }
+
+        private static bool SameInvalidations(List<NetworkID> a, List<NetworkID> b)
+        {
+            if (a.Count != b.Count)
+                return false;
+
+            for (int i = 0; i < a.Count; i++)
+            {
+                if (!a[i].Equals(b[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         internal void PrepareTargetedReset(PlayerID target, NetworkID nid, byte gen, uint genEpoch)
@@ -2379,38 +2441,6 @@ namespace PurrNet.Modules
                     AddPending(stream, nt);
                 else
                     RemovePending(stream, nid);
-            }
-        }
-
-        private static void PurgeDeferred(NTUnreliableSendStream stream, NetworkID nid)
-        {
-            var deferred = stream.deferredAnchors;
-            for (int i = 0; i < deferred.Count; i++)
-            {
-                var entries = deferred[i].entries;
-                for (int e = entries.Count - 1; e >= 0; e--)
-                {
-                    if (entries[e].nid.Equals(nid))
-                        entries.RemoveAt(e);
-                }
-            }
-        }
-
-        // A late ack must not resurrect a despawned nid's baseline for a pooled object
-        // that respawned with the same NetworkID.
-        private static void PurgeRing(NTUnreliableSlot[] ring, NetworkID nid)
-        {
-            for (int i = 0; i < ring.Length; i++)
-            {
-                var entries = ring[i].entries;
-                if (entries == null)
-                    continue;
-
-                for (int e = entries.Count - 1; e >= 0; e--)
-                {
-                    if (entries[e].nid.Equals(nid))
-                        entries.RemoveAt(e);
-                }
             }
         }
 
@@ -2561,6 +2591,8 @@ namespace PurrNet.Modules
             }
             else if (_scenePlayers.TryGetPlayersInScene(_scene, out var players))
             {
+                ReconcileInvalidations();
+
                 // Followers whose due anchors differ from their leader's split off before the
                 // leader adopts, so they copy the pre-adoption state.
                 foreach (var stream in _sendStreams.Values)

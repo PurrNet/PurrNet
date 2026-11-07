@@ -1678,10 +1678,13 @@ namespace PurrNet.Modules
 
             _toSpawnNextFrame.Remove(identity);
             _toSpawnNextFrameBuffer.Remove(identity);
-            for (var i = _triggerLateObserverAdded.Count - 1; i >= 0; i--)
+            if (_triggerLateObserverAdded.Contains(identity))
             {
-                if (_triggerLateObserverAdded[i].nid == identity)
-                    _triggerLateObserverAdded.RemoveAt(i);
+                for (var i = _triggerLateObserverAdded.Count - 1; i >= 0; i--)
+                {
+                    if (_triggerLateObserverAdded[i].nid == identity)
+                        _triggerLateObserverAdded.RemoveAt(i);
+                }
             }
 
             RemoveSpawnedIdentity(identity);
@@ -2349,11 +2352,54 @@ namespace PurrNet.Modules
             public bool isSpawner;
         }
 
-        private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
+        // Pending late observer-added callbacks, with a per-identity count so despawning an
+        // identity that has none queued does not scan the whole list once per observer.
+        private sealed class PlayerNidQueue
+        {
+            private readonly List<PlayerNid> _items = new();
+            private readonly Dictionary<NetworkIdentity, int> _counts = new();
+
+            public int Count => _items.Count;
+
+            public PlayerNid this[int index] => _items[index];
+
+            public void Add(PlayerNid item)
+            {
+                _items.Add(item);
+                if (item.nid is not null)
+                    _counts[item.nid] = _counts.TryGetValue(item.nid, out var n) ? n + 1 : 1;
+            }
+
+            public void RemoveAt(int index)
+            {
+                var nid = _items[index].nid;
+                _items.RemoveAt(index);
+                if (nid is not null && _counts.TryGetValue(nid, out var n))
+                {
+                    if (n <= 1)
+                        _counts.Remove(nid);
+                    else
+                        _counts[nid] = n - 1;
+                }
+            }
+
+            public bool Contains(NetworkIdentity nid) => nid is not null && _counts.ContainsKey(nid);
+
+            public void Clear()
+            {
+                _items.Clear();
+                _counts.Clear();
+            }
+        }
+
+        private readonly PlayerNidQueue _triggerLateObserverAdded = new PlayerNidQueue();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
 
         private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
         {
+            if (!_triggerLateObserverAdded.Contains(id))
+                return;
+
             for (var i = 0; i < _triggerLateObserverAdded.Count; i++)
             {
                 if (_triggerLateObserverAdded[i].player == player && _triggerLateObserverAdded[i].nid == id)
