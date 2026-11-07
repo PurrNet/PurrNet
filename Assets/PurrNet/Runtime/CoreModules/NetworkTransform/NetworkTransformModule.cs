@@ -590,6 +590,7 @@ namespace PurrNet.Modules
             {
                 // Rises at once, decays slowly: the adoption delay follows the slower acks.
                 float lag = (short)(_currentTick - slot.tick);
+                if (lag >= _anchorAdoptDelay) NTDiag.late++; else NTDiag.onTime++;
                 stream.anchorAckLag = lag >= stream.anchorAckLag
                     ? lag
                     : stream.anchorAckLag + (lag - stream.anchorAckLag) * 0.05f;
@@ -1243,6 +1244,46 @@ namespace PurrNet.Modules
             _broadcaster.Send(player, delta, Channel.Unreliable);
         }
 
+        private static class NTDiag
+        {
+            public static long noHead, budget, tooShort, mode, tickNear, tickFar, gen, write, velocity, other, firstEntry;
+            public static long abs, delta, late, onTime;
+            public static float lagMin, lagMed, lagMax;
+            public static bool outer;
+
+            public static void Mismatch(NTShareKey[] a, NTShareKey[] b, int start, int n)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    ref var x = ref a[i];
+                    ref var y = ref b[start + i];
+                    if (KeyEquals(x, y))
+                        continue;
+                    if (i == 0) firstEntry++;
+                    if (x.mode != y.mode) mode++;
+                    else if (x.tick != y.tick)
+                    {
+                        int d = System.Math.Abs((short)(x.tick - y.tick));
+                        if (d <= NTUnreliable.BASELINE_ANCHOR_TICKS) tickNear++; else tickFar++;
+                    }
+                    else if (x.gen != y.gen || x.genEpoch != y.genEpoch) gen++;
+                    else if (x.writeFlags != y.writeFlags || x.writeTick != y.writeTick || x.writePrevTick != y.writePrevTick ||
+                             x.writePrevPrevTick != y.writePrevPrevTick || x.writeRevision != y.writeRevision ||
+                             x.writeRefresh != y.writeRefresh || x.writeRedundancy != y.writeRedundancy) write++;
+                    else if (!x.nid.Equals(y.nid)) other++;
+                    else velocity++;
+                    return;
+                }
+            }
+
+            public static string Line(int delay)
+            {
+                return $"[NTDIAG] delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
+                       $"abs={abs} delta={delta} noHead={noHead} budget={budget} short={tooShort} first={firstEntry} mode={mode} " +
+                       $"tickNear={tickNear} tickFar={tickFar} gen={gen} write={write} vel={velocity} other={other}";
+            }
+        }
+
         private struct NTShareKey
         {
             public NetworkID nid;
@@ -1391,7 +1432,11 @@ namespace PurrNet.Modules
         {
             int head = stream.pending[start].GetNTIndex(_asServer);
             if (head >= _shareHeadPass.Length || _shareHeadPass[head] != _sharePass)
+            {
+                if (_sharePacketCount > 0 && NTDiag.outer)
+                    NTDiag.noHead++;
                 return null;
+            }
 
             for (int p = _shareHead[head]; p >= 0;)
             {
@@ -1407,6 +1452,14 @@ namespace PurrNet.Modules
 
                 if (equal)
                     return record;
+
+                if (!NTDiag.outer) { }
+                else if (record.budgetBits != stream.budgetBits)
+                    NTDiag.budget++;
+                else if (start + record.keyCount > keyCount)
+                    NTDiag.tooShort++;
+                else
+                    NTDiag.Mismatch(record.keys, _shareKeys, start, record.keyCount);
             }
 
             return null;
@@ -1519,6 +1572,7 @@ namespace PurrNet.Modules
                     continue;
 
                 int entryBits = plan.bits;
+                if (plan.absolute) NTDiag.abs++; else NTDiag.delta++;
 
                 // Re-encoded as the first entry of the next packet; TryWriteEntry is idempotent within a tick.
                 if (writtenCount > 0 && packer!.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
@@ -1595,8 +1649,12 @@ namespace PurrNet.Modules
                 return;
 
             _ackLags.Sort();
-            float lag = _ackLags[(int)((_ackLags.Count - 1) * 0.9f)];
+            float median = _ackLags[(_ackLags.Count - 1) / 2];
+            float lag = System.Math.Min(_ackLags[_ackLags.Count - 1], median * 2f + 1f);
             _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(lag), 1, NTUnreliable.ANCHOR_REFRESH_AGE);
+            NTDiag.lagMin = _ackLags[0];
+            NTDiag.lagMed = median;
+            NTDiag.lagMax = _ackLags[_ackLags.Count - 1];
         }
 
         private void SendStatesShared(PlayerID player, PlayerID localPlayer)
@@ -1622,7 +1680,9 @@ namespace PurrNet.Modules
 
             for (int i = 0; i < keyCount;)
             {
+                NTDiag.outer = true;
                 var record = FindSharePacket(stream, i, keyCount);
+                NTDiag.outer = false;
 
                 if (record != null)
                 {
@@ -2138,6 +2198,9 @@ namespace PurrNet.Modules
             }
 
             FlushAcks();
+
+            if (_asServer && _sendStreams.Count > 0 && _currentTick % 150 == 0)
+                UnityEngine.Debug.Log(NTDiag.Line(_anchorAdoptDelay));
         }
     }
 }
