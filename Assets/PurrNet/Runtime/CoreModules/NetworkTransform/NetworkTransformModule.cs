@@ -53,7 +53,14 @@ namespace PurrNet.Modules
         public void PromoteToServerModule()
         {
             for (var i = 0; i < _networkTransforms.Count; i++)
+            {
                 _networkTransforms[i].PromoteNTRegistrationToServer();
+                if (_networkTransforms[i].ntClientModule == this)
+                {
+                    _networkTransforms[i].ntClientModule = null;
+                    _networkTransforms[i].ntServerModule = this;
+                }
+            }
 
             _asServer = true;
             ReleaseAllStreams();
@@ -173,6 +180,16 @@ namespace PurrNet.Modules
                 return;
 
             var nid = nt.id.Value;
+
+            // New transforms carry the highest ids, so most inserts land at the end of the list.
+            int count = stream.pending.Count;
+            if (count == 0 || (stream.pending[count - 1] is { ntRegistered: true } last && last.ntNid < nid))
+            {
+                stream.pending.Add(nt);
+                stream.SetPending(nt, true);
+                return;
+            }
+
             int lo = 0;
             int hi = stream.pending.Count - 1;
 
@@ -2309,6 +2326,10 @@ namespace PurrNet.Modules
                 networkTransform.ntNid = networkTransform.id.Value;
                 networkTransform.ntRegistered = true;
                 networkTransform.ntLife++;
+                if (_asServer)
+                    networkTransform.ntServerModule = this;
+                else
+                    networkTransform.ntClientModule = this;
             }
 
             if (_sendStreams.Count == 0)
@@ -2407,6 +2428,13 @@ namespace PurrNet.Modules
                 _byIndex[index] = null;
                 _freeIndices.Push(index);
                 networkTransform.SetNTIndex(_asServer, -1);
+                if (_asServer)
+                {
+                    if (networkTransform.ntServerModule == this)
+                        networkTransform.ntServerModule = null;
+                }
+                else if (networkTransform.ntClientModule == this)
+                    networkTransform.ntClientModule = null;
                 networkTransform.ntRegistered = networkTransform.ntIndex >= 0 || networkTransform.ntServerIndex >= 0;
                 if (!networkTransform.ntRegistered)
                     networkTransform.ntNid = default;
@@ -2462,6 +2490,59 @@ namespace PurrNet.Modules
                 stream.tickInvalidations.Add(nid);
 
             ApplyInvalidation(player, stream, nid, enqueue);
+        }
+
+        // Per-observer fast path: the transform is in hand, so no registry searches, and the
+        // pending list is only touched when membership actually changes.
+        internal void InvalidateSendBaseline(PlayerID player, NetworkTransform nt, bool enqueue)
+        {
+            if (!_sendStreams.TryGetValue(player, out var stream))
+                return;
+
+            int index = nt.GetNTIndex(_asServer);
+            if (index < 0 || !nt.ntNid.Equals(nt.id.GetValueOrDefault()))
+            {
+                InvalidateSendBaseline(player, nt.id.GetValueOrDefault(), enqueue);
+                return;
+            }
+
+            var nid = nt.ntNid;
+            if (stream.leader != null)
+            {
+                stream.tickInvalidations.Add(nid);
+                return;
+            }
+
+            if (stream.followers.Count > 0)
+                stream.tickInvalidations.Add(nid);
+
+            if (index < stream.baselines.Length)
+            {
+                stream.baselines[index] = new NTBaselineSlot
+                {
+                    hasFloor = true,
+                    floorTick = _currentTick
+                };
+
+                if (stream.adaptiveByIndex[index] != null)
+                    stream.SetAdaptiveAt(index, null);
+            }
+
+            if (stream.generationOverrides.Count > 0)
+                stream.generationOverrides.Remove(nid);
+
+            bool pending = index < stream.pendingByIndex.Length && stream.pendingByIndex[index];
+            bool candidate = enqueue && stream.pendingInitialized && IsSendCandidate(nt, player, GetLocalPlayer());
+
+            if (candidate)
+            {
+                if (!pending)
+                    AddPending(stream, nt);
+            }
+            else if (pending)
+            {
+                RemovePending(stream, nid);
+            }
         }
 
         private void ApplyInvalidation(PlayerID player, NTUnreliableSendStream stream, NetworkID nid, bool enqueue)

@@ -753,6 +753,13 @@ namespace PurrNet
             if (!networkManager || !id.HasValue)
                 return;
 
+            var registered = isServer ? ntServerModule : ntClientModule;
+            if (registered != null)
+            {
+                registered.InvalidateSendBaseline(player, this, enqueue);
+                return;
+            }
+
             if (networkManager.TryGetModule<NetworkTransformFactory>(isServer, out var factory) &&
                 factory.TryGetModule(sceneId, out var ntModule))
                 ntModule.InvalidateSendBaseline(player, id.Value, enqueue);
@@ -1510,6 +1517,10 @@ namespace PurrNet
         internal uint ntLife;
 
         internal int ntServerIndex = -1;
+
+        // The modules this transform is registered with, so per-observer callbacks skip the lookups.
+        internal NetworkTransformModule ntServerModule;
+        internal NetworkTransformModule ntClientModule;
 
         internal int GetNTIndex(bool asServer) => asServer ? ntServerIndex : ntIndex;
 
