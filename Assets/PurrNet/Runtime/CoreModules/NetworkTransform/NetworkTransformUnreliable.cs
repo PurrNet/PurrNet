@@ -205,6 +205,7 @@ namespace PurrNet.Modules
         public bool acked;
         public bool anchor;
         public ushort seq;
+        public ushort tick;
         public uint order;
         public List<NTUnreliableEntry> entries;
     }
@@ -285,6 +286,24 @@ namespace PurrNet.Modules
         // unaffected peers remain on their existing wire generation until the next global reset.
         public readonly Dictionary<NetworkID, NTUnreliableGeneration> generationOverrides = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
+        // Acknowledged anchor packets waiting for their common adoption tick, oldest order first.
+        public readonly List<NTDeferredAnchor> deferredAnchors = new();
+        // Smoothed ticks between sending an anchor packet and its ack arriving.
+        public float anchorAckLag;
+
+        public void ReleaseDeferred()
+        {
+            for (int i = 0; i < deferredAnchors.Count; i++)
+                NTSharedEntries.Release(deferredAnchors[i].entries);
+            deferredAnchors.Clear();
+        }
+    }
+
+    internal struct NTDeferredAnchor
+    {
+        public List<NTUnreliableEntry> entries;
+        public uint order;
+        public ushort tick;
     }
 
     // Receive-side baseline history, one state per sender tick. Entries name their baseline by
@@ -386,6 +405,10 @@ namespace PurrNet.Modules
         public const int BASELINE_ANCHOR_TICKS = ACK_INTERVAL_TICKS;
 
         public static bool IsAnchorTick(ushort tick) => tick % BASELINE_ANCHOR_TICKS == 0;
+
+        // Held adaptive transforms still write on an anchor once their baseline is this old, so it
+        // keeps moving forward and stays well inside MAX_BASELINE_AGE.
+        public const int ANCHOR_REFRESH_AGE = 16;
 
         public const int ADAPTIVE_MAX_BACKFILL = 34;
         public const int ADAPTIVE_POS_TOLERANCE = 2;

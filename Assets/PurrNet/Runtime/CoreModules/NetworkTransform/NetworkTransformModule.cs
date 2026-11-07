@@ -37,6 +37,7 @@ namespace PurrNet.Modules
         private readonly HierarchyFactory _factory;
         private bool _asServer;
         private ushort _currentTick;
+        private int _anchorAdoptDelay = 1;
 
         public NetworkTransformModule(NetworkManager manager, PlayersBroadcaster broadcaster,
             ScenePlayersModule scenePlayers, SceneID scene, HierarchyFactory factory)
@@ -90,6 +91,7 @@ namespace PurrNet.Modules
             {
                 NTUnreliable.Release(stream.ring);
                 stream.ReleaseAdaptive();
+                stream.ReleaseDeferred();
             }
             foreach (var stream in _recvStreams.Values)
                 NTUnreliable.Release(stream.ring);
@@ -114,6 +116,7 @@ namespace PurrNet.Modules
             {
                 NTUnreliable.Release(send.ring);
                 send.ReleaseAdaptive();
+                send.ReleaseDeferred();
             }
             if (_recvStreams.Remove(player, out var recv))
                 NTUnreliable.Release(recv.ring);
@@ -579,9 +582,81 @@ namespace PurrNet.Modules
 
             slot.acked = true;
 
+            // Fan-out streams adopt anchors at a fixed delay after the anchor tick instead of on
+            // arrival: every peer whose ack landed inside the window switches on the same tick,
+            // so their baselines (and therefore their packets) stay identical.
+            // The deferred record takes over the slot entries, since the ring may wrap first.
+            if (slot.anchor && stream.asServer)
+            {
+                // Rises at once, decays slowly: the adoption delay follows the slower acks.
+                float lag = (short)(_currentTick - slot.tick);
+                stream.anchorAckLag = lag >= stream.anchorAckLag
+                    ? lag
+                    : stream.anchorAckLag + (lag - stream.anchorAckLag) * 0.05f;
+
+                InsertDeferredAnchor(stream, new NTDeferredAnchor
+                {
+                    entries = slot.entries,
+                    order = slot.order,
+                    tick = slot.tick
+                });
+                slot.entries = null;
+                return;
+            }
+
+            AdoptEntries(stream, slot.entries, slot.order, slot.anchor, ref completed);
+            slot.entries = null;
+        }
+
+        private static void InsertDeferredAnchor(NTUnreliableSendStream stream, NTDeferredAnchor anchor)
+        {
+            var deferred = stream.deferredAnchors;
+            int at = deferred.Count;
+            while (at > 0 && deferred[at - 1].order > anchor.order)
+                at--;
+            deferred.Insert(at, anchor);
+        }
+
+        private void AdoptDeferredAnchors(NTUnreliableSendStream stream)
+        {
+            var deferred = stream.deferredAnchors;
+            if (deferred.Count == 0)
+                return;
+
+            List<int> completed = null;
+
+            try
+            {
+                int writeIndex = 0;
+                for (int i = 0; i < deferred.Count; i++)
+                {
+                    var anchor = deferred[i];
+                    if ((short)(_currentTick - anchor.tick) < _anchorAdoptDelay)
+                    {
+                        deferred[writeIndex++] = anchor;
+                        continue;
+                    }
+
+                    AdoptEntries(stream, anchor.entries, anchor.order, true, ref completed);
+                }
+
+                deferred.RemoveRange(writeIndex, deferred.Count - writeIndex);
+
+                if (completed != null)
+                    RemovePendingCompleted(stream, completed);
+            }
+            finally
+            {
+                if (completed != null)
+                    ListPool<int>.Destroy(completed);
+            }
+        }
+
+        private void AdoptEntries(NTUnreliableSendStream stream, List<NTUnreliableEntry> list, uint order, bool anchor,
+            ref List<int> completed)
+        {
             // Off-anchor packets only establish first baselines, and those entries are absolute.
-            var list = slot.entries;
-            int count = slot.anchor || list is not NTSharedEntries { hasAbsolute: false } ? list.Count : 0;
+            int count = anchor || list is not NTSharedEntries { hasAbsolute: false } ? list.Count : 0;
             for (int i = 0; i < count; i++)
             {
                 var entry = list[i];
@@ -598,13 +673,13 @@ namespace PurrNet.Modules
                 // revision, so skip the registration/generation work entirely.
                 int index = nt.GetNTIndex(stream.asServer);
                 ref var currentBaseline = ref stream.baselines[index];
-                if (currentBaseline.has && slot.order <= currentBaseline.order)
+                if (currentBaseline.has && order <= currentBaseline.order)
                     continue;
 
                 // Only anchor packets move an established baseline, even when an off-anchor packet
                 // already carries the current revision: every peer then holds the same baseline tick
                 // and the per-peer share keys converge.
-                if (currentBaseline.has && !slot.anchor)
+                if (currentBaseline.has && !anchor)
                     continue;
 
                 uint expectedEpoch = stream.generationOverrides.Count > 0 &&
@@ -621,7 +696,7 @@ namespace PurrNet.Modules
 
                 if (stream.nackFloor.Count > 0 && stream.nackFloor.TryGetValue(entry.nid, out var floor))
                 {
-                    if (slot.order < floor)
+                    if (order < floor)
                         continue;
                     stream.nackFloor.Remove(entry.nid);
                 }
@@ -633,7 +708,7 @@ namespace PurrNet.Modules
                 currentBaseline.gen = entry.gen;
                 currentBaseline.genEpoch = entry.genEpoch;
                 currentBaseline.revision = entry.revision;
-                currentBaseline.order = slot.order;
+                currentBaseline.order = order;
 
                 if (completes)
                 {
@@ -645,8 +720,7 @@ namespace PurrNet.Modules
             // Once this packet is acknowledged, every state needed for future deltas lives
             // in stream.baselines. Retaining the packet's full snapshots until ring wrap makes
             // clean-link memory scale with 64 packets instead of the actual in-flight window.
-            NTSharedEntries.Release(slot.entries);
-            slot.entries = null;
+            NTSharedEntries.Release(list);
         }
 
         internal void SendInitialState(IReadOnlyList<PlayerID> players, NetworkID id, in NetworkTransformState state,
@@ -989,7 +1063,13 @@ namespace PurrNet.Modules
                         bool refreshDue = ((uint)currentTick + (uint)nid.GetHashCode()) %
                             (uint)refreshInterval == 0;
 
-                        if (canSkip && !refreshDue && (lastWrite.redundancy == 0 ||
+                        // Baselines only move on anchor ticks, so an anchor must carry a resting
+                        // transform that has not completed yet, or a baseline that is getting old.
+                        bool anchorDue = NTUnreliable.IsAnchorTick(currentTick) &&
+                                         (!hasAcked || resting ||
+                                          (short)(currentTick - baseline.tick) >= NTUnreliable.ANCHOR_REFRESH_AGE);
+
+                        if (canSkip && !refreshDue && !anchorDue && (lastWrite.redundancy == 0 ||
                                                        sinceLastWrite < NTUnreliable.REDUNDANCY_INTERVAL))
                             return NTWriteResult.Hold;
 
@@ -1139,6 +1219,7 @@ namespace PurrNet.Modules
                 anchor = NTUnreliable.IsAnchorTick(_currentTick),
                 seq = seq,
                 order = stream.nextOrder,
+                tick = _currentTick,
                 entries = pending
             };
             stream.nextSeq += 1;
@@ -1496,9 +1577,32 @@ namespace PurrNet.Modules
             return i;
         }
 
+        private readonly List<float> _ackLags = new();
+
+        // Anchors are adopted once most peers' acks have arrived (90th percentile of their recent
+        // anchor ack lag), so those peers switch baselines on the same tick while late peers
+        // adopt on arrival instead of holding everyone back.
+        private void UpdateAnchorAdoptDelay()
+        {
+            _ackLags.Clear();
+            foreach (var stream in _sendStreams.Values)
+            {
+                if (stream.anchorAckLag > 0)
+                    _ackLags.Add(stream.anchorAckLag);
+            }
+
+            if (_ackLags.Count == 0)
+                return;
+
+            _ackLags.Sort();
+            float lag = _ackLags[(int)((_ackLags.Count - 1) * 0.9f)];
+            _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(lag), 1, NTUnreliable.ANCHOR_REFRESH_AGE);
+        }
+
         private void SendStatesShared(PlayerID player, PlayerID localPlayer)
         {
             var stream = PrepareSendStream(player, localPlayer);
+            AdoptDeferredAnchors(stream);
             if (stream.pending.Count == 0)
                 return;
 
@@ -1739,6 +1843,7 @@ namespace PurrNet.Modules
                     stream.generationOverrides.Remove(nid);
                     RemovePending(stream, nid);
                     PurgeRing(stream.ring, nid);
+                    PurgeDeferred(stream, nid);
                 }
 
                 foreach (var stream in _recvStreams.Values)
@@ -1798,6 +1903,7 @@ namespace PurrNet.Modules
             stream.nackFloor.Remove(nid);
             stream.generationOverrides.Remove(nid);
             PurgeRing(stream.ring, nid);
+            PurgeDeferred(stream, nid);
 
             if (enqueue && stream.pendingInitialized && TryGetRegisteredTransform(nid, out var nt) &&
                 IsSendCandidate(nt, player, GetLocalPlayer()))
@@ -1837,6 +1943,20 @@ namespace PurrNet.Modules
                     AddPending(stream, nt);
                 else
                     RemovePending(stream, nid);
+            }
+        }
+
+        private static void PurgeDeferred(NTUnreliableSendStream stream, NetworkID nid)
+        {
+            var deferred = stream.deferredAnchors;
+            for (int i = 0; i < deferred.Count; i++)
+            {
+                var entries = deferred[i].entries;
+                for (int e = entries.Count - 1; e >= 0; e--)
+                {
+                    if (entries[e].nid.Equals(nid))
+                        entries.RemoveAt(e);
+                }
             }
         }
 
@@ -1974,6 +2094,8 @@ namespace PurrNet.Modules
             var localPlayer = GetLocalPlayer();
             uint localTick = _manager.tickModule.localTick;
             _currentTick = (ushort)localTick;
+            if (_asServer)
+                UpdateAnchorAdoptDelay();
 
             RenderAdaptiveStates(localTick);
 
