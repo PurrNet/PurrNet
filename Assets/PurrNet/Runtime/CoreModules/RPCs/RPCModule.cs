@@ -293,6 +293,9 @@ namespace PurrNet.Modules
                 return;
             }
 
+            if (nm.isServer)
+                nm.BeforeServerRpc();
+
             var rules = nm.networkRules;
             bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
 
@@ -737,6 +740,10 @@ namespace PurrNet.Modules
 
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
         {
+            // Spawns deferred to the tick's batch replay buffered RPCs when sent; send them first.
+            if (_manager && _manager.isServer)
+                _manager.BeforeServerRpc();
+
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
 
@@ -771,6 +778,10 @@ namespace PurrNet.Modules
 
         public void AppendToBufferedRPCs(ChildRPCPacket packet, RPCSignature signature)
         {
+            // Spawns deferred to the tick's batch replay buffered RPCs when sent; send them first.
+            if (_manager && _manager.isServer)
+                _manager.BeforeServerRpc();
+
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
 
@@ -805,6 +816,10 @@ namespace PurrNet.Modules
 
         public void AppendToBufferedRPCs(RPCPacket packet, RPCSignature signature)
         {
+            // Spawns deferred to the tick's batch replay buffered RPCs when sent; send them first.
+            if (_manager && _manager.isServer)
+                _manager.BeforeServerRpc();
+
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
 

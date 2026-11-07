@@ -1974,6 +1974,14 @@ namespace PurrNet
 #endif
         }
 
+        /// <summary>
+        /// Raised before an RPC is queued on the server, so spawns deferred to the tick's batch
+        /// reach observers before the RPC (and before any buffered-RPC replay on spawn).
+        /// </summary>
+        internal event Action onBeforeServerRpc;
+
+        internal void BeforeServerRpc() => onBeforeServerRpc?.Invoke();
+
         internal bool HasPendingBatchedRPCs()
         {
             if (serverState == ConnectionState.Connected && TryGetModule<RPCModule>(true, out var server) &&

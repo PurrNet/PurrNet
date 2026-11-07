@@ -287,6 +287,8 @@ namespace PurrNet
             bool ownerOnly = false)
         {
             _sendRPCMarker.Begin();
+            if (isServer)
+                networkManager.BeforeServerRpc();
 
             switch (signature.type)
             {
@@ -459,6 +461,8 @@ namespace PurrNet
         public void SendRPCNormal(Type statisticsParent, RPCModule rpcModule, RPCPacket packet, RPCSignature signature)
         {
             _sendRPCMarker.Begin();
+            if (isServer)
+                networkManager.BeforeServerRpc();
 
             switch (signature.type)
             {

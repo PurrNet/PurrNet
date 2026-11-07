@@ -365,6 +365,11 @@ namespace PurrNet.Modules
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
+            if (_asServer)
+            {
+                _playersManager.onBeforeReliableOrderedSend += FlushDeferredSpawns;
+                _manager.onBeforeServerRpc += FlushDeferredSpawns;
+            }
 
             Init();
 
@@ -389,6 +394,11 @@ namespace PurrNet.Modules
         public void Disable()
         {
             _enabled = false;
+            if (_asServer)
+            {
+                _playersManager.onBeforeReliableOrderedSend -= FlushDeferredSpawns;
+                _manager.onBeforeServerRpc -= FlushDeferredSpawns;
+            }
             _pendingUnauthorizedParentReverts.Clear();
             ClearAsyncSpawnState();
             _cachedPrefabAsyncShapes.Clear();
@@ -2989,6 +2999,57 @@ namespace PurrNet.Modules
         private readonly Dictionary<NetworkID, ulong> _spawnIdxByRoot = new();
 
         private readonly HashSet<NetworkID> _despawnedSinceFlush = new();
+        private bool _spawnFlushDeferred;
+
+        private readonly List<(PlayerID player, DisposableList<DespawnPacket> despawns)> _heldDespawns = new();
+        private readonly List<NetworkID> _heldDespawnedIds = new();
+
+        // Sends the tick's deferred spawns ahead of another reliable-ordered message. Queued
+        // despawns stay queued: RPCs about to be flushed for those objects must still precede them.
+        private void FlushDeferredSpawns()
+        {
+            if (!_spawnFlushDeferred)
+                return;
+
+            _heldDespawns.Clear();
+            foreach (var (player, batch) in _spawnPackets)
+            {
+                if (batch.despawnPackets.Count > 0)
+                    _heldDespawns.Add((player, batch.despawnPackets));
+            }
+
+            for (var i = 0; i < _heldDespawns.Count; i++)
+            {
+                var player = _heldDespawns[i].player;
+                var batch = _spawnPackets[player];
+                if (batch.spawnPackets.Count == 0)
+                {
+                    batch.spawnPackets.Dispose();
+                    _spawnPackets.Remove(player);
+                    continue;
+                }
+
+                batch.despawnPackets = DisposableList<DespawnPacket>.Create();
+                _spawnPackets[player] = batch;
+            }
+
+            _heldDespawnedIds.Clear();
+            _heldDespawnedIds.AddRange(_despawnedSinceFlush);
+
+            FlushSpawnPackets();
+
+            for (var i = 0; i < _heldDespawns.Count; i++)
+            {
+                var (player, despawns) = _heldDespawns[i];
+                _spawnPackets[player] = new SpawnPacketBatch(_sceneId, DisposableList<SpawnPacket>.Create(), despawns);
+            }
+
+            for (var i = 0; i < _heldDespawnedIds.Count; i++)
+                _despawnedSinceFlush.Add(_heldDespawnedIds[i]);
+
+            _heldDespawns.Clear();
+            _heldDespawnedIds.Clear();
+        }
 
         // Batches carry all spawns before all despawns, so an id despawned earlier in this
         // flush window must be sent before it is spawned again.
@@ -3289,7 +3350,11 @@ namespace PurrNet.Modules
                         --_asyncVisibilityDepth;
                 }
 
-                FlushSpawnPackets();
+                // Spawns of one tick go out as one batch per observer: the reliable window counts
+                // messages, so a message per spawn stalls behind it on high-latency links. Anything
+                // sent reliable-ordered before the tick's flush flushes these first (see
+                // FlushDeferredSpawns), so nothing referencing the new objects can overtake them.
+                _spawnFlushDeferred = true;
             }
 
             AutoAssignOwnership(id);
@@ -3673,6 +3738,7 @@ namespace PurrNet.Modules
         private void FlushSpawnPackets()
         {
             using var _ = _flushSpawnMarker.Auto();
+            _spawnFlushDeferred = false;
             _spawnIdxByRoot.Clear();
             _despawnedSinceFlush.Clear();
             ClearPrototypeCache();
