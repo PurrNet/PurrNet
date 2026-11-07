@@ -1,3 +1,10 @@
+# [1.26.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.7...v1.26.0-beta.8) (2026-11-07)
+
+
+### Bug Fixes
+
+* Delta module shared baseline w. context ([c686a26](https://github.com/PurrNet/PurrNet/commit/c686a26b6b21bfb517a7796f81d751639c140b3d))
+
 # [1.26.0-beta.7](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.6...v1.26.0-beta.7) (2026-11-05)
 
 
