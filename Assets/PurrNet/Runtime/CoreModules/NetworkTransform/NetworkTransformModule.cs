@@ -1670,16 +1670,30 @@ namespace PurrNet.Modules
 
         private void Detach(NTUnreliableSendStream stream)
         {
-            int why = NTDiag.reason;
             if (stream.leader != null)
-                MaterializeFollower(stream);
-
-            for (int i = stream.followers.Count - 1; i >= 0; i--)
             {
-                NTDiag.reason = why;
-                MaterializeFollower(stream.followers[i]);
+                MaterializeFollower(stream);
+                return;
             }
 
+            if (stream.followers.Count == 0)
+            {
+                NTDiag.reason = 0;
+                return;
+            }
+
+            // The leader is about to diverge: hand its state to one follower and let the rest
+            // follow that one, instead of copying the state into every follower.
+            var heir = stream.followers[0];
+            MaterializeFollower(heir);
+            for (int i = stream.followers.Count - 1; i >= 0; i--)
+            {
+                var follower = stream.followers[i];
+                follower.leader = heir;
+                heir.followers.Add(follower);
+            }
+
+            stream.followers.Clear();
             NTDiag.reason = 0;
         }
 
