@@ -207,6 +207,14 @@ namespace PurrNet.Transports
             public RelayUsage usage;
         }
 
+#if UNITY_WEB
+        private static string FailureText(UnityWebRequest request)
+        {
+            string text = request.downloadHandler?.text;
+            return string.IsNullOrEmpty(text) ? request.error : text;
+        }
+#endif
+
         private static Exception BalancerFailure(string what, string text)
         {
             if (!string.IsNullOrEmpty(text) && text.TrimStart().StartsWith("{"))
@@ -270,7 +278,7 @@ namespace PurrNet.Transports
             var response = await request.SendWebRequest();
 
             if (response.webRequest.result != UnityWebRequest.Result.Success)
-                throw BalancerFailure("Failed to join room", response.webRequest.downloadHandler.text);
+                throw BalancerFailure("Failed to join room", FailureText(response.webRequest));
 
             var text = response.webRequest.downloadHandler.text;
             var res = JsonUtility.FromJson<ClientJoinInfo>(text);
@@ -405,7 +413,7 @@ namespace PurrNet.Transports
             var response = await request.SendWebRequest();
 
             if (response.webRequest.result != UnityWebRequest.Result.Success)
-                throw BalancerFailure("Failed to allocate room", response.webRequest.downloadHandler.text);
+                throw BalancerFailure("Failed to allocate room", FailureText(response.webRequest));
 
             var text = response.webRequest.downloadHandler.text;
             var res = JsonUtility.FromJson<HostJoinInfo>(text);

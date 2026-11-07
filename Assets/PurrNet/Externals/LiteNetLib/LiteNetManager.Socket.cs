@@ -641,6 +641,7 @@ namespace LiteNetLib
 
                     case SocketError.HostUnreachable:
                     case SocketError.NetworkUnreachable:
+                    case SocketError.AddressNotAvailable:
                         if (DisconnectOnUnreachable && remoteEndPoint is LiteNetPeer peer)
                         {
                             DisconnectPeerForce(

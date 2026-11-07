@@ -227,6 +227,7 @@ namespace PurrNet.Transports
         }
 
         private bool _hasPreparedHostMigration;
+        private string _lastListenFailure;
         private RelayServer _preparedHostMigrationServer;
         private HostJoinInfo _preparedHostMigrationJoinInfo;
         private string _preparedHostMigrationRoomName;
@@ -875,6 +876,7 @@ namespace PurrNet.Transports
             {
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATED:
                     _hasPreparedHostMigration = false;
+                    _lastListenFailure = null;
                     listenerState = ConnectionState.Connected;
                     break;
                 case SERVER_PACKET_TYPE.SERVER_AUTHENTICATION_FAILED:
@@ -1372,14 +1374,23 @@ namespace PurrNet.Transports
                 catch (Exception e)
                 {
                     StopListening();
-                    PurrLogger.LogException(e);
+                    ReportListenFailure(e);
                 }
             }
             catch (Exception e)
             {
                 StopListening();
-                PurrLogger.LogException(e.Message);
+                ReportListenFailure(e);
             }
+        }
+
+        private void ReportListenFailure(Exception e)
+        {
+            if (e.Message == _lastListenFailure)
+                return;
+
+            _lastListenFailure = e.Message;
+            PurrLogger.LogException(e);
         }
 
         private static void OnError(Exception obj)

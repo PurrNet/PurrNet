@@ -120,8 +120,19 @@ namespace PurrNet.Modules
                 return id != 0 && IndexOf(id) >= 0 ? id : 0;
             }
 
-            public bool WriteDelta(BitPacker packer, uint baselineId, in T newValue)
+            public bool WriteDelta(BitPacker packer, uint baselineId, in T newValue, float now)
             {
+                if (baselineId != 0)
+                {
+                    int used = IndexOf(baselineId);
+                    if (used >= 0)
+                    {
+                        var entry = _history[used];
+                        entry.enterTime = now;
+                        _history[used] = entry;
+                    }
+                }
+
                 for (int i = 0; i < _slotCount; i++)
                 {
                     ref var slot = ref _slots[i];
@@ -683,7 +694,7 @@ namespace PurrNet.Modules
             DeltaPacker<PackedUInt>.Write(packer, cachedKey, baselineId);
             cachedKey = baselineId;
 
-            bool changed = state.WriteDelta(packer, baselineId, newValue);
+            bool changed = state.WriteDelta(packer, baselineId, newValue, frameTime);
 
             if (changed)
             {
@@ -1055,6 +1066,24 @@ namespace PurrNet.Modules
 
 #if UNITY_INCLUDE_TESTS
         internal readonly List<uint> sentBaselineMissingForTests = new();
+
+        internal void SetFrameTimeForTests(float time) => _frameTime = time;
+
+        internal uint AcknowledgeForTests<T>(PlayerID player, uint keyHash, PackedUInt valueId, float maxAge)
+        {
+            var key = new KeyHash(typeof(T), keyHash);
+            if (!_senderKeyStates.TryGetValue(key, out var state))
+                return 0;
+
+            state.ValidateAck(GetPlayerSlot(player), valueId.value);
+            return state.Cleanup(frameTime - maxAge);
+        }
+
+        internal void CleanupForTests<T>(uint keyHash, uint upToId)
+        {
+            var player = _players?.localPlayerId ?? default;
+            GetOrCreateTracker<T>(player, keyHash, false).CleanupUpTo(upToId);
+        }
 
         internal void ConfirmDeliveryForTests<T>(PlayerID player, uint keyHash, PackedUInt valueId)
         {
