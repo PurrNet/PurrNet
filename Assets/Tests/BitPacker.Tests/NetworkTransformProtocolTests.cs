@@ -103,6 +103,21 @@ public class NetworkTransformProtocolTests
     }
 
     [Test]
+    public void UnknownTransformNacksAreRateLimitedPerTransform()
+    {
+        var stream = new NTUnreliableRecvStream();
+        var a = new NetworkID(10);
+        var b = new NetworkID(11);
+        const ushort tick = 100;
+
+        Assert.That(NetworkTransformModule.ShouldNackUnknown(stream, a, tick), Is.True);
+        Assert.That(NetworkTransformModule.ShouldNackUnknown(stream, a, tick + 1), Is.False);
+        Assert.That(NetworkTransformModule.ShouldNackUnknown(stream, b, tick + 1), Is.True);
+        Assert.That(NetworkTransformModule.ShouldNackUnknown(stream, a,
+            tick + NetworkTransformModule.UNKNOWN_NACK_INTERVAL_TICKS), Is.True);
+    }
+
+    [Test]
     public void AnchorTickPacketsAreAcknowledgedAtTheEndOfTheTick()
     {
         var stream = new NTUnreliableRecvStream { ackDirty = true, anchorUnacked = true };
@@ -502,7 +517,8 @@ public class NetworkTransformProtocolTests
             nt.CaptureUnreliableState();
             NetworkTransformModule.AddPending(serverStream, nt);
             const ushort seq = 1;
-            serverStream.ring[seq % NTUnreliable.RING_SIZE] = SlotWith(nt, seq, nt.capturedRevision);
+            // Server fan-out streams adopt anchors on a common tick; a first baseline is immediate.
+            serverStream.ring[seq % NTUnreliable.RING_SIZE] = SlotWith(nt, seq, nt.capturedRevision, anchor: false);
             Assert.DoesNotThrow(() => serverModule.ProcessAck(serverStream, seq, 0));
             Assert.That(serverStream.baselines[nt.ntServerIndex].has, Is.True);
 

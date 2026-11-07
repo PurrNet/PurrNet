@@ -115,10 +115,7 @@ namespace PurrNet.Modules
             }
 
             if (_sendStreams.TryGetValue(player, out var leaving))
-            {
-                NTDiag.reason = 1;
                 Detach(leaving);
-            }
 
             if (_sendStreams.Remove(player, out var send))
             {
@@ -513,9 +510,9 @@ namespace PurrNet.Modules
 
         // Mid-receive acks only guard the selective-ACK window. Everything else waits for the end
         // of the tick so a sender tick is acknowledged as a whole and peers adopt anchors together.
-        private const int UNKNOWN_NACK_INTERVAL_TICKS = 30;
+        internal const int UNKNOWN_NACK_INTERVAL_TICKS = 30;
 
-        private static bool ShouldNackUnknown(NTUnreliableRecvStream stream, NetworkID nid, ushort tick)
+        internal static bool ShouldNackUnknown(NTUnreliableRecvStream stream, NetworkID nid, ushort tick)
         {
             var nacked = stream.unknownNacks;
             if (nacked.TryGetValue(nid, out var last) && (short)(tick - last) < UNKNOWN_NACK_INTERVAL_TICKS &&
@@ -631,7 +628,6 @@ namespace PurrNet.Modules
             {
                 // Rises at once, decays slowly: the adoption delay follows the slower acks.
                 float lag = (short)(_currentTick - slot.tick);
-                if (lag >= _anchorAdoptDelay) NTDiag.late++; else NTDiag.onTime++;
                 stream.anchorAckLag = lag >= stream.anchorAckLag
                     ? lag
                     : stream.anchorAckLag + (lag - stream.anchorAckLag) * 0.05f;
@@ -648,10 +644,7 @@ namespace PurrNet.Modules
 
             // First-baseline adoption is per-peer state: split the peer from its leader or followers.
             if (slot.entries is not NTSharedEntries { hasAbsolute: false })
-            {
-                NTDiag.reason = 2;
                 Detach(stream);
-            }
 
             AdoptEntries(stream, slot.entries, slot.order, slot.anchor, true, ref completed);
             slot.entries = null;
@@ -680,14 +673,12 @@ namespace PurrNet.Modules
                     switch (DecideAnchor(stream, anchor))
                     {
                         case NTAnchorDecision.Lost:
-                            NTDiag.lost++;
                             NTSharedEntries.Release(anchor.entries);
                             break;
                         case NTAnchorDecision.Acked:
                             AdoptEntries(stream, anchor.entries, anchor.order, true, true, ref completed);
                             break;
                         default:
-                            NTDiag.optimistic++;
                             stream.ring[anchor.seq % NTUnreliable.RING_SIZE].optimistic = true;
                             AdoptEntries(stream, anchor.entries, anchor.order, true, false, ref completed);
                             break;
@@ -778,10 +769,7 @@ namespace PurrNet.Modules
 
             // Removing pending transforms is per-peer state.
             if (completed != null && completed.Count > start)
-            {
-                NTDiag.reason = 10;
                 Detach(stream);
-            }
         }
 
         // Whether adopting these entries with completion would change the pending set.
@@ -824,7 +812,10 @@ namespace PurrNet.Modules
                 // revision, so skip the registration/generation work entirely.
                 int index = nt.GetNTIndex(stream.asServer);
                 ref var currentBaseline = ref stream.baselines[index];
-                if (currentBaseline.has && (short)(entry.tick - currentBaseline.tick) <= 0)
+                // Ticks order adoptions in any peer's packet numbering (follower state is copied
+                // between peers); the packet order only breaks ties within a tick.
+                if (currentBaseline.has && ((short)(entry.tick - currentBaseline.tick) < 0 ||
+                                            (entry.tick == currentBaseline.tick && order <= currentBaseline.order)))
                     continue;
 
                 // Only anchor packets move an established baseline, even when an off-anchor packet
@@ -903,7 +894,6 @@ namespace PurrNet.Modules
             var key = asServer ? player : PlayerID.Server;
             if (_sendStreams.TryGetValue(key, out var stream))
             {
-                NTDiag.reason = 3;
                 Detach(stream);
                 ClearBaseline(stream, data.id);
                 ClearAdaptive(stream, data.id);
@@ -1409,49 +1399,6 @@ namespace PurrNet.Modules
             _broadcaster.Send(player, delta, Channel.Unreliable);
         }
 
-        private static class NTDiag
-        {
-            public static long noHead, budget, tooShort, mode, tickNear, tickFar, gen, write, velocity, other, firstEntry;
-            public static long abs, delta, late, onTime, followed, materialized, followers, optimistic, lost, rComplete;
-            public static long rUnload, rFirst, rNack, rUnshare, rSplit, rInvalidate, rTargeted, rDue, rLeaderGone, rRetryFail;
-            public static int reason;
-            public static float lagMin, lagMed, lagMax;
-            public static bool outer;
-
-            public static void Mismatch(NTShareKey[] a, NTShareKey[] b, int start, int n)
-            {
-                for (int i = 0; i < n; i++)
-                {
-                    ref var x = ref a[i];
-                    ref var y = ref b[start + i];
-                    if (KeyEquals(x, y))
-                        continue;
-                    if (i == 0) firstEntry++;
-                    if (x.mode != y.mode) mode++;
-                    else if (x.tick != y.tick)
-                    {
-                        int d = System.Math.Abs((short)(x.tick - y.tick));
-                        if (d <= NTUnreliable.BASELINE_ANCHOR_TICKS) tickNear++; else tickFar++;
-                    }
-                    else if (x.gen != y.gen || x.genEpoch != y.genEpoch) gen++;
-                    else if (x.writeFlags != y.writeFlags || x.writeTick != y.writeTick || x.writePrevTick != y.writePrevTick ||
-                             x.writePrevPrevTick != y.writePrevPrevTick || x.writeRevision != y.writeRevision ||
-                             x.writeRefresh != y.writeRefresh || x.writeRedundancy != y.writeRedundancy) write++;
-                    else if (!x.nid.Equals(y.nid)) other++;
-                    else velocity++;
-                    return;
-                }
-            }
-
-            public static string Line(int delay)
-            {
-                return $"[NTDIAG] followers={followers} followed={followed} materialized={materialized} " +
-                       $"why(unload/first/nack/unshare/split/invalidate/targeted/due/leaderGone)={rUnload}/{rFirst}/{rNack}/{rUnshare}/{rSplit}/{rInvalidate}/{rTargeted}/{rDue}/{rLeaderGone} followFail={rRetryFail} complete={rComplete} optimistic={optimistic} lost={lost} delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
-                       $"abs={abs} delta={delta} noHead={noHead} budget={budget} short={tooShort} first={firstEntry} mode={mode} " +
-                       $"tickNear={tickNear} tickFar={tickFar} gen={gen} write={write} vel={velocity} other={other}";
-            }
-        }
-
         private struct NTShareKey
         {
             public NetworkID nid;
@@ -1602,11 +1549,7 @@ namespace PurrNet.Modules
         {
             int head = stream.pending[start].GetNTIndex(_asServer);
             if (head >= _shareHeadPass.Length || _shareHeadPass[head] != _sharePass)
-            {
-                if (_sharePacketCount > 0 && NTDiag.outer)
-                    NTDiag.noHead++;
                 return null;
-            }
 
             for (int p = _shareHead[head]; p >= 0;)
             {
@@ -1622,14 +1565,6 @@ namespace PurrNet.Modules
 
                 if (equal)
                     return record;
-
-                if (!NTDiag.outer) { }
-                else if (record.budgetBits != stream.budgetBits)
-                    NTDiag.budget++;
-                else if (start + record.keyCount > keyCount)
-                    NTDiag.tooShort++;
-                else
-                    NTDiag.Mismatch(record.keys, _shareKeys, start, record.keyCount);
             }
 
             return null;
@@ -1747,7 +1682,6 @@ namespace PurrNet.Modules
                     continue;
 
                 int entryBits = plan.bits;
-                if (plan.absolute) NTDiag.abs++; else NTDiag.delta++;
 
                 // Re-encoded as the first entry of the next packet; TryWriteEntry is idempotent within a tick.
                 if (writtenCount > 0 && packer!.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
@@ -1823,10 +1757,7 @@ namespace PurrNet.Modules
             }
 
             if (stream.followers.Count == 0)
-            {
-                NTDiag.reason = 0;
                 return;
-            }
 
             // The leader is about to diverge: hand its state to one follower and let the rest
             // follow that one, instead of copying the state into every follower.
@@ -1840,7 +1771,6 @@ namespace PurrNet.Modules
             }
 
             stream.followers.Clear();
-            NTDiag.reason = 0;
         }
 
         private void DetachAll()
@@ -1857,21 +1787,6 @@ namespace PurrNet.Modules
             var leader = follower.leader;
             leader.followers.Remove(follower);
             follower.leader = null;
-            NTDiag.materialized++;
-            switch (NTDiag.reason)
-            {
-                case 1: NTDiag.rUnload++; break;
-                case 2: NTDiag.rFirst++; break;
-                case 3: NTDiag.rNack++; break;
-                case 4: NTDiag.rUnshare++; break;
-                case 5: NTDiag.rSplit++; break;
-                case 6: NTDiag.rInvalidate++; break;
-                case 7: NTDiag.rTargeted++; break;
-                case 8: NTDiag.rDue++; break;
-                case 9: NTDiag.rLeaderGone++; break;
-                case 10: NTDiag.rComplete++; break;
-            }
-            NTDiag.reason = 0;
 
             follower.EnsureBaselineCapacity(leader.baselines.Length);
             int n = leader.baselines.Length;
@@ -1916,14 +1831,12 @@ namespace PurrNet.Modules
 
             if (!SameSendState(stream, leader))
             {
-                NTDiag.rRetryFail++;
                 stream.followRetryTick = (ushort)(_currentTick + FOLLOW_RETRY_TICKS);
                 return;
             }
 
             stream.leader = leader;
             leader.followers.Add(stream);
-            NTDiag.followed++;
         }
 
         private static bool SameSendState(NTUnreliableSendStream a, NTUnreliableSendStream b)
@@ -2054,9 +1967,8 @@ namespace PurrNet.Modules
 
         private readonly List<float> _ackLags = new();
 
-        // Anchors are adopted once most peers' acks have arrived (90th percentile of their recent
-        // anchor ack lag), so those peers switch baselines on the same tick while late peers
-        // adopt on arrival instead of holding everyone back.
+        // Every peer adopts a sent anchor at the same delay. Waiting for the median ack lag means
+        // most acks (and so most losses) are known by then; the rest adopt optimistically.
         private void UpdateAnchorAdoptDelay()
         {
             _ackLags.Clear();
@@ -2071,13 +1983,7 @@ namespace PurrNet.Modules
 
             _ackLags.Sort();
             float median = _ackLags[(_ackLags.Count - 1) / 2];
-            float lag = median;
-            // One tick of margin: an ack landing right at the boundary must not split peers that
-            // share a state into "due" and "not yet due".
-            _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(lag) + 1, 2, NTUnreliable.ANCHOR_REFRESH_AGE);
-            NTDiag.lagMin = _ackLags[0];
-            NTDiag.lagMed = median;
-            NTDiag.lagMax = _ackLags[_ackLags.Count - 1];
+            _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(median) + 1, 2, NTUnreliable.ANCHOR_REFRESH_AGE);
         }
 
         private void SendStatesShared(PlayerID player, PlayerID localPlayer)
@@ -2105,7 +2011,6 @@ namespace PurrNet.Modules
             if (!shareable)
             {
                 stream.tickShareable = false;
-                NTDiag.reason = 4;
                 Detach(stream);
                 if (stream.pending.Count > 0)
                     SendUnreliableStates(player, stream);
@@ -2114,9 +2019,7 @@ namespace PurrNet.Modules
 
             for (int i = 0; i < keyCount;)
             {
-                NTDiag.outer = true;
                 var record = FindSharePacket(stream, i, keyCount);
-                NTDiag.outer = false;
 
                 if (record != null)
                 {
@@ -2312,10 +2215,7 @@ namespace PurrNet.Modules
             for (int i = 0; i < _splitScratch.Count; i++)
             {
                 if (_splitScratch[i].leader != null)
-                {
-                    NTDiag.reason = 5;
                     MaterializeFollower(_splitScratch[i]);
-                }
             }
 
             _splitScratch.Clear();
@@ -2429,7 +2329,6 @@ namespace PurrNet.Modules
             if (!_sendStreams.TryGetValue(player, out var stream))
                 return;
 
-            NTDiag.reason = 6;
             Detach(stream);
             ClearBaseline(stream, nid);
             ClearAdaptive(stream, nid);
@@ -2447,7 +2346,6 @@ namespace PurrNet.Modules
 
         internal void PrepareTargetedReset(PlayerID target, NetworkID nid, byte gen, uint genEpoch)
         {
-            NTDiag.reason = 7;
             DetachAll();
             foreach (var (player, stream) in _sendStreams)
             {
@@ -2668,10 +2566,7 @@ namespace PurrNet.Modules
                 foreach (var stream in _sendStreams.Values)
                 {
                     if (stream.leader != null && !SameDueAnchors(stream, stream.leader))
-                    {
-                        NTDiag.reason = 8;
                         MaterializeFollower(stream);
-                    }
                 }
 
                 for (var i = 0; i < players.Count; i++)
@@ -2705,7 +2600,6 @@ namespace PurrNet.Modules
                     }
                     else
                     {
-                        NTDiag.reason = 9;
                         MaterializeFollower(stream);
                         SendStatesShared(player, localPlayer);
                     }
@@ -2722,16 +2616,6 @@ namespace PurrNet.Modules
 
             FlushAcks();
 
-            if (_asServer && _sendStreams.Count > 0 && _currentTick % 150 == 0)
-            {
-                NTDiag.followers = 0;
-                foreach (var stream in _sendStreams.Values)
-                {
-                    if (stream.leader != null)
-                        NTDiag.followers++;
-                }
-                UnityEngine.Debug.Log(NTDiag.Line(_anchorAdoptDelay));
-            }
         }
     }
 }
