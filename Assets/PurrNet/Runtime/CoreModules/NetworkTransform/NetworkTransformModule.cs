@@ -115,7 +115,10 @@ namespace PurrNet.Modules
             }
 
             if (_sendStreams.TryGetValue(player, out var leaving))
+            {
+                NTDiag.reason = 1;
                 Detach(leaving);
+            }
 
             if (_sendStreams.Remove(player, out var send))
             {
@@ -614,7 +617,10 @@ namespace PurrNet.Modules
 
             // First-baseline adoption is per-peer state: split the peer from its leader or followers.
             if (slot.entries is not NTSharedEntries { hasAbsolute: false })
+            {
+                NTDiag.reason = 2;
                 Detach(stream);
+            }
 
             AdoptEntries(stream, slot.entries, slot.order, slot.anchor, ref completed);
             slot.entries = null;
@@ -764,6 +770,7 @@ namespace PurrNet.Modules
             var key = asServer ? player : PlayerID.Server;
             if (_sendStreams.TryGetValue(key, out var stream))
             {
+                NTDiag.reason = 3;
                 Detach(stream);
                 ClearBaseline(stream, data.id);
                 ClearAdaptive(stream, data.id);
@@ -1260,6 +1267,8 @@ namespace PurrNet.Modules
         {
             public static long noHead, budget, tooShort, mode, tickNear, tickFar, gen, write, velocity, other, firstEntry;
             public static long abs, delta, late, onTime, followed, materialized, followers;
+            public static long rUnload, rFirst, rNack, rUnshare, rSplit, rInvalidate, rTargeted, rDue, rLeaderGone, rRetryFail;
+            public static int reason;
             public static float lagMin, lagMed, lagMax;
             public static bool outer;
 
@@ -1290,7 +1299,8 @@ namespace PurrNet.Modules
 
             public static string Line(int delay)
             {
-                return $"[NTDIAG] followers={followers} followed={followed} materialized={materialized} delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
+                return $"[NTDIAG] followers={followers} followed={followed} materialized={materialized} " +
+                       $"why(unload/first/nack/unshare/split/invalidate/targeted/due/leaderGone)={rUnload}/{rFirst}/{rNack}/{rUnshare}/{rSplit}/{rInvalidate}/{rTargeted}/{rDue}/{rLeaderGone} followFail={rRetryFail} delay={delay} lag(min/med/max)={lagMin:F1}/{lagMed:F1}/{lagMax:F1} anchorOnTime={onTime} anchorLate={late} " +
                        $"abs={abs} delta={delta} noHead={noHead} budget={budget} short={tooShort} first={firstEntry} mode={mode} " +
                        $"tickNear={tickNear} tickFar={tickFar} gen={gen} write={write} vel={velocity} other={other}";
             }
@@ -1660,11 +1670,17 @@ namespace PurrNet.Modules
 
         private void Detach(NTUnreliableSendStream stream)
         {
+            int why = NTDiag.reason;
             if (stream.leader != null)
                 MaterializeFollower(stream);
 
             for (int i = stream.followers.Count - 1; i >= 0; i--)
+            {
+                NTDiag.reason = why;
                 MaterializeFollower(stream.followers[i]);
+            }
+
+            NTDiag.reason = 0;
         }
 
         private void DetachAll()
@@ -1682,6 +1698,19 @@ namespace PurrNet.Modules
             leader.followers.Remove(follower);
             follower.leader = null;
             NTDiag.materialized++;
+            switch (NTDiag.reason)
+            {
+                case 1: NTDiag.rUnload++; break;
+                case 2: NTDiag.rFirst++; break;
+                case 3: NTDiag.rNack++; break;
+                case 4: NTDiag.rUnshare++; break;
+                case 5: NTDiag.rSplit++; break;
+                case 6: NTDiag.rInvalidate++; break;
+                case 7: NTDiag.rTargeted++; break;
+                case 8: NTDiag.rDue++; break;
+                case 9: NTDiag.rLeaderGone++; break;
+            }
+            NTDiag.reason = 0;
 
             follower.EnsureBaselineCapacity(leader.baselines.Length);
             int n = leader.baselines.Length;
@@ -1726,6 +1755,7 @@ namespace PurrNet.Modules
 
             if (!SameSendState(stream, leader))
             {
+                NTDiag.rRetryFail++;
                 stream.followRetryTick = (ushort)(_currentTick + FOLLOW_RETRY_TICKS);
                 return;
             }
@@ -1903,6 +1933,7 @@ namespace PurrNet.Modules
             if (!shareable)
             {
                 stream.tickShareable = false;
+                NTDiag.reason = 4;
                 Detach(stream);
                 if (stream.pending.Count > 0)
                     SendUnreliableStates(player, stream);
@@ -2109,7 +2140,10 @@ namespace PurrNet.Modules
             for (int i = 0; i < _splitScratch.Count; i++)
             {
                 if (_splitScratch[i].leader != null)
+                {
+                    NTDiag.reason = 5;
                     MaterializeFollower(_splitScratch[i]);
+                }
             }
 
             _splitScratch.Clear();
@@ -2223,6 +2257,7 @@ namespace PurrNet.Modules
             if (!_sendStreams.TryGetValue(player, out var stream))
                 return;
 
+            NTDiag.reason = 6;
             Detach(stream);
             ClearBaseline(stream, nid);
             ClearAdaptive(stream, nid);
@@ -2240,6 +2275,7 @@ namespace PurrNet.Modules
 
         internal void PrepareTargetedReset(PlayerID target, NetworkID nid, byte gen, uint genEpoch)
         {
+            NTDiag.reason = 7;
             DetachAll();
             foreach (var (player, stream) in _sendStreams)
             {
@@ -2460,7 +2496,10 @@ namespace PurrNet.Modules
                 foreach (var stream in _sendStreams.Values)
                 {
                     if (stream.leader != null && !SameDueAnchors(stream, stream.leader))
+                    {
+                        NTDiag.reason = 8;
                         MaterializeFollower(stream);
+                    }
                 }
 
                 for (var i = 0; i < players.Count; i++)
@@ -2494,6 +2533,7 @@ namespace PurrNet.Modules
                     }
                     else
                     {
+                        NTDiag.reason = 9;
                         MaterializeFollower(stream);
                         SendStatesShared(player, localPlayer);
                     }
