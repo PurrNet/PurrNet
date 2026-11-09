@@ -490,8 +490,7 @@ namespace PurrNet.Modules
             _pendingLocalDespawnEchoes.Dispose();
 
             var rules = _manager.networkRules;
-            if (rules && !rules.ShouldCleanupSpawnedObjectsOnDisconnect())
-                return true;
+            bool cleanupSpawned = !rules || rules.ShouldCleanupSpawnedObjectsOnDisconnect();
 
             if (_isDisposed)
                 return true;
@@ -514,7 +513,7 @@ namespace PurrNet.Modules
 
                 var root = nid.GetRootIdentity();
 
-                if (!root)
+                if (!root || (!cleanupSpawned && !root.isSceneObject))
                     continue;
 
                 hash.Add(root);
