@@ -1,3 +1,10 @@
+# [1.26.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.9...v1.26.0-beta.10) (2026-11-09)
+
+
+### Performance Improvements
+
+* NetworkTransform and spawn fan-out scale to 2000 objects at 100 clients ([5e0fd8c](https://github.com/PurrNet/PurrNet/commit/5e0fd8cb5011703d64d9abbadb191a706ba72e89))
+
 # [1.26.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.8...v1.26.0-beta.9) (2026-11-09)
 
 
