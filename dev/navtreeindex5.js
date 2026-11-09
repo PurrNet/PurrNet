@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"classPurrNet_1_1StateMachine_1_1StateNode.html#adc39184e990aecae3fd3c0c7b43ba71f":[0,0,0,8,3,5],
+"classPurrNet_1_1StatisticsManager.html":[1,0,0,159],
 "classPurrNet_1_1StatisticsManager.html":[0,0,0,159],
 "classPurrNet_1_1StatisticsManager.html#a7172541de88678060d8ffdd979690730":[1,0,0,159,4],
 "classPurrNet_1_1StatisticsManager.html#a7172541de88678060d8ffdd979690730":[0,0,0,159,4],
@@ -247,7 +249,5 @@ var NAVTREEINDEX5 =
 "classPurrNet_1_1Transports_1_1PurrTransport.html":[1,0,0,9,20],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce":[0,0,0,9,20,3],
 "classPurrNet_1_1Transports_1_1PurrTransport.html#a07a04f4efbc439f56648f7d5af2fddce":[1,0,0,9,20,3],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a0c47cd871f2e618c438dbc0579685093":[0,0,0,9,20,30],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a0c47cd871f2e618c438dbc0579685093":[1,0,0,9,20,30],
-"classPurrNet_1_1Transports_1_1PurrTransport.html#a0e02385dd506d2bd419bb8c1d065f4b8":[1,0,0,9,20,24]
+"classPurrNet_1_1Transports_1_1PurrTransport.html#a0c47cd871f2e618c438dbc0579685093":[0,0,0,9,20,30]
 };

@@ -1,5 +1,7 @@
 var NAVTREEINDEX9 =
 {
+"structPurrNet_1_1StatisticsManager_1_1PingMessage.html":[1,0,0,159,1],
+"structPurrNet_1_1StatisticsManager_1_1PingMessage.html":[0,0,0,159,1],
 "structPurrNet_1_1StringUTF8.html":[1,0,0,160],
 "structPurrNet_1_1StringUTF8.html":[0,0,0,160],
 "structPurrNet_1_1SyncArrayChange.html":[0,0,0,163],
