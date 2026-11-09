@@ -163,6 +163,12 @@ namespace PurrNet.Modules
             _playerBroadcaster = broadcaster;
         }
 
+        internal event Action onBeforeReliableOrderedSend
+        {
+            add => _playerBroadcaster.onBeforeReliableOrderedSend += value;
+            remove => _playerBroadcaster.onBeforeReliableOrderedSend -= value;
+        }
+
         public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
             => _playerBroadcaster.Send(player, data, method, mtuOverride);

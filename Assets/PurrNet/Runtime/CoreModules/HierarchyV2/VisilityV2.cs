@@ -89,6 +89,41 @@ namespace PurrNet.Modules
             }
         }
 
+        // A just spawned identity without child identities, evaluated for every player at once:
+        // the players that start seeing it are returned instead of notified one by one, so the
+        // caller can build their spawns together. False when the identity has children.
+        internal bool TryRefreshSpawnForAll(IReadOnlyList<PlayerID> players, NetworkIdentity identity,
+            List<PlayerID> visible)
+        {
+            if (!identity || identity.isManualSpawn)
+                return true;
+
+            var identities = identity.siblingIdentities;
+            if (identities.Length == 0)
+                return true;
+
+            var children = identities[0].directChildren;
+            if (children != null && children.Count > 0)
+                return false;
+
+            var parent = identity.parent;
+            for (var i = 0; i < players.Count; i++)
+            {
+                var player = players[i];
+                bool isParentVisible = !parent || !parent.isSpawned || HasObserver(parent, player);
+                var frame = EvaluateNode(player, identity, _defaultRuleSet, isParentVisible, false);
+                if (!frame.shouldTrigger)
+                    continue;
+
+                if (frame.isVisible)
+                    visible.Add(player);
+                else
+                    Notify(player, frame.scope, false);
+            }
+
+            return true;
+        }
+
         private struct VisibilityFrame
         {
             public Transform scope;

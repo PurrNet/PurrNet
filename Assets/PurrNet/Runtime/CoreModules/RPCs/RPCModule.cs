@@ -180,6 +180,9 @@ namespace PurrNet.Modules
 
         private void OnObserverAdded(PlayerID player, SceneID scene, NetworkID id)
         {
+            if (_bufferedRpcsDatas.Count == 0 && _bufferedChildRpcsDatas.Count == 0)
+                return;
+
             if (!_hierarchyModule.TryGetIdentity(scene, id, out var identity))
                 return;
 
@@ -292,6 +295,9 @@ namespace PurrNet.Modules
                 PurrLogger.LogError("Failed to get RPC module while sending static RPC.", nm);
                 return;
             }
+
+            if (nm.isServer)
+                nm.BeforeServerRpc();
 
             var rules = nm.networkRules;
             bool shouldIgnore = rules && rules.ShouldIgnoreRequireServer();
@@ -737,6 +743,10 @@ namespace PurrNet.Modules
 
         private void AppendToBufferedRPCs(StaticRPCPacket packet, RPCSignature signature)
         {
+            // Spawns deferred to the tick's batch replay buffered RPCs when sent; send them first.
+            if (_manager && _manager.isServer)
+                _manager.BeforeServerRpc();
+
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
 
@@ -771,6 +781,10 @@ namespace PurrNet.Modules
 
         public void AppendToBufferedRPCs(ChildRPCPacket packet, RPCSignature signature)
         {
+            // Spawns deferred to the tick's batch replay buffered RPCs when sent; send them first.
+            if (_manager && _manager.isServer)
+                _manager.BeforeServerRpc();
+
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
 
@@ -805,6 +819,10 @@ namespace PurrNet.Modules
 
         public void AppendToBufferedRPCs(RPCPacket packet, RPCSignature signature)
         {
+            // Spawns deferred to the tick's batch replay buffered RPCs when sent; send them first.
+            if (_manager && _manager.isServer)
+                _manager.BeforeServerRpc();
+
             if (!signature.bufferLast) return;
             _bufferRPCMarker.Begin();
 
@@ -1375,6 +1393,9 @@ namespace PurrNet.Modules
         {
             BatchNetworkMessages();
         }
+
+        internal bool hasPendingBatchedRPCs =>
+            (_unionBatch != null && _unionBatch.hasPending) || (_immediateBatch != null && _immediateBatch.hasPending);
 
         /// <summary>
         /// Signals that immediate content was handed to the transport outside the

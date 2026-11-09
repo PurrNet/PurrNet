@@ -22,13 +22,15 @@ namespace PurrNet.Modules
         }
     }
 
-    internal struct NetworkTransformUnreliableDelta : IPackedAuto
+    internal struct NetworkTransformUnreliableDelta : IPacked
     {
         public SceneID scene;
-        public readonly ushort seq;
-        public readonly ushort tick;
+        public ushort seq;
+        public ushort tick;
         public NetworkTransformUnreliableAckHeader? ack;
-        public readonly ByteData packet;
+        public bool patch;
+        public bool repair;
+        public ByteData packet;
 
         public NetworkTransformUnreliableDelta(SceneID context, ushort seq, ushort tick, BitPacker packer)
         {
@@ -36,7 +38,65 @@ namespace PurrNet.Modules
             this.seq = seq;
             this.tick = tick;
             ack = null;
+            patch = false;
+            repair = false;
             packet = packer.ToByteData();
+        }
+
+        public void Write(BitPacker packer)
+        {
+            Packer<SceneID>.Write(packer, scene);
+            Packer<ushort>.Write(packer, seq);
+            Packer<ushort>.Write(packer, tick);
+            packer.WriteBit(ack.HasValue);
+            if (ack.HasValue)
+            {
+                Packer<ushort>.Write(packer, ack.Value.seq);
+                Packer<uint>.Write(packer, ack.Value.ackBits);
+            }
+
+            packer.WriteBit(patch);
+            packer.WriteBit(repair);
+            Packer<Size>.Write(packer, packet.length);
+            int pad = (8 - ((packer.positionInBits + 3) & 7)) & 7;
+            packer.WriteBits((ulong)pad, 3);
+            if (pad > 0)
+                packer.WriteBits(0, (byte)pad);
+            packer.WriteBytes(packet.span);
+        }
+
+        public void Read(BitPacker packer)
+        {
+            Packer<SceneID>.Read(packer, ref scene);
+            Packer<ushort>.Read(packer, ref seq);
+            Packer<ushort>.Read(packer, ref tick);
+            if (packer.ReadBit())
+            {
+                var header = new NetworkTransformUnreliableAckHeader();
+                Packer<ushort>.Read(packer, ref header.seq);
+                Packer<uint>.Read(packer, ref header.ackBits);
+                ack = header;
+            }
+            else ack = null;
+
+            patch = packer.ReadBit();
+            repair = packer.ReadBit();
+            Size length = default;
+            Packer<Size>.Read(packer, ref length);
+            int pad = (int)packer.ReadBits(3);
+            if (pad > 0)
+                packer.SkipBits(pad);
+
+            if (length.value == 0)
+            {
+                packet = new ByteData(Array.Empty<byte>(), 0, 0);
+                return;
+            }
+
+            int byteLength = DeserializationLimits.ValidateByteLength(packer, length.value);
+            byte[] buffer = new byte[byteLength];
+            packer.ReadBytes(buffer);
+            packet = new ByteData(buffer, 0, byteLength);
         }
     }
 
@@ -53,10 +113,12 @@ namespace PurrNet.Modules
         public uint ackBits;
     }
 
+    // Every transform the receiver could not record this tick, sent once per tick.
     internal struct NetworkTransformUnreliableNack : IPackedAuto
     {
         public SceneID scene;
-        public NetworkID id;
+        public DisposableList<NetworkID> ids;
+        public DisposableList<ushort> ticks;
     }
 
     internal struct NetworkTransformInitialState : IPackedAuto
@@ -80,11 +142,14 @@ namespace PurrNet.Modules
         public uint revision;
         // Send-side only: the transform that wrote this entry, so ack adoption skips the registry search.
         public NetworkTransform transform;
+        // Send-side only: the transform's registration count when this entry was written.
+        public uint life;
     }
 
     internal sealed class NTSharedEntries : List<NTUnreliableEntry>
     {
         public int refs;
+        public bool hasAbsolute;
 
         private static readonly Stack<NTSharedEntries> _pool = new();
 
@@ -98,6 +163,9 @@ namespace PurrNet.Modules
 
         public static void Release(List<NTUnreliableEntry> entries)
         {
+            if (entries == null)
+                return;
+
             if (entries is not NTSharedEntries shared)
             {
                 ListPool<NTUnreliableEntry>.Destroy(entries);
@@ -108,6 +176,7 @@ namespace PurrNet.Modules
                 return;
 
             shared.refs = 0;
+            shared.hasAbsolute = false;
             shared.Clear();
             _pool.Push(shared);
         }
@@ -124,6 +193,10 @@ namespace PurrNet.Modules
         public uint revision;
         // Monotonic packet order — ushort seq wraps, so age math uses this instead.
         public uint order;
+        // Set when the baseline was dropped (NACK, observer change): only entries sent after
+        // floorTick may establish a new one, so a late ack cannot resurrect the dropped state.
+        public bool hasFloor;
+        public ushort floorTick;
     }
 
     internal enum NTWriteResult
@@ -174,6 +247,16 @@ namespace PurrNet.Modules
             _pool.Push(write);
         }
 
+        public bool ContentEquals(NTLastAdaptiveWrite other)
+        {
+            return tick == other.tick && prevTick == other.prevTick && prevPrevTick == other.prevPrevTick &&
+                   revision == other.revision && refreshInterval == other.refreshInterval &&
+                   hasPrev == other.hasPrev && hasPrevPrev == other.hasPrevPrev &&
+                   restConfirmed == other.restConfirmed && redundancy == other.redundancy &&
+                   state.Equals(other.state) && prevState.Equals(other.prevState) &&
+                   prevPrevState.Equals(other.prevPrevState);
+        }
+
         public void CopyFrom(NTLastAdaptiveWrite other)
         {
             tick = other.tick;
@@ -202,9 +285,15 @@ namespace PurrNet.Modules
         public bool used;
         public bool acked;
         public bool anchor;
+        // Server fan-out: adopted at the common tick before its ack arrived.
+        public bool optimistic;
         public ushort seq;
+        public ushort tick;
         public uint order;
         public List<NTUnreliableEntry> entries;
+        // A peer's own patch packet, or the transforms of a shared packet it got from a patch.
+        public bool patch;
+        public List<NetworkID> excluded;
     }
 
     internal class NTUnreliableSendStream
@@ -217,9 +306,6 @@ namespace PurrNet.Modules
         // revision remain here, avoiding a full visible-transform scan every tick.
         public bool pendingInitialized;
         public readonly List<NetworkTransform> pending = new();
-        // NACK barrier: only packets written AFTER the NACK may re-establish a baseline,
-        // else the ack covering the NACKed packet resurrects the phantom (acks are cumulative).
-        public readonly Dictionary<NetworkID, uint> nackFloor = new();
         public NTBaselineSlot[] baselines = System.Array.Empty<NTBaselineSlot>();
         public bool[] pendingByIndex = System.Array.Empty<bool>();
         public bool[] ackCompleted = System.Array.Empty<bool>();
@@ -227,6 +313,10 @@ namespace PurrNet.Modules
 
         public void EnsureBaselineCapacity(int count)
         {
+            if (overrideByIndex.Length < baselines.Length)
+                System.Array.Resize(ref overrideByIndex, baselines.Length);
+            if (prevBaselines != null && prevBaselines.Length < baselines.Length)
+                System.Array.Resize(ref prevBaselines, baselines.Length);
             if (baselines.Length >= count)
                 return;
             int size = System.Math.Max(count, System.Math.Max(16, baselines.Length * 2));
@@ -234,7 +324,20 @@ namespace PurrNet.Modules
             System.Array.Resize(ref pendingByIndex, size);
             System.Array.Resize(ref ackCompleted, size);
             System.Array.Resize(ref adaptiveByIndex, size);
+            System.Array.Resize(ref overrideByIndex, size);
+            if (prevBaselines != null)
+                System.Array.Resize(ref prevBaselines, size);
         }
+
+        // Global fan-out peer: transforms whose send state is this peer's own instead of the
+        // shared stream's (it missed one of its baselines, or just started observing it).
+        public bool[] overrideByIndex = new bool[0];
+        public readonly List<int> overrides = new();
+
+        public bool IsOverridden(int index) => index >= 0 && index < overrideByIndex.Length && overrideByIndex[index];
+
+        // Shared stream only: the baseline each transform had before its latest adoption.
+        public NTBaselineSlot[] prevBaselines;
 
         public NTLastAdaptiveWrite GetAdaptive(NetworkTransform nt)
         {
@@ -283,15 +386,159 @@ namespace PurrNet.Modules
         // unaffected peers remain on their existing wire generation until the next global reset.
         public readonly Dictionary<NetworkID, NTUnreliableGeneration> generationOverrides = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
+        // Sent anchor packets waiting for their common adoption tick, oldest first.
+        public readonly List<NTDeferredAnchor> deferredAnchors = new();
+        // Smoothed ticks between sending an anchor packet and its ack arriving.
+        public float anchorAckLag;
+        // Latest acknowledgement window, used to tell lost anchors from late ones.
+        public bool hasAckWindow;
+        public ushort lastAckSeq;
+        public uint lastAckBits;
+
+        // Follower state (see NetworkTransformModule): while leader is set, this stream's
+        // per-transform arrays are stale and the leader's are authoritative.
+        public NTUnreliableSendStream leader;
+        public readonly List<NTUnreliableSendStream> followers = new();
+        public ushort followRetryTick;
+        public ushort lastSendTick;
+        public bool hasSent;
+        // This tick's packets, as indices into the module's share records.
+        public readonly List<int> tickPackets = new();
+        // Transforms invalidated since the last send pass (followers and leaders with followers).
+        public readonly List<NetworkID> tickInvalidations = new();
+        public bool tickFresh;
+        public bool tickMixed;
+        public bool tickShareable;
+        public NTUnreliableSendStream tickOrigin;
+
+        public void ReleaseDeferred()
+        {
+            for (int i = 0; i < deferredAnchors.Count; i++)
+            {
+                NTSharedEntries.Release(deferredAnchors[i].entries);
+                if (deferredAnchors[i].excluded != null)
+                    ListPool<NetworkID>.Destroy(deferredAnchors[i].excluded);
+            }
+            deferredAnchors.Clear();
+        }
+    }
+
+    internal struct NTUnknownEntry
+    {
+        public ushort tick;
+        public byte gen;
+        public long order;
+        public bool absolute;
+        public int dist;
+        public int start;
+    }
+
+    internal sealed class NTUnknownWait
+    {
+        // The latest entries, bodies appended in arrival order, replayed once the transform spawns.
+        public readonly List<NTUnknownEntry> entries = new();
+        public BitPacker body;
+        // Arrived since the last flush (spawns are created after it), and flushes without news.
+        public bool fresh;
+        public int idle;
+    }
+
+    internal struct NTDeferredAnchor
+    {
+        public List<NTUnreliableEntry> entries;
+        public bool patch;
+        public List<NetworkID> excluded;
+        public uint order;
+        public ushort seq;
+        public ushort tick;
+        public bool repaired;
+    }
+
+    // Receive-side baseline history, one state per sender tick. Entries name their baseline by
+    // tick distance, so every peer that acknowledged the same tick decodes the same bytes.
+    internal sealed class NTRecvHistory
+    {
+        private readonly ushort[] _ticks = new ushort[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly bool[] _valid = new bool[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly NetworkTransformState[] _states = new NetworkTransformState[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly NetworkTransformVelocity[] _velocities = new NetworkTransformVelocity[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly byte[] _gens = new byte[NTUnreliable.MAX_BASELINE_AGE];
+        private readonly bool[] _patched = new bool[NTUnreliable.MAX_BASELINE_AGE];
+
+        // The sender adopts a patch entry over the shared packet's copy of the same tick.
+        public void Store(ushort tick, in NetworkTransformState state, in NetworkTransformVelocity velocity, byte gen,
+            bool patched = false)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            if (!patched && IsPatched(tick))
+                return;
+
+            _ticks[i] = tick;
+            _valid[i] = true;
+            _states[i] = state;
+            _velocities[i] = velocity;
+            _gens[i] = gen;
+            _patched[i] = patched;
+        }
+
+        public bool IsPatched(ushort tick)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            return _valid[i] && _patched[i] && _ticks[i] == tick;
+        }
+
+        public void Invalidate(ushort tick)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            if (_ticks[i] == tick && !_patched[i])
+                _valid[i] = false;
+        }
+
+        public bool TryGet(ushort tick, out NetworkTransformState state, out NetworkTransformVelocity velocity,
+            out byte gen)
+        {
+            int i = tick % NTUnreliable.MAX_BASELINE_AGE;
+            if (!_valid[i] || _ticks[i] != tick)
+            {
+                state = default;
+                velocity = default;
+                gen = default;
+                return false;
+            }
+
+            state = _states[i];
+            velocity = _velocities[i];
+            gen = _gens[i];
+            return true;
+        }
+
+        public bool HasNewer(ushort tick)
+        {
+            for (int i = 0; i < _valid.Length; i++)
+            {
+                if (_valid[i] && (short)(_ticks[i] - tick) > 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        public void Clear()
+        {
+            System.Array.Clear(_valid, 0, _valid.Length);
+        }
     }
 
     internal class NTUnreliableRecvStream
     {
         public bool ackInit;
+        public bool hasPatches;
+        public ushort lastPatchTick;
         public ushort latestSeq;
         public long latestOrder;
         public uint ackBits;
         public bool ackDirty;
+        public bool anchorUnacked;
         public byte ackDelayTicks;
         public byte packetsSinceAck;
         public bool offsetInit;
@@ -303,22 +550,31 @@ namespace PurrNet.Modules
         public bool hasFrozenDev;
         public ushort vouchedTick;
         public bool vouchedValid;
+        // Transforms that entries arrived for before they were spawned here.
+        public readonly Dictionary<NetworkID, NTUnknownWait> unknownWaiting = new();
+        // Transforms whose deltas name a baseline that a repair may still bring.
+        public readonly Dictionary<NetworkID, NTUnknownWait> baselineWaiting = new();
+        public bool sendsRepairs;
+        // Transforms to NACK at the end of this tick.
+        public readonly Dictionary<NetworkID, ushort> pendingNacks = new();
         public readonly NTUnreliableSlot[] ring = new NTUnreliableSlot[NTUnreliable.RING_SIZE];
     }
 
     internal static class NTUnreliable
     {
-        public const int DISTANCE_BITS = 8;
-        public const int RING_SIZE = 1 << DISTANCE_BITS;
-        // A baseline remains usable for the full receive history. Prediction has a smaller bound:
+        public const int RING_SIZE = 1024;
+        // Entries reference their baseline by sender tick distance (1..MAX_BASELINE_AGE - 1), and
+        // receivers keep one state per tick for MAX_BASELINE_AGE ticks. Prediction has a smaller bound:
         // beyond it, rotation extrapolation can overflow NormalizedFloat's delta prefix budget, so
         // both peers deterministically encode against the raw baseline instead.
-        public const int MAX_BASELINE_AGE = RING_SIZE;
+        public const int DISTANCE_BITS = 6;
+        public const int MAX_BASELINE_AGE = 1 << DISTANCE_BITS;
         public const int MAX_PREDICTED_BASELINE_AGE = 48;
         // Low-volume streams do not need an application-level ACK every network tick. High-volume
         // streams flush before the 32-packet selective-ACK window can leave a permanent blind spot.
         public const int ACK_INTERVAL_TICKS = 4;
         public const int ACK_PACKET_THRESHOLD = 24;
+        public const int ACK_WINDOW = 32;
 
         /// <summary>
         /// Packets sent on ticks that are a multiple of this become the only ones that move a
@@ -330,6 +586,10 @@ namespace PurrNet.Modules
         public const int BASELINE_ANCHOR_TICKS = ACK_INTERVAL_TICKS;
 
         public static bool IsAnchorTick(ushort tick) => tick % BASELINE_ANCHOR_TICKS == 0;
+
+        // Held adaptive transforms still write on an anchor once their baseline is this old, so it
+        // keeps moving forward and stays well inside MAX_BASELINE_AGE.
+        public const int ANCHOR_REFRESH_AGE = 16;
 
         public const int ADAPTIVE_MAX_BACKFILL = 34;
         public const int ADAPTIVE_POS_TOLERANCE = 2;
@@ -421,6 +681,8 @@ namespace PurrNet.Modules
             {
                 if (ring[i].entries != null)
                     NTSharedEntries.Release(ring[i].entries);
+                if (ring[i].excluded != null)
+                    ListPool<NetworkID>.Destroy(ring[i].excluded);
                 ring[i] = default;
             }
         }

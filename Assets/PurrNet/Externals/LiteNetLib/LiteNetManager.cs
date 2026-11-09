@@ -68,6 +68,7 @@ namespace LiteNetLib
 
         private Thread _logicThread;
         private bool _manualMode;
+        public bool ManualLogic;
         private readonly AutoResetEvent _updateTriggerEvent = new AutoResetEvent(true);
 
         private NetEvent _pendingEventHead;
@@ -608,14 +609,17 @@ namespace LiteNetLib
         /// </remarks>
         public void ManualUpdate(float elapsedMilliseconds)
         {
-            if (!_manualMode)
+            if (!_manualMode && !ManualLogic)
                 return;
+
+            if (!_manualMode)
+                ProcessDelayedPackets();
 
             for (var netPeer = _headPeer; netPeer != null; netPeer = netPeer.NextPeer)
             {
                 if (netPeer.ConnectionState == ConnectionState.Disconnected && netPeer.TimeSinceLastPacket > DisconnectTimeout)
                 {
-                    RemovePeer(netPeer, false);
+                    RemovePeer(netPeer, !_manualMode);
                 }
                 else
                 {
@@ -1511,7 +1515,7 @@ namespace LiteNetLib
 #endif
 
             _updateTriggerEvent.Set();
-            if (!_manualMode)
+            if (!_manualMode && _logicThread != null)
             {
                 _logicThread.Join();
                 _logicThread = null;

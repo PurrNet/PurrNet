@@ -365,6 +365,11 @@ namespace PurrNet.Modules
             _scenePlayers.onPrePlayerLoadedScene += OnPlayerLoadedScene;
             _scenePlayers.onPlayerUnloadedScene += OnPlayerUnloadedScene;
             _playersManager.onNetworkIDReceived += OnNetworkIDReceived;
+            if (_asServer)
+            {
+                _playersManager.onBeforeReliableOrderedSend += FlushDeferredSpawns;
+                _manager.onBeforeServerRpc += FlushDeferredSpawns;
+            }
 
             Init();
 
@@ -389,6 +394,11 @@ namespace PurrNet.Modules
         public void Disable()
         {
             _enabled = false;
+            if (_asServer)
+            {
+                _playersManager.onBeforeReliableOrderedSend -= FlushDeferredSpawns;
+                _manager.onBeforeServerRpc -= FlushDeferredSpawns;
+            }
             _pendingUnauthorizedParentReverts.Clear();
             ClearAsyncSpawnState();
             _cachedPrefabAsyncShapes.Clear();
@@ -1677,10 +1687,13 @@ namespace PurrNet.Modules
 
             _toSpawnNextFrame.Remove(identity);
             _toSpawnNextFrameBuffer.Remove(identity);
-            for (var i = _triggerLateObserverAdded.Count - 1; i >= 0; i--)
+            if (_triggerLateObserverAdded.Contains(identity))
             {
-                if (_triggerLateObserverAdded[i].nid == identity)
-                    _triggerLateObserverAdded.RemoveAt(i);
+                for (var i = _triggerLateObserverAdded.Count - 1; i >= 0; i--)
+                {
+                    if (_triggerLateObserverAdded[i].nid == identity)
+                        _triggerLateObserverAdded.RemoveAt(i);
+                }
             }
 
             RemoveSpawnedIdentity(identity);
@@ -2348,11 +2361,54 @@ namespace PurrNet.Modules
             public bool isSpawner;
         }
 
-        private readonly List<PlayerNid> _triggerLateObserverAdded = new List<PlayerNid>();
+        // Pending late observer-added callbacks, with a per-identity count so despawning an
+        // identity that has none queued does not scan the whole list once per observer.
+        private sealed class PlayerNidQueue
+        {
+            private readonly List<PlayerNid> _items = new();
+            private readonly Dictionary<NetworkIdentity, int> _counts = new();
+
+            public int Count => _items.Count;
+
+            public PlayerNid this[int index] => _items[index];
+
+            public void Add(PlayerNid item)
+            {
+                _items.Add(item);
+                if (item.nid is not null)
+                    _counts[item.nid] = _counts.TryGetValue(item.nid, out var n) ? n + 1 : 1;
+            }
+
+            public void RemoveAt(int index)
+            {
+                var nid = _items[index].nid;
+                _items.RemoveAt(index);
+                if (nid is not null && _counts.TryGetValue(nid, out var n))
+                {
+                    if (n <= 1)
+                        _counts.Remove(nid);
+                    else
+                        _counts[nid] = n - 1;
+                }
+            }
+
+            public bool Contains(NetworkIdentity nid) => nid is not null && _counts.ContainsKey(nid);
+
+            public void Clear()
+            {
+                _items.Clear();
+                _counts.Clear();
+            }
+        }
+
+        private readonly PlayerNidQueue _triggerLateObserverAdded = new PlayerNidQueue();
         private readonly Dictionary<PlayerID, SpawnPacketBatch> _spawnPackets = new();
 
         private void ClearPendingLateObserverAdded(PlayerID player, NetworkIdentity id)
         {
+            if (!_triggerLateObserverAdded.Contains(id))
+                return;
+
             for (var i = 0; i < _triggerLateObserverAdded.Count; i++)
             {
                 if (_triggerLateObserverAdded[i].player == player && _triggerLateObserverAdded[i].nid == id)
@@ -2674,14 +2730,17 @@ namespace PurrNet.Modules
         static readonly ProfilerMarker _despawnPutBackInPoolMarker = new ProfilerMarker("PurrNet.Despawn.PutBackInPool");
 
         private bool TryGetPrototypeCached(Transform scope, PlayerID player, List<NetworkIdentity> children,
-            out GameObjectPrototype prototype)
+            out GameObjectPrototype prototype, out bool borrowed)
         {
+            borrowed = false;
             if (_prototypeCache.TryGetValue(scope, out var cached))
             {
                 if (HierarchyPool.SameObserverPattern(cached.components, cached.observer, player))
                 {
+                    // Borrowed by this observer's spawn packet; the cache disposes it after the flush.
                     children.AddRange(cached.children);
-                    prototype = cached.prototype.Clone();
+                    prototype = cached.prototype;
+                    borrowed = true;
                     return true;
                 }
 
@@ -2729,7 +2788,8 @@ namespace PurrNet.Modules
             {
                 var children = ListPool<NetworkIdentity>.Instantiate();
                 _prototypeMarker.Begin();
-                bool hasPrototype = TryGetPrototypeCached(scope, player, children, out var prototype);
+                bool hasPrototype = TryGetPrototypeCached(scope, player, children, out var prototype,
+                    out bool borrowedPrototype);
                 _prototypeMarker.End();
                 if (hasPrototype)
                 {
@@ -2739,7 +2799,8 @@ namespace PurrNet.Modules
                                          player != _manager.localPlayer &&
                                          !player.isBot && !player.isServer;
                         _spawnPacketMarker.Begin();
-                        var spawnId = SendSpawnPacket(player, prototype, children, true, sendAsync);
+                        var spawnId = SendSpawnPacket(player, prototype, children, true, sendAsync,
+                            borrowedPrototype);
                         _spawnPacketMarker.End();
 
                         if (sendAsync && _pendingAsyncObservers.ContainsKey(spawnId))
@@ -2765,6 +2826,117 @@ namespace PurrNet.Modules
                 GetComponentsInChildren(identity.gameObject, children);
                 OnVisibilityLost(player, identity, children);
                 ListPool<NetworkIdentity>.Destroy(children);
+            }
+        }
+
+        // A spawn that became visible to several players at once: the first builds the prototype
+        // as usual, the others who see the same identities share it and its spawn packet, which
+        // only differs per player in its target and in what OnSerialize writes for them.
+        private void OnVisibleToPlayers(Transform scope, List<PlayerID> players)
+        {
+            OnVisibilityChanged(players[0], scope, true);
+            if (players.Count == 1)
+                return;
+
+            if (!_prototypeCache.TryGetValue(scope, out var cached) || cached.children.Count == 0 ||
+                !cached.children[0] || !cached.children[0].id.HasValue)
+            {
+                for (var i = 1; i < players.Count; i++)
+                    OnVisibilityChanged(players[i], scope, true);
+                return;
+            }
+
+            var spawned = cached.children;
+            var rootId = spawned[0].id.Value;
+            if (!_spawnIdxByRoot.TryGetValue(rootId, out var idx))
+            {
+                idx = _nextPacketIdx++;
+                _spawnIdxByRoot.Add(rootId, idx);
+            }
+
+            bool bypassPool = _hasConfiguredPoolBypass && ShouldBypassConfiguredPool(spawned);
+            BitPacker data = null;
+
+            try
+            {
+                for (var p = 1; p < players.Count; p++)
+                {
+                    var player = players[p];
+                    if (!HierarchyPool.SameObserverPattern(cached.components, cached.observer, player))
+                    {
+                        OnVisibilityChanged(player, scope, true);
+                        continue;
+                    }
+
+                    if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
+                    {
+                        var customData = default(BitData);
+                        if (player != _manager.localPlayer)
+                        {
+                            data ??= BitPackerPool.Get();
+                            try
+                            {
+                                for (var i = 0; i < spawned.Count; i++)
+                                    spawned[i].TriggerOnSerialize(data);
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.LogException(e);
+                                data.SetBitPosition(0);
+                            }
+
+                            if (data.positionInBits > 0)
+                            {
+                                customData = new BitData(data);
+                                data = null;
+                            }
+                        }
+
+                        var localcache = ListPool<NetworkIdentity>.Instantiate();
+                        localcache.AddRange(spawned);
+                        AddBatchedSpawnPacket(player, new SpawnPacket
+                        {
+                            sceneId = _sceneId,
+                            packetIdx = new SpawnID(idx, player, _playersManager.localPlayerId),
+                            bypassPool = bypassPool,
+                            isAsync = false,
+                            prototype = cached.prototype,
+                            localcache = localcache,
+                            customData = customData,
+                            borrowedPrototype = true
+                        });
+                    }
+
+                    for (var i = 0; i < spawned.Count; i++)
+                    {
+                        var nid = spawned[i];
+                        onObserverAdded?.Invoke(player, nid);
+                        nid.TriggerOnPreObserverAdded(player, false);
+                        _triggerLateObserverAdded.Add(new PlayerNid { player = player, nid = nid, isSpawner = false });
+                    }
+                }
+            }
+            finally
+            {
+                data?.Dispose();
+            }
+        }
+
+        private void AddBatchedSpawnPacket(PlayerID player, in SpawnPacket packet)
+        {
+            if (!_spawnPackets.TryGetValue(player, out var batch))
+            {
+                batch = new SpawnPacketBatch(
+                    _sceneId,
+                    DisposableList<SpawnPacket>.Create(),
+                    DisposableList<DespawnPacket>.Create()
+                );
+                batch.spawnPackets.Add(packet);
+                _spawnPackets.Add(player, batch);
+            }
+            else
+            {
+                batch.spawnPackets.Add(packet);
             }
         }
 
@@ -2814,7 +2986,8 @@ namespace PurrNet.Modules
 
                 if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
                 {
-                    _manager.FlushBatchedRPCs();
+                    if (_manager.HasPendingBatchedRPCs())
+                        _manager.FlushBatchedRPCs();
                     SendDespawnPacket(player, identity, true);
                 }
                 return;
@@ -2854,7 +3027,8 @@ namespace PurrNet.Modules
 
             if (_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
             {
-                _manager.FlushBatchedRPCs();
+                if (_manager.HasPendingBatchedRPCs())
+                    _manager.FlushBatchedRPCs();
                 bool identityCovered = false;
                 for (var i = 0; i < cancelledRoots.Count; i++)
                 {
@@ -2939,9 +3113,83 @@ namespace PurrNet.Modules
 
         private readonly Dictionary<NetworkID, ulong> _spawnIdxByRoot = new();
 
-        private SpawnID SendSpawnPacket(PlayerID player, GameObjectPrototype prototype,
-            List<NetworkIdentity> spawned, bool batched, bool isAsync = false)
+        private readonly HashSet<NetworkID> _despawnedSinceFlush = new();
+        private bool _spawnFlushDeferred;
+
+        private readonly List<(PlayerID player, DisposableList<DespawnPacket> despawns)> _heldDespawns = new();
+        private readonly List<NetworkID> _heldDespawnedIds = new();
+
+        // Sends the tick's deferred spawns ahead of another reliable-ordered message. Queued
+        // despawns stay queued: RPCs about to be flushed for those objects must still precede them.
+        private void FlushDeferredSpawns()
         {
+            if (!_spawnFlushDeferred)
+                return;
+
+            _heldDespawns.Clear();
+            foreach (var (player, batch) in _spawnPackets)
+            {
+                if (batch.despawnPackets.Count > 0)
+                    _heldDespawns.Add((player, batch.despawnPackets));
+            }
+
+            for (var i = 0; i < _heldDespawns.Count; i++)
+            {
+                var player = _heldDespawns[i].player;
+                var batch = _spawnPackets[player];
+                if (batch.spawnPackets.Count == 0)
+                {
+                    batch.spawnPackets.Dispose();
+                    _spawnPackets.Remove(player);
+                    continue;
+                }
+
+                batch.despawnPackets = DisposableList<DespawnPacket>.Create();
+                _spawnPackets[player] = batch;
+            }
+
+            _heldDespawnedIds.Clear();
+            _heldDespawnedIds.AddRange(_despawnedSinceFlush);
+
+            FlushSpawnPackets();
+
+            for (var i = 0; i < _heldDespawns.Count; i++)
+            {
+                var (player, despawns) = _heldDespawns[i];
+                _spawnPackets[player] = new SpawnPacketBatch(_sceneId, DisposableList<SpawnPacket>.Create(), despawns);
+            }
+
+            for (var i = 0; i < _heldDespawnedIds.Count; i++)
+                _despawnedSinceFlush.Add(_heldDespawnedIds[i]);
+
+            _heldDespawns.Clear();
+            _heldDespawnedIds.Clear();
+        }
+
+        // Batches carry all spawns before all despawns, so an id despawned earlier in this
+        // flush window must be sent before it is spawned again.
+        private void FlushIfRespawningDespawnedId(List<NetworkIdentity> spawned)
+        {
+            if (_despawnedSinceFlush.Count == 0)
+                return;
+
+            for (var i = 0; i < spawned.Count; i++)
+            {
+                var id = spawned[i] ? spawned[i].id : null;
+                if (id.HasValue && _despawnedSinceFlush.Contains(id.Value))
+                {
+                    FlushSpawnPackets();
+                    return;
+                }
+            }
+        }
+
+        private SpawnID SendSpawnPacket(PlayerID player, GameObjectPrototype prototype,
+            List<NetworkIdentity> spawned, bool batched, bool isAsync = false, bool borrowedPrototype = false)
+        {
+            if (batched && _asServer)
+                FlushIfRespawningDespawnedId(spawned);
+
             ulong idx;
             if (batched && _asServer && spawned.Count > 0 && spawned[0] && spawned[0].id.HasValue)
             {
@@ -2978,6 +3226,12 @@ namespace PurrNet.Modules
 
             bool bypassPool = _hasConfiguredPoolBypass && ShouldBypassConfiguredPool(spawned);
 
+            var customData = default(BitData);
+            if (data.positionInBits > 0)
+                customData = new BitData(data);
+            else
+                data.Dispose();
+
             var packet = new SpawnPacket
             {
                 sceneId = _sceneId,
@@ -2986,7 +3240,8 @@ namespace PurrNet.Modules
                 isAsync = isAsync,
                 prototype = prototype,
                 localcache = spawned,
-                customData = new BitData(data)
+                customData = customData,
+                borrowedPrototype = borrowedPrototype
             };
 
             if (batched)
@@ -3205,11 +3460,23 @@ namespace PurrNet.Modules
 
                 try
                 {
-                    for (var i = 0; i < players.Count; i++)
+                    var visible = ListPool<PlayerID>.Instantiate();
+                    if (!instantiateRemotelyAsync && _asyncVisibilityDepth == 0 &&
+                        _visibility.TryRefreshSpawnForAll(players, id, visible))
                     {
-                        var player = players[i];
-                        _visibility.RefreshVisibilityForGameObject(player, id);
+                        if (visible.Count > 0)
+                            OnVisibleToPlayers(id.transform, visible);
                     }
+                    else
+                    {
+                        for (var i = 0; i < players.Count; i++)
+                        {
+                            var player = players[i];
+                            _visibility.RefreshVisibilityForGameObject(player, id);
+                        }
+                    }
+
+                    ListPool<PlayerID>.Destroy(visible);
                 }
                 finally
                 {
@@ -3217,7 +3484,11 @@ namespace PurrNet.Modules
                         --_asyncVisibilityDepth;
                 }
 
-                FlushSpawnPackets();
+                // Spawns of one tick go out as one batch per observer: the reliable window counts
+                // messages, so a message per spawn stalls behind it on high-latency links. Anything
+                // sent reliable-ordered before the tick's flush flushes these first (see
+                // FlushDeferredSpawns), so nothing referencing the new objects can overtake them.
+                _spawnFlushDeferred = true;
             }
 
             AutoAssignOwnership(id);
@@ -3373,8 +3644,21 @@ namespace PurrNet.Modules
 
                 using (_despawnFlushMarker.Auto())
                 {
-                    _manager.FlushBatchedRPCs();
-                    FlushSpawnPackets();
+                    // RPCs already queued for these identities must reach observers before the
+                    // despawn. Without any, the despawn rides in this tick's spawn batch, unless
+                    // one of its ids is spawned again first (see SendSpawnPacket).
+                    for (var i = 0; i < c; i++)
+                    {
+                        var despawnedId = children[i].id;
+                        if (despawnedId.HasValue)
+                            _despawnedSinceFlush.Add(despawnedId.Value);
+                    }
+
+                    if (_manager.HasPendingBatchedRPCs())
+                    {
+                        _manager.FlushBatchedRPCs();
+                        FlushSpawnPackets();
+                    }
                 }
             }
             else if (!bypassBroadcast)
@@ -3503,6 +3787,10 @@ namespace PurrNet.Modules
 
         private static bool SamePrototype(in GameObjectPrototype a, in GameObjectPrototype b)
         {
+            if (a.framework.list != null && ReferenceEquals(a.framework.list, b.framework.list) &&
+                ReferenceEquals(a.path, b.path))
+                return true;
+
             if (a.position != b.position || a.rotation != b.rotation || a.scale != b.scale ||
                 !Nullable.Equals(a.parentID, b.parentID) || a.defaultParentSiblingIndex != b.defaultParentSiblingIndex)
                 return false;
@@ -3512,6 +3800,9 @@ namespace PurrNet.Modules
 
             var fa = a.framework;
             var fb = b.framework;
+            if (fa.list != null && ReferenceEquals(fa.list, fb.list))
+                return true;
+
             if (fa.Count != fb.Count)
                 return false;
 
@@ -3588,11 +3879,15 @@ namespace PurrNet.Modules
         private void FlushSpawnPackets()
         {
             using var _ = _flushSpawnMarker.Auto();
+            _spawnFlushDeferred = false;
             _spawnIdxByRoot.Clear();
-            ClearPrototypeCache();
+            _despawnedSinceFlush.Clear();
 
             if (_spawnPackets.Count == 0)
+            {
+                ClearPrototypeCache();
                 return;
+            }
 
             // Whatever happens below, the queued batches must be released and cleared. Leaving them
             // queued after a failed send makes every later flush fail again with a bigger batch.
@@ -3724,6 +4019,7 @@ namespace PurrNet.Modules
                 }
 
                 _spawnPackets.Clear();
+                ClearPrototypeCache();
             }
         }
 
@@ -3840,9 +4136,21 @@ namespace PurrNet.Modules
                 return;
             }
 
+            // A spawn queues all of its observers back to back: reuse the previous entry's group
+            // instead of a dictionary lookup per (identity, observer).
+            NetworkIdentity lastNid = null;
+            bool lastSpawner = false;
+            List<PlayerID> lastPlayers = null;
+
             for (var i = 0; i < count; i++)
             {
                 var entry = _triggerLateObserverAdded[i];
+                if (lastPlayers != null && ReferenceEquals(entry.nid, lastNid) && entry.isSpawner == lastSpawner)
+                {
+                    lastPlayers.Add(entry.player);
+                    continue;
+                }
+
                 if (!entry.nid || !entry.nid.isSpawned)
                     continue;
 
@@ -3855,6 +4163,9 @@ namespace PurrNet.Modules
                 }
 
                 players.Add(entry.player);
+                lastNid = entry.nid;
+                lastSpawner = entry.isSpawner;
+                lastPlayers = players;
             }
 
             _triggerLateObserverAdded.Clear();

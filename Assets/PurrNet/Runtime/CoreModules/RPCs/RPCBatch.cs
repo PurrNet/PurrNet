@@ -32,6 +32,29 @@ namespace PurrNet.Modules
         public int batchCount;
         public int cachedMTU;
         public BitPacker batchedData;
+        // 1-based index into the shared groups; 0 = this batch owns its content. While grouped,
+        // batchedData is empty and the group holds the bytes every member will receive.
+        public int groupPlusOne;
+    }
+
+    // Recipients whose pending batches are byte-identical share one buffer: an RPC queued to
+    // every member is appended once and the result is sent to each member on flush.
+    internal sealed class SharedRPCBatch
+    {
+        public UnionRPCHeader lastHeader;
+        public Size lastDataLen;
+        public ulong stateVersion;
+        public int batchCount;
+        public int cachedMTU;
+        public Channel channel;
+        public BitPacker data;
+        public readonly List<int> members = new();
+        public ulong hitOp;
+        public int hits;
+        public ulong appendOp;
+        public ulong splitOp;
+        // Bumped on every membership change, so a cached "these targets are this group" expires.
+        public int modCount;
     }
 
     internal struct CachedRPCEntry
@@ -120,6 +143,23 @@ namespace PurrNet.Modules
         private ulong _nextStateVersion;
         private CachedRPCEntry _entryCacheA;
         private CachedRPCEntry _entryCacheB;
+        private readonly List<SharedRPCBatch> _groups = new();
+        private readonly Stack<SharedRPCBatch> _freeGroups = new();
+        private readonly List<int> _queueTargets = new();
+        private readonly List<int> _newGroup = new();
+        private readonly List<int> _groupScratch = new();
+        private ulong[] _batchOp = new ulong[128];
+        private ulong _queueOp;
+        private readonly List<PlayerID> _sendScratch = new();
+
+        // The last fan-out's targets, when they were exactly one group's members: an RPC to the
+        // same recipients (every object observed by everyone) appends once with no per-target work.
+        private PlayerID[] _lastTargets = new PlayerID[16];
+        private int _lastTargetCount;
+        private Channel _lastChannel;
+        private SharedRPCBatch _lastGroup;
+        private int _lastGroupIndex = -1;
+        private int _lastGroupMod;
 
         public delegate void RPCReceivedDelegate(PlayerID sender, UnionRPCHeader header, BitData content, bool asServer);
         private readonly RPCReceivedDelegate _onRPCReceived;
@@ -182,6 +222,12 @@ namespace PurrNet.Modules
                         return true;
                 }
 
+                for (int i = 0; i < _groups.Count; i++)
+                {
+                    if (_groups[i] != null && _groups[i].batchCount > 0)
+                        return true;
+                }
+
                 return false;
             }
         }
@@ -202,6 +248,8 @@ namespace PurrNet.Modules
 #endif
 
             Clear();
+            while (_freeGroups.Count > 0)
+                _freeGroups.Pop().data?.Dispose();
             _entryCacheA.data?.Dispose();
             _entryCacheB.data?.Dispose();
             _batchIndexMap.Dispose();
@@ -211,6 +259,18 @@ namespace PurrNet.Modules
         {
             using (_flushMarker.Auto())
             {
+                for (int g = 0; g < _groups.Count; g++)
+                {
+                    var group = _groups[g];
+                    if (group == null)
+                        continue;
+
+                    SendGroup(group);
+                    ReleaseGroup(g);
+                }
+
+                _groups.Clear();
+
                 for (int i = 0; i < _batchCount; i++)
                 {
                     ref var batch = ref _batches[i];
@@ -270,6 +330,9 @@ namespace PurrNet.Modules
         {
             using (_flushChannelMarker.Auto())
             {
+                // Compaction below moves batch indices; give every member its own copy first.
+                DissolveAllGroups();
+
                 int writeIdx = 0;
 
                 for (int i = 0; i < _batchCount; i++)
@@ -391,6 +454,349 @@ namespace PurrNet.Modules
 #endif
         }
 
+        private void SendGroup(SharedRPCBatch group)
+        {
+            if (group.batchCount == 0)
+                return;
+
+            _sendScratch.Clear();
+            for (int m = 0; m < group.members.Count; m++)
+            {
+                var player = _batches[group.members[m]].key.playerId;
+                if (deliverLocally != null && isLocalClient != null && isLocalClient(player))
+                    Send(player, group.batchCount, new BitData(group.data), group.channel);
+                else
+                    _sendScratch.Add(player);
+            }
+
+            if (_sendScratch.Count == 1)
+                Send(_sendScratch[0], group.batchCount, new BitData(group.data), group.channel);
+            else if (_sendScratch.Count > 1)
+                SendMany(_sendScratch, group.batchCount, new BitData(group.data), group.channel);
+        }
+
+        // One serialization for every recipient of a shared batch.
+        private void SendMany(List<PlayerID> players, Size count, BitData payload, Channel channel)
+        {
+#if UNITY_INCLUDE_TESTS
+            if (_playersManager == null)
+            {
+                for (int i = 0; i < players.Count; i++)
+                    Send(players[i], count, payload, channel);
+                return;
+            }
+#endif
+            if (_sendAsImmediate)
+            {
+                _playersManager.Send((IReadOnlyList<PlayerID>)players,
+                    new ImmediateRPCBatchPacket { count = count, data = payload }, channel);
+                return;
+            }
+
+            _playersManager.Send((IReadOnlyList<PlayerID>)players, new RPCBatchPacket { count = count, data = payload },
+                channel);
+        }
+
+        private bool TryQueueSameTargets(IReadOnlyList<PlayerID> targets, in UnionRPCHeader header,
+            in BitData content, Channel channel)
+        {
+            var group = _lastGroup;
+            if (group == null || channel != _lastChannel || targets.Count != _lastTargetCount ||
+                _lastGroupIndex < 0 || _lastGroupIndex >= _groups.Count || _groups[_lastGroupIndex] != group ||
+                group.modCount != _lastGroupMod || group.members.Count != targets.Count)
+                return false;
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                if (targets[i] != _lastTargets[i])
+                    return false;
+            }
+
+            EnsureEntryCache();
+            ResetEntryCache();
+            ulong stateVersion = NextStateVersion();
+            return TryAppendToGroup(group, header, content, content.bitLength, stateVersion);
+        }
+
+        private void RememberTargets(IReadOnlyList<PlayerID> targets, Channel channel)
+        {
+            _lastGroup = null;
+            if (targets.Count < 3)
+                return;
+
+            int first = GetBatchIndex(targets[0], channel);
+            int groupPlusOne = _batches[first].groupPlusOne;
+            if (groupPlusOne == 0)
+                return;
+
+            var group = _groups[groupPlusOne - 1];
+            if (group.members.Count != targets.Count)
+                return;
+
+            for (int i = 1; i < targets.Count; i++)
+            {
+                if (_batches[GetBatchIndex(targets[i], channel)].groupPlusOne != groupPlusOne)
+                    return;
+            }
+
+            if (_lastTargets.Length < targets.Count)
+                _lastTargets = new PlayerID[Math.Max(targets.Count, _lastTargets.Length * 2)];
+            for (int i = 0; i < targets.Count; i++)
+                _lastTargets[i] = targets[i];
+
+            _lastTargetCount = targets.Count;
+            _lastChannel = channel;
+            _lastGroup = group;
+            _lastGroupIndex = groupPlusOne - 1;
+            _lastGroupMod = group.modCount;
+        }
+
+        private void ResetGroupContent(SharedRPCBatch group)
+        {
+            group.data.ResetPositionAndMode(false);
+            group.batchCount = 0;
+            group.lastHeader = default;
+            group.lastDataLen = default;
+            group.stateVersion = 0;
+        }
+
+        // Detaches every member (their own batches stay empty) and recycles the group.
+        private void ReleaseGroup(int groupIndex)
+        {
+            var group = _groups[groupIndex];
+            for (int m = 0; m < group.members.Count; m++)
+                _batches[group.members[m]].groupPlusOne = 0;
+
+            group.members.Clear();
+            group.modCount++;
+            ResetGroupContent(group);
+            _groups[groupIndex] = null;
+            _freeGroups.Push(group);
+        }
+
+        // Gives one member its own copy of the group content, then leaves the group.
+        private void DetachFromGroup(int batchIdx)
+        {
+            ref var batch = ref _batches[batchIdx];
+            int groupIndex = batch.groupPlusOne - 1;
+            var group = _groups[groupIndex];
+
+            batch.groupPlusOne = 0;
+            batch.batchedData.ResetPositionAndMode(false);
+            if (group.data.positionInBits > 0)
+                batch.batchedData.WriteBitsWithoutConsumingItUnchecked(group.data, group.data.positionInBits);
+            batch.batchCount = group.batchCount;
+            batch.lastHeader = group.lastHeader;
+            batch.lastDataLen = group.lastDataLen;
+            batch.stateVersion = group.stateVersion;
+
+            group.members.Remove(batchIdx);
+            group.modCount++;
+            if (group.members.Count == 1)
+                DetachFromGroup(group.members[0]);
+            else if (group.members.Count == 0)
+            {
+                ResetGroupContent(group);
+                _groups[groupIndex] = null;
+                _freeGroups.Push(group);
+            }
+        }
+
+        private void DissolveAllGroups()
+        {
+            for (int g = 0; g < _groups.Count; g++)
+            {
+                var group = _groups[g];
+                while (group != null && group.members.Count > 0 && _groups[g] == group)
+                    DetachFromGroup(group.members[group.members.Count - 1]);
+            }
+
+            _groups.Clear();
+        }
+
+        private SharedRPCBatch CreateGroup(List<int> members, Channel channel, int mtu)
+        {
+            var group = _freeGroups.Count > 0 ? _freeGroups.Pop() : new SharedRPCBatch();
+            group.data ??= BitPackerPool.Get();
+            ResetGroupContent(group);
+            group.channel = channel;
+            group.cachedMTU = mtu;
+            group.hitOp = 0;
+            group.appendOp = 0;
+            group.splitOp = 0;
+
+            int index = _groups.Count;
+            _groups.Add(group);
+            group.modCount++;
+            for (int i = 0; i < members.Count; i++)
+            {
+                group.members.Add(members[i]);
+                _batches[members[i]].groupPlusOne = index + 1;
+            }
+
+            return group;
+        }
+
+        // Appends one entry to a group; false when it cannot be shared (an entry that alone
+        // exceeds the MTU), and the caller queues it per member instead.
+        private bool TryAppendToGroup(SharedRPCBatch group, in UnionRPCHeader header, in BitData content,
+            Size contentLen, ulong stateVersion)
+        {
+            GetCachedEntry(group.lastHeader, group.lastDataLen, group.stateVersion, header, content, contentLen,
+                out var entryData, out int entryBitLength);
+
+            if (group.batchCount > 0)
+            {
+                int bytesAfterEntry = (group.data.positionInBits + entryBitLength + 7) >> 3;
+                if (bytesAfterEntry + 10 >= group.cachedMTU)
+                {
+                    SendGroup(group);
+                    ResetGroupContent(group);
+                    GetCachedEntry(default, default, 0, header, content, contentLen, out entryData,
+                        out entryBitLength);
+
+                    if (_sendAsImmediate)
+                        onImmediateAutoFlush?.Invoke();
+                }
+            }
+
+            if (group.batchCount == 0 && ((entryBitLength + 7) >> 3) + 10 >= group.cachedMTU)
+                return false;
+
+            group.data.WriteBitsWithoutConsumingItUnchecked(entryData, entryBitLength);
+            ++group.batchCount;
+            group.lastHeader = header;
+            group.lastDataLen = contentLen;
+            group.stateVersion = stateVersion;
+            return true;
+        }
+
+        // Fan-out queue: whole groups get the entry once, empty batches that receive it together
+        // form a new group, everything else (partially targeted groups split first) is per batch.
+        private void QueueShared(List<int> targets, in UnionRPCHeader header, in BitData content, Size contentLen,
+            Channel channel, ulong stateVersion, MTUBehaviour mtuOverride)
+        {
+            ulong op = ++_queueOp;
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                _batchOp[targets[i]] = op;
+                int g = _batches[targets[i]].groupPlusOne - 1;
+                if (g < 0)
+                    continue;
+
+                var group = _groups[g];
+                if (group.hitOp != op)
+                {
+                    group.hitOp = op;
+                    group.hits = 0;
+                }
+
+                group.hits++;
+            }
+
+            _newGroup.Clear();
+            int newGroupMtu = 0;
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                int idx = targets[i];
+                int g = _batches[idx].groupPlusOne - 1;
+
+                if (g >= 0)
+                {
+                    var group = _groups[g];
+
+                    // Mostly targeted (an observers RPC that skips its owner, say): the members it
+                    // skips take their own copy and the group keeps the shared buffer.
+                    if (group.hits < group.members.Count && group.hits * 2 >= group.members.Count &&
+                        group.splitOp != op)
+                    {
+                        group.splitOp = op;
+                        _groupScratch.Clear();
+                        for (int m = 0; m < group.members.Count; m++)
+                        {
+                            if (_batchOp[group.members[m]] != op)
+                                _groupScratch.Add(group.members[m]);
+                        }
+
+                        for (int m = 0; m < _groupScratch.Count; m++)
+                        {
+                            if (_batches[_groupScratch[m]].groupPlusOne == g + 1)
+                                DetachFromGroup(_groupScratch[m]);
+                        }
+
+                        // A split of two leaves a single member, which dissolves the group.
+                        if (_batches[idx].groupPlusOne != g + 1)
+                        {
+                            QueueCached(_batches[idx].key.playerId, header, content, contentLen, channel,
+                                stateVersion, mtuOverride);
+                            continue;
+                        }
+                    }
+
+                    if (group.hits == group.members.Count)
+                    {
+                        if (group.appendOp == op)
+                            continue;
+
+
+                        group.appendOp = op;
+                        if (TryAppendToGroup(group, header, content, contentLen, stateVersion))
+                            continue;
+
+                        // Oversized entry: fall back to the per-batch path for every member.
+                        var members = ListPool<int>.Instantiate();
+                        members.AddRange(group.members);
+                        for (int m = members.Count - 1; m >= 0; m--)
+                        {
+                            if (_batches[members[m]].groupPlusOne != 0)
+                                DetachFromGroup(members[m]);
+                        }
+
+                        for (int m = 0; m < members.Count; m++)
+                        {
+                            ref var member = ref _batches[members[m]];
+                            QueueCached(member.key.playerId, header, content, contentLen, channel, stateVersion,
+                                mtuOverride);
+                        }
+
+                        ListPool<int>.Destroy(members);
+                        continue;
+                    }
+
+                    DetachFromGroup(idx);
+                }
+
+                ref var batch = ref _batches[idx];
+                if (batch.batchCount == 0 && (_newGroup.Count == 0 || batch.cachedMTU == newGroupMtu))
+                {
+                    newGroupMtu = batch.cachedMTU;
+                    _newGroup.Add(idx);
+                    continue;
+                }
+
+                QueueCached(batch.key.playerId, header, content, contentLen, channel, stateVersion, mtuOverride);
+            }
+
+            if (_newGroup.Count >= 2)
+            {
+                var group = CreateGroup(_newGroup, channel, newGroupMtu);
+                group.appendOp = op;
+                if (TryAppendToGroup(group, header, content, contentLen, stateVersion))
+                    return;
+
+                while (group.members.Count > 0)
+                    DetachFromGroup(group.members[group.members.Count - 1]);
+            }
+
+            for (int i = 0; i < _newGroup.Count; i++)
+            {
+                ref var batch = ref _batches[_newGroup[i]];
+                QueueCached(batch.key.playerId, header, content, contentLen, channel, stateVersion, mtuOverride);
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int GetBatchIndex(PlayerID playerId, Channel channel)
         {
@@ -403,7 +809,10 @@ namespace PurrNet.Modules
         {
             // Resize if needed
             if (_batchCount >= _batches.Length)
+            {
                 Array.Resize(ref _batches, _batches.Length * 2);
+                Array.Resize(ref _batchOp, _batches.Length);
+            }
 
             int c = _batchCount;
             _batches[c] = new PendingBatchedData
@@ -512,6 +921,8 @@ namespace PurrNet.Modules
             Channel channel, ulong stateVersion, MTUBehaviour mtuOverride)
         {
             var batchIdx = GetBatchIndex(target, channel);
+            if (_batches[batchIdx].groupPlusOne != 0)
+                DetachFromGroup(batchIdx);
             ref var batch = ref _batches[batchIdx];
 
             GetCachedEntry(batch.lastHeader, batch.lastDataLen, batch.stateVersion, header, content, contentLen,
@@ -636,8 +1047,10 @@ namespace PurrNet.Modules
             ulong stateVersion = NextStateVersion();
             var contentLen = content.bitLength;
 
+            _queueTargets.Clear();
             for (var i = targets.Count - 1; i >= 0; i--)
-                QueueCached(targets[i], header, content, contentLen, channel, stateVersion, mtuOverride);
+                _queueTargets.Add(GetBatchIndex(targets[i], channel));
+            QueueShared(_queueTargets, header, content, contentLen, channel, stateVersion, mtuOverride);
 
             _queueMultiMarker.End();
         }
@@ -677,6 +1090,12 @@ namespace PurrNet.Modules
 
             bool hasFilter = filter.hasSkipA || filter.hasSkipB || filter.hasOnly;
 
+            if (!hasFilter && TryQueueSameTargets(targets, header, content, channel))
+            {
+                _queueMultiMarker.End();
+                return;
+            }
+
             if (ShouldQueueDirect(targets, filter, hasFilter))
             {
                 for (var i = targets.Count - 1; i >= 0; i--)
@@ -695,12 +1114,16 @@ namespace PurrNet.Modules
             ulong stateVersion = NextStateVersion();
             var contentLen = content.bitLength;
 
+            _queueTargets.Clear();
             for (var i = targets.Count - 1; i >= 0; i--)
             {
                 var target = targets[i];
                 if (hasFilter && filter.ShouldSkip(target)) continue;
-                QueueCached(target, header, content, contentLen, channel, stateVersion, mtuOverride);
+                _queueTargets.Add(GetBatchIndex(target, channel));
             }
+            QueueShared(_queueTargets, header, content, contentLen, channel, stateVersion, mtuOverride);
+            if (!hasFilter)
+                RememberTargets(targets, channel);
 
             _queueMultiMarker.End();
         }
@@ -709,6 +1132,8 @@ namespace PurrNet.Modules
             Channel channel, MTUBehaviour mtuOverride)
         {
             var batchIdx = GetBatchIndex(target, channel);
+            if (_batches[batchIdx].groupPlusOne != 0)
+                DetachFromGroup(batchIdx);
             ref var batch = ref _batches[batchIdx];
 
             int before = batch.batchedData.positionInBits;
@@ -788,6 +1213,14 @@ namespace PurrNet.Modules
 
         public void Clear()
         {
+            for (int g = 0; g < _groups.Count; g++)
+            {
+                if (_groups[g] != null)
+                    ReleaseGroup(g);
+            }
+
+            _groups.Clear();
+
             for (int i = 0; i < _batchCount; i++)
                 _batches[i].batchedData.Dispose();
 

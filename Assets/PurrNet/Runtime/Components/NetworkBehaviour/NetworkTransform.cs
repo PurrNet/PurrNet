@@ -753,6 +753,16 @@ namespace PurrNet
             if (!networkManager || !id.HasValue)
                 return;
 
+            var registered = isServer ? ntServerModule : ntClientModule;
+            if (registered != null)
+            {
+                registered.InvalidateSendBaseline(player, this, enqueue);
+                return;
+            }
+
+            if (GetNTIndex(isServer) < 0)
+                return;
+
             if (networkManager.TryGetModule<NetworkTransformFactory>(isServer, out var factory) &&
                 factory.TryGetModule(sceneId, out var ntModule))
                 ntModule.InvalidateSendBaseline(player, id.Value, enqueue);
@@ -1498,13 +1508,22 @@ namespace PurrNet
 
         internal NTEncodeCache unreliableEncodeCache;
 
+        internal NTRecvHistory unreliableRecvHistory;
+
         internal int ntIndex = -1;
 
         internal NetworkID ntNid;
 
         internal bool ntRegistered;
 
+        // Bumped on every registration so in-flight entries of a previous one are ignored.
+        internal uint ntLife;
+
         internal int ntServerIndex = -1;
+
+        // The modules this transform is registered with, so per-observer callbacks skip the lookups.
+        internal NetworkTransformModule ntServerModule;
+        internal NetworkTransformModule ntClientModule;
 
         internal int GetNTIndex(bool asServer) => asServer ? ntServerIndex : ntIndex;
 
@@ -2629,6 +2648,63 @@ namespace PurrNet
             return state;
         }
 
+        // Prediction residuals are mostly a few hundred millimetres: Exp-Golomb grows one bit per
+        // doubling instead of a byte per seven bits.
+        private const int RESIDUAL_GOLOMB_K = 5;
+
+        internal static void WriteResidual(BitPacker packer, int residual)
+        {
+            if (residual == 0)
+            {
+                packer.WriteBit(false);
+                return;
+            }
+
+            packer.WriteBit(true);
+            long r = residual;
+            ulong x = (ulong)((r << 1) ^ (r >> 63)) - 1 + (1UL << RESIDUAL_GOLOMB_K);
+            int high = 63 - PackingIntegers.CountLeadingZeroBits(x);
+            int q = high - RESIDUAL_GOLOMB_K;
+            for (int i = 0; i < q; i++)
+                packer.WriteBit(false);
+            packer.WriteBit(true);
+            packer.WriteBits(x & ((1UL << high) - 1), (byte)high);
+        }
+
+        internal static int ReadResidual(BitPacker packer)
+        {
+            if (!packer.ReadBit())
+                return 0;
+
+            int q = 0;
+            while (!packer.ReadBit())
+            {
+                if (++q > 40)
+                    throw new System.OverflowException("Position residual too long");
+            }
+
+            int high = q + RESIDUAL_GOLOMB_K;
+            ulong x = (1UL << high) | packer.ReadBits((byte)high);
+            ulong z = x - (1UL << RESIDUAL_GOLOMB_K) + 1;
+            long r = (long)(z >> 1) ^ -(long)(z & 1);
+            return (int)r;
+        }
+
+        private static void WritePositionResidual(BitPacker packer, in CompressedVector3 predicted, in CompressedVector3 value)
+        {
+            WriteResidual(packer, value.x.rounded - predicted.x.rounded);
+            WriteResidual(packer, value.y.rounded - predicted.y.rounded);
+            WriteResidual(packer, value.z.rounded - predicted.z.rounded);
+        }
+
+        private static CompressedVector3 ReadPositionResidual(BitPacker packer, in CompressedVector3 predicted)
+        {
+            int x = predicted.x.rounded + ReadResidual(packer);
+            int y = predicted.y.rounded + ReadResidual(packer);
+            int z = predicted.z.rounded + ReadResidual(packer);
+            return new CompressedVector3(new CompressedFloat(x), new CompressedFloat(y), new CompressedFloat(z));
+        }
+
         internal void WriteDeltaState(BitPacker packer, in NetworkTransformState baseline, in NetworkTransformState predicted)
         {
             var state = _capturedState;
@@ -2662,7 +2738,7 @@ namespace PurrNet
                     bool changed = !baseline.data.position.GetValueOrDefault().Equals(newPos);
                     packer.WriteBits(changed ? 1UL : 0UL, 1);
                     if (changed)
-                        DeltaPacker<CompressedVector3>.Write(packer, predicted.data.position.GetValueOrDefault(), newPos);
+                        WritePositionResidual(packer, predicted.data.position.GetValueOrDefault(), newPos);
                 }
             }
 
@@ -2723,10 +2799,7 @@ namespace PurrNet
                 }
                 else
                 {
-                    var refPos = predicted.data.position.GetValueOrDefault();
-                    var newPos = refPos;
-                    DeltaPacker<CompressedVector3>.Read(packer, refPos, ref newPos);
-                    state.data.position = newPos;
+                    state.data.position = ReadPositionResidual(packer, predicted.data.position.GetValueOrDefault());
                 }
             }
 
@@ -2863,6 +2936,8 @@ namespace PurrNet
         }
 
         private bool _cachedConnectedOwner;
+
+        internal bool HasRemoteController => _ownerAuth && _cachedConnectedOwner;
 
         protected override void OnOwnerDisconnected(PlayerID ownerId)
         {

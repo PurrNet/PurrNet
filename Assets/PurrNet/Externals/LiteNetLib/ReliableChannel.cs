@@ -840,6 +840,7 @@ namespace LiteNetLib
                 int idx = seq % _windowSize;
                 var packet = _pendingPackets[idx].Packet;
                 if (packet == null || !_pendingPackets[idx].IsSent || packet.Size > maxPacketSize ||
+                    NetUtils.RelativeSequenceNumber(_localSeqence, seq) > 64 ||
                     RepairSizeClass(packet.Size) != sizeClass || currentTime - _pendingPackets[idx].TimeStamp > horizon ||
                     currentTime - _pendingPackets[idx].TimeStamp < RepairSpacingTicks)
                     continue;

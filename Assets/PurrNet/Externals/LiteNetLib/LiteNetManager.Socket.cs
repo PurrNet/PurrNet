@@ -417,7 +417,7 @@ namespace LiteNetLib
                     IsBackground = true
                 };
                 _receiveThread.Start();
-                if (_logicThread == null)
+                if (_logicThread == null && !ManualLogic)
                 {
                     _logicThread = new Thread(UpdateLogic) { Name = "LogicThread", IsBackground = true };
                     _logicThread.Start();

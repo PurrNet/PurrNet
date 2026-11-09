@@ -33,6 +33,9 @@ namespace PurrNet.Transports
         [Tooltip("Use native UDP sockets on supported Windows/Linux runtimes to avoid per-packet socket allocations. Other platforms use managed sockets. Applied when the transport is enabled.")]
         [SerializeField] private bool _useNativeSockets = true;
 
+        [Tooltip("Run the server's socket sends, resends and receive parsing on LiteNetLib's own threads instead of the main thread. Events are still raised on the main thread. Clients always run on the main thread. Applied when the server starts.")]
+        [SerializeField] private bool _threadedSockets = true;
+
         [SerializeField] private NetworkSimulation _networkSimulation = NetworkSimulation.@default;
 
         public event OnConnected onConnected;
@@ -405,7 +408,12 @@ namespace PurrNet.Transports
             var dInMs = delta * 1000f;
 
             if (_server.IsRunning)
-                _server.ManualUpdate(dInMs);
+            {
+                if (_threadedSockets)
+                    _server.TriggerUpdate();
+                else
+                    _server.ManualUpdate(dInMs);
+            }
 
             if (_client.IsRunning)
                 _client.ManualUpdate(dInMs);
@@ -426,7 +434,11 @@ namespace PurrNet.Transports
 
             TriggerConnectionStateEvent(false);
 
-            _client.StartInManualMode(0);
+            _client.ManualLogic = _threadedSockets;
+            if (_threadedSockets)
+                _client.Start(0);
+            else
+                _client.StartInManualMode(0);
             _client.Connect(ip, port, "PurrNet");
             TriggerConnectionStateEvent(false);
         }
@@ -456,7 +468,7 @@ namespace PurrNet.Transports
                 listenerState = ConnectionState.Connecting;
                 TriggerConnectionStateEvent(true);
 
-                if (_server.StartInManualMode(port))
+                if (_threadedSockets ? _server.Start(port) : _server.StartInManualMode(port))
                 {
                     listenerState = ConnectionState.Connected;
                     TriggerConnectionStateEvent(true);

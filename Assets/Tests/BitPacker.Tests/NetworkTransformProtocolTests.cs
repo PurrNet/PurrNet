@@ -89,12 +89,23 @@ public class NetworkTransformProtocolTests
         Assert.That(NetworkTransformModule.ShouldFlushAckAfterTick(stream), Is.True);
 
         stream.ackDelayTicks = 0;
-        stream.packetsSinceAck = NTUnreliable.ACK_PACKET_THRESHOLD - 1;
+        stream.packetsSinceAck = NTUnreliable.ACK_PACKET_THRESHOLD;
+        Assert.That(NetworkTransformModule.ShouldFlushAckAfterTick(stream), Is.True);
+
+        stream.ackDelayTicks = 0;
+        stream.packetsSinceAck = NTUnreliable.ACK_WINDOW / 2 - 1;
         Assert.That(NetworkTransformModule.ShouldFlushAckAfterPacket(stream), Is.False);
 
         stream.packetsSinceAck++;
         Assert.That(NetworkTransformModule.ShouldFlushAckAfterPacket(stream), Is.True);
-        Assert.That(NTUnreliable.ACK_PACKET_THRESHOLD, Is.LessThan(32));
+        Assert.That(NTUnreliable.ACK_PACKET_THRESHOLD, Is.LessThan(NTUnreliable.ACK_WINDOW));
+    }
+
+    [Test]
+    public void AnchorTickPacketsAreAcknowledgedAtTheEndOfTheTick()
+    {
+        var stream = new NTUnreliableRecvStream { ackDirty = true, anchorUnacked = true };
+        Assert.That(NetworkTransformModule.ShouldFlushAckAfterTick(stream), Is.True);
     }
 
     [Test]
@@ -157,7 +168,6 @@ public class NetworkTransformProtocolTests
     public void BaselineHistoryOutlivesTheSafePredictionWindow()
     {
         Assert.That(NTUnreliable.MAX_BASELINE_AGE, Is.EqualTo(1 << NTUnreliable.DISTANCE_BITS));
-        Assert.That(NTUnreliable.RING_SIZE, Is.EqualTo(NTUnreliable.MAX_BASELINE_AGE));
         Assert.That(NTUnreliable.MAX_PREDICTED_BASELINE_AGE, Is.LessThan(NTUnreliable.MAX_BASELINE_AGE));
 
         var baseline = new NetworkTransformState
@@ -491,7 +501,8 @@ public class NetworkTransformProtocolTests
             nt.CaptureUnreliableState();
             NetworkTransformModule.AddPending(serverStream, nt);
             const ushort seq = 1;
-            serverStream.ring[seq % NTUnreliable.RING_SIZE] = SlotWith(nt, seq, nt.capturedRevision);
+            // Server fan-out streams adopt anchors on a common tick; a first baseline is immediate.
+            serverStream.ring[seq % NTUnreliable.RING_SIZE] = SlotWith(nt, seq, nt.capturedRevision, anchor: false);
             Assert.DoesNotThrow(() => serverModule.ProcessAck(serverStream, seq, 0));
             Assert.That(serverStream.baselines[nt.ntServerIndex].has, Is.True);
 
@@ -573,7 +584,12 @@ public class NetworkTransformProtocolTests
 
             stream.ring[4] = SlotWith(nt, 4, nt.capturedRevision, anchor: false);
             module.ProcessAck(stream, 4, 0);
-            Assert.That(stream.baselines[index].order, Is.EqualTo(4), "an ack of the current revision completes off-anchor");
+            Assert.That(stream.baselines[index].order, Is.EqualTo(3), "an off-anchor ack of the current revision waits for an anchor");
+            Assert.That(stream.IsPending(nt), Is.True);
+
+            stream.ring[5] = SlotWith(nt, 5, nt.capturedRevision, anchor: true);
+            module.ProcessAck(stream, 5, 0);
+            Assert.That(stream.baselines[index].order, Is.EqualTo(5), "an anchor ack of the current revision completes");
             Assert.That(stream.IsPending(nt), Is.False);
         }
         finally
@@ -648,7 +664,9 @@ public class NetworkTransformProtocolTests
             module.PrepareTargetedReset(target, nid, 1, 1);
 
             Assert.That(targetStream.baselines[nt.ntIndex].has, Is.False);
-            Assert.That(targetStream.ring[0].entries, Is.Empty);
+            module.ProcessAck(targetStream, 0, 0);
+            Assert.That(targetStream.baselines[nt.ntIndex].has, Is.False,
+                "a late ack of a packet sent before the reset must not resurrect the baseline");
             Assert.That(targetStream.generationOverrides.ContainsKey(nid), Is.False);
             Assert.That(otherStream.baselines[nt.ntIndex].has, Is.True);
             Assert.That(otherStream.baselines[nt.ntIndex].gen, Is.EqualTo(1));
@@ -918,7 +936,8 @@ public class NetworkTransformProtocolTests
                 gen = nt.sendGen,
                 genEpoch = nt.sendGenEpoch,
                 revision = nt.capturedRevision,
-                transform = nt
+                transform = nt,
+                life = nt.ntLife
             });
             NTSharedEntries.Retain(shared);
             NTSharedEntries.Retain(shared);

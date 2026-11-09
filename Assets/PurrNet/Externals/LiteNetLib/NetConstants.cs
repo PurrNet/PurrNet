@@ -40,7 +40,7 @@
         /// <summary>
         /// Default window size for reliable channels (number of packets).
         /// </summary>
-        public const int DefaultWindowSize = 64;
+        public const int DefaultWindowSize = 256;
         /// <summary>
         /// Size of the underlying UDP socket receive and send buffers in bytes. <br/>
         /// Default is 1MB.

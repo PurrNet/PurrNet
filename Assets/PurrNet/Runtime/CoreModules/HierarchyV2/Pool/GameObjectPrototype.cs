@@ -40,23 +40,16 @@ namespace PurrNet.Modules
 
         public GameObjectPrototype Clone()
         {
+            // Pieces are immutable and their path arrays are never written after creation, so a
+            // clone shares them; it runs once per observer of every spawn.
             var newFramework = DisposableList<GameObjectFrameworkPiece>.Create(framework.Count);
             for (int i = 0; i < framework.Count; i++)
             {
                 var piece = framework[i];
-                int[] pathCopy = null;
-                if (piece.inversedRelativePath != null && piece.inversedRelativePath.Length > 0)
-                {
-                    pathCopy = new int[piece.inversedRelativePath.Length];
-                    Array.Copy(piece.inversedRelativePath, pathCopy, piece.inversedRelativePath.Length);
-                }
-                newFramework.Add(new GameObjectFrameworkPiece(
-                    piece.localTransform,
-                    piece.pid,
-                    piece.id,
-                    piece.childCount,
-                    piece.isActive,
-                    pathCopy ?? Array.Empty<int>()));
+                newFramework.Add(piece.inversedRelativePath != null
+                    ? piece
+                    : new GameObjectFrameworkPiece(piece.localTransform, piece.pid, piece.id, piece.childCount,
+                        piece.isActive, Array.Empty<int>()));
             }
             return new GameObjectPrototype(
                 position,

@@ -272,6 +272,30 @@ public class Bootstrap : Scenario
 
         if (_role != NetworkRole.Client)
             udp.maxConnections = Mathf.Max(udp.maxConnections, _expectedConnections + 8);
+
+        // -simLatency min,max (ms) and -simLoss percent: emulate a real network locally.
+        var sim = udp.networkSimulation;
+        if (CommandLineUtils.TryGetArgument("-simLatency", out var latency))
+        {
+            var parts = latency.Split(',');
+            if (parts.Length == 2 && int.TryParse(parts[0], out var min) && int.TryParse(parts[1], out var max))
+            {
+                sim.includeInBuild = true;
+                sim.simulateLatency = true;
+                sim.minLatency = min;
+                sim.maxLatency = max;
+            }
+        }
+
+        if (CommandLineUtils.TryGetArgument("-simLoss", out var loss) && int.TryParse(loss, out var lossPercent))
+        {
+            sim.includeInBuild = true;
+            sim.simulatePacketLoss = true;
+            sim.packetLossChance = lossPercent;
+        }
+
+        if (sim.includeInBuild)
+            udp.networkSimulation = sim;
     }
 
     private bool TryResolveRole(out NetworkRole resolved)

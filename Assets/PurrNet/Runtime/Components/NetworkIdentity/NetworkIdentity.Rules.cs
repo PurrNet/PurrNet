@@ -251,7 +251,7 @@ namespace PurrNet
 
         internal bool TryAddObserver(PlayerID player)
         {
-            if (_observers.Contains(player) || _pendingObservers?.Contains(player) == true)
+            if (_observerSet.Contains(player) || _pendingObservers?.Contains(player) == true)
                 return false;
 
             if (_observers.Count == 0 && networkManager)
@@ -262,12 +262,19 @@ namespace PurrNet
             }
 
             _observers.Add(player);
+            _observerSet.Add(player);
             return true;
         }
 
         internal bool TryRemoveObserver(PlayerID player)
         {
-            return _observers.Remove(player) || TryRemovePendingObserver(player);
+            if (_observerSet.Remove(player))
+            {
+                _observers.Remove(player);
+                return true;
+            }
+
+            return TryRemovePendingObserver(player);
         }
 
         /// <summary>
@@ -294,9 +301,10 @@ namespace PurrNet
 
         internal bool TryMoveObserverToPending(PlayerID player)
         {
-            if (!_observers.Remove(player))
+            if (!_observerSet.Remove(player))
                 return false;
 
+            _observers.Remove(player);
             _pendingObservers ??= ListPool<PlayerID>.Instantiate();
             _pendingObservers.Add(player);
             return true;
@@ -308,7 +316,7 @@ namespace PurrNet
                 return false;
 
             ReleasePendingObserversIfEmpty();
-            if (!_observers.Contains(player))
+            if (_observerSet.Add(player))
                 _observers.Add(player);
             return true;
         }
