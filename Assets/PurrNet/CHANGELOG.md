@@ -1,3 +1,10 @@
+# [1.26.0-beta.9](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.8...v1.26.0-beta.9) (2026-11-09)
+
+
+### Bug Fixes
+
+* despawn scene objects on disconnect even when cleanupSpawnedObjects is off ([90f5853](https://github.com/PurrNet/PurrNet/commit/90f5853a6b9edcc86ee39395569691d58e439a5e))
+
 # [1.26.0-beta.8](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.7...v1.26.0-beta.8) (2026-11-07)
 
 
