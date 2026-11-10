@@ -141,9 +141,9 @@ namespace LiteNetLib
         {
             byte[] addrBuffer4 = new byte[NativeSocket.IPv4AddrSize];
             byte[] addrBuffer6 = new byte[NativeSocket.IPv6AddrSize];
-            var selectReadList = new List<Socket>(2);
             var socketv4 = _udpSocketv4;
             var socketV6 = _udpSocketv6;
+            bool ready4 = false, ready6 = false;
 
             while (_isRunning)
             {
@@ -156,28 +156,30 @@ namespace LiteNetLib
                         continue;
                     }
                     bool messageReceived = false;
-                    if (socketv4.Available != 0 || selectReadList.Contains(socketv4))
+                    if (socketv4.Available != 0 || ready4)
                     {
                         if (NativeReceiveFrom(socketv4, addrBuffer4) == false)
                             return;
                         messageReceived = true;
                     }
-                    if (socketV6.Available != 0 || selectReadList.Contains(socketV6))
+                    if (socketV6.Available != 0 || ready6)
                     {
                         if (NativeReceiveFrom(socketV6, addrBuffer6) == false)
                             return;
                         messageReceived = true;
                     }
 
-                    selectReadList.Clear();
+                    ready4 = ready6 = false;
 
                     if (messageReceived)
                         continue;
 
-                    selectReadList.Add(socketv4);
-                    selectReadList.Add(socketV6);
-
-                    Socket.Select(selectReadList, null, null, ReceivePollingTime);
+                    if (NativeSocket.Poll(socketv4.Handle, socketV6.Handle, ReceivePollingTime / 1000, out ready4, out ready6) < 0)
+                    {
+                        var error = NativeSocket.GetSocketError();
+                        if (error != SocketError.Interrupted)
+                            throw new SocketException((int)error);
+                    }
                 }
                 catch (SocketException ex)
                 {

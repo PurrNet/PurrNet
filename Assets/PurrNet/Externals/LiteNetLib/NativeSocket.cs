@@ -30,6 +30,16 @@ namespace LiteNetLib
                 [In] SocketFlags socketFlags,
                 [In] byte[] socketAddress,
                 [In] int socketAddressSize);
+
+            [DllImport(LibName, SetLastError = true)]
+            internal static extern int WSAPoll(PollFd* fds, uint nfds, int timeout);
+
+            internal struct PollFd
+            {
+                public IntPtr fd;
+                public short events;
+                public short revents;
+            }
         }
 
         static unsafe class UnixSock
@@ -53,6 +63,16 @@ namespace LiteNetLib
                 [In] SocketFlags socketFlags,
                 [In] byte[] socketAddress,
                 [In] int socketAddressSize);
+
+            [DllImport(LibName, SetLastError = true)]
+            internal static extern int poll(PollFd* fds, UIntPtr nfds, int timeout);
+
+            internal struct PollFd
+            {
+                public int fd;
+                public short events;
+                public short revents;
+            }
         }
 
         /// <summary>
@@ -184,6 +204,37 @@ namespace LiteNetLib
             UnixMode
                 ? UnixSock.sendto(socketHandle, pinnedBuffer, len, 0, socketAddress, socketAddressSize)
                 : WinSock.sendto(socketHandle, pinnedBuffer, len, 0, socketAddress, socketAddressSize);
+
+        /// <summary>
+        /// Waits until either socket is readable, without the allocations of <see cref="Socket.Select"/>.
+        /// </summary>
+        /// <returns>The number of ready sockets, 0 on timeout, or a negative value on error.</returns>
+        public static unsafe int Poll(IntPtr socketA, IntPtr socketB, int timeoutMs, out bool readyA, out bool readyB)
+        {
+            int result;
+            if (UnixMode)
+            {
+                var fds = stackalloc UnixSock.PollFd[2];
+                fds[0] = new UnixSock.PollFd { fd = (int)socketA, events = 0x0001 };
+                fds[1] = new UnixSock.PollFd { fd = (int)socketB, events = 0x0001 };
+                result = UnixSock.poll(fds, (UIntPtr)2, timeoutMs);
+                readyA = fds[0].revents != 0;
+                readyB = fds[1].revents != 0;
+            }
+            else
+            {
+                var fds = stackalloc WinSock.PollFd[2];
+                fds[0] = new WinSock.PollFd { fd = socketA, events = 0x0100 };
+                fds[1] = new WinSock.PollFd { fd = socketB, events = 0x0100 };
+                result = WinSock.WSAPoll(fds, 2, timeoutMs);
+                readyA = fds[0].revents != 0;
+                readyB = fds[1].revents != 0;
+            }
+
+            if (result < 0)
+                readyA = readyB = false;
+            return result;
+        }
 
         /// <summary>
         /// Retrieves the last OS-specific socket error and translates it to <see cref="SocketError"/>.
