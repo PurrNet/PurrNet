@@ -8,6 +8,7 @@ var namespacePurrNet =
     [ "Packing", "namespacePurrNet_1_1Packing.html", "namespacePurrNet_1_1Packing" ],
     [ "Pooling", "namespacePurrNet_1_1Pooling.html", "namespacePurrNet_1_1Pooling" ],
     [ "Profiler", "namespacePurrNet_1_1Profiler.html", "namespacePurrNet_1_1Profiler" ],
+    [ "Recording", "namespacePurrNet_1_1Recording.html", "namespacePurrNet_1_1Recording" ],
     [ "StateMachine", "namespacePurrNet_1_1StateMachine.html", "namespacePurrNet_1_1StateMachine" ],
     [ "Transports", "namespacePurrNet_1_1Transports.html", "namespacePurrNet_1_1Transports" ],
     [ "Utils", "namespacePurrNet_1_1Utils.html", "namespacePurrNet_1_1Utils" ],

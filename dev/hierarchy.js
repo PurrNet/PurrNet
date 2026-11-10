@@ -11,6 +11,7 @@ var hierarchy =
       [ "PurrNet.LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
       [ "PurrNet.PackerDependenciesAttribute", "classPurrNet_1_1PackerDependenciesAttribute.html", null ],
       [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ],
+      [ "PurrNet.Recording.DontRecordAttribute", "classPurrNet_1_1Recording_1_1DontRecordAttribute.html", null ],
       [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
       [ "PurrNet.StripInClientOnlyBuildAttribute", "classPurrNet_1_1StripInClientOnlyBuildAttribute.html", null ]
     ] ],
@@ -21,8 +22,22 @@ var hierarchy =
     [ "PurrNet.Transports.AutomaticCloudSetups", "classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html", null ],
     [ "PurrNet.Profiler.BandwidthEntry", "structPurrNet_1_1Profiler_1_1BandwidthEntry.html", null ],
     [ "PurrNet.BoneInfo", "structPurrNet_1_1BoneInfo.html", null ],
+    [ "PurrNet.Recording.ByteShelf", "classPurrNet_1_1Recording_1_1ByteShelf.html", null ],
+    [ "PurrNet.Recording.CameraSample", "structPurrNet_1_1Recording_1_1CameraSample.html", null ],
+    [ "PurrNet.Recording.CheckedWriter", "classPurrNet_1_1Recording_1_1CheckedWriter.html", [
+      [ "PurrNet.Recording.ManagedFieldWriter", "classPurrNet_1_1Recording_1_1ManagedFieldWriter.html", null ],
+      [ "PurrNet.Recording.ObjectPlan", "classPurrNet_1_1Recording_1_1ObjectPlan.html", null ],
+      [ "PurrNet.Recording.TypedListWriter", "classPurrNet_1_1Recording_1_1TypedListWriter.html", [
+        [ "PurrNet.Recording.ListWriter< T >", "classPurrNet_1_1Recording_1_1ListWriter.html", null ]
+      ] ]
+    ] ],
+    [ "PurrNet.Recording.ChunkEncoder", "classPurrNet_1_1Recording_1_1ChunkEncoder.html", null ],
+    [ "PurrNet.Recording.ChunkLog", "classPurrNet_1_1Recording_1_1ChunkLog.html", null ],
+    [ "PurrNet.Recording.ChunkStream", "structPurrNet_1_1Recording_1_1ChunkStream.html", null ],
     [ "PurrNet.ClientDisconnectInfo", "structPurrNet_1_1ClientDisconnectInfo.html", null ],
     [ "PurrNet.Transports.ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
+    [ "PurrNet.Recording.ClientSample< T >", "structPurrNet_1_1Recording_1_1ClientSample.html", null ],
+    [ "PurrNet.Recording.RowLayout.Column", "structPurrNet_1_1Recording_1_1RowLayout_1_1Column.html", null ],
     [ "PurrNet.Modules.DeltaCache", "classPurrNet_1_1Modules_1_1DeltaCache.html", null ],
     [ "PurrNet.Modules.DeltaFanoutGrouper", "classPurrNet_1_1Modules_1_1DeltaFanoutGrouper.html", null ],
     [ "PurrNet.Modules.DeltaIDs", "classPurrNet_1_1Modules_1_1DeltaIDs.html", null ],
@@ -40,6 +55,7 @@ var hierarchy =
     [ "PurrNet.Pooling.DisposableList< TKey >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< Transform >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< ushort >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
+    [ "PurrNet.Recording.ElementMemo", "classPurrNet_1_1Recording_1_1ElementMemo.html", null ],
     [ "Exception", null, [
       [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ],
       [ "PurrNet.RpcException", "classPurrNet_1_1RpcException.html", [
@@ -133,6 +149,7 @@ var hierarchy =
       [ "PurrNet.Profiler.BroadcastSample", "structPurrNet_1_1Profiler_1_1BroadcastSample.html", null ],
       [ "PurrNet.Profiler.RpcsSample", "structPurrNet_1_1Profiler_1_1RpcsSample.html", null ],
       [ "PurrNet.Profiler.TickSample", "classPurrNet_1_1Profiler_1_1TickSample.html", null ],
+      [ "PurrNet.Recording.RecordingFile", "classPurrNet_1_1Recording_1_1RecordingFile.html", null ],
       [ "PurrNet.SyncEventData", "structPurrNet_1_1SyncEventData.html", null ],
       [ "PurrNet.Transports.FragmentationLayer", "classPurrNet_1_1Transports_1_1FragmentationLayer.html", null ]
     ] ],
@@ -161,13 +178,18 @@ var hierarchy =
     [ "PurrNet.Packing.IDuplicate< Half >", "interfacePurrNet_1_1Packing_1_1IDuplicate.html", [
       [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ]
     ] ],
+    [ "PurrNet.Recording.IElementPlan", "interfacePurrNet_1_1Recording_1_1IElementPlan.html", [
+      [ "PurrNet.Recording.InlineListWriter< TList, T >", "classPurrNet_1_1Recording_1_1InlineListWriter.html", null ],
+      [ "PurrNet.Recording.ListWriter< T >", "classPurrNet_1_1Recording_1_1ListWriter.html", null ]
+    ] ],
     [ "IEnumerator", null, [
       [ "PurrNet.Pooling.DisposableArray< T >.Enumerator", "structPurrNet_1_1Pooling_1_1DisposableArray_1_1Enumerator.html", null ],
       [ "PurrNet.Pooling.DisposableDictionary< TKey, TValue >.Enumerator", "structPurrNet_1_1Pooling_1_1DisposableDictionary_1_1Enumerator.html", null ],
       [ "PurrNet.Pooling.DisposableHashSet< T >.Enumerator", "structPurrNet_1_1Pooling_1_1DisposableHashSet_1_1Enumerator.html", null ]
     ] ],
     [ "IEqualityComparer", null, [
-      [ "PurrNet.Packing.QuaternionEqualityComparer", "structPurrNet_1_1Packing_1_1QuaternionEqualityComparer.html", null ]
+      [ "PurrNet.Packing.QuaternionEqualityComparer", "structPurrNet_1_1Packing_1_1QuaternionEqualityComparer.html", null ],
+      [ "PurrNet.Recording.ReferenceComparer", "classPurrNet_1_1Recording_1_1ReferenceComparer.html", null ]
     ] ],
     [ "IEquatable", null, [
       [ "PurrNet.GlobalNetworkID", "structPurrNet_1_1GlobalNetworkID.html", null ],
@@ -275,6 +297,9 @@ var hierarchy =
         [ "PurrNet.NoVisibilityRule", "classPurrNet_1_1NoVisibilityRule.html", null ]
       ] ]
     ] ],
+    [ "InlineListWriter", null, [
+      [ "PurrNet.Recording.InlineListWriter< TList, T >", "classPurrNet_1_1Recording_1_1InlineListWriter.html", null ]
+    ] ],
     [ "PurrNet.Interpolated< T >", "classPurrNet_1_1Interpolated.html", null ],
     [ "PurrNet.Interpolated< PurrNet.QuaternionWithParent >", "classPurrNet_1_1Interpolated.html", null ],
     [ "PurrNet.Interpolated< PurrNet.ScaleWithParent >", "classPurrNet_1_1Interpolated.html", null ],
@@ -336,6 +361,9 @@ var hierarchy =
       [ "PurrNet.PlayerID", "structPurrNet_1_1PlayerID.html", null ],
       [ "PurrNet.PrefabID", "structPurrNet_1_1PrefabID.html", null ],
       [ "PurrNet.RPCPacket", "structPurrNet_1_1RPCPacket.html", null ],
+      [ "PurrNet.Recording.RecordedSamplesPacket", "structPurrNet_1_1Recording_1_1RecordedSamplesPacket.html", null ],
+      [ "PurrNet.Recording.RecordedSamplesPayload", "structPurrNet_1_1Recording_1_1RecordedSamplesPayload.html", null ],
+      [ "PurrNet.Recording.RecordedStreamDeclare", "structPurrNet_1_1Recording_1_1RecordedStreamDeclare.html", null ],
       [ "PurrNet.SceneID", "structPurrNet_1_1SceneID.html", null ],
       [ "PurrNet.StaticRPCHeader", "structPurrNet_1_1StaticRPCHeader.html", null ],
       [ "PurrNet.StaticRPCPacket", "structPurrNet_1_1StaticRPCPacket.html", null ],
@@ -389,6 +417,12 @@ var hierarchy =
       [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ]
     ] ],
+    [ "PurrNet.Recording.IRecordingContext", "interfacePurrNet_1_1Recording_1_1IRecordingContext.html", [
+      [ "PurrNet.Recording.NetworkRecorder", "classPurrNet_1_1Recording_1_1NetworkRecorder.html", null ]
+    ] ],
+    [ "PurrNet.Recording.IRecordProducer", "interfacePurrNet_1_1Recording_1_1IRecordProducer.html", [
+      [ "PurrNet.Recording.IStepwiseRecordProducer", "interfacePurrNet_1_1Recording_1_1IStepwiseRecordProducer.html", null ]
+    ] ],
     [ "PurrNet.IRegisterModules", "interfacePurrNet_1_1IRegisterModules.html", [
       [ "PurrNet.NetworkManager", "classPurrNet_1_1NetworkManager.html", null ],
       [ "PurrNet.RawNetManager", "classPurrNet_1_1RawNetManager.html", null ]
@@ -434,7 +468,9 @@ var hierarchy =
       [ "PurrNet.SyncList< T >", "classPurrNet_1_1SyncList.html", null ],
       [ "PurrNet.SyncTimer", "classPurrNet_1_1SyncTimer.html", null ]
     ] ],
+    [ "PurrNet.Recording.JsonBuilder", "classPurrNet_1_1Recording_1_1JsonBuilder.html", null ],
     [ "PurrNet.Logging.LogStyle", "structPurrNet_1_1Logging_1_1LogStyle.html", null ],
+    [ "PurrNet.Recording.RowLayout.ManagedField", "classPurrNet_1_1Recording_1_1RowLayout_1_1ManagedField.html", null ],
     [ "PurrNet.Transports.MigrationJoinInfo", "structPurrNet_1_1Transports_1_1MigrationJoinInfo.html", null ],
     [ "PurrNet.MiscRules", "structPurrNet_1_1MiscRules.html", null ],
     [ "PurrNet.ModulesCollection", "structPurrNet_1_1ModulesCollection.html", null ],
@@ -466,6 +502,9 @@ var hierarchy =
       [ "PurrNet.PurrMonoBehaviour", "classPurrNet_1_1PurrMonoBehaviour.html", null ],
       [ "PurrNet.PurrSceneInfo", "classPurrNet_1_1PurrSceneInfo.html", null ],
       [ "PurrNet.RawNetManager", "classPurrNet_1_1RawNetManager.html", null ],
+      [ "PurrNet.Recording.NetworkRecorder", "classPurrNet_1_1Recording_1_1NetworkRecorder.html", null ],
+      [ "PurrNet.Recording.RecordLocalCamera", "classPurrNet_1_1Recording_1_1RecordLocalCamera.html", null ],
+      [ "PurrNet.Recording.RecordingUploader", "classPurrNet_1_1Recording_1_1RecordingUploader.html", null ],
       [ "PurrNet.SceneRegistry< T >", "classPurrNet_1_1SceneRegistry.html", null ],
       [ "PurrNet.StatisticsManager", "classPurrNet_1_1StatisticsManager.html", null ],
       [ "PurrNet.Transports.GenericTransport", "classPurrNet_1_1Transports_1_1GenericTransport.html", [
@@ -509,6 +548,7 @@ var hierarchy =
       [ "PurrNet.NetworkTransformCompositeStrategy", "classPurrNet_1_1NetworkTransformCompositeStrategy.html", null ],
       [ "PurrNet.NetworkTransformDefaultStrategy", "classPurrNet_1_1NetworkTransformDefaultStrategy.html", null ]
     ] ],
+    [ "PurrNet.Recording.ObjectLayout", "classPurrNet_1_1Recording_1_1ObjectLayout.html", null ],
     [ "PurrNet.Modules.ObserverFilter", "structPurrNet_1_1Modules_1_1ObserverFilter.html", null ],
     [ "PurrNet.OwnershipComponentToggle", "structPurrNet_1_1OwnershipComponentToggle.html", null ],
     [ "PurrNet.OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],
@@ -551,6 +591,19 @@ var hierarchy =
     [ "PurrNet.Collections.PurrHashSet< PurrNet.PlayerID >", "classPurrNet_1_1Collections_1_1PurrHashSet.html", null ],
     [ "PurrNet.Modules.PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "PurrNet.QuaternionWithParent", "structPurrNet_1_1QuaternionWithParent.html", null ],
+    [ "PurrNet.Recording.RecordedColliderPose", "structPurrNet_1_1Recording_1_1RecordedColliderPose.html", null ],
+    [ "PurrNet.Recording.RecordedEntity", "classPurrNet_1_1Recording_1_1RecordedEntity.html", null ],
+    [ "PurrNet.Recording.RecordedPlayerTick", "structPurrNet_1_1Recording_1_1RecordedPlayerTick.html", null ],
+    [ "PurrNet.Recording.RecordedStreamInfo", "structPurrNet_1_1Recording_1_1RecordedStreamInfo.html", null ],
+    [ "PurrNet.Recording.RecordedTimer", "structPurrNet_1_1Recording_1_1RecordedTimer.html", null ],
+    [ "PurrNet.Recording.RecordedTransform", "structPurrNet_1_1Recording_1_1RecordedTransform.html", null ],
+    [ "PurrNet.Recording.RecordedValue< T >", "structPurrNet_1_1Recording_1_1RecordedValue.html", null ],
+    [ "PurrNet.Recording.RecorderExtension", "classPurrNet_1_1Recording_1_1RecorderExtension.html", null ],
+    [ "PurrNet.Recording.RecorderStats", "classPurrNet_1_1Recording_1_1RecorderStats.html", null ],
+    [ "PurrNet.Recording.RecordingBuffer", "classPurrNet_1_1Recording_1_1RecordingBuffer.html", null ],
+    [ "PurrNet.Recording.RecordingSession", "classPurrNet_1_1Recording_1_1RecordingSession.html", null ],
+    [ "PurrNet.Recording.RecordingSource", "classPurrNet_1_1Recording_1_1RecordingSource.html", null ],
+    [ "PurrNet.Recording.RecordingTypeRegistry", "classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html", null ],
     [ "PurrNet.ReflectionData", "structPurrNet_1_1ReflectionData.html", null ],
     [ "PurrNet.ReflectionMethodData", "structPurrNet_1_1ReflectionMethodData.html", null ],
     [ "PurrNet.Transports.Relayers", "structPurrNet_1_1Transports_1_1Relayers.html", null ],
@@ -561,6 +614,7 @@ var hierarchy =
     [ "PurrNet.RigidbodySettingsData", "structPurrNet_1_1RigidbodySettingsData.html", null ],
     [ "PurrNet.RigidbodyStateData", "structPurrNet_1_1RigidbodyStateData.html", null ],
     [ "PurrNet.RigidbodyTeleportData", "structPurrNet_1_1RigidbodyTeleportData.html", null ],
+    [ "PurrNet.Recording.RowLayout", "classPurrNet_1_1Recording_1_1RowLayout.html", null ],
     [ "PurrNet.RPCInfo", "structPurrNet_1_1RPCInfo.html", null ],
     [ "PurrNet.RPCManifestEntry", "structPurrNet_1_1RPCManifestEntry.html", null ],
     [ "PurrNet.Modules.RPCPacketPacker", "structPurrNet_1_1Modules_1_1RPCPacketPacker.html", null ],
@@ -591,6 +645,8 @@ var hierarchy =
       [ "PurrNet.NetworkVisibilityRuleSet", "classPurrNet_1_1NetworkVisibilityRuleSet.html", null ],
       [ "PurrNet.PrefabProviderScriptable", "classPurrNet_1_1PrefabProviderScriptable.html", null ]
     ] ],
+    [ "PurrNet.Recording.RecorderStats.Section", "classPurrNet_1_1Recording_1_1RecorderStats_1_1Section.html", null ],
+    [ "PurrNet.Recording.RowLayout.Segment", "structPurrNet_1_1Recording_1_1RowLayout_1_1Segment.html", null ],
     [ "PurrNet.SerializableDictionary< TKey, TValue >", "classPurrNet_1_1SerializableDictionary.html", null ],
     [ "PurrNet.SerializableQueue< T >", "classPurrNet_1_1SerializableQueue.html", null ],
     [ "PurrNet.Modules.SimpleHistory< T >", "classPurrNet_1_1Modules_1_1SimpleHistory.html", null ],
@@ -599,6 +655,10 @@ var hierarchy =
     [ "StateNode", null, [
       [ "PurrNet.StateMachine.StateNode< T >", "classPurrNet_1_1StateMachine_1_1StateNode.html", null ]
     ] ],
+    [ "Stream", null, [
+      [ "PurrNet.Recording.BufferStream", "classPurrNet_1_1Recording_1_1BufferStream.html", null ]
+    ] ],
+    [ "PurrNet.Recording.StreamRows", "classPurrNet_1_1Recording_1_1StreamRows.html", null ],
     [ "PurrNet.SyncArrayChange< T >", "structPurrNet_1_1SyncArrayChange.html", null ],
     [ "PurrNet.SyncAsset< Texture2D >", "classPurrNet_1_1SyncAsset.html", [
       [ "PurrNet.SyncTextureAsset", "classPurrNet_1_1SyncTextureAsset.html", null ]

@@ -12,6 +12,8 @@ var searchData=
   ['boneinfo_9',['BoneInfo',['../structPurrNet_1_1BoneInfo.html',1,'PurrNet']]],
   ['broadcastmodule_10',['BroadcastModule',['../classPurrNet_1_1Modules_1_1BroadcastModule.html',1,'PurrNet::Modules']]],
   ['broadcastsample_11',['BroadcastSample',['../structPurrNet_1_1Profiler_1_1BroadcastSample.html',1,'PurrNet::Profiler']]],
-  ['bypassloggingexception_12',['BypassLoggingException',['../classPurrNet_1_1BypassLoggingException.html',1,'PurrNet']]],
-  ['bytedata_13',['ByteData',['../structPurrNet_1_1Transports_1_1ByteData.html',1,'PurrNet::Transports']]]
+  ['bufferstream_12',['BufferStream',['../classPurrNet_1_1Recording_1_1BufferStream.html',1,'PurrNet::Recording']]],
+  ['bypassloggingexception_13',['BypassLoggingException',['../classPurrNet_1_1BypassLoggingException.html',1,'PurrNet']]],
+  ['bytedata_14',['ByteData',['../structPurrNet_1_1Transports_1_1ByteData.html',1,'PurrNet::Transports']]],
+  ['byteshelf_15',['ByteShelf',['../classPurrNet_1_1Recording_1_1ByteShelf.html',1,'PurrNet::Recording']]]
 ];

@@ -1,11 +1,19 @@
 var searchData=
 [
-  ['reason_0',['reason',['../structPurrNet_1_1ClientDisconnectInfo.html#a6d0675e21ec8a742bc3c589173bb076b',1,'PurrNet::ClientDisconnectInfo']]],
-  ['relayroomname_1',['relayRoomName',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a1a7772562ad4b14341358371ba873671',1,'PurrNet::Transports::PurrTransport']]],
-  ['relaysupportshandoffauthorization_2',['relaySupportsHandoffAuthorization',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a44cd611ce8ab37015990f61e8360f7d8',1,'PurrNet::Transports::PurrTransport']]],
-  ['relayusage_3',['relayUsage',['../classPurrNet_1_1Transports_1_1PurrTransport.html#ab2ec985de00ee34b3e33e8e2f2921174',1,'PurrNet::Transports::PurrTransport']]],
-  ['remainingbits_4',['remainingBits',['../classPurrNet_1_1Packing_1_1BitPacker.html#acad7c82ac6ee6fb9abbf40594ab644be',1,'PurrNet::Packing::BitPacker']]],
-  ['remainingbytes_5',['remainingBytes',['../classPurrNet_1_1Packing_1_1BitPacker.html#a6a894ab1e3c847d5d788fe73721f432c',1,'PurrNet::Packing::BitPacker']]],
-  ['rotationcorrection_6',['rotationCorrection',['../classPurrNet_1_1NetworkRigidbodyBase.html#a3707c22b7869899c5827629ff57b0734',1,'PurrNet::NetworkRigidbodyBase']]],
-  ['rtt_7',['rtt',['../classPurrNet_1_1Modules_1_1TickManager.html#aefdfde0c5e70ba9ce348a0124153d159',1,'PurrNet::Modules::TickManager']]]
+  ['p2pconnectioncount_0',['p2pConnectionCount',['../classPurrNet_1_1Transports_1_1PurrTransport.html#ab6765727ea69bff54704c3bd7c4e3233',1,'PurrNet::Transports::PurrTransport']]],
+  ['p2phostendpoint_1',['p2pHostEndpoint',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a6b359d220a83037363b8914f15949953',1,'PurrNet::Transports::PurrTransport']]],
+  ['parent_2',['parent',['../classPurrNet_1_1NetworkIdentity.html#a907e4b801f1df03043e4a407a699573c',1,'PurrNet::NetworkIdentity']]],
+  ['pipeconnid_3',['pipeConnId',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a0c47cd871f2e618c438dbc0579685093',1,'PurrNet::Transports::PurrTransport']]],
+  ['pitch_4',['pitch',['../classPurrNet_1_1NetworkAudioSource.html#a6af34aa42e980ad0ab84fb8decbcc50b',1,'PurrNet::NetworkAudioSource']]],
+  ['playercount_5',['playerCount',['../classPurrNet_1_1NetworkManager.html#a75379c4748b8c7487869a3c483488a7f',1,'PurrNet::NetworkManager']]],
+  ['playermodule_6',['playerModule',['../classPurrNet_1_1NetworkManager.html#a1e52db2f540d9a254da1febce7f65d82',1,'PurrNet::NetworkManager']]],
+  ['players_7',['players',['../classPurrNet_1_1NetworkManager.html#a67a9592098fa718d47adbf32b95aaeca',1,'PurrNet::NetworkManager']]],
+  ['pooled_8',['pooled',['../structPurrNet_1_1PrefabData.html#a66cf031bc481ffd1edbd38661595fd07',1,'PurrNet::PrefabData']]],
+  ['positiontransform_9',['positionTransform',['../classPurrNet_1_1NetworkRigidbodyBase.html#afa74bf383d8676e7e8fec39c5b0f82c6',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['prefabprovider_10',['prefabProvider',['../classPurrNet_1_1NetworkManager.html#af323793ea42a36db67a21019ec004a3e',1,'PurrNet::NetworkManager']]],
+  ['prefabresolver_11',['prefabResolver',['../classPurrNet_1_1NetworkManager.html#acee5e0b3e1be1528054a5d525aa1a650',1,'PurrNet::NetworkManager']]],
+  ['producems_12',['produceMs',['../classPurrNet_1_1Recording_1_1RecordingFile.html#ad8fe772dbec8b47c4642b86ff33c58bc',1,'PurrNet::Recording::RecordingFile']]],
+  ['progress_13',['progress',['../classPurrNet_1_1SyncBigData.html#a25d43321e68e2df834090dc1303ca2f5',1,'PurrNet::SyncBigData']]],
+  ['projectkey_14',['projectKey',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a15c9f174f60d9b04b813da01d78b2e04',1,'PurrNet::Transports::PurrTransport']]],
+  ['pumpbudgetms_15',['pumpBudgetMs',['../classPurrNet_1_1Recording_1_1RecordingFile.html#a847bfcb8e87bc057716a49085da80aaa',1,'PurrNet::Recording::RecordingFile']]]
 ];

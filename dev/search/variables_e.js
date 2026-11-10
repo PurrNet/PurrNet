@@ -1,9 +1,6 @@
 var searchData=
 [
-  ['scene_0',['scene',['../structPurrNet_1_1Modules_1_1SceneState.html#a77339bb6ee1cb2496ce4c797fb2a6ad1',1,'PurrNet::Modules::SceneState']]],
-  ['secret_1',['secret',['../structPurrNet_1_1Transports_1_1MigrationJoinInfo.html#ac964f3511fa742532d942a8ac9e6f48e',1,'PurrNet::Transports::MigrationJoinInfo']]],
-  ['sequence_2',['sequence',['../structPurrNet_1_1RigidbodyStateData.html#a604e992913ecf6cdcb70936778d8bd7b',1,'PurrNet::RigidbodyStateData']]],
-  ['sequenced_5foverhead_3',['SEQUENCED_OVERHEAD',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#a8378c3feec02153f8b7761c3f7163b1e',1,'PurrNet::Transports::FragmentationLayer']]],
-  ['settings_4',['settings',['../structPurrNet_1_1Modules_1_1SceneState.html#abec0619094f4777df3f2c4f953391260',1,'PurrNet::Modules::SceneState']]],
-  ['success_5',['success',['../structPurrNet_1_1Authentication_1_1AuthenticationResponse.html#a9f133b1ad762ff6c3dae75cd6065fbe5',1,'PurrNet.Authentication.AuthenticationResponse.success()'],['../structPurrNet_1_1Transports_1_1PingResult.html#a375c27af64fb241644c07eab8f1e0877',1,'PurrNet.Transports.PingResult.success()']]]
+  ['receivedimmediate_0',['receivedImmediate',['../structPurrNet_1_1RPCInfo.html#a67b6d7a4d5cf53c7870ebda6cddbda05',1,'PurrNet::RPCInfo']]],
+  ['roomname_1',['roomName',['../structPurrNet_1_1Transports_1_1ClientJoinInfo.html#aa446ae548faa13a4af01c30200bf5e1a',1,'PurrNet::Transports::ClientJoinInfo']]],
+  ['roundtriptimems_2',['roundTripTimeMs',['../structPurrNet_1_1Transports_1_1PingResult.html#afbac21813479bb0aed5525ac739aac7d',1,'PurrNet::Transports::PingResult']]]
 ];

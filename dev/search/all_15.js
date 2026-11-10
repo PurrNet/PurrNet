@@ -1,11 +1,12 @@
 var searchData=
 [
-  ['waitseconds_0',['WaitSeconds',['../classPurrNet_1_1UnityLatestUpdate.html#af520da1fd10293cff7889c32c2591205',1,'PurrNet::UnityLatestUpdate']]],
-  ['warmup_1',['Warmup',['../classPurrNet_1_1Modules_1_1HierarchyPool.html#a3a0cf39485da1af31f23462bda8a1280',1,'PurrNet::Modules::HierarchyPool']]],
-  ['warmupcount_2',['warmupCount',['../structPurrNet_1_1PrefabData.html#ad803f4349268715bc5f39ec429d8beee',1,'PurrNet::PrefabData']]],
-  ['waslocalrequest_3',['wasLocalRequest',['../structPurrNet_1_1ClientDisconnectInfo.html#a3dcc36b1dec762f8b669a27f13959760',1,'PurrNet::ClientDisconnectInfo']]],
-  ['webrtcurl_4',['webRtcUrl',['../structPurrNet_1_1Transports_1_1HostJoinInfo.html#a485a7fe71fa23b6a00a9d5e50c6bfcf3',1,'PurrNet.Transports.HostJoinInfo.webRtcUrl()'],['../structPurrNet_1_1Transports_1_1ClientJoinInfo.html#a587e02cafb3cdc18477b9de9825ab899',1,'PurrNet.Transports.ClientJoinInfo.webRtcUrl()']]],
-  ['webtransport_5',['WebTransport',['../classPurrNet_1_1Transports_1_1WebTransport.html',1,'PurrNet::Transports']]],
-  ['whitelist_6',['whitelist',['../classPurrNet_1_1NetworkIdentity.html#a46974688b834f846db6ff8098c918859',1,'PurrNet::NetworkIdentity']]],
-  ['write_7',['Write',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#aef7e35537eb7c00ab4df15cf366156e4',1,'PurrNet::Modules::SimpleHistory']]]
+  ['validateclientpayload_0',['ValidateClientPayload',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193',1,'PurrNet.Authentication.AuthenticationBehaviour.ValidateClientPayload(Connection conn, T payload)'],['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a408c262ed5d37b23399a071e3064471e',1,'PurrNet.Authentication.AuthenticationBehaviour.ValidateClientPayload(Connection conn, TRequest payload)']]],
+  ['validatedsyncvar_1',['ValidatedSyncVar',['../classPurrNet_1_1ValidatedSyncVar.html',1,'PurrNet']]],
+  ['value_2',['value',['../classPurrNet_1_1SyncInput.html#a151f2cdd82eebb5bdbd58b3bf72211df',1,'PurrNet::SyncInput']]],
+  ['vector3withparent_3',['Vector3WithParent',['../structPurrNet_1_1Vector3WithParent.html',1,'PurrNet.Vector3WithParent'],['../structPurrNet_1_1Vector3WithParent.html#a52830a0eb6c07ad2bd6216a6caccf540',1,'PurrNet.Vector3WithParent.Vector3WithParent(Transform parent, bool isLocalPos, Vector3 position)'],['../structPurrNet_1_1Vector3WithParent.html#a77d5a95d83ab10fe65614c4b8e5d1818',1,'PurrNet.Vector3WithParent.Vector3WithParent(NetworkTransform self, INetworkTransformPositionTransform posTransform, double3 absolutePosition)']]],
+  ['viewtick_4',['viewTick',['../interfacePurrNet_1_1Recording_1_1IRecordingContext.html#a2169c59dfffce315951a06aa64ce6723',1,'PurrNet::Recording::IRecordingContext']]],
+  ['visibilityrules_5',['VisibilityRules',['../structPurrNet_1_1VisibilityRules.html',1,'PurrNet']]],
+  ['visibilityrules_6',['visibilityRules',['../classPurrNet_1_1NetworkManager.html#a3d02f1808663d7c208d2300f8955d8de',1,'PurrNet::NetworkManager']]],
+  ['visible_7',['visible',['../structPurrNet_1_1Recording_1_1RecordedTransform.html#a0890078b81aae8a0dec07c79fa3ef4a3',1,'PurrNet::Recording::RecordedTransform']]],
+  ['volume_8',['volume',['../classPurrNet_1_1NetworkAudioSource.html#a790a6d1dc8594221ba982f315501ddf2',1,'PurrNet::NetworkAudioSource']]]
 ];

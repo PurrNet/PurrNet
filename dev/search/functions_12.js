@@ -6,5 +6,7 @@ var searchData=
   ['unregisterevents_3',['UnregisterEvents',['../classPurrNet_1_1NetworkManager.html#aea4fa22759d566809f4119d04231eb56',1,'PurrNet.NetworkManager.UnregisterEvents(RegisterEventsDelegate subscribe, RegisterEventsDelegate unsubscribe)'],['../classPurrNet_1_1NetworkManager.html#ac1f113a2a59d163a46aa32955ff4ad13',1,'PurrNet.NetworkManager.UnregisterEvents(IPurrEvents events)']]],
   ['unset_4',['Unset',['../classPurrNet_1_1Modules_1_1CookiesModule.html#a2a763d755a3fc159058c608c0734f707',1,'PurrNet::Modules::CookiesModule']]],
   ['unsubscribe_3c_20t_20_3e_5',['Unsubscribe&lt; T &gt;',['../classPurrNet_1_1NetworkManager.html#ae12b0fd698e20253e8c836fca086ee46',1,'PurrNet.NetworkManager.Unsubscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback, bool asServer)'],['../classPurrNet_1_1NetworkManager.html#a5c7af506a176c71d67b432cbed50cc44',1,'PurrNet.NetworkManager.Unsubscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback)']]],
-  ['updatescenevisibility_6',['UpdateSceneVisibility',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a8e41cea5176b89f712ea020c40591512',1,'PurrNet::Modules::ScenesModule']]]
+  ['update_6',['Update',['../classPurrNet_1_1Recording_1_1RecordingSession.html#a7ea68703f7f5f79b795c24374829ce21',1,'PurrNet::Recording::RecordingSession']]],
+  ['updatescenevisibility_7',['UpdateSceneVisibility',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a8e41cea5176b89f712ea020c40591512',1,'PurrNet::Modules::ScenesModule']]],
+  ['use_8',['Use',['../classPurrNet_1_1Recording_1_1ElementMemo.html#a6e596eb56258d0db1388681649ad922f',1,'PurrNet::Recording::ElementMemo']]]
 ];

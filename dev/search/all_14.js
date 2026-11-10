@@ -1,10 +1,22 @@
 var searchData=
 [
-  ['validateclientpayload_0',['ValidateClientPayload',['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#ab668a6e38ce3a22fdd668f51c140c193',1,'PurrNet.Authentication.AuthenticationBehaviour.ValidateClientPayload(Connection conn, T payload)'],['../classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html#a408c262ed5d37b23399a071e3064471e',1,'PurrNet.Authentication.AuthenticationBehaviour.ValidateClientPayload(Connection conn, TRequest payload)']]],
-  ['validatedsyncvar_1',['ValidatedSyncVar',['../classPurrNet_1_1ValidatedSyncVar.html',1,'PurrNet']]],
-  ['value_2',['value',['../classPurrNet_1_1SyncInput.html#a151f2cdd82eebb5bdbd58b3bf72211df',1,'PurrNet::SyncInput']]],
-  ['vector3withparent_3',['Vector3WithParent',['../structPurrNet_1_1Vector3WithParent.html',1,'PurrNet.Vector3WithParent'],['../structPurrNet_1_1Vector3WithParent.html#a52830a0eb6c07ad2bd6216a6caccf540',1,'PurrNet.Vector3WithParent.Vector3WithParent(Transform parent, bool isLocalPos, Vector3 position)'],['../structPurrNet_1_1Vector3WithParent.html#a77d5a95d83ab10fe65614c4b8e5d1818',1,'PurrNet.Vector3WithParent.Vector3WithParent(NetworkTransform self, INetworkTransformPositionTransform posTransform, double3 absolutePosition)']]],
-  ['visibilityrules_4',['VisibilityRules',['../structPurrNet_1_1VisibilityRules.html',1,'PurrNet']]],
-  ['visibilityrules_5',['visibilityRules',['../classPurrNet_1_1NetworkManager.html#a3d02f1808663d7c208d2300f8955d8de',1,'PurrNet::NetworkManager']]],
-  ['volume_6',['volume',['../classPurrNet_1_1NetworkAudioSource.html#a790a6d1dc8594221ba982f315501ddf2',1,'PurrNet::NetworkAudioSource']]]
+  ['udptransport_0',['UDPTransport',['../classPurrNet_1_1Transports_1_1UDPTransport.html',1,'PurrNet::Transports']]],
+  ['unfragmented_5foverhead_1',['UNFRAGMENTED_OVERHEAD',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae9a82772968d3bf5fd32dada806f042f',1,'PurrNet::Transports::FragmentationLayer']]],
+  ['unionrpcheader_2',['UnionRPCHeader',['../structPurrNet_1_1UnionRPCHeader.html',1,'PurrNet']]],
+  ['unitylatestupdate_3',['UnityLatestUpdate',['../classPurrNet_1_1UnityLatestUpdate.html',1,'PurrNet']]],
+  ['unityupdate_4',['UnityUpdate',['../classPurrNet_1_1UnityUpdate.html',1,'PurrNet']]],
+  ['unloadsceneasync_5',['UnloadSceneAsync',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a329622e10dea6bbbb6269bcaa7ddec8a',1,'PurrNet.Modules.ScenesModule.UnloadSceneAsync(string sceneName, UnloadSceneOptions options=UnloadSceneOptions.None)'],['../classPurrNet_1_1Modules_1_1ScenesModule.html#ab42d89665d1c76ad56b12826226bceba',1,'PurrNet.Modules.ScenesModule.UnloadSceneAsync(int buildIndex, UnloadSceneOptions options=UnloadSceneOptions.None)'],['../classPurrNet_1_1Modules_1_1ScenesModule.html#a93106f912fba2a6af4f93a6c4cc53b44',1,'PurrNet.Modules.ScenesModule.UnloadSceneAsync(Scene scene, UnloadSceneOptions options=UnloadSceneOptions.None)'],['../classPurrNet_1_1Modules_1_1ScenesModule.html#aa70e3c3e527cb8a47bbdb1d509efa757',1,'PurrNet.Modules.ScenesModule.UnloadSceneAsync(SceneID sceneId, UnloadSceneOptions options=UnloadSceneOptions.None)']]],
+  ['unpause_6',['UnPause',['../classPurrNet_1_1NetworkAudioSource.html#a423c0f742d9729beaaaa6fb37138f58e',1,'PurrNet::NetworkAudioSource']]],
+  ['unpicklefrom_7',['UnpickleFrom',['../classPurrNet_1_1Packing_1_1BitPacker.html#a620d30c92d0258cea6210ed22b76bbfe',1,'PurrNet.Packing.BitPacker.UnpickleFrom(ByteData data)'],['../classPurrNet_1_1Packing_1_1BitPacker.html#ab088f1c670d645c52918774d636665d6',1,'PurrNet.Packing.BitPacker.UnpickleFrom(BitPacker data)']]],
+  ['unregisterevents_8',['UnregisterEvents',['../classPurrNet_1_1NetworkManager.html#aea4fa22759d566809f4119d04231eb56',1,'PurrNet.NetworkManager.UnregisterEvents(RegisterEventsDelegate subscribe, RegisterEventsDelegate unsubscribe)'],['../classPurrNet_1_1NetworkManager.html#ac1f113a2a59d163a46aa32955ff4ad13',1,'PurrNet.NetworkManager.UnregisterEvents(IPurrEvents events)']]],
+  ['unset_9',['Unset',['../classPurrNet_1_1Modules_1_1CookiesModule.html#a2a763d755a3fc159058c608c0734f707',1,'PurrNet::Modules::CookiesModule']]],
+  ['unsubscribe_3c_20t_20_3e_10',['Unsubscribe&lt; T &gt;',['../classPurrNet_1_1NetworkManager.html#ae12b0fd698e20253e8c836fca086ee46',1,'PurrNet.NetworkManager.Unsubscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback, bool asServer)'],['../classPurrNet_1_1NetworkManager.html#a5c7af506a176c71d67b432cbed50cc44',1,'PurrNet.NetworkManager.Unsubscribe&lt; T &gt;(PlayerBroadcastDelegate&lt; T &gt; callback)']]],
+  ['update_11',['Update',['../classPurrNet_1_1Recording_1_1RecordingSession.html#a7ea68703f7f5f79b795c24374829ce21',1,'PurrNet::Recording::RecordingSession']]],
+  ['updatescenevisibility_12',['UpdateSceneVisibility',['../classPurrNet_1_1Modules_1_1ScenesModule.html#a8e41cea5176b89f712ea020c40591512',1,'PurrNet::Modules::ScenesModule']]],
+  ['use_13',['Use',['../classPurrNet_1_1Recording_1_1ElementMemo.html#a6e596eb56258d0db1388681649ad922f',1,'PurrNet::Recording::ElementMemo']]],
+  ['usedbyilattribute_14',['UsedByILAttribute',['../classPurrNet_1_1Modules_1_1UsedByILAttribute.html',1,'PurrNet::Modules']]],
+  ['usenat_15',['useNat',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a14892dc32e17023db8badbb49b5fda3f',1,'PurrNet::Transports::PurrTransport']]],
+  ['useparentframepositionerror_16',['useParentFramePositionError',['../classPurrNet_1_1NetworkRigidbodyBase.html#ab1388bd34211e4b66bd11430fa88875c',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['userprefabdata_17',['UserPrefabData',['../structPurrNet_1_1NetworkPrefabs_1_1UserPrefabData.html',1,'PurrNet::NetworkPrefabs']]],
+  ['usewebrtcp2p_18',['useWebRtcP2P',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a9fd61698e2d5ff7268b2b544464282d1',1,'PurrNet::Transports::PurrTransport']]]
 ];
