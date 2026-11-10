@@ -1,3 +1,10 @@
+# [1.26.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.14...v1.26.0-beta.15) (2026-11-10)
+
+
+### Bug Fixes
+
+* Small Network Animator cleanup cleanup ([448cdf8](https://github.com/PurrNet/PurrNet/commit/448cdf85591163f528b905137a40b98580aaee52))
+
 # [1.26.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.13...v1.26.0-beta.14) (2026-11-10)
 
 
