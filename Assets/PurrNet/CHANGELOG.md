@@ -1,3 +1,10 @@
+# [1.26.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.10...v1.26.0-beta.11) (2026-11-10)
+
+
+### Bug Fixes
+
+* avoid per-wait Socket.Select allocations in threaded receive ([e2c7161](https://github.com/PurrNet/PurrNet/commit/e2c71618bb0c78f7e8624a5da12bc28991416c55))
+
 # [1.26.0-beta.10](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.9...v1.26.0-beta.10) (2026-11-09)
 
 
