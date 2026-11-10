@@ -1734,7 +1734,9 @@ namespace PurrNet.Modules
                 NTSharedEntries.Release(slot.entries);
             if (slot.excluded != null)
                 ListPool<NetworkID>.Destroy(slot.excluded);
-            NTSharedEntries.Retain(pending);
+            bool keepEntries = stream != _global;
+            if (keepEntries)
+                NTSharedEntries.Retain(pending);
             slot = new NTUnreliableSlot
             {
                 used = true,
@@ -1742,7 +1744,7 @@ namespace PurrNet.Modules
                 seq = seq,
                 order = stream.nextOrder,
                 tick = _currentTick,
-                entries = pending,
+                entries = keepEntries ? pending : null,
                 patch = patch,
                 excluded = CopyExcluded(excluded)
             };
@@ -2381,6 +2383,7 @@ namespace PurrNet.Modules
         private NTUnreliableSendStream _global;
         private readonly Dictionary<List<NTUnreliableEntry>, (ushort tick, byte[] bytes, int length)> _repairs = new();
         private readonly List<List<NTUnreliableEntry>> _repairsStale = new();
+        private readonly Stack<byte[]> _repairBuffers = new();
 
         private void KeepRepairs(NTUnreliableSendStream g)
         {
@@ -2392,14 +2395,23 @@ namespace PurrNet.Modules
             }
 
             for (int i = 0; i < _repairsStale.Count; i++)
+            {
+                _repairBuffers.Push(_repairs[_repairsStale[i]].bytes);
                 _repairs.Remove(_repairsStale[i]);
+            }
             _repairsStale.Clear();
 
             for (int p = 0; p < g.tickPackets.Count; p++)
             {
                 var record = _sharePackets[g.tickPackets[p]];
                 var span = record.packet.ToByteData().span;
-                _repairs[record.entries] = (_currentTick, span.ToArray(), span.Length);
+                if (_repairs.TryGetValue(record.entries, out var previous))
+                    _repairBuffers.Push(previous.bytes);
+                var bytes = _repairBuffers.Count > 0 ? _repairBuffers.Pop() : null;
+                if (bytes == null || bytes.Length < span.Length)
+                    bytes = new byte[System.Math.Max(span.Length, 1500)];
+                span.CopyTo(bytes);
+                _repairs[record.entries] = (_currentTick, bytes, span.Length);
             }
         }
 
@@ -3036,24 +3048,29 @@ namespace PurrNet.Modules
             _prepareUnreliableMarker.End();
         }
 
-        private readonly List<float> _ackLags = new();
+        private float[] _ackLags = new float[16];
 
         // Every peer adopts a sent anchor at the same delay. Waiting for the median ack lag means
         // most acks (and so most losses) are known by then; the rest adopt optimistically.
         private void UpdateAnchorAdoptDelay()
         {
-            _ackLags.Clear();
+            int count = 0;
             foreach (var stream in _sendStreams.Values)
             {
-                if (stream.anchorAckLag > 0)
-                    _ackLags.Add(stream.anchorAckLag);
+                if (stream.anchorAckLag <= 0)
+                    continue;
+                if (count == _ackLags.Length)
+                    System.Array.Resize(ref _ackLags, count * 2);
+                int j = count++;
+                for (; j > 0 && _ackLags[j - 1] > stream.anchorAckLag; j--)
+                    _ackLags[j] = _ackLags[j - 1];
+                _ackLags[j] = stream.anchorAckLag;
             }
 
-            if (_ackLags.Count == 0)
+            if (count == 0)
                 return;
 
-            _ackLags.Sort();
-            float median = _ackLags[(_ackLags.Count - 1) / 2];
+            float median = _ackLags[(count - 1) / 2];
             _anchorAdoptDelay = System.Math.Clamp((int)System.Math.Ceiling(median) + 1, 2, NTUnreliable.ANCHOR_REFRESH_AGE);
         }
 
