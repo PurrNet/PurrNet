@@ -1,3 +1,10 @@
+# [1.26.0-beta.14](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.13...v1.26.0-beta.14) (2026-11-10)
+
+
+### Bug Fixes
+
+* recordings stay readable when a camera sample is written before the first recorded tick ([d88c904](https://github.com/PurrNet/PurrNet/commit/d88c9048703da6b0949c6e5b2331dcd4bbdde1eb))
+
 # [1.26.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.12...v1.26.0-beta.13) (2026-11-10)
 
 
