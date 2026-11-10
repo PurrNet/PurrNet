@@ -1,3 +1,10 @@
+# [1.26.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.11...v1.26.0-beta.12) (2026-11-10)
+
+
+### Bug Fixes
+
+* stop the shared NetworkTransform stream from holding entry lists until ring wrap ([a69ffe1](https://github.com/PurrNet/PurrNet/commit/a69ffe10f5f4c117a1253c56fee8c9dcf7663a18))
+
 # [1.26.0-beta.11](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.10...v1.26.0-beta.11) (2026-11-10)
 
 
