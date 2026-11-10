@@ -1,3 +1,10 @@
+# [1.26.0-beta.13](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.12...v1.26.0-beta.13) (2026-11-10)
+
+
+### Features
+
+* NetworkRecorder records matches to .purrrec files, with the recording core moved in from PurrDiction ([169724c](https://github.com/PurrNet/PurrNet/commit/169724c9a1f582c7c53163149fbc4227e3060596))
+
 # [1.26.0-beta.12](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.11...v1.26.0-beta.12) (2026-11-10)
 
 
