@@ -36,6 +36,9 @@ namespace PurrNet.Modules
         private readonly HierarchyPool _prefabsPool;
 
         private readonly List<NetworkIdentity> _spawnedIdentities = new();
+
+        /// <summary>Identities spawned in this scene, in spawn order (entries can be null or destroyed).</summary>
+        internal List<NetworkIdentity> spawnedIdentities => _spawnedIdentities;
         private readonly Dictionary<NetworkIdentity, int> _spawnedIdentityIndices = new(ReferenceIdentityComparer.instance);
         private int _spawnedIdentityHoles;
         const int MIN_SPAWNED_HOLES_TO_COMPACT = 32;

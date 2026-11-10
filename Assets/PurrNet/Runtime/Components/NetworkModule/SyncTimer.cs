@@ -31,6 +31,14 @@ namespace PurrNet
 
         [SerializeField, HideInInspector] private TimerState _state;
         [SerializeField, HideInInspector] private float _remaining;
+
+        internal override Type recordedType => typeof(Recording.RecordedTimer);
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedTimer { state = _state, remaining = _remaining };
+            session.AppendRow(rows, tick, ref row);
+        }
         [SerializeField, HideInInspector] private float _lastReconcile;
         [SerializeField, HideInInspector] private bool _manualUpdate;
 

@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PurrNet recording viewer</title>
+<style>
+  :root { color-scheme: dark; --bg: #111418; --panel: #1a1f26; --line: #2a313b; --text: #d7dde5; --muted: #8a94a3; --accent: #6cb6ff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #app { display: grid; grid-template-columns: 1fr 340px; grid-template-rows: 1fr auto; height: 100%; }
+  #view { position: relative; grid-row: 1; grid-column: 1; }
+  #view canvas { display: block; width: 100%; height: 100%; }
+  #side { grid-row: 1 / span 2; grid-column: 2; background: var(--panel); border-left: 1px solid var(--line); overflow: auto; padding: 10px 12px; }
+  #bar { grid-row: 2; grid-column: 1; display: flex; gap: 10px; align-items: center; padding: 8px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+  #bar input[type=range] { flex: 1; }
+  button, select { background: #252c36; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font: inherit; }
+  button:hover { border-color: var(--accent); }
+  h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: 11px/1.35 ui-monospace, Consolas, monospace; color: #c9d3df; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  #drop { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: var(--muted); }
+  #drop.hidden { display: none; }
+  #hud { position: absolute; left: 10px; top: 10px; background: #000a; padding: 6px 9px; border-radius: 4px; font-size: 12px; pointer-events: none; }
+  #entities div { cursor: pointer; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  #entities div:hover { background: #252c36; }
+  #entities div.sel { background: #2b4a6b; }
+  .muted { color: var(--muted); }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="drop"><div style="font-size:16px">Drop a <b>.purrrec</b> file here</div><input type="file" id="file" accept=".purrrec"></div>
+    <div id="hud" hidden></div>
+  </div>
+  <div id="bar">
+    <button id="play">Play</button>
+    <select id="speed"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select>
+    <input type="range" id="time" min="0" max="0" value="0" step="1">
+    <span id="clock" class="muted">-</span>
+    <label class="muted"><input type="checkbox" id="showHidden"> show hidden</label>
+    <select id="cam"><option value="free">Free camera</option></select>
+  </div>
+  <div id="side">
+    <h3>Recording</h3><div id="info" class="muted">No file loaded.</div>
+    <h3>Selected</h3><div id="selected" class="muted">Click an object or pick one below.</div>
+    <h3>Entities alive</h3><div id="entities"></div>
+  </div>
+</div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { readRecording } from "./purrrec.js";
+
+const view = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111418);
+scene.add(new THREE.HemisphereLight(0xdde6f0, 0x2a2f36, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(20, 40, 10); scene.add(sun);
+const grid = new THREE.GridHelper(200, 200, 0x2a313b, 0x1d232b); scene.add(grid);
+const freeCam = new THREE.PerspectiveCamera(60, 1, 0.05, 2000);
+freeCam.position.set(25, 25, 25);
+const controls = new OrbitControls(freeCam, renderer.domElement);
+const playerCam = new THREE.PerspectiveCamera(60, 1, 0.05, 2000);
+let activeCam = freeCam;
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false);
+  for (const c of [freeCam, playerCam]) { c.aspect = w / h; c.updateProjectionMatrix(); }
+}
+addEventListener("resize", resize); resize();
+
+// Unity is left-handed (Z forward); three.js is right-handed. Mirror Z.
+const toPos = (x, y, z) => new THREE.Vector3(x, y, -z);
+const toQuat = (x, y, z, w) => new THREE.Quaternion(-x, -y, z, w);
+
+const PALETTE = [0x6cb6ff, 0xff8a65, 0x81c784, 0xffd54f, 0xba68c8, 0x4dd0e1, 0xf06292, 0xaed581];
+const mats = new Map();
+function material(color, opts = {}) {
+  const key = color + JSON.stringify(opts);
+  if (!mats.has(key)) mats.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, ...opts }));
+  return mats.get(key);
+}
+
+let rec = null, tick = 0, playing = false, speed = 1, selected = null, showHidden = false;
+const entityObjects = new Map();   // entity id -> { group, entity, transform: StreamData }
+const meshGeometries = new Map();
+
+function meshGeometry(id) {
+  if (meshGeometries.has(id)) return meshGeometries.get(id);
+  const m = rec.meshes.get(id);
+  const g = new THREE.BufferGeometry();
+  const v = new Float32Array(m.vertices.length);
+  for (let i = 0; i < v.length; i += 3) { v[i] = m.vertices[i]; v[i + 1] = m.vertices[i + 1]; v[i + 2] = -m.vertices[i + 2]; }
+  const idx = new Uint32Array(m.indices.length);
+  for (let i = 0; i < idx.length; i += 3) { idx[i] = m.indices[i]; idx[i + 1] = m.indices[i + 2]; idx[i + 2] = m.indices[i + 1]; }
+  g.setAttribute("position", new THREE.BufferAttribute(v, 3));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.computeVertexNormals();
+  meshGeometries.set(id, g);
+  return g;
+}
+
+function colliderObject(c, mat) {
+  let geo, offset = new THREE.Vector3(), rot = new THREE.Quaternion();
+  const ctr = c.center ? toPos(...c.center) : new THREE.Vector3();
+  switch (c.shape) {
+    case "box": case "bounds": geo = new THREE.BoxGeometry(...c.size); offset = ctr; break;
+    case "sphere": geo = new THREE.SphereGeometry(c.radius, 16, 12); offset = ctr; break;
+    case "capsule": {
+      geo = new THREE.CapsuleGeometry(c.radius, Math.max(0, c.height - 2 * c.radius), 6, 12); offset = ctr;
+      if (c.direction === 0) rot.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+      if (c.direction === 2) rot.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+      break;
+    }
+    case "mesh": geo = meshGeometry(c.mesh); break;
+    default: return null;
+  }
+  const mesh = new THREE.Mesh(geo, c.trigger ? material(0x4dd0e1, { transparent: true, opacity: 0.15, depthWrite: false }) : mat);
+  mesh.position.copy(offset); mesh.quaternion.copy(rot);
+  const pose = new THREE.Group();
+  pose.position.copy(toPos(...c.pose.p)); pose.quaternion.copy(toQuat(...c.pose.r)); pose.scale.set(...c.pose.s);
+  // Colliders that move within their entity have a pose stream (keyed by id) that overrides this pose.
+  pose.userData.colliderId = c.id;
+  pose.userData.base = { p: pose.position.clone(), q: pose.quaternion.clone(), s: pose.scale.clone() };
+  pose.add(mesh);
+  return pose;
+}
+
+function entityColor(e) {
+  if (e.owner !== null && e.owner !== undefined) return PALETTE[e.owner % PALETTE.length];
+  return 0x9aa6b5;
+}
+
+let staticGroup = null, staticSets = [];
+
+function setsByTick(list) { return list.slice().sort((a, b) => (a.tick ?? 0) - (b.tick ?? 0)); }
+
+function buildSet(colliders, mat) {
+  const g = new THREE.Group();
+  for (const c of colliders) { const o = colliderObject(c, mat); if (o) g.add(o); }
+  return g;
+}
+
+// Collider sets change over time (pieces animating in, toggling): show the latest set at or before t.
+function applySets(holder, sets, cache, t, mat) {
+  let idx = -1;
+  for (let i = 0; i < sets.length; i++) if ((sets[i].tick ?? 0) <= t) idx = i; else break;
+  if (holder.userData.setIndex === idx) return;
+  holder.userData.setIndex = idx;
+  if (holder.userData.current) holder.remove(holder.userData.current);
+  holder.userData.current = null;
+  if (idx < 0) return;
+  if (!cache.has(idx)) cache.set(idx, buildSet(sets[idx].colliders, mat));
+  holder.userData.current = cache.get(idx);
+  holder.add(holder.userData.current);
+}
+
+// Collider pose streams ("collider" kind), by "<entity or s>:<collider id>".
+let colliderPoseStreams = new Map();
+
+function applyColliderPoses(holder, prefix, t) {
+  const g = holder.userData.current;
+  if (!g || !colliderPoseStreams.size) return;
+  for (const child of g.children) {
+    const d = colliderPoseStreams.get(prefix + ":" + child.userData.colliderId);
+    if (!d) continue;
+    const p = poseAt(d, t), b = child.userData.base;
+    if (p) { child.position.copy(p.pos); child.quaternion.copy(p.q); child.scale.copy(p.s); }
+    else { child.position.copy(b.p); child.quaternion.copy(b.q); child.scale.copy(b.s); }
+  }
+}
+
+// Objects without colliders (bullets that sphere-cast, for instance) often keep their size in state.
+// Use a state column named radius or size as a sphere radius; it is only a visual hint.
+function findRadiusHint(e) {
+  for (const c of e.components) {
+    if (c.state === undefined) continue;
+    const s = rec.streams.get(c.state), t = rec.types.get(s.type);
+    const col = t.columns.find(x => /(^|\.)radius$/i.test(x.name)) || t.columns.find(x => /(^|\.)size$/i.test(x.name) && x.type.startsWith("f"));
+    if (col) return { data: rec.data.get(c.state), column: col.name };
+  }
+  return null;
+}
+
+function build() {
+  for (const o of entityObjects.values()) scene.remove(o.group);
+  if (staticGroup) scene.remove(staticGroup);
+  entityObjects.clear(); meshGeometries.clear();
+  staticSets = setsByTick(rec.colliders.filter(s => s.entity === null));
+  colliderPoseStreams = new Map();
+  for (const [sid, s] of rec.streams) {
+    const d = rec.data.get(sid);
+    if (s.kind === "collider" && d && d.length) colliderPoseStreams.set((s.entity === null ? "s" : s.entity) + ":" + s.collider, d);
+  }
+  staticGroup = new THREE.Group(); staticGroup.userData.cache = new Map();
+  scene.add(staticGroup);
+  const setsByEntity = new Map();
+  for (const set of rec.colliders) {
+    if (set.entity === null) continue;
+    if (!setsByEntity.has(set.entity)) setsByEntity.set(set.entity, []);
+    setsByEntity.get(set.entity).push(set);
+  }
+  for (const e of rec.entities.values()) {
+    const group = new THREE.Group();
+    group.userData.entity = e.entity;
+    const color = entityColor(e);
+    const sets = setsByTick(setsByEntity.get(e.entity) || []);
+    const o = { group, entity: e, transform: rec.data.get(e.transform), sets, cache: new Map(), mat: material(color) };
+    if (!sets.length) {
+      o.radius = findRadiusHint(e);
+      o.marker = new THREE.Mesh(o.radius ? new THREE.SphereGeometry(1, 14, 10) : new THREE.OctahedronGeometry(0.12),
+        material(color, { emissive: color, emissiveIntensity: 0.3 }));
+      group.add(o.marker);
+    }
+    group.visible = false;
+    scene.add(group);
+    entityObjects.set(e.entity, o);
+  }
+
+  const camSel = document.getElementById("cam");
+  camSel.length = 1;
+  for (const s of rec.streams.values()) {
+    if (s.kind === "custom" && s.sample === "camera" && rec.data.get(s.id)?.length)
+      camSel.add(new Option(`Player ${s.player} camera`, s.id));
+  }
+
+  const slider = document.getElementById("time");
+  slider.min = rec.firstTick; slider.max = rec.lastTick; slider.value = rec.firstTick;
+  tick = rec.firstTick;
+
+  // Frame the static world.
+  const box = new THREE.Box3().setFromObject(scene);
+  if (!box.isEmpty()) {
+    const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()).length();
+    controls.target.copy(c); freeCam.position.copy(c).add(new THREE.Vector3(size * 0.4, size * 0.35, size * 0.4));
+  }
+
+  const h = rec.header || {};
+  const seconds = (rec.lastTick - rec.firstTick + 1) / rec.tickRate;
+  const bytes = Object.values(rec.sizes).reduce((a, b) => a + b, 0);
+  const players = new Set(rec.players.map(p => p.player)).size;
+  document.getElementById("info").innerHTML = `<div class="kv">
+    <span>Game</span><span>${h.game ?? "-"} ${h.gameVersion ?? ""}</span>
+    <span>Scene</span><span>${h.scene ?? "-"}</span>
+    <span>Started</span><span>${h.startedUtc ?? "-"}</span>
+    <span>Length</span><span>${seconds.toFixed(1)} s @ ${rec.tickRate} Hz</span>
+    <span>Size</span><span>${(bytes / 1024).toFixed(0)} KiB (${(bytes / seconds / 1024).toFixed(1)} KiB/s)</span>
+    <span>Entities</span><span>${rec.entities.size}</span>
+    <span>Players</span><span>${players}</span>
+    <span>Streams</span><span>${rec.streams.size}</span>
+    ${rec.truncated ? "<span>Note</span><span>file truncated</span>" : ""}
+  </div>`;
+  document.getElementById("hud").hidden = false;
+  select(null);
+}
+
+function alive(e, t) {
+  const end = rec.despawns.get(e.entity) ?? Infinity;
+  return e.tick <= t && t < end;
+}
+
+function poseAt(d, t) {
+  const i = d.indexAt(Math.floor(t));
+  if (i < 0) return null;
+  const read = (k) => [d.value(k, "position.x"), d.value(k, "position.y"), d.value(k, "position.z"),
+                       d.value(k, "rotation.x"), d.value(k, "rotation.y"), d.value(k, "rotation.z"), d.value(k, "rotation.w"),
+                       d.value(k, "scale.x"), d.value(k, "scale.y"), d.value(k, "scale.z")];
+  const a = read(i);
+  const pos = toPos(a[0], a[1], a[2]), q = toQuat(a[3], a[4], a[5], a[6]), s = new THREE.Vector3(a[7], a[8], a[9]);
+  const visible = d.type.columnsByName.visible ? d.value(i, "visible") : 2;
+  if (i + 1 < d.length && d.ticks[i + 1] === d.ticks[i] + 1) {
+    const f = t - d.ticks[i];
+    const b = read(i + 1);
+    pos.lerp(toPos(b[0], b[1], b[2]), f);
+    q.slerp(toQuat(b[3], b[4], b[5], b[6]), f);
+  }
+  return { pos, q, s, visible };
+}
+
+// Camera samples are placed on viewTick: the (fractional) tick of the world the camera was showing, which trails the
+// tick the sample arrived on. Interpolating between the two samples around t keeps the camera in step with the bodies.
+function cameraAt(d, t) {
+  if (!d.viewTicks) {
+    d.viewTicks = new Float64Array(d.length);
+    for (let i = 0; i < d.length; i++) d.viewTicks[i] = d.value(i, "viewTick");
+  }
+  const vt = d.viewTicks;
+  let lo = 0, hi = vt.length - 1, i = -1;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (vt[mid] <= t) { i = mid; lo = mid + 1; } else hi = mid - 1; }
+  if (i < 0) return null;
+  const read = k => ({
+    pos: toPos(d.value(k, "sample.position.x"), d.value(k, "sample.position.y"), d.value(k, "sample.position.z")),
+    q: toQuat(d.value(k, "sample.rotation.x"), d.value(k, "sample.rotation.y"), d.value(k, "sample.rotation.z"), d.value(k, "sample.rotation.w")),
+    fov: d.value(k, "sample.fieldOfView"),
+  });
+  const a = read(i);
+  if (i + 1 < vt.length && vt[i + 1] > vt[i] && vt[i + 1] - vt[i] < 5) {
+    const f = Math.min(1, (t - vt[i]) / (vt[i + 1] - vt[i])), b = read(i + 1);
+    a.pos.lerp(b.pos, f); a.q.slerp(b.q, f); a.fov += (b.fov - a.fov) * f;
+  }
+  return a;
+}
+
+function apply(t) {
+  let list = [];
+  for (const o of entityObjects.values()) {
+    const live = alive(o.entity, t) && o.transform;
+    const pose = live ? poseAt(o.transform, t) : null;
+    // Hidden objects (renderers off, e.g. a projectile waiting for its hit effect) stay in the data; only the view skips them.
+    o.group.visible = !!pose && (pose.visible !== 0 || showHidden);
+    if (pose) {
+      o.group.position.copy(pose.pos); o.group.quaternion.copy(pose.q); o.group.scale.copy(pose.s); list.push(o.entity);
+      if (o.sets.length) { applySets(o.group, o.sets, o.cache, t, o.mat); applyColliderPoses(o.group, o.entity.entity, t); }
+      if (o.radius) {
+        const i = o.radius.data.indexAt(Math.floor(t));
+        const r = i >= 0 ? Math.max(0.02, o.radius.data.value(i, o.radius.column)) : 0.1;
+        // Undo the entity scale so the sphere radius stays in world units.
+        o.marker.scale.set(r / (pose.s.x || 1), r / (pose.s.y || 1), r / (pose.s.z || 1));
+      }
+    }
+  }
+
+  applySets(staticGroup, staticSets, staticGroup.userData.cache, t, material(0x59626e));
+  applyColliderPoses(staticGroup, "s", t);
+
+  const camSel = document.getElementById("cam").value;
+  if (camSel !== "free") {
+    const d = rec.data.get(Number(camSel));
+    const pose = cameraAt(d, t);
+    if (pose) {
+      playerCam.position.copy(pose.pos); playerCam.quaternion.copy(pose.q);
+      playerCam.fov = pose.fov; playerCam.updateProjectionMatrix();
+    }
+    activeCam = playerCam;
+  } else activeCam = freeCam;
+
+  const seconds = (t - rec.firstTick) / rec.tickRate;
+  document.getElementById("clock").textContent = `${seconds.toFixed(2)} s  tick ${Math.floor(t)}`;
+  document.getElementById("hud").textContent = `${list.length} objects alive`;
+  return list;
+}
+
+let lastListTick = -1;
+function updateSide(list) {
+  const t = Math.floor(tick);
+  if (t === lastListTick) return;
+  lastListTick = t;
+  const el = document.getElementById("entities");
+  const names = new Map();
+  for (const e of list) { const k = rec.entities.get(e.entity).name; names.set(k, (names.get(k) || 0) + 1); }
+  el.innerHTML = list.slice(0, 300).map(e => `<div data-e="${e.entity}" class="${selected === e.entity ? "sel" : ""}">#${e.entity} ${e.name}${e.owner != null ? ` <span class="muted">p${e.owner}</span>` : ""}</div>`).join("")
+    + (list.length > 300 ? `<div class="muted">… ${list.length - 300} more</div>` : "");
+  if (selected !== null) showSelected();
+}
+
+document.getElementById("entities").addEventListener("click", ev => {
+  const d = ev.target.closest("[data-e]"); if (d) select(Number(d.dataset.e));
+});
+
+function select(id) {
+  selected = id; lastListTick = -1;
+  for (const o of entityObjects.values())
+    o.group.traverse(m => { if (m.isMesh && m.material.emissive && !m.material.transparent) m.material = m.userData.base || m.material; });
+  if (id !== null) {
+    const o = entityObjects.get(id);
+    o?.group.traverse(m => { if (m.isMesh && !m.material.transparent) { m.userData.base = m.material; m.material = material(0xffffff, { emissive: 0x6cb6ff, emissiveIntensity: 0.6 }); } });
+  }
+  showSelected();
+}
+
+function showSelected() {
+  const el = document.getElementById("selected");
+  if (selected === null) { el.innerHTML = `<span class="muted">Click an object or pick one below.</span>`; return; }
+  const e = rec.entities.get(selected);
+  const t = Math.floor(tick);
+  let html = `<div class="kv"><span>Entity</span><span>#${e.entity} ${e.name}</span><span>Prefab</span><span>${e.prefabName ?? "scene object"}</span>
+    <span>Owner</span><span>${e.owner ?? "-"}</span><span>Spawned</span><span>tick ${e.tick}</span></div>`;
+  for (const c of e.components) {
+    for (const [label, sid] of [["state", c.state], ["input", c.input]]) {
+      if (sid === undefined) continue;
+      const d = rec.data.get(sid); if (!d) continue;
+      const i = d.indexAt(t); if (i < 0 || d.ticks[i] !== t) continue;
+      const row = d.row(i, rec.types);
+      html += `<h3>${c.type.split(".").pop()} ${label}</h3><pre>${escape(JSON.stringify(row, (k, v) => typeof v === "number" && !Number.isInteger(v) ? Number(v.toFixed(4)) : v, 1))}</pre>`;
+    }
+  }
+  el.innerHTML = html;
+}
+const escape = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+const ray = new THREE.Raycaster();
+renderer.domElement.addEventListener("pointerdown", ev => { renderer.domElement.dataset.down = `${ev.clientX},${ev.clientY}`; });
+renderer.domElement.addEventListener("pointerup", ev => {
+  const [x, y] = (renderer.domElement.dataset.down || "0,0").split(",").map(Number);
+  if (Math.hypot(ev.clientX - x, ev.clientY - y) > 4 || !rec) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), activeCam);
+  const groups = [...entityObjects.values()].filter(o => o.group.visible).map(o => o.group);
+  const hit = ray.intersectObjects(groups, true)[0];
+  let o = hit?.object; while (o && o.userData.entity === undefined) o = o.parent;
+  select(o ? o.userData.entity : null);
+});
+
+document.getElementById("play").onclick = () => { playing = !playing; document.getElementById("play").textContent = playing ? "Pause" : "Play"; };
+document.getElementById("speed").onchange = ev => speed = Number(ev.target.value);
+document.getElementById("showHidden").onchange = ev => showHidden = ev.target.checked;
+document.getElementById("time").oninput = ev => { tick = Number(ev.target.value); };
+document.getElementById("cam").onchange = () => {};
+addEventListener("keydown", ev => {
+  if (!rec) return;
+  if (ev.code === "Space") { document.getElementById("play").click(); ev.preventDefault(); }
+  if (ev.code === "ArrowRight") tick = Math.min(rec.lastTick, Math.floor(tick) + 1);
+  if (ev.code === "ArrowLeft") tick = Math.max(rec.firstTick, Math.floor(tick) - 1);
+});
+
+async function load(buffer, name) {
+  document.getElementById("drop").classList.add("hidden");
+  document.getElementById("info").textContent = `Reading ${name}…`;
+  try { rec = await readRecording(buffer); build(); }
+  catch (e) { document.getElementById("info").textContent = "Failed: " + e.message; console.error(e); document.getElementById("drop").classList.remove("hidden"); }
+}
+document.getElementById("file").onchange = async ev => { const f = ev.target.files[0]; if (f) load(await f.arrayBuffer(), f.name); };
+view.addEventListener("dragover", ev => ev.preventDefault());
+view.addEventListener("drop", async ev => { ev.preventDefault(); const f = ev.dataTransfer.files[0]; if (f) load(await f.arrayBuffer(), f.name); });
+const param = new URLSearchParams(location.search).get("file");
+if (param) {
+  // The name shown is the file's, not the whole (signed) URL.
+  const name = decodeURIComponent(new URL(param, location.href).pathname.split("/").pop() || "recording");
+  const info = document.getElementById("info");
+  document.getElementById("drop").classList.add("hidden");
+  info.textContent = `Downloading ${name}…`;
+  fetch(param)
+    .then(r => { if (!r.ok) throw new Error(`the server answered ${r.status} ${r.statusText}`); return r.arrayBuffer(); })
+    .then(b => load(b, name))
+    .catch(e => {
+      // A blocked cross-origin read (no CORS rule on the storage bucket) only shows up as a network error.
+      info.textContent = `Could not download ${name}: ${e.message}. If this keeps happening, the storage bucket may be missing its CORS rule for this site.`;
+      console.error(e);
+      document.getElementById("drop").classList.remove("hidden");
+    });
+}
+
+let last = performance.now();
+renderer.setAnimationLoop(now => {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (rec) {
+    if (playing) { tick += dt * rec.tickRate * speed; if (tick >= rec.lastTick) { tick = rec.lastTick; playing = false; document.getElementById("play").textContent = "Play"; } }
+    document.getElementById("time").value = Math.floor(tick);
+    const list = apply(tick);
+    updateSide(list.map(id => id));
+  }
+  controls.enabled = activeCam === freeCam;
+  if (activeCam === freeCam) controls.update();
+  renderer.render(scene, activeCam);
+});
+</script>
+</body>
+</html>

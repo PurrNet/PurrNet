@@ -18,6 +18,9 @@ namespace PurrNet.Modules
 
         readonly List<HierarchyV2> _rawHierarchies = new();
 
+        /// <summary>One hierarchy per loaded scene.</summary>
+        internal List<HierarchyV2> hierarchies => _rawHierarchies;
+
         readonly PlayersManager _playersManager;
 
         public HierarchyFactory(NetworkManager manager, ScenesModule scenes, ScenePlayersModule scenePlayersModule,

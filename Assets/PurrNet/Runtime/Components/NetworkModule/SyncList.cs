@@ -85,6 +85,14 @@ namespace PurrNet
         [SerializeField] private bool _ownerOnly;
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
         [SerializeField] private List<T> _list = new List<T>();
+
+        internal override Type recordedType => typeof(Recording.RecordedValue<List<T>>);
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<List<T>> { value = _list };
+            session.AppendRow(rows, tick, ref row);
+        }
         [SerializeField, HideInInspector] private List<T> _initialList = new List<T>();
 
         public List<T> list => _list;

@@ -19,6 +19,14 @@ namespace PurrNet
 
         private bool _isDirty;
 
+        internal override Type recordedType => typeof(Recording.RecordedValue<T>);
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<T> { value = _value };
+            session.AppendRow(rows, tick, ref row);
+        }
+
         [SerializeField, Space(-5), Header("Sync Settings"), PurrLock]
         private bool _ownerAuth;
 

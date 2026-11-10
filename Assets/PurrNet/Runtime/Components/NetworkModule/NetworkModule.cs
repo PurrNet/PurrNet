@@ -16,6 +16,12 @@ namespace PurrNet
     {
         public NetworkIdentity parent { get; private set; }
 
+        /// <summary>Row type of this module's recorded state, or null when it is not recorded.</summary>
+        internal virtual Type recordedType => null;
+
+        /// <summary>Writes this module's state for <paramref name="tick"/> as one <see cref="recordedType"/> row.</summary>
+        internal virtual void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick) { }
+
         [UsedImplicitly] public string name { get; private set; }
 
         [UsedImplicitly] public byte index { get; private set; } = 255;
