@@ -383,15 +383,32 @@ function showSelected() {
   const e = rec.entities.get(selected);
   const t = Math.floor(tick);
   let html = `<div class="kv"><span>Entity</span><span>#${e.entity} ${e.name}</span><span>Prefab</span><span>${e.prefabName ?? "scene object"}</span>
-    <span>Owner</span><span>${e.owner ?? "-"}</span><span>Spawned</span><span>tick ${e.tick}</span></div>`;
-  for (const c of e.components) {
+    <span>Owner</span><span>${e.owner ?? "-"}</span><span>Spawned</span><span>tick ${e.tick}</span>
+    ${e.networkId !== undefined ? `<span>Network id</span><span>${e.networkId}</span>` : ""}</div>`;
+  const short = v => typeof v === "number" && !Number.isInteger(v) ? Number(v.toFixed(4)) : v;
+  // Components another source added to this entity (ATTACH records) are shown while that source holds it.
+  const attached = (rec.attaches || []).filter(x => x.entity === e.entity && x.tick <= t &&
+    !(rec.detaches || []).some(y => y.entity === e.entity && y.source === x.source && y.tick > x.tick && y.tick <= t));
+  const components = [...(e.components || []), ...attached.flatMap(x => (x.components || []).map(c => ({ ...c, source: x.source })))];
+  for (const c of components) {
+    const title = c.type.split(".").pop() + (c.source ? ` <span class="muted">(${c.source})</span>` : "");
     for (const [label, sid] of [["state", c.state], ["input", c.input]]) {
       if (sid === undefined) continue;
       const d = rec.data.get(sid); if (!d) continue;
       const i = d.indexAt(t); if (i < 0 || d.ticks[i] !== t) continue;
       const row = d.row(i, rec.types);
-      html += `<h3>${c.type.split(".").pop()} ${label}</h3><pre>${escape(JSON.stringify(row, (k, v) => typeof v === "number" && !Number.isInteger(v) ? Number(v.toFixed(4)) : v, 1))}</pre>`;
+      html += `<h3>${title} ${label}</h3><pre>${escape(JSON.stringify(row, (k, v) => short(v), 1))}</pre>`;
     }
+    // Sync types (PurrNet): one value per field, the server's at this tick.
+    const values = {};
+    for (const sync of c.syncs || []) {
+      const d = rec.data.get(sync.stream); if (!d) continue;
+      const i = d.indexAt(t); if (i < 0) continue;
+      const row = d.row(i, rec.types);
+      values[sync.field] = "value" in row ? row.value : row;
+    }
+    if (Object.keys(values).length)
+      html += `<h3>${title} sync</h3><pre>${escape(JSON.stringify(values, (k, v) => short(v), 1))}</pre>`;
   }
   el.innerHTML = html;
 }

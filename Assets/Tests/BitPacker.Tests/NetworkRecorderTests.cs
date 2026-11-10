@@ -236,6 +236,9 @@ public class NetworkRecorderTests
 
         _recorder.StartRecording("network-recorder.purrrec");
         Assert.That(_recorder.isRecording, Is.True, "recording started");
+        // A sample written before the first recorded tick (a camera does this) must stay inside the first chunk.
+        ulong early = _manager.tickModule.localTick;
+        _recorder.WriteSample("early", 1f);
         var marker = new MarkerSource { session = _recorder.session };
         _recorder.session.AddSource(marker);
 
@@ -247,6 +250,8 @@ public class NetworkRecorderTests
         var thing = instance.GetComponent<RecordedThing>();
         yield return WaitUntil(() => thing.isSpawned);
         yield return Ticks(_manager, 3);
+        Assert.That((ulong)typeof(RecordingSession).GetField("_chunkFirstTick", Fields)!.GetValue(_recorder.session),
+            Is.LessThanOrEqualTo(early), "the first chunk starts no later than the early sample");
 
         thing.health.value = 42;
         thing.label.value = "changed";

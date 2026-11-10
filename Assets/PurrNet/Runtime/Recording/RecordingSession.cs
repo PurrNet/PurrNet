@@ -476,7 +476,8 @@ namespace PurrNet.Recording
                 log = _job.log.bytes;
             }
             _logStart = log.length;
-            if (_ticksRecorded == 0)
+            // The first chunk starts at the first tick, unless samples (a camera, say) were already written before it.
+            if (_ticksRecorded == 0 && _slots.Count == 0)
                 _chunkFirstTick = tick;
 
             _lastTick = tick;

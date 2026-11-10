@@ -362,7 +362,11 @@ namespace PurrNet.Recording
             _session.maxLocalMegabytes = _maxLocalMegabytes;
             _session.colliderCheckBudgetMs = _colliderCheckBudgetMs;
             _session.chunkBufferKilobytes = _chunkBufferKilobytes;
-            _session.Start(_directory, fileName, context.tickRate, context.localTick, gameObject.scene.name, context.isClient);
+            // A recorder on the NetworkManager usually lives in DontDestroyOnLoad; the match is in the active scene.
+            var scene = gameObject.scene;
+            if (!scene.IsValid() || scene.buildIndex < 0 && scene.name == "DontDestroyOnLoad")
+                scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, context.isClient);
             foreach (var extension in _extensions)
                 extension.OnRecordingStarted();
 
