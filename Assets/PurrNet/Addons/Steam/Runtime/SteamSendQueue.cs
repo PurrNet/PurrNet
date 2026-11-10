@@ -119,6 +119,8 @@ namespace PurrNet.Steam
                 _pending.Dequeue();
                 _statistics.queuedReliableBytes -= next.data.length;
                 _statistics.queuedReliableMessages = _pending.Count;
+                _blockedSeconds = 0;
+                _longestCheckGap = 0;
             }
 
             return true;
@@ -179,8 +181,8 @@ namespace PurrNet.Steam
             _blockedSeconds += Math.Min(gap, MaxCountedCheckGapSeconds);
 
             if (_blockedSeconds >= MaxQueueAgeSeconds)
-                return Fail($"Steam did not accept a queued reliable message within {MaxQueueAgeSeconds:0} seconds of sending " +
-                            $"(oldest queued {now - _pending.Peek().queuedAt:0.#} s ago, longest gap between sends {_longestCheckGap:0.##} s).");
+                return Fail($"Steam accepted none of the queued reliable messages for {MaxQueueAgeSeconds:0} seconds " +
+                            $"({_pending.Count} queued, oldest {now - _pending.Peek().queuedAt:0.#} s ago, longest gap between sends {_longestCheckGap:0.##} s).");
             return true;
         }
 
