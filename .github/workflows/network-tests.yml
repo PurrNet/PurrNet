@@ -14,7 +14,7 @@ on:
       timeoutMinutes:
         description: "Hard timeout for the whole job, in minutes"
         required: true
-        default: "30"
+        default: "60"
       scenario:
         description: "Run a single scenario component by name (empty runs the full suite)"
         required: false
