@@ -1,3 +1,10 @@
+# [1.26.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.15...v1.26.0-beta.16) (2026-11-11)
+
+
+### Features
+
+* SteamTransport works with Facepunch.Steamworks through the PurrNet-Facepunch package ([1338605](https://github.com/PurrNet/PurrNet/commit/13386055d2397c517e9e63143418f0d74108eea3))
+
 # [1.26.0-beta.15](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.14...v1.26.0-beta.15) (2026-11-10)
 
 
