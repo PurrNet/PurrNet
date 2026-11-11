@@ -6,6 +6,10 @@
 #define STEAMWORKS_NET_PACKAGE
 #endif
 
+#if STEAMWORKS_NET_PACKAGE
+#undef PURRNET_FACEPUNCH
+#endif
+
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Editor;
@@ -46,8 +50,11 @@ namespace PurrNet.Steam.Editor
                 {
                     RemoveDefineSymbols("DISABLESTEAMWORKS");
                 }
+#elif PURRNET_FACEPUNCH
+                EditorGUILayout.HelpBox("Steam is not available on the current build target.", MessageType.Warning);
 #else
-                EditorGUILayout.HelpBox("SteamWorks.NET is not installed. Please install it to use this transport.",
+                EditorGUILayout.HelpBox(
+                    "No Steam library is installed. Please install SteamWorks.NET or Facepunch.Steamworks to use this transport.",
                     MessageType.Warning);
                 if (GUILayout.Button("Add SteamWorks.NET to Package Manager"))
                 {
@@ -55,6 +62,23 @@ namespace PurrNet.Steam.Editor
                     {
                         Client.Add(
                             "https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net#2024.8.0");
+                        Client.Resolve();
+                    }
+                }
+
+                if (HasOwnFacepunch())
+                {
+                    EditorGUILayout.HelpBox(
+                        "Facepunch.Steamworks is already in this project. Remove that copy before adding the package below, which includes it.",
+                        MessageType.Info);
+                }
+
+                if (GUILayout.Button("Add Facepunch.Steamworks to Package Manager"))
+                {
+                    if (GitHelper.CheckGit())
+                    {
+                        Client.Add(
+                            "https://github.com/PurrNet/PurrNet-Facepunch.git?path=/Assets/PurrNetFacepunch#release");
                         Client.Resolve();
                     }
                 }
@@ -74,8 +98,29 @@ namespace PurrNet.Steam.Editor
                         EditorGUIUtility.systemCopyBuffer = content;
                     }
                 }
+#elif PURRNET_FACEPUNCH && !DISABLESTEAMWORKS
+                if (Application.isPlaying)
+                {
+                    if (GUILayout.Button("Copy my SteamID to Clipboard"))
+                    {
+                        string content = Steamworks.SteamClient.SteamId.ToString();
+                        EditorGUIUtility.systemCopyBuffer = content;
+                    }
+                }
 #endif
             }
+        }
+
+        [UsedImplicitly]
+        static bool HasOwnFacepunch()
+        {
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.GetName().Name.StartsWith("Facepunch.Steamworks"))
+                    return true;
+            }
+
+            return false;
         }
 
         [UsedImplicitly]

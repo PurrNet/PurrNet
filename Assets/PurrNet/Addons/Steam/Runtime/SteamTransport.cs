@@ -6,6 +6,10 @@
 #define STEAMWORKS_NET_PACKAGE
 #endif
 
+#if STEAMWORKS_NET_PACKAGE
+#undef PURRNET_FACEPUNCH
+#endif
+
 using System;
 using System.Collections.Generic;
 using PurrNet.Transports;
@@ -114,7 +118,7 @@ namespace PurrNet.Steam
             };
         }
 
-#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+#if (STEAMWORKS_NET_PACKAGE || PURRNET_FACEPUNCH) && !DISABLESTEAMWORKS
         public override bool isSupported => true;
 #else
         public override bool isSupported => false;
@@ -162,8 +166,13 @@ namespace PurrNet.Steam
         public event OnDataSent onDataSent;
         public event OnConnectionState onConnectionState;
 
+#if PURRNET_FACEPUNCH && !DISABLESTEAMWORKS
+        private FacepunchServer _server;
+        private FacepunchClient _client;
+#else
         private SteamServer _server;
         private SteamClient _client;
+#endif
 
         protected override void StartClientInternal()
         {
@@ -187,7 +196,11 @@ namespace PurrNet.Steam
 
             listenerState = PurrConnectionState.Connecting;
 
+#if PURRNET_FACEPUNCH && !DISABLESTEAMWORKS
+            _server = new FacepunchServer();
+#else
             _server = new SteamServer();
+#endif
             _connections.Clear();
 
             if (_peerToPeer)
@@ -243,7 +256,11 @@ namespace PurrNet.Steam
             if (_client != null)
                 Disconnect();
 
+#if PURRNET_FACEPUNCH && !DISABLESTEAMWORKS
+            _client = new FacepunchClient();
+#else
             _client = new SteamClient();
+#endif
             _client.onConnectionState += OnClientStateChanged;
             _client.onDataReceived += OnClientDataReceived;
 
@@ -408,6 +425,20 @@ namespace PurrNet.Steam
             {
                 var appId = Steamworks.SteamUtils.GetAppID();
                 PurrInternalTelemetry.TransportMetadata["steam_app_id"] = appId.m_AppId.ToString();
+            }
+            catch
+            {
+                // Steamworks may not be initialized
+            }
+        }
+#elif PURRNET_FACEPUNCH && !DISABLESTEAMWORKS
+        void SetTelemetryAppId()
+        {
+            try
+            {
+                var appId = Steamworks.SteamClient.AppId.Value;
+                if (appId != 0)
+                    PurrInternalTelemetry.TransportMetadata["steam_app_id"] = appId.ToString();
             }
             catch
             {

@@ -6,12 +6,20 @@
 #define STEAMWORKS_NET_PACKAGE
 #endif
 
-#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+#if STEAMWORKS_NET_PACKAGE
+#undef PURRNET_FACEPUNCH
+#endif
+
+#if (STEAMWORKS_NET_PACKAGE || PURRNET_FACEPUNCH) && !DISABLESTEAMWORKS
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using PurrNet.Transports;
+#if PURRNET_FACEPUNCH
+using EResult = Steamworks.Result;
+#else
 using Steamworks;
+#endif
 
 namespace PurrNet.Steam
 {
@@ -22,6 +30,22 @@ namespace PurrNet.Steam
         internal const int MaxQueuedMessages = 1024;
         internal const double MaxQueueAgeSeconds = 10;
         internal const double MaxCountedCheckGapSeconds = 0.5;
+
+#if PURRNET_FACEPUNCH
+        private const EResult Ok = EResult.OK;
+        private const EResult LimitExceeded = EResult.LimitExceeded;
+        private const EResult NoConnection = EResult.NoConnection;
+        private const EResult Ignored = EResult.Ignored;
+        private const int ReliableFlag = (int)Steamworks.Data.SendType.Reliable;
+        private const int UnreliableFlag = (int)Steamworks.Data.SendType.Unreliable;
+#else
+        private const EResult Ok = EResult.k_EResultOK;
+        private const EResult LimitExceeded = EResult.k_EResultLimitExceeded;
+        private const EResult NoConnection = EResult.k_EResultNoConnection;
+        private const EResult Ignored = EResult.k_EResultIgnored;
+        private const int ReliableFlag = Constants.k_nSteamNetworkingSend_Reliable;
+        private const int UnreliableFlag = Constants.k_nSteamNetworkingSend_Unreliable;
+#endif
 
         internal delegate EResult NativeSend(IntPtr data, uint length, int flags);
 
@@ -53,7 +77,7 @@ namespace PurrNet.Steam
         /// True when the last failed send was refused with k_EResultNoConnection: Steam no longer has the connection
         /// open. It does not say which side closed it.
         /// </summary>
-        public bool peerClosed => _statistics.lastSendResult == (int)EResult.k_EResultNoConnection;
+        public bool peerClosed => _statistics.lastSendResult == (int)NoConnection;
 
         public SteamSendQueue(NativeSend send, Func<double> clock)
         {
@@ -84,16 +108,16 @@ namespace PurrNet.Steam
             }
 
             var flags = reliable
-                ? Constants.k_nSteamNetworkingSend_Reliable
-                : Constants.k_nSteamNetworkingSend_Unreliable;
+                ? ReliableFlag
+                : UnreliableFlag;
             var result = SendNative(data, flags);
-            if (result == EResult.k_EResultOK)
+            if (result == Ok)
                 return accepted = true;
 
-            if (reliable && result == EResult.k_EResultLimitExceeded)
+            if (reliable && result == LimitExceeded)
                 return accepted = Enqueue(data);
 
-            if (!reliable && (result == EResult.k_EResultIgnored || result == EResult.k_EResultLimitExceeded))
+            if (!reliable && (result == Ignored || result == LimitExceeded))
             {
                 _statistics.droppedUnreliableMessages++;
                 return true;
@@ -110,10 +134,10 @@ namespace PurrNet.Steam
             while (_pending.Count > 0)
             {
                 var next = _pending.Peek();
-                var result = SendNative(next.data, Constants.k_nSteamNetworkingSend_Reliable);
-                if (result == EResult.k_EResultLimitExceeded)
+                var result = SendNative(next.data, ReliableFlag);
+                if (result == LimitExceeded)
                     return true;
-                if (result != EResult.k_EResultOK)
+                if (result != Ok)
                     return Fail($"Steam rejected a reliable retry: {result}.");
 
                 _pending.Dequeue();
@@ -133,7 +157,7 @@ namespace PurrNet.Steam
             {
                 var result = _send(pin.AddrOfPinnedObject() + data.offset, (uint)data.length, flags);
                 _statistics.lastSendResult = (int)result;
-                if (result == EResult.k_EResultOK)
+                if (result == Ok)
                     _statistics.acceptedMessages++;
                 else
                     _statistics.rejectedSendAttempts++;
@@ -201,6 +225,7 @@ namespace PurrNet.Steam
         }
     }
 
+#if !PURRNET_FACEPUNCH
     internal static class SteamConnectionStatus
     {
         /// <summary>
@@ -246,5 +271,6 @@ namespace PurrNet.Steam
                    $"pending reliable {status.m_cbPendingReliable} B, unacked reliable {status.m_cbSentUnackedReliable} B";
         }
     }
+#endif
 }
 #endif
