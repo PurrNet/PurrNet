@@ -1,3 +1,15 @@
+# [1.26.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.16...v1.26.0-beta.17) (2026-11-11)
+
+
+### Bug Fixes
+
+* malformed packets from a client can no longer crash the server or act with permissions it does not have ([f989846](https://github.com/PurrNet/PurrNet/commit/f9898467eb90f2145bef1cc14dc2f28c4e257983))
+
+
+### Performance Improvements
+
+* NetworkRecorder only logs rows that changed, and recordings note dedicated server builds ([a97bed4](https://github.com/PurrNet/PurrNet/commit/a97bed496689a95e3a8a83663234b6753a4f541a))
+
 # [1.26.0-beta.16](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.15...v1.26.0-beta.16) (2026-11-11)
 
 
