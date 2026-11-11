@@ -67,22 +67,12 @@ namespace PurrNet.Recording
         public float orthographicSize;
     }
 
-    /// <summary>Client to server, once per stream and connection: what a stream key means.</summary>
-    public struct RecordedStreamDeclare : IPackedAuto
-    {
-        public ushort key;
-        public string stream;
-        public string type;
-    }
-
     /// <summary>
-    /// Client to server: whole fixed rows of one declared stream, inline. Only unmanaged fields, so receiving one
-    /// allocates nothing.
+    /// Client to server: whole rows of the client's camera (<see cref="ClientSample{T}"/> of
+    /// <see cref="CameraSample"/>), inline. Only unmanaged fields, so receiving one allocates nothing.
     /// </summary>
-    public struct RecordedSamplesPacket : IPackedAuto
+    public struct RecordedCameraPacket : IPackedAuto
     {
-        public ushort key;
-        public ushort rowSize;
         public byte rowCount;
         public RecordedSamplesPayload payload;
     }

@@ -89,6 +89,9 @@ namespace PurrNet.Recording
             public int index;
             public readonly List<NetworkModule> modules = new List<NetworkModule>(4);
             public readonly List<StreamRows> rows = new List<StreamRows>(4);
+            // The modules that are asked every tick; the others say when they change (see life).
+            public readonly List<int> polled = new List<int>(4);
+            public readonly RecordedLife life = new RecordedLife();
         }
 
         sealed class IdentityComparer : IEqualityComparer<NetworkIdentity>
@@ -198,6 +201,7 @@ namespace PurrNet.Recording
         // By reference: destroyed Unity objects all compare equal to each other.
         readonly Dictionary<NetworkIdentity, Component> _components = new Dictionary<NetworkIdentity, Component>(IdentityComparer.instance);
         readonly List<NetworkIdentity> _identityList = new List<NetworkIdentity>();
+        Component[] _slots = new Component[64];
         readonly Stack<EntityData> _dataPool = new Stack<EntityData>(256);
         readonly Stack<Component> _componentPool = new Stack<Component>(256);
         readonly HashSet<ulong> _players = new HashSet<ulong>();
@@ -409,9 +413,8 @@ namespace PurrNet.Recording
         // ---- Samples --------------------------------------------------------------------------------
 
         /// <summary>
-        /// Adds a sample to a custom stream. On the server it is written directly; on a client it is sent to the
-        /// server. Samples sent from clients must be unmanaged (no classes, strings, arrays or lists) and at most
-        /// 512 bytes with their envelope.
+        /// Adds a sample to a custom stream. Samples are written on the server (and host); written on a client they
+        /// are ignored. The recorder sends each client's camera to the server by itself.
         /// </summary>
         public void WriteSample<T>(string stream, in T sample) where T : struct => _session.WriteSample(stream, sample);
 
@@ -496,6 +499,8 @@ namespace PurrNet.Recording
             if (_hierarchy == null && !_networkManager.TryGetModule(true, out _hierarchy))
                 return;
 
+            bool chunkStart = _session.chunkStart;
+            int at = 0;
             var hierarchies = _hierarchy.hierarchies;
             for (int h = 0; h < hierarchies.Count; h++)
             {
@@ -503,23 +508,48 @@ namespace PurrNet.Recording
                 for (int i = 0; i < spawned.Count; i++)
                 {
                     var identity = spawned[i];
+                    int slot = at++;
                     if (identity is null || !identity || !identity.isSpawned)
                         continue;
 
-                    if (!_components.TryGetValue(identity, out var component))
+                    // Identities mostly keep their place from tick to tick, so the one found there last is tried first.
+                    if (slot >= _slots.Length)
+                        Array.Resize(ref _slots, Math.Max(slot + 1, _slots.Length * 2));
+                    var component = _slots[slot];
+                    if (component == null || !ReferenceEquals(component.identity, identity))
                     {
-                        if (Excluded(identity))
-                            continue;
-                        component = Track(identity, tick);
-                        if (component == null)
-                            continue;
+                        if (!_components.TryGetValue(identity, out component))
+                        {
+                            if (Excluded(identity))
+                                continue;
+                            component = Track(identity, tick);
+                            if (component == null)
+                                continue;
+                        }
+                        _slots[slot] = component;
                     }
 
                     _session.RecordTransform(component.data.entity, _source, tick, out _);
                     var modules = component.modules;
                     var rows = component.rows;
-                    for (int m = 0; m < modules.Count; m++)
-                        modules[m].Record(_session, rows[m], tick);
+                    var life = component.life;
+                    // Every row on a chunk's first tick, after a change, and when the last tick was missed.
+                    if (chunkStart || life.changed || life.tick + 1 != tick)
+                    {
+                        life.changed = false;
+                        for (int m = 0; m < modules.Count; m++)
+                            modules[m].Record(_session, rows[m], tick);
+                    }
+                    else
+                    {
+                        var polled = component.polled;
+                        for (int p = 0; p < polled.Count; p++)
+                        {
+                            int m = polled[p];
+                            modules[m].Record(_session, rows[m], tick);
+                        }
+                    }
+                    life.tick = tick;
                 }
             }
 
@@ -605,6 +635,8 @@ namespace PurrNet.Recording
             component.identity = identity;
             component.data = data;
             component.index = index;
+            component.life.changed = true;
+            component.life.tick = 0;
             var excludedFields = RulesOf(identity.GetType()).excludedFields;
             var modules = identity.modules;
             for (int m = 0; m < modules.Count; m++)
@@ -613,12 +645,18 @@ namespace PurrNet.Recording
                 var type = module?.recordedType;
                 if (type == null || (excludedFields != null && excludedFields.Contains(module.name)))
                     continue;
+                if (module.recordedOnChange)
+                    module.recordedLife = component.life;
+                else
+                    component.polled.Add(component.modules.Count);
                 component.modules.Add(module);
-                component.rows.Add(_session.CreateStream(type, new RecordedStreamInfo
+                var rows = _session.CreateStream(type, new RecordedStreamInfo
                 {
                     kind = RecordedStreamKind.Sync, entity = data.entity.id, component = (ulong)index,
                     componentType = identity.GetType(), module = module.index, field = module.name
-                }, true));
+                }, true);
+                rows.life = component.life;
+                component.rows.Add(rows);
             }
             data.components.Add(component);
             _components[identity] = component;
@@ -653,6 +691,9 @@ namespace PurrNet.Recording
             {
                 foreach (var rows in c.rows)
                     rows.Retire();
+                foreach (var module in c.modules)
+                    module.recordedLife = null;
+                c.polled.Clear();
                 if (c.identity is not null)
                     _components.Remove(c.identity);
                 c.identity = null;

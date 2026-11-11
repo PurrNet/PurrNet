@@ -7,19 +7,16 @@ namespace PurrNet.Recording
     /// Writes the camera this machine renders with to the "camera" stream. Recorders add
     /// one next to themselves unless its camera recording is turned off; add your own to record a specific camera.
     /// The pose is taken right before the camera renders, after every script and camera rig has moved it, so it is
-    /// exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate.
+    /// exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate. One sample
+    /// is taken per tick.
     /// </summary>
     [DefaultExecutionOrder(10000)]
     public sealed class RecordLocalCamera : MonoBehaviour
     {
         [Tooltip("Camera to record. Empty uses Camera.main.")]
         [SerializeField] private Camera _camera;
-        [SerializeField] private string _stream = "camera";
-        [Tooltip("Most samples per second. Frames beyond this are skipped.")]
-        [SerializeField] private float _maxSamplesPerSecond = 60f;
 
-        float _nextSample;
-        int _sampledFrame = -1;
+        ulong _sampledTick = ulong.MaxValue;
         int _lastRenderFrame = -1000;
 
         void OnEnable()
@@ -57,21 +54,17 @@ namespace PurrNet.Recording
 
         void Sample(Camera cam)
         {
-            if (_sampledFrame == Time.frameCount)
-                return;
-
             var recorder = RecordingSession.active;
             if (recorder == null)
                 return;
 
-            float now = Time.unscaledTime;
-            if (now < _nextSample)
+            ulong tick = recorder.localTick;
+            if (tick == _sampledTick)
                 return;
-            _nextSample = Mathf.Max(now - 0.5f / _maxSamplesPerSecond, _nextSample) + 1f / _maxSamplesPerSecond;
-            _sampledFrame = Time.frameCount;
+            _sampledTick = tick;
 
             var t = cam.transform;
-            recorder.WriteSample(_stream, new CameraSample
+            recorder.WriteSample(RecordingSession.CameraStream, new CameraSample
             {
                 position = t.position,
                 rotation = t.rotation,

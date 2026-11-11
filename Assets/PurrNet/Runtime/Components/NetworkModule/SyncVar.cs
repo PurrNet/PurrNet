@@ -21,6 +21,12 @@ namespace PurrNet
 
         internal override Type recordedType => typeof(Recording.RecordedValue<T>);
 
+        // A string or plain data only changes when the value is set; anything else can change from the inside.
+        static readonly bool _recordedOnChange = typeof(T) == typeof(string) ||
+                                                 Unity.Collections.LowLevel.Unsafe.UnsafeUtility.IsUnmanaged(typeof(T));
+
+        internal override bool recordedOnChange => _recordedOnChange;
+
         internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
         {
             var row = new Recording.RecordedValue<T> { value = _value };
@@ -86,6 +92,7 @@ namespace PurrNet
                 var oldValue = _value;
                 _value = value;
                 _valueHash = hash;
+                RecordedChanged();
                 _ignoreServerUpdates = true;
 
                 SetDirty();
@@ -377,6 +384,7 @@ namespace PurrNet
             if (!Packer.Transform(ref _value, newValue))
                 return;
 
+            RecordedChanged();
             UpdateValueHash();
             TriggerEvents(oldValue);
         }
@@ -443,6 +451,7 @@ namespace PurrNet
             if (!Packer.Transform(ref _value, newValue))
                 return;
 
+            RecordedChanged();
             UpdateValueHash();
             TriggerEvents(oldValue);
         }

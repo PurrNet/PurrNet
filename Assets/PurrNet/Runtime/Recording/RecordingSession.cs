@@ -41,40 +41,6 @@ namespace PurrNet.Recording
             public override int GetHashCode() => (_stream?.GetHashCode() ?? 0) * 31 + _player.GetHashCode() + (_hasPlayer ? 1 : 0);
         }
 
-        readonly struct RemoteKey : IEquatable<RemoteKey>
-        {
-            readonly ulong _player;
-            readonly ushort _key;
-
-            public RemoteKey(ulong player, ushort key)
-            {
-                _player = player;
-                _key = key;
-            }
-
-            public bool Equals(RemoteKey other) => _player == other._player && _key == other._key;
-            public override bool Equals(object obj) => obj is RemoteKey other && Equals(other);
-            public override int GetHashCode() => _player.GetHashCode() * 65599 + _key;
-        }
-
-        sealed class RemoteStream
-        {
-            public string name;
-            public Type type;
-        }
-
-        /// <summary>Samples a client collected for one stream since its last send.</summary>
-        sealed class Outgoing
-        {
-            public ushort key;
-            public string stream;
-            public string type;
-            public int rowSize;
-            public readonly RecordingBuffer rows = new RecordingBuffer(256);
-            public int count;
-            public bool declared;
-        }
-
         /// <summary>A chunk's log on its way to the writer thread, encoded there.</summary>
         sealed class ChunkJob : IStepwiseRecordProducer
         {
@@ -145,8 +111,14 @@ namespace PurrNet.Recording
         public int maxLocalMegabytes = 1024;
         public float colliderCheckBudgetMs = 0.1f;
         public int chunkBufferKilobytes = 2048;
+        public ulong localTick => _context.isReady ? _context.localTick : 0;
 
         public bool isRecording => _file != null;
+        /// <summary>
+        /// Whether the tick being recorded is the first of a chunk. Every per-tick stream needs a row in each chunk
+        /// it lives in, so a recorder that only writes rows when they change writes them all on this tick.
+        /// </summary>
+        public bool chunkStart { get; private set; }
         public string currentPath => _file?.path;
         public long bytesWritten => _file?.bytesWritten ?? 0;
         public ulong ticksRecorded => _ticksRecorded;
@@ -185,11 +157,11 @@ namespace PurrNet.Recording
         readonly Dictionary<Type, string> _typeNames = new Dictionary<Type, string>();
         readonly Dictionary<(RowLayout, (string, string)[]), int[]> _baseColumns = new Dictionary<(RowLayout, (string, string)[]), int[]>();
 
-        // Client: samples waiting to be sent. Server: what each client's stream keys mean.
-        readonly Dictionary<string, Outgoing> _outgoing = new Dictionary<string, Outgoing>();
-        readonly Dictionary<RemoteKey, RemoteStream> _remoteStreams = new Dictionary<RemoteKey, RemoteStream>();
-        readonly Dictionary<string, Type> _resolvedTypes = new Dictionary<string, Type>();
-        bool _wasConnected;
+        // Client: camera samples waiting to be sent. Server: the camera rows each player may still send, and the
+        // tick that was counted at.
+        readonly RecordingBuffer _outgoing = new RecordingBuffer(256);
+        int _outgoingCount;
+        readonly Dictionary<ulong, (ulong tick, int rows)> _cameraRows = new Dictionary<ulong, (ulong tick, int rows)>();
         float _nextSend;
         NetworkManager _networkManager;
 
@@ -272,16 +244,14 @@ namespace PurrNet.Recording
             _networkManager = manager;
             if (!_networkManager)
                 return;
-            _networkManager.Subscribe<RecordedStreamDeclare>(OnStreamDeclared, true);
-            _networkManager.Subscribe<RecordedSamplesPacket>(OnSamplesReceived, true);
+            _networkManager.Subscribe<RecordedCameraPacket>(OnCameraReceived, true);
         }
 
         public void UnsubscribeNetwork()
         {
             if (_networkManager)
             {
-                _networkManager.Unsubscribe<RecordedStreamDeclare>(OnStreamDeclared, true);
-                _networkManager.Unsubscribe<RecordedSamplesPacket>(OnSamplesReceived, true);
+                _networkManager.Unsubscribe<RecordedCameraPacket>(OnCameraReceived, true);
             }
             _networkManager = null;
         }
@@ -339,6 +309,7 @@ namespace PurrNet.Recording
 
             // Every file is self-contained, so type ids and records start over.
             _types = new RecordingTypeRegistry();
+            _cameraRows.Clear();
             _baseColumns.Clear();
             _file = new RecordingFile(Path.Combine(directory, fileName), (long)maxLocalMegabytes * 1024 * 1024);
             RecordingUploader.SetActiveRecording(_file.path);
@@ -354,6 +325,7 @@ namespace PurrNet.Recording
             _stats.Reset();
             _stats.file = _file;
             _slots.Clear();
+            chunkStart = true;
 
             WriteHeader(tickRate, firstTick, scene, host);
 #if UNITY_PHYSICS_3D
@@ -439,6 +411,7 @@ namespace PurrNet.Recording
                 .Prop("startedUtc", DateTime.UtcNow.ToString("o"))
                 .Prop("scene", scene)
                 .Prop("recorder", host ? "host" : "server")
+                .Prop("serverBuild", PurrNet.Utils.ApplicationContext.isServerBuild)
                 .Key("labels").BeginObject();
             foreach (var pair in labels)
                 json.Prop(pair.Key, pair.Value);
@@ -494,6 +467,7 @@ namespace PurrNet.Recording
                 _logCapacity = Mathf.NextPowerOfTwo(_maxTickBytes * 4);
                 ReserveChunkMemory();
             }
+            chunkStart = false;
             _stats.End(_statTick);
             _stats.CommitTick();
         }
@@ -595,7 +569,7 @@ namespace PurrNet.Recording
         /// Marks <paramref name="source"/>'s part of the entity seen this tick and writes the entity's world pose, once
         /// per tick. Returns the position, or false when the pose was already written this tick.
         /// </summary>
-        public bool RecordTransform(RecordedEntity entity, RecordingSource source, ulong tick, out Vector3 position)
+        public unsafe bool RecordTransform(RecordedEntity entity, RecordingSource source, ulong tick, out Vector3 position)
         {
             entity.Touch(source, tick);
             if (entity.poseTick == tick)
@@ -609,8 +583,20 @@ namespace PurrNet.Recording
             t.GetPositionAndRotation(out pose.position, out pose.rotation);
             pose.scale = t.lossyScale;
             pose.visible = Visibility(entity);
-            AppendRow(entity.transform, tick, ref pose);
             position = pose.position;
+            // The pose the stream already has in this chunk: nothing to add (compared bit for bit).
+            var rows = entity.transform;
+            if (rows.slot >= 0 && pose.visible == entity.lastPose.visible)
+            {
+                fixed (RecordedTransform* last = &entity.lastPose)
+                    if (UnsafeUtility.MemCmp(&pose, last, 40) == 0)
+                    {
+                        rows.aliveTick = tick;
+                        return true;
+                    }
+            }
+            entity.lastPose = pose;
+            AppendRow(rows, tick, ref pose);
             return true;
         }
 
@@ -679,8 +665,7 @@ namespace PurrNet.Recording
         /// <summary>Retires the entity's streams (dropped after their last flush) and pools the entity.</summary>
         void ReleaseEntity(RecordedEntity entity)
         {
-            if (entity.transform != null)
-                entity.transform.retired = true;
+            entity.transform?.Retire();
             while (entity.source0 != null)
             {
                 var source = entity.source0;
@@ -787,10 +772,13 @@ namespace PurrNet.Recording
             rows.baseColumns = null;
             rows.slot = -1;
             rows.rowCount = 0;
-            if (rows.lastValueOffset.Length != layout.managed.Count)
+            rows.life = null;
+            rows.aliveTick = 0;
+            if (rows.lastBytes.Length != layout.managed.Count)
             {
-                rows.lastValueOffset = new int[layout.managed.Count];
-                rows.lastValueLength = new int[layout.managed.Count];
+                rows.lastObject = new object[layout.managed.Count];
+                rows.lastBytes = new RecordingBuffer[layout.managed.Count];
+                rows.lastVersion = new int[layout.managed.Count];
             }
             if (baseStream != null && baseColumns != null)
             {
@@ -879,24 +867,92 @@ namespace PurrNet.Recording
             throw new ArgumentException($"{layout.type} has no column {name}");
         }
 
-        /// <summary>Adds a row for <paramref name="tick"/> to <paramref name="rows"/>.</summary>
+        /// <summary>
+        /// Adds a row for <paramref name="tick"/> to <paramref name="rows"/>. A per-tick stream's row is only written
+        /// when it differs from the stream's last one (or is its first in the chunk); the stream still has that row
+        /// on this tick.
+        /// </summary>
         public unsafe void AppendRow<T>(StreamRows rows, ulong tick, ref T value) where T : struct
         {
-            BeginRow(rows, tick, _job.log);
-            var log = _job.log.bytes;
+            rows.aliveTick = tick;
             var layout = rows.layout;
-            layout.WriteFixed(ref value, log);
-            if (!layout.hasManaged)
+            bool first = rows.slot < 0;
+            if (!first && layout.rowSize == 0 && rows.forwardFill && SameSources(rows, ref value))
                 return;
+            var chunk = _job.log;
+            var log = chunk.bytes;
+            // The entry is written, and taken back when it turns out to repeat the stream's last one.
+            int start = log.length;
+            bool hadTick = chunk.hasTick;
+            ulong lastTick = chunk.lastTick;
+            BeginRow(rows, tick, chunk);
+            int at = log.length;
+            layout.WriteFixed(ref value, log);
+            // Whether the entry is needed: always for other streams and for the first row in a chunk.
+            bool write = !rows.forwardFill || first || !SameBytes(log.data, at, rows.lastOffset, layout.rowSize);
+            if (layout.hasManaged)
+                write |= WriteManaged(rows, ref value, first, log);
+            if (write)
+            {
+                rows.lastOffset = at;
+                return;
+            }
+            log.length = start;
+            chunk.hasTick = hadTick;
+            chunk.lastTick = lastTick;
+            rows.rowCount--;
+        }
 
-            _stats.Begin(_statManaged);
-            var writers = _types.GetManagedWriters(layout);
+        /// <summary>Whether every managed value of the row comes from the string or list, unchanged, of the stream's last row.</summary>
+        unsafe bool SameSources<T>(StreamRows rows, ref T value) where T : struct
+        {
+            var writers = _types.GetManagedWriters(rows.layout);
             byte* row = (byte*)UnsafeUtility.AddressOf(ref value);
             for (int i = 0; i < writers.Length; i++)
             {
+                var writer = writers[i];
+                if (writer == null || writer.disabled || !writer.Identify(row, out var source, out int version) ||
+                    !ReferenceEquals(source, rows.lastObject[i]) || version != rows.lastVersion[i])
+                    return false;
+            }
+            return writers.Length > 0;
+        }
+
+        /// <summary>Writes a row's managed values to the log; returns whether any differs from the stream's last row.</summary>
+        unsafe bool WriteManaged<T>(StreamRows rows, ref T value, bool first, RecordingBuffer log) where T : struct
+        {
+            bool measured = _stats.enabled;
+            if (measured)
+                _stats.Begin(_statManaged);
+            var layout = rows.layout;
+            var writers = _types.GetManagedWriters(layout);
+            bool changed = false;
+            byte* row = (byte*)UnsafeUtility.AddressOf(ref value);
+            for (int i = 0; i < writers.Length; i++)
+            {
+                var writer = writers[i];
+                // The string or list the stream's last value was written from, unchanged: the same value, without
+                // writing it out to compare.
+                object source = null;
+                int version = 0;
+                bool known = writer != null && !writer.disabled && writer.Identify(row, out source, out version);
+                var kept = rows.lastBytes[i];
+                if (known && ReferenceEquals(source, rows.lastObject[i]) && version == rows.lastVersion[i])
+                {
+                    // A chunk's first row has nothing to refer back to: it gets the bytes kept from the last time.
+                    if (first)
+                    {
+                        log.WriteInt32(kept.length);
+                        log.WriteBytes(kept);
+                    }
+                    else
+                        log.WriteInt32(-1);
+                    continue;
+                }
+                rows.lastObject[i] = null;
+
                 _scratch.Clear();
                 _visiting.Clear();
-                var writer = writers[i];
                 try
                 {
                     if (writer != null && !writer.disabled)
@@ -914,19 +970,35 @@ namespace PurrNet.Recording
                 {
                     _scratch.Clear();
                     _scratch.WriteByte(12);
+                    known = false;
+                }
+                if (known)
+                {
+                    rows.lastObject[i] = source;
+                    rows.lastVersion[i] = version;
                 }
                 // The same value as this stream's previous row in the chunk is stored as a back-reference.
-                if (rows.rowCount > 1 && SameAsLast(log, rows.lastValueOffset[i], rows.lastValueLength[i]))
-                    log.WriteInt32(-1);
-                else
+                if (!first && kept != null && kept.SameBytes(_scratch))
                 {
-                    log.WriteInt32(_scratch.length);
-                    rows.lastValueOffset[i] = log.length;
-                    rows.lastValueLength[i] = _scratch.length;
-                    log.WriteBytes(_scratch);
+                    log.WriteInt32(-1);
+                    continue;
                 }
+                changed = true;
+                (kept ?? (rows.lastBytes[i] = new RecordingBuffer(_scratch.length))).CopyFrom(_scratch);
+                log.WriteInt32(_scratch.length);
+                log.WriteBytes(_scratch);
             }
-            _stats.End(_statManaged);
+            if (measured)
+                _stats.End(_statManaged);
+            return changed;
+        }
+
+        static unsafe bool SameBytes(byte[] data, int a, int b, int length)
+        {
+            if (length == 0)
+                return true;
+            fixed (byte* p = data)
+                return UnsafeUtility.MemCmp(p + a, p + b, length) == 0;
         }
 
         /// <summary>Starts a log entry: the stream's slot in this chunk, and the tick when it differs from the last entry's.</summary>
@@ -947,17 +1019,6 @@ namespace PurrNet.Recording
                 log.lastTick = tick;
                 log.hasTick = true;
             }
-        }
-
-        unsafe bool SameAsLast(RecordingBuffer log, int offset, int length)
-        {
-            if (length != _scratch.length)
-                return false;
-            if (length == 0)
-                return true;
-            fixed (byte* a = &log.data[offset])
-            fixed (byte* b = &_scratch.data[0])
-                return UnsafeUtility.MemCmp(a, b, length) == 0;
         }
 
         /// <summary>The first values of an in-place field writer are compared with the reflection path.</summary>
@@ -1033,7 +1094,7 @@ namespace PurrNet.Recording
                     log.streams.Add(new ChunkStream
                     {
                         id = s.id, layout = s.layout, forwardFill = s.forwardFill, baseColumns = s.baseColumns,
-                        baseSlot = s.baseStream != null ? s.baseStream.slot : -1
+                        baseSlot = s.baseStream != null ? s.baseStream.slot : -1, lastTick = s.lastTick
                     });
                 }
                 _file.Enqueue(RecordKind.Chunk, _job, true);
@@ -1057,6 +1118,7 @@ namespace PurrNet.Recording
                 {
                     s.baseStream = null;
                     s.box = null;
+                    Array.Clear(s.lastObject, 0, s.lastObject.Length);
                     _streamPool.Push(s);
                     continue;
                 }
@@ -1064,14 +1126,18 @@ namespace PurrNet.Recording
             }
             _streams.RemoveRange(kept, _streams.Count - kept);
             _chunkFirstTick = _lastTick + 1;
+            chunkStart = true;
         }
 
         // ---- Samples --------------------------------------------------------------------------------
 
+        /// <summary>The stream clients' cameras are recorded under.</summary>
+        public const string CameraStream = "camera";
+
         /// <summary>
-        /// Adds a sample to a custom stream. On the server it is written directly; on a client it is sent to the
-        /// server. Samples sent from clients must be unmanaged (no classes, strings, arrays or lists) and at most
-        /// 512 bytes with their envelope.
+        /// Adds a sample to a custom stream. Samples are written on the server (and host). The one sample a client
+        /// sends to the server is its camera (<see cref="CameraSample"/>), recorded under
+        /// <see cref="CameraStream"/>; anything else written on a client is ignored.
         /// </summary>
         public void WriteSample<T>(string stream, in T sample) where T : struct
         {
@@ -1094,26 +1160,11 @@ namespace PurrNet.Recording
                 return;
             }
 
-            if (!_outgoing.TryGetValue(stream, out var pending))
-            {
-                var layout = _types.GetRow(typeof(ClientSample<T>));
-                if (layout.hasManaged || layout.rowSize > RecordedSamplesPayload.Size)
-                {
-                    Debug.LogError($"[{_logName}] Client samples must be unmanaged and at most {RecordedSamplesPayload.Size} bytes; {typeof(T)} is not.");
-                    return;
-                }
-                pending = new Outgoing
-                {
-                    key = (ushort)(_outgoing.Count + 1),
-                    stream = stream,
-                    type = typeof(ClientSample<T>).AssemblyQualifiedName,
-                    rowSize = layout.rowSize
-                };
-                _outgoing[stream] = pending;
-            }
+            if (typeof(T) != typeof(CameraSample))
+                return;
 
-            _types.GetRow(typeof(ClientSample<T>)).WriteFixed(ref envelope, pending.rows);
-            pending.count++;
+            _types.GetRow(typeof(ClientSample<T>)).WriteFixed(ref envelope, _outgoing);
+            _outgoingCount++;
         }
 
         /// <summary>
@@ -1147,77 +1198,85 @@ namespace PurrNet.Recording
 
         unsafe void SendOutgoing()
         {
-            if (!_networkManager)
+            if (!_networkManager || !_networkManager.isClient || _outgoingCount == 0)
                 return;
 
-            // A new connection has not heard of any stream key yet.
-            bool connected = _networkManager.isClient;
-            if (connected != _wasConnected)
+            int rowSize = _types.GetRow(typeof(ClientSample<CameraSample>)).rowSize;
+            int perPacket = RecordedSamplesPayload.Size / rowSize;
+            for (int sent = 0; sent < _outgoingCount; sent += perPacket)
             {
-                _wasConnected = connected;
-                foreach (var pair in _outgoing)
-                    pair.Value.declared = false;
+                int rows = Math.Min(perPacket, _outgoingCount - sent);
+                var packet = new RecordedCameraPacket { rowCount = (byte)rows };
+                fixed (byte* src = &_outgoing.data[sent * rowSize])
+                    UnsafeUtility.MemCpy(UnsafeUtility.AddressOf(ref packet.payload), src, rows * rowSize);
+                _networkManager.SendToServer(packet, Channel.ReliableOrdered);
             }
-            if (!connected)
-                return;
-
-            foreach (var pair in _outgoing)
-            {
-                var o = pair.Value;
-                if (o.count == 0)
-                    continue;
-
-                if (!o.declared)
-                {
-                    _networkManager.SendToServer(new RecordedStreamDeclare { key = o.key, stream = o.stream, type = o.type },
-                        Channel.ReliableOrdered);
-                    o.declared = true;
-                }
-
-                int perPacket = RecordedSamplesPayload.Size / o.rowSize;
-                for (int sent = 0; sent < o.count; sent += perPacket)
-                {
-                    int rows = Math.Min(perPacket, o.count - sent);
-                    var packet = new RecordedSamplesPacket { key = o.key, rowSize = (ushort)o.rowSize, rowCount = (byte)rows };
-                    fixed (byte* src = &o.rows.data[sent * o.rowSize])
-                        UnsafeUtility.MemCpy(UnsafeUtility.AddressOf(ref packet.payload), src, rows * o.rowSize);
-                    _networkManager.SendToServer(packet, Channel.ReliableOrdered);
-                }
-                o.rows.Clear();
-                o.count = 0;
-            }
+            _outgoing.Clear();
+            _outgoingCount = 0;
         }
 
-        void OnStreamDeclared(PlayerID player, RecordedStreamDeclare declare, bool asServer)
-        {
-            if (string.IsNullOrEmpty(declare.type) || string.IsNullOrEmpty(declare.stream))
-                return;
-            if (!_resolvedTypes.TryGetValue(declare.type, out var type))
-                _resolvedTypes[declare.type] = type = Type.GetType(declare.type);
-            if (type == null)
-                return;
-            _remoteStreams[new RemoteKey(player.id.value, declare.key)] = new RemoteStream { name = declare.stream, type = type };
-        }
-
-        unsafe void OnSamplesReceived(PlayerID player, RecordedSamplesPacket packet, bool asServer)
+        unsafe void OnCameraReceived(PlayerID player, RecordedCameraPacket packet, bool asServer)
         {
             if (!isRecording || packet.rowCount == 0)
                 return;
-            if (!_remoteStreams.TryGetValue(new RemoteKey(player.id.value, packet.key), out var remote))
+
+            var layout = _types.GetRow(typeof(ClientSample<CameraSample>));
+            int rowSize = layout.rowSize;
+            if (packet.rowCount > RecordedSamplesPayload.Size / rowSize)
                 return;
 
-            var rows = GetCustomStream(remote.name, remote.type, player);
-            int rowSize = rows.layout.rowSize;
-            if (rows.layout.hasManaged || rowSize != packet.rowSize || rowSize * packet.rowCount > RecordedSamplesPayload.Size)
+            // A camera is sampled once per tick, so a player earns one row per tick. Unsent rows are kept for a
+            // second, or two of the client's sends when that is longer; what a longer stall held back is dropped.
+            ulong now = _context.localTick;
+            int most = Mathf.CeilToInt(_context.tickRate * Mathf.Max(1f, 2f * clientSendInterval));
+            if (!_cameraRows.TryGetValue(player.id.value, out var left))
+                left = (now, most);
+            else if (now > left.tick)
+                left.rows = (int)Math.Min((ulong)most, (ulong)left.rows + (now - left.tick));
+            left.tick = now;
+
+            int count = Math.Min(packet.rowCount, left.rows);
+            left.rows -= count;
+            _cameraRows[player.id.value] = left;
+            if (count == 0)
                 return;
 
+            var rows = GetCustomStream(CameraStream, typeof(ClientSample<CameraSample>), player);
             byte* src = (byte*)UnsafeUtility.AddressOf(ref packet.payload);
+            for (int i = 0; i < count; i++)
+                MakeReadable(layout, src + i * rowSize);
             ulong tick = SampleTick();
             var log = _job.log;
-            for (int i = 0; i < packet.rowCount; i++)
+            for (int i = 0; i < count; i++)
             {
                 BeginRow(rows, tick, log);
                 log.bytes.WriteBytes(src + i * rowSize, rowSize);
+            }
+        }
+
+        /// <summary>Makes a row a client sent safe to read: numbers that are not finite become 0, bools 0 or 1.</summary>
+        static unsafe void MakeReadable(RowLayout layout, byte* row)
+        {
+            var columns = layout.columns;
+            for (int c = 0; c < columns.Count; c++)
+            {
+                var column = columns[c];
+                byte* value = row + column.offset;
+                switch (column.type)
+                {
+                    case "f32":
+                        if ((*(uint*)value & 0x7F800000u) == 0x7F800000u)
+                            *(uint*)value = 0;
+                        break;
+                    case "f64":
+                        if ((*(ulong*)value & 0x7FF0000000000000ul) == 0x7FF0000000000000ul)
+                            *(ulong*)value = 0;
+                        break;
+                    case "bool":
+                        if (*value > 1)
+                            *value = 1;
+                        break;
+                }
             }
         }
 

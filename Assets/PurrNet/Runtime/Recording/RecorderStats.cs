@@ -60,6 +60,12 @@ namespace PurrNet.Recording
 
         readonly string _prefix;
 
+        /// <summary>
+        /// Whether time and allocations are measured. Off, sections only show up in the Unity profiler and the
+        /// summary is empty. Set before a recording starts.
+        /// </summary>
+        public bool enabled;
+
         /// <param name="prefix">Start of the profiler marker names (the recorder's name).</param>
         public RecorderStats(string prefix)
         {
@@ -84,6 +90,8 @@ namespace PurrNet.Recording
         public void Begin(Section section)
         {
             section.marker.Begin();
+            if (!enabled)
+                return;
             section.startCounted = _counted ? _gcAllocated.CurrentValue : 0;
             section.startMemory = file != null && file.busy ? -1 : GC.GetTotalMemory(false);
             section.start = _clock.ElapsedTicks;
@@ -91,6 +99,11 @@ namespace PurrNet.Recording
 
         public void End(Section section)
         {
+            if (!enabled)
+            {
+                section.marker.End();
+                return;
+            }
             long elapsed = _clock.ElapsedTicks - section.start;
             bool clean = section.startMemory >= 0 && !(file != null && file.busy);
             long memory = clean ? GC.GetTotalMemory(false) - section.startMemory : 0;
@@ -111,6 +124,8 @@ namespace PurrNet.Recording
         /// <summary>Ends a tick: every section that ran during it gets one sample, the sum of its calls.</summary>
         public void CommitTick()
         {
+            if (!enabled)
+                return;
             foreach (var s in _sections)
             {
                 if (!s.touched)
@@ -156,6 +171,8 @@ namespace PurrNet.Recording
                 s.counted = 0;
                 s.ticksWithCounted = 0;
             }
+            if (!enabled)
+                return;
             if (!_gcAllocated.Valid)
                 _gcAllocated = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
             _counted = _gcAllocated.Valid;

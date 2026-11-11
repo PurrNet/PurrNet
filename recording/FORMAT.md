@@ -82,10 +82,12 @@ inner records exactly as if they were top-level.
 { "format": "purrrec", "version": 1, "game": "CRACKED", "gameVersion": "0.9.1",
   "unityVersion": "6000.3.8f1", "purrdictionVersion": "1.4.2-beta.1",
   "tickRate": 30, "firstTick": 1234, "startedUtc": "2026-10-28T15:01:02Z",
-  "scene": "SampleScene-VBot", "recorder": "host", "labels": { } }
+  "scene": "SampleScene-VBot", "recorder": "host", "serverBuild": false, "labels": { } }
 ```
 
-`labels` holds free-form key/value metadata the game adds (map, mode, build hash, ...).
+`recorder` is `host` when the recording machine also plays and `server` when it does not. `serverBuild` says whether
+it runs a dedicated server build (or a headless player, which counts as one); files written before it existed do not
+have it. `labels` holds free-form key/value metadata the game adds (map, mode, build hash, ...).
 
 ### TYPE
 
@@ -346,7 +348,8 @@ first, expand both, then XOR the columns back. The block CRC is over the fully r
 A client can add rows to a custom stream (the camera, for instance). Its row type is
 `ClientSample<T>` with columns `clientTick` (u64, the client's predicted tick), `viewTick` (f64, the server tick
 the client was presenting, with fraction), `clientTime` (f64, seconds since the client's recorder started) and
-`sample.*` (the game's struct). The chunk tick is when the server received it.
+`sample.*` (the game's struct). The chunk tick is when the server received it. The camera is the only stream
+clients send; it is sampled once per tick.
 
 ## Streams the recorder writes by default
 

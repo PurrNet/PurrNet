@@ -60,6 +60,8 @@ namespace PurrNet.Recording
         public StreamRows transform;
         /// <summary>Tick whose pose was last written.</summary>
         internal ulong poseTick;
+        /// <summary>The pose last added to the transform stream.</summary>
+        internal RecordedTransform lastPose;
         // Nearly every entity has one source, and its part is read for every entity on every tick: it is kept inline.
         // The parts of other sources sharing the entity are in a list made when the first one attaches.
         internal RecordingSource source0;

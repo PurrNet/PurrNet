@@ -204,7 +204,7 @@ namespace PurrNet.Recording
             _stream.WriteByte(0);
             _bytesWritten = 10;
             _compressedHandle = GCHandle.Alloc(_compressed.buffer);
-            _thread = new Thread(WriteLoop) { IsBackground = true, Name = "PurrDiction recording writer" };
+            _thread = new Thread(WriteLoop) { IsBackground = true, Name = "PurrDiction recording writer", Priority = System.Threading.ThreadPriority.BelowNormal };
             _thread.Start();
         }
 

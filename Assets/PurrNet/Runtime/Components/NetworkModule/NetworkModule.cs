@@ -22,6 +22,18 @@ namespace PurrNet
         /// <summary>Writes this module's state for <paramref name="tick"/> as one <see cref="recordedType"/> row.</summary>
         internal virtual void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick) { }
 
+        /// <summary>Whether this module says when its recorded state changes; otherwise a recorder asks every tick.</summary>
+        internal virtual bool recordedOnChange => false;
+
+        /// <summary>Set by the recorder that records this module.</summary>
+        internal Recording.RecordedLife recordedLife;
+
+        internal void RecordedChanged()
+        {
+            if (recordedLife != null)
+                recordedLife.changed = true;
+        }
+
         [UsedImplicitly] public string name { get; private set; }
 
         [UsedImplicitly] public byte index { get; private set; } = 255;

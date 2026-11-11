@@ -38,6 +38,7 @@ namespace PurrNet.Recording
             {
                 classBase = boxedBase = -1;
             }
+            listVersions = CheckListVersions();
         }
 
         static int Find(object o, Type type)
@@ -62,6 +63,42 @@ namespace PurrNet.Recording
         {
             var pointer = *(IntPtr*)at;
             return UnsafeUtility.As<IntPtr, object>(ref pointer);
+        }
+
+        /// <summary>Whether a List's change counter can be read in place (checked once on a list of ints).</summary>
+        public static readonly bool listVersions;
+
+        /// <summary>Where a List type keeps the counter it raises on every change, or -1.</summary>
+        public static int ListVersionOffset(Type listType)
+        {
+            var field = listType.GetField("_version", BindingFlags.Instance | BindingFlags.NonPublic);
+            return classBase >= 0 && field != null && field.FieldType == typeof(int)
+                ? classBase + UnsafeUtility.GetFieldOffset(field)
+                : -1;
+        }
+
+        static bool CheckListVersions()
+        {
+            try
+            {
+                int offset = ListVersionOffset(typeof(List<int>));
+                if (offset < 0)
+                    return false;
+                var list = new List<int>();
+                int before = *(int*)(Address(list) + offset);
+                list.Add(1);
+                int added = *(int*)(Address(list) + offset);
+                list[0] = 2;
+                int set = *(int*)(Address(list) + offset);
+                list.Clear();
+                int cleared = *(int*)(Address(list) + offset);
+                GC.KeepAlive(list);
+                return added != before && set != added && cleared != set;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 
@@ -636,12 +673,43 @@ namespace PurrNet.Recording
         readonly int _offset;
         readonly bool _reference;
         readonly ObjectPlan _plan;
+        // Where the field's List keeps its change counter; -1 for a string (it never changes), -2 when the field is
+        // neither or the list's items can change without the list knowing (classes, structs holding references).
+        readonly int _version = -2;
 
-        ManagedFieldWriter(int offset, bool reference, ObjectPlan plan)
+        ManagedFieldWriter(int offset, bool reference, ObjectPlan plan, Type type = null)
         {
             _offset = offset;
             _reference = reference;
             _plan = plan;
+            if (type == typeof(string))
+                _version = -1;
+            else if (type != null && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>) &&
+                     ObjectMemory.listVersions)
+            {
+                var item = type.GetGenericArguments()[0];
+                int at = item == typeof(string) || UnsafeUtility.IsUnmanaged(item) ? ObjectMemory.ListVersionOffset(type) : -1;
+                if (at >= 0)
+                    _version = at;
+            }
+        }
+
+        /// <summary>
+        /// The object the field holds and its change counter, when both being the same as before means the value is
+        /// the same: a string, or a list of strings or plain data. False for anything else and for null.
+        /// </summary>
+        public unsafe bool Identify(byte* row, out object source, out int version)
+        {
+            source = null;
+            version = 0;
+            if (_version == -2)
+                return false;
+            source = ObjectMemory.ReadReference(row + _offset);
+            if (source == null)
+                return false;
+            if (_version >= 0)
+                version = *(int*)(ObjectMemory.Address(source) + _version);
+            return true;
         }
 
         public static ManagedFieldWriter Create(RecordingTypeRegistry types, RowLayout.ManagedField field)
@@ -651,7 +719,7 @@ namespace PurrNet.Recording
                 offset += UnsafeUtility.GetFieldOffset(f);
             var type = field.path[field.path.Length - 1].FieldType;
             if (!type.IsValueType)
-                return new ManagedFieldWriter(offset, true, null);
+                return new ManagedFieldWriter(offset, true, null, type);
             var plan = types.GetValuePlan(type);
             return plan != null && plan.depth <= RecordingTypeRegistry.MaxDepth ? new ManagedFieldWriter(offset, false, plan) : null;
         }
