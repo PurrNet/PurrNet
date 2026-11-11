@@ -18,7 +18,7 @@ var classPurrNet_1_1Recording_1_1RecordingSession =
     [ "ParentEntity", "classPurrNet_1_1Recording_1_1RecordingSession.html#ac8d431eca72d68831597099ffecaf284", null ],
     [ "RecordColliders", "classPurrNet_1_1Recording_1_1RecordingSession.html#a8d9eab4d376c24067f7194d8b028247f", null ],
     [ "RecordSources", "classPurrNet_1_1Recording_1_1RecordingSession.html#ad9ead24d1e286de208a217947f697334", null ],
-    [ "RecordTransform", "classPurrNet_1_1Recording_1_1RecordingSession.html#aaa506e61a73af550d91845a9f74d9009", null ],
+    [ "RecordTransform", "classPurrNet_1_1Recording_1_1RecordingSession.html#a0ae6feb3301ff515a3afbea49ec08374", null ],
     [ "Release", "classPurrNet_1_1Recording_1_1RecordingSession.html#a448b0bf58fd3fe75c0207a86d84c94f4", null ],
     [ "RemoveSource", "classPurrNet_1_1Recording_1_1RecordingSession.html#af63f4ccdd889c3e124da907f79e170bd", null ],
     [ "Section", "classPurrNet_1_1Recording_1_1RecordingSession.html#a1f7531236931d5afcaefcbc285b4a267", null ],
@@ -30,6 +30,7 @@ var classPurrNet_1_1Recording_1_1RecordingSession =
     [ "WriteSample< T >", "classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043", null ],
     [ "WriteSampleFor< T >", "classPurrNet_1_1Recording_1_1RecordingSession.html#a4880b63f8d5235fdc110f5b0b1705184", null ],
     [ "labels", "classPurrNet_1_1Recording_1_1RecordingSession.html#a66c9414e4ad8e718c838463022aa59b2", null ],
+    [ "chunkStart", "classPurrNet_1_1Recording_1_1RecordingSession.html#a341535d48d994a3ae08ed6f572fffda2", null ],
     [ "isDisposed", "classPurrNet_1_1Recording_1_1RecordingSession.html#a6678aded9cda119655591e87bef186d6", null ],
     [ "json", "classPurrNet_1_1Recording_1_1RecordingSession.html#abbe4b582fc29cc4a41d3e5ce75e3930c", null ]
 ];

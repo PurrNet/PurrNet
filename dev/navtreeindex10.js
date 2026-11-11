@@ -1,5 +1,15 @@
 var NAVTREEINDEX10 =
 {
+"structPurrNet_1_1Recording_1_1RecordedCameraPacket.html":[0,0,0,8,21],
+"structPurrNet_1_1Recording_1_1RecordedCameraPacket.html":[1,0,0,8,21],
+"structPurrNet_1_1Recording_1_1RecordedColliderPose.html":[0,0,0,8,22],
+"structPurrNet_1_1Recording_1_1RecordedColliderPose.html":[1,0,0,8,22],
+"structPurrNet_1_1Recording_1_1RecordedPlayerTick.html":[1,0,0,8,25],
+"structPurrNet_1_1Recording_1_1RecordedPlayerTick.html":[0,0,0,8,25],
+"structPurrNet_1_1Recording_1_1RecordedSamplesPayload.html":[0,0,0,8,26],
+"structPurrNet_1_1Recording_1_1RecordedSamplesPayload.html":[1,0,0,8,26],
+"structPurrNet_1_1Recording_1_1RecordedStreamInfo.html":[0,0,0,8,27],
+"structPurrNet_1_1Recording_1_1RecordedStreamInfo.html":[1,0,0,8,27],
 "structPurrNet_1_1Recording_1_1RecordedStreamInfo.html#ad0ab915afec45ec33fd736bd019d2663":[0,0,0,8,27,0],
 "structPurrNet_1_1Recording_1_1RecordedStreamInfo.html#ad0ab915afec45ec33fd736bd019d2663":[1,0,0,8,27,0],
 "structPurrNet_1_1Recording_1_1RecordedTimer.html":[0,0,0,8,28],

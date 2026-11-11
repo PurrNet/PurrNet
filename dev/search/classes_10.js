@@ -1,12 +1,12 @@
 var searchData=
 [
   ['rawnetmanager_0',['RawNetManager',['../classPurrNet_1_1RawNetManager.html',1,'PurrNet']]],
-  ['recordedcolliderpose_1',['RecordedColliderPose',['../structPurrNet_1_1Recording_1_1RecordedColliderPose.html',1,'PurrNet::Recording']]],
-  ['recordedentity_2',['RecordedEntity',['../classPurrNet_1_1Recording_1_1RecordedEntity.html',1,'PurrNet::Recording']]],
-  ['recordedplayertick_3',['RecordedPlayerTick',['../structPurrNet_1_1Recording_1_1RecordedPlayerTick.html',1,'PurrNet::Recording']]],
-  ['recordedsamplespacket_4',['RecordedSamplesPacket',['../structPurrNet_1_1Recording_1_1RecordedSamplesPacket.html',1,'PurrNet::Recording']]],
-  ['recordedsamplespayload_5',['RecordedSamplesPayload',['../structPurrNet_1_1Recording_1_1RecordedSamplesPayload.html',1,'PurrNet::Recording']]],
-  ['recordedstreamdeclare_6',['RecordedStreamDeclare',['../structPurrNet_1_1Recording_1_1RecordedStreamDeclare.html',1,'PurrNet::Recording']]],
+  ['recordedcamerapacket_1',['RecordedCameraPacket',['../structPurrNet_1_1Recording_1_1RecordedCameraPacket.html',1,'PurrNet::Recording']]],
+  ['recordedcolliderpose_2',['RecordedColliderPose',['../structPurrNet_1_1Recording_1_1RecordedColliderPose.html',1,'PurrNet::Recording']]],
+  ['recordedentity_3',['RecordedEntity',['../classPurrNet_1_1Recording_1_1RecordedEntity.html',1,'PurrNet::Recording']]],
+  ['recordedlife_4',['RecordedLife',['../classPurrNet_1_1Recording_1_1RecordedLife.html',1,'PurrNet::Recording']]],
+  ['recordedplayertick_5',['RecordedPlayerTick',['../structPurrNet_1_1Recording_1_1RecordedPlayerTick.html',1,'PurrNet::Recording']]],
+  ['recordedsamplespayload_6',['RecordedSamplesPayload',['../structPurrNet_1_1Recording_1_1RecordedSamplesPayload.html',1,'PurrNet::Recording']]],
   ['recordedstreaminfo_7',['RecordedStreamInfo',['../structPurrNet_1_1Recording_1_1RecordedStreamInfo.html',1,'PurrNet::Recording']]],
   ['recordedtimer_8',['RecordedTimer',['../structPurrNet_1_1Recording_1_1RecordedTimer.html',1,'PurrNet::Recording']]],
   ['recordedtransform_9',['RecordedTransform',['../structPurrNet_1_1Recording_1_1RecordedTransform.html',1,'PurrNet::Recording']]],

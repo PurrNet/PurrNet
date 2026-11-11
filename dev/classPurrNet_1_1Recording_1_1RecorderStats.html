@@ -148,6 +148,10 @@ Public Attributes</h2></td></tr>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecordingFile.html">RecordingFile</a>&#160;</td><td class="memItemRight" valign="bottom"><b>file</b></td></tr>
 <tr class="memdesc:a27dd61441af622c5d74ccc6ec44428b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Heap growth is process-wide; while the writer thread works it is not attributed to the recorder. <br /></td></tr>
 <tr class="separator:a27dd61441af622c5d74ccc6ec44428b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a850a42537ee1e8ce0b4d5b071a46db4b"><td class="memItemLeft" align="right" valign="top"><a id="a850a42537ee1e8ce0b4d5b071a46db4b" name="a850a42537ee1e8ce0b4d5b071a46db4b"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>enabled</b></td></tr>
+<tr class="memdesc:a850a42537ee1e8ce0b4d5b071a46db4b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether time and allocations are measured. Off, sections only show up in the Unity profiler and the summary is empty. Set before a recording starts.  <br /></td></tr>
+<tr class="separator:a850a42537ee1e8ce0b4d5b071a46db4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Main-thread cost of recording, per section and tick. Shows up in the Unity profiler through the markers and is summarized in the log when a recording finishes, so a player build can be measured without the profiler. Fixed-size histograms: measuring makes no garbage.  </p>

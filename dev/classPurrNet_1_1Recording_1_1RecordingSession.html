@@ -95,6 +95,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1Recording
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
 <a href="classPurrNet_1_1Recording_1_1RecordingSession-members.html">List of all members</a>  </div>
@@ -102,7 +103,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1Recording
 </div><!--header-->
 <div class="contents">
 
-<p>Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms, colliders and streams, players, and custom streams such as each client's camera. A recorder owns one and feeds it every tick; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html" title="Something that puts entities into a RecordingSession (predicted objects, network identities)....">RecordingSource</a>s say which scene objects belong to which entity. On clients it forwards samples written through <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043" title="Adds a sample to a custom stream. On the server it is written directly; on a client it is sent to the...">WriteSample&lt;T&gt;</a> to the server. Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed fields are read in place.   
+<p>Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms, colliders and streams, players, and custom streams such as each client's camera. A recorder owns one and feeds it every tick; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html" title="Something that puts entities into a RecordingSession (predicted objects, network identities)....">RecordingSource</a>s say which scene objects belong to which entity. On clients it forwards samples written through <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043" title="Adds a sample to a custom stream. Samples are written on the server (and host). The one sample a clie...">WriteSample&lt;T&gt;</a> to the server. Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed fields are read in place.   
  <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
@@ -178,10 +179,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>CreateTransformStream
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EndSpawn</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, ulong tick)</td></tr>
 <tr class="memdesc:a04fb4d75520a6e7f0001a4d774e7983d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Records the entity's colliders and renderers; the ENTITY record must be written before. <br /></td></tr>
 <tr class="separator:a04fb4d75520a6e7f0001a4d774e7983d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa506e61a73af550d91845a9f74d9009"><td class="memItemLeft" align="right" valign="top"><a id="aaa506e61a73af550d91845a9f74d9009" name="aaa506e61a73af550d91845a9f74d9009"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>RecordTransform</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick, out Vector3 position)</td></tr>
-<tr class="memdesc:aaa506e61a73af550d91845a9f74d9009"><td class="mdescLeft">&#160;</td><td class="mdescRight">Marks <em>source</em> 's part of the entity seen this tick and writes the entity's world pose, once per tick. Returns the position, or false when the pose was already written this tick.  <br /></td></tr>
-<tr class="separator:aaa506e61a73af550d91845a9f74d9009"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ae6feb3301ff515a3afbea49ec08374"><td class="memItemLeft" align="right" valign="top"><a id="a0ae6feb3301ff515a3afbea49ec08374" name="a0ae6feb3301ff515a3afbea49ec08374"></a>
+unsafe bool&#160;</td><td class="memItemRight" valign="bottom"><b>RecordTransform</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick, out Vector3 position)</td></tr>
+<tr class="memdesc:a0ae6feb3301ff515a3afbea49ec08374"><td class="mdescLeft">&#160;</td><td class="mdescRight">Marks <em>source</em> 's part of the entity seen this tick and writes the entity's world pose, once per tick. Returns the position, or false when the pose was already written this tick.  <br /></td></tr>
+<tr class="separator:a0ae6feb3301ff515a3afbea49ec08374"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b00943d88b1ee41b5213e20816d232e"><td class="memItemLeft" align="right" valign="top"><a id="a3b00943d88b1ee41b5213e20816d232e" name="a3b00943d88b1ee41b5213e20816d232e"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>DespawnUnseen</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick)</td></tr>
 <tr class="memdesc:a3b00943d88b1ee41b5213e20816d232e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Releases <em>source</em> 's part of every entity it did not see this tick. <br /></td></tr>
@@ -218,13 +219,13 @@ Transform&#160;</td><td class="memItemRight" valign="bottom"><b>NearestEntity</b
 <tr class="memdesc:a077fa4e16a72a870f9fa9431009f0512"><td class="mdescLeft">&#160;</td><td class="mdescRight">Declares a stream of <em>type</em>  rows. A <em>forwardFill</em>  stream repeats its last row on ticks without one. A stream with a <em>baseStream</em>  stores its <em>baseColumns</em>  (own column, base column) as differences against that stream.  <br /></td></tr>
 <tr class="separator:a077fa4e16a72a870f9fa9431009f0512"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd1a65feea9a373c16f7336f3a8164cb"><td class="memItemLeft" align="right" valign="top">unsafe void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#acd1a65feea9a373c16f7336f3a8164cb">AppendRow&lt; T &gt;</a> (<a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html">StreamRows</a> rows, ulong tick, ref T value)</td></tr>
-<tr class="memdesc:acd1a65feea9a373c16f7336f3a8164cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a row for <em>tick</em>  to <em>rows</em> .  <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#acd1a65feea9a373c16f7336f3a8164cb">More...</a><br /></td></tr>
+<tr class="memdesc:acd1a65feea9a373c16f7336f3a8164cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a row for <em>tick</em>  to <em>rows</em> . A per-tick stream's row is only written when it differs from the stream's last one (or is its first in the chunk); the stream still has that row on this tick.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#acd1a65feea9a373c16f7336f3a8164cb">More...</a><br /></td></tr>
 <tr class="separator:acd1a65feea9a373c16f7336f3a8164cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab2ca09360122bbc5e04fc6b9917eb222"><td class="memItemLeft" align="right" valign="top"><a id="ab2ca09360122bbc5e04fc6b9917eb222" name="ab2ca09360122bbc5e04fc6b9917eb222"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushPendingTypes</b> ()</td></tr>
 <tr class="separator:ab2ca09360122bbc5e04fc6b9917eb222"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a703fab1af0b30b355cd986714550d043"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043">WriteSample&lt; T &gt;</a> (string stream, in T sample)</td></tr>
-<tr class="memdesc:a703fab1af0b30b355cd986714550d043"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a sample to a custom stream. On the server it is written directly; on a client it is sent to the server. Samples sent from clients must be unmanaged (no classes, strings, arrays or lists) and at most 512 bytes with their envelope.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043">More...</a><br /></td></tr>
+<tr class="memdesc:a703fab1af0b30b355cd986714550d043"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a sample to a custom stream. Samples are written on the server (and host). The one sample a client sends to the server is its camera (<a class="el" href="structPurrNet_1_1Recording_1_1CameraSample.html" title="A camera as the player saw it.">CameraSample</a>), recorded under <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#ac0f7685e369c6869f7c5a7060e3d2a93" title="The stream clients&#39; cameras are recorded under.">CameraStream</a>; anything else written on a client is ignored.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043">More...</a><br /></td></tr>
 <tr class="separator:a703fab1af0b30b355cd986714550d043"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4880b63f8d5235fdc110f5b0b1705184"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a4880b63f8d5235fdc110f5b0b1705184">WriteSampleFor&lt; T &gt;</a> (string stream, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, in T sample)</td></tr>
 <tr class="memdesc:a4880b63f8d5235fdc110f5b0b1705184"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server only. Adds a sample to a custom stream on behalf of <em>player</em> , for players that have no client of their own (bots) or data the server observes about a player.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#a4880b63f8d5235fdc110f5b0b1705184">More...</a><br /></td></tr>
@@ -284,15 +285,29 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>colliderCheckBudgetM
 int&#160;</td><td class="memItemRight" valign="bottom"><b>chunkBufferKilobytes</b> = 2048</td></tr>
 <tr class="separator:ab9b26224a50e951986d906d63bc74033"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:ac0f7685e369c6869f7c5a7060e3d2a93"><td class="memItemLeft" align="right" valign="top"><a id="ac0f7685e369c6869f7c5a7060e3d2a93" name="ac0f7685e369c6869f7c5a7060e3d2a93"></a>
+const string&#160;</td><td class="memItemRight" valign="bottom"><b>CameraStream</b> = &quot;camera&quot;</td></tr>
+<tr class="memdesc:ac0f7685e369c6869f7c5a7060e3d2a93"><td class="mdescLeft">&#160;</td><td class="mdescRight">The stream clients' cameras are recorded under. <br /></td></tr>
+<tr class="separator:ac0f7685e369c6869f7c5a7060e3d2a93"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
 <tr class="memitem:abcd8953aefb5660d483b717af3695a90"><td class="memItemLeft" align="right" valign="top"><a id="abcd8953aefb5660d483b717af3695a90" name="abcd8953aefb5660d483b717af3695a90"></a>
 static <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html">RecordingSession</a>&#160;</td><td class="memItemRight" valign="bottom"><b>active</b><code> [get]</code></td></tr>
 <tr class="memdesc:abcd8953aefb5660d483b717af3695a90"><td class="mdescLeft">&#160;</td><td class="mdescRight">The session clients' samples go to (the last one created that is still alive). <br /></td></tr>
 <tr class="separator:abcd8953aefb5660d483b717af3695a90"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af35cc9ed7f2255e0b64d3e00c1f7724d"><td class="memItemLeft" align="right" valign="top"><a id="af35cc9ed7f2255e0b64d3e00c1f7724d" name="af35cc9ed7f2255e0b64d3e00c1f7724d"></a>
+ulong&#160;</td><td class="memItemRight" valign="bottom"><b>localTick</b><code> [get]</code></td></tr>
+<tr class="separator:af35cc9ed7f2255e0b64d3e00c1f7724d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8cbd22cbf3ae5ab1f582b852f6cd0a76"><td class="memItemLeft" align="right" valign="top"><a id="a8cbd22cbf3ae5ab1f582b852f6cd0a76" name="a8cbd22cbf3ae5ab1f582b852f6cd0a76"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isRecording</b><code> [get]</code></td></tr>
 <tr class="separator:a8cbd22cbf3ae5ab1f582b852f6cd0a76"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a341535d48d994a3ae08ed6f572fffda2"><td class="memItemLeft" align="right" valign="top"><a id="a341535d48d994a3ae08ed6f572fffda2" name="a341535d48d994a3ae08ed6f572fffda2"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>chunkStart</b><code> [get]</code></td></tr>
+<tr class="memdesc:a341535d48d994a3ae08ed6f572fffda2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the tick being recorded is the first of a chunk. Every per-tick stream needs a row in each chunk it lives in, so a recorder that only writes rows when they change writes them all on this tick.  <br /></td></tr>
+<tr class="separator:a341535d48d994a3ae08ed6f572fffda2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abe1562cfaf304c38dfdb822e0bac92d7"><td class="memItemLeft" align="right" valign="top"><a id="abe1562cfaf304c38dfdb822e0bac92d7" name="abe1562cfaf304c38dfdb822e0bac92d7"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>currentPath</b><code> [get]</code></td></tr>
 <tr class="separator:abe1562cfaf304c38dfdb822e0bac92d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -327,7 +342,7 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
 <tr class="separator:aa9719c9160786499b53825684ab5c7f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms, colliders and streams, players, and custom streams such as each client's camera. A recorder owns one and feeds it every tick; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html" title="Something that puts entities into a RecordingSession (predicted objects, network identities)....">RecordingSource</a>s say which scene objects belong to which entity. On clients it forwards samples written through <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043" title="Adds a sample to a custom stream. On the server it is written directly; on a client it is sent to the...">WriteSample&lt;T&gt;</a> to the server. Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed fields are read in place.  </p>
+<div class="textblock"><p >Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms, colliders and streams, players, and custom streams such as each client's camera. A recorder owns one and feeds it every tick; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html" title="Something that puts entities into a RecordingSession (predicted objects, network identities)....">RecordingSource</a>s say which scene objects belong to which entity. On clients it forwards samples written through <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043" title="Adds a sample to a custom stream. Samples are written on the server (and host). The one sample a clie...">WriteSample&lt;T&gt;</a> to the server. Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed fields are read in place.  </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ac65106212255e9dee11d4ccd8876b1b6" name="ac65106212255e9dee11d4ccd8876b1b6"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac65106212255e9dee11d4ccd8876b1b6">&#9670;&#160;</a></span>RecordingSession()</h2>
@@ -411,7 +426,7 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
       </table>
 </div><div class="memdoc">
 
-<p>Adds a row for <em>tick</em>  to <em>rows</em> . </p>
+<p>Adds a row for <em>tick</em>  to <em>rows</em> . A per-tick stream's row is only written when it differs from the stream's last one (or is its first in the chunk); the stream still has that row on this tick.  </p>
 <div class="typeconstraint">
 <dl><dt><b>Type Constraints</b></dt><dd>
 <table border="0" cellspacing="2" cellpadding="0">
@@ -509,7 +524,7 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
       </table>
 </div><div class="memdoc">
 
-<p>Adds a sample to a custom stream. On the server it is written directly; on a client it is sent to the server. Samples sent from clients must be unmanaged (no classes, strings, arrays or lists) and at most 512 bytes with their envelope.  </p>
+<p>Adds a sample to a custom stream. Samples are written on the server (and host). The one sample a client sends to the server is its camera (<a class="el" href="structPurrNet_1_1Recording_1_1CameraSample.html" title="A camera as the player saw it.">CameraSample</a>), recorded under <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#ac0f7685e369c6869f7c5a7060e3d2a93" title="The stream clients&#39; cameras are recorded under.">CameraStream</a>; anything else written on a client is ignored.  </p>
 <div class="typeconstraint">
 <dl><dt><b>Type Constraints</b></dt><dd>
 <table border="0" cellspacing="2" cellpadding="0">

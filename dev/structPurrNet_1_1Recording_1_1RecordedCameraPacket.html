@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.5"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PurrNet: PurrNet.Recording.RecordedSamplesPacket Struct Reference</title>
+<title>PurrNet: PurrNet.Recording.RecordedCameraPacket Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -64,7 +64,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('structPurrNet_1_1Recording_1_1RecordedSamplesPacket.html',''); initResizable(); });
+$(document).ready(function(){initNavTree('structPurrNet_1_1Recording_1_1RecordedCameraPacket.html',''); initResizable(); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -92,40 +92,34 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1Recording_1_1Recorded
 <div class="header">
   <div class="summary">
 <a href="#pub-attribs">Public Attributes</a> &#124;
-<a href="structPurrNet_1_1Recording_1_1RecordedSamplesPacket-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">PurrNet.Recording.RecordedSamplesPacket Struct Reference</div></div>
+<a href="structPurrNet_1_1Recording_1_1RecordedCameraPacket-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">PurrNet.Recording.RecordedCameraPacket Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
 
-<p>Client to server: whole fixed rows of one declared stream, inline. Only unmanaged fields, so receiving one allocates nothing.   
- <a href="structPurrNet_1_1Recording_1_1RecordedSamplesPacket.html#details">More...</a></p>
+<p>Client to server: whole rows of the client's camera (ClientSample&lt;T&gt; of <a class="el" href="structPurrNet_1_1Recording_1_1CameraSample.html" title="A camera as the player saw it.">CameraSample</a>), inline. Only unmanaged fields, so receiving one allocates nothing.   
+ <a href="structPurrNet_1_1Recording_1_1RecordedCameraPacket.html#details">More...</a></p>
 <div class="dynheader">
-Inheritance diagram for PurrNet.Recording.RecordedSamplesPacket:</div>
+Inheritance diagram for PurrNet.Recording.RecordedCameraPacket:</div>
 <div class="dyncontent">
  <div class="center">
-  <img src="structPurrNet_1_1Recording_1_1RecordedSamplesPacket.png" usemap="#PurrNet.Recording.RecordedSamplesPacket_map" alt=""/>
-  <map id="PurrNet.Recording.RecordedSamplesPacket_map" name="PurrNet.Recording.RecordedSamplesPacket_map">
-<area href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html" alt="PurrNet.Packing.IPackedAuto" shape="rect" coords="0,0,262,24"/>
+  <img src="structPurrNet_1_1Recording_1_1RecordedCameraPacket.png" usemap="#PurrNet.Recording.RecordedCameraPacket_map" alt=""/>
+  <map id="PurrNet.Recording.RecordedCameraPacket_map" name="PurrNet.Recording.RecordedCameraPacket_map">
+<area href="interfacePurrNet_1_1Packing_1_1IPackedAuto.html" alt="PurrNet.Packing.IPackedAuto" shape="rect" coords="0,0,259,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a7a283ee449d90145c697d09c6d26fe85"><td class="memItemLeft" align="right" valign="top"><a id="a7a283ee449d90145c697d09c6d26fe85" name="a7a283ee449d90145c697d09c6d26fe85"></a>
-ushort&#160;</td><td class="memItemRight" valign="bottom"><b>key</b></td></tr>
-<tr class="separator:a7a283ee449d90145c697d09c6d26fe85"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaef15edaf1cd4b5c2550f7147a84e8d5"><td class="memItemLeft" align="right" valign="top"><a id="aaef15edaf1cd4b5c2550f7147a84e8d5" name="aaef15edaf1cd4b5c2550f7147a84e8d5"></a>
-ushort&#160;</td><td class="memItemRight" valign="bottom"><b>rowSize</b></td></tr>
-<tr class="separator:aaef15edaf1cd4b5c2550f7147a84e8d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a59c1db50ce862b7c12837fed744cb4af"><td class="memItemLeft" align="right" valign="top"><a id="a59c1db50ce862b7c12837fed744cb4af" name="a59c1db50ce862b7c12837fed744cb4af"></a>
+<tr class="memitem:ae25e3eaf39dfa81e12b22dede0a2b190"><td class="memItemLeft" align="right" valign="top"><a id="ae25e3eaf39dfa81e12b22dede0a2b190" name="ae25e3eaf39dfa81e12b22dede0a2b190"></a>
 byte&#160;</td><td class="memItemRight" valign="bottom"><b>rowCount</b></td></tr>
-<tr class="separator:a59c1db50ce862b7c12837fed744cb4af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a06135eae7f6b8de8b7dcbf18ac511168"><td class="memItemLeft" align="right" valign="top"><a id="a06135eae7f6b8de8b7dcbf18ac511168" name="a06135eae7f6b8de8b7dcbf18ac511168"></a>
+<tr class="separator:ae25e3eaf39dfa81e12b22dede0a2b190"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a793b063abc99aac57086c629ca6ee0c8"><td class="memItemLeft" align="right" valign="top"><a id="a793b063abc99aac57086c629ca6ee0c8" name="a793b063abc99aac57086c629ca6ee0c8"></a>
 <a class="el" href="structPurrNet_1_1Recording_1_1RecordedSamplesPayload.html">RecordedSamplesPayload</a>&#160;</td><td class="memItemRight" valign="bottom"><b>payload</b></td></tr>
-<tr class="separator:a06135eae7f6b8de8b7dcbf18ac511168"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:a793b063abc99aac57086c629ca6ee0c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Client to server: whole fixed rows of one declared stream, inline. Only unmanaged fields, so receiving one allocates nothing.  </p>
+<div class="textblock"><p >Client to server: whole rows of the client's camera (ClientSample&lt;T&gt; of <a class="el" href="structPurrNet_1_1Recording_1_1CameraSample.html" title="A camera as the player saw it.">CameraSample</a>), inline. Only unmanaged fields, so receiving one allocates nothing.  </p>
 </div><hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/RecordedRows.cs</li>
 </ul>
@@ -134,7 +128,7 @@ byte&#160;</td><td class="memItemRight" valign="bottom"><b>rowCount</b></td></tr
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="namespacePurrNet_1_1Recording.html">Recording</a></li><li class="navelem"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedSamplesPacket.html">RecordedSamplesPacket</a></li>
+    <li class="navelem"><a class="el" href="namespacePurrNet.html">PurrNet</a></li><li class="navelem"><a class="el" href="namespacePurrNet_1_1Recording.html">Recording</a></li><li class="navelem"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedCameraPacket.html">RecordedCameraPacket</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.5 </li>
   </ul>
 </div>
