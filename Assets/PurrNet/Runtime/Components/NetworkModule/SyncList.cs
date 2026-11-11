@@ -612,7 +612,7 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendRemoveAtToOthers(int index)
         {
-            if (index < _list.Count)
+            if ((uint)index < (uint)_list.Count)
             {
                 var oldValue = _list[index];
                 T item = _list[index];
@@ -671,7 +671,7 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendSetToOthers(int index, T item)
         {
-            if (index < _list.Count)
+            if ((uint)index < (uint)_list.Count)
             {
                 var oldValue = _list[index];
                 _list[index] = item;
@@ -702,7 +702,7 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInsertToOthers(int index, T item)
         {
-            if (index <= _list.Count)
+            if ((uint)index <= (uint)_list.Count)
             {
                 _list.Insert(index, item);
                 var change = SyncListChange<T>.Inserted(item, index);
@@ -756,6 +756,7 @@ namespace PurrNet
         [ServerRpc(Channel.ReliableOrdered)]
         private void ForceSendReliable()
         {
+            if (!_ownerAuth) return;
             SendInitialStateToAll(_list);
         }
 

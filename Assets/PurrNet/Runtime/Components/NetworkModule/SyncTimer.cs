@@ -160,6 +160,7 @@ namespace PurrNet
         private void SendTimerEventToServer(TimerEvent timerEvent, float remainingTime, bool syncRemaining,
             RPCInfo info = default)
         {
+            if (!_ownerAuth) return;
             ProcessTimerEvent(timerEvent, remainingTime, syncRemaining);
             SendTimerEventToAll(timerEvent, remainingTime, syncRemaining, info.sender);
         }

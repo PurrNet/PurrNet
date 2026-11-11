@@ -253,7 +253,7 @@ namespace PurrNet.Packing
 
             packer.ReadInteger(ref length, 31);
             DeserializationLimits.ValidateCollectionLength<T>(length);
-            value = DisposableHashSet<T>.Create((int)length);
+            value = DisposableHashSet<T>.Create(DeserializationLimits.ClampCapacity(packer, (int)length));
 
             for (int i = 0; i < length; i++)
             {
@@ -297,7 +297,7 @@ namespace PurrNet.Packing
 
             DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
-                value = new Queue<T>((int)length);
+                value = new Queue<T>(DeserializationLimits.ClampCapacity(packer, (int)length));
             else value.Clear();
 
             for (int i = 0; i < length; i++)
@@ -342,7 +342,7 @@ namespace PurrNet.Packing
 
             DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
-                value = new Stack<T>((int)length);
+                value = new Stack<T>(DeserializationLimits.ClampCapacity(packer, (int)length));
             else value.Clear();
 
             for (int i = 0; i < length; i++)
@@ -390,7 +390,7 @@ namespace PurrNet.Packing
 
             DeserializationLimits.ValidateCollectionLength<KeyValuePair<K, V>>(length);
             if (value == null)
-                value = new Dictionary<K, V>((int)length);
+                value = new Dictionary<K, V>(DeserializationLimits.ClampCapacity(packer, (int)length));
             else value.Clear();
 
             for (int i = 0; i < length; i++)
@@ -479,7 +479,7 @@ namespace PurrNet.Packing
 
             DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
-                value = new HashSet<T>((int)length);
+                value = new HashSet<T>(DeserializationLimits.ClampCapacity(packer, (int)length));
             else value.Clear();
 
             for (int i = 0; i < length; i++)
@@ -533,7 +533,7 @@ namespace PurrNet.Packing
 
             DeserializationLimits.ValidateCollectionLength<T>(length);
             if (value == null)
-                value = new List<T>((int)length);
+                value = new List<T>(DeserializationLimits.ClampCapacity(packer, (int)length));
             else value.Clear();
 
             for (int i = 0; i < length; i++)

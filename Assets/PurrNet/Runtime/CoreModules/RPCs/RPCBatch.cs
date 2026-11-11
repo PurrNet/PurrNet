@@ -1009,13 +1009,16 @@ namespace PurrNet.Modules
             var packer = data.packer;
             using (data.AutoScope())
             {
-                for (var i = 0; i < count.value; ++i)
+                for (uint i = 0; i < count.value; ++i)
                 {
                     NativeDeltaPacker<UnionRPCHeader>.ReadFunc(packer, lastHeader, ref lastHeader);
                     DeltaPackInteger.ReadIndex(packer, lastLen, ref lastLen);
 
                     int pos = packer.positionInBits;
                     int len = (int)lastLen.value;
+
+                    if ((uint)len > (uint)packer.remainingBits)
+                        break;
 
                     var bitData = new BitData(packer, pos, len);
                     _onRPCReceived.Invoke(player, lastHeader, bitData, asServer);

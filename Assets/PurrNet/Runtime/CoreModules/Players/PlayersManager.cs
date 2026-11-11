@@ -422,6 +422,10 @@ namespace PurrNet.Modules
 
         private void OnClientAuthed(Connection conn, AuthenticationResponse data)
         {
+            if (!_isPromotingToServer && _connectionToPlayerId.TryGetValue(conn, out var registered) &&
+                (data.cookie == null || !_cookieToPlayerId.TryGetValue(data.cookie, out var claimed) || claimed != registered))
+                return;
+
             if (data.cookie == null || !_cookieToPlayerId.TryGetValue(data.cookie, out var playerId))
             {
                 playerId = new PlayerID(++_playerIdCounter, false);

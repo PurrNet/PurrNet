@@ -210,7 +210,7 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInitialStateToOthers(Dictionary<TKey, TValue> initialState)
         {
-            _dict = initialState;
+            _dict = initialState ?? new Dictionary<TKey, TValue>();
 
             var initialChang = new SyncDictionaryChange<TKey, TValue>(SyncDictionaryOperation.Cleared);
             InvokeChange(initialChang);
@@ -606,6 +606,7 @@ namespace PurrNet
         [ServerRpc(Channel.ReliableOrdered)]
         private void ForceSendReliable()
         {
+            if (!_ownerAuth) return;
             if(_useForceSend)
                 SendInitialStateToAll(_dict);
         }

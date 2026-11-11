@@ -125,7 +125,7 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInitialStateToOthers(HashSet<T> initialState)
         {
-            _set = initialState;
+            _set = initialState ?? new HashSet<T>();
 
             InvokeChange(new SyncHashSetChange<T>(SyncHashSetOperation.Cleared));
 

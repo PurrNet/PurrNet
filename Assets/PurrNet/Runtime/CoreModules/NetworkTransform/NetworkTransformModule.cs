@@ -500,13 +500,18 @@ namespace PurrNet.Modules
                     {
                         if (identity is NetworkTransform missed)
                         {
-                            missed.unreliableRecvHistory?.Invalidate(data.tick);
-                            if (stream.sendsRepairs && !data.repair && !isAbsolute && dist > 0 &&
-                                (!asServer || missed.IsControlling(player, false)))
+                            bool controls = !asServer || missed.IsControlling(player, false);
+                            if (controls)
+                                missed.unreliableRecvHistory?.Invalidate(data.tick);
+                            if (stream.sendsRepairs && !data.repair && !isAbsolute && dist > 0 && controls)
                                 RememberUnknown(stream, packet, bodyEnd, lastNid, false, gen, dist, packetOrder,
                                     data.tick, stream.baselineWaiting);
                             else
                                 SendNack(sender, lastNid, data.tick);
+                        }
+                        else if (asServer)
+                        {
+                            SendNack(sender, lastNid, data.tick);
                         }
                         else
                         {
@@ -1233,10 +1238,11 @@ namespace PurrNet.Modules
 
                 entries.Sort(_unknownOrder);
                 bool newestRecorded = false;
-                for (int e = 0; e < entries.Count; e++)
+                bool controls = !_asServer || nt.IsControlling(sender, false);
+                for (int e = 0; controls && e < entries.Count; e++)
                     newestRecorded = TryApplyLateEntry(nt, wait.body, entries[e]);
 
-                if (!newestRecorded && ++wait.idle <= BASELINE_WAIT_FLUSHES)
+                if (controls && !newestRecorded && ++wait.idle <= BASELINE_WAIT_FLUSHES)
                     continue;
 
                 var newest = entries[entries.Count - 1].tick;
@@ -1257,8 +1263,11 @@ namespace PurrNet.Modules
             entries.Sort(_unknownOrder);
 
             bool newestRecorded = false;
-            for (int e = 0; e < entries.Count; e++)
-                newestRecorded = TryApplyLateEntry(nt, wait.body, entries[e]);
+            if (!_asServer || nt.IsControlling(sender, false))
+            {
+                for (int e = 0; e < entries.Count; e++)
+                    newestRecorded = TryApplyLateEntry(nt, wait.body, entries[e]);
+            }
 
             if (!newestRecorded)
                 SendNack(sender, nid, entries[entries.Count - 1].tick);

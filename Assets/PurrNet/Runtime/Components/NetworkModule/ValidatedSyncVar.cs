@@ -93,7 +93,7 @@ namespace PurrNet
 
                 using var pack = BitPackerPool.Get();
                 Packer<T>.Write(pack, value);
-                SubmitCandidate(owner.Value, _pendingId, pack);
+                SubmitCandidate(_pendingId, pack);
             }
         }
 
@@ -184,10 +184,11 @@ namespace PurrNet
         }
 
         [ServerRpc(Channel.ReliableOrdered, requireOwnership: false)]
-        private void SubmitCandidate(PlayerID sender, PackedUInt packetId, BitPacker candidate)
+        private void SubmitCandidate(PackedUInt packetId, BitPacker candidate, RPCInfo info = default)
         {
             using (candidate)
             {
+                var sender = info.sender;
                 if (!isServer) return;
                 if (packetId <= _lastAppliedServerId) return;
 

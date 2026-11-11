@@ -195,7 +195,8 @@ namespace PurrNet.Modules
 
         private void OnAuthenticationComplete(Connection conn, AuthenticationResponse response)
         {
-            RemoveFromWaitingList(conn);
+            if (!RemoveFromWaitingList(conn))
+                return;
 
             if (!response.success)
             {
@@ -214,8 +215,10 @@ namespace PurrNet.Modules
             DenyConnection(conn, DenialKind.AuthenticatorRejected, reason);
         }
 
-        private void RemoveFromWaitingList(Connection conn)
+        private bool RemoveFromWaitingList(Connection conn)
         {
+            bool removed = false;
+
             for (int i = _waitingConnections.Count - 1; i >= 0; i--)
             {
                 var waitingConnection = _waitingConnections[i];
@@ -223,7 +226,10 @@ namespace PurrNet.Modules
                     continue;
 
                 _waitingConnections.RemoveAt(i);
+                removed = true;
             }
+
+            return removed;
         }
 
         private bool IsDenialPending(Connection conn)
@@ -337,13 +343,10 @@ namespace PurrNet.Modules
                 _manager.CloseConnection(pending.conn);
             }
 
-            if (!_authenticator)
-                return;
-
             for (int i = _waitingConnections.Count - 1; i >= 0; i--)
             {
                 var waitingConnection = _waitingConnections[i];
-                if (now - waitingConnection.addedTimeStamp <= _authenticator.timeout)
+                if (now - waitingConnection.addedTimeStamp <= ackTimeout)
                     continue;
 
                 PurrLogger.LogError($"Authentication failed for conn `{waitingConnection.conn}` (timed out)");

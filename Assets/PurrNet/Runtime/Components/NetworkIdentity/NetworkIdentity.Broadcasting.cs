@@ -150,7 +150,7 @@ namespace PurrNet
                     "RpcRequestResponseModule module is missing."));
             }
 
-            return module.GetNextId<T>(target, timeout, out request);
+            return module.GetNextId<T>(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         [UsedByIL]
@@ -178,7 +178,7 @@ namespace PurrNet
                     "RpcRequestResponseModule module is missing."));
             }
 
-            return module.GetNextIdUniTask(target, timeout, out request);
+            return module.GetNextIdUniTask(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         [UsedByIL]
@@ -211,7 +211,7 @@ namespace PurrNet
                     "RpcRequestResponseModule module is missing."));
             }
 
-            return module.GetNextIdUniTask<T>(target, timeout, out request);
+            return module.GetNextIdUniTask<T>(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         /// <summary>
@@ -243,7 +243,7 @@ namespace PurrNet
                     "RpcRequestResponseModule module is missing."));
             }
 
-            return module.GetNextId(target, timeout, out request);
+            return module.GetNextId(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING

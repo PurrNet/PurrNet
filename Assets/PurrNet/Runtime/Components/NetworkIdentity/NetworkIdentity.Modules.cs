@@ -48,7 +48,7 @@ namespace PurrNet
 
         public bool TryGetModule(int moduleId, out NetworkModule module)
         {
-            if (moduleId >= _modules.Count)
+            if ((uint)moduleId >= (uint)_modules.Count)
             {
                 module = null;
                 return false;

@@ -614,6 +614,13 @@ namespace PurrNet.Modules
                 return;
             }
 
+            if (parent && parent.transform.IsChildOf(identity.transform))
+            {
+                PurrLogger.LogError($"Change parent failed for '{identity.gameObject.name}'. Parent `{data.newParentId.Value}` is the object itself or one of its children.",
+                    identity.gameObject);
+                return;
+            }
+
             ApplyParentChange(identity, parent, data.path, true, data.worldPositionStays);
 
             if (_asServer)

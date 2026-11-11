@@ -513,8 +513,13 @@ namespace PurrNet.Modules
             var fragment = new ByteData(data.data, data.offset + FRAGMENT_FRAME_PREFIX,
                 data.length - FRAGMENT_FRAME_PREFIX);
             bool sequenced = channel == Channel.UnreliableSequenced;
-            if (_fragmentation.Receive(conn.connectionId, (byte)channel, sequenced, fragment, out var assembled))
-                ProcessData(conn, assembled);
+            if (!_fragmentation.Receive(conn.connectionId, (byte)channel, sequenced, fragment, out var assembled))
+                return;
+
+            if (assembled.length >= sizeof(uint) && ReadUInt32(assembled.data, assembled.offset) == _fragmentFrameTypeId)
+                return;
+
+            ProcessData(conn, assembled);
         }
 
         public void FixedUpdate()

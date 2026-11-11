@@ -616,6 +616,7 @@ namespace PurrNet
         [ServerRpc(Channel.ReliableOrdered)]
         private void ForceSendReliable()
         {
+            if (!_ownerAuth) return;
             ForceSendReliable_Internal();
         }
 
