@@ -2,6 +2,7 @@
 using System;
 using System.Threading.Tasks;
 using PurrNet.Logging;
+using PurrNet.Modules;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -9,6 +10,39 @@ namespace PurrNet
 {
     public sealed partial class NetworkManager
     {
+        private AddressableUsageTracker _addressableUsage;
+
+        /// <summary>
+        /// Tracks which addressable network prefabs are still needed and releases the others.
+        /// </summary>
+        public AddressableUsageTracker addressableUsage => _addressableUsage ??= new AddressableUsageTracker(this);
+
+        /// <summary>
+        /// Loads an addressable network prefab so it can be spawned without waiting.
+        /// The returned prefab id is the one used on the network.
+        /// Call <see cref="RetainAddressablePrefab"/> first if the prefab has to stay loaded while nothing uses it.
+        /// </summary>
+        public Task<PrefabData> LoadAddressablePrefabAsync(string assetGuid)
+        {
+            if (prefabProvider is IAddressablePrefabProvider provider)
+                return provider.LoadPrefabByGuidAsync(assetGuid);
+
+            PurrLogger.LogError("LoadAddressablePrefabAsync failed: the prefab provider has no Addressable prefabs.");
+            return Task.FromResult(default(PrefabData));
+        }
+
+        /// <summary>
+        /// Keeps an addressable network prefab from being released while unused.
+        /// Every call needs a matching <see cref="ReleaseAddressablePrefab"/>.
+        /// </summary>
+        public void RetainAddressablePrefab(string assetGuid) => addressableUsage.Retain(assetGuid);
+
+        /// <summary>
+        /// Gives up a hold taken with <see cref="RetainAddressablePrefab"/>. The prefab is released once
+        /// nothing holds it and no spawned object uses it, if the network rules allow it.
+        /// </summary>
+        public void ReleaseAddressablePrefab(string assetGuid) => addressableUsage.Release(assetGuid);
+
         /// <summary>
         /// Spawns a networked object from a pre-loaded Addressable prefab.
         /// The AssetReference must match an entry in the assigned AddressableNetworkPrefabs asset.
