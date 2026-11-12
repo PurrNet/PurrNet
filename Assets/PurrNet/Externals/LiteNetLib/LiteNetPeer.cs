@@ -173,6 +173,7 @@ namespace LiteNetLib
         // Both ends enabled LiteNetManager.ReliableRepairs, so reliable channels mark resends and send
         // repairs. Settled by the handshake; receivers understand both formats either way.
         internal bool UsesRepairs { get; private set; }
+        internal bool UsesLargeWindow { get; private set; }
 
         /// <summary>
         /// Peer id can be used as key in your dictionary of peers
@@ -427,7 +428,7 @@ namespace LiteNetLib
         internal LiteNetPeer(LiteNetManager netManager, IPEndPoint remoteEndPoint, int id, byte connectNum, ReadOnlySpan<byte> connectData)
             : this(netManager, remoteEndPoint, id)
         {
-            _connectTime = DateTime.UtcNow.Ticks;
+            _connectTime = DateTime.UtcNow.Ticks | NetConnectRequestPacket.LargeWindowOffer;
             if (netManager.ReliableRepairs)
                 _connectTime |= NetConnectRequestPacket.RepairsOffer;
             _connectionState = ConnectionState.Outgoing;
@@ -451,9 +452,10 @@ namespace LiteNetLib
             ConnectionNum = request.InternalPacket.ConnectionNumber;
             RemoteId = request.InternalPacket.PeerId;
             UsesRepairs = request.InternalPacket.OffersRepairs && netManager.ReliableRepairs;
+            UsesLargeWindow = request.InternalPacket.OffersLargeWindow;
 
             //Make initial packet
-            _connectAcceptPacket = NetConnectAcceptPacket.Make(_connectTime, ConnectionNum, id, UsesRepairs);
+            _connectAcceptPacket = NetConnectAcceptPacket.Make(_connectTime, ConnectionNum, id, UsesRepairs, UsesLargeWindow);
 
             //Make Connected
             _connectionState = ConnectionState.Connected;
@@ -487,6 +489,7 @@ namespace LiteNetLib
             ConnectionNum = packet.ConnectionNumber;
             RemoteId = packet.PeerId;
             UsesRepairs = packet.Repairs && (_connectTime & NetConnectRequestPacket.RepairsOffer) != 0;
+            UsesLargeWindow = packet.LargeWindow;
 
             NetDebug.Write(NetLogLevel.Trace, "[NC] Received connection accept");
             Interlocked.Exchange(ref _timeSinceLastPacket, 0);

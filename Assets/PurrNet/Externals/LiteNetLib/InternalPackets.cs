@@ -10,6 +10,7 @@ namespace LiteNetLib
         // A peer that offers reliable repairs sets this bit of its connection time. Stock peers take the
         // time from DateTime ticks, which never reach it, and stock servers only compare and echo it.
         internal const long RepairsOffer = 1L << 62;
+        internal const long LargeWindowOffer = 1L << 61;
         public readonly long ConnectionTime;
         public byte ConnectionNumber;
         public readonly byte[] TargetAddress;
@@ -26,6 +27,7 @@ namespace LiteNetLib
         }
 
         internal bool OffersRepairs => (ConnectionTime & RepairsOffer) != 0;
+        internal bool OffersLargeWindow => (ConnectionTime & LargeWindowOffer) != 0;
 
         internal static int GetProtocolId(NetPacket packet) =>
             BitConverter.ToInt32(packet.RawData, 1);
@@ -80,19 +82,22 @@ namespace LiteNetLib
         // answers a peer that offered repairs.
         private const byte ReusedFlag = 1;
         private const byte RepairsFlag = 2;
+        private const byte LargeWindowFlag = 4;
         public readonly long ConnectionTime;
         public readonly byte ConnectionNumber;
         public readonly int PeerId;
         public readonly bool PeerNetworkChanged;
         public readonly bool Repairs;
+        public readonly bool LargeWindow;
 
-        private NetConnectAcceptPacket(long connectionTime, byte connectionNumber, int peerId, bool peerNetworkChanged, bool repairs)
+        private NetConnectAcceptPacket(long connectionTime, byte connectionNumber, int peerId, bool peerNetworkChanged, bool repairs, bool largeWindow)
         {
             ConnectionTime = connectionTime;
             ConnectionNumber = connectionNumber;
             PeerId = peerId;
             PeerNetworkChanged = peerNetworkChanged;
             Repairs = repairs;
+            LargeWindow = largeWindow;
         }
 
         public static NetConnectAcceptPacket FromData(NetPacket packet)
@@ -109,7 +114,7 @@ namespace LiteNetLib
 
             //check reused and repairs flags
             byte flags = packet.RawData[10];
-            if (flags > (ReusedFlag | RepairsFlag))
+            if (flags > (ReusedFlag | RepairsFlag | LargeWindowFlag))
                 return null;
 
             //get remote peer id
@@ -118,15 +123,15 @@ namespace LiteNetLib
                 return null;
 
             return new NetConnectAcceptPacket(connectionId, connectionNumber, peerId,
-                (flags & ReusedFlag) != 0, (flags & RepairsFlag) != 0);
+                (flags & ReusedFlag) != 0, (flags & RepairsFlag) != 0, (flags & LargeWindowFlag) != 0);
         }
 
-        public static NetPacket Make(long connectTime, byte connectNum, int localPeerId, bool repairs)
+        public static NetPacket Make(long connectTime, byte connectNum, int localPeerId, bool repairs, bool largeWindow)
         {
             var packet = new NetPacket(PacketProperty.ConnectAccept, 0);
             FastBitConverter.GetBytes(packet.RawData, 1, connectTime);
             packet.RawData[9] = connectNum;
-            packet.RawData[10] = repairs ? RepairsFlag : (byte)0;
+            packet.RawData[10] = (byte)((repairs ? RepairsFlag : 0) | (largeWindow ? LargeWindowFlag : 0));
             FastBitConverter.GetBytes(packet.RawData, 11, localPeerId);
             return packet;
         }

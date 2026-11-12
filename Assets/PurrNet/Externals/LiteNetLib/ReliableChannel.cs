@@ -116,7 +116,7 @@ namespace LiteNetLib
         public ReliableChannel(LiteNetPeer peer, bool ordered, byte id) : base(peer)
         {
             _id = id;
-            _windowSize = NetConstants.DefaultWindowSize;
+            _windowSize = peer.UsesLargeWindow ? NetConstants.DefaultWindowSize : NetConstants.StockWindowSize;
             _ordered = ordered;
             _pendingPackets = new PendingPacket[_windowSize];
             for (int i = 0; i < _pendingPackets.Length; i++)
