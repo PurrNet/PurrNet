@@ -1,3 +1,10 @@
+# [1.26.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.17...v1.26.0-beta.18) (2026-11-12)
+
+
+### Bug Fixes
+
+* clear compile error when Steamworks.NET and Facepunch.Steamworks are both installed ([a33667a](https://github.com/PurrNet/PurrNet/commit/a33667aa659a92a27f138beb39e57a88d2d10c21))
+
 # [1.26.0-beta.17](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.16...v1.26.0-beta.17) (2026-11-11)
 
 
