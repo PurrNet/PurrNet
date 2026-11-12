@@ -1,3 +1,15 @@
+# [1.26.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.22...v1.26.0-beta.23) (2026-11-12)
+
+
+### Bug Fixes
+
+* restore the addressable prefab release and kinematic hard correction changes dropped by the previous commit ([6c7b3c3](https://github.com/PurrNet/PurrNet/commit/6c7b3c37779babc60c235b94501887f0d8e43c47))
+
+
+### Performance Improvements
+
+* NetworkTransform shares the send work for partially observed transforms across peers ([3253bd9](https://github.com/PurrNet/PurrNet/commit/3253bd9462944e6fca95ce194db3dcae8039a673))
+
 # [1.26.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.21...v1.26.0-beta.22) (2026-11-12)
 
 
