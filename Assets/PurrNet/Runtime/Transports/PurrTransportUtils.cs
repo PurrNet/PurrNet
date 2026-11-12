@@ -295,16 +295,18 @@ namespace PurrNet.Transports
         /// given and another client claimed first.
         /// </summary>
         internal static Task<MigrationJoinInfo> ClaimMigration(string server, string relayRoomName, string claimSecret,
-            string promotedPlayerId, int? expectedGeneration, CancellationToken cancellationToken = default)
+            string promotedPlayerId, int? expectedGeneration, CancellationToken cancellationToken = default,
+            string projectKey = null)
         {
             return MigrationRequest<MigrationJoinInfo>(server, "migration/claim", relayRoomName, claimSecret, null,
-                promotedPlayerId, expectedGeneration, cancellationToken);
+                promotedPlayerId, expectedGeneration, cancellationToken, projectKey);
         }
 
         /// <summary>Reads a relay room's migration state.</summary>
-        internal static Task<MigrationJoinInfo> GetMigrationState(string server, string relayRoomName)
+        internal static Task<MigrationJoinInfo> GetMigrationState(string server, string relayRoomName, string projectKey = null)
         {
-            return MigrationRequest<MigrationJoinInfo>(server, "migration/current", relayRoomName, null, null, null, null);
+            return MigrationRequest<MigrationJoinInfo>(server, "migration/current", relayRoomName, null, null, null, null,
+                default, projectKey);
         }
 
         [Serializable]
@@ -320,10 +322,11 @@ namespace PurrNet.Transports
         /// connected (a graceful handoff). Relays without host migration support reject it.
         /// </summary>
         internal static Task<MigrationAuthorization> AuthorizeMigration(string server, string relayRoomName,
-            string hostSecret, string promotedPlayerId, CancellationToken cancellationToken = default)
+            string hostSecret, string promotedPlayerId, CancellationToken cancellationToken = default,
+            string projectKey = null)
         {
             return MigrationRequest<MigrationAuthorization>(server, "migration/authorize", relayRoomName, null, hostSecret,
-                promotedPlayerId, null, cancellationToken);
+                promotedPlayerId, null, cancellationToken, projectKey);
         }
 
         [Serializable]
@@ -356,7 +359,7 @@ namespace PurrNet.Transports
 
         private static async Task<T> MigrationRequest<T>(string server, string path, string relayRoomName,
             string claimSecret, string hostSecret, string promotedPlayerId, int? expectedGeneration,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default, string projectKey = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
 #if UNITY_WEB
@@ -367,6 +370,7 @@ namespace PurrNet.Transports
             request.useHttpContinue = false;
             request.SetRequestHeader("Cache-Control", "no-cache");
             request.SetRequestHeader("name", relayRoomName);
+            SetProjectKey(request, projectKey);
             if (!string.IsNullOrEmpty(claimSecret))
                 request.SetRequestHeader("migration_secret", claimSecret);
             if (!string.IsNullOrEmpty(hostSecret))

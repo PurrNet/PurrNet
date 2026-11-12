@@ -286,7 +286,7 @@ namespace PurrNet.Transports
             try
             {
                 var authorized = await PurrTransportUtils.AuthorizeMigration(_masterServer, relayRoomName,
-                    _hostJoinInfo.secret, RelayPlayerId(nominatedPlayer), cancellationToken);
+                    _hostJoinInfo.secret, RelayPlayerId(nominatedPlayer), cancellationToken, projectKey);
                 _migrationGeneration = authorized.generation;
                 return authorized.authorization;
             }
@@ -303,7 +303,7 @@ namespace PurrNet.Transports
         /// </summary>
         public Task<MigrationJoinInfo> GetHostMigrationStateAsync()
         {
-            return PurrTransportUtils.GetMigrationState(_masterServer, relayRoomName);
+            return PurrTransportUtils.GetMigrationState(_masterServer, relayRoomName, projectKey);
         }
 
         /// <summary>
@@ -328,7 +328,7 @@ namespace PurrNet.Transports
             try
             {
                 claimed = await PurrTransportUtils.ClaimMigration(_masterServer, relayRoomName, secret,
-                    RelayPlayerId(promotedPlayer), expectedGeneration ?? _migrationGeneration, cancellationToken);
+                    RelayPlayerId(promotedPlayer), expectedGeneration ?? _migrationGeneration, cancellationToken, projectKey);
             }
             catch (RelayMigrationRejectedException rejected) when (rejected.generation.HasValue)
             {
