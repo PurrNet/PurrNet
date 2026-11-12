@@ -573,9 +573,6 @@ namespace PurrNet
             prefabProvider = provider;
             prefabProvider.Refresh();
             HierarchyPool.EvictGlobalPrototypes();
-#if ADDRESSABLES_PURRNET_SUPPORT
-            addressableUsage.Bind(provider);
-#endif
         }
 
         /// <summary>
@@ -1402,9 +1399,6 @@ namespace PurrNet
             modules.AddModule(scenePlayers);
 
             var hierarchyV2 = new HierarchyFactory(this, scenesModule, scenePlayers, playersManager);
-#if ADDRESSABLES_PURRNET_SUPPORT
-            addressableUsage.Track(hierarchyV2, asServer);
-#endif
             var ownershipModule =
                 new GlobalOwnershipModule(this, hierarchyV2, playersManager, scenePlayers, scenesModule);
             var rpcModule = new RPCModule(this, playersManager, hierarchyV2, ownershipModule, scenesModule);
@@ -1433,10 +1427,8 @@ namespace PurrNet
             modules.AddModule(networkLOD);
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-            bool hasAddressablePrefabs = prefabProvider is IAddressablePrefabProvider ||
-                                         (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0);
-
-            if (hasAddressablePrefabs && networkRules && networkRules.AddressablesSyncLoadState)
+            if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0 &&
+                networkRules && networkRules.AddressablesSyncLoadState)
             {
                 modules.AddModule(new AddressablesSyncModule(this, playersManager));
             }
@@ -1709,11 +1701,6 @@ namespace PurrNet
                         if (_addressableNetworkPrefabs.preloadAtStartup)
                         {
                             await _addressableNetworkPrefabs.LoadAllAsync();
-
-                            // Preloaded prefabs are expected to be spawnable at any time, so they
-                            // stay loaded for as long as this manager lives.
-                            foreach (var guid in _addressableNetworkPrefabs.GetLoadedGuids())
-                                addressableUsage.Retain(guid);
                         }
                         SetupCompositePrefabProvider();
                     }
@@ -1769,9 +1756,6 @@ namespace PurrNet
         {
             _serverModules.TriggerOnUpdate();
             _clientModules.TriggerOnUpdate();
-#if ADDRESSABLES_PURRNET_SUPPORT
-            _addressableUsage?.Update();
-#endif
 
             if (_transportLayer == null)
                 return;
@@ -2046,8 +2030,6 @@ namespace PurrNet
             }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-            _addressableUsage?.Dispose();
-
             if (_addressableNetworkPrefabs)
                 _addressableNetworkPrefabs.ReleaseAll();
 #endif

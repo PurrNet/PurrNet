@@ -1361,10 +1361,9 @@ namespace PurrNet.Modules
             if (_global != null && changed.Count > 0)
             {
                 var additions = ListPool<NetworkTransform>.Instantiate();
-                int peerCount = _global.followers.Count;
                 for (int i = 0; i < changed.Count; i++)
                 {
-                    if (!_global.IsPending(changed[i]) && !StaysDemoted(changed[i], localPlayer, peerCount))
+                    if (!_global.IsPending(changed[i]) && !StaysDemoted(changed[i], localPlayer))
                         additions.Add(changed[i]);
                 }
 
@@ -1735,7 +1734,8 @@ namespace PurrNet.Modules
         }
 
         private void CommitPacket(PlayerID player, NTUnreliableSendStream stream, BitPacker packer,
-            List<NTUnreliableEntry> pending, List<NetworkID> excluded = null, bool patch = false)
+            List<NTUnreliableEntry> pending, List<NetworkID> excluded = null, bool patch = false,
+            bool keepBytes = false)
         {
             using var _ = _commitMarker.Auto();
             ushort seq = stream.nextSeq;
@@ -1761,6 +1761,16 @@ namespace PurrNet.Modules
 
             if (slot.anchor && stream.asServer)
             {
+                byte[] bytes = null;
+                int length = 0;
+                if (keepBytes)
+                {
+                    var span = packer.ToByteData().span;
+                    length = span.Length;
+                    bytes = RentRepairBuffer(length);
+                    span.CopyTo(bytes);
+                }
+
                 NTSharedEntries.Retain(pending);
                 stream.deferredAnchors.Add(new NTDeferredAnchor
                 {
@@ -1769,7 +1779,9 @@ namespace PurrNet.Modules
                     excluded = CopyExcluded(excluded),
                     order = stream.nextOrder,
                     seq = seq,
-                    tick = _currentTick
+                    tick = _currentTick,
+                    bytes = bytes,
+                    length = length
                 });
             }
 
@@ -1825,8 +1837,32 @@ namespace PurrNet.Modules
             public uint writeRevision;
         }
 
+        // Where an entry of a shared packet sits in it, so a peer that only observes some of the
+        // packet's transforms gets theirs copied out instead of encoded again.
+        private struct NTEntryRef
+        {
+            public NetworkID nid;
+            public NetworkTransform transform;
+            public uint life;
+            public int index;
+            public int bodyStart;
+            public int bodyBits;
+            public int dist;
+            public bool absolute;
+            public byte gen;
+        }
+
         private sealed class NTSharePacket
         {
+            public NTEntryRef[] refs = new NTEntryRef[64];
+            // Set when some peer does not observe every transform of the packet: one row of
+            // entry bits per peer slot, plus the entries every peer observes.
+            public bool mixed;
+            public int words;
+            public ulong[] rows = new ulong[0];
+            public ulong[] all = new ulong[0];
+            public int[] visible = new int[0];
+            public int allCount;
             public long budgetBits;
             public int keyCount;
             public int next;
@@ -1998,6 +2034,13 @@ namespace PurrNet.Modules
             record.entries = entries;
             NTSharedEntries.Retain(entries);
             record.adaptive.AddRange(adaptive);
+            record.mixed = false;
+            if (stream == _global)
+            {
+                if (record.refs.Length < _packetRefs.Count)
+                    record.refs = new NTEntryRef[System.Math.Max(_packetRefs.Count, record.refs.Length * 2)];
+                _packetRefs.CopyTo(record.refs);
+            }
 
             if (record.keys.Length < keyCount)
                 record.keys = new NTShareKey[System.Math.Max(keyCount, record.keys.Length * 2)];
@@ -2052,6 +2095,7 @@ namespace PurrNet.Modules
         }
 
         private readonly List<(int index, NTLastAdaptiveWrite write)> _packetAdaptive = new();
+        private readonly List<NTEntryRef> _packetRefs = new();
 
         // Writes one packet starting at pending[start]. Stops when the budget is full or when the
         // next entry starts a packet another stream already wrote with matching keys, so streams
@@ -2069,6 +2113,8 @@ namespace PurrNet.Modules
             NetworkID lastNid = default;
             PackedInt lastLen = default;
             _packetAdaptive.Clear();
+            _packetRefs.Clear();
+            bool keepRefs = stream == _global;
 
             int i = start;
             for (; i < keyCount; i++)
@@ -2112,6 +2158,23 @@ namespace PurrNet.Modules
                 lastLen = length;
                 DeltaPacker<NetworkID>.Write(packer, lastNid, nid);
                 WriteEntry(packer, plan);
+
+                if (keepRefs)
+                {
+                    int bodyBits = plan.stateBits.positionInBits;
+                    _packetRefs.Add(new NTEntryRef
+                    {
+                        nid = nid,
+                        transform = nt,
+                        life = nt.ntLife,
+                        index = nt.GetNTIndex(_asServer),
+                        bodyStart = packer.positionInBits - bodyBits,
+                        bodyBits = bodyBits,
+                        dist = plan.dist,
+                        absolute = plan.absolute,
+                        gen = plan.gen
+                    });
+                }
 
                 lastNid = nid;
                 lastDist = newLastDist;
@@ -2395,6 +2458,14 @@ namespace PurrNet.Modules
         private readonly List<List<NTUnreliableEntry>> _repairsStale = new();
         private readonly Stack<byte[]> _repairBuffers = new();
 
+        private byte[] RentRepairBuffer(int length)
+        {
+            var bytes = _repairBuffers.Count > 0 ? _repairBuffers.Pop() : null;
+            if (bytes == null || bytes.Length < length)
+                bytes = new byte[System.Math.Max(length, 1500)];
+            return bytes;
+        }
+
         private void KeepRepairs(NTUnreliableSendStream g)
         {
             _repairsStale.Clear();
@@ -2430,7 +2501,13 @@ namespace PurrNet.Modules
         // instead of taking every transform in it over.
         private bool TrySendRepair(PlayerID player, NTUnreliableSendStream peer, in NTDeferredAnchor anchor)
         {
-            if (anchor.repaired || !_repairs.TryGetValue(anchor.entries, out var repair) || repair.tick != anchor.tick)
+            if (anchor.repaired)
+                return false;
+
+            (ushort tick, byte[] bytes, int length) repair;
+            if (anchor.bytes != null)
+                repair = (anchor.tick, anchor.bytes, anchor.length);
+            else if (!_repairs.TryGetValue(anchor.entries, out repair) || repair.tick != anchor.tick)
                 return false;
 
             ushort seq = peer.nextSeq;
@@ -2563,15 +2640,15 @@ namespace PurrNet.Modules
         private bool[] _globalMixed = new bool[0];
         private readonly List<NetworkTransform> _globalDemoted = new();
 
-        // A demoted transform is every candidate peer's own until who observes or controls it
-        // changes; until then its changes are queued by QueueChangedExceptions alone.
-        private bool StaysDemoted(NetworkTransform nt, PlayerID localPlayer, int peerCount)
+        // A demoted transform is every candidate peer's own until it can be shared again or who
+        // controls it changes; until then its changes are queued by QueueChangedExceptions alone.
+        private bool StaysDemoted(NetworkTransform nt, PlayerID localPlayer)
         {
             int index = nt.GetNTIndex(_asServer);
             if (index < 0 || index >= _globalMixed.Length || !_globalMixed[index])
                 return false;
 
-            if (!ObservedByAllPeers(nt, localPlayer, peerCount))
+            if (!SharedByPeers(nt, localPlayer))
                 return true;
 
             _globalMixed[index] = false;
@@ -2668,16 +2745,26 @@ namespace PurrNet.Modules
             return count == peerCount;
         }
 
-        // The shared stream only carries transforms every peer observes and none controls; the
-        // others are each candidate peer's own.
-        private void DemoteMixedTransforms(PlayerID localPlayer, int peerCount)
+        // The shared stream carries the transforms no peer controls and at least one observes.
+        private static bool SharedByPeers(NetworkTransform nt, PlayerID localPlayer)
+        {
+            if (nt.HasRemoteController || !nt.id.HasValue)
+                return false;
+
+            var observers = nt.observers;
+            int count = observers?.Count ?? 0;
+            return count > 1 || (count == 1 && observers[0] != localPlayer);
+        }
+
+        // A transform a peer controls is each other candidate peer's own.
+        private void DemoteMixedTransforms(PlayerID localPlayer)
         {
             var g = _global;
             _globalDemoted.Clear();
             for (int i = 0; i < g.pending.Count; i++)
             {
                 var nt = g.pending[i];
-                if (IsLive(nt) && !ObservedByAllPeers(nt, localPlayer, peerCount))
+                if (IsLive(nt) && !(nt.IsSpawned(_asServer) && SharedByPeers(nt, localPlayer)))
                     _globalDemoted.Add(nt);
             }
 
@@ -2763,7 +2850,7 @@ namespace PurrNet.Modules
 
         // Due anchors of a peer: its own patch packets carry its exceptions' baselines; a shared
         // anchor it lost leaves it on the baseline the shared stream had before adopting it.
-        private void ProcessGlobalPeerAnchors(PlayerID player, NTUnreliableSendStream peer)
+        private void ProcessGlobalPeerAnchors(PlayerID player, NTUnreliableSendStream peer, PlayerID localPlayer)
         {
             var g = _global;
             var deferred = peer.deferredAnchors;
@@ -2802,8 +2889,13 @@ namespace PurrNet.Modules
                     {
                         if (anchor.excluded != null)
                             ListPool<NetworkID>.Destroy(anchor.excluded);
+                        if (anchor.bytes != null)
+                            _repairBuffers.Push(anchor.bytes);
                         continue;
                     }
+
+                    if (anchor.bytes != null)
+                        _repairBuffers.Push(anchor.bytes);
 
                     if (decision == NTAnchorDecision.Lost)
                     {
@@ -2815,7 +2907,8 @@ namespace PurrNet.Modules
                                 (anchor.excluded != null && anchor.excluded.Contains(entries[e].nid)))
                                 continue;
                             int index = nt.GetNTIndex(_asServer);
-                            if (peer.IsOverridden(index) || index >= g.baselines.Length)
+                            if (peer.IsOverridden(index) || index >= g.baselines.Length ||
+                                !IsSendCandidate(nt, player, localPlayer))
                                 continue;
                             var current = g.baselines[index];
                             if (current.has && current.tick == anchor.tick)
@@ -2890,7 +2983,7 @@ namespace PurrNet.Modules
                 peer.tickInvalidations.Clear();
             }
 
-            DemoteMixedTransforms(localPlayer, g.followers.Count);
+            DemoteMixedTransforms(localPlayer);
 
             // The shared encode.
             g.tickPackets.Clear();
@@ -2914,20 +3007,121 @@ namespace PurrNet.Modules
             if (NTUnreliable.IsAnchorTick(_currentTick))
                 KeepRepairs(g);
 
+            _peerSlots.Clear();
+            _peerSlotPass++;
             for (var i = 0; i < players.Count; i++)
             {
                 var player = players[i];
                 if (player == localPlayer || !_sendStreams.TryGetValue(player, out var peer) || peer.leader != g)
                     continue;
 
-                SendGlobalPeer(player, peer, localPlayer);
+                int slot = _peerSlots.Count;
+                _peerSlots[player] = slot;
+                ulong id = player.id.value;
+                if (id < PEER_SLOT_TABLE)
+                {
+                    _peerSlotById[id] = slot;
+                    _peerSlotPlayer[id] = player;
+                    _peerSlotStamp[id] = _peerSlotPass;
+                }
+            }
+
+            int peerCount = g.followers.Count;
+            for (int p = 0; p < g.tickPackets.Count; p++)
+                MarkObservers(_sharePackets[g.tickPackets[p]], localPlayer, peerCount);
+
+            for (var i = 0; i < players.Count; i++)
+            {
+                var player = players[i];
+                if (player == localPlayer || !_sendStreams.TryGetValue(player, out var peer) || peer.leader != g)
+                    continue;
+
+                SendGlobalPeer(player, peer, localPlayer, _peerSlots[player]);
             }
         }
 
-        private void SendGlobalPeer(PlayerID player, NTUnreliableSendStream peer, PlayerID localPlayer)
+        private const int PEER_SLOT_TABLE = 4096;
+        private readonly Dictionary<PlayerID, int> _peerSlots = new();
+        private readonly int[] _peerSlotById = new int[PEER_SLOT_TABLE];
+        private readonly int[] _peerSlotStamp = new int[PEER_SLOT_TABLE];
+        private readonly PlayerID[] _peerSlotPlayer = new PlayerID[PEER_SLOT_TABLE];
+        private int _peerSlotPass;
+
+        private bool TryGetPeerSlot(PlayerID player, out int slot)
+        {
+            ulong id = player.id.value;
+            if (id < PEER_SLOT_TABLE)
+            {
+                slot = _peerSlotById[id];
+                return _peerSlotStamp[id] == _peerSlotPass && _peerSlotPlayer[id] == player;
+            }
+
+            return _peerSlots.TryGetValue(player, out slot);
+        }
+
+        // Which peers observe which entries of a shared packet. Packets whose transforms every
+        // peer observes (the common case) are left unmarked and replayed as they are.
+        private void MarkObservers(NTSharePacket record, PlayerID localPlayer, int peerCount)
+        {
+            var refs = record.refs;
+            int count = record.entries.Count;
+            record.mixed = false;
+            for (int e = 0; e < count; e++)
+            {
+                if (!ObservedByAllPeers(refs[e].transform, localPlayer, peerCount))
+                {
+                    record.mixed = true;
+                    break;
+                }
+            }
+
+            if (!record.mixed)
+                return;
+
+            int slots = _peerSlots.Count;
+            int words = (count + 63) >> 6;
+            record.words = words;
+            if (record.rows.Length < slots * words)
+                record.rows = new ulong[slots * words];
+            else
+                System.Array.Clear(record.rows, 0, slots * words);
+            if (record.all.Length < words)
+                record.all = new ulong[words];
+            else
+                System.Array.Clear(record.all, 0, words);
+            if (record.visible.Length < slots)
+                record.visible = new int[slots];
+            else
+                System.Array.Clear(record.visible, 0, slots);
+            record.allCount = 0;
+
+            for (int e = 0; e < count; e++)
+            {
+                var nt = refs[e].transform;
+                ulong bit = 1UL << (e & 63);
+                if (ObservedByAllPeers(nt, localPlayer, peerCount))
+                {
+                    record.all[e >> 6] |= bit;
+                    record.allCount++;
+                    continue;
+                }
+
+                var observers = nt.observers;
+                int observerCount = observers?.Count ?? 0;
+                for (int o = 0; o < observerCount; o++)
+                {
+                    if (!TryGetPeerSlot(observers[o], out int slot))
+                        continue;
+                    record.rows[slot * words + (e >> 6)] |= bit;
+                    record.visible[slot]++;
+                }
+            }
+        }
+
+        private void SendGlobalPeer(PlayerID player, NTUnreliableSendStream peer, PlayerID localPlayer, int slot)
         {
             var g = _global;
-            ProcessGlobalPeerAnchors(player, peer);
+            ProcessGlobalPeerAnchors(player, peer, localPlayer);
             if (peer.overrides.Count > 0)
                 ConvergeExceptions(peer);
 
@@ -2940,6 +3134,12 @@ namespace PurrNet.Modules
             for (int p = 0; p < g.tickPackets.Count; p++)
             {
                 var record = _sharePackets[g.tickPackets[p]];
+                if (record.mixed && record.visible[slot] + record.allCount < record.entries.Count)
+                {
+                    CopyObservedEntries(player, peer, record, slot);
+                    continue;
+                }
+
                 entriesWrittenCount += record.entries.Count;
                 sharedPacketCount++;
 
@@ -2969,8 +3169,144 @@ namespace PurrNet.Modules
                 CommitPacket(player, peer, record.packet, record.entries, excluded);
             }
 
+            FlushObservedEntries(player, peer);
+
             if (peer.overrides.Count > 0)
                 EncodeGlobalPatches(player, peer, localPlayer);
+        }
+
+        private BitPacker _observedPacker;
+        private List<NTUnreliableEntry> _observedEntries;
+        private int _observedCountPos;
+        private int _observedLastDist;
+        private NetworkID _observedLastNid;
+        private PackedInt _observedLastLen;
+
+        // The entries of a shared packet this peer observes and takes from the shared stream,
+        // copied into the peer's own packet. The shared stream made every send decision and holds
+        // their baselines; a peer that loses one of these packets takes its transforms over, like
+        // any other lost shared anchor.
+        private void CopyObservedEntries(PlayerID player, NTUnreliableSendStream peer, NTSharePacket record, int slot)
+        {
+            var refs = record.refs;
+            var source = record.packet;
+            int count = record.entries.Count;
+            int words = record.words;
+            int row = slot * words;
+            bool anyOverride = peer.overrides.Count > 0;
+            long budgetBits = peer.budgetBits;
+
+            for (int w = 0; w < words; w++)
+            {
+                ulong bits = record.rows[row + w] | record.all[w];
+                while (bits != 0)
+                {
+                    int e = (w << 6) + LowestBit(bits);
+                    bits &= bits - 1;
+                    if (e >= count)
+                        break;
+
+                    ref var entryRef = ref refs[e];
+                    if (anyOverride && peer.IsOverridden(entryRef.index))
+                        continue;
+
+                    bool sameDist = !entryRef.absolute && entryRef.dist == _observedLastDist;
+                    int entryBits = (entryRef.absolute ? 9 : 2 + (sameDist ? 0 : NTUnreliable.DISTANCE_BITS)) +
+                                    entryRef.bodyBits;
+
+                    if (_observedPacker != null &&
+                        _observedPacker.positionInBits + entryBits + ENTRY_HEADER_BITS > budgetBits)
+                    {
+                        FlushObservedEntries(player, peer);
+                        sameDist = false;
+                        entryBits = (entryRef.absolute ? 9 : 2 + NTUnreliable.DISTANCE_BITS) + entryRef.bodyBits;
+                    }
+
+                    var packer = _observedPacker;
+                    if (packer == null)
+                    {
+                        packer = _observedPacker = BitPackerPool.Get();
+                        _observedEntries = NTSharedEntries.Rent();
+                        _observedCountPos = packer.positionInBits;
+                        Packer<int>.Write(packer, 0);
+                        _observedLastDist = 0;
+                        _observedLastNid = default;
+                        _observedLastLen = default;
+                        sameDist = false;
+                        entryBits = (entryRef.absolute ? 9 : 2 + NTUnreliable.DISTANCE_BITS) + entryRef.bodyBits;
+                    }
+
+                    PackedInt length = entryBits;
+                    DeltaPacker<PackedInt>.Write(packer, _observedLastLen, length);
+                    _observedLastLen = length;
+                    DeltaPacker<NetworkID>.Write(packer, _observedLastNid, entryRef.nid);
+                    _observedLastNid = entryRef.nid;
+
+                    if (entryRef.absolute)
+                    {
+                        packer.WriteBits(1, 1);
+                        Packer<byte>.Write(packer, entryRef.gen);
+                        ((NTSharedEntries)_observedEntries).hasAbsolute = true;
+                    }
+                    else
+                    {
+                        packer.WriteBits(0, 1);
+                        if (sameDist)
+                        {
+                            packer.WriteBits(1, 1);
+                        }
+                        else
+                        {
+                            packer.WriteBits(0, 1);
+                            packer.WriteBits((ulong)(entryRef.dist - 1), NTUnreliable.DISTANCE_BITS);
+                            _observedLastDist = entryRef.dist;
+                        }
+                    }
+
+                    packer.WriteBitsFrom(source, entryRef.bodyStart, entryRef.bodyBits);
+                    // The shared stream holds these baselines: the peer's record only has to name
+                    // the transforms, for the case where the packet is lost.
+                    _observedEntries.Add(new NTUnreliableEntry
+                    {
+                        nid = entryRef.nid,
+                        tick = _currentTick,
+                        transform = entryRef.transform,
+                        life = entryRef.life
+                    });
+                    entriesWrittenCount++;
+                }
+            }
+        }
+
+        private static int LowestBit(ulong bits)
+        {
+            int index = 0;
+            if ((bits & 0xFFFFFFFFUL) == 0) { bits >>= 32; index += 32; }
+            if ((bits & 0xFFFFUL) == 0) { bits >>= 16; index += 16; }
+            if ((bits & 0xFFUL) == 0) { bits >>= 8; index += 8; }
+            if ((bits & 0xFUL) == 0) { bits >>= 4; index += 4; }
+            if ((bits & 0x3UL) == 0) { bits >>= 2; index += 2; }
+            if ((bits & 0x1UL) == 0) index += 1;
+            return index;
+        }
+
+        private void FlushObservedEntries(PlayerID player, NTUnreliableSendStream peer)
+        {
+            var packer = _observedPacker;
+            if (packer == null)
+                return;
+
+            var entries = _observedEntries;
+            _observedPacker = null;
+            _observedEntries = null;
+
+            var lastPos = packer.positionInBits;
+            packer.SetBitPosition(_observedCountPos);
+            Packer<int>.Write(packer, entries.Count);
+            packer.SetBitPosition(lastPos);
+
+            CommitPacket(player, peer, packer, entries, null, false, true);
+            packer.Dispose();
         }
 
         // The peer's own transforms: the ones it still has to send, and the ones the shared

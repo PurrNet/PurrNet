@@ -11,32 +11,6 @@ namespace PurrNet
         Task<PrefabData> LoadPrefabAsync(int prefabId);
     }
 
-#if ADDRESSABLES_PURRNET_SUPPORT
-    /// <summary>
-    /// A provider whose prefabs are identified by an Addressable GUID and can be loaded and released
-    /// one at a time. A provider that wraps another one must forward this interface, otherwise the
-    /// server can't wait for a client to load a prefab before spawning it there.
-    /// Prefab ids in returned <see cref="PrefabData"/> belong to the provider that returned them.
-    /// </summary>
-    public interface IAddressablePrefabProvider : IAsyncPrefabProvider, IPersistentPrefabProvider
-    {
-        /// <summary>Raised with (guid, loaded) after a prefab was loaded or released.</summary>
-        event System.Action<string, bool> loadStateChanged;
-
-        bool TryGetAddressableGuid(int prefabId, out string assetGuid);
-
-        IEnumerable<string> GetLoadedGuids();
-
-        Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid);
-
-        /// <summary>
-        /// Releases a loaded prefab. Returns false when it wasn't loaded.
-        /// Instances that still exist lose the assets they share with the prefab.
-        /// </summary>
-        bool ReleasePrefabByGuid(string assetGuid);
-    }
-#endif
-
     public struct PrefabData
     {
         public PrefabID prefabId;

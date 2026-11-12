@@ -256,8 +256,8 @@ namespace PurrNet
 #if ADDRESSABLES_PURRNET_SUPPORT
         public bool TryGetAddressableGuid(PrefabID id, out string assetGuid)
         {
-            if (!id.scope.HasValue && provider is IAddressablePrefabProvider addressable)
-                return addressable.TryGetAddressableGuid((int)id, out assetGuid);
+            if (!id.scope.HasValue && provider is CompositePrefabProvider composite)
+                return composite.TryGetAddressableGuid((int)id, out assetGuid);
 
             assetGuid = null;
             return false;

@@ -452,6 +452,9 @@ namespace PurrNet.Modules
         public ushort seq;
         public ushort tick;
         public bool repaired;
+        // A peer's own copy of shared entries: its bytes, kept to resend the packet once if lost.
+        public byte[] bytes;
+        public int length;
     }
 
     // Receive-side baseline history, one state per sender tick. Entries name their baseline by

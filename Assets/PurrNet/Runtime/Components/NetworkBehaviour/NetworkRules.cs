@@ -183,10 +183,6 @@ namespace PurrNet
 
         [Tooltip("Release Addressable from memory when the last spawned instance is despawned.")]
         public bool releaseWhenLastDespawned;
-
-        [Tooltip("Seconds an unused Addressable stays loaded before it is released. Avoids reloading a prefab that is despawned and spawned again shortly after.")]
-        [Min(0f)]
-        public float releaseDelay;
     }
 #endif
 
@@ -273,14 +269,12 @@ namespace PurrNet
         {
             syncLoadState = true,
             waitForLoadBeforeObserver = true,
-            releaseWhenLastDespawned = true,
-            releaseDelay = 5f
+            releaseWhenLastDespawned = true
         };
 
         public bool AddressablesSyncLoadState => _addressableRules.syncLoadState;
         public bool AddressablesWaitForLoadBeforeObserver => _addressableRules.waitForLoadBeforeObserver;
         public bool AddressablesReleaseWhenLastDespawned => _addressableRules.releaseWhenLastDespawned;
-        public float AddressablesReleaseDelay => _addressableRules.releaseDelay;
 #endif
 
         public void OnBeforeSerialize() { }

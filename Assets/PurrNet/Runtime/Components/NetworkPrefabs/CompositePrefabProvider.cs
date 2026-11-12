@@ -2,42 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PurrNet.Logging;
-using PurrNet.Utils;
 using UnityEngine;
-#if UNITY_6000_3_OR_NEWER
-using ObjectId = UnityEngine.EntityId;
-#else
-using ObjectId = System.Int32;
-#endif
 
 namespace PurrNet
 {
     public class CompositePrefabProvider : IPrefabProvider, IAsyncPrefabProvider, IPersistentPrefabProvider
-#if ADDRESSABLES_PURRNET_SUPPORT
-        , IAddressablePrefabProvider
-#endif
     {
         private readonly List<IPrefabProvider> _providers = new();
         private readonly List<int> _offsets = new();
         private readonly List<int> _counts = new();
+        private readonly Dictionary<int, PrefabData> _unified = new();
+        private readonly Dictionary<GameObject, PrefabData> _prefabCache = new();
 
-        // Only ids are kept here. The providers own the prefabs and can load or release them at any
-        // time, so a copy of their PrefabData would go stale and keep a released prefab reachable.
-        private readonly Dictionary<int, (int provider, int local)> _locations = new();
-        private readonly Dictionary<ObjectId, int> _idByPrefabInstance = new();
-
-        public IEnumerable<PrefabData> allPrefabs
-        {
-            get
-            {
-                foreach (int id in _locations.Keys)
-                {
-                    if (TryGetPrefabData(id, out var data))
-                        yield return data;
-                }
-            }
-        }
-
+        public IEnumerable<PrefabData> allPrefabs => _unified.Values;
         public IEnumerable<string> persistentIds
         {
             get
@@ -80,10 +57,10 @@ namespace PurrNet
         /// </summary>
         public void Refresh()
         {
-            _locations.Clear();
-            _idByPrefabInstance.Clear();
+            _unified.Clear();
             _offsets.Clear();
             _counts.Clear();
+            _prefabCache.Clear();
 
             int offset = 0;
 
@@ -96,11 +73,17 @@ namespace PurrNet
 
                 foreach (var data in provider.allPrefabs)
                 {
-                    int localId = (int)data.prefabId;
-                    _locations[localId + offset] = (i, localId);
+                    int unifiedId = (int)data.prefabId + offset;
+                    _unified[unifiedId] = new PrefabData
+                    {
+                        prefabId = unifiedId,
+                        prefab = data.prefab,
+                        pooled = data.pooled,
+                        warmupCount = data.warmupCount
+                    };
 
-                    if (localId > localMax)
-                        localMax = localId;
+                    if ((int)data.prefabId > localMax)
+                        localMax = (int)data.prefabId;
                 }
 
                 int count = localMax + 1;
@@ -109,106 +92,99 @@ namespace PurrNet
             }
         }
 
-        private bool TryGetProvider(int prefabId, out int providerIndex, out int localId)
-        {
-            if (_locations.TryGetValue(prefabId, out var location))
-            {
-                providerIndex = location.provider;
-                localId = location.local;
-                return true;
-            }
-
-            providerIndex = -1;
-            localId = -1;
-            return false;
-        }
-
-        private PrefabData ToUnified(int providerIndex, PrefabData local)
-        {
-            local.prefabId = _offsets[providerIndex] + (int)local.prefabId;
-            return local;
-        }
-
         public bool NeedsLoad(int prefabId)
         {
-            return TryGetPrefabData(prefabId, out var data) && data.prefab == null;
+            return _unified.TryGetValue(prefabId, out var data) && data.prefab == null;
         }
 
         public async Task<PrefabData> LoadPrefabAsync(int prefabId)
         {
-            if (!TryGetProvider(prefabId, out int providerIndex, out int localId))
+            if (!_unified.TryGetValue(prefabId, out var data))
             {
                 PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} not found in CompositePrefabProvider.");
                 return default;
             }
 
-            var provider = _providers[providerIndex];
+            if (data.prefab != null)
+                return data;
 
-            if (provider.TryGetPrefabData(localId, out var data) && data.prefab != null)
-                return ToUnified(providerIndex, data);
-
-            if (provider is not IAsyncPrefabProvider asyncProvider)
+            for (int i = 0; i < _providers.Count; i++)
             {
-                PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} needs load but provider {providerIndex} does not support async loading.");
+                int count = _counts[i];
+                if (prefabId < _offsets[i] || prefabId >= _offsets[i] + count)
+                    continue;
+
+                int localId = prefabId - _offsets[i];
+                var provider = _providers[i];
+
+                if (provider is IAsyncPrefabProvider asyncProvider)
+                {
+                    try
+                    {
+                        var loaded = await asyncProvider.LoadPrefabAsync(localId);
+                        if (loaded.prefab == null)
+                            return default;
+
+                        data.prefab = loaded.prefab;
+                        _unified[prefabId] = data;
+                        return data;
+                    }
+                    catch (System.Exception e)
+                    {
+                        PurrLogger.LogError($"LoadPrefabAsync: exception loading prefabId {prefabId} (provider {i} local {localId}): {e.Message}\n{e.StackTrace}");
+                        return default;
+                    }
+                }
+
+                PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} needs load but provider {i} does not support async loading.");
                 return default;
             }
 
-            try
-            {
-                var loaded = await asyncProvider.LoadPrefabAsync(localId);
-                return loaded.prefab == null ? default : ToUnified(providerIndex, loaded);
-            }
-            catch (Exception e)
-            {
-                PurrLogger.LogError($"LoadPrefabAsync: exception loading prefabId {prefabId} (provider {providerIndex} local {localId}): {e.Message}\n{e.StackTrace}");
-                return default;
-            }
+            PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} not in any provider range.");
+            return default;
         }
 
         public bool TryGetPrefabData(int prefabId, out PrefabData prefabData)
         {
-            if (TryGetProvider(prefabId, out int providerIndex, out int localId) &&
-                _providers[providerIndex].TryGetPrefabData(localId, out prefabData))
-            {
-                prefabData.prefabId = prefabId;
-                return true;
-            }
-
-            prefabData = default;
-            return false;
+            return _unified.TryGetValue(prefabId, out prefabData);
         }
 
         public bool TryGetPrefabData(GameObject prefab, out PrefabData prefabData)
         {
-            if (!prefab)
+            if (prefab)
             {
-                prefabData = default;
-                return false;
+                if (_prefabCache.TryGetValue(prefab, out prefabData))
+                    return true;
             }
 
-            var instanceId = PurrObjectId.Of(prefab);
-
-            if (_idByPrefabInstance.TryGetValue(instanceId, out int cachedId))
+            foreach (var data in _unified.Values)
             {
-                if (TryGetPrefabData(cachedId, out prefabData) && prefabData.prefab == prefab)
+                if (data.prefab == prefab)
+                {
+                    prefabData = data;
                     return true;
-
-                _idByPrefabInstance.Remove(instanceId);
+                }
             }
 
             for (int i = 0; i < _providers.Count; i++)
             {
-                if (!_providers[i].TryGetPrefabData(prefab, out var local) || local.prefab == null)
-                    continue;
+                if (_providers[i].TryGetPrefabData(prefab, out var pd) && pd.prefab != null)
+                {
+                    int unifiedId = _offsets[i] + (int)pd.prefabId;
+                    prefabData = new PrefabData
+                    {
+                        prefabId = unifiedId,
+                        prefab = pd.prefab,
+                        pooled = pd.pooled,
+                        warmupCount = pd.warmupCount
+                    };
+                    _unified[unifiedId] = prefabData;
 
-                prefabData = ToUnified(i, local);
+                    if (prefab)
+                        _prefabCache[prefab] = prefabData;
 
-                // A provider may match by name when the same asset exists in two bundles; only
-                // remember exact matches so that warning keeps showing up.
-                if (local.prefab == prefab)
-                    _idByPrefabInstance[instanceId] = (int)prefabData.prefabId;
-
-                return true;
+                    return true;
+                }
             }
 
             prefabData = default;
@@ -217,9 +193,18 @@ namespace PurrNet
 
         public bool TryGetPersistentId(int prefabId, out string persistentId)
         {
-            if (TryGetProvider(prefabId, out int providerIndex, out int localId) &&
-                _providers[providerIndex] is IPersistentPrefabProvider persistentProvider)
-                return persistentProvider.TryGetPersistentId(localId, out persistentId);
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                int count = _counts[i];
+                if (prefabId < _offsets[i] || prefabId >= _offsets[i] + count)
+                    continue;
+
+                if (_providers[i] is IPersistentPrefabProvider persistentProvider)
+                    return persistentProvider.TryGetPersistentId(prefabId - _offsets[i], out persistentId);
+
+                persistentId = null;
+                return false;
+            }
 
             persistentId = null;
             return false;
@@ -250,7 +235,19 @@ namespace PurrNet
                 if (!persistentProvider.TryGetPrefabDataByPersistentId(persistentId, out var localData))
                     continue;
 
-                prefabData = ToUnified(i, localData);
+                int unifiedId = _offsets[i] + (int)localData.prefabId;
+                prefabData = new PrefabData
+                {
+                    prefabId = unifiedId,
+                    prefab = localData.prefab,
+                    pooled = localData.pooled,
+                    warmupCount = localData.warmupCount
+                };
+
+                _unified[unifiedId] = prefabData;
+                if (prefabData.prefab)
+                    _prefabCache[prefabData.prefab] = prefabData;
+
                 return true;
             }
 
@@ -259,88 +256,24 @@ namespace PurrNet
         }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-        public event Action<string, bool> loadStateChanged
-        {
-            add
-            {
-                for (int i = 0; i < _providers.Count; i++)
-                {
-                    if (_providers[i] is IAddressablePrefabProvider addressable)
-                        addressable.loadStateChanged += value;
-                }
-            }
-            remove
-            {
-                for (int i = 0; i < _providers.Count; i++)
-                {
-                    if (_providers[i] is IAddressablePrefabProvider addressable)
-                        addressable.loadStateChanged -= value;
-                }
-            }
-        }
-
         public bool TryGetAddressableGuid(int prefabId, out string assetGuid)
         {
-            if (TryGetProvider(prefabId, out int providerIndex, out int localId) &&
-                _providers[providerIndex] is IAddressablePrefabProvider addressable)
-                return addressable.TryGetAddressableGuid(localId, out assetGuid);
+            for (int i = 0; i < _providers.Count; i++)
+            {
+                int count = _counts[i];
+                if (prefabId < _offsets[i] || prefabId >= _offsets[i] + count)
+                    continue;
+
+                int localId = prefabId - _offsets[i];
+                if (_providers[i] is AddressableNetworkPrefabs addr)
+                    return addr.TryGetGuid(localId, out assetGuid);
+
+                assetGuid = null;
+                return false;
+            }
 
             assetGuid = null;
             return false;
-        }
-
-        public IEnumerable<string> GetLoadedGuids()
-        {
-            for (int i = 0; i < _providers.Count; i++)
-            {
-                if (_providers[i] is not IAddressablePrefabProvider addressable)
-                    continue;
-
-                foreach (var guid in addressable.GetLoadedGuids())
-                    yield return guid;
-            }
-        }
-
-        private bool TryGetAddressableOwner(string assetGuid, out int providerIndex, out int localId)
-        {
-            providerIndex = -1;
-            localId = -1;
-
-            if (string.IsNullOrEmpty(assetGuid))
-                return false;
-
-            for (int i = 0; i < _providers.Count; i++)
-            {
-                if (_providers[i] is not IAddressablePrefabProvider addressable ||
-                    !addressable.TryGetPrefabDataByPersistentId(assetGuid, out var local) ||
-                    !addressable.TryGetAddressableGuid((int)local.prefabId, out _))
-                    continue;
-
-                providerIndex = i;
-                localId = (int)local.prefabId;
-                return true;
-            }
-
-            return false;
-        }
-
-        public Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid)
-        {
-            // Go through this composite's own id so the result carries the offset: a provider's
-            // local id must never reach a spawn packet.
-            if (!TryGetAddressableOwner(assetGuid, out int providerIndex, out int localId))
-            {
-                PurrLogger.LogError($"LoadPrefabByGuidAsync: GUID '{assetGuid}' not registered.");
-                return Task.FromResult(default(PrefabData));
-            }
-
-            return LoadPrefabAsync(_offsets[providerIndex] + localId);
-        }
-
-        public bool ReleasePrefabByGuid(string assetGuid)
-        {
-            return TryGetAddressableOwner(assetGuid, out int providerIndex, out _) &&
-                   ((IAddressablePrefabProvider)_providers[providerIndex]).ReleasePrefabByGuid(assetGuid);
         }
 #endif
     }
