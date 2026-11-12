@@ -1,3 +1,10 @@
+# [1.26.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.20...v1.26.0-beta.21) (2026-11-12)
+
+
+### Performance Improvements
+
+* NetworkTransform stops re-checking partially observed transforms against every peer each tick ([d32258b](https://github.com/PurrNet/PurrNet/commit/d32258b3158ddabf207d6c3439f19133836158cb))
+
 # [1.26.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.19...v1.26.0-beta.20) (2026-11-12)
 
 
