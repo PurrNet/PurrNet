@@ -1,3 +1,10 @@
+# [1.26.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.23...v1.26.0-beta.24) (2026-11-12)
+
+
+### Bug Fixes
+
+* **webgl:** link the relay ping and WebRTC jslibs on Unity 2022.3 ([fd2c7a8](https://github.com/PurrNet/PurrNet/commit/fd2c7a8c4be8a30ffe64ce728060798a84b91c9c))
+
 # [1.26.0-beta.23](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.22...v1.26.0-beta.23) (2026-11-12)
 
 
