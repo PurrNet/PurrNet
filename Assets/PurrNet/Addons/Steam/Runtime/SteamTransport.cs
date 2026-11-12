@@ -7,6 +7,9 @@
 #endif
 
 #if STEAMWORKS_NET_PACKAGE
+#if PURRNET_FACEPUNCH
+#error Steamworks.NET and Facepunch.Steamworks are both installed. They declare the same types and cannot share a project: remove one of them in the Package Manager.
+#endif
 #undef PURRNET_FACEPUNCH
 #endif
 
