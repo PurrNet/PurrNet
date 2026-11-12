@@ -1,3 +1,10 @@
+# [1.26.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.18...v1.26.0-beta.19) (2026-11-12)
+
+
+### Bug Fixes
+
+* NetworkRecorder records mesh colliders without Read/Write as meshes instead of boxes ([bcbe23b](https://github.com/PurrNet/PurrNet/commit/bcbe23bbe193a0ec9c66efb80bb9def1eb39d330))
+
 # [1.26.0-beta.18](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.17...v1.26.0-beta.18) (2026-11-12)
 
 
