@@ -1,3 +1,7 @@
+// '$UTF8ToString' only exists as a library symbol on newer Emscripten; on older
+// versions (Unity 2022.3) UTF8ToString is always available and must not be listed.
+var PurrRelayPingUtf8Deps = LibraryManager.library['$UTF8ToString'] ? ['$UTF8ToString'] : [];
+
 var PurrRelayPingLibrary = {
     $PurrRelayPing: {
         nextId: 1,
@@ -35,7 +39,7 @@ var PurrRelayPingLibrary = {
         }
     },
 
-    PurrRelayPing_Start__deps: ['$PurrRelayPing', '$UTF8ToString'],
+    PurrRelayPing_Start__deps: ['$PurrRelayPing'].concat(PurrRelayPingUtf8Deps),
     PurrRelayPing_Start: function (urlsJsonPtr) {
         var urls;
         try { urls = JSON.parse(UTF8ToString(urlsJsonPtr)).urls || []; } catch (_) { urls = []; }

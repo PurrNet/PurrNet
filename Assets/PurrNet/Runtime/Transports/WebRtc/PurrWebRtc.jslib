@@ -1,3 +1,7 @@
+// '$UTF8ToString' only exists as a library symbol on newer Emscripten; on older
+// versions (Unity 2022.3) UTF8ToString is always available and must not be listed.
+var PurrRtcUtf8Deps = LibraryManager.library['$UTF8ToString'] ? ['$UTF8ToString'] : [];
+
 // Data-channel delivery values match LiteNetLib's DeliveryMethod enum.
 var PurrRtcLibrary = {
     $PurrRtc: {
@@ -239,7 +243,7 @@ var PurrRtcLibrary = {
         }
     },
 
-    PurrRtc_Connect__deps: ['$UTF8ToString', '$stringToNewUTF8', 'malloc', 'free'],
+    PurrRtc_Connect__deps: ['$stringToNewUTF8', 'malloc', 'free'].concat(PurrRtcUtf8Deps),
     PurrRtc_Connect: function (endpointPtr, maxMessageSize, opened, closed, data, error, fallback) {
         var id = PurrRtc.connect(UTF8ToString(endpointPtr), maxMessageSize,
             function () { {{{ makeDynCall('vi', 'opened') }}}(id); },
