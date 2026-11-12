@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using PurrNet;
+using PurrNet.Logging;
 using PurrNet.Packing;
 using UnityEngine;
 
@@ -11,11 +12,16 @@ namespace PurrNet.Modules
     public class AddressablesSyncModule : INetworkModule
     {
         public delegate void OnClientAddressableLoadStateChanged(PlayerID player, string guid, bool loaded);
-        
+
         private readonly NetworkManager _manager;
         private readonly PlayersManager _playersManager;
 
         private readonly Dictionary<PlayerID, HashSet<string>> _clientLoadedGuids = new();
+
+        private IAddressablePrefabProvider _clientProvider;
+        private int _clientGeneration;
+        private readonly HashSet<string> _pendingClientLoads = new();
+        private string _releasingQuietly;
 
         /// <summary>
         /// Fired on the server when a client reports that an Addressable asset has been loaded or unloaded.
@@ -38,11 +44,14 @@ namespace PurrNet.Modules
             else
             {
                 if (_manager.networkRules && _manager.networkRules.AddressablesSyncLoadState &&
-                    _manager.addressableNetworkPrefabs)
+                    _manager.prefabProvider is IAddressablePrefabProvider provider)
                 {
+                    _clientProvider = provider;
+                    _clientGeneration++;
                     _playersManager.Subscribe<AddressableLoadRequestPacket>(OnLoadRequestReceived);
-                    AddressableNetworkPrefabs.onLoadStateChanged += OnClientLoadStateChanged;
-                    foreach (var guid in _manager.addressableNetworkPrefabs.GetLoadedGuids())
+                    _playersManager.Subscribe<AddressableReleaseAckPacket>(OnReleaseAckReceived);
+                    provider.loadStateChanged += OnClientLoadStateChanged;
+                    foreach (var guid in provider.GetLoadedGuids())
                         SendLoadState(guid, true);
                 }
             }
@@ -59,27 +68,61 @@ namespace PurrNet.Modules
             else
             {
                 _playersManager.Unsubscribe<AddressableLoadRequestPacket>(OnLoadRequestReceived);
-                AddressableNetworkPrefabs.onLoadStateChanged -= OnClientLoadStateChanged;
+                _playersManager.Unsubscribe<AddressableReleaseAckPacket>(OnReleaseAckReceived);
+                _clientGeneration++;
+
+                if (_clientProvider != null)
+                    _clientProvider.loadStateChanged -= OnClientLoadStateChanged;
+
+                _clientProvider = null;
+                _pendingClientLoads.Clear();
+                _manager.addressableUsage.OnClientSyncStopped();
             }
         }
 
         private async void OnLoadRequestReceived(PlayerID sender, AddressableLoadRequestPacket packet, bool asServer)
         {
-            if (asServer || !_manager.addressableNetworkPrefabs)
+            var provider = _clientProvider;
+            if (asServer || provider == null)
                 return;
 
             var guid = packet.guid.value ?? string.Empty;
             if (string.IsNullOrEmpty(guid))
                 return;
 
-            var prefabData = await _manager.addressableNetworkPrefabs.LoadPrefabByGuidAsync(guid);
-            if (prefabData.prefab)
-                SendLoadState(guid, true);
+            // The server asks again on every visibility pass until the prefab is reported.
+            if (!_pendingClientLoads.Add(guid))
+                return;
+
+            int generation = _clientGeneration;
+
+            try
+            {
+                var prefabData = await provider.LoadPrefabByGuidAsync(guid);
+
+                // Reported even when the prefab was loaded already: the server asked because it doesn't know.
+                if (generation == _clientGeneration && prefabData.prefab)
+                    SendLoadState(guid, true);
+            }
+            catch (Exception e)
+            {
+                if (generation == _clientGeneration)
+                    PurrLogger.LogError($"Failed to load Addressable prefab '{guid}' requested by the server: {e.Message}\n{e.StackTrace}");
+            }
+            finally
+            {
+                if (generation == _clientGeneration)
+                    _pendingClientLoads.Remove(guid);
+            }
         }
 
         private void OnClientLoadStateChanged(string guid, bool loaded)
         {
             if (!_manager.networkRules || !_manager.networkRules.AddressablesSyncLoadState)
+                return;
+
+            // The server already knows about a release it acknowledged.
+            if (!loaded && guid == _releasingQuietly)
                 return;
 
             SendLoadState(guid, loaded);
@@ -94,6 +137,57 @@ namespace PurrNet.Modules
             });
         }
 
+        /// <summary>
+        /// Tells the server this client is about to release a prefab. The prefab must stay loaded until
+        /// the server answers. Returns false when there is no server to ask.
+        /// </summary>
+        internal bool TryAnnounceRelease(string guid)
+        {
+            if (_clientProvider == null)
+                return false;
+
+            SendLoadState(guid, false);
+            return true;
+        }
+
+        private void OnReleaseAckReceived(PlayerID sender, AddressableReleaseAckPacket packet, bool asServer)
+        {
+            if (asServer || _clientProvider == null)
+                return;
+
+            var guid = packet.guid.value ?? string.Empty;
+            var usage = _manager.addressableUsage;
+
+            if (usage.OnServerAcknowledgedRelease(guid, out bool wasExpected))
+            {
+                _releasingQuietly = guid;
+                try
+                {
+                    usage.ReleaseNow(guid);
+                }
+                finally
+                {
+                    _releasingQuietly = null;
+                }
+            }
+            else if (wasExpected)
+            {
+                // A spawn arrived, or someone retained the prefab, while the server was answering.
+                SendLoadState(guid, true);
+            }
+        }
+
+        private bool IsRegistered(string guid)
+        {
+            if (_manager.prefabProvider is IAddressablePrefabProvider provider &&
+                provider.TryGetPrefabDataByPersistentId(guid, out _))
+                return true;
+
+            // The manager's own asset counts too: it only becomes part of the provider once the manager has started.
+            var prefabs = _manager.addressableNetworkPrefabs;
+            return prefabs && prefabs.TryGetPrefabDataByGuid(guid, out _);
+        }
+
         private void OnLoadStateReceived(PlayerID player, AddressableLoadStatePacket packet, bool asServer)
         {
             if (!asServer)
@@ -101,8 +195,7 @@ namespace PurrNet.Modules
 
             var guid = packet.guid.value ?? string.Empty;
 
-            if (!_manager.addressableNetworkPrefabs ||
-                !_manager.addressableNetworkPrefabs.TryGetPrefabDataByGuid(guid, out _))
+            if (!IsRegistered(guid))
                 return;
 
             if (!_clientLoadedGuids.TryGetValue(player, out var set))
@@ -118,10 +211,21 @@ namespace PurrNet.Modules
 
             onClientLoadStateChanged?.Invoke(player, guid, packet.loaded);
 
-            if (packet.loaded && _manager.TryGetModule<HierarchyFactory>(true, out var factory))
-                factory.EvaluateVisibilityForPlayer(player);
+            if (packet.loaded)
+            {
+                if (_manager.TryGetModule<HierarchyFactory>(true, out var factory))
+                    factory.EvaluateVisibilityForPlayer(player);
+            }
+            else
+            {
+                // Ordered after every spawn that was sent while this client still counted as loaded.
+                _playersManager.Send(player, new AddressableReleaseAckPacket
+                {
+                    guid = new StringUTF8(guid)
+                });
+            }
         }
-        
+
         /// <summary>
         /// Gets which GUIDs the given client has loaded
         /// </summary>
@@ -136,10 +240,10 @@ namespace PurrNet.Modules
         {
             if (!asServer)
                 return;
-            
+
             _clientLoadedGuids.Remove(player);
         }
-        
+
         /// <summary>
         /// Returns all players that have reported the given Addressable GUID as loaded.
         /// </summary>
