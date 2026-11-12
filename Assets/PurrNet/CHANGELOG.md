@@ -1,3 +1,15 @@
+# [1.26.0-beta.22](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.21...v1.26.0-beta.22) (2026-11-12)
+
+
+### Bug Fixes
+
+* a hard correction on a kinematic NetworkRigidbody no longer launches the bodies it lands next to ([feaf843](https://github.com/PurrNet/PurrNet/commit/feaf843873caf49c6f188ecfcd5bf34437bfd408))
+
+
+### Features
+
+* addressable network prefabs are released once nothing uses them, and custom prefab providers can be addressable ([1aff74f](https://github.com/PurrNet/PurrNet/commit/1aff74fef3039ffd2fe5f7176a19631fed441017))
+
 # [1.26.0-beta.21](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.20...v1.26.0-beta.21) (2026-11-12)
 
 
