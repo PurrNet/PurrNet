@@ -229,7 +229,9 @@ every tick while the collider moves and holds its last row while it is still.
   { "shape": "bounds",  "pose": {...}, "center": [0,0,0], "size": [4,1,4] } ] }
 ```
 
-`bounds` stands in for a mesh whose data could not be read. Quaternions are `[x, y, z, w]`. Units and axes are Unity's
+`bounds` stands in for a mesh whose data could not be read. A mesh without Read/Write is read back from the GPU, which
+takes a few frames: its colliders are `bounds` until then, and the set is written again with `mesh` once the data is
+there. Without a graphics device (a dedicated server) such a mesh stays `bounds`. Quaternions are `[x, y, z, w]`. Units and axes are Unity's
 (left-handed, Y up, metres).
 
 ### MESH

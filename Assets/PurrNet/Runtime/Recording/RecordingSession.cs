@@ -5,6 +5,7 @@ using PurrNet.Transports;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using Debug = UnityEngine.Debug;
 using Stopwatch = System.Diagnostics.Stopwatch;
@@ -1891,7 +1892,7 @@ namespace PurrNet.Recording
             collider is CharacterController || collider is MeshCollider;
 
         /// <summary>Everything a COLLIDERS record holds about a collider except its pose (that is tracked apart).</summary>
-        static void ShapeKey(RecordingBuffer key, Collider collider)
+        void ShapeKey(RecordingBuffer key, Collider collider)
         {
             key.WriteVarInt(RecordingObjectId.Of(collider));
             key.WriteByte(collider.isTrigger ? (byte)1 : (byte)0);
@@ -1917,6 +1918,7 @@ namespace PurrNet.Recording
                     var mesh = meshCollider.sharedMesh;
                     key.WriteByte(5); key.WriteVarInt(mesh ? RecordingObjectId.Of(mesh) : 0);
                     key.WriteByte(meshCollider.convex ? (byte)1 : (byte)0);
+                    key.WriteByte(mesh && WriteMesh(mesh) > 0 ? (byte)1 : (byte)0);
                     break;
                 }
                 default:
@@ -2075,8 +2077,15 @@ namespace PurrNet.Recording
                 at += count;
             }
 
-            // Same bytes as the managed path: little-endian floats and 32-bit indices.
-            string name = mesh.name;
+            WriteMeshRecord(id, mesh.name, vertices, indices);
+            return true;
+        }
+
+        /// <summary>The same bytes as the managed path: little-endian floats and 32-bit indices.</summary>
+        unsafe void WriteMeshRecord(int id, string name, NativeArray<Vector3> vertices, NativeArray<int> indices)
+        {
+            int vertexCount = vertices.Length;
+            int indexCount = indices.Length;
             int nameBytes = System.Text.Encoding.UTF8.GetByteCount(name);
             int length = VarLength((ulong)id) + VarLength((ulong)nameBytes) + nameBytes +
                          VarLength((ulong)vertexCount) + vertexCount * 12 + VarLength((ulong)indexCount) + indexCount * 4;
@@ -2088,7 +2097,156 @@ namespace PurrNet.Recording
             _meta.WriteBytes((byte*)vertices.GetUnsafeReadOnlyPtr(), vertexCount * 12);
             _meta.WriteVarUInt((ulong)indexCount);
             _meta.WriteBytes((byte*)indices.GetUnsafeReadOnlyPtr(), indexCount * 4);
-            return true;
+        }
+
+        sealed class MeshReadback
+        {
+            public RecordingFile file;
+            public long key;
+            public string name;
+            public GraphicsBuffer vertexBuffer, indexBuffer;
+            public int offset, stride, indexStride;
+            public bool half;
+            public int[] subMeshes;
+            public NativeArray<Vector3> vertices;
+            public NativeArray<int> indices;
+            public int done;
+            public bool failed;
+        }
+
+        /// <summary>
+        /// Starts reading a mesh without Read/Write from its vertex and index buffers on the GPU. The mesh's colliders
+        /// are written as bounds until the data arrives; their sets are then written again with the mesh.
+        /// </summary>
+        int ReadMeshFromGpu(Mesh mesh, long key)
+        {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null || !SystemInfo.supportsAsyncGPUReadback)
+                return 0;
+
+            var read = new MeshReadback { file = _file, key = key };
+            try
+            {
+                int stream = mesh.GetVertexAttributeStream(VertexAttribute.Position);
+                var format = mesh.GetVertexAttributeFormat(VertexAttribute.Position);
+                if (stream < 0 || mesh.GetVertexAttributeDimension(VertexAttribute.Position) != 3 ||
+                    (format != VertexAttributeFormat.Float32 && format != VertexAttributeFormat.Float16))
+                    return 0;
+
+                int subMeshes = mesh.subMeshCount;
+                read.subMeshes = new int[subMeshes * 3];
+                for (int sub = 0; sub < subMeshes; sub++)
+                {
+                    if (mesh.GetTopology(sub) != MeshTopology.Triangles)
+                        return 0;
+                    read.subMeshes[sub * 3] = (int)mesh.GetIndexStart(sub);
+                    read.subMeshes[sub * 3 + 1] = (int)mesh.GetIndexCount(sub);
+                    read.subMeshes[sub * 3 + 2] = (int)mesh.GetBaseVertex(sub);
+                }
+
+                read.name = mesh.name;
+                read.half = format == VertexAttributeFormat.Float16;
+                read.offset = mesh.GetVertexAttributeOffset(VertexAttribute.Position);
+                read.vertexBuffer = mesh.GetVertexBuffer(stream);
+                read.indexBuffer = mesh.GetIndexBuffer();
+                if (read.vertexBuffer == null || read.indexBuffer == null)
+                {
+                    read.vertexBuffer?.Dispose();
+                    read.indexBuffer?.Dispose();
+                    return 0;
+                }
+                read.stride = read.vertexBuffer.stride;
+                read.indexStride = read.indexBuffer.stride;
+                AsyncGPUReadback.Request(read.vertexBuffer, request => OnMeshVertices(read, request));
+                AsyncGPUReadback.Request(read.indexBuffer, request => OnMeshIndices(read, request));
+                return -1;
+            }
+            catch (Exception)
+            {
+                read.failed = true;
+                read.vertexBuffer?.Dispose();
+                read.indexBuffer?.Dispose();
+                return 0;
+            }
+        }
+
+        unsafe void OnMeshVertices(MeshReadback read, AsyncGPUReadbackRequest request)
+        {
+            if (request.hasError || read.failed)
+                read.failed = true;
+            else
+            {
+                var data = request.GetData<byte>();
+                int count = data.Length / read.stride;
+                read.vertices = new NativeArray<Vector3>(count, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                byte* source = (byte*)data.GetUnsafeReadOnlyPtr() + read.offset;
+                if (!read.half)
+                    UnsafeUtility.MemCpyStride(read.vertices.GetUnsafePtr(), 12, source, read.stride, 12, count);
+                else
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        ushort* p = (ushort*)(source + i * read.stride);
+                        read.vertices[i] = new Vector3(Mathf.HalfToFloat(p[0]), Mathf.HalfToFloat(p[1]), Mathf.HalfToFloat(p[2]));
+                    }
+                }
+            }
+            FinishMeshReadback(read);
+        }
+
+        unsafe void OnMeshIndices(MeshReadback read, AsyncGPUReadbackRequest request)
+        {
+            if (request.hasError || read.failed)
+                read.failed = true;
+            else
+            {
+                var data = request.GetData<byte>();
+                int available = data.Length / read.indexStride;
+                int total = 0;
+                for (int sub = 0; sub < read.subMeshes.Length; sub += 3)
+                {
+                    total += read.subMeshes[sub + 1];
+                    if (read.subMeshes[sub] + read.subMeshes[sub + 1] > available)
+                        read.failed = true;
+                }
+                if (!read.failed)
+                {
+                    read.indices = new NativeArray<int>(total, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                    byte* source = (byte*)data.GetUnsafeReadOnlyPtr();
+                    int at = 0;
+                    for (int sub = 0; sub < read.subMeshes.Length; sub += 3)
+                    {
+                        int start = read.subMeshes[sub], baseVertex = read.subMeshes[sub + 2];
+                        for (int i = 0, count = read.subMeshes[sub + 1]; i < count; i++)
+                            read.indices[at++] = baseVertex + (read.indexStride == 2
+                                ? ((ushort*)source)[start + i]
+                                : ((int*)source)[start + i]);
+                    }
+                }
+            }
+            FinishMeshReadback(read);
+        }
+
+        void FinishMeshReadback(MeshReadback read)
+        {
+            if (++read.done < 2)
+                return;
+            read.vertexBuffer.Dispose();
+            read.indexBuffer.Dispose();
+            if (ReferenceEquals(_file, read.file))
+            {
+                if (read.failed)
+                    _meshIds[read.key] = 0;
+                else
+                {
+                    int id = _nextMeshId++;
+                    WriteMeshRecord(id, read.name, read.vertices, read.indices);
+                    _meshIds[read.key] = id;
+                }
+            }
+            if (read.vertices.IsCreated)
+                read.vertices.Dispose();
+            if (read.indices.IsCreated)
+                read.indices.Dispose();
         }
 
         int WriteMesh(Mesh mesh)
@@ -2098,10 +2256,7 @@ namespace PurrNet.Recording
                 return existing;
 
             if (!mesh.isReadable && !Application.isEditor)
-            {
-                _meshIds[key] = 0;
-                return 0;
-            }
+                return _meshIds[key] = ReadMeshFromGpu(mesh, key);
 
             int id = _nextMeshId++;
             _meshIds[key] = id;
