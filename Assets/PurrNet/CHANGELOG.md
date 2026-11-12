@@ -1,3 +1,10 @@
+# [1.26.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.24...v1.26.0-beta.25) (2026-11-12)
+
+
+### Bug Fixes
+
+* PurrTransport host migration requests send the project key, so project rooms are found on the relay ([fb745cd](https://github.com/PurrNet/PurrNet/commit/fb745cd2b9ff3e26d2ea940830f9a2a89a710f63))
+
 # [1.26.0-beta.24](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.23...v1.26.0-beta.24) (2026-11-12)
 
 
