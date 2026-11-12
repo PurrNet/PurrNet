@@ -1,3 +1,10 @@
+# [1.26.0-beta.20](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.19...v1.26.0-beta.20) (2026-11-12)
+
+
+### Bug Fixes
+
+* relay sessions no longer stall after about a second; the larger reliable window is now negotiated per connection ([463fad6](https://github.com/PurrNet/PurrNet/commit/463fad668f14c58136f01bb3be5319dee1ca8a5f))
+
 # [1.26.0-beta.19](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.18...v1.26.0-beta.19) (2026-11-12)
 
 
