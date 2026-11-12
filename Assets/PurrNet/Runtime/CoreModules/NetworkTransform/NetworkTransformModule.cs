@@ -1361,9 +1361,10 @@ namespace PurrNet.Modules
             if (_global != null && changed.Count > 0)
             {
                 var additions = ListPool<NetworkTransform>.Instantiate();
+                int peerCount = _global.followers.Count;
                 for (int i = 0; i < changed.Count; i++)
                 {
-                    if (!_global.IsPending(changed[i]))
+                    if (!_global.IsPending(changed[i]) && !StaysDemoted(changed[i], localPlayer, peerCount))
                         additions.Add(changed[i]);
                 }
 
@@ -2516,6 +2517,9 @@ namespace PurrNet.Modules
 
         private static void RemoveException(NTUnreliableSendStream peer, int index, NetworkID nid)
         {
+            if (!peer.IsOverridden(index))
+                return;
+
             int slot = peer.overrides.IndexOf(index);
             if (slot < 0)
                 return;
@@ -2556,7 +2560,30 @@ namespace PurrNet.Modules
         }
 
         private bool[] _globalChanged = new bool[0];
+        private bool[] _globalMixed = new bool[0];
         private readonly List<NetworkTransform> _globalDemoted = new();
+
+        // A demoted transform is every candidate peer's own until who observes or controls it
+        // changes; until then its changes are queued by QueueChangedExceptions alone.
+        private bool StaysDemoted(NetworkTransform nt, PlayerID localPlayer, int peerCount)
+        {
+            int index = nt.GetNTIndex(_asServer);
+            if (index < 0 || index >= _globalMixed.Length || !_globalMixed[index])
+                return false;
+
+            if (!ObservedByAllPeers(nt, localPlayer, peerCount))
+                return true;
+
+            _globalMixed[index] = false;
+            return false;
+        }
+
+        internal void ControllerChanged(NetworkTransform nt)
+        {
+            int index = nt.GetNTIndex(_asServer);
+            if (index >= 0 && index < _globalMixed.Length)
+                _globalMixed[index] = false;
+        }
 
         // Exceptions are the peer's own transforms: their changes are its own pending work.
         private void QueueChangedExceptions(List<NetworkTransform> changed)
@@ -2684,6 +2711,11 @@ namespace PurrNet.Modules
                     g.prevBaselines[index] = default;
                     g.SetAdaptiveAt(index, null);
                 }
+
+                if (_globalMixed.Length < _byIndex.Count)
+                    System.Array.Resize(ref _globalMixed, _byIndex.Count);
+                if (index >= 0)
+                    _globalMixed[index] = true;
             }
 
             _globalDemoted.Clear();
@@ -3421,6 +3453,8 @@ namespace PurrNet.Modules
             if (wasRegistered)
             {
                 _byIndex[index] = null;
+                if (index < _globalMixed.Length)
+                    _globalMixed[index] = false;
                 _freeIndices.Push(index);
                 networkTransform.SetNTIndex(_asServer, -1);
                 if (_asServer)

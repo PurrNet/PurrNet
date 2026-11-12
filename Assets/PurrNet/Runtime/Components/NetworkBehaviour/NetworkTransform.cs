@@ -612,6 +612,7 @@ namespace PurrNet
             _cachedConnectedOwner = hasConnectedOwner;
             ReCacheIsController();
             BumpSendGen();
+            ntServerModule?.ControllerChanged(this);
 
             if (asServer)
                 ResetUnreliableRecvState();
@@ -2943,6 +2944,7 @@ namespace PurrNet
         {
             _cachedConnectedOwner = false;
             BumpSendGen();
+            ntServerModule?.ControllerChanged(this);
             if (isServer)
                 ResetUnreliableRecvState();
             var wasController = _cachedIsController;
