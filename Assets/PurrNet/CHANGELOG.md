@@ -1,3 +1,10 @@
+# [1.26.0-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.26...v1.26.0-beta.27) (2026-11-13)
+
+
+### Performance Improvements
+
+* a client reporting an addressable prefab as loaded no longer re-evaluates visibility for every spawned object ([e56c374](https://github.com/PurrNet/PurrNet/commit/e56c37453c5fbd24c44ccb03a55bc08adbcb928f))
+
 # [1.26.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.25...v1.26.0-beta.26) (2026-11-13)
 
 
