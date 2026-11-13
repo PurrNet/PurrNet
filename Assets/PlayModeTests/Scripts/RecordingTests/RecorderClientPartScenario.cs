@@ -267,6 +267,12 @@ public class RecorderClientPartScenario : Scenario
         }
         finally
         {
+            // Whatever happened, the scenarios after this one need every client back.
+            if (!ctx.isServer && !ctx.networkManager.isClient && !CommandLineUtils.HasFlag("-partLinger"))
+            {
+                try { await Connect(ctx); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
             if (_recorder)
                 Destroy(_recorder.gameObject);
             foreach (var created in _hud)
@@ -431,7 +437,7 @@ public class RecorderClientPartScenario : Scenario
     {
         if (ctx.isServer)
             return "stay";
-        if (CommandLineUtils.TryGetArgument("-partCase", out var chosen))
+        if (CommandLineUtils.TryGetArgument("-partCase", out var chosen) && chosen != "auto")
             return chosen;
         return (ctx.networkManager.localPlayer.id.value % 3) switch { 1 => "bounce", 2 => "late", _ => "stay" };
     }
@@ -443,8 +449,43 @@ public class RecorderClientPartScenario : Scenario
             manager.StopClient();
         await UniTaskUtils.WaitWithTimeout(() => manager.clientState == ConnectionState.Disconnected, _timeoutSeconds, ctx.cancellationToken);
         await UniTask.WaitForSeconds(awaySeconds, cancellationToken: ctx.cancellationToken);
-        manager.StartClient();
-        await UniTaskUtils.WaitWithTimeout(() => manager.isClient && manager.isLocalPlayerReady, _timeoutSeconds, ctx.cancellationToken);
+        await Connect(ctx);
+    }
+
+    /// <summary>
+    /// Connects this client again. A busy machine can make the server give up on a connection before it is
+    /// authenticated, so a refused or stalled attempt is made again.
+    /// </summary>
+    private static async UniTask Connect(ScenarioContext ctx)
+    {
+        var manager = ctx.networkManager;
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            if (manager.clientState == ConnectionState.Disconnected)
+                manager.StartClient();
+            float until = Time.realtimeSinceStartup + 10f;
+            int frames = 0;
+            while (Time.realtimeSinceStartup < until)
+            {
+                if (manager.isClient && manager.isLocalPlayerReady)
+                    return;
+                // Refused: back to disconnected after having tried.
+                if (++frames > 10 && manager.clientState == ConnectionState.Disconnected)
+                    break;
+                await UniTask.NextFrame();
+            }
+            if (manager.isClient && manager.isLocalPlayerReady)
+                return;
+            if (manager.clientState != ConnectionState.Disconnected)
+            {
+                manager.StopClient();
+                float stopBy = Time.realtimeSinceStartup + 5f;
+                while (manager.clientState != ConnectionState.Disconnected && Time.realtimeSinceStartup < stopBy)
+                    await UniTask.NextFrame();
+            }
+            await UniTask.WaitForSeconds(0.5f);
+        }
+        throw new TimeoutException("the client could not connect again");
     }
 
     private async UniTask<ScenarioResult> RunClient(ScenarioContext ctx)
