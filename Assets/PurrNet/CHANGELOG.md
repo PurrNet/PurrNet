@@ -1,3 +1,10 @@
+# [1.26.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.28...v1.26.0-beta.29) (2026-11-13)
+
+
+### Features
+
+* clients record their own camera, raw input and UI into recording parts they upload themselves, with only a start/stop announcement on the game connection ([e516eb7](https://github.com/PurrNet/PurrNet/commit/e516eb716f6eefd3c838a243560ed7969b7344cd))
+
 # [1.26.0-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.27...v1.26.0-beta.28) (2026-11-13)
 
 
