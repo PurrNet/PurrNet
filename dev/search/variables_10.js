@@ -1,10 +1,7 @@
 var searchData=
 [
-  ['tickdelta_0',['tickDelta',['../classPurrNet_1_1Modules_1_1TickManager.html#a28c972ac19e981cf1bc4579626f86881',1,'PurrNet::Modules::TickManager']]],
-  ['tickdeltadouble_1',['tickDeltaDouble',['../classPurrNet_1_1Modules_1_1TickManager.html#a05eb401a7cc8bf58ce17b9a7de51781d',1,'PurrNet::Modules::TickManager']]],
-  ['tickfollows_2',['TickFollows',['../classPurrNet_1_1Recording_1_1ChunkLog.html#a55a50dce17ef061afadf5babc77aee4f',1,'PurrNet::Recording::ChunkLog']]],
-  ['time_3',['time',['../structPurrNet_1_1RigidbodyStateData.html#a21db6fd5520d3760efd3974db9f78d75',1,'PurrNet::RigidbodyStateData']]],
-  ['tolerancecapmultiplier_4',['toleranceCapMultiplier',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#a3d71518322a1111eeba5744b762ea0cb',1,'PurrNet::NetworkTransformSyncStrategy']]],
-  ['tolerancevelocityshift_5',['toleranceVelocityShift',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#aadaf278c36002aa2a8ca4c0c6b84f431',1,'PurrNet::NetworkTransformSyncStrategy']]],
-  ['type_6',['type',['../structPurrNet_1_1Profiler_1_1DroppedSample.html#a4bf2729451a6fdde78f08b06de38d191',1,'PurrNet::Profiler::DroppedSample']]]
+  ['receivedimmediate_0',['receivedImmediate',['../structPurrNet_1_1RPCInfo.html#a67b6d7a4d5cf53c7870ebda6cddbda05',1,'PurrNet::RPCInfo']]],
+  ['roomname_1',['roomName',['../structPurrNet_1_1Transports_1_1ClientJoinInfo.html#aa446ae548faa13a4af01c30200bf5e1a',1,'PurrNet::Transports::ClientJoinInfo']]],
+  ['rotation_2',['rotation',['../structPurrNet_1_1Recording_1_1UISample.html#a8f47c93d67724e776a01b5635032ae7a',1,'PurrNet::Recording::UISample']]],
+  ['roundtriptimems_3',['roundTripTimeMs',['../structPurrNet_1_1Transports_1_1PingResult.html#afbac21813479bb0aed5525ac739aac7d',1,'PurrNet::Transports::PingResult']]]
 ];

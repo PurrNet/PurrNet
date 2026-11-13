@@ -96,7 +96,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1RecordLoc
 </div><!--header-->
 <div class="contents">
 
-<p>Writes the camera this machine renders with to the "camera" stream. Recorders add one next to themselves unless its camera recording is turned off; add your own to record a specific camera. The pose is taken right before the camera renders, after every script and camera rig has moved it, so it is exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate. One sample is taken per tick.   
+<p>Writes the camera this machine renders with to the "camera" stream. Recorders add one next to themselves unless its camera recording is turned off; add your own to record a specific camera. The pose is taken right before the camera renders, after every script and camera rig has moved it, so it is exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate. One sample is taken per tick. On a client it goes into the client's own part of the recording, never over the connection.   
  <a href="classPurrNet_1_1Recording_1_1RecordLocalCamera.html#details">More...</a></p>
 <div class="dynheader">
 Inheritance diagram for PurrNet.Recording.RecordLocalCamera:</div>
@@ -105,7 +105,7 @@ Inheritance diagram for PurrNet.Recording.RecordLocalCamera:</div>
   <img src="classPurrNet_1_1Recording_1_1RecordLocalCamera.png" alt=""/>
  </div></div>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Writes the camera this machine renders with to the "camera" stream. Recorders add one next to themselves unless its camera recording is turned off; add your own to record a specific camera. The pose is taken right before the camera renders, after every script and camera rig has moved it, so it is exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate. One sample is taken per tick.  </p>
+<div class="textblock"><p >Writes the camera this machine renders with to the "camera" stream. Recorders add one next to themselves unless its camera recording is turned off; add your own to record a specific camera. The pose is taken right before the camera renders, after every script and camera rig has moved it, so it is exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate. One sample is taken per tick. On a client it goes into the client's own part of the recording, never over the connection.  </p>
 </div><hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/RecordLocalCamera.cs</li>
 </ul>

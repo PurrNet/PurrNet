@@ -32,5 +32,6 @@ var searchData=
   ['dontdeltacompressattribute_29',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
   ['dontpackattribute_30',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]],
   ['dontrecordattribute_31',['DontRecordAttribute',['../classPurrNet_1_1Recording_1_1DontRecordAttribute.html',1,'PurrNet::Recording']]],
-  ['droppedsample_32',['DroppedSample',['../structPurrNet_1_1Profiler_1_1DroppedSample.html',1,'PurrNet::Profiler']]]
+  ['dontrecordui_32',['DontRecordUI',['../classPurrNet_1_1Recording_1_1DontRecordUI.html',1,'PurrNet::Recording']]],
+  ['droppedsample_33',['DroppedSample',['../structPurrNet_1_1Profiler_1_1DroppedSample.html',1,'PurrNet::Profiler']]]
 ];

@@ -121,6 +121,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Pump</b> ()</td></tr>
 &#160;</td><td class="memItemRight" valign="bottom"><b>RecordingFile</b> (string path)</td></tr>
 <tr class="memdesc:a9f4c0c60bb4e42c4e50dec5c7a836f46"><td class="mdescLeft">&#160;</td><td class="mdescRight">A recording at <em>path</em>  with no size cap; see RecordingFile(string, long). <br /></td></tr>
 <tr class="separator:a9f4c0c60bb4e42c4e50dec5c7a836f46"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa05fc016cfc2293764ed37a97f1fd246"><td class="memItemLeft" align="right" valign="top"><a id="aa05fc016cfc2293764ed37a97f1fd246" name="aa05fc016cfc2293764ed37a97f1fd246"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SetLink</b> (string json)</td></tr>
+<tr class="memdesc:aa05fc016cfc2293764ed37a97f1fd246"><td class="mdescLeft">&#160;</td><td class="mdescRight">What the upload service needs to tie this file to its match (recording id, main file or client part, player and token), as JSON. A browser's worker keeps it with the stored file; elsewhere the uploader reads the same from the file's HEADER.  <br /></td></tr>
+<tr class="separator:aa05fc016cfc2293764ed37a97f1fd246"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab855a238154aa260f31bc15dc9304f14"><td class="memItemLeft" align="right" valign="top"><a id="ab855a238154aa260f31bc15dc9304f14" name="ab855a238154aa260f31bc15dc9304f14"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteJson</b> (RecordKind kind, string json, bool compress=false)</td></tr>
 <tr class="separator:ab855a238154aa260f31bc15dc9304f14"><td class="memSeparator" colspan="2">&#160;</td></tr>

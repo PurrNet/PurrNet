@@ -1,4 +1,14 @@
 var searchData=
 [
-  ['onmessagedropped_0',['onMessageDropped',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#a33425c5c1bc8a10bc9b6f852f7954dfe',1,'PurrNet::Transports::FragmentationLayer']]]
+  ['maxplausibleangularspeed_0',['maxPlausibleAngularSpeed',['../classPurrNet_1_1NetworkRigidbodyBase.html#a9787d407c08b4cbd77e6168ce9922fb8',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['maxplausiblelinearspeed_1',['maxPlausibleLinearSpeed',['../classPurrNet_1_1NetworkRigidbodyBase.html#ab21c35beb3aa8f5fa3820b1a2b95eb00',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['maxsendinterval_2',['maxSendInterval',['../classPurrNet_1_1NetworkTransformSyncStrategy.html#a66e8c27191a9cb3c06d129cab9a3a46c',1,'PurrNet::NetworkTransformSyncStrategy']]],
+  ['maxtickpacingscale_3',['maxTickPacingScale',['../classPurrNet_1_1Modules_1_1TickManager.html#af7382299064bbc6bd8bb6526d469be9c',1,'PurrNet::Modules::TickManager']]],
+  ['maxvalue_4',['MaxValue',['../structPurrNet_1_1Packing_1_1Half.html#ae0f5009343358148020ca3315085b6ed',1,'PurrNet::Packing::Half']]],
+  ['migrationgeneration_5',['migrationGeneration',['../structPurrNet_1_1Transports_1_1HostJoinInfo.html#a3ae3fe641d7ff5ace12b20fd3df88339',1,'PurrNet.Transports.HostJoinInfo.migrationGeneration()'],['../structPurrNet_1_1Transports_1_1ClientJoinInfo.html#a126d28504a97934dbcf39a71bd800b88',1,'PurrNet.Transports.ClientJoinInfo.migrationGeneration()']]],
+  ['mintickpacingscale_6',['minTickPacingScale',['../classPurrNet_1_1Modules_1_1TickManager.html#ad9a8aec93d64077d3ec46894c8d7c085',1,'PurrNet::Modules::TickManager']]],
+  ['minvalue_7',['MinValue',['../structPurrNet_1_1Packing_1_1Half.html#a0cae7cbd2226affe20f88edc588defa1',1,'PurrNet::Packing::Half']]],
+  ['module_8',['module',['../structPurrNet_1_1Recording_1_1RecordedStreamInfo.html#ad0ab915afec45ec33fd736bd019d2663',1,'PurrNet::Recording::RecordedStreamInfo']]],
+  ['mousebuttons_9',['mouseButtons',['../structPurrNet_1_1Recording_1_1RawInputSample.html#ae9b39f2b4453b1a9d7ce18521cc2e3aa',1,'PurrNet::Recording::RawInputSample']]],
+  ['mousedelta_10',['mouseDelta',['../structPurrNet_1_1Recording_1_1RawInputSample.html#ab4d4a4d4c6eba3c5d65f278f3a6badc7',1,'PurrNet::Recording::RawInputSample']]]
 ];

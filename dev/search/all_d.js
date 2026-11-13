@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['name_0',['Name',['../classPurrNet_1_1Recording_1_1RecordingSession.html#a289154255257ca36aafac1c64792334f',1,'PurrNet::Recording::RecordingSession']]],
-  ['name_1',['name',['../classPurrNet_1_1Recording_1_1RecordingSource.html#abeab28130dd11a1e72a0dc511abcafcf',1,'PurrNet::Recording::RecordingSource']]],
+  ['name_0',['name',['../classPurrNet_1_1Recording_1_1RecordingSource.html#abeab28130dd11a1e72a0dc511abcafcf',1,'PurrNet::Recording::RecordingSource']]],
+  ['name_1',['Name',['../classPurrNet_1_1Recording_1_1RecordingSession.html#a289154255257ca36aafac1c64792334f',1,'PurrNet::Recording::RecordingSession']]],
   ['nan_2',['NaN',['../structPurrNet_1_1Packing_1_1Half.html#a60df7beccdba3eb451c165731929233d',1,'PurrNet::Packing::Half']]],
   ['nativedeflate_3',['nativeDeflate',['../classPurrNet_1_1Recording_1_1RecordingFile.html#ae09038a2ce5098aa7a2d12f6ba684d62',1,'PurrNet::Recording::RecordingFile']]],
   ['nearestentity_4',['NearestEntity',['../classPurrNet_1_1Recording_1_1RecordingSession.html#a16223f2a9a3f32f2bb859fb2cdb60afb',1,'PurrNet.Recording.RecordingSession.NearestEntity()'],['../classPurrNet_1_1Recording_1_1RecordingSource.html#a07071bd194baa75dfae24959a4140cbb',1,'PurrNet.Recording.RecordingSource.NearestEntity()']]],

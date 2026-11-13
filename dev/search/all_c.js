@@ -33,10 +33,12 @@ var searchData=
   ['module_30',['module',['../structPurrNet_1_1Recording_1_1RecordedStreamInfo.html#ad0ab915afec45ec33fd736bd019d2663',1,'PurrNet::Recording::RecordedStreamInfo']]],
   ['modulescollection_31',['ModulesCollection',['../structPurrNet_1_1ModulesCollection.html',1,'PurrNet']]],
   ['mostrecenttick_32',['MostRecentTick',['../classPurrNet_1_1Modules_1_1SimpleHistory.html#a5f08d15724c68d06438febca8ccc5f08',1,'PurrNet::Modules::SimpleHistory']]],
-  ['moveplayertosinglescene_33',['MovePlayerToSingleScene',['../classPurrNet_1_1Modules_1_1ScenePlayersModule.html#a8eb699e98869a2f2470ec598305235b9',1,'PurrNet::Modules::ScenePlayersModule']]],
-  ['mtubehaviour_34',['MTUBehaviour',['../namespacePurrNet_1_1Transports.html#a995a08be1b68a789fb34d53016826d8e',1,'PurrNet::Transports']]],
-  ['mtuexceededbehaviour_35',['mtuExceededBehaviour',['../classPurrNet_1_1NetworkManager.html#a6b09aaaaf0343e8a7b916d4adddf2521',1,'PurrNet.NetworkManager.mtuExceededBehaviour()'],['../classPurrNet_1_1RawNetManager.html#aa72ae7325b7df4f678a0b21496f8846b',1,'PurrNet.RawNetManager.mtuExceededBehaviour()']]],
-  ['mtuexceededbehaviour_36',['MTUExceededBehaviour',['../namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701',1,'PurrNet::Transports']]],
-  ['multiply_37',['Multiply',['../structPurrNet_1_1Packing_1_1Half.html#a56a3a25e83ed80a15fc46cff163ed8ac',1,'PurrNet::Packing::Half']]],
-  ['mute_38',['mute',['../classPurrNet_1_1NetworkAudioSource.html#a84b768c9c8c9346149a5be9db88f40ca',1,'PurrNet::NetworkAudioSource']]]
+  ['mousebuttons_33',['mouseButtons',['../structPurrNet_1_1Recording_1_1RawInputSample.html#ae9b39f2b4453b1a9d7ce18521cc2e3aa',1,'PurrNet::Recording::RawInputSample']]],
+  ['mousedelta_34',['mouseDelta',['../structPurrNet_1_1Recording_1_1RawInputSample.html#ab4d4a4d4c6eba3c5d65f278f3a6badc7',1,'PurrNet::Recording::RawInputSample']]],
+  ['moveplayertosinglescene_35',['MovePlayerToSingleScene',['../classPurrNet_1_1Modules_1_1ScenePlayersModule.html#a8eb699e98869a2f2470ec598305235b9',1,'PurrNet::Modules::ScenePlayersModule']]],
+  ['mtubehaviour_36',['MTUBehaviour',['../namespacePurrNet_1_1Transports.html#a995a08be1b68a789fb34d53016826d8e',1,'PurrNet::Transports']]],
+  ['mtuexceededbehaviour_37',['mtuExceededBehaviour',['../classPurrNet_1_1NetworkManager.html#a6b09aaaaf0343e8a7b916d4adddf2521',1,'PurrNet.NetworkManager.mtuExceededBehaviour()'],['../classPurrNet_1_1RawNetManager.html#aa72ae7325b7df4f678a0b21496f8846b',1,'PurrNet.RawNetManager.mtuExceededBehaviour()']]],
+  ['mtuexceededbehaviour_38',['MTUExceededBehaviour',['../namespacePurrNet_1_1Transports.html#aa5445fa7ab9a4640b501543bb11b5701',1,'PurrNet::Transports']]],
+  ['multiply_39',['Multiply',['../structPurrNet_1_1Packing_1_1Half.html#a56a3a25e83ed80a15fc46cff163ed8ac',1,'PurrNet::Packing::Half']]],
+  ['mute_40',['mute',['../classPurrNet_1_1NetworkAudioSource.html#a84b768c9c8c9346149a5be9db88f40ca',1,'PurrNet::NetworkAudioSource']]]
 ];

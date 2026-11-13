@@ -55,12 +55,12 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkIdentity.html#aa9ca1d8499152c7c2a641b0b8783adf6",
 "classPurrNet_1_1NetworkManager.html#ad7996587594c52ce02b0f490cafc0669",
 "classPurrNet_1_1NetworkTransformSyncStrategy.html#ae5143c9389d8cae25fd2e36068b2fcbf",
-"classPurrNet_1_1Recording_1_1RecorderStats.html#a349a46bc5aa7563a6b0b69f0bad1c8cf",
-"classPurrNet_1_1StateMachine_1_1StateNode.html#ab125dd959bda0692dc9de551ac03b9a6",
-"classPurrNet_1_1Transports_1_1PeerInfo.html",
-"interfacePurrNet_1_1INetworkTransform.html#a7df722412bb5c2728c4a1da166a3a67b",
-"structPurrNet_1_1Modules_1_1NetworkTransformDelta.html",
-"structPurrNet_1_1Recording_1_1RecordedCameraPacket.html"
+"classPurrNet_1_1Recording_1_1RecorderExtension.html#acba85220f59c92a6b3c0c0bf7c200667",
+"classPurrNet_1_1StateMachine_1_1StateMachine.html#ae3d87e303db0033890486ef496c52830",
+"classPurrNet_1_1Transports_1_1GenericTransport.html#a913bb87eb425b32192663ba43260508b",
+"interfacePurrNet_1_1INetworkManager.html#a474bf9fb0bde93dd0ade0abfbd7bfc7b",
+"structPurrNet_1_1Modules_1_1ChangeParentPacket.html",
+"structPurrNet_1_1QuaternionWithParent.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
