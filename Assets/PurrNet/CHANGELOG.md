@@ -1,3 +1,10 @@
+# [1.26.0-beta.28](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.27...v1.26.0-beta.28) (2026-11-13)
+
+
+### Bug Fixes
+
+* a client that still has to load an addressable prefab is no longer sent that object's children ahead of it ([67fde9e](https://github.com/PurrNet/PurrNet/commit/67fde9ee468a63504fb636d605130696f34b7d55))
+
 # [1.26.0-beta.27](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.26...v1.26.0-beta.27) (2026-11-13)
 
 
