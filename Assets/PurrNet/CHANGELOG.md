@@ -1,3 +1,10 @@
+# [1.26.0-beta.26](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.25...v1.26.0-beta.26) (2026-11-13)
+
+
+### Features
+
+* addressable network prefabs can be loaded with a blocking call, are kept out of NetworkPrefabs, and registries are not regenerated while scripts fail to compile ([936203c](https://github.com/PurrNet/PurrNet/commit/936203c387dbc8121b17b2e15e7a0546acd01df2))
+
 # [1.26.0-beta.25](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.24...v1.26.0-beta.25) (2026-11-12)
 
 
