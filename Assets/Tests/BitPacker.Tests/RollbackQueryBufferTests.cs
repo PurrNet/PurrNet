@@ -90,6 +90,92 @@ public sealed class RollbackQueryBufferTests
             Object.DestroyImmediate(target);
         }
     }
+
+    [Test]
+    public void CaptureWritesTheRightHistoryAfterOthersLeave()
+    {
+        var first = new GameObject("Rollback capture first");
+        var second = new GameObject("Rollback capture second");
+        var third = new GameObject("Rollback capture third");
+        try
+        {
+            var a = first.AddComponent<BoxCollider>();
+            var b = second.AddComponent<BoxCollider>();
+            var c = third.AddComponent<BoxCollider>();
+            var module = new RollbackModule(new TickManager(64, null, null, true), first.scene);
+            module.Register(a, 5f);
+            module.Register(b, 5f);
+            module.Register(c, 5f);
+
+            // Unregistering and pruning a destroyed collider both shift the others' places.
+            module.Unregister(a);
+            Object.DestroyImmediate(second);
+            module.OnPostTick();
+
+            third.transform.position = new Vector3(7f, 0f, 0f);
+            Assert.That(module.Capture(30, c), Is.True);
+            Assert.That(module.TryGetColliderState(30, c, out var state), Is.True);
+            Assert.That(state.position.x, Is.EqualTo(7f).Within(1e-5));
+            Assert.That(module.Capture(30, a), Is.False);
+
+            // Registered again, it captures into its own new history.
+            first.transform.position = new Vector3(2f, 0f, 0f);
+            module.Register(a, 5f);
+            Assert.That(module.Capture(31, a), Is.True);
+            Assert.That(module.TryGetColliderState(31, a, out var again), Is.True);
+            Assert.That(again.position.x, Is.EqualTo(2f).Within(1e-5));
+            Assert.That(module.TryGetColliderState(31, c, out _), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(first);
+            if (second)
+                Object.DestroyImmediate(second);
+            Object.DestroyImmediate(third);
+        }
+    }
+
+    [Test]
+    public void CaptureCostGrowsLinearlyWithTrackedColliders()
+    {
+        // Capturing every tracked collider once (as a caller recording its own poses each tick does)
+        // must cost about 4x for 4x the colliders. Looking each collider up by a list search made it
+        // grow with the square: about 16x.
+        double small = BestCaptureAllSeconds(500);
+        double large = BestCaptureAllSeconds(2000);
+        Assert.That(large / small, Is.LessThan(8d),
+            $"Capturing 500 colliders took {small * 1000:0.00} ms, 2000 took {large * 1000:0.00} ms.");
+    }
+
+    static double BestCaptureAllSeconds(int count)
+    {
+        var target = new GameObject("Rollback capture cost");
+        try
+        {
+            var module = new RollbackModule(new TickManager(64, null, null, true), target.scene);
+            var colliders = new Collider[count];
+            for (int i = 0; i < count; i++)
+            {
+                colliders[i] = target.AddComponent<BoxCollider>();
+                module.Register(colliders[i], 1f);
+            }
+
+            double best = double.MaxValue;
+            for (int run = 0; run < 5; run++)
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                for (int i = 0; i < count; i++)
+                    module.Capture((ulong)run, colliders[i]);
+                watch.Stop();
+                best = System.Math.Min(best, watch.Elapsed.TotalSeconds);
+            }
+            return best;
+        }
+        finally
+        {
+            Object.DestroyImmediate(target);
+        }
+    }
 #endif
 
 #if UNITY_PHYSICS_2D
@@ -118,6 +204,47 @@ public sealed class RollbackQueryBufferTests
         finally
         {
             Object.DestroyImmediate(target);
+        }
+    }
+
+    [Test]
+    public void Capture2DWritesTheRightHistoryAfterOthersLeave()
+    {
+        var first = new GameObject("Rollback capture first");
+        var second = new GameObject("Rollback capture second");
+        var third = new GameObject("Rollback capture third");
+        try
+        {
+            var a = first.AddComponent<BoxCollider2D>();
+            var b = second.AddComponent<BoxCollider2D>();
+            var c = third.AddComponent<BoxCollider2D>();
+            var module = new RollbackModule(new TickManager(64, null, null, true), first.scene);
+            module.Register(a, 5f);
+            module.Register(b, 5f);
+            module.Register(c, 5f);
+
+            module.Unregister(a);
+            Object.DestroyImmediate(second);
+            module.OnPostTick();
+
+            third.transform.position = new Vector3(7f, 0f, 0f);
+            Assert.That(module.Capture(30, c), Is.True);
+            Assert.That(module.TryGetColliderState(30, c, out var state), Is.True);
+            Assert.That(state.position.x, Is.EqualTo(7f).Within(1e-5));
+            Assert.That(module.Capture(30, a), Is.False);
+
+            first.transform.position = new Vector3(2f, 0f, 0f);
+            module.Register(a, 5f);
+            Assert.That(module.Capture(31, a), Is.True);
+            Assert.That(module.TryGetColliderState(31, a, out var again), Is.True);
+            Assert.That(again.position.x, Is.EqualTo(2f).Within(1e-5));
+        }
+        finally
+        {
+            Object.DestroyImmediate(first);
+            if (second)
+                Object.DestroyImmediate(second);
+            Object.DestroyImmediate(third);
         }
     }
 #endif
