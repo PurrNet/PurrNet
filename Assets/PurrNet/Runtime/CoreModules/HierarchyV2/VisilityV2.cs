@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using PurrNet.Pooling;
 using Unity.Profiling;
@@ -359,9 +359,14 @@ namespace PurrNet.Modules
 
                 if (identity.whitelist.Contains(player))
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                     continue;
                 }
 
@@ -379,17 +384,27 @@ namespace PurrNet.Modules
 
                 if (!r)
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                     continue;
                 }
 
                 if (identity.owner == player)
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                     continue;
                 }
 
@@ -400,9 +415,14 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                 }
             }
 
