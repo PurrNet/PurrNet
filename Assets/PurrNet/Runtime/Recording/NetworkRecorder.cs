@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using PurrNet.Modules;
+using PurrNet.Transports;
 using UnityEngine;
 
 namespace PurrNet.Recording
@@ -11,8 +12,9 @@ namespace PurrNet.Recording
     /// identity's transform, colliders and recorded sync types (SyncVar, SyncList, SyncTimer) per tick, and the players.
     /// Add one next to the <see cref="NetworkManager"/>. Other packages add their data through
     /// <see cref="RecorderExtension"/>s (with PurrDiction: every predicted component's state and input), so a match is
-    /// one file whatever it is made of. On clients it forwards their camera and anything written through
-    /// <see cref="WriteSample{T}"/>. State that only exists on clients is not recorded.
+    /// one file whatever it is made of. On a client it writes what only that client has (its camera, raw input, UI
+    /// and anything written through <see cref="WriteSample{T}"/>) to a part of the recording: a file of the client's
+    /// own that it uploads itself. Nothing but the server's start and stop announcement is sent over the connection.
     /// </summary>
     [DefaultExecutionOrder(1000)]
     [AddComponentMenu("PurrNet/Recording/Network Recorder")]
@@ -23,13 +25,24 @@ namespace PurrNet.Recording
         [SerializeField] private bool _recordOnServer = true;
         [Tooltip("Also record play sessions in the editor (kept on disk, never uploaded). Off: editor sessions are development, not gameplay.")]
         [SerializeField] private bool _recordInEditor;
-        [Tooltip("Record the camera each player renders with.")]
+        [Tooltip("Record the camera each player renders with. Clients write it to a file of their own, uploaded by them.")]
         [SerializeField] private bool _recordCamera = true;
+        [Tooltip("Record each player's raw device input (mouse, keys, gamepad). Clients write it to a file of their own, " +
+                 "uploaded by them; it is not sent over the game's connection. Keys are left out while a text field has focus.")]
+        [SerializeField] private bool _recordInput = true;
+        [Tooltip("Record what each player's UI shows (uGUI, TextMeshPro, UI Toolkit) as data: rectangles, sprite " +
+                 "names, text and control values, written when they change.")]
+        [SerializeField] private bool _recordUI = true;
+        [Tooltip("Leave what players type into text fields (chat, names) out of the recorded UI. Password and PIN " +
+                 "fields are left out either way.")]
+        [SerializeField] private bool _redactTextInput = true;
+        [Tooltip("Most time per tick, in milliseconds, spent looking for UI changes that are not announced (elements " +
+                 "starting to move, fade or change style). With a very large UI such a change is only noticed a " +
+                 "little later.")]
+        [SerializeField] private float _uiCheckBudgetMs = 0.1f;
         [Tooltip("Folder for recordings. Relative paths are under Application.persistentDataPath.")]
         [SerializeField] private string _directory = "Recordings";
         [SerializeField] private float _chunkSeconds = 10f;
-        [Tooltip("How often clients send their samples to the server.")]
-        [SerializeField] private float _clientSendInterval = 0.1f;
         [Tooltip("Send finished recordings to the PurrNet recordings service, then delete them. Needs a project key: " +
                  "the one below, or the project linked through PurrServices.")]
         [SerializeField] private bool _upload = true;
@@ -246,6 +259,15 @@ namespace PurrNet.Recording
 
             if (_recordCamera && !GetComponent<RecordLocalCamera>())
                 gameObject.AddComponent<RecordLocalCamera>();
+            if (_recordInput && !GetComponent<RecordLocalInput>())
+                gameObject.AddComponent<RecordLocalInput>();
+            ApplyPartSettings();
+            if (_recordUI && !GetComponent<RecordLocalUI>())
+            {
+                var ui = gameObject.AddComponent<RecordLocalUI>();
+                ui.redactTextInput = _redactTextInput;
+                ui.checkBudgetMs = _uiCheckBudgetMs;
+            }
             ConfigureUploads();
         }
 
@@ -304,7 +326,7 @@ namespace PurrNet.Recording
                 return;
 
             // A file has one clock from start to end.
-            if (isRecording && !ReferenceEquals(_clock, _clockAtStart))
+            if (isRecording && !_session.isPart && !ReferenceEquals(_clock, _clockAtStart))
                 StopFile();
 
             if (_networkManager && !_session.subscribedNetwork)
@@ -317,10 +339,9 @@ namespace PurrNet.Recording
             if (_recordOnServer && RecordingSession.RecordsAutomatically(_recordInEditor) && server && !isRecording &&
                 !_stoppedThisSession && ExtensionsReady())
                 StartRecording();
-            else if (isRecording && !server)
+            else if (isRecording && !server && !_session.isPart)
                 StopFile();
 
-            _session.clientSendInterval = _clientSendInterval;
             _session.Update(server);
         }
 
@@ -328,7 +349,16 @@ namespace PurrNet.Recording
         public void SetDirectory(string directory)
         {
             _directory = directory;
+            ApplyPartSettings();
             ConfigureUploads();
+        }
+
+        /// <summary>What a client's part of a recording (see RecordingSession.Parts) takes from this recorder.</summary>
+        void ApplyPartSettings()
+        {
+            _session.partDirectory = _directory;
+            _session.chunkSeconds = _chunkSeconds;
+            _session.maxLocalMegabytes = _maxLocalMegabytes;
         }
 
         /// <summary>
@@ -362,7 +392,6 @@ namespace PurrNet.Recording
                 _extensionPlayers |= extension.recordsPlayers;
             _hierarchy = null;
             _session.chunkSeconds = _chunkSeconds;
-            _session.clientSendInterval = _clientSendInterval;
             _session.maxLocalMegabytes = _maxLocalMegabytes;
             _session.colliderCheckBudgetMs = _colliderCheckBudgetMs;
             _session.chunkBufferKilobytes = _chunkBufferKilobytes;
@@ -370,7 +399,9 @@ namespace PurrNet.Recording
             var scene = gameObject.scene;
             if (!scene.IsValid() || scene.buildIndex < 0 && scene.name == "DontDestroyOnLoad")
                 scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, context.isClient);
+            // A host's own client is usually still connecting when its recording starts.
+            bool host = context.isClient || (_networkManager && _networkManager.clientState != ConnectionState.Disconnected);
+            _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, host);
             foreach (var extension in _extensions)
                 extension.OnRecordingStarted();
 
@@ -396,6 +427,13 @@ namespace PurrNet.Recording
             if (!isRecording)
                 return;
 
+            // A client's part of the server's recording: nothing of the recorder's own is in it.
+            if (_session.isPart)
+            {
+                _session.Stop(null);
+                return;
+            }
+
             if (_tickManager != null)
                 _tickManager.onPostTick -= OnPostTick;
             _tickManager = null;
@@ -413,8 +451,8 @@ namespace PurrNet.Recording
         // ---- Samples --------------------------------------------------------------------------------
 
         /// <summary>
-        /// Adds a sample to a custom stream. Samples are written on the server (and host); written on a client they
-        /// are ignored. The recorder sends each client's camera to the server by itself.
+        /// Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client into
+        /// that client's part of it, a file of its own that the client uploads. Nothing is sent to the server.
         /// </summary>
         public void WriteSample<T>(string stream, in T sample) where T : struct => _session.WriteSample(stream, sample);
 

@@ -181,13 +181,13 @@ namespace PurrNet.Recording
                 int offset = baseOffset + UnsafeUtility.GetFieldOffset(field);
                 path.Add(field);
 
-                if (TryScalar(ft, out var scalar, out int size))
-                {
-                    AddColumn(layout, name, scalar, offset, size, null);
-                }
-                else if (ft.IsEnum && TryScalar(Enum.GetUnderlyingType(ft), out scalar, out size))
+                if (ft.IsEnum && TryScalar(Enum.GetUnderlyingType(ft), out var scalar, out int size))
                 {
                     AddColumn(layout, name, scalar, offset, size, ft);
+                }
+                else if (TryScalar(ft, out scalar, out size))
+                {
+                    AddColumn(layout, name, scalar, offset, size, null);
                 }
                 else if (ft.IsValueType && !IsCollection(ft) && depth < MaxDepth && !HasFixedBuffer(field))
                 {
@@ -243,7 +243,7 @@ namespace PurrNet.Recording
                 {
                     json.Prop("enum", TypeName(c.enumType)).Key("values").BeginObject();
                     foreach (var v in Enum.GetValues(c.enumType))
-                        json.Prop(Convert.ToInt64(v).ToString(), v.ToString());
+                        json.Prop(((Enum)v).ToString("D"), v.ToString());
                     json.EndObject();
                 }
                 json.EndObject();

@@ -8,7 +8,7 @@ namespace PurrNet.Recording
     /// one next to themselves unless its camera recording is turned off; add your own to record a specific camera.
     /// The pose is taken right before the camera renders, after every script and camera rig has moved it, so it is
     /// exactly what the player saw. Without rendering (batchmode) it falls back to the end of LateUpdate. One sample
-    /// is taken per tick.
+    /// is taken per tick. On a client it goes into the client's own part of the recording, never over the connection.
     /// </summary>
     [DefaultExecutionOrder(10000)]
     public sealed class RecordLocalCamera : MonoBehaviour
@@ -55,7 +55,7 @@ namespace PurrNet.Recording
         void Sample(Camera cam)
         {
             var recorder = RecordingSession.active;
-            if (recorder == null)
+            if (recorder == null || !recorder.wantsSamples)
                 return;
 
             ulong tick = recorder.localTick;

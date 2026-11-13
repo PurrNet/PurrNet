@@ -19,6 +19,9 @@ namespace PurrNet.Recording
         static extern unsafe void PurrNetRec_Append(int handle, int kind, int compress, byte* data, int length);
 
         [DllImport("__Internal")]
+        static extern void PurrNetRec_Link(int handle, string json);
+
+        [DllImport("__Internal")]
         static extern void PurrNetRec_Close(int handle);
 
         [DllImport("__Internal")]
@@ -50,6 +53,9 @@ namespace PurrNet.Recording
             fixed (byte* p = data)
                 PurrNetRec_Append(handle, kind, compress ? 1 : 0, p, length);
         }
+
+        /// <summary>What the worker adds to this recording's upload request (see RecordingFile.SetLink).</summary>
+        public static void Link(int handle, string json) => PurrNetRec_Link(handle, json);
 
         public static void Close(int handle) => PurrNetRec_Close(handle);
 

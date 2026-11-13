@@ -14,13 +14,14 @@ namespace PurrNet.Recording
 {
     /// <summary>
     /// Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms,
-    /// colliders and streams, players, and custom streams such as each client's camera. A recorder owns one and feeds
-    /// it every tick; <see cref="RecordingSource"/>s say which scene objects belong to which entity. On clients it
-    /// forwards samples written through <see cref="WriteSample{T}"/> to the server.
+    /// colliders and streams, players, and custom streams such as each player's camera. A recorder owns one and feeds
+    /// it every tick; <see cref="RecordingSource"/>s say which scene objects belong to which entity. On a client it
+    /// writes that client's own part of the server's recording (see RecordingSession.Parts); nothing but the
+    /// server's start and stop announcement travels over the game's connection.
     /// Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed
     /// fields are read in place.
     /// </summary>
-    public sealed class RecordingSession
+    public sealed partial class RecordingSession
     {
         readonly struct CustomKey : IEquatable<CustomKey>
         {
@@ -108,7 +109,6 @@ namespace PurrNet.Recording
 
         // Settings, read when a recording starts.
         public float chunkSeconds = 10f;
-        public float clientSendInterval = 0.1f;
         public int maxLocalMegabytes = 1024;
         public float colliderCheckBudgetMs = 0.1f;
         public int chunkBufferKilobytes = 2048;
@@ -120,6 +120,15 @@ namespace PurrNet.Recording
         /// it lives in, so a recorder that only writes rows when they change writes them all on this tick.
         /// </summary>
         public bool chunkStart { get; private set; }
+        /// <summary>
+        /// 0 while <see cref="WriteSample{T}"/> would drop a sample; otherwise a number that changes whenever samples
+        /// start landing in a new chunk. A sample stream that only writes changes writes its full state again when
+        /// this changes, so every chunk can be read on its own.
+        /// </summary>
+        public int sampleEpoch => !_context.isReady ? 0
+            : _context.isServer ? (isRecording && !isPart && _context.localPlayer.HasValue ? _sampleEpoch : 0)
+            : _partOffered ? _sampleEpoch : 0;
+        int _sampleEpoch;
         public string currentPath => _file?.path;
         public long bytesWritten => _file?.bytesWritten ?? 0;
         public ulong ticksRecorded => _ticksRecorded;
@@ -158,12 +167,6 @@ namespace PurrNet.Recording
         readonly Dictionary<Type, string> _typeNames = new Dictionary<Type, string>();
         readonly Dictionary<(RowLayout, (string, string)[]), int[]> _baseColumns = new Dictionary<(RowLayout, (string, string)[]), int[]>();
 
-        // Client: camera samples waiting to be sent. Server: the camera rows each player may still send, and the
-        // tick that was counted at.
-        readonly RecordingBuffer _outgoing = new RecordingBuffer(256);
-        int _outgoingCount;
-        readonly Dictionary<ulong, (ulong tick, int rows)> _cameraRows = new Dictionary<ulong, (ulong tick, int rows)>();
-        float _nextSend;
         NetworkManager _networkManager;
 
         readonly RecorderStats _stats;
@@ -236,7 +239,7 @@ namespace PurrNet.Recording
 
         // ---- Network ----------------------------------------------------------------------------------
 
-        /// <summary>Receives client samples on <paramref name="manager"/> (the server side) and sends this client's.</summary>
+        /// <summary>Announces recordings to <paramref name="manager"/>'s clients (the server side) and listens for them (a client).</summary>
         public void SubscribeNetwork(NetworkManager manager)
         {
             if (_networkManager == manager)
@@ -245,28 +248,22 @@ namespace PurrNet.Recording
             _networkManager = manager;
             if (!_networkManager)
                 return;
-            _networkManager.Subscribe<RecordedCameraPacket>(OnCameraReceived, true);
+            SubscribeParts();
         }
 
         public void UnsubscribeNetwork()
         {
             if (_networkManager)
-            {
-                _networkManager.Unsubscribe<RecordedCameraPacket>(OnCameraReceived, true);
-            }
+                UnsubscribeParts();
             _networkManager = null;
         }
 
         public bool subscribedNetwork => _networkManager;
 
-        /// <summary>Once per frame: sends a client's samples and, on WebGL, encodes queued chunks.</summary>
+        /// <summary>Once per frame: looks after a client's part and, on WebGL, encodes queued chunks.</summary>
         public void Update(bool isServer)
         {
-            if (!isServer && Time.unscaledTime >= _nextSend)
-            {
-                _nextSend = Time.unscaledTime + clientSendInterval;
-                SendOutgoing();
-            }
+            UpdatePart(isServer);
 
             // WebGL has no writer thread: queued chunks are encoded here, one per frame (a no-op elsewhere).
             _file?.Pump();
@@ -310,7 +307,6 @@ namespace PurrNet.Recording
 
             // Every file is self-contained, so type ids and records start over.
             _types = new RecordingTypeRegistry();
-            _cameraRows.Clear();
             _baseColumns.Clear();
             _file = new RecordingFile(Path.Combine(directory, fileName), (long)maxLocalMegabytes * 1024 * 1024);
             RecordingUploader.SetActiveRecording(_file.path);
@@ -327,7 +323,9 @@ namespace PurrNet.Recording
             _stats.file = _file;
             _slots.Clear();
             chunkStart = true;
+            _sampleEpoch++;
 
+            BeginParts(firstTick);
             WriteHeader(tickRate, firstTick, scene, host);
 #if UNITY_PHYSICS_3D
             _hasStaticColliderKey = false;
@@ -342,6 +340,7 @@ namespace PurrNet.Recording
             if (_file == null)
                 return;
 
+            EndParts();
             FlushChunk();
             foreach (var entity in _entities)
                 WriteMeta(RecordKind.Despawn, _json.Clear().BeginObject()
@@ -410,6 +409,7 @@ namespace PurrNet.Recording
                 .Prop("tickRate", tickRate)
                 .Prop("firstTick", firstTick)
                 .Prop("startedUtc", DateTime.UtcNow.ToString("o"))
+                .Prop("recordingId", recordingId)
                 .Prop("scene", scene)
                 .Prop("recorder", host ? "host" : "server")
                 .Prop("serverBuild", PurrNet.Utils.ApplicationContext.isServerBuild)
@@ -450,7 +450,7 @@ namespace PurrNet.Recording
                 log = _job.log.bytes;
             }
             _logStart = log.length;
-            // The first chunk starts at the first tick, unless samples (a camera, say) were already written before it.
+            // The first chunk starts at the first tick, unless samples (a host's camera, say) were already written before it.
             if (_ticksRecorded == 0 && _slots.Count == 0)
                 _chunkFirstTick = tick;
 
@@ -1128,6 +1128,7 @@ namespace PurrNet.Recording
             _streams.RemoveRange(kept, _streams.Count - kept);
             _chunkFirstTick = _lastTick + 1;
             chunkStart = true;
+            _sampleEpoch++;
         }
 
         // ---- Samples --------------------------------------------------------------------------------
@@ -1136,9 +1137,8 @@ namespace PurrNet.Recording
         public const string CameraStream = "camera";
 
         /// <summary>
-        /// Adds a sample to a custom stream. Samples are written on the server (and host). The one sample a client
-        /// sends to the server is its camera (<see cref="CameraSample"/>), recorded under
-        /// <see cref="CameraStream"/>; anything else written on a client is ignored.
+        /// Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client into
+        /// that client's part of the recording, a file of its own (see RecordingSession.Parts). Nothing is sent.
         /// </summary>
         public void WriteSample<T>(string stream, in T sample) where T : struct
         {
@@ -1149,7 +1149,7 @@ namespace PurrNet.Recording
             {
                 clientTick = _context.localTick,
                 viewTick = _context.viewTick,
-                clientTime = Time.realtimeSinceStartupAsDouble - _startTime,
+                clientTime = ClientTime(),
                 sample = sample
             };
 
@@ -1161,11 +1161,7 @@ namespace PurrNet.Recording
                 return;
             }
 
-            if (typeof(T) != typeof(CameraSample))
-                return;
-
-            _types.GetRow(typeof(ClientSample<T>)).WriteFixed(ref envelope, _outgoing);
-            _outgoingCount++;
+            WritePartSample(stream, ref envelope);
         }
 
         /// <summary>
@@ -1181,10 +1177,26 @@ namespace PurrNet.Recording
             {
                 clientTick = _context.localTick,
                 viewTick = _context.viewTick,
-                clientTime = Time.realtimeSinceStartupAsDouble - _startTime,
+                clientTime = ClientTime(),
                 sample = sample
             };
             WriteServerSample(stream, player, ref envelope);
+        }
+
+        // The clock is read once per frame: every sample of a frame carries the same time (the frame's first
+        // sample's), which also keeps the column small.
+        int _clientTimeFrame = -1;
+        double _clientTime;
+
+        double ClientTime()
+        {
+            int frame = Time.frameCount;
+            if (frame != _clientTimeFrame)
+            {
+                _clientTimeFrame = frame;
+                _clientTime = Time.realtimeSinceStartupAsDouble - _startTime;
+            }
+            return _clientTime;
         }
 
         void WriteServerSample<T>(string stream, PlayerID? player, ref ClientSample<T> envelope) where T : struct
@@ -1196,90 +1208,6 @@ namespace PurrNet.Recording
         }
 
         ulong SampleTick() => Math.Max(_context.localTick, _chunkFirstTick);
-
-        unsafe void SendOutgoing()
-        {
-            if (!_networkManager || !_networkManager.isClient || _outgoingCount == 0)
-                return;
-
-            int rowSize = _types.GetRow(typeof(ClientSample<CameraSample>)).rowSize;
-            int perPacket = RecordedSamplesPayload.Size / rowSize;
-            for (int sent = 0; sent < _outgoingCount; sent += perPacket)
-            {
-                int rows = Math.Min(perPacket, _outgoingCount - sent);
-                var packet = new RecordedCameraPacket { rowCount = (byte)rows };
-                fixed (byte* src = &_outgoing.data[sent * rowSize])
-                    UnsafeUtility.MemCpy(UnsafeUtility.AddressOf(ref packet.payload), src, rows * rowSize);
-                _networkManager.SendToServer(packet, Channel.ReliableOrdered);
-            }
-            _outgoing.Clear();
-            _outgoingCount = 0;
-        }
-
-        unsafe void OnCameraReceived(PlayerID player, RecordedCameraPacket packet, bool asServer)
-        {
-            if (!isRecording || packet.rowCount == 0)
-                return;
-
-            var layout = _types.GetRow(typeof(ClientSample<CameraSample>));
-            int rowSize = layout.rowSize;
-            if (packet.rowCount > RecordedSamplesPayload.Size / rowSize)
-                return;
-
-            // A camera is sampled once per tick, so a player earns one row per tick. Unsent rows are kept for a
-            // second, or two of the client's sends when that is longer; what a longer stall held back is dropped.
-            ulong now = _context.localTick;
-            int most = Mathf.CeilToInt(_context.tickRate * Mathf.Max(1f, 2f * clientSendInterval));
-            if (!_cameraRows.TryGetValue(player.id.value, out var left))
-                left = (now, most);
-            else if (now > left.tick)
-                left.rows = (int)Math.Min((ulong)most, (ulong)left.rows + (now - left.tick));
-            left.tick = now;
-
-            int count = Math.Min(packet.rowCount, left.rows);
-            left.rows -= count;
-            _cameraRows[player.id.value] = left;
-            if (count == 0)
-                return;
-
-            var rows = GetCustomStream(CameraStream, typeof(ClientSample<CameraSample>), player);
-            byte* src = (byte*)UnsafeUtility.AddressOf(ref packet.payload);
-            for (int i = 0; i < count; i++)
-                MakeReadable(layout, src + i * rowSize);
-            ulong tick = SampleTick();
-            var log = _job.log;
-            for (int i = 0; i < count; i++)
-            {
-                BeginRow(rows, tick, log);
-                log.bytes.WriteBytes(src + i * rowSize, rowSize);
-            }
-        }
-
-        /// <summary>Makes a row a client sent safe to read: numbers that are not finite become 0, bools 0 or 1.</summary>
-        static unsafe void MakeReadable(RowLayout layout, byte* row)
-        {
-            var columns = layout.columns;
-            for (int c = 0; c < columns.Count; c++)
-            {
-                var column = columns[c];
-                byte* value = row + column.offset;
-                switch (column.type)
-                {
-                    case "f32":
-                        if ((*(uint*)value & 0x7F800000u) == 0x7F800000u)
-                            *(uint*)value = 0;
-                        break;
-                    case "f64":
-                        if ((*(ulong*)value & 0x7FF0000000000000ul) == 0x7FF0000000000000ul)
-                            *(ulong*)value = 0;
-                        break;
-                    case "bool":
-                        if (*value > 1)
-                            *value = 1;
-                        break;
-                }
-            }
-        }
 
         StreamRows GetCustomStream(string stream, Type type, PlayerID? player)
         {

@@ -29,7 +29,8 @@ namespace PurrNet.Recording
         Mesh = 10,
         Batch = 11,
         Attach = 12,
-        Detach = 13
+        Detach = 13,
+        Part = 14
     }
 
     /// <summary>
@@ -216,7 +217,16 @@ namespace PurrNet.Recording
             {
                 var header = new RecordingBuffer(16);
                 while (Take(out var record))
+                {
                     WriteRecord(record, header);
+                    // Handed to the system whenever the writer has caught up, so a game that is killed loses the
+                    // chunk it was collecting and nothing that was already written.
+                    bool idle;
+                    lock (_queue)
+                        idle = _queue.Count == 0;
+                    if (idle)
+                        _stream.Flush();
+                }
                 _stream.Flush();
             }
             finally
@@ -249,6 +259,19 @@ namespace PurrNet.Recording
 
         /// <summary>A recording at <paramref name="path"/> with no size cap; see <see cref="RecordingFile(string, long)"/>.</summary>
         public RecordingFile(string path) : this(path, 0) { }
+
+        /// <summary>
+        /// What the upload service needs to tie this file to its match (recording id, main file or client part, player
+        /// and token), as JSON. A browser's worker keeps it with the stored file; elsewhere the uploader reads the
+        /// same from the file's HEADER.
+        /// </summary>
+        public void SetLink(string json)
+        {
+#if PURRREC_WEB
+            if (_web != 0)
+                WebRecording.Link(_web, json);
+#endif
+        }
 
         public void WriteJson(RecordKind kind, string json, bool compress = false)
         {

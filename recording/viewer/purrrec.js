@@ -1,6 +1,6 @@
 // Reader for PurrNet .purrrec recordings (see ../FORMAT.md). Browser and Node 18+.
 
-const KINDS = { 1: "HEADER", 2: "TYPE", 3: "STREAM", 4: "ENTITY", 5: "DESPAWN", 6: "CHUNK", 7: "COLLIDERS", 8: "PLAYER", 9: "FOOTER", 10: "MESH", 11: "BATCH", 12: "ATTACH", 13: "DETACH" };
+const KINDS = { 1: "HEADER", 2: "TYPE", 3: "STREAM", 4: "ENTITY", 5: "DESPAWN", 6: "CHUNK", 7: "COLLIDERS", 8: "PLAYER", 9: "FOOTER", 10: "MESH", 11: "BATCH", 12: "ATTACH", 13: "DETACH", 14: "PART" };
 
 class Reader {
   constructor(bytes, pos = 0) { this.b = bytes; this.pos = pos; this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); }
@@ -93,7 +93,7 @@ class StreamData {
     (this.type.managed || []).forEach((m, f) => {
       let j = i; while (j > 0 && this.managed[f][j] === null) j--;
       const raw = this.managed[f][j];
-      o[m.name] = raw ? decodeTagged(new Reader(raw), types) : null;
+      o[m.name] = raw ? decodeTagged(new Reader(raw), this.types || types) : null;
     });
     return o;
   }
@@ -191,6 +191,7 @@ export async function readRecording(buffer) {
       case 9: rec.footer = obj; break;
       case 12: (rec.attaches ??= []).push(obj); break;
       case 13: (rec.detaches ??= []).push(obj); break;
+      case 14: (rec.parts ??= []).push(obj); break;
     }
   }
 
@@ -294,6 +295,105 @@ export async function readRecording(buffer) {
   rec.firstTick = first; rec.lastTick = last;
   rec.tickRate = rec.header?.tickRate || 30;
   return rec;
+}
+
+/**
+ * Adds a client part's streams (FORMAT.md, "Client parts") to the server's recording `rec`: a remote player's
+ * camera, input and UI are in the part that player's client wrote. The part must carry the recording's id and the
+ * token whose SHA-256 the recording has for that player. Merged streams get ids after the recording's own and a
+ * `part` property (the part's name). Returns the merged streams.
+ */
+export async function mergePart(rec, part, name = "part") {
+  const own = rec.header || {}, theirs = part.header || {};
+  if (own.part) throw new Error("this is a client part; open the server's recording and add parts to it");
+  if (!theirs.part) throw new Error(`${name} is not a client part`);
+  if (!own.recordingId || theirs.recordingId !== own.recordingId) throw new Error(`${name} belongs to another recording`);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(theirs.token)));
+  const hash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  const offered = (rec.parts || []).find(p => p.player === theirs.player);
+  if (!offered || offered.tokenHash !== hash) throw new Error(`${name}: its token is not the one the server gave player ${theirs.player}`);
+
+  const typeBase = Math.max(0, ...rec.types.keys()), streamBase = Math.max(0, ...rec.streams.keys());
+  const merged = [];
+  for (const [id, type] of part.types) rec.types.set(typeBase + id, { ...type, id: typeBase + id });
+  for (const [id, stream] of part.streams) {
+    const s = { ...stream, id: streamBase + id, type: typeBase + stream.type, part: name };
+    rec.streams.set(s.id, s);
+    const d = part.data.get(id);
+    if (d) {
+      // Tagged values in the part's rows name the part's own object types.
+      d.stream = s; d.types = part.types;
+      rec.data.set(s.id, d);
+      if (d.length) { rec.firstTick = Math.min(rec.firstTick, d.ticks[0]); rec.lastTick = Math.max(rec.lastTick, d.ticks[d.length - 1]); }
+    }
+    merged.push(s);
+  }
+  (rec.merged ??= []).push({ file: name, player: theirs.player });
+  return merged;
+}
+
+export const UI_FLAGS = { Visible: 1, Interactable: 2, Pickable: 4, WorldSpace: 8, Redacted: 16, Snapshot: 32, UIToolkit: 64 };
+
+/** The recorded UI streams (FORMAT.md, "UI stream") that have rows. */
+export function uiStreams(rec) {
+  return [...rec.streams.values()].filter(s => s.kind === "custom" && s.sample === "ui" && rec.data.get(s.id)?.length);
+}
+
+/**
+ * The UI a player saw, tick by tick: seek(t), then read `screen` ([width, height] in pixels) and `elements`
+ * (id -> latest row, columns without their "sample." prefix; `flags` stays a number, see UI_FLAGS).
+ */
+export class UITimeline {
+  constructor(rec, streamId) {
+    this.data = rec.data.get(streamId);
+    this.types = this.data.types || rec.types;
+    this.elements = new Map();
+    this.screen = null;
+    this.at = -1;
+    // Rows that start a snapshot: going back in time restarts from the last one before the target.
+    this.snapshots = [];
+    const d = this.data, columns = d.type.columnsByName;
+    this.screenOp = Number(Object.entries(columns["sample.op"].values || {}).find(([, name]) => name === "Screen")?.[0] ?? 2);
+    for (let i = 0; i < d.length; i++)
+      if (d.value(i, "sample.op") === this.screenOp && (d.value(i, "sample.flags") & UI_FLAGS.Snapshot)) this.snapshots.push(i);
+  }
+
+  seek(t) {
+    const target = this.data.indexAt(Math.floor(t));
+    if (target < this.at) {
+      let start = -1;
+      for (const s of this.snapshots) { if (s <= target) start = s; else break; }
+      this.elements.clear();
+      this.screen = null;
+      this.at = start - 1;
+      if (start < 0) this.at = -1;
+    }
+    while (this.at < target) this.apply(++this.at);
+    return this;
+  }
+
+  apply(i) {
+    const raw = this.data.row(i, this.types), row = {};
+    for (const key in raw) row[key.startsWith("sample.") ? key.slice(7) : key] = raw[key];
+    row.flags = this.data.value(i, "sample.flags"); // the bits, not a name
+    for (const key of ["color", "textColor", "worldPosition", "worldRotation", "worldSize"])
+      row[key] = Object.keys(row).filter(k => k.startsWith(key + ".")).map(k => row[k]);
+    if (row.op === "Screen") {
+      this.screen = [row.width, row.height];
+      if (row.flags & UI_FLAGS.Snapshot) this.elements.clear();
+    } else if (row.op === "Remove") this.elements.delete(row.id);
+    else this.elements.set(row.id, row);
+  }
+
+  /** The roots in the order they are drawn. */
+  roots() {
+    return [...this.elements.values()].filter(e => e.parent === 0).sort((a, b) => a.order - b.order || a.id - b.id);
+  }
+
+  /** The elements a root draws, in paint order. */
+  drawn(root) {
+    return [...this.elements.values()].filter(e => e.root === root.id && e.id !== root.id).sort((a, b) => a.order - b.order || a.id - b.id);
+  }
 }
 
 export { Reader };

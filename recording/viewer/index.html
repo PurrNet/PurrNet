@@ -9,6 +9,7 @@
   #app { display: grid; grid-template-columns: 1fr 340px; grid-template-rows: 1fr auto; height: 100%; }
   #view { position: relative; grid-row: 1; grid-column: 1; }
   #view canvas { display: block; width: 100%; height: 100%; }
+  #view canvas#ui { position: absolute; inset: 0; pointer-events: none; }
   #side { grid-row: 1 / span 2; grid-column: 2; background: var(--panel); border-left: 1px solid var(--line); overflow: auto; padding: 10px 12px; }
   #bar { grid-row: 2; grid-column: 1; display: flex; gap: 10px; align-items: center; padding: 8px 12px; background: var(--panel); border-top: 1px solid var(--line); }
   #bar input[type=range] { flex: 1; }
@@ -34,7 +35,8 @@
 <body>
 <div id="app">
   <div id="view">
-    <div id="drop"><div style="font-size:16px">Drop a <b>.purrrec</b> file here</div><input type="file" id="file" accept=".purrrec"></div>
+    <div id="drop"><div style="font-size:16px">Drop a <b>.purrrec</b> file here, with its client parts if you have them</div><input type="file" id="file" accept=".purrrec" multiple></div>
+    <canvas id="ui" hidden></canvas>
     <div id="hud" hidden></div>
   </div>
   <div id="bar">
@@ -44,6 +46,7 @@
     <span id="clock" class="muted">-</span>
     <label class="muted"><input type="checkbox" id="showHidden"> show hidden</label>
     <select id="cam"><option value="free">Free camera</option></select>
+    <select id="uiOf"><option value="">No UI</option></select>
   </div>
   <div id="side">
     <h3>Recording</h3><div id="info" class="muted">No file loaded.</div>
@@ -54,7 +57,7 @@
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { readRecording } from "./purrrec.js";
+import { readRecording, mergePart, uiStreams, UITimeline, UI_FLAGS } from "./purrrec.js";
 
 const view = document.getElementById("view");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -71,9 +74,11 @@ const controls = new OrbitControls(freeCam, renderer.domElement);
 const playerCam = new THREE.PerspectiveCamera(60, 1, 0.05, 2000);
 let activeCam = freeCam;
 
+const uiCanvas = document.getElementById("ui");
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   renderer.setSize(w, h, false);
+  uiCanvas.width = w * devicePixelRatio; uiCanvas.height = h * devicePixelRatio;
   for (const c of [freeCam, playerCam]) { c.aspect = w / h; c.updateProjectionMatrix(); }
 }
 addEventListener("resize", resize); resize();
@@ -230,8 +235,15 @@ function build() {
   camSel.length = 1;
   for (const s of rec.streams.values()) {
     if (s.kind === "custom" && s.sample === "camera" && rec.data.get(s.id)?.length)
-      camSel.add(new Option(`Player ${s.player} camera`, s.id));
+      camSel.add(new Option(`Player ${s.player} camera${s.part ? " (part)" : ""}`, s.id));
   }
+
+  // The UI each player saw (the "ui" stream), drawn over the view.
+  const uiSel = document.getElementById("uiOf");
+  uiSel.length = 1;
+  uiTimelines.clear();
+  for (const s of uiStreams(rec)) uiSel.add(new Option(`Player ${s.player} UI${s.part ? " (part)" : ""}`, s.id));
+  if (uiSel.length > 1) uiSel.selectedIndex = 1;
 
   const slider = document.getElementById("time");
   slider.min = rec.firstTick; slider.max = rec.lastTick; slider.value = rec.firstTick;
@@ -257,7 +269,7 @@ function build() {
     <span>Entities</span><span>${rec.entities.size}</span>
     <span>Players</span><span>${players}</span>
     <span>Streams</span><span>${rec.streams.size}</span>
-    ${rec.truncated ? "<span>Note</span><span>file truncated</span>" : ""}
+    ${rec.truncated || !rec.footer ? "<span>Note</span><span>incomplete: the file was cut off (no FOOTER)</span>" : ""}
   </div>`;
   document.getElementById("hud").hidden = false;
   select(null);
@@ -347,6 +359,113 @@ function apply(t) {
   document.getElementById("clock").textContent = `${seconds.toFixed(2)} s  tick ${Math.floor(t)}`;
   document.getElementById("hud").textContent = `${list.length} objects alive`;
   return list;
+}
+
+// ---- UI overlay --------------------------------------------------------------------------------------------
+// Draws the recorded UI as boxes, sprite names and text: screen-space roots in a frame with the recorded screen's
+// shape, world-space roots where the view's camera sees them.
+
+const uiTimelines = new Map();
+const css = c => `rgba(${c[0]},${c[1]},${c[2]},${(c[3] / 255).toFixed(3)})`;
+
+function drawUI(t) {
+  const sid = document.getElementById("uiOf").value;
+  uiCanvas.hidden = !sid;
+  if (!sid) return;
+  if (!uiTimelines.has(sid)) uiTimelines.set(sid, new UITimeline(rec, Number(sid)));
+  const ui = uiTimelines.get(sid).seek(t);
+  const ctx = uiCanvas.getContext("2d");
+  const W = view.clientWidth, H = view.clientHeight;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!ui.screen) return;
+
+  // The recorded screen, as large as fits.
+  const scale = Math.min(W / ui.screen[0], H / ui.screen[1]);
+  const frame = { x: (W - ui.screen[0] * scale) / 2, y: (H - ui.screen[1] * scale) / 2, w: ui.screen[0] * scale, h: ui.screen[1] * scale };
+  ctx.strokeStyle = "#ffffff30"; ctx.lineWidth = 1; ctx.strokeRect(frame.x + 0.5, frame.y + 0.5, frame.w - 1, frame.h - 1);
+
+  for (const root of ui.roots()) {
+    if (!(root.flags & UI_FLAGS.Visible)) continue;
+    const quad = root.flags & UI_FLAGS.WorldSpace ? worldQuad(root, W, H) : null;
+    if (root.flags & UI_FLAGS.WorldSpace && !quad) continue;
+    for (const e of [root, ...ui.drawn(root)]) {
+      if (!(e.flags & UI_FLAGS.Visible)) continue;
+      if (quad) { if (e !== root) drawOnQuad(ctx, e, quad); }
+      else drawOnScreen(ctx, e, frame);
+    }
+  }
+}
+
+function drawOnScreen(ctx, e, frame) {
+  const w = e.width * frame.w, h = e.height * frame.h;
+  ctx.save();
+  ctx.translate(frame.x + e.x * frame.w + w / 2, frame.y + e.y * frame.h + h / 2);
+  if (e.rotation) ctx.rotate(e.rotation * Math.PI / 180);
+  drawBox(ctx, e, w, h, e.fontSize * frame.h);
+  ctx.restore();
+}
+
+function drawBox(ctx, e, w, h, fontPx) {
+  if (e.color[3] > 0) {
+    let x = -w / 2, y = -h / 2, fw = w, fh = h;
+    if (e.fill === "Horizontal") { fw = w * e.fillAmount; if (e.fillOrigin === 1) x += w - fw; }
+    else if (e.fill === "Vertical") { fh = h * e.fillAmount; if (e.fillOrigin === 0) y += h - fh; }
+    ctx.fillStyle = css(e.color);
+    if (e.fill === "Radial") {
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      ctx.arc(0, 0, Math.hypot(w, h) / 2, -Math.PI / 2, -Math.PI / 2 + e.fillAmount * 2 * Math.PI);
+      ctx.closePath(); ctx.save(); ctx.clip(); ctx.fillRect(x, y, fw, fh); ctx.restore();
+    } else ctx.fillRect(x, y, fw, fh);
+    // Sprites are known by name only.
+    if (e.sprite && w > 40 && h > 10) {
+      ctx.fillStyle = "#0009"; ctx.font = "10px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.fillText(e.sprite, -w / 2 + 2, -h / 2 + 1, w - 4);
+    }
+  }
+  const text = e.flags & UI_FLAGS.Redacted ? "\u2022\u2022\u2022" : e.text;
+  if (!text) return;
+  const size = Math.max(6, fontPx || h * 0.7);
+  const column = e.align === undefined ? 0 : ["UpperLeft", "MiddleLeft", "LowerLeft"].includes(e.align) ? 0 : ["UpperRight", "MiddleRight", "LowerRight"].includes(e.align) ? 2 : 1;
+  const row = String(e.align).startsWith("Upper") ? 0 : String(e.align).startsWith("Lower") ? 2 : 1;
+  ctx.fillStyle = css(e.textColor[3] ? e.textColor : [255, 255, 255, 255]);
+  ctx.font = `${size}px system-ui, sans-serif`;
+  ctx.textAlign = ["left", "center", "right"][column];
+  ctx.textBaseline = "middle";
+  const lines = String(text).split("\n"), lineHeight = size * 1.15;
+  const top = row === 0 ? -h / 2 + lineHeight / 2 : row === 2 ? h / 2 - lineHeight * (lines.length - 0.5) : -lineHeight * (lines.length - 1) / 2;
+  lines.forEach((line, i) => ctx.fillText(line, (column - 1) * w / 2, top + i * lineHeight));
+}
+
+// A world-space root's corners in view pixels (top left, top right, bottom left, bottom right), or null when it
+// is behind the camera.
+function worldQuad(root, W, H) {
+  const p = toPos(...root.worldPosition), q = toQuat(...root.worldRotation);
+  const corner = (u, v) => {
+    // The rectangle's own axes in Unity space, mirrored like every position.
+    const local = new THREE.Vector3((u - 0.5) * root.worldSize[0], (0.5 - v) * root.worldSize[1], 0).applyQuaternion(q);
+    const ndc = p.clone().add(local).project(activeCam);
+    return ndc.z > 1 || ndc.z < -1 ? null : [(ndc.x + 1) / 2 * W, (1 - ndc.y) / 2 * H];
+  };
+  const quad = [corner(0, 0), corner(1, 0), corner(0, 1), corner(1, 1)];
+  return quad.some(c => !c) ? null : quad;
+}
+
+// Inside a world-space root, rectangles are fractions of the root: placed by blending its projected corners.
+function drawOnQuad(ctx, e, quad) {
+  const at = (u, v) => {
+    const top = [quad[0][0] + (quad[1][0] - quad[0][0]) * u, quad[0][1] + (quad[1][1] - quad[0][1]) * u];
+    const bottom = [quad[2][0] + (quad[3][0] - quad[2][0]) * u, quad[2][1] + (quad[3][1] - quad[2][1]) * u];
+    return [top[0] + (bottom[0] - top[0]) * v, top[1] + (bottom[1] - top[1]) * v];
+  };
+  const a = at(e.x, e.y), b = at(e.x + e.width, e.y), c = at(e.x, e.y + e.height);
+  const w = Math.hypot(b[0] - a[0], b[1] - a[1]), h = Math.hypot(c[0] - a[0], c[1] - a[1]);
+  const rootHeight = Math.hypot(quad[2][0] - quad[0][0], quad[2][1] - quad[0][1]);
+  ctx.save();
+  ctx.translate((b[0] + c[0]) / 2, (b[1] + c[1]) / 2);
+  ctx.rotate(Math.atan2(b[1] - a[1], b[0] - a[0]) + (e.rotation || 0) * Math.PI / 180);
+  drawBox(ctx, e, w, h, e.fontSize * rootHeight);
+  ctx.restore();
 }
 
 let lastListTick = -1;
@@ -439,15 +558,33 @@ addEventListener("keydown", ev => {
   if (ev.code === "ArrowLeft") tick = Math.max(rec.firstTick, Math.floor(tick) - 1);
 });
 
-async function load(buffer, name) {
+// A remote player's camera, input and UI are in the part that player's client wrote (FORMAT.md, "Client parts"):
+// the server's recording is opened together with its parts, or parts are dropped onto it afterwards.
+async function load(files) {
   document.getElementById("drop").classList.add("hidden");
-  document.getElementById("info").textContent = `Reading ${name}…`;
-  try { rec = await readRecording(buffer); build(); }
-  catch (e) { document.getElementById("info").textContent = "Failed: " + e.message; console.error(e); document.getElementById("drop").classList.remove("hidden"); }
+  const info = document.getElementById("info");
+  info.textContent = `Reading ${files.map(f => f.name).join(", ")}…`;
+  try {
+    const read = [];
+    for (const f of files) read.push({ name: f.name, rec: await readRecording(f.buffer) });
+    const main = read.find(r => !r.rec.header?.part);
+    if (main) rec = main.rec;
+    else if (!rec) throw new Error("these are client parts; open the server's recording with them");
+    const skipped = [];
+    for (const r of read) {
+      if (r === main) continue;
+      try { await mergePart(rec, r.rec, r.name); }
+      catch (e) { skipped.push(e.message); console.warn(e); }
+    }
+    build();
+    if (skipped.length) info.textContent += ` · not merged: ${skipped.join("; ")}`;
+  }
+  catch (e) { info.textContent = "Failed: " + e.message; console.error(e); document.getElementById("drop").classList.remove("hidden"); }
 }
-document.getElementById("file").onchange = async ev => { const f = ev.target.files[0]; if (f) load(await f.arrayBuffer(), f.name); };
+const readFiles = async list => Promise.all([...list].map(async f => ({ name: f.name, buffer: await f.arrayBuffer() })));
+document.getElementById("file").onchange = async ev => { if (ev.target.files.length) load(await readFiles(ev.target.files)); };
 view.addEventListener("dragover", ev => ev.preventDefault());
-view.addEventListener("drop", async ev => { ev.preventDefault(); const f = ev.dataTransfer.files[0]; if (f) load(await f.arrayBuffer(), f.name); });
+view.addEventListener("drop", async ev => { ev.preventDefault(); if (ev.dataTransfer.files.length) load(await readFiles(ev.dataTransfer.files)); });
 const param = new URLSearchParams(location.search).get("file");
 if (param) {
   // The name shown is the file's, not the whole (signed) URL.
@@ -455,9 +592,12 @@ if (param) {
   const info = document.getElementById("info");
   document.getElementById("drop").classList.add("hidden");
   info.textContent = `Downloading ${name}…`;
-  fetch(param)
+  // ?file=<recording>&part=<client part>&part=... opens a recording with its parts.
+  const urls = [param, ...new URLSearchParams(location.search).getAll("part")];
+  Promise.all(urls.map((url, i) => fetch(url)
     .then(r => { if (!r.ok) throw new Error(`the server answered ${r.status} ${r.statusText}`); return r.arrayBuffer(); })
-    .then(b => load(b, name))
+    .then(buffer => ({ name: i ? decodeURIComponent(new URL(url, location.href).pathname.split("/").pop() || "part") : name, buffer }))))
+    .then(files => load(files))
     .catch(e => {
       // A blocked cross-origin read (no CORS rule on the storage bucket) only shows up as a network error.
       info.textContent = `Could not download ${name}: ${e.message}. If this keeps happening, the storage bucket may be missing its CORS rule for this site.`;
@@ -478,6 +618,7 @@ renderer.setAnimationLoop(now => {
   controls.enabled = activeCam === freeCam;
   if (activeCam === freeCam) controls.update();
   renderer.render(scene, activeCam);
+  if (rec) drawUI(tick);
 });
 </script>
 </body>

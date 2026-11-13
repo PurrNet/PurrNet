@@ -49,7 +49,13 @@ var PurrNetRecordingLib = {
         main: function () {
             var STORE = 'PurrDiction.Recordings';
             var LOCK = 'purrrec:';
-            var RETRY_MS = 60000, TICKET_MS = 20000, FRESH_MS = 10000, STALE_MS = 120000;
+            var RETRY_MS = 60000, HELD_GAP_MS = 5000, TICKET_MS = 20000, FRESH_MS = 10000, STALE_MS = 120000;
+            // Files the service said "not now" to, and when each may be tried again: the others are sent meanwhile.
+            var held = {};
+            // The file being sent, or whose sending was cut off: it goes first next time and is never trimmed.
+            var sending = null;
+            // Files the service has answered for whose removal from the store failed: never sent again.
+            var done = {};
             var locks = self.navigator && self.navigator.locks ? self.navigator.locks : null;
             var deflateOk = (function () {
                 try { new CompressionStream('deflate-raw'); return true; } catch (e) { return false; }
@@ -194,19 +200,22 @@ var PurrNetRecordingLib = {
                 return out;
             }
 
-            // Deletes the oldest finished recordings until the store fits its cap.
+            // Deletes the oldest finished recordings until the store fits its cap: never the one being sent, and a
+            // client's parts (tiny next to a recording) only when deleting every other file was not enough.
             function trim(max) {
                 if (!(max > 0)) return Promise.resolve();
                 return Promise.all([listFiles(), writing()]).then(function (r) {
                     var files = r[0], names = r[1], total = 0, work = Promise.resolve();
                     files.forEach(function (f) { total += f.size; });
-                    files.filter(function (f) { return finished(f, names); })
-                        .sort(function (a, b) { return a.created - b.created; })
-                        .forEach(function (f) {
-                            if (total <= max) return;
+                    var old = files.filter(function (f) { return finished(f, names) && f.name !== sending; })
+                        .sort(function (a, b) { return a.created - b.created; });
+                    [false, true].forEach(function (parts) {
+                        old.forEach(function (f) {
+                            if (total <= max || (!!(f.link && f.link.kind === 'part')) !== parts) return;
                             total -= f.size;
                             work = work.then(function () { return removeFile(f.name); });
                         });
+                    });
                     return work;
                 });
             }
@@ -220,6 +229,13 @@ var PurrNetRecordingLib = {
                         open[m.h] = { meta: meta, seq: 0, failed: false, max: m.max, release: hold(m.name) };
                         return removeFile(m.name).then(function () { return saveMeta(meta); });
                     });
+                }
+                if (m.t === 'link') {
+                    // What the upload request says about this file besides its name and size (recording id, part...).
+                    var l = open[m.h];
+                    if (!l) return;
+                    try { l.meta.link = JSON.parse(m.json); } catch (e) { return; }
+                    return saveMeta(l.meta);
                 }
                 if (m.t === 'append') {
                     var f = open[m.h];
@@ -281,7 +297,8 @@ var PurrNetRecordingLib = {
                 }).then(function (r) { clearTimeout(timeout); return r; }, function (e) { clearTimeout(timeout); throw e; });
             }
 
-            function refused(r) {
+            function refused(r, name) {
+                sending = null;
                 return r.text().then(function (text) {
                     // Wrong key or the service is off for this project: stop until the next launch. A quota is "not now".
                     var quota = text && text.indexOf('quota') >= 0;
@@ -289,19 +306,30 @@ var PurrNetRecordingLib = {
                         if (!blocked) warn('Uploads refused (' + r.status + '): ' + text);
                         blocked = true;
                     } else {
-                        later();
+                        // "Not now" for this file: it waits while the next one is tried after a short pause.
+                        held[name] = Date.now() + RETRY_MS;
+                        retryAt = Date.now() + HELD_GAP_MS;
                     }
                 });
             }
 
             function sendOne(meta) {
+                // Cleared when the service has answered for this file; a sending that was cut off keeps it.
+                sending = meta.name;
+                var sent = function () {
+                    sending = null;
+                    done[meta.name] = true;
+                    return removeFile(meta.name).then(function () { delete done[meta.name]; });
+                };
                 return readParts(meta.name).then(function (parts) {
                     var body = new Blob(parts);
-                    return post(uploads.endpoint + '/uploads', JSON.stringify({ fileName: meta.name, size: body.size })).then(function (r) {
-                        if (r.status !== 200 && r.status !== 201) return refused(r);
+                    var ticket = { fileName: meta.name, size: body.size };
+                    for (var k in (meta.link || {})) ticket[k] = meta.link[k];
+                    return post(uploads.endpoint + '/uploads', JSON.stringify(ticket)).then(function (r) {
+                        if (r.status !== 200 && r.status !== 201) return refused(r, meta.name);
                         return r.json().then(function (ticket) {
                             // Not wanted (sampling, a cap, a rejected file): sending it later would get the same answer.
-                            if (ticket.skip || !ticket.url) return removeFile(meta.name);
+                            if (ticket.skip || !ticket.url) return sent();
                             var a = abort = new AbortController();
                             return fetch(ticket.url, {
                                 method: 'PUT', body: body, signal: a.signal,
@@ -309,7 +337,7 @@ var PurrNetRecordingLib = {
                             }).then(function (put) {
                                 if (!put.ok) return later();
                                 return post(uploads.endpoint + '/uploads/' + encodeURIComponent(ticket.id) + '/complete', '{}').then(function (c) {
-                                    return c.status === 200 ? removeFile(meta.name) : refused(c);
+                                    return c.status === 200 ? sent() : refused(c, meta.name);
                                 });
                             });
                         });
@@ -319,9 +347,21 @@ var PurrNetRecordingLib = {
 
             function sendOldest() {
                 return Promise.all([listFiles(), writing()]).then(function (r) {
+                    var now = Date.now(), due = Infinity;
                     var files = r[0].filter(function (f) { return finished(f, r[1]); })
-                        .sort(function (a, b) { return a.created - b.created; });
-                    if (files.length === 0) return later();
+                        .filter(function (f) {
+                            // The service has it; all that is left is to remove it.
+                            if (done[f.name]) { removeFile(f.name).then(function () { delete done[f.name]; }, function () {}); return false; }
+                            if (!(held[f.name] > now)) return true;
+                            due = Math.min(due, held[f.name]);
+                            return false;
+                        })
+                        // The newest first: the trim deletes from the other end.
+                        .sort(function (a, b) { return b.created - a.created; });
+                    var resumed = files.filter(function (f) { return f.name === sending; });
+                    if (resumed.length) files = resumed;
+                    // Nothing to send, or only held files: back when the first of them is due.
+                    if (files.length === 0) { retryAt = Math.min(due, now + RETRY_MS); return; }
                     return sendOne(files[0]);
                 });
             }
@@ -373,6 +413,11 @@ var PurrNetRecordingLib = {
         // A copy the worker takes over, so the WebAssembly buffer can be reused right away.
         var bytes = HEAPU8.slice(ptr, ptr + length);
         worker.postMessage({ t: 'append', h: h, kind: kind, compress: compress !== 0, bytes: bytes }, [bytes.buffer]);
+    },
+
+    PurrNetRec_Link__deps: ['$PurrNetRec'],
+    PurrNetRec_Link: function (h, jsonPtr) {
+        if (PurrNetRec.worker) PurrNetRec.worker.postMessage({ t: 'link', h: h, json: UTF8ToString(jsonPtr) });
     },
 
     PurrNetRec_Close__deps: ['$PurrNetRec'],
