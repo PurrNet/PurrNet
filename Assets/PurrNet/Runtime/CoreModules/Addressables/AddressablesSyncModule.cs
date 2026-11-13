@@ -213,8 +213,10 @@ namespace PurrNet.Modules
 
             if (packet.loaded)
             {
+                // Only what was waiting for this prefab. Going over every spawned object here costs
+                // tens of milliseconds in a large scene, each time any player loads any prefab.
                 if (_manager.TryGetModule<HierarchyFactory>(true, out var factory))
-                    factory.EvaluateVisibilityForPlayer(player);
+                    factory.EvaluateVisibilityForLoadedPrefab(player, guid);
             }
             else
             {
@@ -242,6 +244,9 @@ namespace PurrNet.Modules
                 return;
 
             _clientLoadedGuids.Remove(player);
+
+            if (_manager.TryGetModule<HierarchyFactory>(true, out var factory))
+                factory.ForgetVisibilityWaitingForLoad(player);
         }
 
         /// <summary>

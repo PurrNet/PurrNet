@@ -244,5 +244,19 @@ namespace PurrNet.Modules
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].EvaluateVisibilityForPlayer(player);
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        public void EvaluateVisibilityForLoadedPrefab(PlayerID player, string assetGuid)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].EvaluateVisibilityForLoadedPrefab(player, assetGuid);
+        }
+
+        public void ForgetVisibilityWaitingForLoad(PlayerID player)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].ForgetVisibilityWaitingForLoad(player);
+        }
+#endif
     }
 }

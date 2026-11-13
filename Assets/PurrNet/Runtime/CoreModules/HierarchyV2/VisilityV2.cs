@@ -468,8 +468,52 @@ namespace PurrNet.Modules
             if (sync.ClientHasLoaded(player, guid))
                 return true;
 
+            // Remembered so that only these are looked at again once the player reports the prefab.
+            var key = (player, guid);
+            if (!_waitingForLoad.TryGetValue(key, out var waiting))
+                _waitingForLoad[key] = waiting = new HashSet<NetworkIdentity>();
+            waiting.Add(identity);
+
             sync.RequestPlayerToLoad(player, guid);
             return false;
+        }
+
+        // Identities a player could not observe yet because it had not loaded their prefab.
+        private readonly Dictionary<(PlayerID player, string guid), HashSet<NetworkIdentity>> _waitingForLoad = new();
+
+        /// <summary>
+        /// Moves the identities that were waiting for <paramref name="player"/> to load the prefab
+        /// <paramref name="guid"/> into <paramref name="result"/>. Returns false when there were none.
+        /// </summary>
+        internal bool TakeWaitingForLoad(PlayerID player, string guid, List<NetworkIdentity> result)
+        {
+            if (!_waitingForLoad.Remove((player, guid), out var waiting))
+                return false;
+
+            foreach (var identity in waiting)
+            {
+                if (identity)
+                    result.Add(identity);
+            }
+
+            return result.Count > 0;
+        }
+
+        /// <summary>Forgets everything that was waiting for a player who is gone.</summary>
+        internal void ForgetWaitingForLoad(PlayerID player)
+        {
+            if (_waitingForLoad.Count == 0)
+                return;
+
+            var stale = new List<(PlayerID, string)>();
+            foreach (var key in _waitingForLoad.Keys)
+            {
+                if (key.player == player)
+                    stale.Add(key);
+            }
+
+            for (int i = 0; i < stale.Count; i++)
+                _waitingForLoad.Remove(stale[i]);
         }
 #endif
     }

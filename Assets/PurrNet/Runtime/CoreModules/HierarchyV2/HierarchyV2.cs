@@ -2305,6 +2305,45 @@ namespace PurrNet.Modules
             });
         }
 
+#if ADDRESSABLES_PURRNET_SUPPORT
+        /// <summary>
+        /// A player reported an addressable prefab as loaded: evaluates only the objects that were
+        /// held back from that player because of it, instead of every spawned object.
+        /// </summary>
+        public void EvaluateVisibilityForLoadedPrefab(PlayerID player, string assetGuid)
+        {
+            if (!_asServer)
+                return;
+
+            var waiting = ListPool<NetworkIdentity>.Instantiate();
+
+            if (_visibility.TakeWaitingForLoad(player, assetGuid, waiting) &&
+                _scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
+            {
+                var roots = HashSetPool<NetworkIdentity>.Instantiate();
+
+                for (var i = 0; i < waiting.Count; i++)
+                {
+                    var id = waiting[i];
+                    if (!id || !id.isSpawned || id.isManualSpawn) continue;
+                    var root = id.GetRootIdentity();
+                    if (root && roots.Add(root))
+                        _visibility.RefreshVisibilityForGameObject(player, root);
+                }
+
+                FlushSpawnPackets();
+                HashSetPool<NetworkIdentity>.Destroy(roots);
+            }
+
+            ListPool<NetworkIdentity>.Destroy(waiting);
+        }
+
+        public void ForgetVisibilityWaitingForLoad(PlayerID player)
+        {
+            _visibility.ForgetWaitingForLoad(player);
+        }
+#endif
+
         public void EvaluateVisibilityForPlayer(PlayerID player)
         {
             if (!_asServer || !_scenePlayers.IsPlayerLoadedInScene(player, _sceneId))
