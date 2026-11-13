@@ -32,6 +32,19 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// Loads an addressable network prefab and blocks until it is there. Stalls the frame; prefer
+        /// <see cref="LoadAddressablePrefabAsync"/> wherever the caller can wait.
+        /// </summary>
+        public PrefabData LoadAddressablePrefab(string assetGuid)
+        {
+            if (prefabProvider is IAddressablePrefabProvider provider)
+                return provider.LoadPrefabByGuid(assetGuid);
+
+            PurrLogger.LogError("LoadAddressablePrefab failed: the prefab provider has no Addressable prefabs.");
+            return default;
+        }
+
+        /// <summary>
         /// Keeps an addressable network prefab from being released while unused.
         /// Every call needs a matching <see cref="ReleaseAddressablePrefab"/>.
         /// </summary>

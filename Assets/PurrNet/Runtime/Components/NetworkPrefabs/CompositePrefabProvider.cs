@@ -337,6 +337,18 @@ namespace PurrNet
             return LoadPrefabAsync(_offsets[providerIndex] + localId);
         }
 
+        public PrefabData LoadPrefabByGuid(string assetGuid)
+        {
+            if (!TryGetAddressableOwner(assetGuid, out int providerIndex, out _))
+            {
+                PurrLogger.LogError($"LoadPrefabByGuid: GUID '{assetGuid}' not registered.");
+                return default;
+            }
+
+            var loaded = ((IAddressablePrefabProvider)_providers[providerIndex]).LoadPrefabByGuid(assetGuid);
+            return loaded.prefab == null ? default : ToUnified(providerIndex, loaded);
+        }
+
         public bool ReleasePrefabByGuid(string assetGuid)
         {
             return TryGetAddressableOwner(assetGuid, out int providerIndex, out _) &&

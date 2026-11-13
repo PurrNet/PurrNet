@@ -264,6 +264,11 @@ namespace PurrNet
             if (_generating) return;
             if (Application.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode) return;
 
+            // While scripts fail to compile, a prefab whose only NetworkIdentity is one of the broken
+            // scripts looks like it has none. Scanning now would drop it from the list, and it would
+            // come back at the end later, which changes the prefab ids of everything after it.
+            if (AssetScannerUtility.scriptsAreBroken) return;
+
             _generating = true;
             try
             {
@@ -319,6 +324,14 @@ namespace PurrNet
             var linkedGuids = AssetScannerUtility.CollectLinkedNetworkPrefabGuids(this);
             if (linkedGuids.Count > 0)
                 found.RemoveAll(scan => linkedGuids.Contains(scan.guid));
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+            // A prefab registered as addressable is loaded on demand. Listing it here as well would
+            // reference it directly, which keeps it in memory and gives it a second prefab id.
+            var addressableGuids = AssetScannerUtility.CollectAllAddressablePrefabGuids();
+            if (addressableGuids.Count > 0)
+                found.RemoveAll(scan => addressableGuids.Contains(scan.guid));
+#endif
 
             // Update GUIDs on existing entries
             for (int i = 0; i < prefabs.Count; i++)

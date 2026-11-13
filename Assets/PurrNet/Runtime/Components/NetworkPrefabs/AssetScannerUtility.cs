@@ -24,6 +24,13 @@ namespace PurrNet
         }
 
         /// <summary>
+        /// True while the project has compile errors. Components of scripts that did not compile are
+        /// missing from every prefab, so a scan made now sees fewer network prefabs and assets than
+        /// there are. Registries must not be regenerated from such a scan.
+        /// </summary>
+        public static bool scriptsAreBroken => EditorUtility.scriptCompilationFailed;
+
+        /// <summary>
         /// Resolves a folder Object to its AssetDatabase path.
         /// When folder is null and fallbackToAssetsRoot is true, returns "Assets".
         /// Returns null if the folder cannot be resolved and fallback is disabled.
@@ -338,6 +345,33 @@ namespace PurrNet
         }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
+        /// <summary>
+        /// Collects the prefab GUIDs registered in any AddressableNetworkPrefabs asset of the project.
+        /// </summary>
+        public static HashSet<string> CollectAllAddressablePrefabGuids()
+        {
+            var guids = new HashSet<string>();
+            string[] registries = AssetDatabase.FindAssets("t:AddressableNetworkPrefabs");
+
+            for (int r = 0; r < registries.Length; r++)
+            {
+                var registry = AssetDatabase.LoadAssetAtPath<AddressableNetworkPrefabs>(
+                    AssetDatabase.GUIDToAssetPath(registries[r]));
+                if (!registry)
+                    continue;
+
+                var entries = registry.entries;
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    var asset = entries[i].asset;
+                    if (asset != null && !string.IsNullOrEmpty(asset.AssetGUID))
+                        guids.Add(asset.AssetGUID);
+                }
+            }
+
+            return guids;
+        }
+
         /// <summary>
         /// Collects prefab GUIDs already owned by linked AddressableNetworkPrefabs.
         /// </summary>

@@ -96,6 +96,8 @@ public class AddressablePrefabReleaseTests
 
         public Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid) => LoadPrefabAsync(_guids.IndexOf(assetGuid));
 
+        public PrefabData LoadPrefabByGuid(string assetGuid) => LoadPrefabAsync(_guids.IndexOf(assetGuid)).Result;
+
         public bool TryGetAddressableGuid(int prefabId, out string assetGuid) => TryGetPersistentId(prefabId, out assetGuid);
 
         public IEnumerable<string> GetLoadedGuids() => _loaded.Keys;
@@ -242,6 +244,18 @@ public class AddressablePrefabReleaseTests
         Assert.That(_composite.NeedsLoad(2), Is.False);
         Assert.That(_composite.TryGetPrefabData(loaded.prefab, out var byReference), Is.True);
         Assert.That((int)byReference.prefabId, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void BlockingLoadReturnsTheNetworkId()
+    {
+        Assert.That(_composite.NeedsLoad(2), Is.True);
+
+        var loaded = _composite.LoadPrefabByGuid(GUID_B);
+
+        Assert.That((int)loaded.prefabId, Is.EqualTo(2));
+        Assert.That(loaded.prefab, Is.Not.Null);
+        Assert.That(_composite.NeedsLoad(2), Is.False);
     }
 
     [Test]

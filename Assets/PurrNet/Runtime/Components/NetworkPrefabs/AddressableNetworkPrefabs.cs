@@ -382,6 +382,18 @@ namespace PurrNet
 
                 _pendingLoads.Remove(guid);
 
+                // A blocking load finished the same prefab while this one was waiting its turn.
+                if (_handles.ContainsKey(guid))
+                {
+                    if (handle.IsValid())
+                        Addressables.Release(handle);
+
+                    return _guidToId.TryGetValue(guid, out int loadedId) &&
+                           _prefabLookup.TryGetValue(loadedId, out var loadedData)
+                        ? loadedData
+                        : default;
+                }
+
                 if (!handle.IsValid() || handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
                 {
                     PurrLogger.LogError($"Failed to load Addressable prefab with GUID '{guid}'.");
@@ -413,6 +425,52 @@ namespace PurrNet
                 PurrLogger.LogError($"Exception loading Addressable prefab GUID '{guid}': {e.Message}\n{e.StackTrace}");
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Loads one prefab and blocks until it is there. A load of the same prefab that is still
+        /// running is finished by this call and completes on its own afterwards.
+        /// </summary>
+        public PrefabData LoadPrefabByGuid(string assetGuid)
+        {
+            if (string.IsNullOrEmpty(assetGuid) || !_guidToId.TryGetValue(assetGuid, out int prefabId) ||
+                !_prefabLookup.TryGetValue(prefabId, out var data))
+            {
+                PurrLogger.LogError($"LoadPrefabByGuid: GUID '{assetGuid}' not registered.");
+                return default;
+            }
+
+            if (data.prefab != null)
+                return data;
+
+            AsyncOperationHandle<GameObject> handle = default;
+
+            try
+            {
+                handle = Addressables.LoadAssetAsync<GameObject>(assetGuid);
+                handle.WaitForCompletion();
+
+                if (!handle.IsValid() || handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
+                {
+                    PurrLogger.LogError($"Failed to load Addressable prefab with GUID '{assetGuid}'.");
+                    if (handle.IsValid())
+                        Addressables.Release(handle);
+                    return default;
+                }
+            }
+            catch (Exception e)
+            {
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+                PurrLogger.LogError($"Exception loading Addressable prefab GUID '{assetGuid}': {e.Message}\n{e.StackTrace}");
+                return default;
+            }
+
+            _handles[assetGuid] = handle;
+            data.prefab = handle.Result;
+            _prefabLookup[prefabId] = data;
+            NotifyLoadStateChanged(assetGuid, true);
+            return data;
         }
 
         /// <summary>

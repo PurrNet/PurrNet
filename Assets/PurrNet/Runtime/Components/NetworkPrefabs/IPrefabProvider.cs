@@ -30,6 +30,13 @@ namespace PurrNet
         Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid);
 
         /// <summary>
+        /// Loads a prefab and blocks until it is there. For the moments that cannot wait, such as
+        /// spawning something that has to exist before the current frame ends; it stalls the frame.
+        /// A load already started with <see cref="LoadPrefabByGuidAsync"/> is finished, not repeated.
+        /// </summary>
+        PrefabData LoadPrefabByGuid(string assetGuid);
+
+        /// <summary>
         /// Releases a loaded prefab. Returns false when it wasn't loaded.
         /// Instances that still exist lose the assets they share with the prefab.
         /// </summary>

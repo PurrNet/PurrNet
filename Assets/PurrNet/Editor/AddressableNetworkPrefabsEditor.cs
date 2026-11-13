@@ -243,6 +243,7 @@ namespace PurrNet
             if (!target) return;
             if (_generating) return;
             if (Application.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode) return;
+            if (AssetScannerUtility.scriptsAreBroken) return;
 
             _generating = true;
             try
