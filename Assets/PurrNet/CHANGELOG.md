@@ -1,3 +1,10 @@
+# [1.26.0-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.29...v1.26.0-beta.30) (2026-11-14)
+
+
+### Bug Fixes
+
+* Moved essentials ([ebf5040](https://github.com/PurrNet/PurrNet/commit/ebf5040416889f70900dce0ef05c02b2cec521c2))
+
 # [1.26.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.28...v1.26.0-beta.29) (2026-11-13)
 
 
